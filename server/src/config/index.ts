@@ -67,14 +67,13 @@ const config: Config = {
         welcome: {
           channelId: "1446998934428848238",
           enabled: true,
-          sendEmbed: true,
-          customMessage: undefined,
           imageConfig: {
             backgroundColor: "#2C2F33",
             accentColor: "#7289DA",
             textColor: "#FFFFFF",
             secondaryTextColor: "#99AA5B",
-            backgroundImageURL: undefined,
+            backgroundImageURL:
+              "https://market-assets.create-rington.com/welcome/welcome.png",
           },
         },
       },

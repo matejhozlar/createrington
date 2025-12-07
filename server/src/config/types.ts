@@ -225,15 +225,13 @@ export interface ColorsConfig {
   BLACK: ColorResolvable;
 }
 
+// Update this interface in server/src/config/types.ts
+
 export interface WelcomeSystemConfig {
-  /** Channel ID where welcome messages are sent */
+  /** Channel ID where welcome images are sent */
   channelId: string;
   /** Whether the welcome system is enabled */
   enabled: boolean;
-  /** Whether to send an embed along the image */
-  sendEmbed: boolean;
-  /** Custom welcome message */
-  customMessage?: string;
   /** Image styling configuration */
   imageConfig: {
     /** Background color (hex) */
