@@ -2,9 +2,13 @@ import { Client, TextChannel } from "discord.js";
 import { guildMemberJoins } from "@/db";
 import config from "@/config";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import { generateWelcomeCard } from "@/discord/utils/welcome-card";
+import {
+  generateWelcomeCard,
+  generateCustomWelcomeCard,
+} from "@/discord/utils/welcome-card";
 
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
+
 /**
  * Registers the guildMemberAdd event handler
  *
@@ -17,12 +21,12 @@ const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
  */
 export function registerWelcomeHandler(client: Client): void {
   if (!welcomeConfig.enabled) {
-    logger.info("Disabled");
+    logger.info("Welcome system disabled");
     return;
   }
 
   if (!welcomeConfig.channelId) {
-    logger.warn("Enabled, but no channel ID configured");
+    logger.warn("Welcome system enabled but no channel ID configured");
     return;
   }
 
@@ -46,18 +50,32 @@ export function registerWelcomeHandler(client: Client): void {
 
       logger.info(`Member ${member.user.tag} joined - Join #${joinNumber}`);
 
-      const welcomeCard = await generateWelcomeCard(
-        member,
-        joinNumber,
-        welcomeConfig.imageConfig
-      );
+      const welcomeCard = welcomeConfig.imageConfig.backgroundImageURL
+        ? await generateCustomWelcomeCard(member, joinNumber, {
+            backgroundImageURL: welcomeConfig.imageConfig.backgroundImageURL,
+            config: welcomeConfig.imageConfig,
+          })
+        : await generateWelcomeCard(
+            member,
+            joinNumber,
+            welcomeConfig.imageConfig
+          );
 
-      await textChannel.send({
+      logger.debug("Generated welcome card:", {
+        hasBuffer: welcomeCard.attachment instanceof Buffer,
+        bufferSize:
+          welcomeCard.attachment instanceof Buffer
+            ? welcomeCard.attachment.length
+            : 0,
+        name: welcomeCard.name,
+      });
+
+      const sentMessage = await textChannel.send({
         files: [welcomeCard],
       });
 
-      logger.debug(
-        `Welcome image sent for ${member.user.tag} (#${joinNumber})`
+      logger.info(
+        `Welcome image sent for ${member.user.tag} (#${joinNumber}) - Message ID: ${sentMessage.id}`
       );
     } catch (error) {
       logger.error(
