@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import { z } from "zod";
+import { readonly, z } from "zod";
 
 dotenv.config({ quiet: true });
 
@@ -103,7 +103,13 @@ function validateEnv(): Env {
  */
 export const env = validateEnv();
 
-export const envMode = {
+export interface envModeConfig {
+  readonly isDev: boolean;
+  readonly isProd: boolean;
+  readonly isTest: boolean;
+}
+
+export const envMode: envModeConfig = {
   /**
    * True when NODE_ENV is 'development'
    * Used to enable development-specific features and logging

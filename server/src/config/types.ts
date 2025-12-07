@@ -1,4 +1,48 @@
-import { env } from "../env/env.config";
+import { ColorResolvable } from "discord.js";
+import { envModeConfig } from "./env/env.config";
+
+interface UtilsConfig {
+  readonly logger: LoggerConfig;
+}
+
+interface DatabaseConfig {
+  readonly pool: PoolConfig;
+}
+
+interface DiscordConfig {
+  readonly bots: BotConfig;
+  readonly guild: GuildConfig;
+  readonly embeds: EmbedConfig;
+}
+
+interface EmbedConfig {
+  readonly colors: ColorsConfig;
+}
+
+export interface Config {
+  readonly envMode: envModeConfig;
+  readonly app: AppConfig;
+  readonly utils: UtilsConfig;
+  readonly database: DatabaseConfig;
+  readonly discord: DiscordConfig;
+}
+
+export interface AppConfig {
+  readonly port: number;
+}
+
+export interface LoggerConfig {
+  /**
+   * Root directory where daily log folders/files are written
+   * Relative paths are resolved from the process working directory
+   */
+  logDir: string;
+  /**
+   * Number of days to retain dated log folders before automatic cleanup
+   * Older folders beyond this threshold may be deleted
+   */
+  keepDays: number;
+}
 
 export interface PoolConfig {
   /** The PostgreSQL username */
@@ -110,14 +154,64 @@ export interface PoolConfig {
   readonly connectionRetryAttemps?: number;
 }
 
-const config: PoolConfig = {
-  user: env.DB_USER,
-  host: env.DB_HOST,
-  database: env.DB_DATABASE,
-  password: env.DB_PASSWORD,
-  port: env.DB_PORT,
-  idleTimeoutMillis: 30_000,
-  connectionTimeoutMillis: 10_000,
-};
+export interface BotConfig {
+  main: {
+    /**
+     * Discord application/bot ID used for identification
+     * Required for registering slash commands and API interactions
+     */
+    id: string;
+    /**
+     * Discord bot authentication token
+     * Used to authenticate and login the bot to Discord's gateway
+     */
+    token: string;
+    /**
+     * Discord prefix for text commands
+     * Used to make a global config for text commands (e.g.: !test)
+     */
+    commandPrefix?: string;
+    /**
+     * Bot owner ids
+     */
+    owners?: string[];
+    /**
+     * Discord status message shown in the members list and bot profile
+     */
+    statusMessage?: string;
+    /**
+     * Discord activity type going along-side statusMessage
+     * Can be standalone
+     */
+    activityType?: "PLAYING" | "WATCHING" | "LISTENING";
+  };
+}
 
-export default config;
+export interface GuildConfig {
+  /**
+   * Discord guild (server) ID where the bot operates
+   * Used for guild specific command registration and operations
+   */
+  id: string;
+}
+
+export interface ColorsConfig {
+  GREEN: ColorResolvable;
+  RED: ColorResolvable;
+  BLUE: ColorResolvable;
+  GOLD: ColorResolvable;
+  PURPLE: ColorResolvable;
+  ORANGE: ColorResolvable;
+  YELLOW: ColorResolvable;
+  CYAN: ColorResolvable;
+  PINK: ColorResolvable;
+  DARK_BLUE: ColorResolvable;
+  DARK_GREEN: ColorResolvable;
+  DARK_RED: ColorResolvable;
+  DARK_PURPLE: ColorResolvable;
+  DARK_GOLD: ColorResolvable;
+  GRAY: ColorResolvable;
+  DARK_GRAY: ColorResolvable;
+  WHITE: ColorResolvable;
+  BLACK: ColorResolvable;
+}
