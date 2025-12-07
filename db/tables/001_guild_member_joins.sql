@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS guild_member_joins (
     -- Auto-incrementing join number (this is what shows in the welcome image)
     join_number SERIAL PRIMARY KEY,
     
-    -- Discord user ID (snowflake)
+    -- Discord user ID 
     user_id VARCHAR(19) NOT NULL UNIQUE,
     
     -- Discord username at time of join
