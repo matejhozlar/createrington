@@ -16,8 +16,8 @@ dotenv.config({ quiet: true });
  * @property {string} DB_PORT - The port PostgreSQL is running on
  * // Discord
  * @property {string} DISCORD_GUILD_ID - Discord server/guild ID (must be numeric snowflake)
- * @property {string} DISCORD_BOT_TOKEN - Discord bot authentication token
- * @property {string} DISCORD_BOT_ID - Discord bot application/client ID (must be numeric snowflake)
+ * @property {string} DISCORD_MAIN_BOT_TOKEN - Discord bot authentication token
+ * @property {string} DISCORD__MAIN_BOT_ID - Discord bot application/client ID (must be numeric snowflake)
  */
 const envSchema = z.object({
   // Server
@@ -47,11 +47,11 @@ const envSchema = z.object({
       /^\d{17,19}$/,
       "Guild ID must be a valid Discord snowflake (17-19 digits)"
     ),
-  DISCORD_BOT_TOKEN: z
+  DISCORD_MAIN_BOT_TOKEN: z
     .string()
     .min(1, "Bot token is required")
     .regex(/^[\w\-\.]+$/, "Bot token must be a valid Discord token format"),
-  DISCORD_BOT_ID: z
+  DISCORD_MAIN_BOT_ID: z
     .string()
     .min(1, "Bot ID is required")
     .regex(

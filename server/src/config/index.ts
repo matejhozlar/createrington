@@ -30,13 +30,15 @@ const config: Config = {
   discord: {
     bots: {
       main: {
-        id: env.DISCORD_BOT_ID,
-        token: env.DISCORD_BOT_TOKEN,
+        id: env.DISCORD_MAIN_BOT_ID,
+        token: env.DISCORD_MAIN_BOT_TOKEN,
       },
     },
+
     guild: {
       id: env.DISCORD_GUILD_ID,
     },
+
     embeds: {
       colors: {
         GREEN: 0x00ff00,
@@ -57,6 +59,24 @@ const config: Config = {
         DARK_GRAY: 0x404040,
         WHITE: 0xffffff,
         BLACK: 0x000000,
+      },
+    },
+
+    events: {
+      onGuildMemberAdd: {
+        welcome: {
+          channelId: "1446998934428848238",
+          enabled: true,
+          sendEmbed: true,
+          customMessage: undefined,
+          imageConfig: {
+            backgroundColor: "#2C2F33",
+            accentColor: "#7289DA",
+            textColor: "#FFFFFF",
+            secondaryTextColor: "#99AA5B",
+            backgroundImageURL: undefined,
+          },
+        },
       },
     },
   },

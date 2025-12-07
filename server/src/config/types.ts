@@ -5,6 +5,14 @@ interface UtilsConfig {
   readonly logger: LoggerConfig;
 }
 
+interface OnGuildMemberAdd {
+  readonly welcome: WelcomeSystemConfig;
+}
+
+interface EventConfig {
+  readonly onGuildMemberAdd: OnGuildMemberAdd;
+}
+
 interface DatabaseConfig {
   readonly pool: PoolConfig;
 }
@@ -13,6 +21,7 @@ interface DiscordConfig {
   readonly bots: BotConfig;
   readonly guild: GuildConfig;
   readonly embeds: EmbedConfig;
+  readonly events: EventConfig;
 }
 
 interface EmbedConfig {
@@ -214,4 +223,28 @@ export interface ColorsConfig {
   DARK_GRAY: ColorResolvable;
   WHITE: ColorResolvable;
   BLACK: ColorResolvable;
+}
+
+export interface WelcomeSystemConfig {
+  /** Channel ID where welcome messages are sent */
+  channelId: string;
+  /** Whether the welcome system is enabled */
+  enabled: boolean;
+  /** Whether to send an embed along the image */
+  sendEmbed: boolean;
+  /** Custom welcome message */
+  customMessage?: string;
+  /** Image styling configuration */
+  imageConfig: {
+    /** Background color (hex) */
+    backgroundColor: string;
+    /** Accent color */
+    accentColor: string;
+    /** Text color (hex) */
+    textColor: string;
+    /** Secondary text color (hex) */
+    secondaryTextColor: string;
+    /** Optional background image URL */
+    backgroundImageURL?: string;
+  };
 }
