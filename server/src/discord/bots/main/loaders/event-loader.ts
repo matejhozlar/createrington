@@ -58,13 +58,21 @@ export async function loadEventHandlers(client: Client): Promise<number> {
       }
 
       if (eventModule.once) {
-        client.once(eventModule.eventName, (...args) =>
-          eventModule.execute(client, ...args)
-        );
+        client.once(eventModule.eventName, async (...args) => {
+          try {
+            await eventModule.execute(client, ...args);
+          } catch (error) {
+            logger.error(`Error in ${eventModule.eventName} event:`, error);
+          }
+        });
       } else {
-        client.on(eventModule.eventName, (...args) =>
-          eventModule.execute(client, ...args)
-        );
+        client.on(eventModule.eventName, async (...args) => {
+          try {
+            await eventModule.execute(client, ...args);
+          } catch (error) {
+            logger.error(`Error in ${eventModule.eventName} event:`, error);
+          }
+        });
       }
 
       loadedCount++;

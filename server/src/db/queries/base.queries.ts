@@ -307,7 +307,7 @@ export abstract class BaseQueries<
 
     const setClauses = updateMappings.map(
       (mapping, index) =>
-        `${mapping.column} = $${identifierValues.length + index + 2}`
+        `${mapping.column} = $${identifierValues.length + index + 1}`
     );
 
     const query = `
