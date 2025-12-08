@@ -1,5 +1,5 @@
 import config from "@/config";
-import { Client } from "discord.js";
+import { Client, ClientEvents } from "discord.js";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -9,15 +9,31 @@ const isDev = config.envMode.isDev;
 /**
  * Discord event module structure
  */
-export interface EventModule {
+export interface EventModule<
+  K extends keyof ClientEvents = keyof ClientEvents
+> {
   /** The Discord event name */
-  eventName: string;
+  eventName: K;
   /** Whether the event should fire only once */
   once?: boolean;
   /** Whether this event should only be registered in production */
   prodOnly?: boolean;
   /** The event handler function */
-  execute: (client: Client, ...args: any[]) => Promise<void> | void;
+  execute: (client: Client, ...args: ClientEvents[K]) => Promise<void> | void;
+}
+
+/**
+ * Type guard to check if a module is a valid EventModule
+ */
+function isEventModule(module: unknown): module is EventModule {
+  return (
+    typeof module === "object" &&
+    module !== null &&
+    "eventName" in module &&
+    typeof (module as any).eventName === "string" &&
+    "execute" in module &&
+    typeof (module as any).execute === "function"
+  );
 }
 
 /**
@@ -43,42 +59,53 @@ export async function loadEventHandlers(client: Client): Promise<number> {
 
   for (const filePath of eventFiles) {
     try {
-      const eventModule = (await import(
-        pathToFileURL(filePath).href
-      )) as EventModule;
+      const eventModule = await import(pathToFileURL(filePath).href);
 
-      if (!eventModule.eventName) {
-        logger.warn(`Skipped ${filePath}: missing 'eventName' export`);
+      // Support both default export and named exports
+      const event: EventModule | undefined =
+        "default" in eventModule && isEventModule(eventModule.default)
+          ? eventModule.default
+          : isEventModule(eventModule)
+          ? eventModule
+          : undefined;
+
+      if (!event) {
+        logger.warn(
+          `Skipped ${filePath}: not a valid EventModule (missing eventName or execute)`
+        );
         continue;
       }
 
-      if (typeof eventModule.execute !== "function") {
-        logger.warn(`Skipped ${filePath}: 'execute is not a function`);
+      if (isDev && event.prodOnly) {
+        logger.warn(
+          `Skipped loading production-only event: ${path.basename(filePath)}`
+        );
         continue;
       }
 
-      if (eventModule.once) {
-        client.once(eventModule.eventName, async (...args) => {
+      // Type-safe event registration
+      if (event.once) {
+        client.once(event.eventName, async (...args) => {
           try {
-            await eventModule.execute(client, ...args);
+            await event.execute(client, ...args);
           } catch (error) {
-            logger.error(`Error in ${eventModule.eventName} event:`, error);
+            logger.error(`Error in ${event.eventName} (once) event:`, error);
           }
         });
       } else {
-        client.on(eventModule.eventName, async (...args) => {
+        client.on(event.eventName, async (...args) => {
           try {
-            await eventModule.execute(client, ...args);
+            await event.execute(client, ...args);
           } catch (error) {
-            logger.error(`Error in ${eventModule.eventName} event:`, error);
+            logger.error(`Error in ${event.eventName} event:`, error);
           }
         });
       }
 
       loadedCount++;
       logger.debug(
-        `Registered ${eventModule.once ? "once" : "on"} event: ${
-          eventModule.eventName
+        `Registered ${event.once ? "once" : "on"} event: ${
+          event.eventName
         } (${path.basename(filePath)})`
       );
     } catch (error) {

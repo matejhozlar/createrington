@@ -6,6 +6,7 @@ import {
   generateWelcomeCard,
 } from "@/discord/utils/welcome-card";
 import { Client, GuildMember, TextChannel } from "discord.js";
+import { EventModule } from "../../loaders/event-loader";
 
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 
@@ -17,7 +18,8 @@ const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
  * 2. Generates a welcome card image with their avatar and join number
  * 3. Sends the image to the welcome channel
  */
-export const eventName = "guildMemberAdd";
+export const eventName: EventModule<"guildMemberAdd">["eventName"] =
+  "guildMemberAdd";
 
 /**
  * Whether this event should only be registered in production

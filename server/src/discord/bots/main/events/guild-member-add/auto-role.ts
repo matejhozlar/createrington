@@ -1,6 +1,7 @@
 import config from "@/config";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Client, GuildMember } from "discord.js";
+import { EventModule } from "../../loaders/event-loader";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 
@@ -10,7 +11,8 @@ const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
  * Automatically assigns the "Unverified" role
  * to new members when they join the guild
  */
-export const eventName = "guildMemberAdd";
+export const eventName: EventModule<"guildMemberAdd">["eventName"] =
+  "guildMemberAdd";
 
 /**
  * Whether this event should only be registered in production
