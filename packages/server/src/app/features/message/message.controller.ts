@@ -4,6 +4,10 @@ import type { DiscordMessageService } from "@/services/discord/message";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
 import { Request, Response } from "express";
+import type {
+  SendMessageBody,
+  SendMessageResponse,
+} from "@createrington/shared/api";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
@@ -54,13 +58,10 @@ export class MessageController {
    * display name and avatar when possible, falling back to the bot identity.
    */
   static async sendMessage(req: Request, res: Response): Promise<void> {
-    const rawServerId = req.body.serverId;
-    const serverId =
-      typeof rawServerId === "string" ? parseInt(rawServerId) : rawServerId;
+    const { serverId: rawServerId, content: rawContent } =
+      req.body as SendMessageBody;
 
-    if (serverId === undefined || serverId === null || isNaN(serverId)) {
-      throw new BadRequestError("serverId is required and must be a number");
-    }
+    const serverId = parseInt(rawServerId, 10);
 
     const channelId = resolveChannelForServer(serverId);
     if (!channelId) {
@@ -127,14 +128,16 @@ export class MessageController {
       throw new BadRequestError(result.error ?? "Failed to send message");
     }
 
-    res.status(201).json({
+    const response: SendMessageResponse = {
       success: true,
       data: {
-        messageId: result.messageId,
+        messageId: result.messageId!,
         serverId,
         channelId,
       },
       message: "Message sent successfully",
-    });
+    };
+
+    res.status(201).json(response);
   }
 }
