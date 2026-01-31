@@ -1,6 +1,6 @@
 import config from "@/config";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import type {
+import {
   Client,
   EmbedBuilder,
   Message,
@@ -35,6 +35,7 @@ import type {
 export class DiscordMessageService {
   private static instance: DiscordMessageService;
   private readonly guildId: string;
+  private static instances = new Map<Client, DiscordMessageService>();
 
   private constructor(private client: Client) {
     this.guildId = config.discord.guild.id;
@@ -47,10 +48,13 @@ export class DiscordMessageService {
    * @returns DiscordMessageService instance
    */
   public static getInstance(client: Client): DiscordMessageService {
-    if (!DiscordMessageService.instance) {
-      DiscordMessageService.instance = new DiscordMessageService(client);
+    if (!DiscordMessageService.instances.has(client)) {
+      DiscordMessageService.instances.set(
+        client,
+        new DiscordMessageService(client),
+      );
     }
-    return DiscordMessageService.instance;
+    return DiscordMessageService.instances.get(client)!;
   }
 
   /**

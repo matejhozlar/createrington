@@ -101,6 +101,16 @@ export function registerServices(): void {
   );
 
   container.register(
+    Services.WEB_MESSAGE_SERVICE,
+    async (c) => {
+      const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
+      const service = createDiscordMessageService(webBot);
+      return service;
+    },
+    { dependencies: [Services.DISCORD_WEB_BOT] },
+  );
+
+  container.register(
     Services.MESSAGE_CACHE,
     async (c) => {
       const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
