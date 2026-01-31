@@ -5,12 +5,14 @@
  *   3. Handle real-time message create / update / delete events
  *   4. Differentiate messages visually by source (system / discord / minecraft / web)
  *   5. Display per-server online status pulled from ServerDataContext
+ *   6. Send messages (text and/or image) back to Discord via POST /api/messages
  */
 
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWebSocket, useServerData } from "@/contexts/socket";
+import { useAuth } from "@/contexts/auth";
 
 // ---------------------------------------------------------------------------
 // Re-export the shared types here so the file stays self-documenting.
@@ -18,14 +20,10 @@ import { useWebSocket, useServerData } from "@/contexts/socket";
 // ---------------------------------------------------------------------------
 import type { CachedMessage, SubscriptionType } from "@createrington/shared";
 import { MessageSource } from "@createrington/shared";
-
-// MessageSource is an enum on the shared package; mirroring it here for clarity.
-// enum MessageSource {
-//   SYSTEM = "system",
-//   DISCORD = "discord",
-//   MINECRAFT = "minecraft",
-//   WEB = "web",
-// }
+import type {
+  MessageErrorResponse,
+  SendMessageResponse,
+} from "@createrington/shared/api";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -487,6 +485,46 @@ function ServerTabs({
 }
 
 // ---------------------------------------------------------------------------
+// Image preview pill shown above the input when an image is selected
+// ---------------------------------------------------------------------------
+
+function ImagePreview({
+  file,
+  onRemove,
+}: {
+  file: File;
+  onRemove: () => void;
+}) {
+  // Revoke the object URL on unmount so we don't leak memory
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+  useEffect(() => {
+    return () => URL.revokeObjectURL(url);
+  }, [url]);
+
+  return (
+    <div className="flex items-end gap-2 border-t border-gray-700 px-3 pt-2">
+      <div className="relative">
+        <img
+          src={url}
+          alt="preview"
+          className="max-h-24 rounded-md object-contain"
+        />
+        {/* remove button — small ✕ pinned to top-right of the thumbnail */}
+        <button
+          onClick={onRemove}
+          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white"
+        >
+          ✕
+        </button>
+      </div>
+      <span className="mb-1 text-xs text-gray-500">
+        {(file.size / 1024 / 1024).toFixed(2)} MB
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main LiveChat component
 // ---------------------------------------------------------------------------
 
@@ -495,6 +533,7 @@ export function LiveChat() {
   const { isConnected, subscribe, unsubscribe, requestInitialData, on } =
     useWebSocket();
   const { servers } = useServerData();
+  const { user } = useAuth();
 
   // --- local state ----------------------------------------------------------
   // Map: serverId → ordered array of messages (oldest first)
@@ -510,8 +549,18 @@ export function LiveChat() {
   );
   const [inspectorOpen, setInspectorOpen] = useState(true);
 
+  // --- compose state --------------------------------------------------------
+  const [draft, setDraft] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // Hidden file input — triggered programmatically by the paperclip button
+  const fileInputRef = useRef<HTMLInputElement>(null);
   // Scroll anchor
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Keep a ref to the textarea so we can re-focus after sending
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // --- derived --------------------------------------------------------------
   const serverTabs: ServerTab[] = useMemo(
@@ -530,6 +579,11 @@ export function LiveChat() {
       activeServerId !== null ? (messagesByServer[activeServerId] ?? []) : [],
     [activeServerId, messagesByServer],
   );
+
+  // The compose bar is only usable when the user is logged in and a server tab
+  // is selected.  We derive a single flag so the disabled state is consistent
+  // across the textarea, the file picker, and the send button.
+  const canSend = !!user && activeServerId !== null && !sending;
 
   // --- helpers --------------------------------------------------------------
 
@@ -555,6 +609,116 @@ export function LiveChat() {
     });
   }, []);
 
+  /**
+   * Validates and stores the selected file.
+   * Rejects anything that isn't an image or exceeds 10 MB.
+   */
+  const handleFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Reset the input so the same file can be re-selected if needed
+      e.target.value = "";
+
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        setSendError("Only image files are allowed");
+        return;
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        setSendError("Image must be 10 MB or smaller");
+        return;
+      }
+
+      setSendError(null);
+      setImageFile(file);
+    },
+    [],
+  );
+
+  /**
+   * POST /api/messages
+   *
+   * Builds a FormData payload (multipart) and fires it off.  The token is
+   * read from localStorage — same place AuthContext wrote it after the OAuth
+   * callback.  On success we clear the compose state; on failure we surface
+   * the error message from the API response.
+   */
+  const sendMessage = useCallback(async () => {
+    if (!activeServerId || (!draft.trim() && !imageFile)) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      setSendError("You must be logged in to send messages");
+      return;
+    }
+
+    setSending(true);
+    setSendError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("serverId", String(activeServerId));
+
+      if (draft.trim()) {
+        formData.append("content", draft.trim());
+      }
+
+      if (imageFile) {
+        formData.append("image", imageFile);
+      }
+
+      const response = await fetch("/api/messages", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const body = (await response.json()) as
+        | SendMessageResponse
+        | MessageErrorResponse;
+
+      if (!body.success) {
+        throw new Error(
+          body.error?.message ??
+            `Request failed with status ${response.status}`,
+        );
+      }
+
+      // body is narrowed to SendMessageResponse here by the discriminant
+      console.log("Message sent:", body.data.messageId);
+
+      setDraft("");
+      setImageFile(null);
+      textareaRef.current?.focus();
+    } catch (err) {
+      setSendError(
+        err instanceof Error ? err.message : "Failed to send message",
+      );
+    } finally {
+      setSending(false);
+    }
+  }, [activeServerId, draft, imageFile]);
+
+  /**
+   * Keydown handler for the textarea.
+   * Enter → send (unless Shift is held, which inserts a newline).
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (canSend && (draft.trim() || imageFile)) {
+          sendMessage();
+        }
+      }
+    },
+    [canSend, draft, imageFile, sendMessage],
+  );
+
   // --- lifecycle ------------------------------------------------------------
 
   // 1. When connected: pick the first server as active, fetch initial data,
@@ -573,8 +737,6 @@ export function LiveChat() {
       }
 
       // Request initial data for ALL servers (includes message history)
-      // You could also call requestInitialData(serverId) per-server if you
-      // want lazy loading when the user switches tabs.
       const data = await requestInitialData(undefined, {
         includeMessages: true,
         messageLimit: 50,
@@ -583,13 +745,10 @@ export function LiveChat() {
       if (cancelled) return;
 
       if (data && "messages" in data) {
-        // data.messages is Record<number, CachedMessage[]>
         setMessagesByServer(data.messages as Record<number, CachedMessage[]>);
       }
 
       // Subscribe to the "messages" stream for every known server.
-      // This ensures we receive real-time updates regardless of which
-      // tab is currently active.
       for (const server of servers) {
         await subscribe("messages" as SubscriptionType, server.serverId);
       }
@@ -606,14 +765,10 @@ export function LiveChat() {
   }, [isConnected, servers]);
 
   // 2. Listen for real-time message events emitted by the server.
-  //    The WebSocketService broadcasts on SocketEvent.UPDATE_MESSAGE
-  //    which maps to "update:message" on the client event bus.
   useEffect(() => {
     if (!isConnected) return;
 
     const unsub = on("update:message", (raw) => {
-      // The server emits a MessageUpdatePayload:
-      //   { serverId, type: "new"|"update"|"delete", message?, messageId?, timestamp }
       const payload = raw as {
         serverId: number;
         type: "new" | "update" | "delete";
@@ -742,6 +897,72 @@ export function LiveChat() {
         {Object.values(MessageSource).map((src) => (
           <SourceBadge key={src} source={src} />
         ))}
+      </div>
+
+      {/* --- compose area --- */}
+      <div className="border-t border-gray-700">
+        {/* image preview (only rendered when a file is staged) */}
+        {imageFile && (
+          <ImagePreview file={imageFile} onRemove={() => setImageFile(null)} />
+        )}
+
+        {/* error banner */}
+        {sendError && (
+          <div className="px-3 pt-2">
+            <p className="rounded bg-red-950/60 px-2.5 py-1 text-xs text-red-400">
+              {sendError}
+            </p>
+          </div>
+        )}
+
+        {/* input row: textarea + buttons */}
+        <div className="flex items-end gap-2 p-3">
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={!canSend}
+            placeholder={
+              user
+                ? `Message ${activeServer?.serverName ?? "server"}… (Shift+Enter for newline)`
+                : "Log in to send messages"
+            }
+            rows={1}
+            className="flex-1 resize-none rounded-md bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-600 disabled:cursor-not-allowed disabled:opacity-40"
+          />
+
+          {/* hidden file input — accepts only image/* */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+
+          {/* paperclip button — opens the file picker */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={!canSend}
+            className="flex h-9 w-9 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Attach image"
+          >
+            📎
+          </button>
+
+          {/* send button */}
+          <button
+            type="button"
+            onClick={sendMessage}
+            disabled={!canSend || (!draft.trim() && !imageFile)}
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-indigo-600 text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Send (Enter)"
+          >
+            {sending ? "…" : "↵"}
+          </button>
+        </div>
       </div>
 
       {/* --- raw JSON inspector --- */}
