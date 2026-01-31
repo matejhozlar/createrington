@@ -1,3 +1,4 @@
+// packages/client/src/components/nav-discord-login.tsx
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -9,7 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { NavLink } from "react-router-dom";
+import { useAuth } from "@/contexts/auth";
 
 const DiscordIcon = ({ className }: { className?: string }) => (
   <svg
@@ -24,24 +25,28 @@ const DiscordIcon = ({ className }: { className?: string }) => (
 
 export function NavDiscordLogin() {
   const { state } = useSidebar();
+  const { login, loading } = useAuth();
+
+  const handleLogin = () => {
+    login();
+  };
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <Tooltip>
           <TooltipTrigger asChild>
-            <NavLink to="/auth/discord">
-              <SidebarMenuButton
-                size="lg"
-                className={`cursor-pointer bg-[#5865F2] hover:bg-[#4752C4] text-white hover:text-white ${state === "expanded" ? "justify-center" : ""}`}
-              >
-                <DiscordIcon
-                  className={`${state === "collapsed" ? "ml-1" : ""}`}
-                />
-
-                <span>Login with Discord</span>
-              </SidebarMenuButton>
-            </NavLink>
+            <SidebarMenuButton
+              size="lg"
+              onClick={handleLogin}
+              disabled={loading}
+              className={`cursor-pointer bg-[#5865F2] hover:bg-[#4752C4] text-white hover:text-white disabled:opacity-50 disabled:cursor-not-allowed ${state === "expanded" ? "justify-center" : ""}`}
+            >
+              <DiscordIcon
+                className={`${state === "collapsed" ? "ml-1" : ""}`}
+              />
+              <span>{loading ? "Loading..." : "Login with Discord"}</span>
+            </SidebarMenuButton>
           </TooltipTrigger>
 
           <TooltipContent

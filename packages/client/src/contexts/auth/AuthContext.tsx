@@ -1,3 +1,4 @@
+// packages/client/src/contexts/auth/AuthContext.tsx
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
@@ -11,22 +12,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Use ref to avoid circular dependencies
   const logoutRef = useRef<(() => Promise<void>) | null>(null);
 
   // ============================================================================
   // Authentication Functions
   // ============================================================================
+
+  /**
+   * Initiate Discord OAuth flow
+   * Redirects user to Discord authorization page
+   */
   const login = useCallback(async () => {
     try {
-      const response = await fetch("/auth/discord");
+      setError(null);
+      const response = await fetch("/api/auth/discord");
       const data = await response.json();
 
-      if (data.success && data.data.url) {
+      if (data.success && data.data?.url) {
+        // Save state for CSRF verification
         if (data.data.state) {
           sessionStorage.setItem("oauth_state", data.data.state);
         }
 
+        // Redirect to Discord
         window.location.href = data.data.url;
       } else {
         setError("Failed to initiate login");
@@ -38,7 +46,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   /**
-   * Handles OAuth callback
+   * Handle OAuth callback
    * Exchange code for JWT token
    */
   const handleCallback = useCallback(async (code: string, state?: string) => {
@@ -46,12 +54,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
+      // Verify state parameter for CSRF protection
       const savedState = sessionStorage.getItem("oauth_state");
       if (state && savedState && state !== savedState) {
-        throw new Error("Invalid state parameter");
+        throw new Error("Invalid state parameter - possible CSRF attack");
       }
 
-      const response = await fetch("/auth/discord/callback", {
+      const response = await fetch("/api/auth/discord/callback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
 
-      if (data.success && data.data.token) {
+      if (data.success && data.data?.token) {
         // Store JWT token
         localStorage.setItem("auth_token", data.data.token);
 
@@ -81,6 +90,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         error instanceof Error ? error.message : "Authentication failed",
       );
       console.error("Callback error:", error);
+
+      // Redirect to home with error
+      window.location.href = "/?error=auth_failed";
     } finally {
       setLoading(false);
     }
@@ -95,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem("auth_token");
 
       if (token) {
-        await fetch("/auth/logout", {
+        await fetch("/api/auth/logout", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -111,7 +123,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-  // Store logout in ref for use in refreshToken
   logoutRef.current = logout;
 
   /**
@@ -126,7 +137,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error("No token to refresh");
       }
 
-      const response = await fetch("/auth/token", {
+      const response = await fetch("/api/auth/token", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -135,7 +146,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
 
-      if (data.success && data.data.token) {
+      if (data.success && data.data?.token) {
         localStorage.setItem("auth_token", data.data.token);
       } else {
         throw new Error("Token refresh failed");
@@ -159,7 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return;
       }
 
-      const response = await fetch("/auth/me", {
+      const response = await fetch("/api/auth/me", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -167,7 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = await response.json();
 
-      if (data.success && data.data.user) {
+      if (data.success && data.data?.user) {
         setUser(data.data.user);
       } else {
         localStorage.removeItem("auth_token");
@@ -192,6 +203,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const state = params.get("state");
+    const urlError = params.get("error");
+
+    if (urlError) {
+      setError("Authentication failed");
+      setLoading(false);
+      return;
+    }
 
     if (code) {
       handleCallback(code, state || undefined);
@@ -211,7 +229,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       () => {
         refreshToken();
       },
-      6 * 24 * 60 * 60 * 1000,
+      6 * 24 * 60 * 60 * 1000, // 6 days
     );
 
     return () => clearInterval(refreshInterval);
