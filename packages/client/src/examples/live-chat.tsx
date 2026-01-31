@@ -5,10 +5,6 @@
  *   3. Handle real-time message create / update / delete events
  *   4. Differentiate messages visually by source (system / discord / minecraft / web)
  *   5. Display per-server online status pulled from ServerDataContext
- *
- * Drop this anywhere inside your <WebSocketProvider> + <ServerDataProvider> tree.
- * It is intentionally self-contained so a frontend developer can read it top-to-bottom
- * and understand every socket interaction without chasing imports.
  */
 
 "use client";
@@ -21,14 +17,15 @@ import { useWebSocket, useServerData } from "@/contexts/socket";
 // In production you'd just import from "@createrington/shared".
 // ---------------------------------------------------------------------------
 import type { CachedMessage, SubscriptionType } from "@createrington/shared";
+import { MessageSource } from "@createrington/shared";
 
-// MessageSource is an enum on the shared package; mirror it here for clarity.
-enum MessageSource {
-  SYSTEM = "system",
-  DISCORD = "discord",
-  MINECRAFT = "minecraft",
-  WEB = "web",
-}
+// MessageSource is an enum on the shared package; mirroring it here for clarity.
+// enum MessageSource {
+//   SYSTEM = "system",
+//   DISCORD = "discord",
+//   MINECRAFT = "minecraft",
+//   WEB = "web",
+// }
 
 // ---------------------------------------------------------------------------
 // Helpers
