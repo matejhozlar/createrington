@@ -30,12 +30,13 @@
     "scrape-discord": "npm run util:scrape-discord --workspace=@createrington/server",
     "dump-schema": "npm run util:db-dump-schema --workspace=@createrington/server",
     "setup": "npm ci && npm run util:scrape-discord --workspace=@createrington/server && npm run db:up && npm run generate",
-    "shutdown": "npm run db:down",
     "db:up": "docker-compose -f db/docker-compose.yml up -d postgres",
     "db:down": "docker-compose -f db/docker-compose.yml down",
     "db:logs": "docker-compose -f db/docker-compose.yml logs -f postgres",
-    "db:reset": "docker-compose -f db/docker-compose.yml down -v && docker-compose -f db/docker-compose.yml up -d postgres",
+    "db:reset": "docker-compose -f db/docker-compose.yml down -v && docker-compose -f db/docker-compose.yml build && docker-compose -f db/docker-compose.yml up -d --wait postgres && npm run db:seed",
     "db:shell": "docker exec -it createrington-db psql -U postgres -d createrington_db",
+    "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
+    "db:seed": "psql -h localhost -U postgres -d createrington_db -f db/data/test-data.sql",
     "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin"
   },
   "devDependencies": {
