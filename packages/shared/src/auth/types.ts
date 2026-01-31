@@ -3,3 +3,13 @@ export enum AuthRole {
   USER = "user",
   UNVERIFIED = "unverified",
 }
+
+export interface JWTPayload {
+  discordId: string;
+  username: string;
+  avatar?: string;
+  role: AuthRole;
+  isAdmin: boolean;
+  minecraftUuid: string;
+  minecraftUsername: string;
+}

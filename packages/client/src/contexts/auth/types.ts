@@ -1,14 +1,6 @@
-import { AuthRole } from "@createrington/shared";
+import type { JWTPayload } from "@createrington/shared";
 
-export interface User {
-  discordId: string;
-  username: string;
-  avatar?: string;
-  role: AuthRole;
-  isAdmin: boolean;
-  minecraftUuid: string;
-  minecraftName: string;
-}
+export type User = JWTPayload;
 
 export interface AuthContextType {
   user: User | null;

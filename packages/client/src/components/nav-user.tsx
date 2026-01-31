@@ -64,11 +64,13 @@ export function NavUser({ user }: { user: User }) {
     logout();
   };
 
+  console.log("minecraftUuid:", user.minecraftUuid, "| full user:", user);
+
   const crafatarAvatarUrl = user.minecraftUuid
     ? `https://crafatar.com/avatars/${user.minecraftUuid}?overlay`
     : undefined;
 
-  const avatarFallbackLetter = (user.minecraftName || user.username)
+  const avatarFallbackLetter = (user.minecraftUsername || user.username)
     .trim()
     .charAt(0)
     .toUpperCase();
@@ -84,9 +86,9 @@ export function NavUser({ user }: { user: User }) {
             >
               <UserSummary
                 avatarUrl={crafatarAvatarUrl}
-                avatarAlt={user.minecraftName ?? user.username}
+                avatarAlt={user.minecraftUsername ?? user.username}
                 avatarFallbackLetter={avatarFallbackLetter}
-                minecraftName={user.minecraftName}
+                minecraftName={user.minecraftUsername}
                 username={user.username}
               />
               <ChevronsUpDown className="ml-auto size-4" />
@@ -105,7 +107,7 @@ export function NavUser({ user }: { user: User }) {
                 className="px-1 py-1.5 text-left text-sm"
                 avatarAlt={user.username}
                 avatarFallbackLetter={avatarFallbackLetter}
-                minecraftName={user.minecraftName}
+                minecraftName={user.minecraftUsername}
                 username={user.username}
               />
             </DropdownMenuLabel>
