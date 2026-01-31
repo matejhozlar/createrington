@@ -272,6 +272,7 @@ export const Services = {
   DISCORD_MAIN_BOT: "discord.mainBot",
   DISCORD_WEB_BOT: "discord.webBot",
   MESSAGE_SERVICE: "discord.messageService",
+  WEB_MESSAGE_SERVICE: "discord.webMessageService",
   MESSAGE_CACHE: "discord.messageCacheService",
   TICKET_SERVICE: "discord.ticketService",
   LEADERBOARD_SERVICE: "discord.leaderboardService",

@@ -21,17 +21,31 @@ export const authMiddleware: Record<AuthLevel, RequestHandler[]> = {
 };
 
 /**
- * Wraps handler with auth middleware and async handling
+ * Wraps handler with auth middleware and async handling.
+ *
+ * Any middleware passed between `auth` and the final handler (e.g. multer)
+ * is inserted after the auth chain and before the async-wrapped handler.
  *
  * @param auth - Authentication level required
- * @param handler - Route handler function
- * @returns Array of middleware including auth and async wrapper
+ * @param args - Zero or more middleware functions, followed by the route handler as the last element
+ * @returns Array of middleware including auth, any intermediate middleware, and the async-wrapped handler
+ *
+ * @example
+ * // No intermediate middleware (existing usage, unchanged)
+ * route(AuthLevel.USER, MyController.get)
+ *
+ * @example
+ * // With multer in the middle
+ * route(AuthLevel.USER, upload.single("image"), MyController.create)
  */
 export function route(
   auth: AuthLevel,
-  handler: RequestHandler,
+  ...args: RequestHandler[]
 ): RequestHandler[] {
-  return [...authMiddleware[auth], asyncHandler(handler)];
+  const middleware = args.slice(0, -1);
+  const handler = args[args.length - 1];
+
+  return [...authMiddleware[auth], ...middleware, asyncHandler(handler)];
 }
 
 /**
