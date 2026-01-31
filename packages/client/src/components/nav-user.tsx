@@ -67,7 +67,7 @@ export function NavUser({ user }: { user: User }) {
   console.log("minecraftUuid:", user.minecraftUuid, "| full user:", user);
 
   const crafatarAvatarUrl = user.minecraftUuid
-    ? `https://crafatar.com/avatars/${user.minecraftUuid}?overlay`
+    ? `https://mc-heads.net/avatar/${user.minecraftUuid}`
     : undefined;
 
   const avatarFallbackLetter = (user.minecraftUsername || user.username)
