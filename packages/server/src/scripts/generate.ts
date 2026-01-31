@@ -47,7 +47,7 @@ const GENERATORS: GeneratorConfig[] = [
  * Executes a single generator
  */
 async function executeGenerator(
-  config: GeneratorConfig
+  config: GeneratorConfig,
 ): Promise<GeneratorResult> {
   const startTime = Date.now();
 
@@ -64,7 +64,7 @@ async function executeGenerator(
       result = await module.generate();
     } else {
       throw new Error(
-        "Generator module must export a default or generate function"
+        "Generator module must export a default or generate function",
       );
     }
 
@@ -122,7 +122,7 @@ async function main() {
   console.log(
     chalk.bold.cyan("║") +
       chalk.bold.white(title.slice(1, -1)) +
-      chalk.bold.cyan("║")
+      chalk.bold.cyan("║"),
   );
   console.log(chalk.bold.cyan(`${bottom}\n`));
 
@@ -153,7 +153,7 @@ async function main() {
       barIncompleteChar: "░",
       hideCursor: true,
     },
-    Presets.shades_classic
+    Presets.shades_classic,
   );
 
   overallBar.start(totalGenerators, 0, { status: "Starting..." });
@@ -177,9 +177,9 @@ async function main() {
       spinner.succeed(
         chalk.green(
           `${generator.name} ${chalk.gray(
-            `(${formatDuration(result.duration)})`
-          )}`
-        )
+            `(${formatDuration(result.duration)})`,
+          )}`,
+        ),
       );
 
       if (result.filesGenerated && result.filesGenerated.length > 0) {
@@ -191,9 +191,9 @@ async function main() {
       spinner.fail(
         chalk.red(
           `${generator.name} ${chalk.gray(
-            `(${formatDuration(result.duration)})`
-          )}`
-        )
+            `(${formatDuration(result.duration)})`,
+          )}`,
+        ),
       );
       if (result.error) {
         console.log(chalk.red(`     └─ Error: ${result.error.message}`));
@@ -217,15 +217,15 @@ async function main() {
   const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
 
   console.log(
-    `  ${chalk.green("✓")} Successful: ${chalk.bold(successful.toString())}`
+    `  ${chalk.green("✓")} Successful: ${chalk.bold(successful.toString())}`,
   );
   console.log(
-    `  ${chalk.red("✗")} Failed:     ${chalk.bold(failed.toString())}`
+    `  ${chalk.red("✗")} Failed:     ${chalk.bold(failed.toString())}`,
   );
   console.log(
     `  ${chalk.cyan("⏱")}  Total Time: ${chalk.bold(
-      formatDuration(totalDuration)
-    )}\n`
+      formatDuration(totalDuration),
+    )}\n`,
   );
 
   // Exit with appropriate code

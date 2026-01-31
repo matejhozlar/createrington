@@ -36,7 +36,7 @@
     "db:reset": "docker-compose -f db/docker-compose.yml down -v && docker-compose -f db/docker-compose.yml build && docker-compose -f db/docker-compose.yml up -d --wait postgres && npm run db:seed",
     "db:shell": "docker exec -it createrington-db psql -U postgres -d createrington_db",
     "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
-    "db:seed": "psql -h localhost -U postgres -d createrington_db -f db/data/test-data.sql",
+    "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin"
   },
   "devDependencies": {

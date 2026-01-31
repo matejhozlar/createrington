@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: createrington_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
       POSTGRES_DB: createrington_db
       POSTGRES_USER: postgres
