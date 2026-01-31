@@ -35,9 +35,11 @@ function UserSummary({
   username: string;
   className?: string;
 }) {
+  const { state } = useSidebar();
+
   return (
     <div className={"flex items-center gap-2 " + (className ?? "")}>
-      <Avatar className="h-8 w-8 rounded-lg">
+      <Avatar className={`size-8 rounded-lg ${state === "collapsed" ? "ml-2" : ""}`}>
         <AvatarImage src={avatarUrl} alt={avatarAlt} />
 
         <AvatarFallback className="rounded-lg">

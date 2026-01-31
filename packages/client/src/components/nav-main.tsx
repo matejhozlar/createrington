@@ -44,7 +44,7 @@ export function NavMain({
                       {item.icon && (
                         <div className="relative">
                           <item.icon
-                            className={`size-6! transition-all ${state === "collapsed" ? "ml-1" : ""}`}
+                            className={`size-6! transition-all ${state === "collapsed" ? "ml-3" : ""}`}
                           />
                           
                           {item.badge && state === "collapsed" && (

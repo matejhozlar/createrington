@@ -95,7 +95,7 @@ const data = {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 p-2 group-data-[state=collapsed]:px-0">
+        <div className="flex items-center justify-center gap-2 p-2 group-data-[state=collapsed]:px-0">
           <Logo />
 
           {isMobile ? (
