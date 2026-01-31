@@ -28,6 +28,8 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@createrington.com
       PGADMIN_DEFAULT_PASSWORD: admin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
     networks:
@@ -35,6 +37,7 @@ services:
 
 volumes:
   postgres_data:
+  pgadmin_data:
 
 networks:
   createrington-network:
