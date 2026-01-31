@@ -11,7 +11,7 @@ import type {
   ServerInitialDataPayload,
   SubscriptionType,
   SocketEvent,
-} from "@createrington/shared";
+} from "@createrington/shared/socket";
 import type {
   WebSocketConfig,
   ConnectionState,

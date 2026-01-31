@@ -10,7 +10,7 @@ import type {
   ServerStatus,
   ServerStatusUpdatePayload,
   SubscriptionType,
-} from "@createrington/shared";
+} from "@createrington/shared/socket";
 import { WebSocketContext } from "./context";
 import type { ServerDataContextType } from "./types";
 
@@ -80,7 +80,7 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
       if (data && "servers" in data) {
         const serverMap = new Map<number, ServerStatus>();
 
-        data.servers.forEach((server) => {
+        data.servers.forEach((server: ServerStatus) => {
           // Filter by serverIds if provided
           if (!serverIds || serverIds.includes(server.serverId)) {
             serverMap.set(server.serverId, {

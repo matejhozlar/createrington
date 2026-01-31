@@ -5,8 +5,8 @@ import type {
   MinecraftMessageData,
   SystemMessageData,
   WebMessageData,
-} from "@createrington/shared";
-import { MessageSource } from "@createrington/shared";
+} from "@createrington/shared/socket";
+import { MessageSource } from "@createrington/shared/socket";
 
 /**
  * Configuration for a single server's message cache

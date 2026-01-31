@@ -9,8 +9,12 @@ import type {
   SubscriptionRequest,
   SubscriptionConfirmation,
   InitialDataRequest,
-} from "@createrington/shared";
-import { RoomType, SubscriptionType, SocketEvent } from "@createrington/shared";
+} from "@createrington/shared/socket";
+import {
+  RoomType,
+  SubscriptionType,
+  SocketEvent,
+} from "@createrington/shared/socket";
 
 /**
  * WebSocket service configuration

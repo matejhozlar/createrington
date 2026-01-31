@@ -1,7 +1,7 @@
 import config from "@/config";
 import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
 import jwt from "jsonwebtoken";
-import type { JWTPayload } from "@createrington/shared";
+import type { JWTPayload } from "@createrington/shared/auth";
 
 /**
  * JWT service for creating and verifying authentication tokens
