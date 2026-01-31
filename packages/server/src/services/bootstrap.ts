@@ -105,6 +105,7 @@ export function registerServices(): void {
     async (c) => {
       const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
       const service = createDiscordMessageService(webBot);
+      return service;
     },
     { dependencies: [Services.DISCORD_WEB_BOT] },
   );
