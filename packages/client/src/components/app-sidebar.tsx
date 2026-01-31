@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/socket";
+import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -121,7 +122,11 @@ const data = {
       </SidebarContent>
 
       <SidebarFooter>
-        <NavDiscordLogin />
+        {user ? (
+          <NavUser user={user} />
+        ) : (
+          <NavDiscordLogin />
+        )}
       </SidebarFooter>
 
       <SidebarRail />
