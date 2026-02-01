@@ -87,3 +87,24 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* For server chat, no idea where else to put it */
+@keyframes new-message-indicator-fade {
+  0% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-new-message-indicator {
+  animation: new-message-indicator-fade 10s ease-out forwards;
+}
+
+/* Row class — exists only so the indicator div is conditionally rendered */
+.animate-new-message {
+}
