@@ -1511,9 +1511,13 @@ export abstract class BaseQueries<
     const query = `SELECT COUNT(*) FROM ${this.table} WHERE ${whereClause}`;
 
     try {
-      const result = await this.db.query<{ count: number }>(query, params);
+      const result = await this.db.query<{ count: string | number | bigint }>(
+        query,
+        params,
+      );
 
-      return result.rows[0].count ?? 0;
+      const count = result.rows[0].count;
+      return typeof count === "bigint" ? Number(count) : Number(count ?? 0);
     } catch (error) {
       logger.error(`Failed to count ${this.table}:`, error);
       throw error;
