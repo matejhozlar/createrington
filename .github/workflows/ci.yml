@@ -1,11 +1,11 @@
-name: Backend Tests
+name: CI
 
 on:
   push:
   pull_request:
 
 jobs:
-  test:
+  ci:
     runs-on: ubuntu-latest
 
     env:
@@ -38,11 +38,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm ci
 
       - name: Setup database schema
         run: |
@@ -62,6 +62,8 @@ jobs:
       - name: Generate code (with DB access)
         run: npm run generate
 
+      # --- Tests ---
+
       - name: Run unit tests
         working-directory: ./packages/server
         run: npm run test:unit
@@ -71,10 +73,18 @@ jobs:
         working-directory: ./packages/server
         run: npm run test:integration
 
-      - name: Upload test coverage (optional)
+      - name: Upload test coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-coverage
           path: packages/server/coverage/
           retention-days: 7
+
+      # --- Type check & build (runs after generated types are available) ---
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build server
+        run: npm run build:server
