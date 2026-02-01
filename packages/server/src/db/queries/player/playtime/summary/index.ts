@@ -19,6 +19,28 @@ export type ServerStats = {
   avgSessionSeconds: number;
 };
 
+export type PlayerServerPlaytime = {
+  serverId: number;
+  serverName: string;
+  totalSeconds: number;
+  totalSessions: number;
+  avgSessionSeconds: number;
+  firstSeen: Date;
+  lastSeen: Date;
+};
+
+export type PlayerPlaytimeBreakdown = {
+  playerMinecraftUuid: string;
+  servers: PlayerServerPlaytime[];
+  totals: {
+    totalSeconds: number;
+    totalSessions: number;
+    serverCount: number;
+    firstSeen: Date;
+    lastSeen: Date;
+  };
+};
+
 /**
  * Custom queries for player_playtime_summary table
  *
@@ -44,7 +66,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    */
   async getLeaderboard(
     serverId: number,
-    limit: number = 10
+    limit: number = 10,
   ): Promise<LeaderboardEntry[]> {
     const query = `
       SELECT 
@@ -95,6 +117,76 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       return this.mapRowToEntity<any, ServerStats>(result.rows[0]);
     } catch (error) {
       logger.error("Failed to get server stats:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves detailed playtime breakdown for a player across all servers
+   *
+   * Returns per-server statistics along with aggregated totals.
+   * Includes server names, individual playtime, sessions, and overall statistics
+   *
+   * @param playerMinecraftUuid - The Minecraft UUID of the player
+   * @returns Complete playtime breakdown with per-server and total statistics
+   */
+  async getBreakdown(
+    playerMinecraftUuid: string,
+  ): Promise<PlayerPlaytimeBreakdown> {
+    const query = `
+      SELECT 
+        s.player_minecraft_uuid,
+        s.server_id,
+        srv.name as server_name,
+        s.total_seconds,
+        s.total_sessions,
+        s.avg_session_seconds,
+        s.first_seen,
+        s.last_seen
+      FROM ${this.table} s
+      JOIN server srv ON srv.id = s.server_id
+      WHERE s.player_minecraft_uuid = $1
+      ORDER BY s.total_seconds DESC`;
+
+    try {
+      const result = await this.db.query(query, [playerMinecraftUuid]);
+
+      if (result.rows.length === 0) {
+        throw new Error(
+          `No playtime data found for player ${playerMinecraftUuid}`,
+        );
+      }
+
+      const servers: PlayerServerPlaytime[] = result.rows.map((row) => ({
+        serverId: row.server_id,
+        serverName: row.server_name,
+        totalSeconds: Number(row.total_seconds),
+        totalSessions: row.total_sessions,
+        avgSessionSeconds: Number(row.avg_session_seconds),
+        firstSeen: row.first_seen,
+        lastSeen: row.last_seen,
+      }));
+
+      // Calculate totals
+      const totals = {
+        totalSeconds: servers.reduce((sum, s) => sum + s.totalSeconds, 0),
+        totalSessions: servers.reduce((sum, s) => sum + s.totalSessions, 0),
+        serverCount: servers.length,
+        firstSeen: new Date(
+          Math.min(...servers.map((s) => s.firstSeen.getTime())),
+        ),
+        lastSeen: new Date(
+          Math.max(...servers.map((s) => s.lastSeen.getTime())),
+        ),
+      };
+
+      return {
+        playerMinecraftUuid,
+        servers,
+        totals,
+      };
+    } catch (error) {
+      logger.error("Failed to get playtime breakdown:", error);
       throw error;
     }
   }

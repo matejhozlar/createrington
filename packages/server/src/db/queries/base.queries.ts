@@ -651,24 +651,15 @@ export abstract class BaseQueries<
    * await Q.player.find({ minecraftUuid: "abc-123" }, { select: ["id", "minecraftUsername"] })
    */
   async find(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: Array<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null>;
   async find<K extends keyof TConfig["Entity"]>(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: K[] },
   ): Promise<Pick<TConfig["Entity"], K> | null>;
   async find(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: Array<keyof TConfig["Entity"]> },
   ): Promise<any | null> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
@@ -718,24 +709,15 @@ export abstract class BaseQueries<
    * const player = await Q.player.get({ discordId: "123" }, { select: ["id", "minecraftUsername"] })
    */
   async get(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: Array<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"]>;
   async get<K extends keyof TConfig["Entity"]>(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: K[] },
   ): Promise<Pick<TConfig["Entity"], K>>;
   async get(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: Array<keyof TConfig["Entity"]> },
   ): Promise<any> {
     const entity = await this.find(identifier, options);
@@ -764,10 +746,7 @@ export abstract class BaseQueries<
    * }
    */
   async exists(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
   ): Promise<boolean> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
     const { whereClause, values } = this.getColumnMapping(extracted);
@@ -802,10 +781,7 @@ export abstract class BaseQueries<
    * await Q.player.update(player, { minecraftUsername: "NewName" })
    */
   async update(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<void> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
@@ -853,10 +829,7 @@ export abstract class BaseQueries<
    * });
    */
   async updateAndReturn(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<TConfig["Entity"]> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
@@ -904,10 +877,7 @@ export abstract class BaseQueries<
    * await Q.player.delete(player) // Uses player.minecraftUuid
    */
   async delete(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
   ): Promise<void> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
     const { whereClause, values } = this.getColumnMapping(extracted);
@@ -940,10 +910,7 @@ export abstract class BaseQueries<
    * const username = await Q.player.pluck(player, "minecraftUsername")
    */
   async pluck<K extends keyof TConfig["Entity"]>(
-    identifier:
-      | NonNullable<TConfig["Identifier"]>
-      | TConfig["Entity"]
-      | Record<string, any>,
+    identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     field: K,
   ): Promise<TConfig["Entity"][K]> {
     const extracted = this.extractIdentifier(identifier as Record<string, any>);
@@ -982,20 +949,14 @@ export abstract class BaseQueries<
   readonly select = new Proxy({} as any, {
     get: (_, field: string) => {
       return async (
-        identifier:
-          | NonNullable<TConfig["Identifier"]>
-          | TConfig["Entity"]
-          | Record<string, any>,
+        identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
       ) => {
         return this.pluck(identifier, field as keyof TConfig["Entity"]);
       };
     },
   }) as {
     [K in keyof TConfig["Entity"]]: (
-      identifier:
-        | NonNullable<TConfig["Identifier"]>
-        | TConfig["Entity"]
-        | Record<string, any>,
+      identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     ) => Promise<TConfig["Entity"][K]>;
   };
 
