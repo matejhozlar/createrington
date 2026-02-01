@@ -65,6 +65,7 @@ export class MessageCacheService extends EventEmitter {
   private cache: Map<number, CachedMessage[]> = new Map();
   private serverConfig: Map<number, ServerCacheConfig> = new Map();
   private isInitialized = false;
+  private botUserId: string | null = null;
 
   constructor(
     private readonly bot: Client,
@@ -90,6 +91,13 @@ export class MessageCacheService extends EventEmitter {
     }
 
     logger.info("Initializing MessageCacheService...");
+
+    this.botUserId = this.bot.user?.id || null;
+    if (!this.botUserId) {
+      logger.warn(
+        "MessageCacheService couldnt initialize bot ID, continuing without it",
+      );
+    }
 
     this.setupEventListeners();
 
@@ -346,6 +354,13 @@ export class MessageCacheService extends EventEmitter {
       return MessageSource.DISCORD;
     }
 
+    if (this.botUserId && message.author.id === this.botUserId) {
+      if (message.embeds.length > 0) {
+        return MessageSource.SYSTEM;
+      }
+      return MessageSource.WEB;
+    }
+
     const isCreateringtonBot =
       message.author.id === this.config.botConfig.createringtonBotId;
     const isCreateringtonTag =
@@ -423,14 +438,14 @@ export class MessageCacheService extends EventEmitter {
    */
   private parseEmbeds(embeds: Embed[]): ParsedEmbed[] {
     return embeds.map((embed) => ({
-      title: embed.title || undefined,
-      description: embed.description || undefined,
+      title: this.stripBackticks(embed.title),
+      description: this.stripBackticks(embed.description),
       url: embed.url || undefined,
       color: embed.color || undefined,
       timestamp: embed.timestamp || undefined,
       footer: embed.footer
         ? {
-            text: embed.footer.text,
+            text: this.stripBackticks(embed.footer.text) || embed.footer.text,
             iconUrl: embed.footer.iconURL || undefined,
           }
         : undefined,
@@ -442,8 +457,8 @@ export class MessageCacheService extends EventEmitter {
           }
         : undefined,
       fields: embed.fields?.map((field) => ({
-        name: field.name,
-        value: field.value,
+        name: this.stripBackticks(field.name) || field.name,
+        value: this.stripBackticks(field.value) || field.value,
         inline: field.inline || undefined,
       })),
       image: embed.image
@@ -482,6 +497,21 @@ export class MessageCacheService extends EventEmitter {
       width: att.width || undefined,
       height: att.height || undefined,
     }));
+  }
+
+  /**
+   * Strips backticks from text content
+   *
+   * @param text - Text to clean
+   * @returns Text with all backticks removed
+   *
+   * @private
+   */
+  private stripBackticks(text: string | null | undefined): string | undefined {
+    if (!text) {
+      return undefined;
+    }
+    return text.replace(/`/g, "");
   }
 
   /**
