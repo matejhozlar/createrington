@@ -39,7 +39,7 @@ function UserSummary({
 
   return (
     <div className={"flex items-center gap-2 " + (className ?? "")}>
-      <Avatar className={`size-8 rounded-lg ${state === "collapsed" ? "ml-2" : ""}`}>
+      <Avatar className={`size-8 rounded-xs ${state === "collapsed" ? "ml-2" : ""}`}>
         <AvatarImage src={avatarUrl} alt={avatarAlt} />
 
         <AvatarFallback className="rounded-lg">
