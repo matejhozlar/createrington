@@ -29,6 +29,7 @@ import {
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
 import { LiveChat } from "./examples/live-chat";
+import { ServerChat } from "./components/chat";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -52,6 +53,7 @@ function AppContent() {
             <Route path="/apply-to-join" element={<div>Apply Page</div>} />
             <Route path="/blue-map" element={<div>Map Page</div>} />
             <Route path="/server-chat" element={<LiveChat />} />
+            <Route path="/chat/:serverId" element={<ServerChat />} />
             <Route path="/online-players" element={<div>Players Page</div>} />
             <Route path="/crypto" element={<div>Crypto Page</div>} />
 
