@@ -12,7 +12,7 @@ import type {
 } from "@createrington/shared/api";
 import { MessageSource } from "@createrington/shared/socket";
 import { Loading } from "@/components/Loading";
-import { Send, Paperclip, X, Maximize2 } from "lucide-react";
+import { Send, Paperclip, X, Maximize2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -55,10 +55,60 @@ const SOURCE_CONFIG: Record<MessageSource, SourceConfig> = {
   },
 };
 
+function useRelativeTick(intervalMs = 60_000) {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return tick;
+}
+
 function formatTime(raw: Date | string | undefined): string {
   if (!raw) return "";
   const d = raw instanceof Date ? raw : new Date(raw);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  // Just now (less than 1 minute)
+  if (diffMinutes < 1) {
+    return "just now";
+  }
+
+  // X minutes ago (1-59 minutes)
+  if (diffMinutes < 60) {
+    return `${diffMinutes}m ago`;
+  }
+
+  // X hours ago (1-23 hours)
+  if (diffHours < 24) {
+    return `${diffHours}h ago`;
+  }
+
+  // Yesterday
+  if (diffDays === 1) {
+    return "yesterday";
+  }
+
+  // Within last 7 days: show day name
+  if (diffDays < 7) {
+    return d.toLocaleDateString("en-US", { weekday: "short" });
+  }
+
+  // Older: show date like "20 Jan" or "20 Jan 2024" if different year
+  const isSameYear = d.getFullYear() === now.getFullYear();
+  if (isSameYear) {
+    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  } else {
+    return d.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
 }
 
 // ============================================================================
@@ -111,16 +161,19 @@ function MessageImage({
   url,
   alt,
   onFullscreen,
+  onLoad,
 }: {
   url: string;
   alt: string;
   onFullscreen: () => void;
+  onLoad?: () => void;
 }) {
   return (
     <div className="group relative mt-2 inline-block max-w-xs overflow-hidden rounded-lg border border-border">
       <img
         src={url}
         alt={alt}
+        onLoad={onLoad}
         className="max-h-48 w-full cursor-pointer object-cover transition-transform group-hover:scale-105"
         onClick={onFullscreen}
       />
@@ -164,7 +217,14 @@ function ImageFullscreen({
   );
 }
 
-function MessageBubble({ message }: { message: CachedMessage }) {
+function MessageBubble({
+  message,
+  onImageLoad,
+}: {
+  message: CachedMessage;
+  onImageLoad?: () => void;
+}) {
+  useRelativeTick();
   const [fullscreenImage, setFullscreenImage] = useState<{
     url: string;
     alt: string;
@@ -317,6 +377,7 @@ function MessageBubble({ message }: { message: CachedMessage }) {
                   key={i}
                   url={img.url}
                   alt={img.filename}
+                  onLoad={onImageLoad}
                   onFullscreen={() =>
                     setFullscreenImage({ url: img.url, alt: img.filename })
                   }
@@ -547,11 +608,25 @@ export function ServerChat() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const isAtBottomRef = useRef(true);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    const atBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight <
+      50;
+    isAtBottomRef.current = atBottom;
+    setShowScrollButton(!atBottom);
+    if (atBottom) setUnreadCount(0);
+  }, []);
 
   const server = useMemo(
     () => servers.find((s) => s.serverId === serverId),
@@ -576,6 +651,11 @@ export function ServerChat() {
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     messagesEndRef.current?.scrollIntoView({ behavior });
   }, []);
+
+  const handleScrollToBottom = useCallback(() => {
+    scrollToBottom();
+    setUnreadCount(0);
+  }, [scrollToBottom]);
 
   const upsertMessage = useCallback((msg: CachedMessage) => {
     setMessages((prev) => {
@@ -755,7 +835,11 @@ export function ServerChat() {
 
   // Auto-scroll when new messages arrive
   useEffect(() => {
-    scrollToBottom();
+    if (isAtBottomRef.current) {
+      scrollToBottom();
+    } else {
+      setUnreadCount((prev) => prev + 1);
+    }
   }, [displayMessages.length, scrollToBottom]);
 
   // ============================================================================
@@ -783,11 +867,6 @@ export function ServerChat() {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-card/50 px-6 py-4 backdrop-blur-sm">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg bg-gradient-to-br from-sidebar-primary to-chart-4">
-            <span className="text-lg font-bold text-white">
-              {server?.serverName.charAt(0) ?? "S"}
-            </span>
-          </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">
               {server?.serverName ?? `Server ${serverId}`}
@@ -823,29 +902,63 @@ export function ServerChat() {
         </div>
       </div>
 
-      {/* Messages with custom scrollbar */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
-      >
-        {displayMessages.length === 0 ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-sidebar-accent">
-                <span className="text-2xl">💬</span>
+      {/* Messages with scroll-to-bottom overlay */}
+      <div className="relative flex-1 overflow-hidden">
+        <div
+          ref={messagesContainerRef}
+          onScroll={handleScroll}
+          className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
+        >
+          {displayMessages.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-sidebar-accent">
+                  <span className="text-2xl">💬</span>
+                </div>
+                <p className="text-muted-foreground">No messages yet</p>
+                <p className="mt-1 text-sm text-muted-foreground/70">
+                  Be the first to send a message!
+                </p>
               </div>
-              <p className="text-muted-foreground">No messages yet</p>
-              <p className="mt-1 text-sm text-muted-foreground/70">
-                Be the first to send a message!
-              </p>
             </div>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {displayMessages.map((msg) => (
-              <MessageBubble key={msg.messageId} message={msg} />
-            ))}
-            <div ref={messagesEndRef} />
+          ) : (
+            <div className="divide-y divide-border">
+              {displayMessages.map((msg) => (
+                <MessageBubble
+                  key={msg.messageId}
+                  message={msg}
+                  onImageLoad={() => {
+                    if (isAtBottomRef.current) scrollToBottom();
+                  }}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Scroll to bottom button + unread pill */}
+        {showScrollButton && (
+          <div className="pointer-events-none absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2">
+            {unreadCount > 0 && (
+              <button
+                type="button"
+                onClick={handleScrollToBottom}
+                className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-sidebar-primary px-3 py-1.5 text-xs font-medium text-white shadow-lg transition-colors hover:bg-sidebar-primary/90"
+              >
+                <span className="inline-flex size-4 items-center justify-center rounded-full bg-white/20 text-xs">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+                New messages
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleScrollToBottom}
+              className="pointer-events-auto flex size-9 items-center justify-center rounded-full bg-card shadow-lg ring-1 ring-border transition-colors hover:bg-sidebar-accent cursor-pointer"
+            >
+              <ChevronDown className="size-5 text-foreground" />
+            </button>
           </div>
         )}
       </div>
