@@ -1,8 +1,13 @@
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import {
+  BadRequestError,
+  InternalServerError,
+  NotFoundError,
+} from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { Q } from "@/db";
 import {
   GetPlayerResponse,
+  GetPlayersCountResponse,
   GetPlayersResponse,
 } from "@createrington/shared/api";
 import { Request, Response } from "express";
@@ -56,11 +61,15 @@ export class PlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player:", error);
-      throw new BadRequestError("Failed to fetch player data");
+      throw new InternalServerError("Failed to fetch player data");
     }
   }
 
@@ -93,7 +102,7 @@ export class PlayerController {
     const page = Math.max(0, parseInt(req.query.page as string) || 0);
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(req.query.limti as string)),
+      Math.max(1, parseInt(req.query.limit as string)),
     );
 
     const sortBy = (req.query.sortBy as string) || "createdAt";
@@ -151,7 +160,84 @@ export class PlayerController {
       res.json(response);
     } catch (error) {
       logger.error("Failed to fetch players:", error);
-      throw new BadRequestError("Failed to fetch players");
+      throw new InternalServerError("Failed to fetch players");
+    }
+  }
+
+  /**
+   * GET /api/players/count
+   *
+   * Retrieves the count of registered players from the database
+   *
+   * @example
+   * GET /api/players/count
+   * GET /api/players/count?online=true
+   * GET /api/players/count?currentServerId=1
+   * GET /api/players/count?createdAfter=2024-01-01T00:00:00Z
+   */
+  static async getCount(req: Request, res: Response): Promise<void> {
+    try {
+      const filters: any = {};
+
+      // Filter by online status
+      if (req.query.online !== undefined) {
+        filters.online = req.query.online === "true";
+      }
+
+      // Filter by current server
+      if (req.query.currentServerId) {
+        const serverId = parseInt(req.query.currentServerId as string);
+        if (isNaN(serverId)) {
+          throw new BadRequestError("Invalid server ID");
+        }
+        filters.currentServerId = serverId;
+      }
+
+      // Filter by creation date range
+      if (req.query.createdAfter) {
+        const date = new Date(req.query.createdAfter as string);
+        if (isNaN(date.getTime())) {
+          throw new BadRequestError("Invalid createdAfter date format");
+        }
+        filters.createdAt = { $gte: date };
+      }
+
+      if (req.query.createdBefore) {
+        const date = new Date(req.query.createdBefore as string);
+        if (isNaN(date.getTime())) {
+          throw new BadRequestError("Invalid createdBefore date format");
+        }
+        filters.createdAt = {
+          ...filters.createdAt,
+          $lte: date,
+        };
+      }
+
+      // Filter by last seen date
+      if (req.query.lastSeenAfter) {
+        const date = new Date(req.query.lastSeenAfter as string);
+        if (isNaN(date.getTime())) {
+          throw new BadRequestError("Invalid lastSeenAfter date format");
+        }
+        filters.lastSeen = { $gte: date };
+      }
+
+      const count = await Q.player.count(filters);
+
+      const response: GetPlayersCountResponse = {
+        success: true,
+        data: {
+          count,
+        },
+      };
+
+      res.json(response);
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      logger.error("Database error while fetching player count:", error);
+      throw new InternalServerError("Failed to fetch player count");
     }
   }
 }

@@ -16,6 +16,28 @@ const router = Router();
 // ============================================================================
 
 /**
+ * GET /api/players/count
+ *
+ * Get count of players matching optional filter criteria
+ *
+ * Query Parameters (all optional):
+ * - online: Count only online players (true/false)
+ * - current_server_id: Count players on specific server
+ * - created_after: Count players created after date (ISO 8601)
+ * - created_before: Count players created before date (ISO 8601)
+ * - last_seen_after: Count players last seen after date (ISO 8601)
+ *
+ * Examples:
+ * - /api/players/count
+ * - /api/players/count?online=true
+ * - /api/players/count?current_server_id=1
+ * - /api/players/count?created_after=2024-01-01T00:00:00Z
+ *
+ * Response: GetPlayersCountResponse
+ */
+router.get("/count", ...route(AuthLevel.PUBLIC, PlayerController.getCount));
+
+/**
  * GET /api/players
  *
  * Get a list of players with filtering and pagination

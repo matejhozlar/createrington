@@ -34,6 +34,18 @@ export interface GetPlayersQuery {
   sortOder?: "ASC" | "DESC";
 }
 
+/**
+ * Query parameters for GET /api/players/count
+ */
+export interface GetPlayersCountQuery {
+  // Filtering
+  online?: "true" | "false";
+  currentServerId?: string;
+  createdAfter?: string; // ISO 8601 date string
+  createdBefore?: string; // ISO 8601 date string
+  lastSeenAfter?: string; // ISO 8601 date string
+}
+
 // ============================================================================
 // RESPONSE TYPES
 // ============================================================================
@@ -64,6 +76,16 @@ export interface GetPlayersResponse {
   data: {
     players: PlayerApiData[];
     pagination: PaginationMeta;
+  };
+}
+
+/**
+ * Response for GET /api/players/count
+ */
+export interface GetPlayersCountResponse {
+  success: true;
+  data: {
+    count: number;
   };
 }
 
