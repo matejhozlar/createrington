@@ -34,7 +34,7 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
-  const { toggleSidebar, open } = useSidebar();
+  const { toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
 
 const { stats: playerStats } = usePlayerData();
@@ -95,7 +95,7 @@ const data = {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center gap-2 p-2 group-data-[state=collapsed]:px-0">
+        <div className="flex items-center justify-center gap-2 p-2 group-data-[state=collapsed]:px-0">
           <Logo />
 
           {isMobile ? (
@@ -116,7 +116,7 @@ const data = {
       </SidebarHeader>
 
       <SidebarContent>
-        <ServerStatus isCollapsed={!open} />
+        <ServerStatus />
 
         <NavMain items={filteredNavMain} />
       </SidebarContent>

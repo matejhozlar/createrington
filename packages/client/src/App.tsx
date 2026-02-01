@@ -33,7 +33,7 @@ import { LiveChat } from "./examples/live-chat";
 // Inner component that uses sidebar context
 function AppContent() {
   return (
-    <SidebarProvider>
+    <>
       <AppSidebar />
 
       <SidebarInset>
@@ -138,7 +138,7 @@ function AppContent() {
           </Routes>
         </div>
       </SidebarInset>
-    </SidebarProvider>
+    </>
   );
 }
 
@@ -156,11 +156,11 @@ function App() {
       >
         <ServerDataProvider autoSubscribe>
           <PlayerDataProvider autoSubscribe>
-            <SidebarProvider>
-              <BrowserRouter>
+            <BrowserRouter>
+              <SidebarProvider>
                 <AppContent />
-              </BrowserRouter>
-            </SidebarProvider>
+              </SidebarProvider>
+            </BrowserRouter>
           </PlayerDataProvider>
         </ServerDataProvider>
       </WebSocketProvider>

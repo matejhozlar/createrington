@@ -43,7 +43,7 @@ export function NavDiscordLogin() {
               className={`cursor-pointer bg-[#5865F2] hover:bg-[#4752C4] text-white hover:text-white disabled:opacity-50 disabled:cursor-not-allowed ${state === "expanded" ? "justify-center" : ""}`}
             >
               <DiscordIcon
-                className={`${state === "collapsed" ? "ml-1" : ""}`}
+                className={`${state === "collapsed" ? "ml-3" : ""}`}
               />
               <span>{loading ? "Loading..." : "Login with Discord"}</span>
             </SidebarMenuButton>

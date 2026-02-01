@@ -3,17 +3,17 @@ import { Server } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { useServerData } from "@/contexts/socket";
+import { useSidebar } from "@/components/ui/sidebar";
 import { Loading } from "@/components/Loading";
-
-interface ServerStatusProps extends React.HTMLAttributes<HTMLDivElement> {
-  isCollapsed?: boolean;
-}
+import { useIsMobile } from "@/hooks/use-mobile";
 
 function ServerStatus({
   className,
-  isCollapsed = false,
   ...props
-}: ServerStatusProps) {
+}: React.HTMLAttributes<HTMLDivElement>) {
+  const { state } = useSidebar();
+  const isMobile = useIsMobile();
+  const isCollapsed = !isMobile && state === "collapsed";
   const {
     servers,
     stats: serverStats,
@@ -43,7 +43,7 @@ function ServerStatus({
     <div
       className={cn(
         "flex flex-col justify-center border-b border-border px-5 pb-3",
-        isCollapsed && "items-center px-3 gap-2",
+        isCollapsed && "items-center px-0 gap-2",
         className,
       )}
       {...props}
@@ -69,67 +69,43 @@ interface ServerStatusSingleProps {
 function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
   return (
     <>
-      <div
-        className={cn(
-          "mb-3 flex min-h-6 items-center gap-3",
-          isCollapsed && "mb-0 w-full justify-center gap-0",
+      <div className="flex items-center min-h-6 gap-3">
+        {/* Indicator Light */}
+        <div
+          className={cn("size-3 shrink-0 rounded-full", {
+            "bg-green-500 shadow shadow-green-500 animate-pulse": server.online,
+            "bg-red-500 shadow shadow-red-500": !server.online,
+            "size-4": isCollapsed,
+          })}
+        />
+
+        {/* Status Title */}
+        {!isCollapsed && (
+          <span
+            className={cn("text-base font-semibold", {
+              "text-green-500": server.online,
+              "text-red-500": !server.online,
+            })}
+          >
+            {server.online ? "Online" : "Offline"}
+          </span>
         )}
-      >
+      </div>
+
+      {/* Player Count */}
+      {server.online && (
         <div
           className={cn(
-            "h-3 w-3 shrink-0 rounded-full transition-all duration-200",
-            server.online
-              ? "bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.5)] animate-pulse"
-              : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.3)]",
-            isCollapsed && "h-4 w-4",
-          )}
-          title={
-            isCollapsed
-              ? server.online
-                ? "Server Online"
-                : "Server Offline"
-              : undefined
-          }
-        />
-        <span
-          className={cn(
-            "text-base font-semibold transition-all duration-200",
-            server.online ? "text-green-500" : "text-red-500",
-            isCollapsed &&
-              "pointer-events-none absolute w-0 overflow-hidden opacity-0 transition-all duration-100",
+            "min-h-6 text-base whitespace-nowrap font-medium text-muted-foreground",
+            {
+              "justify-center": isCollapsed,
+              "pl-6": !isCollapsed,
+            },
           )}
         >
-          {server.online ? "Online" : "Offline"}
-        </span>
-      </div>
-      {server.online && (
-        <>
-          <div
-            className={cn(
-              "min-h-6 pl-8 text-base font-medium text-muted-foreground transition-all duration-200 delay-100",
-              isCollapsed &&
-                "pointer-events-none absolute opacity-0 transition-all duration-100",
-            )}
-          >
-            {server.playerCount} / {server.maxPlayers} Players
-          </div>
-          {isCollapsed && (
-            <div
-              className={cn(
-                "flex w-full min-h-7 justify-center opacity-0 transition-all duration-100 invisible",
-                isCollapsed &&
-                  "visible opacity-100 transition-all duration-200 delay-100",
-              )}
-            >
-              <div
-                className="rounded bg-accent px-1 py-1 text-xs font-medium text-accent-foreground"
-                title={`${server.playerCount}/${server.maxPlayers} players online`}
-              >
-                {server.playerCount}/{server.maxPlayers}
-              </div>
-            </div>
-          )}
-        </>
+          {server.playerCount} / {server.maxPlayers}
+          {!isCollapsed && <span className="ml-2 truncate">Players</span>}
+        </div>
       )}
     </>
   );
@@ -151,66 +127,47 @@ function ServerStatusMultiple({
 }: ServerStatusMultipleProps) {
   return (
     <>
-      <div
-        className={cn(
-          "mb-3 flex min-h-6 items-center gap-3",
-          isCollapsed && "mb-0 w-full justify-center gap-0",
+      {/* Icon and Title */}
+      <div className="flex items-center min-h-6 gap-3">
+        <Server className={cn("size-5 text-primary")} />
+
+        {!isCollapsed && (
+          <span className="text-base font-semibold">Servers</span>
         )}
-      >
-        <div title={isCollapsed ? "Servers" : undefined}>
-          <Server
-            className={cn(
-              "h-5 w-5 shrink-0 text-primary transition-all duration-200",
-              isCollapsed && "h-6 w-6",
-            )}
-          />
-        </div>
-        <span
-          className={cn(
-            "text-base font-semibold transition-all duration-200 delay-100",
-            isCollapsed &&
-              "pointer-events-none absolute w-0 overflow-hidden opacity-0 transition-all duration-100",
-          )}
-        >
-          Servers
-        </span>
       </div>
+
       <div
-        className={cn(
-          "flex min-h-12 flex-col gap-2 pl-8 transition-all duration-200 delay-100",
-          isCollapsed &&
-            "pointer-events-none absolute opacity-0 transition-all duration-100",
-        )}
+        className={cn("flex min-h-12 flex-col gap-2", {
+          "pl-8": !isCollapsed,
+        })}
       >
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Online:</span>
-          <span className="text-sm font-medium">
+        {/* Server Count */}
+        <div
+          className={cn("flex items-center whitespace-nowrap text-sm", {
+            "justify-between": !isCollapsed,
+            "justify-center": isCollapsed,
+          })}
+        >
+          {!isCollapsed && (
+            <span className="text-muted-foreground truncate">Online:</span>
+          )}
+
+          <span className="font-medium">
             {stats.online} / {stats.total}
           </span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Players:</span>
-          <span className="text-sm font-medium">
+
+        {/* Player Count */}
+        <div className="flex items-center justify-between whitespace-nowrap text-sm">
+          {!isCollapsed && (
+            <span className="text-muted-foreground truncate">Players:</span>
+          )}
+
+          <span className="font-medium">
             {stats.totalPlayers} / {stats.totalCapacity}
           </span>
         </div>
       </div>
-      {isCollapsed && (
-        <div className="flex flex-col gap-2 opacity-100 transition-all duration-200 delay-100">
-          <div
-            className="rounded bg-accent px-2 py-1 text-center text-xs font-medium text-accent-foreground"
-            title={`${stats.online}/${stats.total} servers online`}
-          >
-            {stats.online}/{stats.total}
-          </div>
-          <div
-            className="rounded bg-accent px-2 py-1 text-center text-xs font-medium text-accent-foreground"
-            title={`${stats.totalPlayers} players online`}
-          >
-            {stats.totalPlayers}
-          </div>
-        </div>
-      )}
     </>
   );
 }
