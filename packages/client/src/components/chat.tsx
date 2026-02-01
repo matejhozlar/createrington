@@ -587,11 +587,13 @@ function MessageRow({
   message,
   isFirst,
   tick,
+  isHighlighted,
   onImageLoad,
 }: {
   message: CachedMessage;
   isFirst: boolean;
-  tick: number; // increments every 60s from parent — triggers timestamp re-render
+  tick: number;
+  isHighlighted: boolean;
   onImageLoad?: () => void;
 }) {
   // tick is read here so this component re-renders when it ticks, keeping formatTime fresh
@@ -619,8 +621,9 @@ function MessageRow({
     <>
       <div
         className={cn(
-          "group relative pl-[3.25rem]", // indent to align under avatar
+          "group relative pl-[3.25rem] transition-all duration-500",
           isFirst ? "pt-0" : "pt-0.5",
+          isHighlighted && "animate-highlight-fade",
         )}
       >
         {/* Hover timestamp — non-first messages that have text content */}
@@ -700,11 +703,13 @@ function MessageGroup({
   group,
   prevSource,
   tick,
+  highlightedMessages,
   onImageLoad,
 }: {
   group: MessageGroup;
   prevSource?: MessageSource;
   tick: number;
+  highlightedMessages: Set<string>;
   onImageLoad?: () => void;
 }) {
   const config = SOURCE_CONFIG[group.source];
@@ -777,6 +782,7 @@ function MessageGroup({
               message={msg}
               isFirst={i === 0}
               tick={tick}
+              isHighlighted={highlightedMessages.has(msg.messageId)}
               onImageLoad={onImageLoad}
             />
           ))}
@@ -840,7 +846,11 @@ export function ServerChat() {
   const [error, setError] = useState<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [highlightedMessages, setHighlightedMessages] = useState<Set<string>>(
+    new Set(),
+  );
   const isAtBottomRef = useRef(true);
+  const lastMessageCountRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -872,12 +882,15 @@ export function ServerChat() {
 
   const canSend = !!user && serverId !== null && !sending;
 
-  // Sort messages chronologically, then group
-  const messageGroups = useMemo(() => {
+  // Sort messages chronologically, then group, and return total count
+  const { groups: messageGroups, totalCount } = useMemo(() => {
     const sorted = [...messages].sort((a, b) => {
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
-    return groupMessages(sorted);
+    return {
+      groups: groupMessages(sorted),
+      totalCount: sorted.length,
+    };
   }, [messages]);
 
   // ============================================================================
@@ -891,11 +904,23 @@ export function ServerChat() {
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
+
+    // Clear highlights after scrolling and a brief delay
+    setTimeout(() => {
+      setHighlightedMessages(new Set());
+    }, 2000);
   }, [scrollToBottom]);
 
   const upsertMessage = useCallback((msg: CachedMessage) => {
     setMessages((prev) => {
       const idx = prev.findIndex((m) => m.messageId === msg.messageId);
+      const isNew = idx < 0;
+
+      // If it's a new message and we're not at bottom, it should be highlighted
+      if (isNew && !isAtBottomRef.current) {
+        setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
+      }
+
       return idx >= 0
         ? prev.map((m, i) => (i === idx ? msg : m))
         : [...prev, msg];
@@ -1043,13 +1068,28 @@ export function ServerChat() {
     return unsub;
   }, [isConnected, serverId, on, upsertMessage, removeMessage]);
 
+  // Track new messages and update unread count
   useEffect(() => {
-    if (isAtBottomRef.current) {
-      scrollToBottom();
-    } else {
-      setUnreadCount((prev) => prev + 1);
+    const currentCount = totalCount;
+    const previousCount = lastMessageCountRef.current;
+
+    // Only increment unread if there are actually new messages
+    if (previousCount > 0 && currentCount > previousCount) {
+      const newMessageCount = currentCount - previousCount;
+
+      if (!isAtBottomRef.current) {
+        setUnreadCount((prev) => prev + newMessageCount);
+      } else {
+        // If at bottom, auto-scroll but clear any highlights after a delay
+        scrollToBottom();
+        setTimeout(() => {
+          setHighlightedMessages(new Set());
+        }, 2000);
+      }
     }
-  }, [messageGroups.length, scrollToBottom]);
+
+    lastMessageCountRef.current = currentCount;
+  }, [totalCount, scrollToBottom]);
 
   // ============================================================================
   // Render
@@ -1136,6 +1176,7 @@ export function ServerChat() {
                     idx > 0 ? messageGroups[idx - 1].source : undefined
                   }
                   tick={tick}
+                  highlightedMessages={highlightedMessages}
                   onImageLoad={() => {
                     if (isAtBottomRef.current) scrollToBottom();
                   }}

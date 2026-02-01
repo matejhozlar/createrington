@@ -87,3 +87,21 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* For server chat, no idea where else to put it */
+@keyframes highlight-fade {
+  0% {
+    background-color: color-mix(
+      in oklch,
+      var(--sidebar-primary) 15%,
+      transparent
+    );
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.animate-highlight-fade {
+  animation: highlight-fade 10s ease-out;
+}
