@@ -12,10 +12,24 @@ import type {
 } from "@createrington/shared/api";
 import { MessageSource } from "@createrington/shared/socket";
 import { Loading } from "@/components/Loading";
-import { Send, Paperclip, X, Maximize2, ChevronDown } from "lucide-react";
+import {
+  Send,
+  Paperclip,
+  X,
+  Maximize2,
+  ChevronDown,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useSidebar } from "@/components/ui/sidebar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ============================================================================
 // Types & Helpers
@@ -25,7 +39,7 @@ interface SourceConfig {
   label: string;
   color: string;
   bgColor: string;
-  accentColor: string; // used for embed border, avatar ring tint, etc.
+  accentColor: string;
 }
 
 const SOURCE_CONFIG: Record<MessageSource, SourceConfig> = {
@@ -55,13 +69,18 @@ const SOURCE_CONFIG: Record<MessageSource, SourceConfig> = {
   },
 };
 
+/**
+ * Returns a `now` timestamp (ms) that updates every `intervalMs`.
+ * The value is captured inside setInterval (an effect), so no impure call
+ * happens during render — it's just reading state.
+ */
 function useRelativeTick(intervalMs = 60_000) {
-  const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), intervalMs);
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
     return () => clearInterval(id);
   }, [intervalMs]);
-  return tick;
+  return now;
 }
 
 // Auto-expanding textarea: grows with content, caps at maxRows
@@ -74,8 +93,6 @@ function useAutoResize(
     const el = ref.current;
     if (!el) return;
 
-    // Lock overflow while we collapse — prevents the browser from latching
-    // a scrollbar during the momentary "auto" measurement step.
     el.style.overflow = "hidden";
     el.style.height = "auto";
 
@@ -87,8 +104,6 @@ function useAutoResize(
     const capped = el.scrollHeight >= maxHeight;
 
     el.style.height = (capped ? maxHeight : el.scrollHeight) + "px";
-    // Only allow scrolling when content actually exceeds the cap;
-    // otherwise keep it hidden so the scrollbar never appears.
     el.style.overflow = capped ? "auto" : "hidden";
   }, [value, ref, maxRows]);
 }
@@ -116,6 +131,18 @@ function formatTime(raw: Date | string | undefined): string {
   });
 }
 
+/**
+ * Format a duration in ms into a human-readable "Xh Ym" or "Xm" string.
+ */
+function formatDuration(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60_000);
+  if (totalMinutes < 1) return "< 1m";
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
+
 // Resolve display name + avatar from a CachedMessage
 function resolveAuthor(message: CachedMessage) {
   const source = (message.source as MessageSource) ?? MessageSource.DISCORD;
@@ -133,7 +160,7 @@ function resolveAuthor(message: CachedMessage) {
 
 // Group consecutive messages by the same logical author + source
 interface MessageGroup {
-  key: string; // authorId + source for grouping
+  key: string;
   displayName: string;
   avatarUrl?: string;
   source: MessageSource;
@@ -168,11 +195,6 @@ function groupMessages(messages: CachedMessage[]): MessageGroup[] {
 // Shared Markdown Renderer
 // ============================================================================
 
-/**
- * A single reusable markdown renderer that accepts a `variant` prop
- * to control sizing and color intent — eliminates the 3× duplication
- * of component overrides that existed before.
- */
 function ChatMarkdown({
   children,
   variant = "body",
@@ -184,7 +206,7 @@ function ChatMarkdown({
   const isEmbed = variant === "embed-body";
 
   return (
-    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed select-text">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -410,7 +432,6 @@ function Avatar({
         </div>
       )}
 
-      {/* Online/offline status dot — only rendered for Minecraft authors */}
       {isOnline !== undefined && (
         <span
           className={cn(
@@ -438,7 +459,6 @@ function SourceBadge({ source }: { source: MessageSource }) {
   );
 }
 
-// Single image tile used inside the grid layout
 function ImageTile({
   url,
   alt,
@@ -476,12 +496,6 @@ function ImageTile({
   );
 }
 
-/**
- * Adaptive image grid:
- *   1 image  → full width, natural aspect ratio capped at max-h-64
- *   2 images → side by side, equal height
- *   3+ images → 2-col grid, first image spans both rows (tall), rest fill in
- */
 function MessageImageGrid({
   attachments,
   onLoad,
@@ -525,14 +539,12 @@ function MessageImageGrid({
     );
   }
 
-  // 3+ images: first image is tall on the left, the rest stack on the right
   const [first, ...rest] = attachments;
   return (
     <div
       className="mt-2 grid max-w-sm grid-cols-2 grid-rows-2 gap-1.5"
       style={{ height: "18rem" }}
     >
-      {/* First image spans both rows */}
       <ImageTile
         url={first.url}
         alt={first.filename}
@@ -540,7 +552,6 @@ function MessageImageGrid({
         onFullscreen={() => onFullscreen(first.url, first.filename)}
         className="row-span-2"
       />
-      {/* Remaining images fill the right column; extras get a "+N" overlay on the last visible slot */}
       {rest.slice(0, 2).map((img, i) => {
         const isLastVisible = i === 1 && rest.length > 2;
         const overflow = rest.length - 2;
@@ -588,7 +599,7 @@ function ImageFullscreen({
         onClick={onClose}
         className="absolute right-4 top-4 rounded-full bg-sidebar-accent p-2 backdrop-blur-sm transition-colors hover:bg-sidebar-accent/80"
       >
-        <X className="size-6 text-foreground" />
+        <X className="size-6 text-foreground cursor-pointer" />
       </button>
       <img
         src={url}
@@ -600,7 +611,6 @@ function ImageFullscreen({
   );
 }
 
-// A single message row inside a group (no avatar, no name header — those live on the group)
 function MessageRow({
   message,
   isFirst,
@@ -614,7 +624,6 @@ function MessageRow({
   isHighlighted: boolean;
   onImageLoad?: () => void;
 }) {
-  // tick is read here so this component re-renders when it ticks, keeping formatTime fresh
   void tick;
 
   const [fullscreenImage, setFullscreenImage] = useState<{
@@ -626,9 +635,6 @@ function MessageRow({
     a.contentType?.startsWith("image/"),
   );
 
-  // An image-only message (no text, no embeds) that isn't the first in its group
-  // needs its own visible timestamp — the group header timestamp is too far away
-  // to feel anchored to this specific message.
   const isImageOnly =
     !message.content &&
     imageAttachments.length > 0 &&
@@ -644,12 +650,10 @@ function MessageRow({
           isHighlighted && "animate-new-message",
         )}
       >
-        {/* New-message indicator: left border bar, fades out after 10s */}
         {isHighlighted && (
           <div className="animate-new-message-indicator absolute -left-4 top-0 h-full w-0.5 rounded-full bg-sidebar-primary" />
         )}
 
-        {/* Hover timestamp — non-first messages that have text content */}
         {!isFirst && !isImageOnly && (
           <span className="absolute right-0 top-0 opacity-0 text-[11px] text-muted-foreground/60 transition-opacity duration-150 group-hover:opacity-100">
             {formatTime(message.createdAt)}
@@ -659,12 +663,10 @@ function MessageRow({
           </span>
         )}
 
-        {/* Content */}
         {message.content && (
           <ChatMarkdown variant="body">{message.content}</ChatMarkdown>
         )}
 
-        {/* Images — adaptive grid layout */}
         {imageAttachments.length > 0 && (
           <MessageImageGrid
             attachments={imageAttachments}
@@ -673,7 +675,6 @@ function MessageRow({
           />
         )}
 
-        {/* Inline timestamp for image-only rows — always visible, sits beneath the grid */}
         {needsInlineTimestamp && (
           <span className="mt-1 block text-[11px] text-muted-foreground/50">
             {formatTime(message.createdAt)}
@@ -683,7 +684,6 @@ function MessageRow({
           </span>
         )}
 
-        {/* Embeds */}
         {message.embeds.map((embed, i) => (
           <div
             key={i}
@@ -721,7 +721,6 @@ function MessageRow({
   );
 }
 
-// A group of consecutive messages from the same author
 function MessageGroup({
   group,
   prevSource,
@@ -742,7 +741,6 @@ function MessageGroup({
 
   return (
     <>
-      {/* Source-change divider: a thin colored line with the new source label */}
       {showDivider && (
         <div className="flex items-center gap-3 px-4 py-2">
           <div className={cn("h-px flex-1 bg-border")} />
@@ -766,7 +764,6 @@ function MessageGroup({
       )}
 
       <div className="group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20">
-        {/* Avatar — pinned to top of group */}
         <div className="shrink-0 pt-0.5">
           <Avatar
             url={group.avatarUrl}
@@ -775,9 +772,7 @@ function MessageGroup({
           />
         </div>
 
-        {/* Content column */}
         <div className="min-w-0 flex-1">
-          {/* Header row: name + source badge + bot tag + timestamp */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-foreground">
               {group.displayName}
@@ -798,13 +793,11 @@ function MessageGroup({
                 </span>
               )}
 
-            {/* Group timestamp — always visible, anchored to the first message */}
             <span className="ml-auto text-[11px] text-muted-foreground/50">
               {formatTime(group.messages[0]?.createdAt)}
             </span>
           </div>
 
-          {/* All messages in this group */}
           {group.messages.map((msg, i) => (
             <MessageRow
               key={msg.messageId}
@@ -844,10 +837,209 @@ function ImagePreview({
         onClick={onRemove}
         className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 transition-colors hover:bg-destructive/90"
       >
-        <X className="size-3 text-white" />
+        <X className="size-3 text-white cursor-pointer" />
       </button>
       <div className="absolute bottom-1 left-1 rounded bg-background/80 px-1.5 py-0.5 text-xs text-foreground backdrop-blur-sm">
         {(file.size / 1024 / 1024).toFixed(1)}MB
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Player List Panel (slides over the sidebar on desktop)
+// ============================================================================
+
+/**
+ * A single row in the player list panel.
+ * Re-renders every tick so the session duration stays live.
+ */
+function PlayerRow({
+  uuid,
+  username,
+  sessionStart,
+  now,
+  isCollapsed,
+}: {
+  uuid: string;
+  username: string;
+  sessionStart: Date | string;
+  /** Current timestamp snapshot from the parent's tick — pure state, no Date.now() here */
+  now: number;
+  /** True when the sidebar is in icon-collapsed mode */
+  isCollapsed: boolean;
+}) {
+  const avatarUrl = `https://mc-heads.net/avatar/${uuid}`;
+  const [broken, setBroken] = useState(false);
+
+  const start =
+    sessionStart instanceof Date
+      ? sessionStart.getTime()
+      : new Date(sessionStart).getTime();
+  const sessionMs = now - start;
+
+  const initials = username.charAt(0).toUpperCase();
+
+  return (
+    <div
+      className={cn(
+        "flex items-center transition-colors duration-150 hover:bg-sidebar-accent/30",
+        isCollapsed ? "justify-center px-0 py-2" : "gap-3 px-4 py-2.5",
+      )}
+    >
+      {/*
+       * Avatar — when collapsed we wrap it in the same Tooltip pattern that
+       * SidebarMenuButton uses: Tooltip > TooltipTrigger asChild > element,
+       * with TooltipContent hidden={!isCollapsed} so it's mounted but suppressed
+       * in expanded mode.  The TooltipProvider (delayDuration={0}) is already
+       * on the tree courtesy of SidebarProvider.
+       */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="relative shrink-0">
+            {!broken ? (
+              <img
+                src={avatarUrl}
+                alt={username}
+                className="size-9 rounded-full object-cover ring-2 ring-sidebar ring-offset-1 ring-offset-background"
+                onError={() => setBroken(true)}
+              />
+            ) : (
+              <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-chart-2 to-sidebar-primary text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
+                {initials}
+              </div>
+            )}
+            {/* Always-green online dot — every player in this list is, by definition, online */}
+            <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-green-500" />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" align="center" hidden={!isCollapsed}>
+          {username}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* Info — hidden when collapsed */}
+      {!isCollapsed && (
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {username}
+          </p>
+          <p className="text-[11px] text-muted-foreground/60">
+            Playing for {formatDuration(sessionMs)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The slide-over panel itself.  It is rendered as a fixed-position layer that
+ * occupies exactly the same space as the sidebar (left: 0, width matches
+ * --sidebar-width).  It slides in/out via a CSS translate on the X axis so the
+ * transition is GPU-accelerated and buttery.
+ *
+ * - `open`  : controls the slide state
+ * - `onClose`: called when the user clicks the X or presses Escape
+ */
+function PlayerListPanel({
+  open,
+  onClose,
+  serverId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  serverId: number;
+}) {
+  const { getServerPlayers } = usePlayerData();
+  const { state: sidebarState } = useSidebar();
+  const isCollapsed = sidebarState === "collapsed";
+  // Tick every 60s so session durations update without remounting
+  const now = useRelativeTick(60_000);
+
+  const players = useMemo(
+    () => getServerPlayers(serverId),
+    [getServerPlayers, serverId],
+  );
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, onClose]);
+
+  return (
+    <div
+      className={cn(
+        "fixed inset-y-0 left-0 z-[20] flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground",
+        "transition-transform duration-300 ease-out",
+        open ? "translate-x-0" : "-translate-x-full",
+        !open && "pointer-events-none",
+      )}
+      style={{
+        width:
+          sidebarState === "collapsed"
+            ? "var(--sidebar-width-icon)"
+            : "var(--sidebar-width)",
+      }}
+    >
+      {/* Header row */}
+      <div
+        className={cn(
+          "flex items-center border-b border-sidebar-border",
+          isCollapsed
+            ? "justify-center px-0 py-3"
+            : "justify-between px-4 py-3",
+        )}
+      >
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+            <Users className="size-4 text-sidebar-primary" />
+            <h2 className="text-sm font-semibold text-foreground">
+              Online Players
+            </h2>
+            <span className="inline-flex items-center justify-center rounded-full bg-green-500/20 px-2 py-0.5 text-[11px] font-semibold text-green-500">
+              {players.length}
+            </span>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+        >
+          <X className="size-4 cursor-pointer" />
+        </button>
+      </div>
+
+      {/* Scrollable player list */}
+      <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-sidebar-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
+        {players.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-sidebar-accent">
+              <Users className="size-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No players online</p>
+          </div>
+        ) : (
+          <div className="py-2">
+            {players.map((player) => (
+              <PlayerRow
+                key={player.uuid}
+                uuid={player.uuid}
+                username={player.username}
+                sessionStart={player.sessionStart}
+                now={now}
+                isCollapsed={isCollapsed}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -866,6 +1058,7 @@ export function ServerChat() {
   const { servers } = useServerData();
   const { user } = useAuth();
   const { getPlayerByUsername } = usePlayerData();
+  const isMobile = useIsMobile();
 
   const [messages, setMessages] = useState<CachedMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -879,6 +1072,10 @@ export function ServerChat() {
   const [highlightedMessages, setHighlightedMessages] = useState<Set<string>>(
     new Set(),
   );
+
+  /** Controls the player-list slide-over panel */
+  const [playerListOpen, setPlayerListOpen] = useState(false);
+
   const isAtBottomRef = useRef(true);
   const lastMessageCountRef = useRef(0);
 
@@ -935,7 +1132,6 @@ export function ServerChat() {
     scrollToBottom();
     setUnreadCount(0);
 
-    // Clear highlights after scrolling and a brief delay
     setTimeout(() => {
       setHighlightedMessages(new Set());
     }, 2000);
@@ -946,7 +1142,6 @@ export function ServerChat() {
       const idx = prev.findIndex((m) => m.messageId === msg.messageId);
       const isNew = idx < 0;
 
-      // If it's a new message and we're not at bottom, it should be highlighted
       if (isNew && !isAtBottomRef.current) {
         setHighlightedMessages((prev) => new Set(prev).add(msg.messageId));
       }
@@ -1047,7 +1242,7 @@ export function ServerChat() {
       setLoading(true);
       const data = await requestInitialData(serverId ?? 0, {
         includeMessages: true,
-        messageLimit: 50,
+        messageLimit: 100,
       });
       if (cancelled) return;
       if (data && "messages" in data) {
@@ -1103,14 +1298,12 @@ export function ServerChat() {
     const currentCount = totalCount;
     const previousCount = lastMessageCountRef.current;
 
-    // Only increment unread if there are actually new messages
     if (previousCount > 0 && currentCount > previousCount) {
       const newMessageCount = currentCount - previousCount;
 
       if (!isAtBottomRef.current) {
         setUnreadCount((prev) => prev + newMessageCount);
       } else {
-        // If at bottom, auto-scroll but clear any highlights after a delay
         scrollToBottom();
         setTimeout(() => {
           setHighlightedMessages(new Set());
@@ -1142,9 +1335,19 @@ export function ServerChat() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-card/50 md:h-screen">
+    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-card/50 md:h-screen select-none">
+      {/* Player-list slide-over — only rendered on desktop (md+) */}
+      {!isMobile && serverId && (
+        <PlayerListPanel
+          open={playerListOpen}
+          onClose={() => setPlayerListOpen(false)}
+          serverId={serverId}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border bg-sidebar px-6 py-4">
+        {/* Left side: server name + status */}
         <div>
           <h1 className="text-lg font-semibold text-foreground">
             {server?.serverName ?? `Server ${serverId}`}
@@ -1164,16 +1367,35 @@ export function ServerChat() {
           </p>
         </div>
 
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-            isConnected
-              ? "bg-green-500/20 text-green-500"
-              : "bg-red-500/20 text-red-500",
+        {/* Right side: player-list toggle + WebSocket connection status */}
+        <div className="flex items-center gap-2">
+          {!isMobile && (
+            <button
+              type="button"
+              onClick={() => setPlayerListOpen((prev) => !prev)}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-lg transition-colors cursor-pointer",
+                playerListOpen
+                  ? "bg-sidebar-primary text-white hover:bg-sidebar-primary/90"
+                  : "bg-sidebar-accent text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground",
+              )}
+              title={playerListOpen ? "Close player list" : "Show player list"}
+            >
+              <Users className="size-5" />
+            </button>
           )}
-        >
-          <span className="size-2 rounded-full bg-current"></span>
-          {isConnected ? "Connected" : "Disconnected"}
+
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
+              isConnected
+                ? "bg-green-500/20 text-green-500"
+                : "bg-red-500/20 text-red-500",
+            )}
+          >
+            <span className="size-2 rounded-full bg-current"></span>
+            {isConnected ? "Connected" : "Disconnected"}
+          </div>
         </div>
       </div>
 
@@ -1199,14 +1421,9 @@ export function ServerChat() {
           ) : (
             <div className="py-2">
               {messageGroups.map((group, idx) => {
-                // Resolve online status: only for Minecraft-source groups,
-                // look up the author on THIS server's live player list.
                 let isOnline: boolean | undefined;
                 if (group.source === MessageSource.MINECRAFT && serverId) {
                   const player = getPlayerByUsername(group.displayName);
-                  // Only set the boolean if the player exists on this specific server;
-                  // otherwise leave undefined so no dot renders (avoids false negatives
-                  // for players who exist on a different server).
                   isOnline = player?.serverId === serverId ? true : false;
                 }
 
