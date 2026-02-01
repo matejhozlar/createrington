@@ -18,8 +18,11 @@ import { useAuth } from "@/contexts/auth";
 // Re-export the shared types here so the file stays self-documenting.
 // In production you'd just import from "@createrington/shared".
 // ---------------------------------------------------------------------------
-import type { CachedMessage, SubscriptionType } from "@createrington/shared";
-import { MessageSource } from "@createrington/shared";
+import type {
+  CachedMessage,
+  SubscriptionType,
+} from "@createrington/shared/socket";
+import { MessageSource } from "@createrington/shared/socket";
 import type {
   MessageErrorResponse,
   SendMessageResponse,

@@ -1,4 +1,4 @@
-import type { JWTPayload } from "@createrington/shared";
+import type { JWTPayload } from "@createrington/shared/auth";
 
 export type User = JWTPayload;
 

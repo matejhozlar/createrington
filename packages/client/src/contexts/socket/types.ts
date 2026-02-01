@@ -5,7 +5,7 @@ import type {
   SubscriptionType,
   PlayerData,
   ServerStatus,
-} from "@createrington/shared";
+} from "@createrington/shared/socket";
 
 /**
  * Connection state

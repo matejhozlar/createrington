@@ -192,7 +192,7 @@ export const Navbar: React.FC = () => {
                         {user.username}
                       </span>
                       <span className={styles.minecraftName}>
-                        {user.minecraftName}
+                        {user.minecraftUsername}
                       </span>
                     </div>
                   </div>

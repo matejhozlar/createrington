@@ -12,3 +12,16 @@ type CamelCase<S extends string> =
   S extends `${infer P1}_${infer P2}${infer P3}`
     ? `${Lowercase<P1>}${Uppercase<P2>}${CamelCase<P3>}`
     : Lowercase<S>;
+
+/**
+ * Helper type to convert Date fields to strings for wire transmission
+ */
+export type DateToString<T> = {
+  [K in keyof T]: T[K] extends Date
+    ? string
+    : T[K] extends Date | undefined
+      ? string | undefined
+      : T[K] extends object
+        ? DateToString<T[K]>
+        : T[K];
+};

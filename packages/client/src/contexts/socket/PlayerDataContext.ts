@@ -10,7 +10,7 @@ import type {
   PlayerData,
   PlayersUpdatePayload,
   SubscriptionType,
-} from "@createrington/shared";
+} from "@createrington/shared/socket";
 import { WebSocketContext } from "./context";
 import type { PlayerDataContextType } from "./types";
 
@@ -85,7 +85,7 @@ export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
       if (data && "players" in data) {
         const playerMap = new Map<string, PlayerData>();
 
-        data.players.forEach((player) => {
+        data.players.forEach((player: PlayerData) => {
           // Filter by serverIds if provided
           if (!serverIds || serverIds.includes(player.serverId)) {
             playerMap.set(player.uuid, {

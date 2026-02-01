@@ -24,14 +24,14 @@ function UserSummary({
   avatarUrl,
   avatarAlt,
   avatarFallbackLetter,
-  minecraftName,
+  minecraftUsername,
   username,
   className,
 }: {
   avatarUrl?: string;
   avatarAlt: string;
   avatarFallbackLetter: string;
-  minecraftName?: string;
+  minecraftUsername?: string;
   username: string;
   className?: string;
 }) {
@@ -48,7 +48,7 @@ function UserSummary({
       </Avatar>
 
       <div className="grid flex-1 text-left text-sm leading-tight">
-        <span className="truncate font-medium">{minecraftName}</span>
+        <span className="truncate font-medium">{minecraftUsername}</span>
 
         <span className="truncate text-xs text-muted-foreground">
           Discord: {username}
@@ -90,7 +90,7 @@ export function NavUser({ user }: { user: User }) {
                 avatarUrl={crafatarAvatarUrl}
                 avatarAlt={user.minecraftUsername ?? user.username}
                 avatarFallbackLetter={avatarFallbackLetter}
-                minecraftName={user.minecraftUsername}
+                minecraftUsername={user.minecraftUsername}
                 username={user.username}
               />
               <ChevronsUpDown className="ml-auto size-4" />
@@ -109,7 +109,7 @@ export function NavUser({ user }: { user: User }) {
                 className="px-1 py-1.5 text-left text-sm"
                 avatarAlt={user.username}
                 avatarFallbackLetter={avatarFallbackLetter}
-                minecraftName={user.minecraftUsername}
+                minecraftUsername={user.minecraftUsername}
                 username={user.username}
               />
             </DropdownMenuLabel>

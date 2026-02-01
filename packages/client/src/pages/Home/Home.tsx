@@ -26,7 +26,10 @@ export const Home: React.FC = () => {
             <div className={styles.welcomeBack}>
               <p className={styles.welcomeText}>
                 Welcome back,{" "}
-                <span className={styles.highlight}>{user.minecraftName}</span>!
+                <span className={styles.highlight}>
+                  {user.minecraftUsername}
+                </span>
+                !
               </p>
               <a href="/servers" className={styles.ctaButton}>
                 View Servers
