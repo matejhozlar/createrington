@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useWebSocket, useServerData } from "@/contexts/socket";
+import { useWebSocket, useServerData, usePlayerData } from "@/contexts/socket";
 import { useAuth } from "@/contexts/auth";
 import type {
   CachedMessage,
@@ -378,7 +378,15 @@ function ChatMarkdown({
 // Sub-components
 // ============================================================================
 
-function Avatar({ url, name }: { url?: string; name: string }) {
+function Avatar({
+  url,
+  name,
+  isOnline,
+}: {
+  url?: string;
+  name: string;
+  isOnline?: boolean;
+}) {
   const [broken, setBroken] = useState(false);
   const initials = name
     .split(" ")
@@ -388,7 +396,7 @@ function Avatar({ url, name }: { url?: string; name: string }) {
     .toUpperCase();
 
   return (
-    <div className="shrink-0">
+    <div className="relative shrink-0">
       {url && !broken ? (
         <img
           src={url}
@@ -400,6 +408,16 @@ function Avatar({ url, name }: { url?: string; name: string }) {
         <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-sidebar-primary to-chart-4 text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
           {initials}
         </div>
+      )}
+
+      {/* Online/offline status dot — only rendered for Minecraft authors */}
+      {isOnline !== undefined && (
+        <span
+          className={cn(
+            "absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background",
+            isOnline ? "bg-green-500" : "bg-red-500",
+          )}
+        />
       )}
     </div>
   );
@@ -710,12 +728,14 @@ function MessageGroup({
   tick,
   highlightedMessages,
   onImageLoad,
+  isOnline,
 }: {
   group: MessageGroup;
   prevSource?: MessageSource;
   tick: number;
   highlightedMessages: Set<string>;
   onImageLoad?: () => void;
+  isOnline?: boolean;
 }) {
   const config = SOURCE_CONFIG[group.source];
   const showDivider = prevSource !== undefined && prevSource !== group.source;
@@ -748,7 +768,11 @@ function MessageGroup({
       <div className="group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20">
         {/* Avatar — pinned to top of group */}
         <div className="shrink-0 pt-0.5">
-          <Avatar url={group.avatarUrl} name={group.displayName} />
+          <Avatar
+            url={group.avatarUrl}
+            name={group.displayName}
+            isOnline={isOnline}
+          />
         </div>
 
         {/* Content column */}
@@ -841,6 +865,7 @@ export function ServerChat() {
     useWebSocket();
   const { servers } = useServerData();
   const { user } = useAuth();
+  const { getPlayerByUsername } = usePlayerData();
 
   const [messages, setMessages] = useState<CachedMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1127,12 +1152,12 @@ export function ServerChat() {
           <p className="text-sm text-muted-foreground">
             {server?.online ? (
               <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-chart-2"></span>
+                <span className="mr-2 inline-block size-2 rounded-full bg-green-500"></span>
                 {server.playerCount} / {server.maxPlayers} online
               </>
             ) : (
               <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-destructive"></span>
+                <span className="mr-2 inline-block size-2 rounded-full bg-red-500"></span>
                 Offline
               </>
             )}
@@ -1143,8 +1168,8 @@ export function ServerChat() {
           className={cn(
             "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
             isConnected
-              ? "bg-chart-2/20 text-chart-2"
-              : "bg-destructive/20 text-destructive",
+              ? "bg-green-500/20 text-green-500"
+              : "bg-red-500/20 text-red-500",
           )}
         >
           <span className="size-2 rounded-full bg-current"></span>
@@ -1173,20 +1198,34 @@ export function ServerChat() {
             </div>
           ) : (
             <div className="py-2">
-              {messageGroups.map((group, idx) => (
-                <MessageGroup
-                  key={`${group.key}-${group.messages[0]?.messageId}`}
-                  group={group}
-                  prevSource={
-                    idx > 0 ? messageGroups[idx - 1].source : undefined
-                  }
-                  tick={tick}
-                  highlightedMessages={highlightedMessages}
-                  onImageLoad={() => {
-                    if (isAtBottomRef.current) scrollToBottom();
-                  }}
-                />
-              ))}
+              {messageGroups.map((group, idx) => {
+                // Resolve online status: only for Minecraft-source groups,
+                // look up the author on THIS server's live player list.
+                let isOnline: boolean | undefined;
+                if (group.source === MessageSource.MINECRAFT && serverId) {
+                  const player = getPlayerByUsername(group.displayName);
+                  // Only set the boolean if the player exists on this specific server;
+                  // otherwise leave undefined so no dot renders (avoids false negatives
+                  // for players who exist on a different server).
+                  isOnline = player?.serverId === serverId ? true : false;
+                }
+
+                return (
+                  <MessageGroup
+                    key={`${group.key}-${group.messages[0]?.messageId}`}
+                    group={group}
+                    prevSource={
+                      idx > 0 ? messageGroups[idx - 1].source : undefined
+                    }
+                    tick={tick}
+                    highlightedMessages={highlightedMessages}
+                    onImageLoad={() => {
+                      if (isAtBottomRef.current) scrollToBottom();
+                    }}
+                    isOnline={isOnline}
+                  />
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
           )}
