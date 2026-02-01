@@ -16,7 +16,7 @@ type CamelCase<S extends string> =
 /**
  * Helper type to convert Date fields to strings for wire transmission
  */
-type DateToString<T> = {
+export type DateToString<T> = {
   [K in keyof T]: T[K] extends Date
     ? string
     : T[K] extends Date | undefined
