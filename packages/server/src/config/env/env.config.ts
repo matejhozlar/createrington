@@ -1,7 +1,13 @@
 import dotenv from "dotenv";
 import { z } from "zod";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-dotenv.config({ quiet: true });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const ENV_PATH = path.resolve(__dirname, "..", "..", "..", "..", "..");
+
+dotenv.config({ path: path.join(ENV_PATH, ".env"), quiet: true });
 
 /**
  * Zod schema defining structure and validation rules for environment variables
