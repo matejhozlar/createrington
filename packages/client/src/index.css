@@ -89,19 +89,22 @@
 }
 
 /* For server chat, no idea where else to put it */
-@keyframes highlight-fade {
+@keyframes new-message-indicator-fade {
   0% {
-    background-color: color-mix(
-      in oklch,
-      var(--sidebar-primary) 15%,
-      transparent
-    );
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
   }
   100% {
-    background-color: transparent;
+    opacity: 0;
   }
 }
 
-.animate-highlight-fade {
-  animation: highlight-fade 10s ease-out;
+.animate-new-message-indicator {
+  animation: new-message-indicator-fade 10s ease-out forwards;
+}
+
+/* Row class — exists only so the indicator div is conditionally rendered */
+.animate-new-message {
 }

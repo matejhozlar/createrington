@@ -623,9 +623,14 @@ function MessageRow({
         className={cn(
           "group relative pl-[3.25rem] transition-all duration-500",
           isFirst ? "pt-0" : "pt-0.5",
-          isHighlighted && "animate-highlight-fade",
+          isHighlighted && "animate-new-message",
         )}
       >
+        {/* New-message indicator: left border bar, fades out after 10s */}
+        {isHighlighted && (
+          <div className="animate-new-message-indicator absolute -left-4 top-0 h-full w-0.5 rounded-full bg-sidebar-primary" />
+        )}
+
         {/* Hover timestamp — non-first messages that have text content */}
         {!isFirst && !isImageOnly && (
           <span className="absolute right-0 top-0 opacity-0 text-[11px] text-muted-foreground/60 transition-opacity duration-150 group-hover:opacity-100">
