@@ -475,6 +475,161 @@ export class BalanceRepository {
   }
 
   // ============================================================================
+  // ADMIN METHODS
+  // ============================================================================
+
+  /**
+   * Admin grants balance to a player
+   * Logs action to admin_log_action
+   *
+   * @param identifier - Player identifier
+   * @param amount - Amount to grant
+   * @param adminDiscordId - Admin performing the action
+   * @param adminDiscordUsername - Admin username
+   * @param reason - Reason for grant
+   * @returns Promise resolving to new balance
+   */
+  async adminGrant(
+    identifier: PlayerIdentifier,
+    amount: number,
+    adminDiscordId: string,
+    adminDiscordUsername: string,
+    reason: string,
+  ): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    const player = await db.player.get({ minecraftUuid: uuid });
+
+    const newBalance = await this.add(
+      uuid,
+      amount,
+      reason,
+      BalanceTransactionType.ADMIN_GRANT,
+      {
+        adminDiscordId,
+        adminDiscordUsername,
+      },
+    );
+
+    await db.admin.log.action.logAction({
+      adminDiscordId,
+      adminDiscordUsername,
+      actionType: "balance_grant",
+      targetPlayerUuid: uuid,
+      targetPlayerName: player.minecraftUsername,
+      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
+      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
+      oldValue: BalanceUtils.format(await this.getRaw(uuid)),
+      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
+      reason,
+      metadata: {
+        amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+      },
+    });
+
+    return newBalance;
+  }
+
+  /**
+   * Admin deducts balance from a player
+   * Logs action to admin_log_action
+   *
+   * @param identifier - Player identifier
+   * @param amount - Amount to deduct
+   * @param adminDiscordId - Admin performing the action
+   * @param adminDiscordUsername - Admin username
+   * @param reason - Reason for deduction
+   * @returns Promise resolving to new balance
+   */
+  async adminDeduct(
+    identifier: PlayerIdentifier,
+    amount: number,
+    adminDiscordId: string,
+    adminDiscordUsername: string,
+    reason: string,
+  ): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    const player = await db.player.get({ minecraftUuid: uuid });
+
+    const newBalance = await this.deduct(
+      uuid,
+      amount,
+      reason,
+      BalanceTransactionType.ADMIN_DEDUCT,
+      {
+        adminDiscordId,
+        adminDiscordUsername,
+      },
+    );
+
+    await db.admin.log.action.logAction({
+      adminDiscordId,
+      adminDiscordUsername,
+      actionType: "balance_deduct",
+      targetPlayerUuid: uuid,
+      targetPlayerName: player.minecraftUsername,
+      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
+      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
+      oldValue: BalanceUtils.format(await this.getRaw(uuid)),
+      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
+      reason,
+      metadata: {
+        amount: BalanceUtils.format(BalanceUtils.toStorage(amount)),
+      },
+    });
+
+    return newBalance;
+  }
+
+  /**
+   * Admin sets balance to exact amount
+   * Logs action to admin_log_action
+   *
+   * @param identifier - Player identifier
+   * @param amount - New balance amount
+   * @param adminDiscordId - Admin performing the action
+   * @param adminDiscordUsername - Admin username
+   * @param reason - Reason for setting balance
+   * @returns Promise resolving to new balance
+   */
+  async adminSet(
+    identifier: PlayerIdentifier,
+    amount: number,
+    adminDiscordId: string,
+    adminDiscordUsername: string,
+    reason: string,
+  ): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    const player = await db.player.get({ minecraftUuid: uuid });
+    const oldBalance = await this.getRaw(uuid);
+
+    const newBalance = await this.set(
+      uuid,
+      amount,
+      reason,
+      BalanceTransactionType.ADMIN_GRANT,
+      {
+        adminDiscordId,
+        adminDiscordUsername,
+      },
+    );
+
+    await db.admin.log.action.logAction({
+      adminDiscordId,
+      adminDiscordUsername,
+      actionType: "balance_set",
+      targetPlayerUuid: uuid,
+      targetPlayerName: player.minecraftUsername,
+      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
+      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
+      oldValue: BalanceUtils.format(oldBalance),
+      newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
+      reason,
+    });
+
+    return newBalance;
+  }
+
+  // ============================================================================
   // TRANSACTION HISTORY
   // ============================================================================
 
