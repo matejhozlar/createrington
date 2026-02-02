@@ -14,6 +14,7 @@ out/
 .env*.local
 .env.development
 .env.docker
+.env.migration
 
 # Logs
 logs/
@@ -41,6 +42,9 @@ postgres_data/
 *.rar
 .cache/
 temp
+
+# Database migration data
+db/migrations
 
 # Auto-generated files
 generated
