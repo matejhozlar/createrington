@@ -14,6 +14,7 @@ import type {
   TicketApiData,
   WaitlistEntryApiData,
   PlayerStrikeApiData,
+  StrikeClassification,
 } from "../db";
 import { DateToString } from "../types";
 
@@ -26,6 +27,14 @@ import { DateToString } from "../types";
  */
 export interface AdminPlayerPathParams {
   id: string; // Discord ID or Minecraft UUID
+}
+
+/**
+ * Query parameters for GET /api/admin/players/:id/tickets
+ */
+export interface GetPlayerTicketsQuery {
+  page?: string; // 0-indexed
+  limit?: string; // default: 20, max: 100
 }
 
 /**
@@ -138,20 +147,6 @@ export interface RemoveStrikeBody {
 // ============================================================================
 // RESPONSE DATA TYPES
 // ============================================================================
-
-/**
- * Strike classification categories
- */
-export type StrikeClassification =
-  | "pvp"
-  | "theft"
-  | "griefing"
-  | "laggy_machines"
-  | "inappropriate_chat"
-  | "harassment"
-  | "exploiting"
-  | "rule_violation"
-  | "other";
 
 /**
  * Admin action audit log entry
@@ -415,7 +410,12 @@ export interface GetPlayerTicketsResponse {
   success: true;
   data: {
     tickets: TicketApiData[];
-    total: number;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 

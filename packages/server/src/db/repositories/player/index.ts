@@ -219,19 +219,41 @@ export class PlayerRepository {
   /**
    * Gets all tickets for a player
    *
+   * @param limit - Max entries to get
+   * @param offset - The offset for pagination
    * @param identifier - Player identifier
+   * @returns Promise to an array of tickets
    */
-  async getTickets(identifier: PlayerIdentifier): Promise<Ticket[]> {
+  async getTickets(
+    identifier: PlayerIdentifier,
+    limit: number = 20,
+    offset: number = 0,
+  ): Promise<Ticket[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
     return await Q.ticket.findAll(
       { creatorDiscordId: player.discordId },
       {
+        limit,
+        offset,
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
         orderDirection: "DESC",
       },
     );
+  }
+
+  /**
+   * Count all tickets for a player
+   *
+   * @param identifier - Player identifier
+   * @returns Promise resolving to a number of tickets
+   */
+  async countTickets(identifier: PlayerIdentifier): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    const player = await Q.player.get({ minecraftUuid: uuid });
+
+    return await Q.ticket.count({ creatorDiscordId: player.discordId });
   }
 
   /**
