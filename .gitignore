@@ -44,5 +44,5 @@ temp
 
 # Auto-generated files
 generated
-packages/shared/db
+packages/shared/src/db
 
