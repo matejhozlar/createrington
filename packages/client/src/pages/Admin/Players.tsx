@@ -30,8 +30,14 @@ import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 
 export function AdminPlayers() {
-  const { stats, loading: statsLoading } = useAdminPlayers();
-  const { fetchPlayers } = useAdminPlayers();
+  const {
+    stats,
+    loading: statsLoading,
+    fetchPlayers,
+    isPlayerOnline,
+    getPlayerServerId,
+    getServerName,
+  } = useAdminPlayers();
 
   // Player list state
   const [players, setPlayers] = useState<PlayerApiData[]>([]);
@@ -299,6 +305,9 @@ export function AdminPlayers() {
                       Status
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
+                      Server
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-medium">
                       Last Seen
                     </th>
                     <th className="px-4 py-3 text-right text-sm font-medium">
@@ -307,64 +316,84 @@ export function AdminPlayers() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {players.map((player) => (
-                    <tr
-                      key={player.minecraftUuid}
-                      className="transition-colors hover:bg-sidebar-accent/30"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar size="sm">
-                            <AvatarImage
-                              src={`https://mc-heads.net/avatar/${player.minecraftUuid}`}
-                              alt={player.minecraftUsername}
-                            />
-                            <AvatarFallback>
-                              {player.minecraftUsername.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">
-                              {player.minecraftUsername}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {player.minecraftUuid.slice(0, 8)}...
-                            </p>
+                  {players.map((player) => {
+                    // Get real-time online status from socket data
+                    const isOnline = isPlayerOnline(player.minecraftUuid);
+                    const currentServerId = getPlayerServerId(
+                      player.minecraftUuid,
+                    );
+                    const serverName = currentServerId
+                      ? getServerName(currentServerId)
+                      : null;
+
+                    return (
+                      <tr
+                        key={player.minecraftUuid}
+                        className="transition-colors hover:bg-sidebar-accent/30"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar size="sm">
+                              <AvatarImage
+                                src={`https://mc-heads.net/avatar/${player.minecraftUuid}`}
+                                alt={player.minecraftUsername}
+                              />
+                              <AvatarFallback>
+                                {player.minecraftUsername.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium">
+                                {player.minecraftUsername}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {player.minecraftUuid.slice(0, 8)}...
+                              </p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm">{player.minecraftUsername}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant={player.online ? "default" : "outline"}
-                          className={cn(
-                            player.online &&
-                              "bg-green-500/20 text-green-500 hover:bg-green-500/30",
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm">{player.minecraftUsername}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant={isOnline ? "default" : "outline"}
+                            className={cn(
+                              isOnline &&
+                                "bg-green-500/20 text-green-500 hover:bg-green-500/30",
+                            )}
+                          >
+                            {isOnline ? "Online" : "Offline"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
+                          {isOnline && serverName ? (
+                            <p className="text-sm text-foreground">
+                              {serverName}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">—</p>
                           )}
-                        >
-                          {player.online ? "Online" : "Offline"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(player.lastSeen).toLocaleDateString()}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            (window.location.href = `/admin/players/${player.minecraftUuid}`)
-                          }
-                        >
-                          View
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(player.lastSeen).toLocaleDateString()}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              (window.location.href = `/admin/players/${player.minecraftUuid}`)
+                            }
+                          >
+                            View
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -30,6 +30,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminPlayers } from "@/contexts/admin";
 import type {
   AdminPlayerDetailed,
   GetAdminPlayerResponse,
@@ -42,6 +43,10 @@ import type {
 export function AdminPlayerDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+
+  // Get socket helpers from admin context
+  const { isPlayerOnline, getPlayerServerId, getServerName } =
+    useAdminPlayers();
 
   // Player data state
   const [player, setPlayer] = useState<AdminPlayerDetailed | null>(null);
@@ -342,6 +347,13 @@ export function AdminPlayerDetail() {
   const totalPlaytimeHours = Math.floor(player.playtime.totalSeconds / 3600);
   const activeStrikes = player.strikes.activeCount;
 
+  // Get real-time online status and server from socket data
+  const isOnline = isPlayerOnline(player.player.minecraftUuid);
+  const currentServerId = getPlayerServerId(player.player.minecraftUuid);
+  const currentServerName = currentServerId
+    ? getServerName(currentServerId)
+    : null;
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4">
       {/* Header */}
@@ -397,13 +409,13 @@ export function AdminPlayerDetail() {
                   {player.player.minecraftUsername}
                 </h1>
                 <Badge
-                  variant={player.player.online ? "default" : "outline"}
+                  variant={isOnline ? "default" : "outline"}
                   className={cn(
-                    player.player.online &&
+                    isOnline &&
                       "bg-green-500/20 text-green-500 hover:bg-green-500/30",
                   )}
                 >
-                  {player.player.online ? "Online" : "Offline"}
+                  {isOnline ? "Online" : "Offline"}
                 </Badge>
                 {activeStrikes > 0 && (
                   <Badge variant="destructive">
@@ -415,6 +427,14 @@ export function AdminPlayerDetail() {
               <p className="text-sm text-muted-foreground">
                 Discord: {player.player.minecraftUsername}
               </p>
+              {isOnline && currentServerName && (
+                <p className="text-sm text-muted-foreground">
+                  Playing on:{" "}
+                  <span className="font-medium text-foreground">
+                    {currentServerName}
+                  </span>
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 UUID: {player.player.minecraftUuid}
               </p>
@@ -566,32 +586,35 @@ export function AdminPlayerDetail() {
             <div>
               <h3 className="text-lg font-semibold">Playtime by Server</h3>
               <div className="mt-4 space-y-2">
-                {player.playtime.summary.map((server) => (
-                  <div
-                    key={server.serverId}
-                    className="flex items-center justify-between rounded-lg border border-border p-4"
-                  >
-                    <div>
-                      <p className="font-medium">Server {server.serverId}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {server.totalSessions} sessions
-                      </p>
+                {player.playtime.summary.map((server) => {
+                  const serverName = getServerName(server.serverId);
+                  return (
+                    <div
+                      key={server.serverId}
+                      className="flex items-center justify-between rounded-lg border border-border p-4"
+                    >
+                      <div>
+                        <p className="font-medium">{serverName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {server.totalSessions} sessions
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">
+                          {Math.floor(parseInt(server.totalSeconds) / 3600)}h{" "}
+                          {Math.floor(
+                            (parseInt(server.totalSeconds) % 3600) / 60,
+                          )}
+                          m
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Avg:{" "}
+                          {Math.floor(parseInt(server.avgSessionSeconds) / 60)}m
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold">
-                        {Math.floor(parseInt(server.totalSeconds) / 3600)}h{" "}
-                        {Math.floor(
-                          (parseInt(server.totalSeconds) % 3600) / 60,
-                        )}
-                        m
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Avg:{" "}
-                        {Math.floor(parseInt(server.avgSessionSeconds) / 60)}m
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
