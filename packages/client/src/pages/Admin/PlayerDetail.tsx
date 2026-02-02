@@ -43,7 +43,9 @@ import type {
   IssueStrikeResponse,
   RemoveStrikeResponse,
   StrikeClassification,
+  GetPlayerSessionsResponse,
 } from "@createrington/shared/api";
+import type { PlayerSessionApiData } from "@createrington/shared/db";
 
 export function AdminPlayerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -83,6 +85,11 @@ export function AdminPlayerDetail() {
   // Delete state
   const [deleteReason, setDeleteReason] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Sessions state
+  const [sessions, setSessions] = useState<PlayerSessionApiData[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
 
   /**
    * Fetch player details
@@ -124,10 +131,60 @@ export function AdminPlayerDetail() {
     }
   }, [id]);
 
+  /**
+   * Fetch player sessions
+   */
+  const fetchSessions = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      setSessionsLoading(true);
+      setSessionsError(null);
+
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("No authentication token");
+      }
+
+      const response = await fetch(
+        `/api/admin/players/${id}/sessions?limit=100`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data: GetPlayerSessionsResponse = await response.json();
+
+      if (data.success) {
+        setSessions(data.data.sessions);
+      }
+    } catch (err) {
+      console.error("Failed to fetch sessions:", err);
+      setSessionsError(
+        err instanceof Error ? err.message : "Failed to fetch sessions",
+      );
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, [id]);
+
   // Load player on mount
   useEffect(() => {
     fetchPlayer();
   }, [fetchPlayer]);
+
+  // Load sessions when Sessions tab is active
+  useEffect(() => {
+    if (activeTab === "sessions" && sessions.length === 0 && !sessionsLoading) {
+      fetchSessions();
+    }
+  }, [activeTab, sessions.length, sessionsLoading, fetchSessions]);
 
   /**
    * Adjust player balance
@@ -321,6 +378,22 @@ export function AdminPlayerDetail() {
       setShowDeleteModal(false);
     }
   }, [id, deleteReason, navigate]);
+
+  /**
+   * Format duration from seconds
+   */
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${secs}s`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    }
+    return `${secs}s`;
+  };
 
   if (loading) {
     return (
@@ -655,10 +728,96 @@ export function AdminPlayerDetail() {
 
         {activeTab === "sessions" && (
           <div>
-            <h3 className="text-lg font-semibold mb-4">Session History</h3>
-            <p className="text-muted-foreground">
-              Session history will be loaded here...
-            </p>
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Session History</h3>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={fetchSessions}
+                disabled={sessionsLoading}
+                className="cursor-pointer"
+              >
+                <Clock className="size-4" />
+                {sessionsLoading ? "Loading..." : "Refresh"}
+              </Button>
+            </div>
+
+            {sessionsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loading size="medium" text="Loading sessions..." />
+              </div>
+            ) : sessionsError ? (
+              <div className="py-12 text-center">
+                <p className="text-destructive">{sessionsError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={fetchSessions}
+                  className="mt-4 cursor-pointer"
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : sessions.length === 0 ? (
+              <div className="py-12 text-center">
+                <Clock className="mx-auto size-12 text-muted-foreground" />
+                <p className="mt-2 text-muted-foreground">No sessions found</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {sessions.map((session) => {
+                  const serverName = getServerName(session.serverId);
+                  const duration = session.secondsPlayed
+                    ? session.secondsPlayed
+                    : 0;
+                  const joinedAt = new Date(session.sessionStart);
+                  const leftAt = session.sessionEnd
+                    ? new Date(session.sessionEnd)
+                    : null;
+
+                  return (
+                    <div
+                      key={session.id}
+                      className="flex items-start justify-between rounded-lg border border-border p-4"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{serverName}</p>
+                          {!leftAt && (
+                            <Badge
+                              variant="default"
+                              className="bg-green-500/20 text-green-500"
+                            >
+                              Active
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Joined: {joinedAt.toLocaleDateString()}{" "}
+                          {joinedAt.toLocaleTimeString()}
+                        </p>
+                        {leftAt && (
+                          <p className="text-sm text-muted-foreground">
+                            Left: {leftAt.toLocaleDateString()}{" "}
+                            {leftAt.toLocaleTimeString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">
+                          {duration > 0
+                            ? formatDuration(Number(duration))
+                            : "In progress"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Session #{session.id}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
