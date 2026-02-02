@@ -6,6 +6,7 @@ import {
   PlayerBalanceTransaction,
   PlayerPlaytimeSummary,
   PlayerSession,
+  PlayerStrike,
   Ticket,
   WaitlistEntry,
 } from "@createrington/shared/db";
@@ -13,6 +14,10 @@ import { TicketStatus } from "@/services/discord/tickets";
 import { DatabaseTable } from "@/generated/db";
 import { BalanceUtils } from "../balance/utils";
 import { AdminEdit } from "@/types";
+import {
+  StrikeClassification,
+  StrikeStatistics,
+} from "@/db/queries/player/strike";
 
 /**
  * Repository for admin player management operations
@@ -66,21 +71,34 @@ export class PlayerRepository {
       open: number;
     };
     waitlist: WaitlistEntry | null;
+    strikes: {
+      all: PlayerStrike[];
+      active: PlayerStrike[];
+      activeCount: number;
+      totalCount: number;
+    };
   }> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
-    const [balance, playtimeSummaries, ticketCount, openTicketCount, waitlist] =
-      await Promise.all([
-        Q.player.balance.find({ minecraftUuid: uuid }),
-        Q.player.playtime.summary.findAll({ playerMinecraftUuid: uuid }),
-        Q.ticket.count({ creatorDiscordId: player.discordId }),
-        Q.ticket.count({
-          creatorDiscordId: player.discordId,
-          status: TicketStatus.OPEN,
-        }),
-        Q.waitlist.entry.find({ discordId: player.discordId }),
-      ]);
+    const [
+      balance,
+      playtimeSummaries,
+      ticketCount,
+      openTicketCount,
+      waitlist,
+      strikes,
+    ] = await Promise.all([
+      Q.player.balance.find({ minecraftUuid: uuid }),
+      Q.player.playtime.summary.findAll({ playerMinecraftUuid: uuid }),
+      Q.ticket.count({ creatorDiscordId: player.discordId }),
+      Q.ticket.count({
+        creatorDiscordId: player.discordId,
+        status: TicketStatus.OPEN,
+      }),
+      Q.waitlist.entry.find({ discordId: player.discordId }),
+      Q.player.strike.getStrikeHistory(uuid, true),
+    ]);
 
     const totalSeconds = playtimeSummaries.reduce(
       (sum, s) => sum + Number(s.totalSeconds),
@@ -105,6 +123,12 @@ export class PlayerRepository {
         open: openTicketCount,
       },
       waitlist,
+      strikes: {
+        all: strikes,
+        active: strikes.filter((s) => !s.removed),
+        activeCount: strikes.filter((s) => !s.removed).length,
+        totalCount: strikes.length,
+      },
     };
   }
 
@@ -457,6 +481,175 @@ export class PlayerRepository {
     }
 
     return results;
+  }
+
+  // ============================================================================
+  // STRIKE MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Issue a strike to a player
+   *
+   * @param identifier - Player to issue strike to
+   * @param data - Strike details
+   * @param adminDiscordId - Admin issuing the strike
+   * @param adminUsername - Admin username
+   * @returns Promise resolving to created strike record
+   */
+  async issueStrike(
+    identifier: PlayerIdentifier,
+    data: {
+      classification: StrikeClassification;
+      description: string;
+      severity: 1 | 2 | 3 | 4 | 5;
+      severId?: number;
+      metadata?: Record<string, any>;
+    },
+    adminDiscordId: string,
+    adminUsername: string,
+  ): Promise<PlayerStrike> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    const player = await Q.player.get({ minecraftUuid: uuid });
+
+    return await db.inTransaction(async (tx) => {
+      const strike = await tx.player.strike.createAndReturn({
+        playerMinecraftUuid: uuid,
+        classification: data.classification,
+        description: data.description,
+        severity: data.severity,
+        issuedByDiscordId: adminDiscordId,
+        issuedByUsername: adminUsername,
+        serverId: data.severId,
+        metadata: data.metadata || {},
+      });
+
+      await tx.admin.log.action.create({
+        adminDiscordId,
+        adminDiscordUsername: adminUsername,
+        actionType: "strike_issued",
+        targetPlayerUuid: uuid,
+        targetPlayerName: player.minecraftUsername,
+        tableName: DatabaseTable.PLAYER_STRIKE.TABLE,
+        fieldName: DatabaseTable.PLAYER_STRIKE.FIELDS.CLASSIFICATION,
+        oldValue: null,
+        newValue: data.classification,
+        reason: data.description,
+        serverId: data.severId,
+        metadata: {
+          strikeId: strike.id,
+          severity: data.severity,
+        },
+      });
+
+      logger.info(
+        `Strike #${strike.id} issued to ${player.minecraftUsername} (${uuid}) by ${adminUsername}: ${data.classification}`,
+      );
+
+      return strike;
+    });
+  }
+
+  /**
+   * Remove/pardon a strike
+   *
+   * @param strikeId - Strike ID to remove
+   * @param adminDiscordId - Admin removing the strike
+   * @param adminUsername - Admin username
+   * @param reason - Reason for removal
+   * @returns Promise resolving to updated strike record
+   */
+  async removeStrike(
+    strikeId: number,
+    adminDiscordId: string,
+    adminUsername: string,
+    reason: string,
+  ): Promise<PlayerStrike> {
+    const strike = await Q.player.strike.get({ id: strikeId });
+
+    if (strike.removed) {
+      throw new Error(`Strike #${strikeId} has already been removed`);
+    }
+
+    const player = await Q.player.get({
+      minecraftUuid: strike.playerMinecraftUuid,
+    });
+
+    return await db.inTransaction(async (tx) => {
+      const updatedStrike = await tx.player.strike.updateAndReturn(
+        { id: strikeId },
+        {
+          removed: true,
+          removedByDiscordId: adminDiscordId,
+          removedByUsername: adminUsername,
+          removedAt: new Date(),
+          removalReason: reason,
+        },
+      );
+
+      await tx.admin.log.action.create({
+        adminDiscordId,
+        adminDiscordUsername: adminUsername,
+        actionType: "strike_removed",
+        targetPlayerUuid: strike.playerMinecraftUuid,
+        targetPlayerName: player.minecraftUsername,
+        tableName: DatabaseTable.PLAYER_STRIKE.TABLE,
+        fieldName: DatabaseTable.PLAYER_STRIKE.FIELDS.REMOVED,
+        oldValue: "false",
+        newValue: "true",
+        reason,
+        serverId: strike.serverId || undefined,
+        metadata: {
+          strikeId,
+          originalClassification: strike.classification,
+          originalSeverity: strike.severity,
+        },
+      });
+
+      logger.info(
+        `Strike #${strikeId} removed for ${player.minecraftUsername} by ${adminUsername}: ${reason}`,
+      );
+
+      return updatedStrike;
+    });
+  }
+
+  /**
+   * Get all strikes for a player
+   *
+   * @param identifier - Player identifier
+   * @param activeOnly - Whether to include only active strikes
+   * @returns Promise resolving to an array of player strikes
+   */
+  async getStrikes(
+    identifier: PlayerIdentifier,
+    activeOnly: boolean = false,
+  ): Promise<PlayerStrike[]> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    return await Q.player.strike.getStrikeHistory(uuid, !activeOnly);
+  }
+
+  /**
+   * Get strike statistics for a player
+   *
+   * @param identifier - Player identifier
+   * @returns Promise resolving to strike statistics
+   */
+  async getStrikeStatistics(
+    identifier: PlayerIdentifier,
+  ): Promise<StrikeStatistics> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    return await Q.player.strike.getPlayerStatistics(uuid);
+  }
+
+  /**
+   * Count active strikes for a player
+   *
+   * @param identifier - Player identifier
+   * @returns Promise resolving to a number of strikes
+   */
+  async countActiveStrikes(identifier: PlayerIdentifier): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    return await Q.player.strike.countActiveStrikes(uuid);
   }
 
   // ============================================================================
