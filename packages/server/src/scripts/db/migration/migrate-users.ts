@@ -350,9 +350,9 @@ async function main(): Promise<void> {
     "minecraft_username",
     "discord_id",
     "online",
-    "last_seen",
+    // "last_seen",
     "created_at",
-    "updated_at",
+    // "updated_at",
     "current_server_id",
   ];
 
@@ -384,6 +384,7 @@ async function main(): Promise<void> {
   // -------------------------
   let skippedNoDiscord = 0;
   let emittedPlayers = 0;
+  const emittedPlayerUuids = new Set<string>();
 
   lines.push("-- =========================================");
   lines.push("-- public.player");
@@ -401,6 +402,8 @@ async function main(): Promise<void> {
       skippedNoDiscord++;
       continue;
     }
+
+    emittedPlayerUuids.add(u.uuid);
 
     // last_seen in old is timestamp (no tz); target is timestamptz.
     // We'll just insert the string; PG will cast if it's parseable.
@@ -459,6 +462,8 @@ async function main(): Promise<void> {
 
   for (const u of users) {
     const uuid = u.uuid;
+
+    if (!emittedPlayerUuids.has(uuid)) continue;
 
     const f = fundsByUuid.get(uuid);
     if (!f) continue;
