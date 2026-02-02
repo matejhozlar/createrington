@@ -52,6 +52,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: LayoutDashboard,
       },
       {
+        title: "Players",
+        url: "/admin/players",
+        icon: Users,
+      },
+      {
         title: "Waitlist",
         url: "/admin/waitlist",
         icon: UserPlus,
