@@ -13,6 +13,7 @@ import type {
   PlayerSessionApiData,
   TicketApiData,
   WaitlistEntryApiData,
+  PlayerStrikeApiData,
 } from "../db";
 import { DateToString } from "../types";
 
@@ -101,9 +102,55 @@ export interface BulkBalanceAdjustBody {
   reason: string;
 }
 
+/**
+ * Query parameters for GET /api/admin/players/:id/strikes
+ */
+export interface GetPlayerStrikesQuery {
+  /** Filter to only active (non-removed) strikes */
+  activeOnly?: "true" | "false";
+}
+
+/**
+ * Body for POST /api/admin/players/:id/strikes
+ */
+export interface IssueStrikeBody {
+  /** Classification category of the strike */
+  classification: StrikeClassification;
+  /** Detailed description of the violation */
+  description: string;
+  /** Severity level from 1 (minor) to 5 (severe) */
+  severity: 1 | 2 | 3 | 4 | 5;
+  /** Optional server ID where the violation occurred */
+  serverId?: number;
+  /** Additional metadata (coordinates, evidence links, item IDs, etc.) */
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Body for DELETE /api/admin/players/:id/strikes/:strikeId
+ */
+export interface RemoveStrikeBody {
+  /** Reason for removing/pardoning the strike */
+  reason: string;
+}
+
 // ============================================================================
 // RESPONSE DATA TYPES
 // ============================================================================
+
+/**
+ * Strike classification categories
+ */
+export type StrikeClassification =
+  | "pvp"
+  | "theft"
+  | "griefing"
+  | "laggy_machines"
+  | "inappropriate_chat"
+  | "harassment"
+  | "exploiting"
+  | "rule_violation"
+  | "other";
 
 /**
  * Admin action audit log entry
@@ -149,6 +196,38 @@ export interface AdminPlayerTickets {
 }
 
 /**
+ * Strike statistics for a player
+ */
+export interface StrikeStatistics {
+  /** Total number of strikes (active + removed) */
+  total: number;
+  /** Number of active (non-removed) strikes */
+  active: number;
+  /** Number of removed/pardoned strikes */
+  removed: number;
+  /** Breakdown by classification type */
+  byClassification: Record<StrikeClassification, number>;
+  /** Breakdown by severity level */
+  bySeverity: Record<1 | 2 | 3 | 4 | 5, number>;
+  /** Timestamp of the most recent strike (ISO 8601) */
+  mostRecent?: string;
+}
+
+/**
+ * Strike data for admin view
+ */
+export interface AdminPlayerStrikes {
+  /** All strikes (including removed) */
+  all: DateToString<PlayerStrikeApiData>[];
+  /** Active (non-removed) strikes only */
+  active: DateToString<PlayerStrikeApiData>[];
+  /** Count of active strikes */
+  activeCount: number;
+  /** Total count of all strikes */
+  totalCount: number;
+}
+
+/**
  * Detailed player data for admin panel
  */
 export interface AdminPlayerDetailed {
@@ -161,6 +240,7 @@ export interface AdminPlayerDetailed {
   playtime: AdminPlayerPlaytime;
   tickets: AdminPlayerTickets;
   waitlist: DateToString<WaitlistEntryApiData> | null;
+  strikes: AdminPlayerStrikes;
 }
 
 /**
@@ -331,6 +411,41 @@ export interface GetPlayerTicketsResponse {
     tickets: TicketApiData[];
     total: number;
   };
+}
+
+/**
+ * Response for GET /api/admin/players/:id/strikes
+ */
+export interface GetPlayerStrikesResponse {
+  success: true;
+  data: {
+    /** List of strikes (filtered by activeOnly if specified) */
+    strikes: DateToString<PlayerStrikeApiData>[];
+    /** Statistical breakdown of all strikes */
+    statistics: StrikeStatistics;
+  };
+}
+
+/**
+ * Response for POST /api/admin/players/:id/strikes
+ */
+export interface IssueStrikeResponse {
+  success: true;
+  data: {
+    strike: DateToString<PlayerStrikeApiData>;
+  };
+  message: string;
+}
+
+/**
+ * Response for DELETE /api/admin/players/:id/strikes/:strikeId
+ */
+export interface RemoveStrikeResponse {
+  success: true;
+  data: {
+    strike: DateToString<PlayerStrikeApiData>;
+  };
+  message: string;
 }
 
 /**

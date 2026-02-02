@@ -287,6 +287,54 @@ INSERT INTO admin_log_action (
 -- Administrative actions
 ('99318080374607872', 'The_Bigshot', 'admin_grant', '550e8400-e29b-41d4-a716-446655440001', 'Steve', 'admin', 'discord_id', NULL, '123456789012345678', 'Promoted to admin', NULL, NOW() - INTERVAL '90 days', '{"role": "moderator"}'),
 ('547450242090532874', 'Agent772', 'player_edit', '550e8400-e29b-41d4-a716-446655440008', 'Philza', 'player', 'minecraft_username', 'Ph1lza', 'Philza', 'Name change approved', 1, NOW() - INTERVAL '15 days', NULL);
+
+-- ============================================================================
+-- PLAYER STRIKES
+-- ============================================================================
+
+INSERT INTO player_strike (
+    player_minecraft_uuid,
+    classification,
+    description,
+    severity,
+    issued_by_discord_id,
+    issued_by_username,
+    issued_at,
+    removed,
+    removed_by_discord_id,
+    removed_by_username,
+    removed_at,
+    removal_reason,
+    server_id,
+    metadata
+) VALUES
+-- Active strikes
+('550e8400-e29b-41d4-a716-446655440004', 'pvp', 'Killed player in spawn protection zone', 2, '818819241666281503', 'saunhardy', NOW() - INTERVAL '2 days', false, NULL, NULL, NULL, NULL, 1, '{"coordinates": "100, 64, -200", "victim": "Steve"}'),
+('550e8400-e29b-41d4-a716-446655440006', 'theft', 'Stole diamonds from community chest', 3, '547450242090532874', 'Agent772', NOW() - INTERVAL '5 days', false, NULL, NULL, NULL, NULL, 1, '{"item": "minecraft:diamond", "quantity": 32, "chest_location": "150, 70, 300"}'),
+('550e8400-e29b-41d4-a716-446655440008', 'laggy_machines', 'Built excessive redstone contraption causing server lag', 2, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '3 days', false, NULL, NULL, NULL, NULL, 1, '{"coordinates": "-450, 65, 800", "tps_impact": "15.2", "contraption_type": "item_sorter"}'),
+('550e8400-e29b-41d4-a716-446655440010', 'inappropriate_chat', 'Used offensive language in global chat', 1, '818819241666281503', 'saunhardy', NOW() - INTERVAL '1 day', false, NULL, NULL, NULL, NULL, 1, '{"chat_log_id": "msg_20260201_1523"}'),
+('550e8400-e29b-41d4-a716-446655440009', 'griefing', 'Destroyed another players farm without permission', 4, '547450242090532874', 'Agent772', NOW() - INTERVAL '7 days', false, NULL, NULL, NULL, NULL, 1, '{"coordinates": "350, 68, -150", "victim": "Alex", "blocks_destroyed": 47, "crops": "wheat"}'),
+('550e8400-e29b-41d4-a716-446655440011', 'harassment', 'Repeatedly targeted and killed the same player', 3, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '4 days', false, NULL, NULL, NULL, NULL, 1, '{"victim": "Newbie1", "kill_count": 8, "time_span_hours": 2}'),
+('550e8400-e29b-41d4-a716-446655440012', 'exploiting', 'Used duplication glitch for diamonds', 5, '818819241666281503', 'saunhardy', NOW() - INTERVAL '10 days', false, NULL, NULL, NULL, NULL, 1, '{"exploit_type": "item_duplication", "item": "minecraft:diamond_block", "quantity_gained": 15, "evidence": "screenshot_001.png"}'),
+('550e8400-e29b-41d4-a716-446655440007', 'rule_violation', 'Built outside world border', 1, '547450242090532874', 'Agent772', NOW() - INTERVAL '6 days', false, NULL, NULL, NULL, NULL, 1, '{"coordinates": "10500, 70, -8900", "world_border": 10000}'),
+('550e8400-e29b-41d4-a716-446655440005', 'other', 'AFK farming with auto-clicker', 2, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '8 days', false, NULL, NULL, NULL, NULL, 1, '{"farm_type": "mob_farm", "afk_duration_hours": 12}'),
+
+-- Removed/Pardoned strikes
+('550e8400-e29b-41d4-a716-446655440003', 'pvp', 'Accidental PvP kill during event', 1, '818819241666281503', 'saunhardy', NOW() - INTERVAL '15 days', true, '547450242090532874', 'Agent772', NOW() - INTERVAL '10 days', 'Player apologized, was accidental during event. First offense.', 1, '{"event": "winter_games_2026", "victim": "Philza"}'),
+('550e8400-e29b-41d4-a716-446655440001', 'inappropriate_chat', 'Minor chat infraction', 1, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '30 days', true, '818819241666281503', 'saunhardy', NOW() - INTERVAL '25 days', 'Good behavior since strike, removed early', 1, NULL),
+('550e8400-e29b-41d4-a716-446655440002', 'theft', 'Took items from unlocked chest thinking it was abandoned', 2, '547450242090532874', 'Agent772', NOW() - INTERVAL '20 days', true, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '15 days', 'Returned all items and helped owner rebuild. Showed genuine remorse.', 1, '{"items_returned": true, "compensation": "helped rebuild barn"}'),
+
+-- Multiple strikes for same player (repeat offender)
+('550e8400-e29b-41d4-a716-446655440013', 'rule_violation', 'Ignored moderator instructions', 1, '818819241666281503', 'saunhardy', NOW() - INTERVAL '12 days', false, NULL, NULL, NULL, NULL, 1, NULL),
+('550e8400-e29b-41d4-a716-446655440013', 'inappropriate_chat', 'Spam in chat after warning', 2, '547450242090532874', 'Agent772', NOW() - INTERVAL '9 days', false, NULL, NULL, NULL, NULL, 1, '{"warning_count": 2}'),
+('550e8400-e29b-41d4-a716-446655440013', 'harassment', 'Continued harassment after first strike', 3, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '5 days', false, NULL, NULL, NULL, NULL, 1, '{"previous_strikes": 2, "victim": "Newbie2"}'),
+
+-- Strikes with varying severity levels
+('550e8400-e29b-41d4-a716-446655440014', 'pvp', 'Minor PvP infraction', 1, '818819241666281503', 'saunhardy', NOW() - INTERVAL '3 days', false, NULL, NULL, NULL, NULL, 1, NULL),
+('550e8400-e29b-41d4-a716-446655440006', 'griefing', 'Major griefing of spawn area', 5, '547450242090532874', 'Agent772', NOW() - INTERVAL '14 days', false, NULL, NULL, NULL, NULL, 1, '{"coordinates": "0, 70, 0", "blocks_destroyed": 523, "area": "spawn_plaza", "severity": "major"}'),
+
+-- Edge cases
+('091b900c-4174-478c-900c-a0fe5a31a329', 'other', 'Testing admin tools (removed immediately)', 1, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '60 days', true, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '60 days', 'Test strike for system validation', 1, '{"test": true}');
 -- ============================================================================
 -- VERIFY DATA INTEGRITY
 -- ============================================================================

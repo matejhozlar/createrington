@@ -20,6 +20,9 @@ import {
   GetPlayerTicketsResponse,
   GetAdminPlayerStatsResponse,
   BulkBalanceAdjustResponse,
+  GetPlayerStrikesResponse,
+  IssueStrikeResponse,
+  RemoveStrikeResponse,
 } from "@createrington/shared/api";
 
 /**
@@ -69,7 +72,7 @@ export class AdminPlayerController {
             createdAt: playerData.player.createdAt.toISOString(),
             updatedAt: playerData.player.updatedAt.toISOString(),
             lastSeen: playerData.player.lastSeen.toISOString(),
-          } as any,
+          },
           balance: playerData.balance
             ? {
                 minecraftUuid: playerData.balance.minecraftUuid,
@@ -87,7 +90,7 @@ export class AdminPlayerController {
               firstSeen: s.firstSeen?.toISOString() || null,
               lastSeen: s.lastSeen?.toISOString() || null,
               updatedAt: s.updatedAt.toISOString(),
-            })) as any,
+            })),
             totalSeconds: playerData.playtime.totalSeconds,
             totalSessions: playerData.playtime.totalSessions,
           },
@@ -100,6 +103,20 @@ export class AdminPlayerController {
                   playerData.waitlist.acceptedAt?.toISOString() || null,
               }
             : null,
+          strikes: {
+            all: playerData.strikes.all.map((s) => ({
+              ...s,
+              issuedAt: s.issuedAt.toISOString(),
+              removedAt: s.removedAt?.toISOString() || null,
+            })),
+            active: playerData.strikes.active.map((s) => ({
+              ...s,
+              issuedAt: s.issuedAt.toISOString(),
+              removedAt: s.removedAt?.toISOString() || null,
+            })),
+            activeCount: playerData.strikes.activeCount,
+            totalCount: playerData.strikes.totalCount,
+          },
         },
       };
 
@@ -694,6 +711,195 @@ export class AdminPlayerController {
       }
       logger.error("Failed to fetch player tickets:", error);
       throw new InternalServerError("Failed to fetch player tickets");
+    }
+  }
+
+  /**
+   * GET /api/admin/players/:id/strikes
+   *
+   * Get all strikes for a player
+   *
+   * Query Parameters:
+   * - activeOnly: Filter to only active strikes (true/false)
+   */
+  static async getPlayerStrikes(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const activeOnly = req.query.activeOnly === "true";
+
+    if (Array.isArray(id)) {
+      throw new BadRequestError("Invalid player ID");
+    }
+
+    const idType = getIdType(id);
+    if (idType === "invalid") {
+      throw new BadRequestError(
+        "Invalid player ID. Must be a Discord ID or Minecraft UUID",
+      );
+    }
+
+    try {
+      const identifier =
+        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
+
+      const [strikes, statistics] = await Promise.all([
+        playerRepo.getStrikes(identifier, activeOnly),
+        playerRepo.getStrikeStatistics(identifier),
+      ]);
+
+      const response: GetPlayerStrikesResponse = {
+        success: true,
+        data: {
+          strikes: strikes as any,
+          statistics: {
+            ...statistics,
+            mostRecent: statistics.mostRecent?.toISOString(),
+          },
+        },
+      };
+
+      res.json(response);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        throw error;
+      }
+      logger.error("Failed to fetch player strikes:", error);
+      throw new InternalServerError("Failed to fetch player strikes");
+    }
+  }
+
+  /**
+   * POST /api/admin/players/:id/strikes
+   *
+   * Issue a strike to a player
+   *
+   * Body:
+   * {
+   *   classification: StrikeClassification,
+   *   description: string,
+   *   severity: 1-5,
+   *   serverId?: number,
+   *   metadata?: Record<string, any>
+   * }
+   */
+  static async issueStrike(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { classification, description, severity, serverId, metadata } =
+      req.body;
+
+    if (Array.isArray(id)) {
+      throw new BadRequestError("Invalid player ID");
+    }
+
+    const idType = getIdType(id);
+    if (idType === "invalid") {
+      throw new BadRequestError(
+        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+      );
+    }
+
+    if (!classification || !description || !severity) {
+      throw new BadRequestError(
+        "classification, description, and severity are required",
+      );
+    }
+
+    if (!Number.isFinite(severity) || severity < 1 || severity > 5) {
+      throw new BadRequestError("severity must be an integer between 1 and 5");
+    }
+
+    if (!req.user) {
+      throw new BadRequestError("User not authenticated");
+    }
+
+    try {
+      const identifier =
+        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
+
+      const strike = await playerRepo.issueStrike(
+        identifier,
+        {
+          classification,
+          description,
+          severity,
+          serverId,
+          metadata,
+        },
+        req.user.discordId,
+        req.user.username,
+      );
+
+      const response: IssueStrikeResponse = {
+        success: true,
+        data: {
+          strike: strike as any,
+        },
+        message: "Strike issued successfully",
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        throw error;
+      }
+      logger.error("Failed to issue strike:", error);
+      throw new InternalServerError("Failed to issue strike");
+    }
+  }
+
+  /**
+   * DELETE /api/admin/players/:id/strikes/:strikeId
+   *
+   * Remove/pardon a strike
+   *
+   * Body:
+   * {
+   *   reason: string
+   * }
+   */
+  static async removeStrike(req: Request, res: Response): Promise<void> {
+    const { id, strikeId } = req.params;
+    const { reason } = req.body;
+
+    if (Array.isArray(id) || Array.isArray(strikeId)) {
+      throw new BadRequestError("Invalid parameters");
+    }
+
+    const strikeIdNum = parseInt(strikeId, 10);
+    if (isNaN(strikeIdNum)) {
+      throw new BadRequestError("Invalid strike ID");
+    }
+
+    if (!reason) {
+      throw new BadRequestError("Reason is required for strike removal");
+    }
+
+    if (!req.user) {
+      throw new BadRequestError("User not authenticated");
+    }
+
+    try {
+      const strike = await playerRepo.removeStrike(
+        strikeIdNum,
+        req.user.discordId,
+        req.user.username,
+        reason,
+      );
+
+      const response: RemoveStrikeResponse = {
+        success: true,
+        data: {
+          strike: strike as any,
+        },
+        message: "Strike removed successfully",
+      };
+
+      res.json(response);
+    } catch (error) {
+      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+        throw error;
+      }
+      logger.error("Failed to remove strike:", error);
+      throw new InternalServerError("Failed to remove strike");
     }
   }
 
