@@ -696,6 +696,12 @@ export class AdminPlayerController {
   static async getPlayerTickets(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
 
+    const page = Math.max(0, parseInt(req.query.page as string) || 0);
+    const limit = Math.min(
+      100,
+      Math.max(1, parseInt(req.query.limit as string) || 20),
+    );
+
     if (Array.isArray(id)) {
       throw new BadRequestError("Invalid player ID");
     }
@@ -703,7 +709,7 @@ export class AdminPlayerController {
     const idType = getIdType(id);
     if (idType === "invalid") {
       throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        "Invalid player ID. Must be a Discord ID or Minecraft UUID",
       );
     }
 
@@ -711,13 +717,21 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const tickets = await playerRepo.getTickets(identifier);
+      const [tickets, total] = await Promise.all([
+        playerRepo.getTickets(identifier, limit, page * limit),
+        playerRepo.countTickets(identifier),
+      ]);
 
       const response: GetPlayerTicketsResponse = {
         success: true,
         data: {
           tickets: tickets as any,
-          total: tickets.length,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
         },
       };
 
