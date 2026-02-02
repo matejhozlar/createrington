@@ -1,5 +1,3 @@
-// packages/shared/src/api/admin-player.types.ts
-
 /**
  * Admin Player API Response Types
  *
@@ -15,6 +13,7 @@ import type {
   WaitlistEntryApiData,
   PlayerStrikeApiData,
   StrikeClassification,
+  AdminLogActionApiData,
 } from "../db";
 import { DateToString } from "../types";
 
@@ -375,7 +374,7 @@ export interface AdjustPlayerBalanceResponse {
 export interface GetPlayerAuditLogResponse {
   success: true;
   data: {
-    actions: AdminActionLog[];
+    actions: AdminLogActionApiData[];
     pagination: {
       page: number;
       limit: number;

@@ -551,7 +551,22 @@ export class AdminPlayerController {
       const response: GetPlayerAuditLogResponse = {
         success: true,
         data: {
-          actions: auditLog as any,
+          actions: auditLog.map((action) => ({
+            id: action.id,
+            adminDiscordId: action.adminDiscordId,
+            adminDiscordUsername: action.adminDiscordUsername,
+            actionType: action.actionType,
+            targetPlayerUuid: action.targetPlayerUuid,
+            targetPlayerName: action.targetPlayerName,
+            tableName: action.tableName,
+            fieldName: action.fieldName,
+            oldValue: action.oldValue,
+            newValue: action.newValue,
+            reason: action.reason,
+            serverId: action.serverId,
+            performedAt: action.performedAt.toISOString(),
+            metadata: action.metadata,
+          })),
           pagination: {
             page,
             limit,
