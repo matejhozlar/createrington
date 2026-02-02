@@ -29,6 +29,9 @@ import {
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
 import { ServerChat } from "./components/chat";
+import { AdminLogs } from "./pages/Admin/Logs";
+import { AdminMessages } from "./pages/Admin/Messages";
+import { AdminServers } from "./pages/Admin/Servers";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -126,10 +129,34 @@ function AppContent() {
               }
             />
             <Route
+              path="/admin/servers"
+              element={
+                <ProtectedRoute requiresAdmin>
+                  <AdminServers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/messages"
+              element={
+                <ProtectedRoute requiresAdmin>
+                  <AdminMessages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/settings"
               element={
                 <ProtectedRoute requiresAdmin>
                   <AdminSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/logs"
+              element={
+                <ProtectedRoute requiresAdmin>
+                  <AdminLogs />
                 </ProtectedRoute>
               }
             />
