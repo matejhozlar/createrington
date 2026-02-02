@@ -9,8 +9,6 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { useAdminPlayers } from "@/contexts/admin";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +27,11 @@ import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 
+// Extended player type with strike count
+interface PlayerWithStrikes extends PlayerApiData {
+  activeStrikeCount?: number;
+}
+
 export function AdminPlayers() {
   const {
     stats,
@@ -40,7 +43,7 @@ export function AdminPlayers() {
   } = useAdminPlayers();
 
   // Player list state
-  const [players, setPlayers] = useState<PlayerApiData[]>([]);
+  const [players, setPlayers] = useState<PlayerWithStrikes[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +58,51 @@ export function AdminPlayers() {
   const [onlineFilter, setOnlineFilter] = useState<boolean | undefined>(
     undefined,
   );
+
+  /**
+   * Fetch active strike counts for players
+   */
+  const fetchStrikeCounts = useCallback(async (playerUuids: string[]) => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (!token || playerUuids.length === 0) return {};
+
+      // Fetch strike counts for all players
+      const strikeCounts: Record<string, number> = {};
+
+      // Note: In a real implementation, you'd want a batch endpoint
+      // For now, we'll fetch individually (consider adding a batch endpoint later)
+      await Promise.all(
+        playerUuids.map(async (uuid) => {
+          try {
+            const response = await fetch(
+              `/api/admin/players/${uuid}/strikes?activeOnly=true`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.data.strikes) {
+                strikeCounts[uuid] = data.data.strikes.length;
+              }
+            }
+          } catch (err) {
+            // Silently fail for individual strike fetches
+            console.warn(`Failed to fetch strikes for ${uuid}:`, err);
+          }
+        }),
+      );
+
+      return strikeCounts;
+    } catch (err) {
+      console.error("Failed to fetch strike counts:", err);
+      return {};
+    }
+  }, []);
 
   /**
    * Load players with current filters
@@ -80,7 +128,19 @@ export function AdminPlayers() {
       const data = await fetchPlayers(query);
 
       if (data) {
-        setPlayers(data.data.players);
+        const playersData = data.data.players;
+
+        // Fetch strike counts for all players
+        const playerUuids = playersData.map((p) => p.minecraftUuid);
+        const strikeCounts = await fetchStrikeCounts(playerUuids);
+
+        // Combine player data with strike counts
+        const playersWithStrikes = playersData.map((player) => ({
+          ...player,
+          activeStrikeCount: strikeCounts[player.minecraftUuid] || 0,
+        }));
+
+        setPlayers(playersWithStrikes);
         setTotal(data.data.pagination.total);
         setTotalPages(data.data.pagination.totalPages);
       }
@@ -90,7 +150,7 @@ export function AdminPlayers() {
     } finally {
       setLoading(false);
     }
-  }, [fetchPlayers, page, limit, searchQuery, onlineFilter]);
+  }, [fetchPlayers, fetchStrikeCounts, page, limit, searchQuery, onlineFilter]);
 
   // Load players on mount and when filters change
   useEffect(() => {
@@ -132,8 +192,6 @@ export function AdminPlayers() {
     <div className="flex flex-1 flex-col gap-4 p-4">
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -250,6 +308,7 @@ export function AdminPlayers() {
             variant={onlineFilter === undefined ? "outline" : "default"}
             size="default"
             onClick={toggleOnlineFilter}
+            className="cursor-pointer"
           >
             {onlineFilter === undefined
               ? "All"
@@ -258,7 +317,9 @@ export function AdminPlayers() {
                 : "Offline"}
           </Button>
 
-          <Button type="submit">Search</Button>
+          <Button type="submit" className="cursor-pointer">
+            Search
+          </Button>
         </form>
       </div>
 
@@ -276,7 +337,11 @@ export function AdminPlayers() {
           <div className="flex flex-1 items-center justify-center py-12">
             <div className="text-center">
               <p className="text-destructive">{error}</p>
-              <Button onClick={loadPlayers} className="mt-4" variant="outline">
+              <Button
+                onClick={loadPlayers}
+                className="mt-4 cursor-pointer"
+                variant="outline"
+              >
                 Try Again
               </Button>
             </div>
@@ -299,7 +364,7 @@ export function AdminPlayers() {
                       Player
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
-                      Discord
+                      Discord ID
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium">
                       Status
@@ -325,23 +390,35 @@ export function AdminPlayers() {
                     const serverName = currentServerId
                       ? getServerName(currentServerId)
                       : null;
+                    const hasActiveStrikes =
+                      (player.activeStrikeCount ?? 0) > 0;
 
                     return (
                       <tr
                         key={player.minecraftUuid}
-                        className="transition-colors hover:bg-sidebar-accent/30"
+                        className={cn(
+                          "transition-colors hover:bg-sidebar-accent/30",
+                          hasActiveStrikes && "bg-destructive/5",
+                        )}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <Avatar size="sm">
-                              <AvatarImage
-                                src={`https://mc-heads.net/avatar/${player.minecraftUuid}`}
-                                alt={player.minecraftUsername}
-                              />
-                              <AvatarFallback>
-                                {player.minecraftUsername.charAt(0)}
-                              </AvatarFallback>
-                            </Avatar>
+                            <div className="relative">
+                              <Avatar size="sm">
+                                <AvatarImage
+                                  src={`https://mc-heads.net/avatar/${player.minecraftUuid}`}
+                                  alt={player.minecraftUsername}
+                                />
+                                <AvatarFallback>
+                                  {player.minecraftUsername.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              {hasActiveStrikes && (
+                                <div className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">
+                                  {player.activeStrikeCount}
+                                </div>
+                              )}
+                            </div>
                             <div>
                               <p className="font-medium">
                                 {player.minecraftUsername}
@@ -353,7 +430,9 @@ export function AdminPlayers() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <p className="text-sm">{player.minecraftUsername}</p>
+                          <p className="text-sm font-mono text-muted-foreground">
+                            {player.discordId}
+                          </p>
                         </td>
                         <td className="px-4 py-3">
                           <Badge
@@ -384,6 +463,7 @@ export function AdminPlayers() {
                           <Button
                             size="sm"
                             variant="outline"
+                            className="cursor-pointer"
                             onClick={() =>
                               (window.location.href = `/admin/players/${player.minecraftUuid}`)
                             }
@@ -411,6 +491,7 @@ export function AdminPlayers() {
                   size="sm"
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 0}
+                  className="cursor-pointer"
                 >
                   <ChevronLeft className="size-4" />
                   Previous
@@ -433,6 +514,7 @@ export function AdminPlayers() {
                         variant={page === pageNum ? "default" : "outline"}
                         size="sm"
                         onClick={() => handlePageChange(pageNum)}
+                        className="cursor-pointer"
                       >
                         {pageNum + 1}
                       </Button>
@@ -445,6 +527,7 @@ export function AdminPlayers() {
                   size="sm"
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page >= totalPages - 1}
+                  className="cursor-pointer"
                 >
                   Next
                   <ChevronRight className="size-4" />
