@@ -159,7 +159,7 @@ export function AdminPlayerDetail() {
           <SessionsTab playerId={id} getServerName={getServerName} />
         )}
 
-        {activeTab === "tickets" && <TicketsTab />}
+        {activeTab === "tickets" && <TicketsTab playerId={id!} />}
 
         {activeTab === "strikes" && (
           <StrikesTab
