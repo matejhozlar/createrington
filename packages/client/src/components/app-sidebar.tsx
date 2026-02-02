@@ -4,8 +4,12 @@ import * as React from "react";
 import {
   AlertCircle,
   Coins,
+  FileText,
   Home,
+  LayoutDashboard,
   Map,
+  MessageSquare,
+  Server,
   Shield,
   Store,
   UserPlus,
@@ -31,61 +35,94 @@ import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/socket";
 import { NavUser } from "./nav-user";
+import { NavAdmin } from "./nav-admin";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
   const { toggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
 
-const { stats: playerStats } = usePlayerData();
+  const { stats: playerStats } = usePlayerData();
 
-const data = {
-  navMain: [
-    {
-      title: "Home",
-      url: "/",
-      icon: Home,
-    },
-    {
-      title: "Market",
-      url: "/market",
-      icon: Store,
-      requiresAuth: true,
-    },
-    {
-      title: "Crypto",
-      url: "/crypto",
-      icon: Coins,
-      requiresAuth: true,
-    },
-    {
-      title: "Players",
-      url: "/online-players",
-      icon: Users,
-      badge: playerStats.total > 0 ? playerStats.total : undefined,
-    },
-    {
-      title: "Map",
-      url: "/blue-map",
-      icon: Map,
-    },
-    {
-      title: "Apply",
-      url: "/apply-to-join",
-      icon: UserPlus,
-    },
-    {
-      title: "Team",
-      url: "/team",
-      icon: Shield,
-    },
-    {
-      title: "Rules",
-      url: "/rules",
-      icon: AlertCircle,
-    },
-  ],
-};
+  const data = {
+    adminNav: [
+      {
+        title: "Dashboard",
+        url: "/admin/dashboard",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Players",
+        url: "/admin/players",
+        icon: Users,
+      },
+      {
+        title: "Waitlist",
+        url: "/admin/waitlist",
+        icon: UserPlus,
+      },
+      {
+        title: "Servers",
+        url: "/admin/servers",
+        icon: Server,
+      },
+      {
+        title: "Messages",
+        url: "/admin/messages",
+        icon: MessageSquare,
+      },
+      {
+        title: "Logs",
+        url: "/admin/logs",
+        icon: FileText,
+      },
+    ],
+    navMain: [
+      {
+        title: "Home",
+        url: "/",
+        icon: Home,
+      },
+      {
+        title: "Market",
+        url: "/market",
+        icon: Store,
+        requiresAuth: true,
+      },
+      {
+        title: "Crypto",
+        url: "/crypto",
+        icon: Coins,
+        requiresAuth: true,
+      },
+      {
+        title: "Players",
+        url: "/online-players",
+        icon: Users,
+        badge: playerStats.total > 0 ? playerStats.total : undefined,
+      },
+      {
+        title: "Map",
+        url: "/blue-map",
+        icon: Map,
+      },
+      {
+        title: "Apply",
+        url: "/apply-to-join",
+        icon: UserPlus,
+      },
+      {
+        title: "Team",
+        url: "/team",
+        icon: Shield,
+      },
+      {
+        title: "Rules",
+        url: "/rules",
+        icon: AlertCircle,
+      },
+    ],
+  };
 
   // Filter nav items based on auth
   const filteredNavMain = data.navMain.filter(
@@ -117,16 +154,14 @@ const data = {
 
       <SidebarContent>
         <ServerStatus />
+        {/* Admin Section - only show if user is admin */}
+        {user?.isAdmin && <NavAdmin items={data.adminNav} />}
 
         <NavMain items={filteredNavMain} />
       </SidebarContent>
 
       <SidebarFooter>
-        {user ? (
-          <NavUser user={user} />
-        ) : (
-          <NavDiscordLogin />
-        )}
+        {user ? <NavUser user={user} /> : <NavDiscordLogin />}
       </SidebarFooter>
 
       <SidebarRail />

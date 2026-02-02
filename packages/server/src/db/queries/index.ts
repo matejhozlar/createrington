@@ -20,6 +20,7 @@ export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";
 export { PlayerPlaytimeSummaryQueries } from "./player/playtime/summary";
 export { PlayerSessionQueries } from "./player/session";
+export { PlayerStrikeQueries } from "./player/strike";
 export { RewardClaimQueries } from "./reward/claim";
 export { ServerQueries } from "./server";
 export { TicketQueries } from "./ticket";

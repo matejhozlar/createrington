@@ -15,6 +15,7 @@ import config from "@/config";
 
 // Types
 import type {
+  EnumTypeInfo,
   GenerationContext,
   GenerationResult,
   TableStructure,
@@ -58,6 +59,7 @@ import {
   copyFile,
   getRelativePath,
 } from "./utils/file-writer";
+import { generateEnumTypes } from "./generators/enum-types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -306,8 +308,12 @@ export async function generate(): Promise<GenerationResult> {
   const context = setupContext();
 
   // Read complete schema from PostgreSQL database
-  const tables = await readSchemaFromDatabase(config.database);
-  console.log(`✅ Found ${tables.length} tables`);
+  const schema = await readSchemaFromDatabase(config.database);
+  const { tables, enums } = schema;
+
+  console.log(
+    `✅ Found ${tables.length} tables and ${enums.length} enum types`,
+  );
 
   // Detect changes by comparing with cached schema
   const previousSchema = loadSchemaCache(context.cacheFile);
@@ -344,7 +350,7 @@ export async function generate(): Promise<GenerationResult> {
   }
 
   // Generate shared files (constants, helpers, barrel exports)
-  generateSharedFiles(tables, hierarchy, context, generatedFiles);
+  generateSharedFiles(tables, enums, hierarchy, context, generatedFiles);
 
   // Save schema cache for next incremental run
   saveSchemaCache(context.cacheFile, currentSchema);
@@ -421,12 +427,18 @@ export async function generate(): Promise<GenerationResult> {
  */
 function generateSharedFiles(
   tables: any[],
+  enums: EnumTypeInfo[],
   hierarchy: TableStructure[],
   context: GenerationContext,
   generatedFiles: string[],
 ): void {
   const { projectRoot, sharedTypesDir, generatedDir, actualQueriesDir } =
     context;
+
+  // Generate database enum types
+  const enumTypesFile = path.join(sharedTypesDir, "database.types.ts");
+  writeFile(enumTypesFile, generateEnumTypes(enums));
+  generatedFiles.push(getRelativePath(projectRoot, enumTypesFile));
 
   // Base types file for shared/db (FilterValue, FilterOperators)
   const baseTypesFile = path.join(sharedTypesDir, "base.types.ts");

@@ -5,7 +5,7 @@ import {
   ServerDataProvider,
   PlayerDataProvider,
 } from "./contexts/socket";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/protected-route";
 import { Home } from "./pages/Home/Home";
 import { Profile } from "./pages/Profile/Profile";
 import { Settings } from "./pages/Settings/Settings";
@@ -15,6 +15,7 @@ import { Forum } from "./pages/Forum/Forum";
 import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/NotFound/NotFound";
+import { ToastProvider } from "./components/ui/toast";
 import {
   AdminDashboard,
   AdminWaitlist,
@@ -28,8 +29,12 @@ import {
   SidebarTrigger,
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
-import { LiveChat } from "./examples/live-chat";
 import { ServerChat } from "./components/chat";
+import { AdminLogs } from "./pages/Admin/Logs";
+import { AdminMessages } from "./pages/Admin/Messages";
+import { AdminServers } from "./pages/Admin/Servers";
+import { AdminPlayerProvider } from "./contexts/admin";
+import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -52,7 +57,7 @@ function AppContent() {
             <Route path="/team" element={<div>Team Page</div>} />
             <Route path="/apply-to-join" element={<div>Apply Page</div>} />
             <Route path="/blue-map" element={<div>Map Page</div>} />
-            <Route path="/server-chat" element={<LiveChat />} />
+            <Route path="/server-chat" element={<div>Chat Page</div>} />
             <Route path="/chat/:serverId" element={<ServerChat />} />
             <Route path="/online-players" element={<div>Players Page</div>} />
             <Route path="/crypto" element={<div>Crypto Page</div>} />
@@ -103,38 +108,27 @@ function AppContent() {
 
             {/* Admin Routes */}
             <Route
-              path="/admin/dashboard"
+              path="/admin/*"
               element={
                 <ProtectedRoute requiresAdmin>
-                  <AdminDashboard />
+                  <AdminPlayerProvider>
+                    <Routes>
+                      <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="waitlist" element={<AdminWaitlist />} />
+                      <Route path="players" element={<AdminPlayers />} />
+                      <Route
+                        path="players/:id"
+                        element={<AdminPlayerDetail />}
+                      />
+                      <Route path="servers" element={<AdminServers />} />
+                      <Route path="messages" element={<AdminMessages />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                      <Route path="logs" element={<AdminLogs />} />
+                    </Routes>
+                  </AdminPlayerProvider>
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/admin/waitlist"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminWaitlist />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/players"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminPlayers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminSettings />
-                </ProtectedRoute>
-              }
-            />
-
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
@@ -158,11 +152,13 @@ function App() {
       >
         <ServerDataProvider autoSubscribe>
           <PlayerDataProvider autoSubscribe>
-            <BrowserRouter>
-              <SidebarProvider>
-                <AppContent />
-              </SidebarProvider>
-            </BrowserRouter>
+            <ToastProvider>
+              <BrowserRouter>
+                <SidebarProvider>
+                  <AppContent />
+                </SidebarProvider>
+              </BrowserRouter>
+            </ToastProvider>
           </PlayerDataProvider>
         </ServerDataProvider>
       </WebSocketProvider>

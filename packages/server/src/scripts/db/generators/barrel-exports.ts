@@ -63,6 +63,9 @@ export function generateSharedBarrelExport(tables: TableInfo[]): string {
  * DO NOT EDIT MANUALLY - regenerate with: npm run generate
  */
 
+// Database enum types
+export * from "./database.types";
+
 // Base types for filters and operators
 export * from "./base.types";
 

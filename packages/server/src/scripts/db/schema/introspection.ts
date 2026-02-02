@@ -1,5 +1,10 @@
 import pg from "pg";
-import type { TableInfo, ColumnInfo } from "../types";
+import type {
+  TableInfo,
+  ColumnInfo,
+  EnumTypeInfo,
+  DatabaseSchema,
+} from "../types";
 
 /**
  * Database schema introspection utilities
@@ -56,15 +61,13 @@ interface DatabaseConfig {
  */
 export async function readSchemaFromDatabase(
   config: DatabaseConfig,
-): Promise<TableInfo[]> {
+): Promise<DatabaseSchema> {
   const db = new pg.Pool(config.pool);
 
   try {
-    // Get all table names from the public schema
     const tableNames = await getTableNames(db);
     const tables: TableInfo[] = [];
 
-    // For each table, gather complete column and constraint information
     for (const tableName of tableNames) {
       const columns = await getTableColumns(db, tableName);
       const primaryKeys = await getPrimaryKeys(db, tableName);
@@ -76,9 +79,10 @@ export async function readSchemaFromDatabase(
       });
     }
 
-    return tables;
+    const enums = await getEnumTypes(db);
+
+    return { tables, enums };
   } finally {
-    // Always close the pool to prevent connection leaks
     await db.end();
   }
 }
@@ -143,6 +147,50 @@ interface ColumnRow {
 
   /** For numeric types: number of decimal places */
   numeric_scale: number | null;
+}
+
+/**
+ * Retrieves all custom enum types from the database
+ *
+ * Queries PostgreSQL system catalogs to get all user-defined ENUM types
+ * along with their possible values in the correct order.
+ *
+ * @param db - Active PostgreSQL connection pool
+ * @returns Array of enum type information with values
+ */
+async function getEnumTypes(db: pg.Pool): Promise<EnumTypeInfo[]> {
+  // First, get all enum type names
+  const typesResult = await db.query<{ type_name: string }>(
+    `SELECT DISTINCT t.typname as type_name
+     FROM pg_type t
+     JOIN pg_enum e ON t.oid = e.enumtypid
+     JOIN pg_namespace n ON t.typnamespace = n.oid
+     WHERE n.nspname = 'public'
+     ORDER BY t.typname`,
+  );
+
+  const enums: EnumTypeInfo[] = [];
+
+  // For each enum type, get its values
+  for (const { type_name } of typesResult.rows) {
+    const valuesResult = await db.query<{ enum_label: string }>(
+      `SELECT e.enumlabel as enum_label
+       FROM pg_type t
+       JOIN pg_enum e ON t.oid = e.enumtypid
+       JOIN pg_namespace n ON t.typnamespace = n.oid
+       WHERE n.nspname = 'public'
+       AND t.typname = $1
+       ORDER BY e.enumsortorder`,
+      [type_name],
+    );
+
+    enums.push({
+      typeName: type_name,
+      values: valuesResult.rows.map((row) => row.enum_label),
+    });
+  }
+
+  return enums;
 }
 
 /**

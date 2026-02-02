@@ -189,3 +189,25 @@ export interface GenerationContext {
   /** Path to the changelog file documenting schema changes */
   changelogFile: string;
 }
+
+/**
+ * Represents metadata about a PostgreSQL enum type
+ */
+export interface EnumTypeInfo {
+  /** The enum type's namme as defined in the database */
+  typeName: string;
+
+  /** Ordered array of enum values */
+  values: string[];
+}
+
+/**
+ * Complete database schema information
+ */
+export interface DatabaseSchema {
+  /** All tables in the database */
+  tables: TableInfo[];
+
+  /** All custom enum types */
+  enums: EnumTypeInfo[];
+}
