@@ -4,22 +4,53 @@ import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
 import { ArrowRight, Download } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import Fade from "embla-carousel-fade";
+
+const heroImages = [
+  "/assets/hero/gondola-station.webp",
+  "/assets/hero/dark-warehouse.webp",
+  "/assets/hero/high-speed-train.webp",
+  "/assets/hero/mountains-train-station.webp",
+  "/assets/hero/space-ship-station.webp",
+];
 
 export const Home: React.FC = () => {
   const { user, login } = useAuth();
+
+  const autoplayPlugin = React.useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: false })
+  );
 
   return (
     <div>
       {/* New Hero Section */}
       <section className="relative w-full overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: "url('/assets/hero/gondola-station.webp')",
-          }}
-        />
+        <Carousel
+          opts={{ loop: true }}
+          plugins={[Fade(), autoplayPlugin.current]}
+          className="absolute inset-0 h-full"
+        >
+          <CarouselContent className="h-full ml-0">
+            {heroImages.map((image, index) => (
+              <CarouselItem key={index} className="h-full pl-0 basis-full">
+                <div
+                  className="w-full h-full bg-cover bg-center bg-no-repeat"
+                  style={{
+                    backgroundImage: `url('${image}')`,
+                  }}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
 
-        <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent" />
+        <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
 
         <div className="relative h-full flex flex-col py-12 px-8">
           {/* Server Logo */}
