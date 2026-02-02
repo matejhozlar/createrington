@@ -11,6 +11,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAdminPlayers } from "@/contexts/admin";
+import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
@@ -51,6 +51,8 @@ export function AdminPlayers() {
     getServerName,
   } = useAdminPlayers();
 
+  const toast = useToastActions();
+
   // Player list state
   const [players, setPlayers] = useState<PlayerWithStrikes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,9 +73,6 @@ export function AdminPlayers() {
   // Sorting state
   const [sortBy, setSortBy] = useState<SortField>("lastSeen");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-  // Copy notification state
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   /**
    * Fetch active strike counts for players
@@ -236,15 +235,18 @@ export function AdminPlayers() {
   /**
    * Copy Discord ID to clipboard
    */
-  const handleCopyDiscordId = useCallback(async (discordId: string) => {
-    try {
-      await navigator.clipboard.writeText(discordId);
-      setCopiedId(discordId);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy Discord ID:", err);
-    }
-  }, []);
+  const handleCopyDiscordId = useCallback(
+    async (discordId: string) => {
+      try {
+        await navigator.clipboard.writeText(discordId);
+        toast.success("Discord ID copied to clipboard");
+      } catch (err) {
+        console.error("Failed to copy Discord ID:", err);
+        toast.error("Failed to copy Discord ID");
+      }
+    },
+    [toast],
+  );
 
   /**
    * Render sort icon for column header
@@ -486,7 +488,6 @@ export function AdminPlayers() {
                         : null;
                       const hasActiveStrikes =
                         (player.activeStrikeCount ?? 0) > 0;
-                      const isCopied = copiedId === player.discordId;
 
                       return (
                         <tr
@@ -529,13 +530,10 @@ export function AdminPlayers() {
                               onClick={() =>
                                 handleCopyDiscordId(player.discordId)
                               }
-                              className="group relative flex items-center gap-2 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                              className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                               title="Click to copy"
                             >
                               {player.discordId}
-                              {isCopied && (
-                                <Check className="size-3 text-green-500 animate-in fade-in zoom-in duration-200" />
-                              )}
                             </button>
                           </td>
                           <td className="px-4 py-3">
