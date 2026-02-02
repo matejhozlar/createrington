@@ -5,7 +5,7 @@ import {
   ServerDataProvider,
   PlayerDataProvider,
 } from "./contexts/socket";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/protected-route";
 import { Home } from "./pages/Home/Home";
 import { Profile } from "./pages/Profile/Profile";
 import { Settings } from "./pages/Settings/Settings";
