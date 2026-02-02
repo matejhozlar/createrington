@@ -91,6 +91,7 @@ export interface AdjustPlayerBalanceBody {
  * Query parameters for GET /api/admin/players/:id/audit-log
  */
 export interface GetPlayerAuditLogQuery {
+  page?: string;
   limit?: string; // Number of actions (default: 50, max: 200)
 }
 
@@ -375,7 +376,12 @@ export interface GetPlayerAuditLogResponse {
   success: true;
   data: {
     actions: AdminActionLog[];
-    total: number;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 
