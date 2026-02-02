@@ -1,13 +1,81 @@
 import React from "react";
 import styles from "./Home.module.scss";
 import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
+import { NavLink } from "react-router-dom";
+import { ArrowRight, Download } from "lucide-react";
 
 export const Home: React.FC = () => {
   const { user, login } = useAuth();
 
   return (
-    <div className={styles.home}>
-      {/* Hero Section */}
+    <div>
+      {/* New Hero Section */}
+      <section className="relative w-full overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: "url('/assets/hero/gondola-station.webp')",
+          }}
+        />
+
+        <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent" />
+
+        <div className="relative h-full flex flex-col py-12 px-8">
+          {/* Server Logo */}
+          <div className="">
+            <img
+              src="/assets/logo/cogs-and-steam-logo.webp"
+              alt="Cogs and Steam Logo"
+              className="h-16 w-auto md:h-20 lg:h-24 object-contain"
+            />
+          </div>
+
+          <div className="flex-1 flex items-end min-h-136">
+            <div className="space-y-6 pt-12">
+              {/* Tagline */}
+              <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
+                Build Big. Automate Everything.
+              </h1>
+
+              <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">
+                Cogs & Steam is a Create-powered server built for players who
+                love clever machines, beautiful builds, and total creative
+                freedom. From small farms to automated factories, every idea has
+                a place here.
+              </p>
+
+              {/* CTA */}
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {!user ? (
+                  <Button size="lg" className="text-lg" asChild>
+                    <NavLink to="/apply-to-join">
+                      Apply Now
+                      <ArrowRight />
+                    </NavLink>
+                  </Button>
+                ) : (
+                  <Button size="lg" className="text-lg" asChild>
+                    <a
+                      href="https://www.curseforge.com/minecraft/modpacks/create-rington"
+                      target="_blank"
+                    >
+                      <Download />
+                      Download Modpack
+                    </a>
+                  </Button>
+                )}
+
+                <Button size="lg" variant="outline" asChild>
+                  <a href="#learn-more">Learn More</a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Original Hero Section - keeping for reference */}
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <h1 className={styles.heroTitle}>
