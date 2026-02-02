@@ -1,13 +1,14 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-01-31T14:30:56.596Z
+-- Generated at: 2026-02-02T12:34:29.449Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
 -- ============================================================================
 
-\i types/00_ticket_status.sql
-\i types/01_ticket_type.sql
+\i types/00_strike_classification.sql
+\i types/01_ticket_status.sql
+\i types/02_ticket_type.sql
 
 -- ============================================================================
 -- TABLES
@@ -25,11 +26,12 @@
 \i tables/09_player_playtime_hourly.sql
 \i tables/10_player_playtime_summary.sql
 \i tables/11_player_session.sql
-\i tables/12_reward_claim.sql
-\i tables/13_server.sql
-\i tables/14_ticket.sql
-\i tables/15_ticket_action.sql
-\i tables/16_waitlist_entry.sql
+\i tables/12_player_strike.sql
+\i tables/13_reward_claim.sql
+\i tables/14_server.sql
+\i tables/15_ticket.sql
+\i tables/16_ticket_action.sql
+\i tables/17_waitlist_entry.sql
 
 -- ============================================================================
 -- FUNCTIONS
