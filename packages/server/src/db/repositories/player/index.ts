@@ -226,6 +226,39 @@ export class PlayerRepository {
     return actions;
   }
 
+  /**
+   * Gets all players with filtering and pagination
+   * (For admin list view)
+   */
+  async getAll(
+    filters?: {
+      discordId?: string;
+      minecraftUuid?: string;
+      minecraftUsername?: { $ilike: string };
+      online?: boolean;
+    },
+    options?: {
+      orderBy?: keyof Player;
+      orderDirection?: "ASC" | "DESC";
+      limit?: number;
+      offset?: number;
+    },
+  ): Promise<Player[]> {
+    return await Q.player.findAll(filters, options);
+  }
+
+  /**
+   * Counts players matching filters
+   */
+  async count(filters?: {
+    discordId: string;
+    minecraftUuid?: string;
+    minecraftUsername?: { $ilike: string };
+    online?: boolean;
+  }): Promise<number> {
+    return await Q.player.count(filters);
+  }
+
   // ============================================================================
   // PLAYER UPDATES
   // ============================================================================
@@ -345,7 +378,7 @@ export class PlayerRepository {
    * @param reason - Reason for bulk adjustement
    * @returns Promise resolving to an array of results with success/failure status
    */
-  async builkBalanceAdjust(
+  async bulkBalanceAdjust(
     playerUuids: string[],
     amount: number,
     adminDiscordId: string,

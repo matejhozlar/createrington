@@ -14,6 +14,7 @@ import type {
   TicketApiData,
   WaitlistEntryApiData,
 } from "../db";
+import { DateToString } from "../types";
 
 // ============================================================================
 // REQUEST TYPES
@@ -124,7 +125,17 @@ export interface AdminActionLog {
  * Playtime data for admin view
  */
 export interface AdminPlayerPlaytime {
-  summary: PlayerPlaytimeSummaryApiData[];
+  summary: Array<
+    DateToString<
+      Omit<
+        PlayerPlaytimeSummaryApiData,
+        "totalSeconds" | "avgSessionSeconds"
+      > & {
+        totalSeconds: string;
+        avgSessionSeconds: string;
+      }
+    >
+  >;
   totalSeconds: number;
   totalSessions: number;
 }
@@ -141,20 +152,39 @@ export interface AdminPlayerTickets {
  * Detailed player data for admin panel
  */
 export interface AdminPlayerDetailed {
-  player: PlayerApiData;
-  balance: PlayerBalanceApiData | null;
+  player: DateToString<PlayerApiData>;
+  balance: DateToString<
+    Omit<PlayerBalanceApiData, "balance"> & {
+      balance: string;
+    }
+  > | null;
   playtime: AdminPlayerPlaytime;
   tickets: AdminPlayerTickets;
-  waitlist: WaitlistEntryApiData | null;
+  waitlist: DateToString<WaitlistEntryApiData> | null;
 }
 
 /**
  * Balance information with recent transactions
  */
 export interface PlayerBalanceInfo {
-  balance: PlayerBalanceApiData;
+  balance: DateToString<
+    Omit<PlayerBalanceApiData, "balance"> & {
+      balance: string;
+    }
+  >;
   formattedBalance: string;
-  recentTransactions: PlayerBalanceTransactionApiData[];
+  recentTransactions: Array<
+    DateToString<
+      Omit<
+        PlayerBalanceTransactionApiData,
+        "amount" | "balanceBefore" | "balanceAfter"
+      > & {
+        amount: string;
+        balanceBefore: string;
+        balanceAfter: string;
+      }
+    >
+  >;
 }
 
 /**

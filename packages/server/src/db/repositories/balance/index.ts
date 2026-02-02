@@ -498,6 +498,7 @@ export class BalanceRepository {
   ): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await db.player.get({ minecraftUuid: uuid });
+    const oldBalance = await this.getRaw(uuid);
 
     const newBalance = await this.add(
       uuid,
@@ -510,15 +511,16 @@ export class BalanceRepository {
       },
     );
 
+    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminDiscordUsername,
       actionType: "balance_grant",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,
-      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
-      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
-      oldValue: BalanceUtils.format(await this.getRaw(uuid)),
+      tableName: "player_balance",
+      fieldName: "balance",
+      oldValue: BalanceUtils.format(oldBalance),
       newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
       reason,
       metadata: {
@@ -549,6 +551,7 @@ export class BalanceRepository {
   ): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await db.player.get({ minecraftUuid: uuid });
+    const oldBalance = await this.getRaw(uuid);
 
     const newBalance = await this.deduct(
       uuid,
@@ -561,15 +564,16 @@ export class BalanceRepository {
       },
     );
 
+    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminDiscordUsername,
       actionType: "balance_deduct",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,
-      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
-      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
-      oldValue: BalanceUtils.format(await this.getRaw(uuid)),
+      tableName: "player_balance",
+      fieldName: "balance",
+      oldValue: BalanceUtils.format(oldBalance),
       newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
       reason,
       metadata: {
@@ -613,14 +617,15 @@ export class BalanceRepository {
       },
     );
 
+    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminDiscordUsername,
       actionType: "balance_set",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,
-      tableName: DatabaseTable.PLAYER_BALANCE.TABLE,
-      fieldName: DatabaseTable.PLAYER_BALANCE.FIELDS.BALANCE,
+      tableName: "player_balance",
+      fieldName: "balance",
       oldValue: BalanceUtils.format(oldBalance),
       newValue: BalanceUtils.format(BalanceUtils.toStorage(newBalance)),
       reason,
