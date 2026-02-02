@@ -10,10 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X } from "lucide-react";
-import type {
-  StrikeClassification,
-  IssueStrikeResponse,
-} from "@createrington/shared/api";
+import type { IssueStrikeResponse } from "@createrington/shared/api";
+import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface IssueStrikeModalProps {
