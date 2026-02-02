@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/Loading";
 import {
   Breadcrumb,
@@ -262,6 +263,8 @@ export function AdminPlayers() {
     },
     [sortBy, sortOrder],
   );
+
+  const navigate = useNavigate();
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -563,7 +566,9 @@ export function AdminPlayers() {
                               variant="outline"
                               className="cursor-pointer"
                               onClick={() =>
-                                (window.location.href = `/admin/players/${player.minecraftUuid}`)
+                                navigate(
+                                  `/admin/players/${player.minecraftUuid}`,
+                                )
                               }
                             >
                               View

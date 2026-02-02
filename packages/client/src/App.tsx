@@ -34,7 +34,7 @@ import { AdminLogs } from "./pages/Admin/Logs";
 import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./pages/Admin/Servers";
 import { AdminPlayerProvider } from "./contexts/admin";
-import { AdminPlayerDetail } from "./pages/Admin/PlayerDetail";
+import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 
 // Inner component that uses sidebar context
 function AppContent() {
