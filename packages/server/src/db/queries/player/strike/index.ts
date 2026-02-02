@@ -1,18 +1,10 @@
 import { Pool, PoolClient } from "pg";
 import { PlayerStrikeBaseQueries } from "@/generated/db/player_strike.queries";
-import type { PlayerStrike } from "@createrington/shared/db";
+import type {
+  PlayerStrike,
+  StrikeClassification,
+} from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
-
-export type StrikeClassification =
-  | "pvp"
-  | "theft"
-  | "griefing"
-  | "laggy_machines"
-  | "inappropriate_chat"
-  | "harassment"
-  | "exploiting"
-  | "rule_violation"
-  | "other";
 
 export interface StrikeStatistics {
   total: number;

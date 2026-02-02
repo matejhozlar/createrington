@@ -7,6 +7,7 @@ import {
   PlayerPlaytimeSummary,
   PlayerSession,
   PlayerStrike,
+  StrikeClassification,
   Ticket,
   WaitlistEntry,
 } from "@createrington/shared/db";
@@ -14,10 +15,7 @@ import { TicketStatus } from "@/services/discord/tickets";
 import { DatabaseTable } from "@/generated/db";
 import { BalanceUtils } from "../balance/utils";
 import { AdminEdit } from "@/types";
-import {
-  StrikeClassification,
-  StrikeStatistics,
-} from "@/db/queries/player/strike";
+import type { StrikeStatistics } from "@/db/queries/player/strike";
 
 /**
  * Repository for admin player management operations
