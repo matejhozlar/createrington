@@ -11,6 +11,12 @@ import {
 } from "@/components/ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
 import Fade from "embla-carousel-fade";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 const heroImages = [
   "/assets/hero/gondola-station.webp",
@@ -20,11 +26,42 @@ const heroImages = [
   "/assets/hero/space-ship-station.webp",
 ];
 
+const features = [
+  {
+    title: "Create at the Core",
+    description:
+      "Gears, belts, steam, and logic-powered machines with Create and carefully chosen expansions.",
+    backgroundImage: "/assets/features/create-workshop.webp",
+    icon: "/assets/features/cogwheel.webp",
+  },
+  {
+    title: "Economy & Trading",
+    description:
+      "Build your fortune through player markets, automated shops, and strategic resource management.",
+    backgroundImage: "/assets/features/market-stall.webp",
+    icon: "/assets/features/currency.webp",
+  },
+  {
+    title: "Built for Multiplayer",
+    description:
+      "Player shops, shared infrastructure, and tools that encourage collaboration.",
+    backgroundImage: "/assets/features/map-overview.webp",
+    icon: "/assets/features/player-heads.webp",
+  },
+  {
+    title: "Curated, Not Bloated",
+    description:
+      "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
+    backgroundImage: "/assets/features/modpack.webp",
+    icon: "/assets/features/chipped-workbench.webp",
+  },
+];
+
 export const Home: React.FC = () => {
   const { user, login } = useAuth();
 
   const autoplayPlugin = React.useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: false })
+    Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
 
   return (
@@ -52,56 +89,105 @@ export const Home: React.FC = () => {
 
         <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
 
-        <div className="relative h-full flex flex-col py-12 px-8">
-          {/* Server Logo */}
-          <div className="">
-            <img
-              src="/assets/logo/cogs-and-steam-logo.webp"
-              alt="Cogs and Steam Logo"
-              className="h-16 w-auto md:h-20 lg:h-24 object-contain"
-            />
-          </div>
+        <div className="py-12 px-8">
+          <div className="relative h-full flex flex-col max-w-7xl mx-auto">
+            {/* Server Logo */}
+            <div className="">
+              <img
+                src="/assets/logo/cogs-and-steam-logo.webp"
+                alt="Cogs and Steam Logo"
+                className="h-16 w-auto md:h-20 lg:h-24 object-contain"
+              />
+            </div>
 
-          <div className="flex-1 flex items-end min-h-136">
-            <div className="space-y-6 pt-12">
-              {/* Tagline */}
-              <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
-                Build Big. Automate Everything.
-              </h1>
+            <div className="flex-1 flex items-end min-h-136">
+              <div className="space-y-6 pt-12">
+                {/* Tagline */}
+                <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
+                  Build Big. Automate Everything.
+                </h1>
 
-              <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">
-                Cogs & Steam is a Create-powered server built for players who
-                love clever machines, beautiful builds, and total creative
-                freedom. From small farms to automated factories, every idea has
-                a place here.
-              </p>
+                <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">
+                  Cogs & Steam is a Create-powered server built for players who
+                  love clever machines, beautiful builds, and total creative
+                  freedom. From small farms to automated factories, every idea
+                  has a place here.
+                </p>
 
-              {/* CTA */}
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {!user ? (
-                  <Button size="lg" className="text-lg" asChild>
-                    <NavLink to="/apply-to-join">
-                      Apply Now
-                      <ArrowRight />
-                    </NavLink>
+                {/* CTA */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {!user ? (
+                    <Button size="lg" className="text-lg" asChild>
+                      <NavLink to="/apply-to-join">
+                        Apply Now
+                        <ArrowRight />
+                      </NavLink>
+                    </Button>
+                  ) : (
+                    <Button size="lg" className="text-lg" asChild>
+                      <a
+                        href="https://www.curseforge.com/minecraft/modpacks/create-rington"
+                        target="_blank"
+                      >
+                        <Download />
+                        Download Modpack
+                      </a>
+                    </Button>
+                  )}
+
+                  <Button size="lg" variant="outline" asChild>
+                    <a href="#learn-more">Learn More</a>
                   </Button>
-                ) : (
-                  <Button size="lg" className="text-lg" asChild>
-                    <a
-                      href="https://www.curseforge.com/minecraft/modpacks/create-rington"
-                      target="_blank"
-                    >
-                      <Download />
-                      Download Modpack
-                    </a>
-                  </Button>
-                )}
-
-                <Button size="lg" variant="outline" asChild>
-                  <a href="#learn-more">Learn More</a>
-                </Button>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-12 px-8 bg-background">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground">
+            Cogs & Steam Server Features
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <Card key={index} className="overflow-hidden border-border pt-0">
+                <div className="p-2">
+                  <div className="relative aspect-video">
+                    {/* Background Image */}
+                    <div
+                      className="absolute inset-0 bg-cover bg-center rounded-lg"
+                      style={{
+                        backgroundImage: `url('${feature.backgroundImage}')`,
+                      }}
+                    />
+
+                    {/* Dark Overlay */}
+                    <div className="absolute inset-0 bg-black/70 rounded-lg" />
+
+                    {/* Feature Icon */}
+                    <div className="absolute top-2 left-2">
+                      <img
+                        src={feature.icon}
+                        alt={feature.title}
+                        className="max-w-24 max-h-24 shadow-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <CardHeader>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+
+                  <CardDescription className="text-base">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
