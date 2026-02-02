@@ -88,7 +88,42 @@
   }
 }
 
-/* For server chat, no idea where else to put it */
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+/* Collapsible admin section animations */
+@keyframes collapsible-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+.animate-collapsible-down {
+  animation: collapsible-down 300ms ease-out;
+}
+
+.animate-collapsible-up {
+  animation: collapsible-up 200ms ease-in;
+}
+
+/* Server chat new message indicator animation */
 @keyframes new-message-indicator-fade {
   0% {
     opacity: 1;
