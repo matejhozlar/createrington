@@ -1,6 +1,6 @@
 import { Pool, PoolClient } from "pg";
 import { PlayerStrikeBaseQueries } from "@/generated/db/player_strike.queries";
-import { PlayerStrike } from "@createrington/shared/db";
+import type { PlayerStrike } from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
 
 export type StrikeClassification =
