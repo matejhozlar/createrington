@@ -39,7 +39,9 @@ function UserSummary({
 
   return (
     <div className={"flex items-center gap-2 " + (className ?? "")}>
-      <Avatar className={`size-8 rounded-xs ${state === "collapsed" ? "ml-2" : ""}`}>
+      <Avatar
+        className={`size-8 rounded-xs ${state === "collapsed" ? "ml-2" : ""}`}
+      >
         <AvatarImage src={avatarUrl} alt={avatarAlt} />
 
         <AvatarFallback className="rounded-lg">
@@ -119,7 +121,7 @@ export function NavUser({ user }: { user: User }) {
             {user.isAdmin && (
               <>
                 <DropdownMenuItem asChild>
-                  <NavLink to="/admin">
+                  <NavLink to="/admin" className="cursor-pointer">
                     <BadgeCheck />
                     Admin Panel
                   </NavLink>
@@ -129,7 +131,11 @@ export function NavUser({ user }: { user: User }) {
               </>
             )}
 
-            <DropdownMenuItem onClick={handleLogout} disabled={loading}>
+            <DropdownMenuItem
+              onClick={handleLogout}
+              disabled={loading}
+              className="cursor-pointer"
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>
