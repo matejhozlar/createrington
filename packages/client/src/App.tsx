@@ -32,6 +32,8 @@ import { ServerChat } from "./components/chat";
 import { AdminLogs } from "./pages/Admin/Logs";
 import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./pages/Admin/Servers";
+import { AdminPlayerProvider } from "./contexts/admin";
+import { AdminPlayerDetail } from "./pages/Admin/PlayerDetail";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -105,62 +107,27 @@ function AppContent() {
 
             {/* Admin Routes */}
             <Route
-              path="/admin/dashboard"
+              path="/admin/*"
               element={
                 <ProtectedRoute requiresAdmin>
-                  <AdminDashboard />
+                  <AdminPlayerProvider>
+                    <Routes>
+                      <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="waitlist" element={<AdminWaitlist />} />
+                      <Route path="players" element={<AdminPlayers />} />
+                      <Route
+                        path="players/:id"
+                        element={<AdminPlayerDetail />}
+                      />
+                      <Route path="servers" element={<AdminServers />} />
+                      <Route path="messages" element={<AdminMessages />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                      <Route path="logs" element={<AdminLogs />} />
+                    </Routes>
+                  </AdminPlayerProvider>
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/admin/waitlist"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminWaitlist />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/players"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminPlayers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/servers"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminServers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/messages"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminMessages />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/settings"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/logs"
-              element={
-                <ProtectedRoute requiresAdmin>
-                  <AdminLogs />
-                </ProtectedRoute>
-              }
-            />
-
             {/* 404 Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
