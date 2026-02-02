@@ -8,10 +8,10 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 interface PlayerHeaderProps {
   player: AdminPlayerDetailed;
@@ -70,15 +70,10 @@ export function PlayerHeader({
       <div className="mx-4 rounded-lg border border-border bg-card p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <Avatar size="lg">
-              <AvatarImage
-                src={`https://mc-heads.net/avatar/${player.player.minecraftUuid}`}
-                alt={player.player.minecraftUsername}
-              />
-              <AvatarFallback>
-                {player.player.minecraftUsername.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            <MinecraftAvatar
+              uuid={player.player.minecraftUuid}
+              username={player.player.minecraftUsername}
+            />
 
             <div>
               <div className="flex items-center gap-2">

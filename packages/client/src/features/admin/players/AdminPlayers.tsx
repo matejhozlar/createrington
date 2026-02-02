@@ -14,7 +14,6 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Search,
   Filter,
@@ -31,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {
@@ -499,15 +499,10 @@ export function AdminPlayers() {
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-3">
                               <div className="relative">
-                                <Avatar size="sm">
-                                  <AvatarImage
-                                    src={`https://mc-heads.net/avatar/${player.minecraftUuid}`}
-                                    alt={player.minecraftUsername}
-                                  />
-                                  <AvatarFallback>
-                                    {player.minecraftUsername.charAt(0)}
-                                  </AvatarFallback>
-                                </Avatar>
+                                <MinecraftAvatar
+                                  uuid={player.minecraftUuid}
+                                  username={player.minecraftUsername}
+                                />
                                 {hasActiveStrikes && (
                                   <div className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">
                                     {player.activeStrikeCount}

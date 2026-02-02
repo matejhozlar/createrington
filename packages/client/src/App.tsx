@@ -16,12 +16,7 @@ import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/NotFound/NotFound";
 import { ToastProvider } from "./components/ui/toast";
-import {
-  AdminDashboard,
-  AdminWaitlist,
-  AdminPlayers,
-  AdminSettings,
-} from "./pages/Admin";
+import { AdminDashboard, AdminWaitlist, AdminSettings } from "./pages/Admin";
 import { AppSidebar } from "./components/app-sidebar";
 import {
   SidebarInset,
@@ -35,6 +30,7 @@ import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./pages/Admin/Servers";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
+import { AdminPlayers } from "./features/admin/players/AdminPlayers";
 
 // Inner component that uses sidebar context
 function AppContent() {

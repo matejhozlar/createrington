@@ -86,6 +86,23 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Global scrollbar styles */
+  *::-webkit-scrollbar {
+    @apply w-1.5;
+  }
+
+  *::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+
+  *:hover::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50;
+  }
 }
 
 /* ============================================================================

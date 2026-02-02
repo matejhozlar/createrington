@@ -1,5 +1,3 @@
-// packages/shared/src/api/admin-player.types.ts
-
 /**
  * Admin Player API Response Types
  *
@@ -15,6 +13,7 @@ import type {
   WaitlistEntryApiData,
   PlayerStrikeApiData,
   StrikeClassification,
+  AdminLogActionApiData,
 } from "../db";
 import { DateToString } from "../types";
 
@@ -91,6 +90,7 @@ export interface AdjustPlayerBalanceBody {
  * Query parameters for GET /api/admin/players/:id/audit-log
  */
 export interface GetPlayerAuditLogQuery {
+  page?: string;
   limit?: string; // Number of actions (default: 50, max: 200)
 }
 
@@ -374,8 +374,13 @@ export interface AdjustPlayerBalanceResponse {
 export interface GetPlayerAuditLogResponse {
   success: true;
   data: {
-    actions: AdminActionLog[];
-    total: number;
+    actions: AdminLogActionApiData[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 

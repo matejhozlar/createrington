@@ -170,7 +170,7 @@ export function AdminPlayerDetail() {
           />
         )}
 
-        {activeTab === "audit" && <AuditTab />}
+        {activeTab === "audit" && <AuditTab playerId={id!} />}
       </div>
 
       {/* Modals */}
