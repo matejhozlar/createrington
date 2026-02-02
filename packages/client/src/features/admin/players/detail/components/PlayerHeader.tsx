@@ -102,7 +102,10 @@ export function PlayerHeader({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Discord: {player.player.minecraftUsername}
+                Minecraft: {player.player.minecraftUsername}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Discord: {player.player.discordId}
               </p>
               {isOnline && currentServerName && (
                 <p className="text-sm text-muted-foreground">
