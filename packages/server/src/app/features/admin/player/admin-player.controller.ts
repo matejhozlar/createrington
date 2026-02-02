@@ -517,13 +517,15 @@ export class AdminPlayerController {
    * Get admin action audit log for a player
    *
    * Query Parameters:
-   * - limit: Number of actions to return (default: 50, max: 200)
+   * - page: Page number (0-indexed, default: 0)
+   * - limit: Number of actions (default: 20, max: 100)
    */
   static async getPlayerAuditLog(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
+    const page = Math.max(0, parseInt(req.query.page as string) || 0);
     const limit = Math.min(
-      200,
-      Math.max(1, parseInt(req.query.limit as string) || 50),
+      100,
+      Math.max(1, parseInt(req.query.limit as string) || 20),
     );
 
     if (Array.isArray(id)) {
@@ -541,13 +543,21 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const auditLog = await playerRepo.getAuditLog(identifier, limit);
+      const [auditLog, total] = await Promise.all([
+        playerRepo.getAuditLog(identifier, limit, page * limit),
+        playerRepo.countAuditLog(identifier),
+      ]);
 
       const response: GetPlayerAuditLogResponse = {
         success: true,
         data: {
           actions: auditLog as any,
-          total: auditLog.length,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages: Math.ceil(total / limit),
+          },
         },
       };
 

@@ -261,10 +261,12 @@ export class PlayerRepository {
    *
    * @param identifier - Player identifier
    * @param limit - Number of actions to return
+   * @param offset - Number of actions to skip
    */
   async getAuditLog(
     identifier: PlayerIdentifier,
-    limit: number = 50,
+    limit: number = 20,
+    offset: number = 0,
   ): Promise<
     Array<{
       id: number;
@@ -285,6 +287,7 @@ export class PlayerRepository {
       { targetPlayerUuid: uuid },
       {
         limit,
+        offset,
         orderBy: DatabaseTable.ADMIN_LOG_ACTION.CAMEL_FIELDS.PERFORMED_AT,
         orderDirection: "DESC",
       },
@@ -293,6 +296,16 @@ export class PlayerRepository {
     return actions;
   }
 
+  /**
+   * Counts total audit log entries for a player
+   *
+   * @param identifier - Player identifier
+   * @returns Promise resolving to total count
+   */
+  async countAuditLog(identifier: PlayerIdentifier): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+    return await Q.admin.log.action.count({ targetPlayerUuid: uuid });
+  }
   /**
    * Gets all players with filtering and pagination
    * (For admin list view)
