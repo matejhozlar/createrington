@@ -500,7 +500,7 @@ export class PlayerRepository {
       classification: StrikeClassification;
       description: string;
       severity: 1 | 2 | 3 | 4 | 5;
-      severId?: number;
+      serverId?: number;
       metadata?: Record<string, any>;
     },
     adminDiscordId: string,
@@ -517,7 +517,7 @@ export class PlayerRepository {
         severity: data.severity,
         issuedByDiscordId: adminDiscordId,
         issuedByUsername: adminUsername,
-        serverId: data.severId,
+        serverId: data.serverId,
         metadata: data.metadata || {},
       });
 
@@ -532,7 +532,7 @@ export class PlayerRepository {
         oldValue: null,
         newValue: data.classification,
         reason: data.description,
-        serverId: data.severId,
+        serverId: data.serverId,
         metadata: {
           strikeId: strike.id,
           severity: data.severity,

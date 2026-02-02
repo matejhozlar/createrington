@@ -5,6 +5,7 @@ import presenceRoutes from "./presence/presence.routes";
 import serverRoutes from "./server/server.routes";
 import playerRoutes from "./player/player.routes";
 import messageRoutes from "./message/message.routes";
+import adminPlayerRoutes from "./admin/player/admin-player.routes";
 
 /**
  * Register all API routes
@@ -22,6 +23,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/servers`, serverRoutes);
   app.use(`${API_PREFIX}/players`, playerRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);
+  app.use(`${API_PREFIX}/admin/players`, adminPlayerRoutes);
 
   logger.info("API routes registered");
 }
