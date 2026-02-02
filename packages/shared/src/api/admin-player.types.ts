@@ -90,6 +90,7 @@ export interface GetPlayerAuditLogQuery {
  */
 export interface GetPlayerSessionsQuery {
   serverId?: string;
+  page?: string;
   limit?: string; // Number of sessions (default: 50, max: 200)
 }
 
@@ -398,7 +399,12 @@ export interface GetPlayerSessionsResponse {
   success: true;
   data: {
     sessions: PlayerSessionApiData[];
-    total: number;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 

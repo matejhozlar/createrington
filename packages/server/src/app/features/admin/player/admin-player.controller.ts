@@ -623,9 +623,10 @@ export class AdminPlayerController {
     const serverId = req.query.serverId
       ? parseInt(req.query.serverId as string)
       : undefined;
+    const page = Math.max(0, parseInt(req.query.page as string) || 0);
     const limit = Math.min(
       200,
-      Math.max(1, parseInt(req.query.limit as string) || 50),
+      Math.max(1, parseInt(req.query.limit as string) || 10),
     );
 
     if (Array.isArray(id)) {
@@ -647,10 +648,18 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
+      // Get total count
+      const totalSessions = await playerRepo.getSessionCount(
+        identifier,
+        serverId,
+      );
+
+      // Get paginated sessions
       const sessions = await playerRepo.getSessionHistory(
         identifier,
         serverId,
         limit,
+        page * limit,
       );
 
       const response: GetPlayerSessionsResponse = {
@@ -660,7 +669,12 @@ export class AdminPlayerController {
             ...s,
             secondsPlayed: s.secondsPlayed?.toString() || null,
           })) as any,
-          total: sessions.length,
+          pagination: {
+            page,
+            limit,
+            total: totalSessions,
+            totalPages: Math.ceil(totalSessions / limit),
+          },
         },
       };
 

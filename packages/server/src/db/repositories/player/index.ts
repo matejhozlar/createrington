@@ -167,16 +167,19 @@ export class PlayerRepository {
   }
 
   /**
-   * Gets player's session history
+   * Gets player's session history with pagination
    *
    * @param identifier - Player identifier
    * @param serverId - Optional server filter
    * @param limit - Number of sessions to return
+   * @param offset - Number of sessions to skip (for pagination)
+   * @returns Promise resolving to array of player sessions
    */
   async getSessionHistory(
     identifier: PlayerIdentifier,
     serverId?: number,
     limit: number = 50,
+    offset: number = 0,
   ): Promise<PlayerSession[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
 
@@ -187,10 +190,30 @@ export class PlayerRepository {
       },
       {
         limit,
+        offset,
         orderBy: DatabaseTable.PLAYER_SESSION.CAMEL_FIELDS.SESSION_START,
         orderDirection: "DESC",
       },
     );
+  }
+
+  /**
+   * Counts total sessions for a player
+   *
+   * @param identifier - Player identifier
+   * @param serverId - Optional server filter
+   * @returns Promise resolving to total session count
+   */
+  async getSessionCount(
+    identifier: PlayerIdentifier,
+    serverId?: number,
+  ): Promise<number> {
+    const uuid = await this.resolvePlayerUuid(identifier);
+
+    return await Q.player.session.count({
+      playerMinecraftUuid: uuid,
+      ...(serverId && { serverId }),
+    });
   }
 
   /**
