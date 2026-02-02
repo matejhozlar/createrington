@@ -15,6 +15,7 @@ import { Forum } from "./pages/Forum/Forum";
 import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/NotFound/NotFound";
+import { ToastProvider } from "./components/ui/toast";
 import {
   AdminDashboard,
   AdminWaitlist,
@@ -151,11 +152,13 @@ function App() {
       >
         <ServerDataProvider autoSubscribe>
           <PlayerDataProvider autoSubscribe>
-            <BrowserRouter>
-              <SidebarProvider>
-                <AppContent />
-              </SidebarProvider>
-            </BrowserRouter>
+            <ToastProvider>
+              <BrowserRouter>
+                <SidebarProvider>
+                  <AppContent />
+                </SidebarProvider>
+              </BrowserRouter>
+            </ToastProvider>
           </PlayerDataProvider>
         </ServerDataProvider>
       </WebSocketProvider>
