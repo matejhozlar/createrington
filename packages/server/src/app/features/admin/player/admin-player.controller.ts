@@ -8,7 +8,7 @@ import {
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { balanceRepo, playerRepo } from "@/db";
-import {
+import type {
   GetAdminPlayerResponse,
   GetAdminPlayersResponse,
   UpdateAdminPlayerResponse,
@@ -24,6 +24,7 @@ import {
   IssueStrikeResponse,
   RemoveStrikeResponse,
 } from "@createrington/shared/api";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
  * Admin Player Controller
@@ -76,7 +77,9 @@ export class AdminPlayerController {
           balance: playerData.balance
             ? {
                 minecraftUuid: playerData.balance.minecraftUuid,
-                balance: playerData.balance.balance.toString(),
+                balance: BalanceUtils.fromStorage(
+                  playerData.balance.balance,
+                ).toString(),
                 updatedAt: playerData.balance.updatedAt.toISOString(),
               }
             : null,
@@ -620,9 +623,10 @@ export class AdminPlayerController {
     const serverId = req.query.serverId
       ? parseInt(req.query.serverId as string)
       : undefined;
+    const page = Math.max(0, parseInt(req.query.page as string) || 0);
     const limit = Math.min(
       200,
-      Math.max(1, parseInt(req.query.limit as string) || 50),
+      Math.max(1, parseInt(req.query.limit as string) || 10),
     );
 
     if (Array.isArray(id)) {
@@ -644,10 +648,18 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
+      // Get total count
+      const totalSessions = await playerRepo.getSessionCount(
+        identifier,
+        serverId,
+      );
+
+      // Get paginated sessions
       const sessions = await playerRepo.getSessionHistory(
         identifier,
         serverId,
         limit,
+        page * limit,
       );
 
       const response: GetPlayerSessionsResponse = {
@@ -657,7 +669,12 @@ export class AdminPlayerController {
             ...s,
             secondsPlayed: s.secondsPlayed?.toString() || null,
           })) as any,
-          total: sessions.length,
+          pagination: {
+            page,
+            limit,
+            total: totalSessions,
+            totalPages: Math.ceil(totalSessions / limit),
+          },
         },
       };
 

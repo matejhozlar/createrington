@@ -5,7 +5,7 @@ import {
   ServerDataProvider,
   PlayerDataProvider,
 } from "./contexts/socket";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ProtectedRoute } from "./components/protected-route";
 import { Home } from "./pages/Home/Home";
 import { Profile } from "./pages/Profile/Profile";
 import { Settings } from "./pages/Settings/Settings";
@@ -34,7 +34,7 @@ import { AdminLogs } from "./pages/Admin/Logs";
 import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./pages/Admin/Servers";
 import { AdminPlayerProvider } from "./contexts/admin";
-import { AdminPlayerDetail } from "./pages/Admin/PlayerDetail";
+import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 
 // Inner component that uses sidebar context
 function AppContent() {

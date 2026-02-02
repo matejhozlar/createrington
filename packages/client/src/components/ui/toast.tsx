@@ -1,6 +1,14 @@
 import * as React from "react";
-import { X } from "lucide-react";
+import {
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  AlertTriangle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { ToastContext } from "@/hooks/use-toast";
 
 // ============================================================================
@@ -15,7 +23,6 @@ export interface Toast {
   title?: string;
   description: string;
   duration?: number;
-  icon?: React.ReactNode;
 }
 
 export interface ToastContextType {
@@ -105,98 +112,80 @@ function ToastItem({
     setIsExiting(true);
     setTimeout(() => {
       onRemove(toast.id);
-    }, 200); // Match animation duration
+    }, 300); // Match animation duration
   }, [toast.id, onRemove]);
 
-  const typeStyles = {
-    success: {
-      bg: "bg-green-500/10 dark:bg-green-500/20",
-      border: "border-green-500/50",
-      text: "text-green-500",
-      icon: "bg-green-500",
-    },
-    error: {
-      bg: "bg-destructive/10 dark:bg-destructive/20",
-      border: "border-destructive/50",
-      text: "text-destructive",
-      icon: "bg-destructive",
-    },
-    warning: {
-      bg: "bg-yellow-500/10 dark:bg-yellow-500/20",
-      border: "border-yellow-500/50",
-      text: "text-yellow-500",
-      icon: "bg-yellow-500",
-    },
-    info: {
-      bg: "bg-sidebar-primary/10 dark:bg-sidebar-primary/20",
-      border: "border-sidebar-primary/50",
-      text: "text-sidebar-primary",
-      icon: "bg-sidebar-primary",
-    },
+  const icons = {
+    success: <CheckCircle2 className="text-green-500" />,
+    error: <AlertCircle className="text-destructive" />,
+    warning: <AlertTriangle className="text-yellow-500" />,
+    info: <Info className="text-sidebar-primary" />,
   };
 
-  const style = typeStyles[toast.type];
+  const textColors = {
+    success: "text-green-500",
+    error: "text-destructive",
+    warning: "text-yellow-500",
+    info: "text-sidebar-primary",
+  };
+
+  const progressColors = {
+    success: "bg-green-500",
+    error: "bg-destructive",
+    warning: "bg-yellow-500",
+    info: "bg-primary",
+  };
+
+  const variant = toast.type === "error" ? "destructive" : "default";
   const duration = toast.duration ?? 0;
 
   return (
     <div
       className={cn(
-        "pointer-events-auto w-full max-w-sm overflow-hidden rounded-lg border shadow-lg backdrop-blur-sm transition-all duration-200",
-        style.bg,
-        style.border,
+        "pointer-events-auto w-full max-w-sm transition-all duration-300 ease-in-out",
         isExiting
-          ? "animate-out slide-out-to-right-full fade-out"
-          : "animate-in slide-in-from-right-full fade-in",
+          ? "translate-x-[calc(100%+1.5rem)] opacity-0"
+          : "translate-x-0 opacity-100",
       )}
       role="alert"
     >
-      <div className="flex items-start gap-3 p-4">
-        {/* Icon */}
-        {toast.icon && (
-          <div
-            className={cn(
-              "flex size-5 shrink-0 items-center justify-center rounded-full",
-              style.icon,
-            )}
-          >
-            <div className="text-white">{toast.icon}</div>
-          </div>
+      <Alert variant={variant} className="relative overflow-hidden shadow-lg">
+        {icons[toast.type]}
+
+        {toast.title && (
+          <AlertTitle className={cn(textColors[toast.type])}>
+            {toast.title}
+          </AlertTitle>
         )}
 
-        {/* Content */}
-        <div className="flex-1 space-y-1">
-          {toast.title && (
-            <p className={cn("text-sm font-semibold", style.text)}>
-              {toast.title}
-            </p>
-          )}
-          <p className="text-sm text-foreground">{toast.description}</p>
-        </div>
+        <AlertDescription className={toast.title ? "" : "mt-0"}>
+          {toast.description}
+        </AlertDescription>
 
         {/* Close button */}
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={handleRemove}
-          className={cn(
-            "flex size-5 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-sidebar-accent",
-            style.text,
-          )}
+          className="absolute right-2 top-2 size-6 cursor-pointer"
           aria-label="Close notification"
         >
-          <X className="size-4" />
-        </button>
-      </div>
+          <X className="size-3.5" />
+        </Button>
 
-      {/* Progress bar */}
-      {duration > 0 && (
-        <div className="h-1 w-full overflow-hidden bg-sidebar-accent/30">
-          <div
-            className={cn("h-full", style.icon)}
-            style={{
-              animation: `toast-progress ${duration}ms linear forwards`,
-            }}
-          />
-        </div>
-      )}
+        {/* Progress bar - countdown from right to left */}
+        {duration > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-border/30">
+            <div
+              className={cn("h-full ml-auto", progressColors[toast.type])}
+              style={{
+                width: "100%",
+                animation: `toast-countdown ${duration}ms linear forwards`,
+              }}
+            />
+          </div>
+        )}
+      </Alert>
     </div>
   );
 }

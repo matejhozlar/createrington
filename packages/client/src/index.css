@@ -143,3 +143,13 @@
 /* Row class — exists only so the indicator div is conditionally rendered */
 .animate-new-message {
 }
+
+/* Toast countdown animation - width goes from 100% to 0% */
+@keyframes toast-countdown {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
