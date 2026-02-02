@@ -1,4 +1,3 @@
-// packages/client/src/pages/Admin/PlayerDetail.tsx
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loading } from "@/components/Loading";
@@ -10,12 +9,18 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Field, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ArrowLeft,
   Coins,
@@ -332,7 +337,7 @@ export function AdminPlayerDetail() {
           <p className="text-destructive">{error || "Player not found"}</p>
           <Button
             onClick={() => navigate("/admin/players")}
-            className="mt-4"
+            className="mt-4 cursor-pointer"
             variant="outline"
           >
             <ArrowLeft className="size-4" />
@@ -355,11 +360,9 @@ export function AdminPlayerDetail() {
     : null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4">
+    <div className="flex flex-1 flex-col gap-4">
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -378,11 +381,12 @@ export function AdminPlayerDetail() {
       </header>
 
       {/* Back Button */}
-      <div>
+      <div className="px-4">
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate("/admin/players")}
+          className="cursor-pointer"
         >
           <ArrowLeft className="size-4" />
           Back to Players
@@ -390,7 +394,7 @@ export function AdminPlayerDetail() {
       </div>
 
       {/* Player Header Card */}
-      <div className="rounded-lg border border-border bg-card p-6">
+      <div className="mx-4 rounded-lg border border-border bg-card p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <Avatar size="lg">
@@ -450,7 +454,11 @@ export function AdminPlayerDetail() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-w-[85px] cursor-pointer"
+            >
               <Edit className="size-4" />
               Edit
             </Button>
@@ -458,6 +466,7 @@ export function AdminPlayerDetail() {
               variant="destructive"
               size="sm"
               onClick={() => setShowDeleteModal(true)}
+              className="min-w-[85px] cursor-pointer"
             >
               <Trash2 className="size-4" />
               Delete
@@ -467,7 +476,7 @@ export function AdminPlayerDetail() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Balance */}
         <div className="rounded-lg border border-border bg-card p-6">
           <div className="flex items-center justify-between">
@@ -484,7 +493,7 @@ export function AdminPlayerDetail() {
           <Button
             size="sm"
             variant="outline"
-            className="mt-4 w-full"
+            className="mt-4 w-full cursor-pointer"
             onClick={() => setShowBalanceModal(true)}
           >
             Adjust Balance
@@ -531,7 +540,7 @@ export function AdminPlayerDetail() {
           <Button
             size="sm"
             variant="outline"
-            className="mt-4 w-full"
+            className="mt-4 w-full cursor-pointer"
             onClick={() => setShowStrikeModal(true)}
           >
             Issue Strike
@@ -556,7 +565,7 @@ export function AdminPlayerDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-border">
+      <div className="mx-4 flex gap-2 border-b border-border">
         {[
           { id: "overview" as const, label: "Overview" },
           { id: "sessions" as const, label: "Sessions" },
@@ -568,9 +577,9 @@ export function AdminPlayerDetail() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "px-4 py-2 text-sm font-medium transition-colors",
+              "cursor-pointer px-4 py-2 text-sm font-medium transition-colors",
               activeTab === tab.id
-                ? "border-b-2 border-sidebar-primary text-sidebar-primary"
+                ? "border-b-2 border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -580,7 +589,7 @@ export function AdminPlayerDetail() {
       </div>
 
       {/* Tab Content */}
-      <div className="rounded-lg border border-border bg-card p-6">
+      <div className="mx-4 rounded-lg border border-border bg-card p-6">
         {activeTab === "overview" && (
           <div className="space-y-6">
             <div>
@@ -666,7 +675,11 @@ export function AdminPlayerDetail() {
           <div>
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Strikes</h3>
-              <Button size="sm" onClick={() => setShowStrikeModal(true)}>
+              <Button
+                size="sm"
+                onClick={() => setShowStrikeModal(true)}
+                className="cursor-pointer"
+              >
                 <Shield className="size-4" />
                 Issue Strike
               </Button>
@@ -701,6 +714,7 @@ export function AdminPlayerDetail() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleRemoveStrike(strike.id)}
+                      className="cursor-pointer"
                     >
                       Remove
                     </Button>
@@ -763,16 +777,18 @@ export function AdminPlayerDetail() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowBalanceModal(false)}
+                className="cursor-pointer"
               >
                 <X className="size-4" />
               </Button>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Amount</label>
-                <div className="mt-1 flex gap-2">
+              <Field>
+                <FieldLabel htmlFor="balance-amount">Amount</FieldLabel>
+                <div className="flex gap-2">
                   <Input
+                    id="balance-amount"
                     type="number"
                     placeholder="0.00"
                     value={balanceAmount}
@@ -786,6 +802,7 @@ export function AdminPlayerDetail() {
                         prev.startsWith("-") ? prev.slice(1) : `-${prev}`,
                       )
                     }
+                    className="cursor-pointer"
                   >
                     {balanceAmount.startsWith("-") ? (
                       <Plus className="size-4" />
@@ -794,32 +811,32 @@ export function AdminPlayerDetail() {
                     )}
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Current balance: ${balance.toLocaleString()}
                 </p>
-              </div>
+              </Field>
 
-              <div>
-                <label className="text-sm font-medium">Reason</label>
+              <Field>
+                <FieldLabel htmlFor="balance-reason">Reason</FieldLabel>
                 <Input
+                  id="balance-reason"
                   type="text"
                   placeholder="Enter reason for adjustment"
                   value={balanceReason}
                   onChange={(e) => setBalanceReason(e.target.value)}
-                  className="mt-1"
                 />
-              </div>
+              </Field>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={() => setShowBalanceModal(false)}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={handleBalanceAdjust}
                   disabled={!balanceAmount || !balanceReason || balanceLoading}
                 >
@@ -833,7 +850,14 @@ export function AdminPlayerDetail() {
 
       {/* Strike Modal */}
       {showStrikeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowStrikeModal(false);
+            }
+          }}
+        >
           <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold">Issue Strike</h3>
@@ -841,38 +865,76 @@ export function AdminPlayerDetail() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowStrikeModal(false)}
+                className="cursor-pointer"
               >
                 <X className="size-4" />
               </Button>
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Classification</label>
-                <select
+              <Field>
+                <FieldLabel htmlFor="strike-classification">
+                  Classification
+                </FieldLabel>
+                <Select
                   value={strikeClassification}
-                  onChange={(e) =>
-                    setStrikeClassification(
-                      e.target.value as StrikeClassification,
-                    )
+                  onValueChange={(value) =>
+                    setStrikeClassification(value as StrikeClassification)
                   }
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2"
                 >
-                  <option value="pvp">PvP</option>
-                  <option value="theft">Theft</option>
-                  <option value="griefing">Griefing</option>
-                  <option value="laggy_machines">Laggy Machines</option>
-                  <option value="inappropriate_chat">Inappropriate Chat</option>
-                  <option value="harassment">Harassment</option>
-                  <option value="exploiting">Exploiting</option>
-                  <option value="rule_violation">Rule Violation</option>
-                  <option value="other">Other</option>
-                </select>
-              </div>
+                  <SelectTrigger
+                    id="strike-classification"
+                    className="w-full cursor-pointer"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100]" position="popper">
+                    <SelectItem value="pvp" className="cursor-pointer">
+                      PvP
+                    </SelectItem>
+                    <SelectItem value="theft" className="cursor-pointer">
+                      Theft
+                    </SelectItem>
+                    <SelectItem value="griefing" className="cursor-pointer">
+                      Griefing
+                    </SelectItem>
+                    <SelectItem
+                      value="laggy_machines"
+                      className="cursor-pointer"
+                    >
+                      Laggy Machines
+                    </SelectItem>
+                    <SelectItem
+                      value="inappropriate_chat"
+                      className="cursor-pointer"
+                    >
+                      Inappropriate Chat
+                    </SelectItem>
+                    <SelectItem value="harassment" className="cursor-pointer">
+                      Harassment
+                    </SelectItem>
+                    <SelectItem value="exploiting" className="cursor-pointer">
+                      Exploiting
+                    </SelectItem>
+                    <SelectItem
+                      value="rule_violation"
+                      className="cursor-pointer"
+                    >
+                      Rule Violation
+                    </SelectItem>
+                    <SelectItem value="other" className="cursor-pointer">
+                      Other
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
 
-              <div>
-                <label className="text-sm font-medium">Severity (1-5)</label>
+              <Field>
+                <FieldLabel htmlFor="strike-severity">
+                  Severity (1-5)
+                </FieldLabel>
                 <Input
+                  id="strike-severity"
                   type="number"
                   min="1"
                   max="5"
@@ -882,31 +944,33 @@ export function AdminPlayerDetail() {
                       parseInt(e.target.value) as 1 | 2 | 3 | 4 | 5,
                     )
                   }
-                  className="mt-1"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="text-sm font-medium">Description</label>
+              <Field>
+                <FieldLabel htmlFor="strike-description">
+                  Description
+                </FieldLabel>
                 <textarea
+                  id="strike-description"
                   placeholder="Describe the violation..."
                   value={strikeDescription}
                   onChange={(e) => setStrikeDescription(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   rows={4}
                 />
-              </div>
+              </Field>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={() => setShowStrikeModal(false)}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={handleIssueStrike}
                   disabled={!strikeDescription || strikeLoading}
                 >
@@ -930,6 +994,7 @@ export function AdminPlayerDetail() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowDeleteModal(false)}
+                className="cursor-pointer"
               >
                 <X className="size-4" />
               </Button>
@@ -941,28 +1006,28 @@ export function AdminPlayerDetail() {
             </p>
 
             <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">Reason</label>
+              <Field>
+                <FieldLabel htmlFor="delete-reason">Reason</FieldLabel>
                 <Input
+                  id="delete-reason"
                   type="text"
                   placeholder="Enter reason for deletion"
                   value={deleteReason}
                   onChange={(e) => setDeleteReason(e.target.value)}
-                  className="mt-1"
                 />
-              </div>
+              </Field>
 
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={() => setShowDeleteModal(false)}
                 >
                   Cancel
                 </Button>
                 <Button
                   variant="destructive"
-                  className="flex-1"
+                  className="flex-1 cursor-pointer"
                   onClick={handleDeletePlayer}
                   disabled={!deleteReason || deleteLoading}
                 >

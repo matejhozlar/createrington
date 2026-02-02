@@ -8,7 +8,7 @@ import {
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { balanceRepo, playerRepo } from "@/db";
-import {
+import type {
   GetAdminPlayerResponse,
   GetAdminPlayersResponse,
   UpdateAdminPlayerResponse,
@@ -24,6 +24,7 @@ import {
   IssueStrikeResponse,
   RemoveStrikeResponse,
 } from "@createrington/shared/api";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
  * Admin Player Controller
@@ -76,7 +77,9 @@ export class AdminPlayerController {
           balance: playerData.balance
             ? {
                 minecraftUuid: playerData.balance.minecraftUuid,
-                balance: playerData.balance.balance.toString(),
+                balance: BalanceUtils.fromStorage(
+                  playerData.balance.balance,
+                ).toString(),
                 updatedAt: playerData.balance.updatedAt.toISOString(),
               }
             : null,
