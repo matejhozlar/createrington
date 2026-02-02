@@ -237,7 +237,7 @@ export function AdminPlayers() {
     async (discordId: string) => {
       try {
         await navigator.clipboard.writeText(discordId);
-        toast.success("Discord ID copied to clipboard");
+        toast.info("Discord ID copied to clipboard");
       } catch (err) {
         console.error("Failed to copy Discord ID:", err);
         toast.error("Failed to copy Discord ID");

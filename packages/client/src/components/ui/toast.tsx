@@ -112,7 +112,7 @@ function ToastItem({
     setIsExiting(true);
     setTimeout(() => {
       onRemove(toast.id);
-    }, 200);
+    }, 300); // Match animation duration
   }, [toast.id, onRemove]);
 
   const icons = {
@@ -133,7 +133,7 @@ function ToastItem({
     success: "bg-green-500",
     error: "bg-destructive",
     warning: "bg-yellow-500",
-    info: "bg-sidebar-primary",
+    info: "bg-primary",
   };
 
   const variant = toast.type === "error" ? "destructive" : "default";
@@ -142,10 +142,10 @@ function ToastItem({
   return (
     <div
       className={cn(
-        "pointer-events-auto w-full max-w-sm transition-all duration-200",
+        "pointer-events-auto w-full max-w-sm transition-all duration-300 ease-in-out",
         isExiting
-          ? "animate-out slide-out-to-right-full fade-out"
-          : "animate-in slide-in-from-right-full fade-in",
+          ? "translate-x-[calc(100%+1.5rem)] opacity-0"
+          : "translate-x-0 opacity-100",
       )}
       role="alert"
     >
@@ -173,13 +173,14 @@ function ToastItem({
           <X className="size-3.5" />
         </Button>
 
-        {/* Progress bar */}
+        {/* Progress bar - countdown from right to left */}
         {duration > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1 overflow-hidden bg-border/30">
             <div
-              className={cn("h-full", progressColors[toast.type])}
+              className={cn("h-full ml-auto", progressColors[toast.type])}
               style={{
-                animation: `toast-progress ${duration}ms linear forwards`,
+                width: "100%",
+                animation: `toast-countdown ${duration}ms linear forwards`,
               }}
             />
           </div>
