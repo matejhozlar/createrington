@@ -6,6 +6,9 @@
  * types to prevent precision loss and overflow issues in JavaScript.
  */
 
+import { EnumTypeInfo } from "../types";
+import { snakeToPascal } from "./naming";
+
 /**
  * Converts a PostgreSQL column type to its TypeScript type equivalent
  *
@@ -32,8 +35,9 @@ export function pgTypeToTsType(
   isNullable: boolean,
   numericPrecision: number | null,
   numericScale: number | null,
+  enums: EnumTypeInfo[] = [],
 ): string {
-  const baseType = getBaseType(udtName, numericPrecision, numericScale);
+  const baseType = getBaseType(udtName, numericPrecision, numericScale, enums);
   return isNullable ? `${baseType} | null` : baseType;
 }
 
@@ -59,7 +63,12 @@ function getBaseType(
   udtName: string,
   numericPrecision: number | null,
   numericScale: number | null,
+  enums: EnumTypeInfo[] = [],
 ): string {
+  const enumType = enums.find((e) => e.typeName === udtName);
+  if (enumType) {
+    return snakeToPascal(enumType.typeName);
+  }
   // Handle numeric type with precision/scale considerations
   if (udtName === "numeric") {
     return getNumericType(numericPrecision, numericScale);

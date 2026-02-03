@@ -4,7 +4,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { WaitlistEntry, WaitlistEntryCreate } from "@/generated/db";
 import { email, EmailTemplate } from "@/services/email";
-import { WaitlistStatus } from "@/types";
+import { WaitlistStatus } from "@/generated/db";
 import crypto from "node:crypto";
 
 interface RegistrationResult {

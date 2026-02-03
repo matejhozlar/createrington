@@ -1,4 +1,4 @@
-import type { TableInfo } from "../types";
+import type { TableInfo, EnumTypeInfo } from "../types";
 import { snakeToPascal, snakeToCamel } from "../utils/naming";
 import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
 
@@ -58,11 +58,18 @@ import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
  * // Generates all type definitions for the users table
  * ```
  */
-export function generateTypes(table: TableInfo): string {
+export function generateTypes(
+  table: TableInfo,
+  enums: EnumTypeInfo[] = [],
+): string {
   const className = snakeToPascal(table.tableName);
 
-  return `import { CamelCaseKeys } from "../";
+  // Determine which enum types are used in this table
+  const usedEnums = getUsedEnums(table, enums);
+  const enumImports = generateEnumImports(usedEnums);
 
+  return `import { CamelCaseKeys } from "../";
+${enumImports}
 /**
  * Database representation of ${table.tableName} table
  * 
@@ -73,7 +80,7 @@ export function generateTypes(table: TableInfo): string {
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: npm run generate
  */
-${generateRowInterface(table, className)}
+${generateRowInterface(table, className, enums)}
 
 /**
  * Application representation with camelCase field names
@@ -91,7 +98,7 @@ ${generateEntityType(className)}
  * format. Use this type for API responses, client-side data, and anywhere
  * JSON serialization occurs (Date objects don't serialize well to JSON).
  */
-${generateApiDataType(table, className)}
+${generateApiDataType(table, className, enums)}
 
 /**
  * Data required to create a new ${table.tableName} record
@@ -100,7 +107,7 @@ ${generateApiDataType(table, className)}
  * Fields with defaults, auto-generated values (e.g., id, timestamps), or
  * nullable columns are marked optional.
  */
-${generateCreateInterface(table, className)}
+${generateCreateInterface(table, className, enums)}
 
 /**
  * Valid identifiers for querying ${table.tableName}
@@ -109,7 +116,7 @@ ${generateCreateInterface(table, className)}
  * Includes primary key combinations and individual unique column identifiers.
  * Use this type when fetching, updating, or deleting specific records.
  */
-${generateIdentifierType(table, className)}
+${generateIdentifierType(table, className, enums)}
 
 /**
  * Type-safe filters for querying ${table.tableName}
@@ -122,6 +129,34 @@ ${generateFiltersType(table, className)}
 `;
 }
 
+/**
+ * Determines which enum types are actually used in the table's columns
+ */
+function getUsedEnums(table: TableInfo, enums: EnumTypeInfo[]): EnumTypeInfo[] {
+  const usedEnumTypes = new Set<string>();
+
+  for (const col of table.columns) {
+    const enumType = enums.find((e) => e.typeName === col.udtName);
+    if (enumType) {
+      usedEnumTypes.add(enumType.typeName);
+    }
+  }
+
+  return enums.filter((e) => usedEnumTypes.has(e.typeName));
+}
+
+/**
+ * Generates import statement for used enum types
+ */
+function generateEnumImports(usedEnums: EnumTypeInfo[]): string {
+  if (usedEnums.length === 0) {
+    return "";
+  }
+
+  const enumTypeNames = usedEnums.map((e) => snakeToPascal(e.typeName)).sort(); // Sort for consistent output
+
+  return `import type { ${enumTypeNames.join(", ")} } from "./database.types";\n`;
+}
 /**
  * Generates API data interface with dates as ISO string format
  *
@@ -167,7 +202,11 @@ ${generateFiltersType(table, className)}
  * });
  * ```
  */
-function generateApiDataType(table: TableInfo, className: string): string {
+function generateApiDataType(
+  table: TableInfo,
+  className: string,
+  enums: EnumTypeInfo[] = [],
+): string {
   const fields = table.columns.map((col) => {
     const camelName = snakeToCamel(col.columnName);
     let type = pgTypeToTsType(
@@ -175,6 +214,7 @@ function generateApiDataType(table: TableInfo, className: string): string {
       false, // Get base type without null
       col.numericPrecision,
       col.numericScale,
+      enums,
     );
 
     // Convert Date to string for JSON serialization compatibility
@@ -245,13 +285,18 @@ ${fields.join("\n")}
  * const row: UserRow = result.rows[0];
  * ```
  */
-function generateRowInterface(table: TableInfo, className: string): string {
+function generateRowInterface(
+  table: TableInfo,
+  className: string,
+  enums: EnumTypeInfo[] = [],
+): string {
   const fields = table.columns.map((col) => {
     const type = pgTypeToTsType(
       col.udtName,
       col.isNullable,
       col.numericPrecision,
       col.numericScale,
+      enums,
     );
     const comment = getNumericComment(
       col.udtName,
@@ -368,7 +413,11 @@ function generateEntityType(className: string): string {
  * await db.users.create(newUser);
  * ```
  */
-function generateCreateInterface(table: TableInfo, className: string): string {
+function generateCreateInterface(
+  table: TableInfo,
+  className: string,
+  enums: EnumTypeInfo[] = [],
+): string {
   const { required, optional } = partitionCreateFields(table);
 
   const requiredFields = required.map((col) => {
@@ -377,6 +426,7 @@ function generateCreateInterface(table: TableInfo, className: string): string {
       false,
       col.numericPrecision,
       col.numericScale,
+      enums,
     );
     return `  ${snakeToCamel(col.columnName)}: ${type};`;
   });
@@ -387,6 +437,7 @@ function generateCreateInterface(table: TableInfo, className: string): string {
       col.isNullable,
       col.numericPrecision,
       col.numericScale,
+      enums,
     );
     return `  ${snakeToCamel(col.columnName)}?: ${type};`;
   });
@@ -551,7 +602,11 @@ export function extractIdentifierFieldNames(table: TableInfo): string[] {
  * await db.users.findOne({ name: 'John' });         // ✗ Compile error
  * ```
  */
-function generateIdentifierType(table: TableInfo, className: string): string {
+function generateIdentifierType(
+  table: TableInfo,
+  className: string,
+  enums: EnumTypeInfo[] = [],
+): string {
   const identifiers: string[] = [];
 
   // Add primary key combination as a single object type
@@ -563,6 +618,7 @@ function generateIdentifierType(table: TableInfo, className: string): string {
         false,
         col.numericPrecision,
         col.numericScale,
+        enums,
       );
       return `${snakeToCamel(col.columnName)}: ${type}`;
     });
