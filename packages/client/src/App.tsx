@@ -14,7 +14,7 @@ import { ServerStatus } from "./pages/ServerStatus/ServerStatus";
 import { Forum } from "./pages/Forum/Forum";
 import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
-import { NotFound } from "./pages/NotFound/NotFound";
+import { NotFound } from "./pages/not-found";
 import { ToastProvider } from "./components/ui/toast";
 import { AdminDashboard, AdminWaitlist, AdminSettings } from "./pages/Admin";
 import { AppSidebar } from "./components/app-sidebar";
