@@ -1,6 +1,7 @@
 import React from "react";
 import { useAuth } from "@/contexts/auth/";
 import { Loading } from "@/components/Loading";
+import { NotFound } from "@/pages/not-found";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,7 +16,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requiresAdmin = false,
   fallback,
 }) => {
-  const { user, loading, login } = useAuth();
+  const { user, loading } = useAuth();
 
   // Show loading state
   if (loading) {
@@ -24,15 +25,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check authentication requirement
   if (requiresAuth && !user) {
-    return (
-      fallback || (
-        <div style={{ padding: "2rem", textAlign: "center" }}>
-          <h2>Authentication Required</h2>
-          <p>You need to be logged in to access this page</p>
-          <button onClick={login}>Login with Discord</button>
-        </div>
-      )
-    );
+    return fallback || <NotFound />;
   }
 
   // Check admin requirement
