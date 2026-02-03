@@ -217,7 +217,7 @@ export const Home: React.FC = () => {
 
         <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
 
-        <div className="py-12 px-8">
+        <div className="py-12 px-5 md:px-8">
           <div className="relative h-full flex flex-col max-w-7xl mx-auto">
             {/* Server Logo */}
             <div className="">
@@ -274,7 +274,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="relative -mt-px py-12 px-8 bg-background">
+      <section className="relative -mt-px py-12 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground" id="server-features">
             Cogs & Steam Server Features
@@ -321,7 +321,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Server Metrics Section */}
-      <section id="learn-more" className="py-16 px-8 bg-zinc-950">
+      <section id="learn-more" className="py-16 px-5 md:px-8 bg-zinc-950">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-semibold mb-4 text-foreground">
@@ -365,7 +365,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Modpack Section */}
-      <section className="py-16 px-8 bg-background">
+      <section className="py-16 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
             <div className="flex flex-col gap-3">
