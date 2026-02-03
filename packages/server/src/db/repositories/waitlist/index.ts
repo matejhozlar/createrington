@@ -121,7 +121,7 @@ export class WaitlistRepository {
       { id: entryId },
       {
         token,
-        status: WaitlistStatus.ACCEPTED,
+        status: "accepted",
         acceptedAt: new Date(),
         acceptedBy: config.discord.bots.main.id,
       },
@@ -235,7 +235,7 @@ export class WaitlistRepository {
       { id: entry.id },
       {
         token,
-        status: WaitlistStatus.ACCEPTED,
+        status: "accepted",
         acceptedAt: new Date(),
         acceptedBy: adminId,
       },
