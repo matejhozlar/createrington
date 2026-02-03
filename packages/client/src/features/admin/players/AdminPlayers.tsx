@@ -9,6 +9,14 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import {
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useAdminPlayers } from "@/contexts/admin";
 import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -21,8 +29,6 @@ import {
   TrendingUp,
   Coins,
   UserPlus,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -263,6 +269,46 @@ export function AdminPlayers() {
     },
     [sortBy, sortOrder],
   );
+
+  /**
+   * Generate pagination items with ellipsis
+   */
+  const getPaginationItems = useCallback(() => {
+    const items: (number | "ellipsis")[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is less than max visible
+      return Array.from({ length: totalPages }, (_, i) => i);
+    }
+
+    // Always show first page
+    items.push(0);
+
+    if (page <= 2) {
+      // Near start: show first few pages
+      items.push(1, 2, 3);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    } else if (page >= totalPages - 3) {
+      // Near end: show last few pages
+      items.push("ellipsis");
+      items.push(
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+      );
+    } else {
+      // Middle: show current page and neighbors
+      items.push("ellipsis");
+      items.push(page - 1, page, page + 1);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    }
+
+    return items;
+  }, [page, totalPages]);
 
   const navigate = useNavigate();
 
@@ -577,60 +623,62 @@ export function AdminPlayers() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between border-t border-border p-4">
+              <div className="flex items-center border-t border-border p-4">
                 <p className="text-sm text-muted-foreground">
                   Showing {page * limit + 1} to{" "}
                   {Math.min((page + 1) * limit, total)} of {total} players
                 </p>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page === 0}
-                    className="cursor-pointer"
-                  >
-                    <ChevronLeft className="size-4" />
-                    Previous
-                  </Button>
+                <PaginationContent className="flex-nowrap justify-end ml-auto">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 0) handlePageChange(page - 1);
+                      }}
+                      className={cn(
+                        page === 0 && "pointer-events-none opacity-50",
+                        "cursor-pointer",
+                      )}
+                    />
+                  </PaginationItem>
 
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const pageNum =
-                        totalPages <= 5
-                          ? i
-                          : page < 3
-                            ? i
-                            : page > totalPages - 4
-                              ? totalPages - 5 + i
-                              : page - 2 + i;
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={page === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handlePageChange(pageNum)}
+                  {getPaginationItems().map((item, index) => (
+                    <PaginationItem key={index}>
+                      {item === "ellipsis" ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(item);
+                          }}
+                          isActive={page === item}
                           className="cursor-pointer"
                         >
-                          {pageNum + 1}
-                        </Button>
-                      );
-                    })}
-                  </div>
+                          {item + 1}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= totalPages - 1}
-                    className="cursor-pointer"
-                  >
-                    Next
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages - 1) handlePageChange(page + 1);
+                      }}
+                      className={cn(
+                        page >= totalPages - 1 &&
+                          "pointer-events-none opacity-50",
+                        "cursor-pointer",
+                      )}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
               </div>
             </>
           )}
