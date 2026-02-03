@@ -228,7 +228,7 @@ export const Home: React.FC = () => {
               />
             </div>
 
-            <div className="flex-1 flex items-end min-h-136">
+            <div className="flex-1 flex items-end min-h-148">
               <div className="space-y-6 pt-12">
                 {/* Tagline */}
                 <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
