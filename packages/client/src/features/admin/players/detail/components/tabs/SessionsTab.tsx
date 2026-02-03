@@ -251,8 +251,8 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           {totalPages > 1 && (
             <div className="flex items-center gap-4 border-t border-border p-4">
               <p className="flex-1 text-sm text-muted-foreground">
-                Showing {page * limit + 1} to{" "}
-                {Math.min((page + 1) * limit, total)} of {total} sessions
+                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
+                of {total} sessions
               </p>
 
               {/* No <Pagination /> wrapper — it centers by default */}

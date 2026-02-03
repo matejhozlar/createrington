@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/Loading";
 import {
@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {
@@ -79,49 +80,47 @@ export function AdminPlayers() {
   const [sortBy, setSortBy] = useState<SortField>("lastSeen");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  const strikeCacheRef = useRef<Record<string, number>>({});
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+
   /**
    * Fetch active strike counts for players
    */
   const fetchStrikeCounts = useCallback(async (playerUuids: string[]) => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token || playerUuids.length === 0) return {};
+    const token = localStorage.getItem("auth_token");
+    if (!token || playerUuids.length === 0) return {};
 
-      // Fetch strike counts for all players
-      const strikeCounts: Record<string, number> = {};
+    const missing = playerUuids.filter(
+      (u) => strikeCacheRef.current[u] === undefined,
+    );
+    if (missing.length === 0) return strikeCacheRef.current;
 
-      // Note: In a real implementation, you'd want a batch endpoint
-      // For now, we'll fetch individually (consider adding a batch endpoint later)
-      await Promise.all(
-        playerUuids.map(async (uuid) => {
-          try {
-            const response = await fetch(
-              `/api/admin/players/${uuid}/strikes?activeOnly=true`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              },
-            );
+    await Promise.all(
+      missing.map(async (uuid) => {
+        try {
+          const response = await fetch(
+            `/api/admin/players/${uuid}/strikes?activeOnly=true`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
 
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success && data.data.strikes) {
-                strikeCounts[uuid] = data.data.strikes.length;
-              }
-            }
-          } catch (err) {
-            // Silently fail for individual strike fetches
-            console.warn(`Failed to fetch strikes for ${uuid}:`, err);
+          if (response.ok) {
+            const data = await response.json();
+            const count =
+              data?.success && data?.data?.strikes
+                ? data.data.strikes.length
+                : 0;
+            strikeCacheRef.current[uuid] = count;
+          } else {
+            strikeCacheRef.current[uuid] = 0;
           }
-        }),
-      );
+        } catch {
+          strikeCacheRef.current[uuid] = 0;
+        }
+      }),
+    );
 
-      return strikeCounts;
-    } catch (err) {
-      console.error("Failed to fetch strike counts:", err);
-      return {};
-    }
+    return strikeCacheRef.current;
   }, []);
 
   /**
@@ -139,8 +138,8 @@ export function AdminPlayers() {
         sortOrder,
       };
 
-      if (searchQuery) {
-        query.minecraftUsername = searchQuery;
+      if (debouncedSearch.trim()) {
+        query.minecraftUsername = debouncedSearch.trim();
       }
 
       if (onlineFilter !== undefined) {
@@ -156,10 +155,9 @@ export function AdminPlayers() {
         const playerUuids = playersData.map((p) => p.minecraftUuid);
         const strikeCounts = await fetchStrikeCounts(playerUuids);
 
-        // Combine player data with strike counts
         const playersWithStrikes = playersData.map((player) => ({
           ...player,
-          activeStrikeCount: strikeCounts[player.minecraftUuid] || 0,
+          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
         }));
 
         setPlayers(playersWithStrikes);
@@ -175,9 +173,9 @@ export function AdminPlayers() {
   }, [
     fetchPlayers,
     fetchStrikeCounts,
+    debouncedSearch,
     page,
     limit,
-    searchQuery,
     onlineFilter,
     sortBy,
     sortOrder,
@@ -188,17 +186,17 @@ export function AdminPlayers() {
     loadPlayers();
   }, [loadPlayers]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, onlineFilter, sortBy, sortOrder]);
+
   /**
    * Handle search
    */
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      setPage(0); // Reset to first page
-      loadPlayers();
-    },
-    [loadPlayers],
-  );
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(0);
+  }, []);
 
   /**
    * Handle page change
@@ -625,7 +623,7 @@ export function AdminPlayers() {
               {/* Pagination */}
               <div className="flex items-center border-t border-border p-4">
                 <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1} to{" "}
+                  Showing {page * limit + 1}-
                   {Math.min((page + 1) * limit, total)} of {total} players
                 </p>
 
