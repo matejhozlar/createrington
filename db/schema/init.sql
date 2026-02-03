@@ -1,6 +1,6 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-02-02T12:34:29.449Z
+-- Generated at: 2026-02-03T09:38:33.875Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
@@ -9,6 +9,7 @@
 \i types/00_strike_classification.sql
 \i types/01_ticket_status.sql
 \i types/02_ticket_type.sql
+\i types/03_waitlist_status.sql
 
 -- ============================================================================
 -- TABLES

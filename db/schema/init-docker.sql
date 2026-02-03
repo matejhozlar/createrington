@@ -55,6 +55,18 @@ CREATE TYPE public.ticket_type AS ENUM (
 
 
 --
+-- Name: waitlist_status; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.waitlist_status AS ENUM (
+    'pending',
+    'accepted',
+    'declined',
+    'completed'
+);
+
+
+--
 -- Name: cleanup_old_waitlist_entries(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -904,14 +916,13 @@ CREATE TABLE public.waitlist_entry (
     token text,
     submitted_at timestamp with time zone DEFAULT now() NOT NULL,
     discord_message_id text,
-    status text DEFAULT 'pending'::text NOT NULL,
+    status public.waitlist_status DEFAULT 'pending'::public.waitlist_status NOT NULL,
     joined_discord boolean DEFAULT false NOT NULL,
     verified boolean DEFAULT false NOT NULL,
     registered boolean DEFAULT false NOT NULL,
     joined_minecraft boolean DEFAULT false NOT NULL,
     accepted_at timestamp with time zone,
-    accepted_by text,
-    CONSTRAINT waitlist_entry_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'accepted'::text, 'declined'::text, 'completed'::text])))
+    accepted_by text
 );
 
 
