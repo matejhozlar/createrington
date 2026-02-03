@@ -1,13 +1,7 @@
-export enum WaitlistStatus {
-  PENDING = "pending",
-  ACCEPTED = "accepted",
-  DECLINED = "declined",
-  COMPLETED = "completed",
-}
-
 export enum AdminEdit {
-  UPDATE_PLAYER = "UPDATE_PLAYER",
-  UPDATE_BALANCE = "UPDATE_BALANCE",
-  UPDATE_PLAYTIME = "UPDATE_PLAYTIME",
-  DELETE_PLAYER = "DELETE_PLAYER",
+  UPDATE_PLAYER = "update_player",
+  UPDATE_BALANCE = "update_balance",
+  UPDATE_PLAYTIME = "update_playtime",
+  DELETE_PLAYER = "delete_player",
+  DELETE_WAITLIST = "delete_waitlist",
 }

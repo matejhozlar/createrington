@@ -1,5 +1,4 @@
 import { waitlist, waitlistRepo } from "@/db";
-import { WaitlistStatus } from "@/types";
 import { Discord } from "@/discord/constants";
 import {
   ActionRowBuilder,
@@ -106,7 +105,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     const entry = await waitlist.entry.get({ id: parsedId });
 
     if (action === "accept") {
-      if (entry.status === WaitlistStatus.ACCEPTED || entry.token) {
+      if (entry.status === "accepted" || entry.token) {
         await interaction.editReply(`⚠️ This user has already been invited`);
         return;
       }
@@ -119,7 +118,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
       logger.info(`Waitlist entry ${id} accepted by ${interaction.user.tag}`);
     } else if (action === "decline") {
-      if (entry.status === WaitlistStatus.DECLINED) {
+      if (entry.status === "declined") {
         await interaction.editReply(`⚠️ This user has already been declined`);
         return;
       }
@@ -127,7 +126,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       await waitlist.entry.update(
         { id: parsedId },
         {
-          status: WaitlistStatus.DECLINED,
+          status: "declined",
           acceptedBy: interaction.user.id,
           acceptedAt: new Date(),
         },
