@@ -136,7 +136,7 @@ export const Home: React.FC = () => {
                   )}
 
                   <Button size="lg" variant="outline" asChild>
-                    <a href="#learn-more">Learn More</a>
+                    <a href="#server-features">Learn More</a>
                   </Button>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export const Home: React.FC = () => {
       {/* Features Section */}
       <section className="relative -mt-px py-12 px-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground">
+          <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground" id="server-features">
             Cogs & Steam Server Features
           </h2>
 
