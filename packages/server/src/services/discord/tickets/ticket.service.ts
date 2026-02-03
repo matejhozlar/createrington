@@ -7,7 +7,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  TextBasedChannel,
+  type TextBasedChannel,
   AttachmentBuilder,
 } from "discord.js";
 import { TicketRepository } from "@/db/repositories/ticket";

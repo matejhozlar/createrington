@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { DiscordGuildMemberQueries } from "@/db/queries/discord/guild/member";
 
 /**

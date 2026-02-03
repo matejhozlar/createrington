@@ -3,7 +3,7 @@ import config from "@/config";
 import {
   DatabaseQueries,
   createQueryInstances,
-  type createQueries,
+  createQueries,
 } from "@/generated/db";
 import * as repositories from "./repositories";
 

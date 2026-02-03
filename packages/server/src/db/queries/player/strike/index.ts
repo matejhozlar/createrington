@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { PlayerStrikeBaseQueries } from "@/generated/db/player_strike.queries";
 import type {
   PlayerStrike,

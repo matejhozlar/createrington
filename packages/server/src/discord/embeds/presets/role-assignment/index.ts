@@ -1,6 +1,6 @@
 import {
   getNotificationConfig,
-  RoleAssignmentNotification,
+  type RoleAssignmentNotification,
   RoleConditionType,
 } from "@/services/discord/role";
 import { createEmbed } from "../../embed-builder";

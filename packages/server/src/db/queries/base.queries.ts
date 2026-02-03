@@ -1,7 +1,7 @@
 import type { Pool, PoolClient, QueryResultRow } from "pg";
 import logger from "@/logger";
 import { createNotFoundError } from "../utils/query-helpers";
-import { FilterValue } from "@createrington/shared/db/base.types";
+import type { FilterValue } from "@createrington/shared/db/base.types";
 
 /**
  * Fluent query builder for composable queries

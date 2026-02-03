@@ -1,5 +1,5 @@
-import { ColorResolvable } from "discord.js";
-import { envModeConfig } from "./env/env.config";
+import type { ColorResolvable } from "discord.js";
+import type { envModeConfig } from "./env/env.config";
 import type {
   MemberRolesConfig,
   ChannelConfig,

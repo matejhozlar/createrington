@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
 
 export type PlayerHourlyPattern = {
@@ -38,7 +38,7 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
    */
   async getPlayerHourlyPattern(
     playerMinecraftUuid: string,
-    serverId: number
+    serverId: number,
   ): Promise<PlayerHourlyPattern[]> {
     const query = `
       SELECT 
@@ -76,7 +76,7 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
    */
   async getServerHeatmap(
     serverId: number,
-    days: number = 30
+    days: number = 30,
   ): Promise<ServerHeatMap[]> {
     if (!Number.isInteger(days) || days < 1 || days > 365) {
       throw new Error("Days must be an integer between 1 and 365");

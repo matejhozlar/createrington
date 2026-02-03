@@ -1,13 +1,16 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { BadRequestError, NotFoundError } from "@/app/middleware";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
-import {
+import type {
   GetAllServersResponse,
   GetServerResponse,
   PlayerInfo,
   ServerStatus,
 } from "@createrington/shared/api";
-import { ActiveSession, PlaytimeManagerService } from "@/services/playtime";
+import {
+  type ActiveSession,
+  PlaytimeManagerService,
+} from "@/services/playtime";
 import { getService, Services } from "@/services";
 
 /**

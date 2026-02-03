@@ -2,7 +2,7 @@ import config from "@/config";
 import { db, Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import {
+import type {
   WaitlistEntry,
   WaitlistEntryCreate,
   WaitlistStatus,

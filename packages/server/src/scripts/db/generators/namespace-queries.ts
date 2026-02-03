@@ -66,7 +66,7 @@ import type { TableStructure } from "../types";
 export function generateNamespaceQueries(structure: TableStructure): string {
   const { className, tableName, children } = structure;
 
-  return `import { Pool, PoolClient } from "pg";
+  return `import type { Pool, PoolClient } from "pg";
 ${generateChildImports(children)}
 
 /**
