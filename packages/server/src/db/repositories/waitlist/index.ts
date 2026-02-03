@@ -362,7 +362,7 @@ export class WaitlistRepository {
         adminDiscordId,
         adminDiscordUsername,
         actionType: AdminEdit.DELETE_WAITLIST,
-        targetPlayerUuid: entry.discordId || "Unknown",
+        targetPlayerUuid: "00000000-0000-0000-0000-000000000000",
         targetPlayerName: entry.discordName,
         tableName: DatabaseTable.WAITLIST_ENTRY.TABLE,
         fieldName: "deleted",
