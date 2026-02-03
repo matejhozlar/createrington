@@ -15,6 +15,7 @@ import { AuditTab } from "./components/tabs/AuditTab";
 import { BalanceAdjustModal } from "./components/modals/BalanceAdjustModal";
 import { IssueStrikeModal } from "./components/modals/IssueStrikeModal";
 import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
+import { EditPlayerModal } from "./components/modals/EditPlayerModal";
 import type {
   AdminPlayerDetailed,
   GetAdminPlayerResponse,
@@ -41,6 +42,7 @@ export function AdminPlayerDetail() {
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showStrikeModal, setShowStrikeModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showRemoveStrikeModal, setShowRemoveStrikeModal] = useState(false);
   const [selectedStrikeId, setSelectedStrikeId] = useState<number | null>(null);
 
@@ -128,7 +130,7 @@ export function AdminPlayerDetail() {
   return (
     <div className="flex flex-1 flex-col gap-4">
       <PlayerHeader
-        player={player}
+        player={player.player}
         isOnline={isPlayerOnline(player.player.minecraftUuid)}
         currentServerName={
           getPlayerServerId(player.player.minecraftUuid)
@@ -136,9 +138,7 @@ export function AdminPlayerDetail() {
             : null
         }
         onNavigateBack={() => navigate("/admin/players")}
-        onEdit={() => {
-          /* TODO: Implement edit */
-        }}
+        onEdit={() => setShowEditModal(true)}
         onDelete={() => setShowDeleteModal(true)}
       />
 
@@ -174,6 +174,13 @@ export function AdminPlayerDetail() {
       </div>
 
       {/* Modals */}
+      <EditPlayerModal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        player={player.player}
+        onSuccess={fetchPlayer}
+      />
+
       <BalanceAdjustModal
         open={showBalanceModal}
         onClose={() => setShowBalanceModal(false)}
