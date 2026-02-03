@@ -367,14 +367,27 @@ export const Home: React.FC = () => {
       {/* Modpack Section */}
       <section className="py-16 px-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-semibold mb-4 text-foreground">
-              The Ultimate Create Experience
-            </h2>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div className="flex flex-col gap-3">
+              <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+                The Ultimate Create Experience
+              </h2>
 
-            <p className="text-lg md:text-xl text-primary max-w-2xl mx-auto">
-              Just a few of the curated selection of mods that power our server.
-            </p>
+              <p className="text-lg md:text-xl text-primary max-w-2xl">
+                Just a few of the curated selection of mods that power our server.
+              </p>
+            </div>
+
+            <Button size="lg" variant="secondary" asChild className="shrink-0">
+              <a
+                href="https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam/relations/dependencies"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View Full Modlist
+                <ExternalLink className="ml-2" />
+              </a>
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
