@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Users, TrendingUp, Clock } from "lucide-react";
 
 const heroImages = [
   "/assets/hero/gondola-station.webp",
@@ -54,6 +55,27 @@ const features = [
       "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
     backgroundImage: "/assets/features/modpack.webp",
     icon: "/assets/features/chipped-workbench.webp",
+  },
+];
+
+const serverMetrics = [
+  {
+    icon: Users,
+    value: "24",
+    title: "Players Online",
+    description: "Active players right now",
+  },
+  {
+    icon: TrendingUp,
+    value: "1,247",
+    title: "Total Players",
+    description: "Registered community members",
+  },
+  {
+    icon: Clock,
+    value: "8,532",
+    title: "Hours Played",
+    description: "Total playtime across all players",
   },
 ];
 
@@ -188,6 +210,50 @@ export const Home: React.FC = () => {
                 </CardHeader>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Server Metrics Section */}
+      <section id="learn-more" className="py-16 px-8 bg-zinc-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-semibold mb-4 text-foreground">
+              Join a Thriving Community
+            </h2>
+
+            <p className="text-lg md:text-xl text-primary max-w-2xl mx-auto">
+              Our server is home to a vibrant community of builders and creators
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {serverMetrics.map((metric, index) => {
+              const IconComponent = metric.icon;
+              return (
+                <Card key={index} className="bg-background">
+                  <CardHeader className="text-center space-y-4">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <IconComponent className="w-8 h-8 text-primary" />
+                    </div>
+
+                    <div>
+                      <div className="text-5xl font-bold text-foreground mb-2">
+                        {metric.value}
+                      </div>
+
+                      <CardTitle className="text-xl text-foreground">
+                        {metric.title}
+                      </CardTitle>
+
+                      <CardDescription className="text-base mt-2">
+                        {metric.description}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </section>
