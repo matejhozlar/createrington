@@ -276,9 +276,15 @@ export const Home: React.FC = () => {
       {/* Features Section */}
       <section className="relative -mt-px py-12 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground" id="server-features">
-            Cogs & Steam Server Features
-          </h2>
+          <div className="flex flex-col gap-3 items-center mb-12" id="server-features">
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+              Why Join Cogs & Steam?
+            </h2>
+
+            <p className="text-lg md:text-xl text-primary max-w-2xl">
+              A carefully crafted server designed for engineers and builders alike
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
             {features.map((feature, index) => (
@@ -323,12 +329,12 @@ export const Home: React.FC = () => {
       {/* Server Metrics Section */}
       <section id="learn-more" className="py-16 px-5 md:px-8 bg-zinc-950">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-semibold mb-4 text-foreground">
+          <div className="flex flex-col gap-3 items-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
               Join a Thriving Community
             </h2>
 
-            <p className="text-lg md:text-xl text-primary max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-primary max-w-2xl">
               Our server is home to a vibrant community of builders and creators
             </p>
           </div>
