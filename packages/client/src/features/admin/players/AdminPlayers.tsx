@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/Loading";
 import {
@@ -9,6 +9,14 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import {
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { useAdminPlayers } from "@/contexts/admin";
 import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -21,8 +29,6 @@ import {
   TrendingUp,
   Coins,
   UserPlus,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -31,6 +37,7 @@ import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {
@@ -73,49 +80,47 @@ export function AdminPlayers() {
   const [sortBy, setSortBy] = useState<SortField>("lastSeen");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  const strikeCacheRef = useRef<Record<string, number>>({});
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+
   /**
    * Fetch active strike counts for players
    */
   const fetchStrikeCounts = useCallback(async (playerUuids: string[]) => {
-    try {
-      const token = localStorage.getItem("auth_token");
-      if (!token || playerUuids.length === 0) return {};
+    const token = localStorage.getItem("auth_token");
+    if (!token || playerUuids.length === 0) return {};
 
-      // Fetch strike counts for all players
-      const strikeCounts: Record<string, number> = {};
+    const missing = playerUuids.filter(
+      (u) => strikeCacheRef.current[u] === undefined,
+    );
+    if (missing.length === 0) return strikeCacheRef.current;
 
-      // Note: In a real implementation, you'd want a batch endpoint
-      // For now, we'll fetch individually (consider adding a batch endpoint later)
-      await Promise.all(
-        playerUuids.map(async (uuid) => {
-          try {
-            const response = await fetch(
-              `/api/admin/players/${uuid}/strikes?activeOnly=true`,
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              },
-            );
+    await Promise.all(
+      missing.map(async (uuid) => {
+        try {
+          const response = await fetch(
+            `/api/admin/players/${uuid}/strikes?activeOnly=true`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
 
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success && data.data.strikes) {
-                strikeCounts[uuid] = data.data.strikes.length;
-              }
-            }
-          } catch (err) {
-            // Silently fail for individual strike fetches
-            console.warn(`Failed to fetch strikes for ${uuid}:`, err);
+          if (response.ok) {
+            const data = await response.json();
+            const count =
+              data?.success && data?.data?.strikes
+                ? data.data.strikes.length
+                : 0;
+            strikeCacheRef.current[uuid] = count;
+          } else {
+            strikeCacheRef.current[uuid] = 0;
           }
-        }),
-      );
+        } catch {
+          strikeCacheRef.current[uuid] = 0;
+        }
+      }),
+    );
 
-      return strikeCounts;
-    } catch (err) {
-      console.error("Failed to fetch strike counts:", err);
-      return {};
-    }
+    return strikeCacheRef.current;
   }, []);
 
   /**
@@ -133,8 +138,8 @@ export function AdminPlayers() {
         sortOrder,
       };
 
-      if (searchQuery) {
-        query.minecraftUsername = searchQuery;
+      if (debouncedSearch.trim()) {
+        query.minecraftUsername = debouncedSearch.trim();
       }
 
       if (onlineFilter !== undefined) {
@@ -150,10 +155,9 @@ export function AdminPlayers() {
         const playerUuids = playersData.map((p) => p.minecraftUuid);
         const strikeCounts = await fetchStrikeCounts(playerUuids);
 
-        // Combine player data with strike counts
         const playersWithStrikes = playersData.map((player) => ({
           ...player,
-          activeStrikeCount: strikeCounts[player.minecraftUuid] || 0,
+          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
         }));
 
         setPlayers(playersWithStrikes);
@@ -169,9 +173,9 @@ export function AdminPlayers() {
   }, [
     fetchPlayers,
     fetchStrikeCounts,
+    debouncedSearch,
     page,
     limit,
-    searchQuery,
     onlineFilter,
     sortBy,
     sortOrder,
@@ -182,17 +186,17 @@ export function AdminPlayers() {
     loadPlayers();
   }, [loadPlayers]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, onlineFilter, sortBy, sortOrder]);
+
   /**
    * Handle search
    */
-  const handleSearch = useCallback(
-    (e: React.FormEvent) => {
-      e.preventDefault();
-      setPage(0); // Reset to first page
-      loadPlayers();
-    },
-    [loadPlayers],
-  );
+  const handleSearch = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(0);
+  }, []);
 
   /**
    * Handle page change
@@ -263,6 +267,46 @@ export function AdminPlayers() {
     },
     [sortBy, sortOrder],
   );
+
+  /**
+   * Generate pagination items with ellipsis
+   */
+  const getPaginationItems = useCallback(() => {
+    const items: (number | "ellipsis")[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is less than max visible
+      return Array.from({ length: totalPages }, (_, i) => i);
+    }
+
+    // Always show first page
+    items.push(0);
+
+    if (page <= 2) {
+      // Near start: show first few pages
+      items.push(1, 2, 3);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    } else if (page >= totalPages - 3) {
+      // Near end: show last few pages
+      items.push("ellipsis");
+      items.push(
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+      );
+    } else {
+      // Middle: show current page and neighbors
+      items.push("ellipsis");
+      items.push(page - 1, page, page + 1);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    }
+
+    return items;
+  }, [page, totalPages]);
 
   const navigate = useNavigate();
 
@@ -577,60 +621,62 @@ export function AdminPlayers() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between border-t border-border p-4">
+              <div className="flex items-center border-t border-border p-4">
                 <p className="text-sm text-muted-foreground">
-                  Showing {page * limit + 1} to{" "}
+                  Showing {page * limit + 1}-
                   {Math.min((page + 1) * limit, total)} of {total} players
                 </p>
 
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(page - 1)}
-                    disabled={page === 0}
-                    className="cursor-pointer"
-                  >
-                    <ChevronLeft className="size-4" />
-                    Previous
-                  </Button>
+                <PaginationContent className="flex-nowrap justify-end ml-auto">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 0) handlePageChange(page - 1);
+                      }}
+                      className={cn(
+                        page === 0 && "pointer-events-none opacity-50",
+                        "cursor-pointer",
+                      )}
+                    />
+                  </PaginationItem>
 
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const pageNum =
-                        totalPages <= 5
-                          ? i
-                          : page < 3
-                            ? i
-                            : page > totalPages - 4
-                              ? totalPages - 5 + i
-                              : page - 2 + i;
-
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={page === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handlePageChange(pageNum)}
+                  {getPaginationItems().map((item, index) => (
+                    <PaginationItem key={index}>
+                      {item === "ellipsis" ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(item);
+                          }}
+                          isActive={page === item}
                           className="cursor-pointer"
                         >
-                          {pageNum + 1}
-                        </Button>
-                      );
-                    })}
-                  </div>
+                          {item + 1}
+                        </PaginationLink>
+                      )}
+                    </PaginationItem>
+                  ))}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handlePageChange(page + 1)}
-                    disabled={page >= totalPages - 1}
-                    className="cursor-pointer"
-                  >
-                    Next
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages - 1) handlePageChange(page + 1);
+                      }}
+                      className={cn(
+                        page >= totalPages - 1 &&
+                          "pointer-events-none opacity-50",
+                        "cursor-pointer",
+                      )}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
               </div>
             </>
           )}
