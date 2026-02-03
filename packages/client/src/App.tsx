@@ -16,7 +16,7 @@ import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/not-found";
 import { ToastProvider } from "./components/ui/toast";
-import { AdminDashboard, AdminWaitlist, AdminSettings } from "./pages/Admin";
+import { AdminDashboard, AdminSettings } from "./pages/Admin";
 import { AppSidebar } from "./components/app-sidebar";
 import {
   SidebarInset,
@@ -31,6 +31,7 @@ import { AdminServers } from "./pages/Admin/Servers";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
+import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -110,7 +111,7 @@ function AppContent() {
                   <AdminPlayerProvider>
                     <Routes>
                       <Route path="dashboard" element={<AdminDashboard />} />
-                      <Route path="waitlist" element={<AdminWaitlist />} />
+                      <Route path="waitlist" element={<AdminWaitlists />} />
                       <Route path="players" element={<AdminPlayers />} />
                       <Route
                         path="players/:id"
