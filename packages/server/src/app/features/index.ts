@@ -1,11 +1,12 @@
 import type { Express } from "express";
-import waitlistRoutes from "./waitlist/waitlist.routes";
+import waitlistRoutes from "./public/waitlist/waitlist.routes";
 import authRoutes from "./auth/auth.routes";
-import presenceRoutes from "./presence/presence.routes";
-import serverRoutes from "./server/server.routes";
-import playerRoutes from "./player/player.routes";
-import messageRoutes from "./message/message.routes";
+import presenceRoutes from "./mod/presence/presence.routes";
+import serverRoutes from "./public/server/server.routes";
+import playerRoutes from "./public/player/player.routes";
+import messageRoutes from "./public/message/message.routes";
 import adminPlayerRoutes from "./admin/player/admin-player.routes";
+import adminWaitlistRoutes from "./admin/waitlist/admin-waitlist.routes";
 
 /**
  * Register all API routes
@@ -17,13 +18,14 @@ export function registerRoutes(app: Express): void {
   const API_PREFIX = "/api";
 
   // Register route modules
-  app.use(`${API_PREFIX}/waitlist`, waitlistRoutes);
+  app.use(`${API_PREFIX}/waitlists`, waitlistRoutes);
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/servers`, serverRoutes);
   app.use(`${API_PREFIX}/players`, playerRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/admin/players`, adminPlayerRoutes);
+  app.use(`${API_PREFIX}/admin/waitlists`, adminWaitlistRoutes);
 
   logger.info("API routes registered");
 }
