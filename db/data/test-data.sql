@@ -358,41 +358,68 @@ INSERT INTO discord_guild_member_join (user_id, username, joined_at) VALUES
 -- WAITLIST ENTRIES
 -- ============================================================================
 
+-- More WAITLIST ENTRIES (varied states)
 INSERT INTO waitlist_entry (
-    email, 
-    discord_name, 
-    discord_id, 
-    token, 
-    submitted_at, 
-    discord_message_id, 
-    status, 
-    joined_discord, 
-    verified, 
-    registered, 
-    joined_minecraft,
-    accepted_at,
-    accepted_by
+  email,
+  discord_name,
+  discord_id,
+  token,
+  submitted_at,
+  discord_message_id,
+  status,
+  joined_discord,
+  verified,
+  registered,
+  joined_minecraft,
+  accepted_at,
+  accepted_by
 ) VALUES
--- Real admins - completed entries
-('saunhardy@example.com', 'saunhardy', '818819241666281503', 'token_saun_001', NOW() - INTERVAL '181 days', '111111111111111101', 'completed', true, true, true, true, NOW() - INTERVAL '180 days', '99318080374607872'),
-('agent772@example.com', 'Agent772', '547450242090532874', 'token_agent_002', NOW() - INTERVAL '176 days', '111111111111111102', 'completed', true, true, true, true, NOW() - INTERVAL '175 days', '99318080374607872'),
-('bigshot@example.com', 'The_Bigshot', '99318080374607872', 'token_bigshot_003', NOW() - INTERVAL '171 days', '111111111111111103', 'completed', true, true, true, true, NOW() - INTERVAL '170 days', '818819241666281503'),
+-- ======================================================================
+-- COMPLETED (fully onboarded)
+-- ======================================================================
+('mumbo@example.com', 'mumbojumbo', '123456789012345686', 'token_mumbo_019', NOW() - INTERVAL '52 days', '111111111111111201', 'completed', true, true, true, true, NOW() - INTERVAL '51 days', '818819241666281503'),
+('grian@example.com', 'grian', '123456789012345687', 'token_grian_020', NOW() - INTERVAL '47 days', '111111111111111202', 'completed', true, true, true, true, NOW() - INTERVAL '46 days', '547450242090532874'),
+('philza@example.com', 'philza', '123456789012345685', 'token_philza_021', NOW() - INTERVAL '57 days', '111111111111111203', 'completed', true, true, true, true, NOW() - INTERVAL '56 days', '99318080374607872'),
 
--- Other completed entries
-('steve@example.com', 'steve_official', '123456789012345678', 'token_steve_004', NOW() - INTERVAL '91 days', '111111111111111111', 'completed', true, true, true, true, NOW() - INTERVAL '90 days', '818819241666281503'),
-('alex@example.com', 'alex_plays', '123456789012345679', 'token_alex_005', NOW() - INTERVAL '86 days', '111111111111111112', 'completed', true, true, true, true, NOW() - INTERVAL '85 days', '547450242090532874'),
+-- ======================================================================
+-- ACCEPTED (in progress)
+-- ======================================================================
+('scar@example.com', 'goodtimeswithscar', '123456789012345688', 'token_scar_022', NOW() - INTERVAL '41 days', '111111111111111204', 'accepted', true, true, true, false, NOW() - INTERVAL '40 days', '818819241666281503'),
+('iskall@example.com', 'iskall85', '123456789012345689', 'token_iskall_023', NOW() - INTERVAL '36 days', '111111111111111205', 'accepted', true, true, false, false, NOW() - INTERVAL '35 days', '547450242090532874'),
+('dream@example.com', 'dream', '123456789012345683', 'token_dream_024', NOW() - INTERVAL '8 days', '111111111111111206', 'accepted', true, false, false, false, NOW() - INTERVAL '7 days', '99318080374607872'),
 
--- Accepted, in progress
-('newbie1@example.com', 'newplayer1', '123456789012345690', 'token_new1_013', NOW() - INTERVAL '3 days', '111111111111111113', 'accepted', true, true, true, false, NOW() - INTERVAL '2 days', '818819241666281503'),
-('newbie2@example.com', 'newplayer2', '123456789012345691', 'token_new2_014', NOW() - INTERVAL '2 days', '111111111111111114', 'accepted', true, false, false, false, NOW() - INTERVAL '1 day', '547450242090532874'),
+-- Accepted but *hasn't joined Discord yet* (edge case)
+('invite_sent@example.com', 'invite_sent_user', NULL, 'token_invite_025', NOW() - INTERVAL '20 hours', '111111111111111207', 'accepted', false, false, false, false, NOW() - INTERVAL '19 hours', '818819241666281503'),
 
--- Pending entries
-('pending1@example.com', 'pending_user1', NULL, 'token_pend_015', NOW() - INTERVAL '5 hours', '111111111111111115', 'pending', false, false, false, false, NULL, NULL),
-('pending2@example.com', 'pending_user2', NULL, 'token_pend_016', NOW() - INTERVAL '2 hours', '111111111111111116', 'pending', false, false, false, false, NULL, NULL),
-('pending3@example.com', 'pending_user3', NULL, 'token_pend_017', NOW() - INTERVAL '30 minutes', '111111111111111117', 'pending', false, false, false, false, NULL, NULL),
+-- ======================================================================
+-- PENDING (varied progress)
+-- ======================================================================
+-- Pending, not joined discord, no discord_id yet (typical early state)
+('waiter1@example.com', 'waiter_user1', NULL, 'token_wait_026', NOW() - INTERVAL '12 hours', '111111111111111208', 'pending', false, false, false, false, NULL, NULL),
+('waiter2@example.com', 'waiter_user2', NULL, 'token_wait_027', NOW() - INTERVAL '9 hours', '111111111111111209', 'pending', false, false, false, false, NULL, NULL),
 
--- Declined entry
-('declined@example.com', 'declined_user', NULL, 'token_decl_018', NOW() - INTERVAL '10 days', '111111111111111118', 'declined', false, false, false, false, NULL, NULL);
+-- Pending but joined Discord (discord_id known), not verified yet
+('joined_discord_only@example.com', 'joined_discord_only', '223456789012345690', 'token_wait_028', NOW() - INTERVAL '6 hours', '111111111111111210', 'pending', true, false, false, false, NULL, NULL),
+
+-- Pending, joined Discord + verified, but not registered (stuck on registration)
+('verified_not_registered@example.com', 'verified_not_registered', '223456789012345691', 'token_wait_029', NOW() - INTERVAL '5 hours', '111111111111111211', 'pending', true, true, false, false, NULL, NULL),
+
+-- Pending, registered but not joined MC yet (stuck before first join)
+('registered_not_joined_mc@example.com', 'registered_not_joined_mc', '223456789012345692', 'token_wait_030', NOW() - INTERVAL '4 hours', '111111111111111212', 'pending', true, true, true, false, NULL, NULL),
+
+-- Pending with discord_id set but still not joined_discord (edge/inconsistent but useful for testing)
+('discord_id_but_not_joined@example.com', 'discord_id_but_not_joined', '223456789012345693', 'token_wait_031', NOW() - INTERVAL '3 hours', '111111111111111213', 'pending', false, false, false, false, NULL, NULL),
+
+-- ======================================================================
+-- DECLINED (with/without discord_id)
+-- ======================================================================
+('declined2@example.com', 'declined_user2', NULL, 'token_decl_032', NOW() - INTERVAL '18 days', '111111111111111214', 'declined', false, false, false, false, NULL, NULL),
+
+-- Declined after joining Discord (discord_id known)
+('declined_after_join@example.com', 'declined_after_join', '223456789012345694', 'token_decl_033', NOW() - INTERVAL '11 days', '111111111111111215', 'declined', true, false, false, false, NULL, NULL),
+
+-- Declined after verification (rare but good for edge testing)
+('declined_after_verify@example.com', 'declined_after_verify', '223456789012345695', 'token_decl_034', NOW() - INTERVAL '14 days', '111111111111111216', 'declined', true, true, false, false, NULL, NULL);
 
 -- ============================================================================
 -- ADMIN LOG ACTIONS

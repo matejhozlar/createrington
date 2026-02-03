@@ -377,7 +377,7 @@ export function AdminWaitlists() {
           variant: "outline" as const,
           className: "border-success bg-success/10 text-success",
         };
-      case "rejected":
+      case "declined":
         return {
           variant: "destructive" as const,
           className: "",
