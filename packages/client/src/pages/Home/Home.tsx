@@ -146,7 +146,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Features Section */}
-      <section className="py-12 px-8 bg-background">
+      <section className="relative -mt-px py-12 px-8 bg-background">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-semibold text-center mb-12 text-foreground">
             Cogs & Steam Server Features
