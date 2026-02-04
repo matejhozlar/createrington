@@ -5,12 +5,16 @@ import {
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { Q } from "@/db";
-import type {
-  GetPlayerResponse,
-  GetPlayersCountResponse,
-  GetPlayersResponse,
+import {
+  GetPlayerParamsSchema,
+  GetPlayersQuerySchema,
+  GetPlayersCountQuerySchema,
+  type GetPlayerResponse,
+  type GetPlayersCountResponse,
+  type GetPlayersResponse,
 } from "@createrington/shared/api";
 import type { Request, Response } from "express";
+import { z } from "zod";
 
 /**
  * Player controller
@@ -21,7 +25,7 @@ export class PlayerController {
   /**
    * GET /api/players/:id
    *
-   * Retrieves a single player by Discord ID o Minecraft UUID
+   * Retrieves a single player by Discord ID or Minecraft UUID
    *
    * Path Parameters:
    * - id: Discord ID (17-20 digits) or Minecraft UUID (UUID format)
@@ -31,20 +35,17 @@ export class PlayerController {
    * GET /api/players/550e8400-e29b-41d4-a716-446655440000
    */
   static async getPlayer(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
     try {
+      // Validate path parameters
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -61,6 +62,13 @@ export class PlayerController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
       if (
         error instanceof NotFoundError ||
         error instanceof BadRequestError ||
@@ -80,66 +88,56 @@ export class PlayerController {
    *
    * Query Parameters:
    * Filtering:
-   * - discord_id: Filter by Discord ID
-   * - minecraft_uuid: Filter by Minecraft UUID
-   * - minecraft_username: Filter by Minecraft username (case-insensitive partial match)
-   * - is_active: Filter by active status (true/false)
+   * - discordId: Filter by Discord ID
+   * - minecraftUuid: Filter by Minecraft UUID
+   * - minecraftUsername: Filter by Minecraft username (case-insensitive partial match)
+   * - isActive: Filter by active status (true/false)
    *
    * Pagination:
    * - page: Page number (0-indexed, default: 0)
    * - limit: Results per page (1-100, default: 20)
    *
    * Sorting:
-   * - sort_by: Field to sort by (createdAt, minecraftUsername, updatedAt)
-   * - sort_order: Sort direction (asc/desc, default: desc)
+   * - sortBy: Field to sort by (createdAt, minecraftUsername, updatedAt)
+   * - sortOrder: Sort direction (ASC/DESC, default: DESC)
    *
    * @example
    * GET /api/players?limit=10&page=0
-   * GET /api/players?minecraft_username=Steve
-   * GET /api/players?is_active=true&sort_by=minecraftUsername&sort_order=asc
+   * GET /api/players?minecraftUsername=Steve
+   * GET /api/players?isActive=true&sortBy=minecraftUsername&sortOrder=ASC
    */
   static async getPlayers(req: Request, res: Response): Promise<void> {
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string)),
-    );
-
-    const sortBy = (req.query.sortBy as string) || "createdAt";
-    const sortOrder =
-      (req.query.sortOrder as string)?.toLowerCase() === "ASC" ? "ASC" : "DESC";
-
-    const filters: any = {};
-
-    if (req.query.discordId) {
-      filters.discordId = req.query.discordId as string;
-    }
-
-    if (req.query.minecraftUuid) {
-      filters.minecraftUuid = req.query.minecraftUuid as string;
-    }
-
-    if (req.query.minecraftUsername) {
-      filters.minecraftUsername = {
-        $ilike: `%${req.query.minecraftUsername}%`,
-      };
-    }
-
-    if (req.query.isActive !== undefined) {
-      filters.isActive = req.query.isActive === "true";
-    }
-
-    const validSortFields = ["createdAt", "minecraftUsername", "updatedAt"];
-    const orderBy = validSortFields.includes(sortBy)
-      ? (sortBy as any)
-      : "createdAt";
-
     try {
+      // Validate and transform query parameters
+      const query = GetPlayersQuerySchema.parse(req.query);
+
+      // Build filters
+      const filters: any = {};
+
+      if (query.discordId) {
+        filters.discordId = query.discordId;
+      }
+
+      if (query.minecraftUuid) {
+        filters.minecraftUuid = query.minecraftUuid;
+      }
+
+      if (query.minecraftUsername) {
+        filters.minecraftUsername = {
+          $ilike: `%${query.minecraftUsername}%`,
+        };
+      }
+
+      if (query.isActive !== undefined) {
+        filters.isActive = query.isActive; // Already a boolean!
+      }
+
+      // Fetch players
       const players = await Q.player.findAll(filters, {
-        orderBy,
-        orderDirection: sortOrder,
-        limit,
-        offset: page * limit,
+        orderBy: query.sortBy,
+        orderDirection: query.sortOrder,
+        limit: query.limit,
+        offset: query.page * query.limit,
       });
 
       const total = await Q.player.count(filters);
@@ -149,16 +147,23 @@ export class PlayerController {
         data: {
           players: players as any,
           pagination: {
-            page,
-            limit,
+            page: query.page,
+            limit: query.limit,
             total,
-            totalPages: Math.ceil(total / limit),
+            totalPages: Math.ceil(total / query.limit),
           },
         },
       };
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
       logger.error("Failed to fetch players:", error);
       throw new InternalServerError("Failed to fetch players");
     }
@@ -177,49 +182,37 @@ export class PlayerController {
    */
   static async getCount(req: Request, res: Response): Promise<void> {
     try {
+      // Validate and transform query parameters
+      const query = GetPlayersCountQuerySchema.parse(req.query);
+
+      // Build filters
       const filters: any = {};
 
-      // Filter by online status
-      if (req.query.online !== undefined) {
-        filters.online = req.query.online === "true";
+      // Filter by online status (already a boolean!)
+      if (query.online !== undefined) {
+        filters.online = query.online;
       }
 
-      // Filter by current server
-      if (req.query.currentServerId) {
-        const serverId = parseInt(req.query.currentServerId as string);
-        if (isNaN(serverId)) {
-          throw new BadRequestError("Invalid server ID");
-        }
-        filters.currentServerId = serverId;
+      // Filter by current server (already a number!)
+      if (query.currentServerId !== undefined) {
+        filters.currentServerId = query.currentServerId;
       }
 
       // Filter by creation date range
-      if (req.query.createdAfter) {
-        const date = new Date(req.query.createdAfter as string);
-        if (isNaN(date.getTime())) {
-          throw new BadRequestError("Invalid createdAfter date format");
-        }
-        filters.createdAt = { $gte: date };
+      if (query.createdAfter) {
+        filters.createdAt = { $gte: new Date(query.createdAfter) };
       }
 
-      if (req.query.createdBefore) {
-        const date = new Date(req.query.createdBefore as string);
-        if (isNaN(date.getTime())) {
-          throw new BadRequestError("Invalid createdBefore date format");
-        }
+      if (query.createdBefore) {
         filters.createdAt = {
           ...filters.createdAt,
-          $lte: date,
+          $lte: new Date(query.createdBefore),
         };
       }
 
       // Filter by last seen date
-      if (req.query.lastSeenAfter) {
-        const date = new Date(req.query.lastSeenAfter as string);
-        if (isNaN(date.getTime())) {
-          throw new BadRequestError("Invalid lastSeenAfter date format");
-        }
-        filters.lastSeen = { $gte: date };
+      if (query.lastSeenAfter) {
+        filters.lastSeen = { $gte: new Date(query.lastSeenAfter) };
       }
 
       const count = await Q.player.count(filters);
@@ -233,6 +226,13 @@ export class PlayerController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
       if (error instanceof BadRequestError) {
         throw error;
       }

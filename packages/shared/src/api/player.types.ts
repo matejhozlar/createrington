@@ -1,53 +1,78 @@
 /**
- * Player API Response Types
+ * Player API Types
  *
- * Type definitions for player-related API endpoints
+ * Request schemas (Zod for validation) and response types for player-related API endpoints
  */
+import { z } from "zod";
 import type { PlayerApiData } from "../db";
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST SCHEMAS (Zod - Validates User Input)
 // ============================================================================
 
 /**
- * Query parameters for GET /api/players/:id
+ * Path parameters for GET /api/players/:id
+ *
+ * Validates the player ID from the URL path
  */
-export interface GetPlayerParams {
-  id: string; // Discord ID or Minecraft UUID
-}
+export const GetPlayerParamsSchema = z.object({
+  /** Discord ID or Minecraft UUID */
+  id: z.string().min(1, "Player ID is required"),
+});
 
 /**
  * Query parameters for GET /api/players
+ *
+ * Supports filtering, pagination, and sorting of players
  */
-export interface GetPlayersQuery {
+export const GetPlayersQuerySchema = z.object({
   // Filtering
-  discordId?: string;
-  minecraftUuid: string;
-  minecraftUsername: string;
-  isActive?: "true" | "false";
+  discordId: z.string().optional(),
+  minecraftUuid: z.string().optional(),
+  minecraftUsername: z.string().optional(),
+  isActive: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
 
   // Pagination
-  page?: string;
-  limit?: string;
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 
-  sortBy?: "createdAt" | "minecraftUsername" | "updatedAt";
-  sortOder?: "ASC" | "DESC";
-}
+  // Sorting
+  sortBy: z
+    .enum(["createdAt", "minecraftUsername", "updatedAt"])
+    .default("createdAt"),
+  sortOrder: z.enum(["ASC", "DESC"]).default("DESC"),
+});
 
 /**
  * Query parameters for GET /api/players/count
+ *
+ * Filters for counting players
  */
-export interface GetPlayersCountQuery {
+export const GetPlayersCountQuerySchema = z.object({
   // Filtering
-  online?: "true" | "false";
-  currentServerId?: string;
-  createdAfter?: string; // ISO 8601 date string
-  createdBefore?: string; // ISO 8601 date string
-  lastSeenAfter?: string; // ISO 8601 date string
-}
+  online: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  currentServerId: z.coerce.number().int().positive().optional(),
+  createdAfter: z.iso.datetime().optional(),
+  createdBefore: z.iso.datetime().optional(),
+  lastSeenAfter: z.iso.datetime().optional(),
+});
 
 // ============================================================================
-// RESPONSE TYPES
+// REQUEST TYPES (Auto-Inferred from Schemas)
+// ============================================================================
+
+export type GetPlayerParams = z.infer<typeof GetPlayerParamsSchema>;
+export type GetPlayersQuery = z.infer<typeof GetPlayersQuerySchema>;
+export type GetPlayersCountQuery = z.infer<typeof GetPlayersCountQuerySchema>;
+
+// ============================================================================
+// RESPONSE TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
