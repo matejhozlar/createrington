@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Users,
   TrendingUp,
@@ -38,7 +39,7 @@ export const Home: React.FC = () => {
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
-  
+
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
   const { servers } = useServerData();
@@ -266,13 +267,25 @@ export const Home: React.FC = () => {
 
         <div className="py-12 px-5 md:px-8">
           <div className="relative h-full flex flex-col max-w-7xl mx-auto">
-            {/* Server Logo */}
-            <div className="">
+            {/* Server Logo and Status */}
+            <div className="flex items-center justify-between gap-2 ">
               <img
                 src="/assets/logo/cogs-and-steam-logo.webp"
                 alt="Cogs and Steam Logo"
                 className="h-16 w-auto md:h-20 lg:h-24 object-contain"
               />
+
+              <Badge
+                className={`bg-zinc-900/70 text-lg px-2 sm:px-4 py-2 gap-2 shadow-md ${server?.online ? "text-green-500" : "text-red-500"}`}
+                variant={"outline"}
+              >
+                <span
+                  className={`size-4 rounded-full ${server?.online ? "bg-green-500 animate-pulse" : "bg-red-600"}`}
+                />
+                <span className="hidden sm:inline">
+                  {server?.online ? "Online" : "Offline"}
+                </span>
+              </Badge>
             </div>
 
             <div className="flex-1 flex items-end min-h-148">
