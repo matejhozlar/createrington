@@ -414,7 +414,7 @@ export class PlaytimeService extends EventEmitter {
       logger.info("Server shutdown detected but no active sessions to end");
     } else {
       logger.warn(
-        `Server ${this.config.serverId} shutdown detected - ending ${this.activeSessions} active session(s)`,
+        `Server ${this.config.serverId} shutdown detected - ending ${this.activeSessions.size} active session(s)`,
       );
       this.endAllSessions();
     }
