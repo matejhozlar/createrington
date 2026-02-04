@@ -2,7 +2,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Loading } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Ticket } from "lucide-react";
+import { Ticket } from "lucide-react";
+import {
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import type { TicketApiData } from "@createrington/shared/db";
 import type { GetPlayerTicketsResponse } from "@createrington/shared/api";
@@ -21,6 +29,38 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
   const [limit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  const getPaginationItems = useCallback(() => {
+    const items: (number | "ellipsis")[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, i) => i);
+    }
+
+    items.push(0);
+
+    if (page <= 2) {
+      items.push(1, 2, 3);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    } else if (page >= totalPages - 3) {
+      items.push("ellipsis");
+      items.push(
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+      );
+    } else {
+      items.push("ellipsis");
+      items.push(page - 1, page, page + 1);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    }
+
+    return items;
+  }, [page, totalPages]);
 
   const loadTickets = useCallback(async () => {
     try {
@@ -162,62 +202,67 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
             })}
           </div>
 
-          {/* Pagination (same as your players list) */}
-          <div className="flex items-center justify-between border-t border-border pt-4">
-            <p className="text-sm text-muted-foreground">
-              Showing {page * limit + 1} to{" "}
-              {Math.min((page + 1) * limit, total)} of {total} tickets
-            </p>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-4 border-t border-border pt-4">
+              <p className="flex-1 text-sm text-muted-foreground">
+                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
+                of {total} tickets
+              </p>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(page - 1)}
-                disabled={page === 0}
-                className="cursor-pointer"
-              >
-                <ChevronLeft className="size-4" />
-                Previous
-              </Button>
+              {/* Right-aligned: no <Pagination /> wrapper */}
+              <PaginationContent className="ml-auto flex-nowrap justify-end">
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page > 0) handlePageChange(page - 1);
+                    }}
+                    className={cn(
+                      page === 0 && "pointer-events-none opacity-50",
+                      "cursor-pointer",
+                    )}
+                  />
+                </PaginationItem>
 
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const pageNum =
-                    totalPages <= 5
-                      ? i
-                      : page < 3
-                        ? i
-                        : page > totalPages - 4
-                          ? totalPages - 5 + i
-                          : page - 2 + i;
+                {getPaginationItems().map((item, index) => (
+                  <PaginationItem key={index}>
+                    {item === "ellipsis" ? (
+                      <PaginationEllipsis />
+                    ) : (
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(item);
+                        }}
+                        isActive={page === item}
+                        className="cursor-pointer"
+                      >
+                        {item + 1}
+                      </PaginationLink>
+                    )}
+                  </PaginationItem>
+                ))}
 
-                  return (
-                    <Button
-                      key={pageNum}
-                      variant={page === pageNum ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pageNum)}
-                      className="cursor-pointer"
-                    >
-                      {pageNum + 1}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(page + 1)}
-                disabled={page >= totalPages - 1}
-                className="cursor-pointer"
-              >
-                Next
-                <ChevronRight className="size-4" />
-              </Button>
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (page < totalPages - 1) handlePageChange(page + 1);
+                    }}
+                    className={cn(
+                      page >= totalPages - 1 &&
+                        "pointer-events-none opacity-50",
+                      "cursor-pointer",
+                    )}
+                  />
+                </PaginationItem>
+              </PaginationContent>
             </div>
-          </div>
+          )}
         </>
       )}
     </div>

@@ -180,6 +180,7 @@ function generateTableFiles(
   context: GenerationContext,
   generatedFiles: string[],
   scaffoldedFiles: string[],
+  enums: EnumTypeInfo[],
 ): void {
   const { projectRoot, sharedTypesDir, generatedDir, actualQueriesDir } =
     context;
@@ -191,7 +192,7 @@ function generateTableFiles(
     const table = tableMap.get(structure.tableName)!;
 
     // 1. Generate TypeScript types in SHARED package (cross-package reuse)
-    const typesContent = generateTypes(table);
+    const typesContent = generateTypes(table, enums);
     const typesFile = path.join(
       sharedTypesDir,
       `${structure.tableName}.types.ts`,
@@ -241,6 +242,7 @@ function generateTableFiles(
       context,
       generatedFiles,
       scaffoldedFiles,
+      enums,
     );
   }
 }
@@ -346,6 +348,7 @@ export async function generate(): Promise<GenerationResult> {
       context,
       generatedFiles,
       scaffoldedFiles,
+      enums,
     );
   }
 

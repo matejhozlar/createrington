@@ -8,13 +8,13 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import type { PlayerApiData } from "@createrington/shared/db";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 interface PlayerHeaderProps {
-  player: AdminPlayerDetailed;
+  player: PlayerApiData;
   isOnline: boolean;
   currentServerName: string | null;
   onNavigateBack: () => void;
@@ -30,7 +30,7 @@ export function PlayerHeader({
   onEdit,
   onDelete,
 }: PlayerHeaderProps) {
-  const activeStrikes = player.strikes.activeCount;
+  const activeStrikes = 0;
 
   return (
     <>
@@ -47,7 +47,7 @@ export function PlayerHeader({
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{player.player.minecraftUsername}</BreadcrumbPage>
+              <BreadcrumbPage>{player.minecraftUsername}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -70,20 +70,15 @@ export function PlayerHeader({
       <div className="mx-4 rounded-lg border border-border bg-card p-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
-            <Avatar size="lg">
-              <AvatarImage
-                src={`https://mc-heads.net/avatar/${player.player.minecraftUuid}`}
-                alt={player.player.minecraftUsername}
-              />
-              <AvatarFallback>
-                {player.player.minecraftUsername.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            <MinecraftAvatar
+              uuid={player.minecraftUuid}
+              username={player.minecraftUsername}
+            />
 
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">
-                  {player.player.minecraftUsername}
+                  {player.minecraftUsername}
                 </h1>
                 <Badge
                   variant={isOnline ? "default" : "outline"}
@@ -102,10 +97,10 @@ export function PlayerHeader({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                Minecraft: {player.player.minecraftUsername}
+                Minecraft: {player.minecraftUsername}
               </p>
               <p className="text-sm text-muted-foreground">
-                Discord: {player.player.discordId}
+                Discord: {player.discordId}
               </p>
               {isOnline && currentServerName && (
                 <p className="text-sm text-muted-foreground">
@@ -116,15 +111,13 @@ export function PlayerHeader({
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                UUID: {player.player.minecraftUuid}
+                UUID: {player.minecraftUuid}
               </p>
               <p className="text-xs text-muted-foreground">
-                Registered:{" "}
-                {new Date(player.player.createdAt).toLocaleDateString()}
+                Registered: {new Date(player.createdAt).toLocaleDateString()}
               </p>
               <p className="text-xs text-muted-foreground">
-                Last seen:{" "}
-                {new Date(player.player.lastSeen).toLocaleDateString()}
+                Last seen: {new Date(player.lastSeen).toLocaleDateString()}
               </p>
             </div>
           </div>

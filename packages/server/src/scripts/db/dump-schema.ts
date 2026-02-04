@@ -25,6 +25,49 @@ const SCHEMA_DIR = path.resolve(DB_ROOT, "schema");
 const TABLES_DIR = path.resolve(DB_ROOT, "tables");
 const FUNCTIONS_DIR = path.resolve(DB_ROOT, "functions");
 const TYPES_DIR = path.resolve(DB_ROOT, "types");
+const BACKUP_DIR = path.resolve(DB_ROOT, "backup");
+const OUTPUT_DIRS = [TYPES_DIR, TABLES_DIR, FUNCTIONS_DIR, SCHEMA_DIR];
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await fs.access(path);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function hasAnyEntries(dir: string): Promise<boolean> {
+  try {
+    const entries = await fs.readdir(dir);
+    return entries.length > 0;
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+async function rotateOutputsToBackup(): Promise<void> {
+  if (await hasAnyEntries(BACKUP_DIR)) {
+    await fs.rm(BACKUP_DIR, { recursive: true, force: true });
+  }
+  await fs.mkdir(BACKUP_DIR, { recursive: true });
+
+  for (const dir of OUTPUT_DIRS) {
+    if (await pathExists(dir)) {
+      const folderName = path.basename(dir);
+      const dest = path.join(BACKUP_DIR, folderName);
+
+      await fs.rm(dest, { recursive: true, force: true });
+
+      await fs.rename(dir, dest);
+    }
+  }
+
+  for (const dir of OUTPUT_DIRS) {
+    await fs.mkdir(dir, { recursive: true });
+  }
+}
 
 /**
  * Executes a PostgreSQL query via psql command and returns results
@@ -633,10 +676,7 @@ async function dumpSchema(): Promise<void> {
     console.log("🔍 Scanning database...\n");
 
     // Ensure output directory structure exists
-    await ensureDir(TYPES_DIR);
-    await ensureDir(TABLES_DIR);
-    await ensureDir(FUNCTIONS_DIR);
-    await ensureDir(SCHEMA_DIR);
+    await rotateOutputsToBackup();
 
     // Scan database for all schema objects
     console.log("Fetching custom types...");
