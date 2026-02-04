@@ -191,8 +191,17 @@ class ApiClient {
   /**
    * DELETE request
    */
-  async delete<T>(endpoint: string, options?: Options): Promise<T> {
-    return this.client.delete(endpoint, options).json<T>();
+  async delete<T>(
+    endpoint: string,
+    data?: Record<string, unknown>,
+    options?: Options,
+  ): Promise<T> {
+    return this.client
+      .delete(endpoint, {
+        json: data,
+        ...options,
+      })
+      .json<T>();
   }
 
   /**

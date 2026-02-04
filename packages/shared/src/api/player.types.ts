@@ -5,6 +5,7 @@
  */
 import { z } from "zod";
 import type { PlayerApiData } from "../db";
+import type { PaginationMeta } from "./common";
 
 // ============================================================================
 // REQUEST SCHEMAS (Zod - Validates User Input)
@@ -40,10 +41,10 @@ export const GetPlayersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 
   // Sorting
-  sortBy: z
+  orderBy: z
     .enum(["createdAt", "minecraftUsername", "updatedAt"])
     .default("createdAt"),
-  sortOrder: z.enum(["ASC", "DESC"]).default("DESC"),
+  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
 });
 
 /**
@@ -74,16 +75,6 @@ export type GetPlayersCountQuery = z.infer<typeof GetPlayersCountQuerySchema>;
 // ============================================================================
 // RESPONSE TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
-
-/**
- * Pagination metadata
- */
-export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
 
 /**
  * Response for GET /api/players/:id

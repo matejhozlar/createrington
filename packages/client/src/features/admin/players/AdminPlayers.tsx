@@ -38,6 +38,7 @@ import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { adminPlayerApi } from "@/services/api/admin-players";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {
@@ -77,8 +78,8 @@ export function AdminPlayers() {
   );
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<SortField>("lastSeen");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
+  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
 
   const strikeCacheRef = useRef<Record<string, number>>({});
 
@@ -99,21 +100,10 @@ export function AdminPlayers() {
     await Promise.all(
       missing.map(async (uuid) => {
         try {
-          const response = await fetch(
-            `/api/admin/players/${uuid}/strikes?activeOnly=true`,
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-            const count =
-              data?.success && data?.data?.strikes
-                ? data.data.strikes.length
-                : 0;
-            strikeCacheRef.current[uuid] = count;
-          } else {
-            strikeCacheRef.current[uuid] = 0;
-          }
+          const data = await adminPlayerApi.getStrikes(uuid, {
+            activeOnly: true,
+          });
+          strikeCacheRef.current[uuid] = data.statistics.active;
         } catch {
           strikeCacheRef.current[uuid] = 0;
         }
@@ -132,10 +122,10 @@ export function AdminPlayers() {
       setError(null);
 
       const query: GetAdminPlayersQuery = {
-        page: page.toString(),
-        limit: limit.toString(),
-        sortBy,
-        sortOrder,
+        page: page,
+        limit: limit,
+        orderBy,
+        orderDirection,
       };
 
       if (debouncedSearch.trim()) {
@@ -143,7 +133,7 @@ export function AdminPlayers() {
       }
 
       if (onlineFilter !== undefined) {
-        query.online = onlineFilter ? "true" : "false";
+        query.online = onlineFilter ? true : false;
       }
 
       const data = await fetchPlayers(query);
@@ -177,8 +167,8 @@ export function AdminPlayers() {
     page,
     limit,
     onlineFilter,
-    sortBy,
-    sortOrder,
+    orderBy,
+    orderDirection,
   ]);
 
   // Load players on mount and when filters change
@@ -188,7 +178,7 @@ export function AdminPlayers() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, onlineFilter, sortBy, sortOrder]);
+  }, [debouncedSearch, onlineFilter, orderBy, orderDirection]);
 
   /**
    * Handle search
@@ -222,17 +212,17 @@ export function AdminPlayers() {
    */
   const handleSort = useCallback(
     (field: SortField) => {
-      if (sortBy === field) {
+      if (orderBy === field) {
         // Toggle sort order if same field
-        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+        setOrderDirection((prev) => (prev === "ASC" ? "DESC" : "ASC"));
       } else {
         // Set new field with default desc order
-        setSortBy(field);
-        setSortOrder("desc");
+        setOrderBy(field);
+        setOrderDirection("ASC");
       }
       setPage(0); // Reset to first page
     },
-    [sortBy],
+    [orderBy],
   );
 
   /**
@@ -256,16 +246,16 @@ export function AdminPlayers() {
    */
   const renderSortIcon = useCallback(
     (field: SortField) => {
-      if (sortBy !== field) {
+      if (orderBy !== field) {
         return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
       }
-      return sortOrder === "asc" ? (
+      return orderDirection === "ASC" ? (
         <ArrowUp className="ml-1 size-3.5" />
       ) : (
         <ArrowDown className="ml-1 size-3.5" />
       );
     },
-    [sortBy, sortOrder],
+    [orderBy, orderDirection],
   );
 
   /**

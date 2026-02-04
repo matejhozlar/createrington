@@ -25,9 +25,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import type { Player, PlayerApiData } from "@createrington/shared/db";
-import type { UpdateAdminPlayerResponse } from "@createrington/shared/api";
 import { useToastActions } from "@/hooks/use-toast";
+import { adminPlayerApi } from "@/services/api/admin-players";
+import { PlayerApiData } from "@createrington/shared/db";
 
 interface EditPlayerModalProps {
   open: boolean;
@@ -111,10 +111,14 @@ export function EditPlayerModal({
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
+      const updates: {
+        reason: string;
+        minecraftUsername?: string;
+        discordId?: string;
+      } = {
+        reason: reason.trim(),
+      };
 
-      const updates: Partial<Player> = {};
       if (minecraftUsername.trim() !== player.minecraftUsername) {
         updates.minecraftUsername = minecraftUsername.trim();
       }
@@ -122,36 +126,19 @@ export function EditPlayerModal({
         updates.discordId = discordId.trim();
       }
 
-      const response = await fetch(
-        `/api/admin/players/${player.minecraftUuid}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            ...updates,
-            reason: reason.trim(),
-          }),
-        },
-      );
-
-      const data: UpdateAdminPlayerResponse = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || `HTTP ${response.status}: ${response.statusText}`,
-        );
+      // Check if at least one field is being updated
+      if (!updates.minecraftUsername && !updates.discordId) {
+        toast.error("No changes to save");
+        return;
       }
 
-      if (data.success) {
-        toast.success("Player updated successfully");
-        setReason("");
-        setShowConfirmDialog(false);
-        onClose();
-        onSuccess();
-      }
+      await adminPlayerApi.update(player.minecraftUuid, updates);
+
+      toast.success("Player updated successfully");
+      setReason("");
+      setShowConfirmDialog(false);
+      onClose();
+      onSuccess();
     } catch (err) {
       console.error("Failed to update player:", err);
       toast.error(
@@ -348,7 +335,9 @@ export function EditPlayerModal({
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading} className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSubmit}
               disabled={loading}

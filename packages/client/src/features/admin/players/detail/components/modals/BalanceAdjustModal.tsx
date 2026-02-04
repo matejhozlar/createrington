@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X, Plus, Minus } from "lucide-react";
-import type { AdjustPlayerBalanceResponse } from "@createrington/shared/api";
+import { adminPlayerApi } from "@/services/api/admin-players";
+import { useToastActions } from "@/hooks/use-toast";
 
 interface BalanceAdjustModalProps {
   open: boolean;
@@ -24,6 +25,8 @@ export function BalanceAdjustModal({
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const toast = useToastActions();
+
   if (!open) return null;
 
   const handleSubmit = async () => {
@@ -32,42 +35,19 @@ export function BalanceAdjustModal({
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
+      await adminPlayerApi.adjustBalance(playerId, {
+        amount: Number(amount),
+        reason,
+      });
 
-      const response = await fetch(
-        `/api/admin/players/${playerId}/balance/adjust`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: parseFloat(amount),
-            reason,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: AdjustPlayerBalanceResponse = await response.json();
-
-      if (data.success) {
-        alert(
-          `Balance adjusted successfully! New balance: $${data.data.newBalance}`,
-        );
-        setAmount("");
-        setReason("");
-        onClose();
-        onSuccess();
-      }
+      toast.success(`Balance adjusted successfully!`);
+      setAmount("");
+      setReason("");
+      onClose();
+      onSuccess();
     } catch (err) {
       console.error("Failed to adjust balance:", err);
-      alert("Failed to adjust balance");
+      toast.error("Failed to adjust balance");
     } finally {
       setLoading(false);
     }

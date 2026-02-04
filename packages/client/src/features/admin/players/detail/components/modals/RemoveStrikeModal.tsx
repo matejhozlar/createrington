@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
+import { adminPlayerApi } from "@/services/api/admin-players";
 
 interface RemoveStrikeModalProps {
   open: boolean;
@@ -32,24 +33,9 @@ export function RemoveStrikeModal({
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
-
-      const response = await fetch(
-        `/api/admin/players/${playerId}/strikes/${strikeId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ reason: reason.trim() }),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      await adminPlayerApi.removeStrike(playerId, strikeId, {
+        reason: reason.trim(),
+      });
 
       toast.success("Strike removed successfully!");
       setReason("");

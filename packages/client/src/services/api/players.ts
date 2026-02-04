@@ -32,7 +32,7 @@ export const playersApi = {
    */
   async getCount(filters?: GetPlayersCountQuery): Promise<number> {
     const response = await api.get<GetPlayersCountResponse>(
-      "api/players/count",
+      "/api/players/count",
       filters,
     );
     return response.data.count;
@@ -49,7 +49,7 @@ export const playersApi = {
    * const player = await playersApi.getById("123456789012345678");
    */
   async getById(id: string): Promise<GetPlayerResponse["data"]> {
-    const response = await api.get<GetPlayerResponse>(`api/players/${id}`);
+    const response = await api.get<GetPlayerResponse>(`/api/players/${id}`);
     return response.data;
   },
 
@@ -77,7 +77,7 @@ export const playersApi = {
   async getAll(
     query?: Partial<GetPlayersQuery>,
   ): Promise<GetPlayersResponse["data"]> {
-    const response = await api.get<GetPlayersResponse>("api/players", query);
+    const response = await api.get<GetPlayersResponse>("/api/players", query);
     return response.data;
   },
 };

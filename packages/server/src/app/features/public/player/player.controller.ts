@@ -132,12 +132,14 @@ export class PlayerController {
         filters.isActive = query.isActive; // Already a boolean!
       }
 
+      const { orderBy, orderDirection, limit, page } = query;
+
       // Fetch players
       const players = await Q.player.findAll(filters, {
-        orderBy: query.sortBy,
-        orderDirection: query.sortOrder,
-        limit: query.limit,
-        offset: query.page * query.limit,
+        orderBy,
+        orderDirection,
+        limit,
+        offset: page * limit,
       });
 
       const total = await Q.player.count(filters);

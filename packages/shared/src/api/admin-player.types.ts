@@ -1,8 +1,9 @@
 /**
- * Admin Player API Response Types
+ * Admin Player API Types
  *
- * Type definitions for admin player management endpoints
+ * Request schemas (Zod for validation) and response types for admin player management endpoints
  */
+import { z } from "zod";
 import type {
   PlayerApiData,
   PlayerBalanceApiData,
@@ -16,136 +17,182 @@ import type {
   AdminLogActionApiData,
 } from "../db";
 import type { DateToString } from "../types";
+import type { PaginationMeta } from "./common";
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST SCHEMAS (Zod - Validates User Input)
 // ============================================================================
-
-/**
- * Path parameters for admin player endpoints
- */
-export interface AdminPlayerPathParams {
-  id: string; // Discord ID or Minecraft UUID
-}
-
-/**
- * Query parameters for GET /api/admin/players/:id/tickets
- */
-export interface GetPlayerTicketsQuery {
-  page?: string; // 0-indexed
-  limit?: string; // default: 20, max: 100
-}
 
 /**
  * Query parameters for GET /api/admin/players
  */
-export interface GetAdminPlayersQuery {
+export const GetAdminPlayersQuerySchema = z.object({
   // Filtering
-  discordId?: string;
-  minecraftUuid?: string;
-  minecraftUsername?: string;
-  online?: "true" | "false";
+  discordId: z.string().optional(),
+  minecraftUuid: z.string().optional(),
+  minecraftUsername: z.string().optional(),
+  online: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
 
   // Pagination
-  page?: string;
-  limit?: string;
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 
   // Sorting
-  sortBy?: "createdAt" | "minecraftUsername" | "updatedAt" | "lastSeen";
-  sortOrder?: "asc" | "desc";
-}
+  orderBy: z
+    .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
+    .default("createdAt"),
+  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
+});
 
 /**
  * Body for PATCH /api/admin/players/:id
  */
-export interface UpdateAdminPlayerBody {
-  minecraftUsername?: string;
-  discordId?: string;
-  reason: string;
-}
+export const UpdateAdminPlayerBodySchema = z.object({
+  minecraftUsername: z.string().optional(),
+  discordId: z.string().optional(),
+  reason: z.string().min(1, "Reason is required"),
+});
 
 /**
  * Body for DELETE /api/admin/players/:id
  */
-export interface DeleteAdminPlayerBody {
-  reason: string;
-}
+export const DeleteAdminPlayerBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+});
 
 /**
  * Query parameters for GET /api/admin/players/:id/balance
  */
-export interface GetPlayerBalanceQuery {
-  limit?: string; // Number of recent transactions (default: 10, max: 100)
-}
+export const GetPlayerBalanceQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+});
 
 /**
  * Body for POST /api/admin/players/:id/balance/adjust
  */
-export interface AdjustPlayerBalanceBody {
-  amount: number; // Positive to add, negative to subtract
-  reason: string;
-}
+export const AdjustPlayerBalanceBodySchema = z.object({
+  amount: z.number().int(),
+  reason: z.string().min(1, "Reason is required"),
+});
 
 /**
  * Query parameters for GET /api/admin/players/:id/audit-log
  */
-export interface GetPlayerAuditLogQuery {
-  page?: string;
-  limit?: string; // Number of actions (default: 50, max: 200)
-}
+export const GetPlayerAuditLogQuerySchema = z.object({
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 
 /**
  * Query parameters for GET /api/admin/players/:id/sessions
  */
-export interface GetPlayerSessionsQuery {
-  serverId?: string;
-  page?: string;
-  limit?: string; // Number of sessions (default: 50, max: 200)
-}
+export const GetPlayerSessionsQuerySchema = z.object({
+  serverId: z.coerce.number().int().positive().optional(),
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+});
 
 /**
- * Body for POST /api/admin/players/bulk/balance
+ * Query parameters for GET /api/admin/players/:id/tickets
  */
-export interface BulkBalanceAdjustBody {
-  playerUuids: string[];
-  amount: number;
-  reason: string;
-}
+export const GetPlayerTicketsQuerySchema = z.object({
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
 
 /**
  * Query parameters for GET /api/admin/players/:id/strikes
  */
-export interface GetPlayerStrikesQuery {
-  /** Filter to only active (non-removed) strikes */
-  activeOnly?: "true" | "false";
-}
+export const GetPlayerStrikesQuerySchema = z.object({
+  activeOnly: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+});
 
 /**
  * Body for POST /api/admin/players/:id/strikes
  */
-export interface IssueStrikeBody {
-  /** Classification category of the strike */
-  classification: StrikeClassification;
-  /** Detailed description of the violation */
-  description: string;
-  /** Severity level from 1 (minor) to 5 (severe) */
-  severity: 1 | 2 | 3 | 4 | 5;
-  /** Optional server ID where the violation occurred */
-  serverId?: number;
-  /** Additional metadata (coordinates, evidence links, item IDs, etc.) */
-  metadata?: Record<string, any>;
-}
+export const IssueStrikeBodySchema = z.object({
+  /** Classification category - replace with actual values from StrikeClassification */
+  classification: z.enum([
+    "pvp",
+    "theft",
+    "griefing",
+    "laggy_machines",
+    "inappropriate_chat",
+    "harassment",
+    "exploiting",
+    "rule_violation",
+    "other",
+  ]),
+  description: z.string().min(1, "Description is required"),
+  severity: z.union([
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+  ]),
+  serverId: z.number().int().positive().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+/**
+ * Path parameters for DELETE /api/admin/players/:id/strikes/:strikeId
+ */
+export const RemoveStrikeParamsSchema = z.object({
+  id: z.string().min(1, "Player ID is required"),
+  strikeId: z.coerce.number().int().positive(),
+});
 
 /**
  * Body for DELETE /api/admin/players/:id/strikes/:strikeId
  */
-export interface RemoveStrikeBody {
-  /** Reason for removing/pardoning the strike */
-  reason: string;
-}
+export const RemoveStrikeBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+});
+
+/**
+ * Body for POST /api/admin/players/bulk/balance
+ */
+export const BulkBalanceAdjustBodySchema = z.object({
+  playerUuids: z
+    .array(z.string().min(1))
+    .min(1, "At least one player UUID is required"),
+  amount: z.number().int(),
+  reason: z.string().min(1, "Reason is required"),
+});
 
 // ============================================================================
-// RESPONSE DATA TYPES
+// REQUEST TYPES (Auto-Inferred from Schemas)
+// ============================================================================
+
+export type GetAdminPlayersQuery = z.infer<typeof GetAdminPlayersQuerySchema>;
+export type UpdateAdminPlayerBody = z.infer<typeof UpdateAdminPlayerBodySchema>;
+export type DeleteAdminPlayerBody = z.infer<typeof DeleteAdminPlayerBodySchema>;
+export type GetPlayerBalanceQuery = z.infer<typeof GetPlayerBalanceQuerySchema>;
+export type AdjustPlayerBalanceBody = z.infer<
+  typeof AdjustPlayerBalanceBodySchema
+>;
+export type GetPlayerAuditLogQuery = z.infer<
+  typeof GetPlayerAuditLogQuerySchema
+>;
+export type GetPlayerSessionsQuery = z.infer<
+  typeof GetPlayerSessionsQuerySchema
+>;
+export type GetPlayerTicketsQuery = z.infer<typeof GetPlayerTicketsQuerySchema>;
+export type GetPlayerStrikesQuery = z.infer<typeof GetPlayerStrikesQuerySchema>;
+export type IssueStrikeBody = z.infer<typeof IssueStrikeBodySchema>;
+export type RemoveStrikeParams = z.infer<typeof RemoveStrikeParamsSchema>;
+export type RemoveStrikeBody = z.infer<typeof RemoveStrikeBodySchema>;
+export type BulkBalanceAdjustBody = z.infer<typeof BulkBalanceAdjustBodySchema>;
+
+// ============================================================================
+// RESPONSE DATA TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
@@ -195,17 +242,11 @@ export interface AdminPlayerTickets {
  * Strike statistics for a player
  */
 export interface StrikeStatistics {
-  /** Total number of strikes (active + removed) */
   total: number;
-  /** Number of active (non-removed) strikes */
   active: number;
-  /** Number of removed/pardoned strikes */
   removed: number;
-  /** Breakdown by classification type */
   byClassification: Record<StrikeClassification, number>;
-  /** Breakdown by severity level */
   bySeverity: Record<1 | 2 | 3 | 4 | 5, number>;
-  /** Timestamp of the most recent strike (ISO 8601) */
   mostRecent?: string;
 }
 
@@ -213,13 +254,9 @@ export interface StrikeStatistics {
  * Strike data for admin view
  */
 export interface AdminPlayerStrikes {
-  /** All strikes (including removed) */
   all: DateToString<PlayerStrikeApiData>[];
-  /** Active (non-removed) strikes only */
   active: DateToString<PlayerStrikeApiData>[];
-  /** Count of active strikes */
   activeCount: number;
-  /** Total count of all strikes */
   totalCount: number;
 }
 
@@ -302,7 +339,7 @@ export interface AdminPlayerStats {
 }
 
 // ============================================================================
-// RESPONSE TYPES
+// RESPONSE TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
@@ -320,12 +357,7 @@ export interface GetAdminPlayersResponse {
   success: true;
   data: {
     players: PlayerApiData[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    pagination: PaginationMeta;
   };
 }
 
@@ -375,12 +407,7 @@ export interface GetPlayerAuditLogResponse {
   success: true;
   data: {
     actions: AdminLogActionApiData[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    pagination: PaginationMeta;
   };
 }
 
@@ -399,12 +426,7 @@ export interface GetPlayerSessionsResponse {
   success: true;
   data: {
     sessions: PlayerSessionApiData[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    pagination: PaginationMeta;
   };
 }
 
@@ -415,12 +437,7 @@ export interface GetPlayerTicketsResponse {
   success: true;
   data: {
     tickets: TicketApiData[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    pagination: PaginationMeta;
   };
 }
 
@@ -430,9 +447,7 @@ export interface GetPlayerTicketsResponse {
 export interface GetPlayerStrikesResponse {
   success: true;
   data: {
-    /** List of strikes (filtered by activeOnly if specified) */
     strikes: DateToString<PlayerStrikeApiData>[];
-    /** Statistical breakdown of all strikes */
     statistics: StrikeStatistics;
   };
 }

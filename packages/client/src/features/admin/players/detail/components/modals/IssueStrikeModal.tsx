@@ -10,9 +10,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { X } from "lucide-react";
-import type { IssueStrikeResponse } from "@createrington/shared/api";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
+import { adminPlayerApi } from "@/services/api/admin-players";
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -46,32 +46,17 @@ export function IssueStrikeModal({
       const token = localStorage.getItem("auth_token");
       if (!token) throw new Error("No authentication token");
 
-      const response = await fetch(`/api/admin/players/${playerId}/strikes`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          classification,
-          description,
-          severity,
-        }),
+      await adminPlayerApi.issueStrike(playerId, {
+        classification,
+        description,
+        severity,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: IssueStrikeResponse = await response.json();
-
-      if (data.success) {
-        toast.success("Strike issued successfully!");
-        setDescription("");
-        setSeverity(1);
-        onClose();
-        onSuccess();
-      }
+      toast.success("Strike issued successfully!");
+      setDescription("");
+      setSeverity(1);
+      onClose();
+      onSuccess();
     } catch (err) {
       console.error("Failed to issue strike:", err);
       toast.error("Failed to issue strike");

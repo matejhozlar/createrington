@@ -11,9 +11,9 @@ import { Loading } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
-import type { GetPlayerAuditLogResponse } from "@createrington/shared/api";
 import type { AdminLogActionApiData } from "@createrington/shared/db";
 import { cn } from "@/lib/utils";
+import { adminPlayerApi } from "@/services/api/admin-players";
 
 interface AuditTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -70,26 +70,14 @@ export function AuditTab({ playerId }: AuditTabProps) {
       const token = localStorage.getItem("auth_token");
       if (!token) throw new Error("No authentication token");
 
-      const response = await fetch(
-        `/api/admin/players/${playerId}/audit-log?page=${page}&limit=${limit}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
+      const data = await adminPlayerApi.getAuditLog(playerId, {
+        page,
+        limit,
+      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetPlayerAuditLogResponse = await response.json();
-
-      if (data.success) {
-        setActions(data.data.actions);
-        setTotal(data.data.pagination.total);
-        setTotalPages(data.data.pagination.totalPages);
-      }
+      setActions(data.actions);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Failed to load audit log:", err);
       setError(err instanceof Error ? err.message : "Failed to load audit log");
