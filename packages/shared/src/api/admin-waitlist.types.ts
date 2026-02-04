@@ -13,11 +13,21 @@ import type { PaginationMeta } from "./common";
 // ============================================================================
 
 /**
+ * Path parameters for GET /api/admin/waitlists/:id
+ *
+ * Validates the waitlist ID from the URL path
+ */
+export const GetWaitlistParamsSchema = z.object({
+  /** Discord ID or Minecraft UUID */
+  id: z.coerce.number().int().positive().min(1, "Player ID is required"),
+});
+
+/**
  * Query parameters for GET /api/admin/waitlist
  */
 export const GetAdminWaitlistEntriesQuerySchema = z.object({
   // Filtering
-  status: z.enum(["pending", "accepted", "rejected"]).optional(),
+  status: z.enum(["pending", "accepted", "declined", "completed"]).optional(),
   email: z.string().optional(),
   discordName: z.string().optional(),
   discordId: z.string().optional(),
@@ -35,10 +45,10 @@ export const GetAdminWaitlistEntriesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 
   // Sorting
-  sortBy: z
+  orderBy: z
     .enum(["submittedAt", "acceptedAt", "email", "discordName"])
     .default("submittedAt"),
-  sortOrder: z.enum(["asc", "desc"]).default("desc"),
+  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
 });
 
 /**

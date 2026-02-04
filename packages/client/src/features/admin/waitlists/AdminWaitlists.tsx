@@ -40,13 +40,12 @@ import type {
 } from "@createrington/shared/db";
 import type {
   GetAdminWaitlistEntriesQuery,
-  GetAdminWaitlistEntriesResponse,
-  GetAdminWaitlistStatsResponse,
   AdminWaitlistStats,
 } from "@createrington/shared/api";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
+import { adminWaitlistApi } from "@/services/api/admin-waitlists";
 
 type WaitlistEntryWithDates = Omit<
   WaitlistEntryApiData,
@@ -85,8 +84,8 @@ export function AdminWaitlists() {
   );
 
   // Sorting state
-  const [sortBy, setSortBy] = useState<SortField>("submittedAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [orderBy, setOrderBy] = useState<SortField>("submittedAt");
+  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
 
   // Modal state
   const [inviteModal, setInviteModal] = useState<{
@@ -107,26 +106,9 @@ export function AdminWaitlists() {
     try {
       setStatsLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("No authentication token");
-      }
+      const data = await adminWaitlistApi.getStats();
 
-      const response = await fetch("/api/admin/waitlists/stats", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetAdminWaitlistStatsResponse = await response.json();
-
-      if (data.success) {
-        setStats(data.data);
-      }
+      setStats(data);
     } catch (err) {
       console.error("Failed to fetch waitlist stats:", err);
     } finally {
@@ -142,16 +124,11 @@ export function AdminWaitlists() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("No authentication token");
-      }
-
-      const query: GetAdminWaitlistEntriesQuery = {
-        page: page.toString(),
-        limit: limit.toString(),
-        sortBy,
-        sortOrder,
+      const query: Partial<GetAdminWaitlistEntriesQuery> = {
+        page,
+        limit,
+        orderBy,
+        orderDirection,
       };
 
       if (debouncedSearch.trim()) {
@@ -165,35 +142,14 @@ export function AdminWaitlists() {
       }
 
       if (verifiedFilter !== undefined) {
-        query.verified = verifiedFilter ? "true" : "false";
+        query.verified = verifiedFilter;
       }
 
-      const params = new URLSearchParams();
-      Object.entries(query).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, String(value));
-        }
-      });
+      const data = await adminWaitlistApi.getAll(query);
 
-      const url = `/api/admin/waitlists${params.toString() ? `?${params.toString()}` : ""}`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetAdminWaitlistEntriesResponse = await response.json();
-
-      if (data.success) {
-        setEntries(data.data.entries as WaitlistEntryWithDates[]);
-        setTotal(data.data.pagination.total);
-        setTotalPages(data.data.pagination.totalPages);
-      }
+      setEntries(data.entries as WaitlistEntryWithDates[]);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Failed to load waitlist entries:", err);
       setError("Failed to load waitlist entries");
@@ -206,8 +162,8 @@ export function AdminWaitlists() {
     limit,
     statusFilter,
     verifiedFilter,
-    sortBy,
-    sortOrder,
+    orderBy,
+    orderDirection,
   ]);
 
   // Load stats and entries on mount
@@ -222,7 +178,7 @@ export function AdminWaitlists() {
   // Reset page when filters change
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, statusFilter, verifiedFilter, sortBy, sortOrder]);
+  }, [debouncedSearch, statusFilter, verifiedFilter, orderBy, orderDirection]);
 
   /**
    * Handle search form submission
@@ -256,15 +212,15 @@ export function AdminWaitlists() {
    */
   const handleSort = useCallback(
     (field: SortField) => {
-      if (sortBy === field) {
-        setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+      if (orderBy === field) {
+        setOrderDirection((prev) => (prev === "ASC" ? "DESC" : "ASC"));
       } else {
-        setSortBy(field);
-        setSortOrder("desc");
+        setOrderBy(field);
+        setOrderDirection("DESC");
       }
       setPage(0);
     },
-    [sortBy],
+    [orderBy],
   );
 
   /**
@@ -320,16 +276,16 @@ export function AdminWaitlists() {
    */
   const renderSortIcon = useCallback(
     (field: SortField) => {
-      if (sortBy !== field) {
+      if (orderBy !== field) {
         return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
       }
-      return sortOrder === "asc" ? (
+      return orderDirection === "ASC" ? (
         <ArrowUp className="ml-1 size-3.5" />
       ) : (
         <ArrowDown className="ml-1 size-3.5" />
       );
     },
-    [sortBy, sortOrder],
+    [orderBy, orderDirection],
   );
 
   /**
