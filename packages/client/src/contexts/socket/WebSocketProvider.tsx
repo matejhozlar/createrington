@@ -60,7 +60,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   );
 
   // Reconnection state
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = config.maxReconnectAttempts ?? 5;
   const reconnectDelay = config.reconnectDelay ?? 1000;

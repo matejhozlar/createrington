@@ -22,10 +22,10 @@ const router = Router();
  *
  * Query Parameters (all optional):
  * - online: Count only online players (true/false)
- * - current_server_id: Count players on specific server
- * - created_after: Count players created after date (ISO 8601)
- * - created_before: Count players created before date (ISO 8601)
- * - last_seen_after: Count players last seen after date (ISO 8601)
+ * - currentServer_id: Count players on specific server
+ * - createdAfter: Count players created after date (ISO 8601)
+ * - createdBefore: Count players created before date (ISO 8601)
+ * - lastSeenAfter: Count players last seen after date (ISO 8601)
  *
  * Examples:
  * - /api/players/count

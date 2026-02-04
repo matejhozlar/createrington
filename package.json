@@ -17,9 +17,12 @@
   "scripts": {
     "generate": "npm run generate --workspace=@createrington/server && npm run build:shared && npm run typecheck",
     "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck:shared": "npm run typecheck --workspace=@createrington/shared",
+    "typecheck:server": "npm run typecheck --workspace=@createrington/server",
+    "typecheck:client": "npm run typecheck --workspace=@createrington/client",
     "dev:client": "npm run dev --workspace=@createrington/client",
     "dev:server": "npm run dev --workspace=@createrington/server",
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
     "build:client": "npm run build --workspace=@createrington/client",
     "build:server": "npm run build --workspace=@createrington/server",
     "build:shared": "npm run build --workspace=@createrington/shared",

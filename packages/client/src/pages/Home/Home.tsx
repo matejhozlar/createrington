@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
@@ -32,9 +32,12 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerData } from "@/contexts/socket";
+import { playersApi } from "@/services/api/players";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
+  const [totalPlayers, setTotalPlayers] = useState<number | null>(null);
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
 
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
@@ -44,6 +47,23 @@ export const Home: React.FC = () => {
   const serverId = 1;
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
+
+  useEffect(() => {
+    const fetchPlayerCount = async () => {
+      try {
+        setIsLoadingPlayers(true);
+        const count = await playersApi.getCount();
+        setTotalPlayers(count);
+      } catch (error) {
+        console.error("Failed to fetch player count:", error);
+        setTotalPlayers(null);
+      } finally {
+        setIsLoadingPlayers(false);
+      }
+    };
+
+    fetchPlayerCount();
+  }, []);
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -93,7 +113,7 @@ export const Home: React.FC = () => {
     },
     {
       icon: TrendingUp,
-      value: "1,247",
+      value: isLoadingPlayers ? "..." : (totalPlayers ?? "N/A"),
       title: "Total Players",
       description: "Registered community members",
     },

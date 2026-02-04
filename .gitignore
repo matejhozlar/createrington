@@ -8,13 +8,8 @@ out/
 *.tsbuildinfo
 
 # Environment variables
-.env
-.env.test
-.env.local
-.env*.local
-.env.development
-.env.docker
-.env.migration
+.env*
+!.env.example
 
 # Logs
 logs/
