@@ -15,7 +15,7 @@ import {
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
 import type { WaitlistEntryApiData } from "@createrington/shared/db";
-import { adminWaitlistApi } from "@/services/api/admin-waitlists";
+import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
 
 interface DeleteWaitlistModalProps {
   open: boolean;

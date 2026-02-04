@@ -12,7 +12,7 @@ import {
 import { X } from "lucide-react";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface IssueStrikeModalProps {
   open: boolean;

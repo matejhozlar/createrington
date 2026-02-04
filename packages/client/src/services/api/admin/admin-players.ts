@@ -27,7 +27,7 @@ import type {
   BulkBalanceAdjustResponse,
   BulkBalanceAdjustBody,
 } from "@createrington/shared/api";
-import { api } from "./client";
+import { api } from "../client";
 
 /**
  * Admin Player API endpoints

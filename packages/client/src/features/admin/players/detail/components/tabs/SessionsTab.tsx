@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import type { PlayerSessionApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface SessionsTabProps {
   playerId: string;

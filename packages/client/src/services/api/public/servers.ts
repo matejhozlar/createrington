@@ -2,7 +2,7 @@ import type {
   GetAllServersResponse,
   GetServerResponse,
 } from "@createrington/shared/api";
-import { api } from "./client";
+import { api } from "../client";
 
 /**
  * Server Status API endpoints

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface RemoveStrikeModalProps {
   open: boolean;

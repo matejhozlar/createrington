@@ -1,11 +1,12 @@
 /**
- * Message API Response Types
+ * Message API Types
  *
- * Type definitions for message-related API endpoints
+ * Request schemas (Zod for validation) and response types for message endpoints
  */
+import { z } from "zod";
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST SCHEMAS (Zod - Validates User Input)
 // ============================================================================
 
 /**
@@ -15,15 +16,21 @@
  * by multer and is not represented here — only the form fields that land
  * on req.body are typed.
  */
-export interface SendMessageBody {
+export const SendMessageBodySchema = z.object({
   /** Target Minecraft server ID */
-  serverId: string;
+  serverId: z.coerce.number().int().positive(),
   /** Text content of the message (optional if image is provided) */
-  content?: string;
-}
+  content: z.string().optional(),
+});
 
 // ============================================================================
-// RESPONSE TYPES
+// REQUEST TYPES (Auto-Inferred from Schemas)
+// ============================================================================
+
+export type SendMessageBody = z.infer<typeof SendMessageBodySchema>;
+
+// ============================================================================
+// RESPONSE DATA TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
@@ -41,6 +48,10 @@ export interface SendMessageData {
   /** Discord channel ID the message was sent to */
   channelId: string;
 }
+
+// ============================================================================
+// RESPONSE TYPES (Plain TypeScript - No Validation Needed)
+// ============================================================================
 
 /**
  * Response for POST /api/messages (success)

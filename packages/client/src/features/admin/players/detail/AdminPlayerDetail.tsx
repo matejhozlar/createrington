@@ -18,7 +18,7 @@ import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
 import type { AdminPlayerDetailed } from "@createrington/shared/api";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 type TabType = "overview" | "sessions" | "tickets" | "strikes" | "audit";
 

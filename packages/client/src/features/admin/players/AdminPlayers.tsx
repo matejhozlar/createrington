@@ -38,7 +38,7 @@ import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {

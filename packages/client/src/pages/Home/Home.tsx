@@ -32,7 +32,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerData } from "@/contexts/socket";
-import { playersApi } from "@/services/api/players";
+import { playersApi } from "@/services/api/public/players";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();

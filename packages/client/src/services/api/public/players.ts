@@ -5,7 +5,7 @@ import {
   type GetPlayersCountResponse,
   type GetPlayersQuery,
 } from "@createrington/shared/api";
-import { api } from "./client";
+import { api } from "../client";
 
 /**
  * Player API endpoints

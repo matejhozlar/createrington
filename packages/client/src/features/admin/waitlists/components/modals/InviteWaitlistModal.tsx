@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminWaitlistApi } from "@/services/api/admin-waitlists";
+import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
 
 interface InviteWaitlistModalProps {
   open: boolean;

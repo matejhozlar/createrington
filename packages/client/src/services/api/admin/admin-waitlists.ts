@@ -8,7 +8,7 @@ import type {
   DeleteWaitlistEntryBody,
   GetAdminWaitlistStatsResponse,
 } from "@createrington/shared/api";
-import { api } from "./client";
+import { api } from "../client";
 
 /**
  * Admin Waitlist API endpoints

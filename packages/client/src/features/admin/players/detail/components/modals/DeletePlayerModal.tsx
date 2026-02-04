@@ -15,7 +15,7 @@ import {
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface DeletePlayerModalProps {

@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
 import type { AdminLogActionApiData } from "@createrington/shared/db";
 import { cn } from "@/lib/utils";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface AuditTabProps {
   playerId: string; // minecraftUuid (route param)

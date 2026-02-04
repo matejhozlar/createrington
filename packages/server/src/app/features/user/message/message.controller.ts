@@ -4,9 +4,9 @@ import type { DiscordMessageService } from "@/services/discord/message";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
 import type { Request, Response } from "express";
-import type {
-  SendMessageBody,
-  SendMessageResponse,
+import {
+  SendMessageBodySchema,
+  type SendMessageResponse,
 } from "@createrington/shared/api";
 
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
@@ -58,10 +58,7 @@ export class MessageController {
    * display name and avatar when possible, falling back to the bot identity.
    */
   static async sendMessage(req: Request, res: Response): Promise<void> {
-    const { serverId: rawServerId, content: rawContent } =
-      req.body as SendMessageBody;
-
-    const serverId = parseInt(rawServerId, 10);
+    const { serverId, content } = SendMessageBodySchema.parse(req.body);
 
     const channelId = resolveChannelForServer(serverId);
     if (!channelId) {
@@ -70,8 +67,6 @@ export class MessageController {
       );
     }
 
-    const content =
-      typeof req.body.content === "string" ? req.body.content.trim() : "";
     const file = req.file;
 
     if (!content && !file) {
@@ -99,7 +94,7 @@ export class MessageController {
       attachment = new AttachmentBuilder(file.buffer, { name: safeName });
     }
 
-    let messageContent = content;
+    let messageContent = content?.trim();
 
     if (req.user) {
       const displayName = req.user.minecraftUsername ?? "Web User";

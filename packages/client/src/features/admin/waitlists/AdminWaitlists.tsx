@@ -45,7 +45,7 @@ import type {
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
-import { adminWaitlistApi } from "@/services/api/admin-waitlists";
+import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
 
 type WaitlistEntryWithDates = Omit<
   WaitlistEntryApiData,

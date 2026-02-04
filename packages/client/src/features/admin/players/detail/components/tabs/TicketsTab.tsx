@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import type { TicketApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin-players";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface TicketsTabProps {
   playerId: string; // minecraftUuid (route param)
