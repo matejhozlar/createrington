@@ -2,7 +2,7 @@ import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 import { ActionRowBuilder, ButtonBuilder, User } from "discord.js";
 import { ButtonPresets } from "../buttons";
-import { Player, WaitlistEntry } from "@/generated/db";
+import type { Player, WaitlistEntry } from "@/generated/db";
 
 export const WaitlistEmbedPresets = {
   /**
@@ -20,11 +20,11 @@ export const WaitlistEmbedPresets = {
     // Use reusable button presets
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       ButtonPresets.waitlist.accept(data.id),
-      ButtonPresets.waitlist.decline(data.id)
+      ButtonPresets.waitlist.decline(data.id),
     );
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.adminPanel()
+      ButtonPresets.links.adminPanel(),
     );
 
     return { embed, components: [actionRow, linkRow] };
@@ -49,7 +49,7 @@ export const WaitlistEmbedPresets = {
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      ButtonPresets.links.adminPanel()
+      ButtonPresets.links.adminPanel(),
     );
 
     const content = data.success
@@ -65,7 +65,7 @@ export const WaitlistEmbedPresets = {
   createProgressEmbed(
     entry: WaitlistEntry,
     discordUser?: User | null,
-    player?: Player | null
+    player?: Player | null,
   ): DiscordEmbedBuilder {
     const steps = [
       {
@@ -122,7 +122,7 @@ export const WaitlistEmbedPresets = {
 
     if (entry.acceptedAt) {
       details.push(
-        `Accepted: <t:${Math.floor(entry.acceptedAt.getTime() / 1000)}:R>`
+        `Accepted: <t:${Math.floor(entry.acceptedAt.getTime() / 1000)}:R>`,
       );
     }
 

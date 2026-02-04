@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeDailyBaseQueries } from "@/generated/db/player_playtime_daily.queries";
 
 export type ServerActivity = {
@@ -33,7 +33,7 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
   async getServerActivity(
     serverId: number,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
   ): Promise<ServerActivity[]> {
     const query = `
     SELECT 

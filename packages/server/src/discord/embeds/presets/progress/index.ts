@@ -1,4 +1,4 @@
-import { ColorResolvable } from "discord.js";
+import type { ColorResolvable } from "discord.js";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 
@@ -145,7 +145,7 @@ export const ProgressEmbedPresets = {
       .description(
         description
           ? `${description}\n\n${bar}  **${percent}%**`
-          : `${bar}  **${percent}%**`
+          : `${bar}  **${percent}%**`,
       )
       .color(percent === 100 ? EmbedColors.Success : EmbedColors.Info);
 
@@ -181,7 +181,7 @@ export const ProgressEmbedPresets = {
   error(
     title: string,
     error: string,
-    failedStep?: string
+    failedStep?: string,
   ): DiscordEmbedBuilder {
     const embed = createEmbed()
       .title(`❌ ${title}`)

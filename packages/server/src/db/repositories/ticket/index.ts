@@ -3,13 +3,13 @@ import {
   TicketType,
   TicketUserAction,
 } from "@/services/discord/tickets";
-import {
-  DatabaseTable,
+import type {
   Ticket,
   TicketAction,
   TicketActionCreate,
   TicketCreate,
 } from "@/generated/db";
+import { DatabaseTable } from "@/generated/db";
 import { Q } from "@/db";
 
 interface TicketCloseData {

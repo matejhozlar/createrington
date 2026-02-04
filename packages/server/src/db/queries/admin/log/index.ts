@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { AdminLogActionQueries } from "@/db/queries/admin/log/action";
 
 /**

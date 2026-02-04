@@ -1,24 +1,21 @@
 import { Q } from "@/db";
-import { ServerActivity } from "@/db/queries/player/playtime/daily";
-import {
+import type { ServerActivity } from "@/db/queries/player/playtime/daily";
+import type {
   PlayerHourlyPattern,
   ServerHeatMap,
 } from "@/db/queries/player/playtime/hourly";
-import {
+import type {
   LeaderboardEntry,
   ServerStats,
 } from "@/db/queries/player/playtime/summary";
-import {
+import type {
   PlayerPlaytimeDaily,
   PlayerPlaytimeHourly,
   PlayerPlaytimeSummary,
   PlayerSession,
 } from "@/generated/db";
-import {
-  PlaytimeService,
-  SessionEndEvent,
-  SessionStartEvent,
-} from "@/services/playtime";
+import { PlaytimeService } from "@/services/playtime";
+import type { SessionEndEvent, SessionStartEvent } from "@/services/playtime";
 
 /**
  * Repository for playtime data management

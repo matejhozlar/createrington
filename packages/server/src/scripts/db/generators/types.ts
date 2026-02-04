@@ -68,7 +68,7 @@ export function generateTypes(
   const usedEnums = getUsedEnums(table, enums);
   const enumImports = generateEnumImports(usedEnums);
 
-  return `import { CamelCaseKeys } from "../";
+  return `import type { CamelCaseKeys } from "../";
 ${enumImports}
 /**
  * Database representation of ${table.tableName} table

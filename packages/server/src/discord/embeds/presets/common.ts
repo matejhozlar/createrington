@@ -1,7 +1,7 @@
 import { createEmbed } from "../embed-builder";
 import { EmbedColors } from "../colors";
 import { Discord } from "@/discord/constants";
-import { ColorResolvable } from "discord.js";
+import type { ColorResolvable } from "discord.js";
 
 export const CommonEmbedPresets = {
   success(title: string, description?: string) {
@@ -29,10 +29,10 @@ export const CommonEmbedPresets = {
 
     const fullDescription = description
       ? `${description}\n\n If this issue persists, please contact ${Discord.Roles.mention(
-          Discord.Roles.ADMIN
+          Discord.Roles.ADMIN,
         )}`
       : `If this issue persists, please contact ${Discord.Roles.mention(
-          Discord.Roles.ADMIN
+          Discord.Roles.ADMIN,
         )}`;
 
     embed.description(fullDescription);

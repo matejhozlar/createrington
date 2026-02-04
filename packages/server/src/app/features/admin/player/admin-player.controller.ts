@@ -1,6 +1,4 @@
-// packages/server/src/app/features/admin/player/admin-player.controller.ts
-
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import {
   BadRequestError,
   InternalServerError,

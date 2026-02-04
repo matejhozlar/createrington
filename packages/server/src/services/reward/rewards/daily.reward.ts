@@ -1,5 +1,5 @@
-import { PlayerIdentifier } from "@/generated/db";
-import { RewardClaimResult, RewardEligibilityResult } from "../types";
+import type { PlayerIdentifier } from "@/generated/db";
+import type { RewardClaimResult, RewardEligibilityResult } from "../types";
 import { BaseReward } from "./base.reward";
 import { balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";

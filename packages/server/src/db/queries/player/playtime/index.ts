@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeDailyQueries } from "@/db/queries/player/playtime/daily";
 import { PlayerPlaytimeHourlyQueries } from "@/db/queries/player/playtime/hourly";
 import { PlayerPlaytimeSummaryQueries } from "@/db/queries/player/playtime/summary";

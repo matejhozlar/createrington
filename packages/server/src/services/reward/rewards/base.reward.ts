@@ -1,5 +1,5 @@
-import { DatabaseTable, PlayerIdentifier } from "@/generated/db";
-import {
+import { DatabaseTable, type PlayerIdentifier } from "@/generated/db";
+import type {
   RewardClaimResult,
   RewardConfig,
   RewardEligibilityResult,

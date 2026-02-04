@@ -70,9 +70,9 @@ export function generateBaseQueries(
     .map((f) => `'${f}'`)
     .join(", ")}])`;
 
-  return `import { Pool, PoolClient } from "pg";
+  return `import type { Pool, PoolClient } from "pg";
 import { BaseQueries } from "@/db/queries/base.queries";
-import {
+import type {
   ${className},
   ${className}Create,
   ${className}Row,

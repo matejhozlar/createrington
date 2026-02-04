@@ -1,6 +1,6 @@
 import {
   getLeaderboardConfig,
-  LeaderboardEntry,
+  type LeaderboardEntry,
   LeaderboardType,
 } from "@/services/discord/leaderboard";
 import { createEmbed } from "../../embed-builder";

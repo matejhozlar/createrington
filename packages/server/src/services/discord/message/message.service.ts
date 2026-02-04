@@ -4,8 +4,8 @@ import {
   Client,
   EmbedBuilder,
   Message,
-  MessageCreateOptions,
-  MessageEditOptions,
+  type MessageCreateOptions,
+  type MessageEditOptions,
   TextChannel,
 } from "discord.js";
 import type {

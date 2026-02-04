@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import {
-  DatabaseTable,
+import { DatabaseTable } from "@/generated/db";
+import type {
   Player,
   PlayerBalance,
   PlayerBalanceTransaction,
