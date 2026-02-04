@@ -30,7 +30,7 @@ import {
   Store,
   Zap,
 } from "lucide-react";
-import { usePlayerData } from "@/contexts/socket";
+import { useServerData } from "@/contexts/socket";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
@@ -38,8 +38,11 @@ export const Home: React.FC = () => {
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
-
-  const { stats: playerStats } = usePlayerData();
+  
+  // TODO: When converting to multiple servers, update this to use the selected server
+  const serverId = 1;
+  const { servers } = useServerData();
+  const server = servers.find((s) => s.serverId === serverId);
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -83,7 +86,7 @@ export const Home: React.FC = () => {
   const serverMetrics = [
     {
       icon: Users,
-      value: playerStats.total,
+      value: server?.playerCount ?? 0,
       title: "Players Online",
       description: "Active players right now",
     },
