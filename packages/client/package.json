@@ -25,6 +25,7 @@
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-fade": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
+    "ky": "^1.14.3",
     "lucide-react": "^0.563.0",
     "radix-ui": "^1.4.3",
     "react": "^18.3.1",

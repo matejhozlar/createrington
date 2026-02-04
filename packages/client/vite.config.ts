@@ -9,16 +9,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@createrington/shared": path.resolve(__dirname, "../shared/src")
-    }
+      "@createrington/shared": path.resolve(__dirname, "../shared/src"),
+    },
   },
   server: {
     port: 3000,
     proxy: {
       "/api": {
         target: "http://localhost:5000",
-        changeOrigin: true
-      }
-    }
-  }
+        changeOrigin: true,
+      },
+    },
+  },
 });
