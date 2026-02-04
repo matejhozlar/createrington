@@ -1,11 +1,12 @@
 import type { Request, Response } from "express";
 import { BadRequestError, NotFoundError } from "@/app/middleware";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
-import type {
-  GetAllServersResponse,
-  GetServerResponse,
-  PlayerInfo,
-  ServerStatus,
+import {
+  GetServerParamsSchema,
+  type GetAllServersResponse,
+  type GetServerResponse,
+  type PlayerInfo,
+  type ServerStatus,
 } from "@createrington/shared/api";
 import {
   type ActiveSession,
@@ -94,9 +95,11 @@ export class ServerController {
       success: true,
       data: {
         servers,
-        totalServers: servers.length,
-        onlineServers,
-        totalPlayers,
+        summary: {
+          totalServers: servers.length,
+          onlineServers: onlineServers,
+          totalPlayers,
+        },
       },
     };
 
@@ -110,22 +113,12 @@ export class ServerController {
    * Includes detailed player information and session data
    */
   static async getServer(req: Request, res: Response): Promise<void> {
-    const idParam = req.params.id;
-
-    if (Array.isArray(idParam)) {
-      throw new BadRequestError("Invalid server ID");
-    }
-
-    const serverId = parseInt(idParam, 10);
-
-    if (isNaN(serverId)) {
-      throw new BadRequestError("Invalid server ID format");
-    }
+    const { id } = GetServerParamsSchema.parse(req.params);
 
     // Check if server exists in configuration
-    const serverConfig = getServerById(serverId);
+    const serverConfig = getServerById(id);
     if (!serverConfig) {
-      throw new NotFoundError(`Server with ID ${serverId} not found`);
+      throw new NotFoundError(`Server with ID ${id} not found`);
     }
 
     // Get the playtime service for this server
@@ -133,14 +126,14 @@ export class ServerController {
       Services.PLAYTIME_MANAGER_SERVICE,
     );
 
-    const service = manager.getService(serverId);
+    const service = manager.getService(id);
 
     let status: ServerStatus;
 
     if (!service) {
       // Service not initialized for this server
       status = {
-        serverId,
+        serverId: id,
         serverName: serverConfig.name,
         ip: serverConfig.ip,
         port: serverConfig.port,
@@ -161,7 +154,7 @@ export class ServerController {
       );
 
       status = {
-        serverId,
+        serverId: id,
         serverName: serverConfig.name,
         ip: serverConfig.ip,
         port: serverConfig.port,

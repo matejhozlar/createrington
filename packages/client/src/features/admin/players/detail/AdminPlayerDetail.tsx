@@ -16,11 +16,9 @@ import { BalanceAdjustModal } from "./components/modals/BalanceAdjustModal";
 import { IssueStrikeModal } from "./components/modals/IssueStrikeModal";
 import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
-import type {
-  AdminPlayerDetailed,
-  GetAdminPlayerResponse,
-} from "@createrington/shared/api";
+import type { AdminPlayerDetailed } from "@createrington/shared/api";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 type TabType = "overview" | "sessions" | "tickets" | "strikes" | "audit";
 
@@ -66,30 +64,12 @@ export function AdminPlayerDetail() {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("No authentication token");
-      }
-
-      const response = await fetch(`/api/admin/players/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetAdminPlayerResponse = await response.json();
-
-      if (data.success) {
-        setPlayer(data.data);
-      }
-    } catch (err) {
-      console.error("Failed to fetch player:", err);
+      const data = await adminPlayerApi.getById(id);
+      setPlayer(data);
+    } catch (error) {
+      console.error("Failed to fetch player:", error);
       setError(
-        err instanceof Error ? err.message : "Failed to fetch player data",
+        error instanceof Error ? error.message : "Failed to fetch player data",
       );
     } finally {
       setLoading(false);

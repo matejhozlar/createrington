@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import type { InviteWaitlistEntryResponse } from "@createrington/shared/api";
+import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
 
 interface InviteWaitlistModalProps {
   open: boolean;
@@ -29,32 +29,14 @@ export function InviteWaitlistModal({
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
-
-      const response = await fetch(`/api/admin/waitlists/${entryId}/invite`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          reason: reason.trim() || undefined,
-        }),
+      await adminWaitlistApi.invite(entryId, {
+        reason: reason.trim() || undefined,
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: InviteWaitlistEntryResponse = await response.json();
-
-      if (data.success) {
-        toast.success("Waitlist entry invited successfully!");
-        setReason("");
-        onClose();
-        onSuccess();
-      }
+      toast.success("Waitlist entry invited successfully!");
+      setReason("");
+      onClose();
+      onSuccess();
     } catch (err) {
       console.error("Failed to invite waitlist entry:", err);
       toast.error("Failed to invite waitlist entry");

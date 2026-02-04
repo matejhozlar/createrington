@@ -1,65 +1,86 @@
 /**
- * Admin Waitlist API Response Types
+ * Admin Waitlist API Types
  *
- * @packageDocumentation
+ * Request schemas (Zod for validation) and response types for admin waitlist management endpoints
  */
-
-/**
- * Admin Waitlist API Response Types
- *
- * Type definitions for admin waitlist management endpoints
- */
-import type { WaitlistEntryApiData, WaitlistStatus } from "../db";
+import { z } from "zod";
+import type { WaitlistEntryApiData } from "../db";
 import type { DateToString } from "../types";
+import type { PaginationMeta } from "./common";
 
 // ============================================================================
-// REQUEST TYPES
+// REQUEST SCHEMAS (Zod - Validates User Input)
 // ============================================================================
 
 /**
- * Path parameters for admin waitlist endpoints
+ * Path parameters for GET /api/admin/waitlists/:id
+ *
+ * Validates the waitlist ID from the URL path
  */
-export interface AdminWaitlistPathParams {
-  id: string; // Waitlist entry ID
-}
+export const GetWaitlistParamsSchema = z.object({
+  /** Discord ID or Minecraft UUID */
+  id: z.coerce.number().int().positive().min(1, "Player ID is required"),
+});
 
 /**
  * Query parameters for GET /api/admin/waitlist
  */
-export interface GetAdminWaitlistEntriesQuery {
+export const GetAdminWaitlistEntriesQuerySchema = z.object({
   // Filtering
-  status?: WaitlistStatus;
-  email?: string;
-  discordName?: string;
-  discordId?: string;
-  verified?: "true" | "false";
-  registered?: "true" | "false";
+  status: z.enum(["pending", "accepted", "declined", "completed"]).optional(),
+  email: z.string().optional(),
+  discordName: z.string().optional(),
+  discordId: z.string().optional(),
+  verified: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  registered: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
 
   // Pagination
-  page?: string;
-  limit?: string;
+  page: z.coerce.number().int().min(0).default(0),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 
   // Sorting
-  sortBy?: "submittedAt" | "acceptedAt" | "email" | "discordName";
-  sortOrder?: "asc" | "desc";
-}
+  orderBy: z
+    .enum(["submittedAt", "acceptedAt", "email", "discordName"])
+    .default("submittedAt"),
+  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
+});
 
 /**
  * Body for POST /api/admin/waitlist/:id/invite
  */
-export interface InviteWaitlistEntryBody {
-  reason?: string;
-}
+export const InviteWaitlistEntryBodySchema = z.object({
+  reason: z.string().optional(),
+});
 
 /**
  * Body for DELETE /api/admin/waitlist/:id
  */
-export interface DeleteWaitlistEntryBody {
-  reason: string;
-}
+export const DeleteWaitlistEntryBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+});
 
 // ============================================================================
-// RESPONSE DATA TYPES
+// REQUEST TYPES (Auto-Inferred from Schemas)
+// ============================================================================
+
+export type GetAdminWaitlistEntriesQuery = z.infer<
+  typeof GetAdminWaitlistEntriesQuerySchema
+>;
+export type InviteWaitlistEntryBody = z.infer<
+  typeof InviteWaitlistEntryBodySchema
+>;
+export type DeleteWaitlistEntryBody = z.infer<
+  typeof DeleteWaitlistEntryBodySchema
+>;
+
+// ============================================================================
+// RESPONSE DATA TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
@@ -81,7 +102,7 @@ export interface AdminWaitlistStats {
 }
 
 // ============================================================================
-// RESPONSE TYPES
+// RESPONSE TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
 
 /**
@@ -101,12 +122,7 @@ export interface GetAdminWaitlistEntriesResponse {
   success: true;
   data: {
     entries: DateToString<WaitlistEntryApiData>[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
+    pagination: PaginationMeta;
   };
 }
 

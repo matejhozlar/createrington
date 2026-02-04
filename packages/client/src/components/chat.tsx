@@ -6,10 +6,6 @@ import type {
   CachedMessage,
   SubscriptionType,
 } from "@createrington/shared/socket";
-import type {
-  MessageErrorResponse,
-  SendMessageResponse,
-} from "@createrington/shared/api";
 import { MessageSource } from "@createrington/shared/socket";
 import { Loading } from "@/components/Loading";
 import {
@@ -30,6 +26,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { messagesApi } from "@/services/api/user/messages";
 
 // ============================================================================
 // Types & Helpers
@@ -1178,37 +1175,17 @@ export function ServerChat() {
   const sendMessage = useCallback(async () => {
     if (!serverId || (!draft.trim() && !imageFile)) return;
 
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      setError("You must be logged in to send messages");
-      return;
-    }
-
     setSending(true);
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append("serverId", String(serverId));
-      if (draft.trim()) formData.append("content", draft.trim());
-      if (imageFile) formData.append("image", imageFile);
-
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      const body = (await response.json()) as
-        | SendMessageResponse
-        | MessageErrorResponse;
-
-      if (!body.success) {
-        throw new Error(
-          body.error?.message ??
-            `Request failed with status ${response.status}`,
-        );
-      }
+      await messagesApi.send(
+        {
+          serverId: serverId,
+          content: draft.trim() || undefined,
+        },
+        imageFile || undefined,
+      );
 
       setDraft("");
       setImageFile(null);

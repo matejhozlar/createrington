@@ -5,13 +5,18 @@ import {
   NotFoundError,
 } from "@/app/middleware";
 import { waitlistRepo } from "@/db";
-import type {
-  GetAdminWaitlistEntriesResponse,
-  GetAdminWaitlistEntryResponse,
-  InviteWaitlistEntryResponse,
-  DeleteWaitlistEntryResponse,
-  GetAdminWaitlistStatsResponse,
+import {
+  type GetAdminWaitlistEntriesResponse,
+  type GetAdminWaitlistEntryResponse,
+  type InviteWaitlistEntryResponse,
+  type DeleteWaitlistEntryResponse,
+  type GetAdminWaitlistStatsResponse,
+  GetWaitlistParamsSchema,
+  GetAdminWaitlistEntriesQuerySchema,
+  InviteWaitlistEntryBodySchema,
+  DeleteWaitlistEntryBodySchema,
 } from "@createrington/shared/api";
+import z from "zod";
 
 /**
  * Admin Waitlist Controller
@@ -32,19 +37,9 @@ export class AdminWaitlistController {
    * GET /api/admin/waitlist/123
    */
   static async getEntry(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid entry ID");
-    }
-
-    const entryId = parseInt(id, 10);
-    if (isNaN(entryId)) {
-      throw new BadRequestError("Invalid entry ID. Must be a number.");
-    }
-
     try {
-      const entry = await waitlistRepo.getDetailed(entryId);
+      const { id } = GetWaitlistParamsSchema.parse(req.params);
+      const entry = await waitlistRepo.getDetailed(id);
 
       const response: GetAdminWaitlistEntryResponse = {
         success: true,
@@ -59,6 +54,13 @@ export class AdminWaitlistController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
       if (
         error instanceof NotFoundError ||
         error instanceof BadRequestError ||
@@ -78,7 +80,7 @@ export class AdminWaitlistController {
    *
    * Query Parameters:
    * Filtering:
-   * - status: Filter by status (pending/accepted/rejected)
+   * - status: Filter by status (pending/accepted/declined)
    * - email: Filter by email (case-insensitive partial match)
    * - discord_name: Filter by Discord name (case-insensitive partial match)
    * - discord_id: Filter by Discord ID
@@ -90,69 +92,52 @@ export class AdminWaitlistController {
    * - limit: Results per page (1-100, default: 20)
    *
    * Sorting:
-   * - sort_by: Field to sort by (submittedAt, acceptedAt, email, discordName)
-   * - sort_order: Sort direction (asc/desc, default: desc)
+   * - sortBy: Field to sort by (submittedAt, acceptedAt, email, discordName)
+   * - sortOrder: Sort direction (asc/desc, default: desc)
    *
    * @example
    * GET /api/admin/waitlist?status=pending&limit=50
    * GET /api/admin/waitlist?verified=true&sort_by=submittedAt
    */
   static async getEntries(req: Request, res: Response): Promise<void> {
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string) || 20),
-    );
-
-    const sortBy = (req.query.sortBy as string) || "submittedAt";
-    const sortOrder =
-      (req.query.sortOrder as string)?.toLowerCase() === "asc" ? "ASC" : "DESC";
-
-    const filters: any = {};
-
-    if (req.query.status) {
-      filters.status = req.query.status as string;
-    }
-
-    if (req.query.email) {
-      filters.email = {
-        $ilike: `%${req.query.email}%`,
-      };
-    }
-
-    if (req.query.discordName) {
-      filters.discordName = {
-        $ilike: `%${req.query.discordName}%`,
-      };
-    }
-
-    if (req.query.discordId) {
-      filters.discordId = req.query.discordId as string;
-    }
-
-    if (req.query.verified !== undefined) {
-      filters.verified = req.query.verified === "true";
-    }
-
-    if (req.query.registered !== undefined) {
-      filters.registered = req.query.registered === "true";
-    }
-
-    const validSortFields = [
-      "submittedAt",
-      "acceptedAt",
-      "email",
-      "discordName",
-    ];
-    const orderBy = validSortFields.includes(sortBy)
-      ? (sortBy as any)
-      : "submittedAt";
-
     try {
+      const query = GetAdminWaitlistEntriesQuerySchema.parse(req.query);
+      const { page, limit, orderBy, orderDirection } = query;
+
+      const filters: any = {};
+
+      if (query.status) {
+        filters.status = query.status;
+      }
+
+      if (query.email) {
+        filters.email = {
+          $ilike: `%${query.email}%`,
+        };
+      }
+
+      if (query.discordName) {
+        filters.discordName = {
+          $ilike: `%${query.discordName}%`,
+        };
+      }
+
+      if (query.discordId) {
+        filters.discordId = query.discordId;
+      }
+
+      if (query.verified !== undefined) {
+        filters.verified = query.verified === true;
+      }
+
+      if (query.registered !== undefined) {
+        filters.registered = query.registered === true;
+      }
+
       const [entries, total] = await Promise.all([
         waitlistRepo.getAll(filters, {
           orderBy,
-          orderDirection: sortOrder,
+          orderDirection,
           limit,
           offset: page * limit,
         }),
@@ -178,6 +163,20 @@ export class AdminWaitlistController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
       logger.error("Failed to fetch waitlist entries:", error);
       throw new InternalServerError("Failed to fetch waitlist entries");
     }
@@ -197,25 +196,16 @@ export class AdminWaitlistController {
    * }
    */
   static async inviteEntry(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid entry ID");
-    }
-
-    const entryId = parseInt(id, 10);
-    if (isNaN(entryId)) {
-      throw new BadRequestError("Invalid entry ID. Must be a number.");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id } = GetWaitlistParamsSchema.parse(req.params);
+      const { reason } = InviteWaitlistEntryBodySchema.parse(req.body);
+
+      if (!req.user) {
+        throw new BadRequestError("User not authenticated");
+      }
+
       const updatedEntry = await waitlistRepo.manualInvite(
-        entryId,
+        id,
         req.user.discordId,
       );
 
@@ -233,7 +223,18 @@ export class AdminWaitlistController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to invite waitlist entry:", error);
@@ -255,17 +256,8 @@ export class AdminWaitlistController {
    * }
    */
   static async deleteEntry(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid entry ID");
-    }
-
-    const entryId = parseInt(id, 10);
-    if (isNaN(entryId)) {
-      throw new BadRequestError("Invalid entry ID. Must be a number.");
-    }
+    const { id } = GetWaitlistParamsSchema.parse(req.params);
+    const { reason } = DeleteWaitlistEntryBodySchema.parse(req.body);
 
     if (!reason) {
       throw new BadRequestError("Reason is required for entry deletion");
@@ -277,7 +269,7 @@ export class AdminWaitlistController {
 
     try {
       await waitlistRepo.adminDelete(
-        entryId,
+        id,
         req.user.discordId,
         req.user.username,
         reason,
@@ -290,7 +282,18 @@ export class AdminWaitlistController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to delete waitlist entry:", error);

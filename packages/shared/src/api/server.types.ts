@@ -1,19 +1,30 @@
 /**
- * Server status types
+ * Server Status API Types
  *
- * Shared types for server status endpoints
+ * Request schemas (Zod for validation) and response types for server status endpoints
  */
+import { z } from "zod";
+
+// ============================================================================
+// REQUEST SCHEMAS (Zod - Validates User Input)
+// ============================================================================
 
 /**
- * Basic player information
+ * Path parameters for GET /api/servers/:id
  */
-export interface PlayerInfo {
-  uuid: string;
-  username: string;
-  sessionStart: string; // ISO 8601 timestamp
-  secondsPlayed: number;
-  metadata?: PlayerMetadata;
-}
+export const GetServerParamsSchema = z.object({
+  id: z.coerce.number().int().positive().min(1, "Server ID is required"),
+});
+
+// ============================================================================
+// REQUEST TYPES (Auto-Inferred from Schemas)
+// ============================================================================
+
+export type GetServerParams = z.infer<typeof GetServerParamsSchema>;
+
+// ============================================================================
+// RESPONSE DATA TYPES (Plain TypeScript - No Validation Needed)
+// ============================================================================
 
 /**
  * Optional player metadata
@@ -33,6 +44,17 @@ export interface PlayerMetadata {
 }
 
 /**
+ * Basic player information for server status
+ */
+export interface PlayerInfo {
+  uuid: string;
+  username: string;
+  sessionStart: string; // ISO 8601 timestamp
+  secondsPlayed: number;
+  metadata?: PlayerMetadata;
+}
+
+/**
  * Server status information
  */
 export interface ServerStatus {
@@ -48,15 +70,26 @@ export interface ServerStatus {
 }
 
 /**
+ * Summary statistics for all servers
+ */
+export interface ServersSummary {
+  totalServers: number;
+  onlineServers: number;
+  totalPlayers: number;
+}
+
+// ============================================================================
+// RESPONSE TYPES (Plain TypeScript - No Validation Needed)
+// ============================================================================
+
+/**
  * Response for GET /api/servers
  */
 export interface GetAllServersResponse {
   success: true;
   data: {
     servers: ServerStatus[];
-    totalServers: number;
-    onlineServers: number;
-    totalPlayers: number;
+    summary: ServersSummary;
   };
 }
 
@@ -71,7 +104,7 @@ export interface GetServerResponse {
 }
 
 /**
- * Error response
+ * Error response for server status endpoints
  */
 export interface ServerErrorResponse {
   success: false;

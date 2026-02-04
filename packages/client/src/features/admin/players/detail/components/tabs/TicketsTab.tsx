@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import type { TicketApiData } from "@createrington/shared/db";
-import type { GetPlayerTicketsResponse } from "@createrington/shared/api";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface TicketsTabProps {
   playerId: string; // minecraftUuid (route param)
@@ -67,29 +67,14 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
+      const data = await adminPlayerApi.getTickets(playerId, {
+        page,
+        limit,
+      });
 
-      const response = await fetch(
-        `/api/admin/players/${playerId}/tickets?page=${page}&limit=${limit}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetPlayerTicketsResponse = await response.json();
-
-      if (data.success) {
-        setTickets(data.data.tickets);
-        setTotal(data.data.pagination.total);
-        setTotalPages(data.data.pagination.totalPages);
-      }
+      setTickets(data.tickets);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Failed to load tickets:", err);
       setError(err instanceof Error ? err.message : "Failed to load tickets");

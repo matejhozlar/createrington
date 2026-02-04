@@ -15,6 +15,7 @@ import {
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
 import type { WaitlistEntryApiData } from "@createrington/shared/db";
+import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
 
 interface DeleteWaitlistModalProps {
   open: boolean;
@@ -58,21 +59,7 @@ export function DeleteWaitlistModal({
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
-
-      const response = await fetch(`/api/admin/waitlists/${entry.id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reason: reason.trim() }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+      await adminWaitlistApi.delete(entry.id, { reason: reason.trim() });
 
       toast.success("Waitlist entry deleted successfully!");
       setShowConfirmDialog(false);

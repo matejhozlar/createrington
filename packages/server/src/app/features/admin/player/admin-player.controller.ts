@@ -6,23 +6,37 @@ import {
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { balanceRepo, playerRepo } from "@/db";
-import type {
-  GetAdminPlayerResponse,
-  GetAdminPlayersResponse,
-  UpdateAdminPlayerResponse,
-  GetPlayerBalanceResponse,
-  AdjustPlayerBalanceResponse,
-  GetPlayerAuditLogResponse,
-  GetPlayerPlaytimeResponse,
-  GetPlayerSessionsResponse,
-  GetPlayerTicketsResponse,
-  GetAdminPlayerStatsResponse,
-  BulkBalanceAdjustResponse,
-  GetPlayerStrikesResponse,
-  IssueStrikeResponse,
-  RemoveStrikeResponse,
+import {
+  type GetAdminPlayerResponse,
+  type GetAdminPlayersResponse,
+  type UpdateAdminPlayerResponse,
+  type GetPlayerBalanceResponse,
+  type AdjustPlayerBalanceResponse,
+  type GetPlayerAuditLogResponse,
+  type GetPlayerPlaytimeResponse,
+  type GetPlayerSessionsResponse,
+  type GetPlayerTicketsResponse,
+  type GetAdminPlayerStatsResponse,
+  type BulkBalanceAdjustResponse,
+  type GetPlayerStrikesResponse,
+  type IssueStrikeResponse,
+  type RemoveStrikeResponse,
+  GetPlayerParamsSchema,
+  GetAdminPlayersQuerySchema,
+  UpdateAdminPlayerBodySchema,
+  GetPlayerBalanceQuerySchema,
+  AdjustPlayerBalanceBodySchema,
+  GetPlayerAuditLogQuerySchema,
+  GetPlayerSessionsQuerySchema,
+  GetPlayerTicketsQuerySchema,
+  GetPlayerStrikesQuerySchema,
+  IssueStrikeBodySchema,
+  RemoveStrikeParamsSchema,
+  RemoveStrikeBodySchema,
+  BulkBalanceAdjustBodySchema,
 } from "@createrington/shared/api";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
+import { z } from "zod";
 
 /**
  * Admin Player Controller
@@ -44,20 +58,16 @@ export class AdminPlayerController {
    * GET /api/admin/players/550e8400-e29b-41d4-a716-446655440000
    */
   static async getPlayer(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -123,6 +133,13 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
       if (
         error instanceof NotFoundError ||
         error instanceof BadRequestError ||
@@ -142,9 +159,9 @@ export class AdminPlayerController {
    *
    * Query Parameters:
    * Filtering:
-   * - discord_id: Filter by Discord ID
-   * - minecraft_uuid: Filter by Minecraft UUID
-   * - minecraft_username: Filter by username (case-insensitive partial match)
+   * - discordId: Filter by Discord ID
+   * - minecraftUuid: Filter by Minecraft UUID
+   * - minecraftUsername: Filter by username (case-insensitive partial match)
    * - online: Filter by online status (true/false)
    *
    * Pagination:
@@ -152,59 +169,45 @@ export class AdminPlayerController {
    * - limit: Results per page (1-100, default: 20)
    *
    * Sorting:
-   * - sort_by: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
-   * - sort_order: Sort direction (asc/desc, default: desc)
+   * - sortBy: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
+   * - sortOrder: Sort direction (asc/desc, default: desc)
    *
    * @example
    * GET /api/admin/players?limit=50&online=true
    * GET /api/admin/players?minecraft_username=Steve&sort_by=lastSeen
    */
   static async getPlayers(req: Request, res: Response): Promise<void> {
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string) || 20),
-    );
-
-    const sortBy = (req.query.sortBy as string) || "createdAt";
-    const sortOrder =
-      (req.query.sortOrder as string)?.toLowerCase() === "asc" ? "ASC" : "DESC";
-
-    const filters: any = {};
-
-    if (req.query.discordId) {
-      filters.discordId = req.query.discordId as string;
-    }
-
-    if (req.query.minecraftUuid) {
-      filters.minecraftUuid = req.query.minecraftUuid as string;
-    }
-
-    if (req.query.minecraftUsername) {
-      filters.minecraftUsername = {
-        $ilike: `%${req.query.minecraftUsername}%`,
-      };
-    }
-
-    if (req.query.online !== undefined) {
-      filters.online = req.query.online === "true";
-    }
-
-    const validSortFields = [
-      "createdAt",
-      "minecraftUsername",
-      "updatedAt",
-      "lastSeen",
-    ];
-    const orderBy = validSortFields.includes(sortBy)
-      ? (sortBy as any)
-      : "createdAt";
-
     try {
+      // Validate and transform query parameters
+      const query = GetAdminPlayersQuerySchema.parse(req.query);
+
+      // Build filters
+      const filters: any = {};
+
+      if (query.discordId) {
+        filters.discordId = req.query.discordId;
+      }
+
+      if (query.minecraftUuid) {
+        filters.minecraftUuid = req.query.minecraftUuid;
+      }
+
+      if (query.minecraftUsername) {
+        filters.minecraftUsername = {
+          $ilike: `%${req.query.minecraftUsername}%`,
+        };
+      }
+
+      if (query.online !== undefined) {
+        filters.online = req.query.online;
+      }
+
+      const { orderBy, orderDirection, page, limit } = query;
+
       const [players, total] = await Promise.all([
         playerRepo.getAll(filters, {
           orderBy,
-          orderDirection: sortOrder,
+          orderDirection,
           limit,
           offset: page * limit,
         }),
@@ -226,8 +229,22 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
       logger.error("Failed to fetch players:", error);
-      throw new InternalServerError("Failed to fetch players");
+      throw new InternalServerError("Failed to update player");
     }
   }
 
@@ -247,33 +264,22 @@ export class AdminPlayerController {
    * }
    */
   static async updatePlayer(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { minecraftUsername, discordId, reason } = req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
-    if (!reason) {
-      throw new BadRequestError("Reason is required for player updates");
-    }
-
-    if (!minecraftUsername && !discordId) {
-      throw new BadRequestError("At least one field to update is required");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { minecraftUsername, discordId, reason } =
+        UpdateAdminPlayerBodySchema.parse(req.body);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
+      if (!minecraftUsername && !discordId) {
+        throw new BadRequestError("At least one field to update is required");
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -299,7 +305,11 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to update player:", error);
@@ -321,29 +331,17 @@ export class AdminPlayerController {
    * }
    */
   static async deletePlayer(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { reason } = req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
-    if (!reason) {
-      throw new BadRequestError("Reason is required for player deletion");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { reason } = req.body;
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -359,7 +357,18 @@ export class AdminPlayerController {
         message: "Player deleted successfully",
       });
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to delete player:", error);
@@ -376,24 +385,16 @@ export class AdminPlayerController {
    * - limit: Number of recent transactions (default: 10, max: 100)
    */
   static async getPlayerBalance(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string) || 10),
-    );
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { limit } = GetPlayerBalanceQuerySchema.parse(req.query);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -418,7 +419,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player balance:", error);
@@ -438,33 +450,17 @@ export class AdminPlayerController {
    * }
    */
   static async adjustPlayerBalance(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { amount, reason } = req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
-    if (typeof amount !== "number") {
-      throw new BadRequestError("Amount must be a number");
-    }
-
-    if (!reason) {
-      throw new BadRequestError("Reason is required for balance adjustment");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { amount, reason } = AdjustPlayerBalanceBodySchema.parse(req.body);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -501,7 +497,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to adjust player balance:", error);
@@ -519,25 +526,17 @@ export class AdminPlayerController {
    * - limit: Number of actions (default: 20, max: 100)
    */
   static async getPlayerAuditLog(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string) || 20),
-    );
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { page, limit } = GetPlayerAuditLogQuerySchema.parse(req.query);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -576,11 +575,22 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
-      logger.error("Failed to fetch player audit log:", error);
-      throw new InternalServerError("Failed to fetch player audit log");
+      logger.error("Failed to fetch player audit:", error);
+      throw new InternalServerError("Failed to fetch player audit");
     }
   }
 
@@ -590,20 +600,16 @@ export class AdminPlayerController {
    * Get player playtime statistics
    */
   static async getPlayerPlaytime(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -624,7 +630,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player playtime:", error);
@@ -642,32 +659,19 @@ export class AdminPlayerController {
    * - limit: Number of sessions (default: 50, max: 200)
    */
   static async getPlayerSessions(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const serverId = req.query.serverId
-      ? parseInt(req.query.serverId as string)
-      : undefined;
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      200,
-      Math.max(1, parseInt(req.query.limit as string) || 10),
-    );
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
-    if (serverId && isNaN(serverId)) {
-      throw new BadRequestError("Invalid server ID");
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { serverId, page, limit } = GetPlayerSessionsQuerySchema.parse(
+        req.query,
+      );
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -703,7 +707,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player sessions:", error);
@@ -717,26 +732,17 @@ export class AdminPlayerController {
    * Get all tickets for a player
    */
   static async getPlayerTickets(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-
-    const page = Math.max(0, parseInt(req.query.page as string) || 0);
-    const limit = Math.min(
-      100,
-      Math.max(1, parseInt(req.query.limit as string) || 20),
-    );
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { page, limit } = GetPlayerTicketsQuerySchema.parse(req.query);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -760,7 +766,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player tickets:", error);
@@ -777,21 +794,17 @@ export class AdminPlayerController {
    * - activeOnly: Filter to only active strikes (true/false)
    */
   static async getPlayerStrikes(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const activeOnly = req.query.activeOnly === "true";
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID",
-      );
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { activeOnly } = GetPlayerStrikesQuerySchema.parse(req.query);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -813,7 +826,18 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
       logger.error("Failed to fetch player strikes:", error);
@@ -836,36 +860,18 @@ export class AdminPlayerController {
    * }
    */
   static async issueStrike(req: Request, res: Response): Promise<void> {
-    const { id } = req.params;
-    const { classification, description, severity, serverId, metadata } =
-      req.body;
-
-    if (Array.isArray(id)) {
-      throw new BadRequestError("Invalid player ID");
-    }
-
-    const idType = getIdType(id);
-    if (idType === "invalid") {
-      throw new BadRequestError(
-        "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
-      );
-    }
-
-    if (!classification || !description || !severity) {
-      throw new BadRequestError(
-        "classification, description, and severity are required",
-      );
-    }
-
-    if (!Number.isFinite(severity) || severity < 1 || severity > 5) {
-      throw new BadRequestError("severity must be an integer between 1 and 5");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { classification, description, severity, serverId, metadata } =
+        IssueStrikeBodySchema.parse(req.body);
+
+      const idType = getIdType(id);
+      if (idType === "invalid") {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+        );
+      }
+
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
@@ -892,11 +898,22 @@ export class AdminPlayerController {
 
       res.status(201).json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
-      logger.error("Failed to issue strike:", error);
-      throw new InternalServerError("Failed to issue strike");
+      logger.error("Failed to issue player strike:", error);
+      throw new InternalServerError("Failed to issue player strike");
     }
   }
 
@@ -911,29 +928,12 @@ export class AdminPlayerController {
    * }
    */
   static async removeStrike(req: Request, res: Response): Promise<void> {
-    const { id, strikeId } = req.params;
-    const { reason } = req.body;
-
-    if (Array.isArray(id) || Array.isArray(strikeId)) {
-      throw new BadRequestError("Invalid parameters");
-    }
-
-    const strikeIdNum = parseInt(strikeId, 10);
-    if (isNaN(strikeIdNum)) {
-      throw new BadRequestError("Invalid strike ID");
-    }
-
-    if (!reason) {
-      throw new BadRequestError("Reason is required for strike removal");
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { id, strikeId } = RemoveStrikeParamsSchema.parse(req.params);
+      const { reason } = RemoveStrikeBodySchema.parse(req.body);
+
       const strike = await playerRepo.removeStrike(
-        strikeIdNum,
+        strikeId,
         req.user.discordId,
         req.user.username,
         reason,
@@ -949,11 +949,22 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      if (error instanceof NotFoundError || error instanceof BadRequestError) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
         throw error;
       }
-      logger.error("Failed to remove strike:", error);
-      throw new InternalServerError("Failed to remove strike");
+      logger.error("Failed to remove player strike:", error);
+      throw new InternalServerError("Failed to remove player strike");
     }
   }
 
@@ -991,27 +1002,11 @@ export class AdminPlayerController {
    * }
    */
   static async bulkBalanceAdjust(req: Request, res: Response): Promise<void> {
-    const { playerUuids, amount, reason } = req.body;
-
-    if (!Array.isArray(playerUuids) || playerUuids.length === 0) {
-      throw new BadRequestError("playerUuids must be a non-empty array");
-    }
-
-    if (typeof amount !== "number") {
-      throw new BadRequestError("Amount must be a number");
-    }
-
-    if (!reason) {
-      throw new BadRequestError(
-        "Reason is required for bulk balance adjustment",
-      );
-    }
-
-    if (!req.user) {
-      throw new BadRequestError("User not authenticated");
-    }
-
     try {
+      const { playerUuids, amount, reason } = BulkBalanceAdjustBodySchema.parse(
+        req.body,
+      );
+
       const results = await playerRepo.bulkBalanceAdjust(
         playerUuids,
         amount,
@@ -1038,10 +1033,22 @@ export class AdminPlayerController {
 
       res.json(response);
     } catch (error) {
-      logger.error("Failed to perform bulk balance adjustment:", error);
-      throw new InternalServerError(
-        "Failed to perform bulk balance adjustment",
-      );
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
+      logger.error("Failed to bulk adjust balance:", error);
+      throw new InternalServerError("Failed to bulk adjust balance");
     }
   }
 }

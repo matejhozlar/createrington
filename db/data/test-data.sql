@@ -12,6 +12,8 @@ TRUNCATE TABLE waitlist_entry CASCADE;
 TRUNCATE TABLE discord_guild_member_join CASCADE;
 TRUNCATE TABLE player CASCADE;
 TRUNCATE TABLE server CASCADE;
+TRUNCATE TABLE ticket_action CASCADE;
+TRUNCATE TABLE ticket CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -20,6 +22,8 @@ ALTER SEQUENCE player_session_id_seq RESTART WITH 1;
 ALTER SEQUENCE waitlist_entry_id_seq RESTART WITH 1;
 ALTER SEQUENCE discord_guild_member_join_join_number_seq RESTART WITH 1;
 ALTER SEQUENCE admin_log_action_id_seq RESTART WITH 1;
+ALTER SEQUENCE ticket_id_seq RESTART WITH 1;
+ALTER SEQUENCE ticket_action_id_seq RESTART WITH 1;
 
 -- ============================================================================
 -- SERVERS
@@ -511,6 +515,99 @@ INSERT INTO player_strike (
 
 -- Edge cases
 ('091b900c-4174-478c-900c-a0fe5a31a329', 'other', 'Testing admin tools (removed immediately)', 1, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '60 days', true, '99318080374607872', 'The_Bigshot', NOW() - INTERVAL '60 days', 'Test strike for system validation', 1, '{"test": true}');
+
+-- ---------------------------------------------------------------------------
+-- Tickets
+-- ---------------------------------------------------------------------------
+
+INSERT INTO public.ticket (
+  ticket_number,
+  type,
+  creator_discord_id,
+  channel_id,
+  status,
+  created_at,
+  closed_at,
+  closed_by_discord_id,
+  deleted_at,
+  metadata
+) VALUES
+-- OPEN (general)
+(1001, 'general'::public.ticket_type, '123456789012345690', 'ticket-chan-1001', 'open'::public.ticket_status,
+ NOW() - INTERVAL '2 days', NULL, NULL, NULL,
+ '{"subject":"Can’t link Minecraft account","priority":"normal","tags":["account","linking"]}'::jsonb),
+
+-- OPEN (report)
+(1002, 'report'::public.ticket_type, '123456789012345681', 'ticket-chan-1002', 'open'::public.ticket_status,
+ NOW() - INTERVAL '6 hours', NULL, NULL, NULL,
+ '{"subject":"Griefing near spawn","priority":"high","tags":["griefing","spawn"],"coords":"0 70 0","accused":"Mumbo"}'::jsonb),
+
+-- CLOSED (general)
+(1003, 'general'::public.ticket_type, '123456789012345691', 'ticket-chan-1003', 'closed'::public.ticket_status,
+ NOW() - INTERVAL '10 days', NOW() - INTERVAL '9 days 20 hours', '547450242090532874', NULL,
+ '{"subject":"Whitelist / connection help","priority":"normal","tags":["whitelist","connection"],"resolution":"User not yet whitelisted"}'::jsonb),
+
+-- CLOSED (report)
+(1004, 'report'::public.ticket_type, '123456789012345688', 'ticket-chan-1004', 'closed'::public.ticket_status,
+ NOW() - INTERVAL '20 days', NOW() - INTERVAL '19 days 22 hours', '818819241666281503', NULL,
+ '{"subject":"Harassment report","priority":"high","tags":["harassment"],"accused":"Herobrine","resolution":"Warning issued"}'::jsonb),
+
+-- DELETED (general) - soft-deleted ticket
+(1005, 'general'::public.ticket_type, '123456789012345687', 'ticket-chan-1005', 'deleted'::public.ticket_status,
+ NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days 23 hours', '99318080374607872', NOW() - INTERVAL '7 days',
+ '{"subject":"Accidental ticket","priority":"low","tags":["cleanup"],"reason_deleted":"User opened by mistake"}'::jsonb);
+
+-- ---------------------------------------------------------------------------
+-- Ticket actions (audit log)
+-- ---------------------------------------------------------------------------
+
+INSERT INTO public.ticket_action (
+  ticket_id,
+  action_type,
+  performed_by_discord_id,
+  performed_at,
+  metadata
+) VALUES
+-- Ticket 1001
+(1, 'created', '123456789012345690', NOW() - INTERVAL '2 days',
+ '{"note":"Ticket opened via /ticket","type":"general"}'::jsonb),
+(1, 'message', '123456789012345690', NOW() - INTERVAL '1 day 23 hours',
+ '{"content":"I linked Discord but bot says UUID missing."}'::jsonb),
+(1, 'staff_reply', '818819241666281503', NOW() - INTERVAL '1 day 22 hours',
+ '{"content":"Run /verify in #verify and paste the code here."}'::jsonb),
+
+-- Ticket 1002
+(2, 'created', '123456789012345681', NOW() - INTERVAL '6 hours',
+ '{"note":"Report opened from ticket panel","type":"report"}'::jsonb),
+(2, 'message', '123456789012345681', NOW() - INTERVAL '5 hours 40 minutes',
+ '{"content":"Spawn area broken, chests emptied. Accused: Mumbo."}'::jsonb),
+(2, 'staff_reply', '547450242090532874', NOW() - INTERVAL '5 hours 15 minutes',
+ '{"content":"Thanks — we’re checking logs. Any screenshots?"}'::jsonb),
+
+-- Ticket 1003
+(3, 'created', '123456789012345691', NOW() - INTERVAL '10 days',
+ '{"note":"Opened for connection help","type":"general"}'::jsonb),
+(3, 'staff_reply', '547450242090532874', NOW() - INTERVAL '9 days 23 hours',
+ '{"content":"Looks like you weren’t whitelisted yet; applying now."}'::jsonb),
+(3, 'closed', '547450242090532874', NOW() - INTERVAL '9 days 20 hours',
+ '{"resolution":"Resolved"}'::jsonb),
+
+-- Ticket 1004
+(4, 'created', '123456789012345688', NOW() - INTERVAL '20 days',
+ '{"note":"Harassment report submitted","type":"report","accused":"Herobrine"}'::jsonb),
+(4, 'staff_reply', '818819241666281503', NOW() - INTERVAL '19 days 23 hours',
+ '{"content":"We reviewed logs; action will be taken."}'::jsonb),
+(4, 'closed', '818819241666281503', NOW() - INTERVAL '19 days 22 hours',
+ '{"resolution":"Warning issued","accused":"Herobrine"}'::jsonb),
+
+-- Ticket 1005 (deleted)
+(5, 'created', '123456789012345687', NOW() - INTERVAL '30 days',
+ '{"note":"Opened by mistake","type":"general"}'::jsonb),
+(5, 'closed', '99318080374607872', NOW() - INTERVAL '29 days 23 hours',
+ '{"resolution":"No action needed"}'::jsonb),
+(5, 'deleted', '99318080374607872', NOW() - INTERVAL '7 days',
+ '{"reason":"Cleanup old accidental ticket"}'::jsonb);
+ 
 -- ============================================================================
 -- VERIFY DATA INTEGRITY
 -- ============================================================================

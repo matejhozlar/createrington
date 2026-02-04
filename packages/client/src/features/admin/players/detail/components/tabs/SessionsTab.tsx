@@ -12,8 +12,8 @@ import { Loading } from "@/components/Loading";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
-import type { GetPlayerSessionsResponse } from "@createrington/shared/api";
 import type { PlayerSessionApiData } from "@createrington/shared/db";
+import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 interface SessionsTabProps {
   playerId: string;
@@ -66,31 +66,14 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        throw new Error("No authentication token");
-      }
+      const data = await adminPlayerApi.getSessions(playerId, {
+        page,
+        limit,
+      });
 
-      const response = await fetch(
-        `/api/admin/players/${playerId}/sessions?page=${page}&limit=${limit}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data: GetPlayerSessionsResponse = await response.json();
-
-      if (data.success) {
-        setSessions(data.data.sessions);
-        setTotal(data.data.pagination.total);
-        setTotalPages(data.data.pagination.totalPages);
-      }
+      setSessions(data.sessions);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
       console.error("Failed to fetch sessions:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch sessions");

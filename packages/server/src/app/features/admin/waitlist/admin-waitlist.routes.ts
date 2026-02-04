@@ -34,7 +34,7 @@ router.get(
 // ============================================================================
 
 /**
- * GET /api/admin/waitlist
+ * GET /api/admin/waitlists
  *
  * Get list of waitlist entries with filtering and pagination
  *
