@@ -16,7 +16,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, TrendingUp, Clock, ExternalLink, Cog, Palette, Map, Wrench } from "lucide-react";
+import {
+  Users,
+  TrendingUp,
+  Clock,
+  ExternalLink,
+  Cog,
+  Palette,
+  Map,
+  Wrench,
+  Wallet,
+  Coins,
+  Store,
+  Zap,
+} from "lucide-react";
 
 const heroImages = [
   "/assets/hero/gondola-station.webp",
@@ -85,7 +98,8 @@ const modCategories = [
     mods: [
       {
         name: "Create",
-        description: "The foundation of our server with rotational power and automation",
+        description:
+          "The foundation of our server with rotational power and automation",
         url: "https://www.curseforge.com/minecraft/mc-mods/create",
       },
       {
@@ -185,6 +199,33 @@ const modCategories = [
   },
 ];
 
+const economyFeatures = [
+  {
+    icon: Wallet,
+    title: "Physical Currency Items",
+    description:
+      "Collect and trade stackable bills with custom textures. Carry your wealth in your inventory.",
+  },
+  {
+    icon: Zap,
+    title: "Real-Time Synchronization",
+    description:
+      "Your balance updates instantly across Minecraft, Discord, web dashboard, and API.",
+  },
+  {
+    icon: Store,
+    title: "Automated Shop Integration",
+    description:
+      "Tap bank cards at Create-powered registers for seamless automated transactions.",
+  },
+  {
+    icon: Coins,
+    title: "ATM Banking System",
+    description:
+      "Deposit and withdraw currency at in-game ATMs. Virtual and physical money in perfect harmony.",
+  },
+];
+
 export const Home: React.FC = () => {
   const { user } = useAuth();
 
@@ -276,13 +317,17 @@ export const Home: React.FC = () => {
       {/* Features Section */}
       <section className="relative -mt-px py-12 px-5 md:px-8 bg-background">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col gap-3 items-center mb-12" id="server-features">
+          <div
+            className="flex flex-col gap-3 items-center mb-12"
+            id="server-features"
+          >
             <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
               Why Join Cogs & Steam?
             </h2>
 
             <p className="text-lg md:text-xl text-primary max-w-2xl">
-              A carefully crafted server designed for engineers and builders alike
+              A carefully crafted server designed for engineers and builders
+              alike
             </p>
           </div>
 
@@ -380,7 +425,8 @@ export const Home: React.FC = () => {
               </h2>
 
               <p className="text-lg md:text-xl text-primary max-w-2xl">
-                Just a few of the curated selection of mods that power our server.
+                Just a few of the curated selection of mods that power our
+                server.
               </p>
             </div>
 
@@ -403,8 +449,8 @@ export const Home: React.FC = () => {
                 <div key={categoryIndex} className="flex flex-col gap-4">
                   {/* Category Header */}
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <IconComponent className="w-4 h-4 text-primary" />
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <IconComponent className="size-5 text-primary" />
                     </div>
 
                     <h3 className="text-xl font-semibold text-foreground">
@@ -439,6 +485,62 @@ export const Home: React.FC = () => {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Economy Features Section */}
+      <section className="py-16 px-5 md:px-8 bg-zinc-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* Left Side - Content */}
+            <div className="flex-1 flex flex-col gap-8">
+              <div className="flex flex-col gap-3">
+                <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+                  A Revolutionary Economy System
+                </h2>
+
+                <p className="text-lg md:text-xl text-primary">
+                  Trade, invest, and manage your wealth with our custom-built
+                  economy plugin
+                </p>
+              </div>
+
+              {/* Features Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+                {economyFeatures.map((feature, index) => {
+                  const IconComponent = feature.icon;
+                  return (
+                    <div key={index} className="flex flex-col gap-5">
+                      <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <IconComponent className="text-primary size-5" />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-foreground font-semibold">
+                          {feature.title}
+                        </h3>
+
+                        <p className="text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Side - Image */}
+            <div className="w-full flex-1">
+              <div className="relative w-full aspect-square">
+                <img
+                  src="/assets/features/gondola-station-atms.webp"
+                  alt="Economy system featuring ATMs and banking"
+                  className="rounded-xl object-cover w-full h-full"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
