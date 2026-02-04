@@ -1,5 +1,5 @@
-import { SubscriptionType } from "./events";
-import { CachedMessage } from "./messages";
+import type { SubscriptionType } from "./events";
+import type { CachedMessage } from "./messages";
 
 /**
  * Server status data

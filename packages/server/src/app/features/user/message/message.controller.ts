@@ -3,7 +3,7 @@ import { getService, Services } from "@/services";
 import type { DiscordMessageService } from "@/services/discord/message";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import type {
   SendMessageBody,
   SendMessageResponse,

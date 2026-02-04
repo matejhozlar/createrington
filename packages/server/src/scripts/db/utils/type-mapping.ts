@@ -6,7 +6,7 @@
  * types to prevent precision loss and overflow issues in JavaScript.
  */
 
-import { EnumTypeInfo } from "../types";
+import type { EnumTypeInfo } from "../types";
 import { snakeToPascal } from "./naming";
 
 /**

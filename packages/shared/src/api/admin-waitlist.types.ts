@@ -10,7 +10,7 @@
  * Type definitions for admin waitlist management endpoints
  */
 import type { WaitlistEntryApiData, WaitlistStatus } from "../db";
-import { DateToString } from "../types";
+import type { DateToString } from "../types";
 
 // ============================================================================
 // REQUEST TYPES

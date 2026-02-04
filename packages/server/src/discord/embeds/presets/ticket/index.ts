@@ -2,7 +2,6 @@ import config from "@/config";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { Discord } from "@/discord/constants";
-import { GuildMember } from "discord.js";
 
 export const TicketEmbedPresets = {
   /**
@@ -12,7 +11,7 @@ export const TicketEmbedPresets = {
     const embed = createEmbed()
       .title("🎟️ Support Ticket")
       .description(
-        "To create a ticket, click the **Create Ticket** button below."
+        "To create a ticket, click the **Create Ticket** button below.",
       )
       .color(EmbedColors.Info)
       .fields([
@@ -36,14 +35,14 @@ export const TicketEmbedPresets = {
     const embed = createEmbed()
       .description(
         `👋 Welcome ${Discord.Users.mention(
-          userId
+          userId,
         )} (Minecraft: **${minecraftUsername}**)
             \nPlease describe your issue in detail and include any screenshots or videos.
             \n Support will be with you shortly ${Discord.Roles.mention(
-              Discord.Roles.ADMIN
+              Discord.Roles.ADMIN,
             )}
             \nTo close this ticket, press the **Close** button below.
-            `
+            `,
       )
       .color(EmbedColors.Info)
       .field(" ", `[${config.meta.name}](${config.meta.links.website})`)
@@ -60,9 +59,9 @@ export const TicketEmbedPresets = {
       .title("🔒 Ticket Closed")
       .description(
         `This ticket has been closed by ${Discord.Users.mention(
-          closedBy
+          closedBy,
         )}.\n\n` +
-          `The channel will remain open for review. Use the buttons below if you need to reopen or delete`
+          `The channel will remain open for review. Use the buttons below if you need to reopen or delete`,
       )
       .color(EmbedColors.Error)
       .timestamp();

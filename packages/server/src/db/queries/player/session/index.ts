@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { PlayerSessionBaseQueries } from "@/generated/db/player_session.queries";
 
 /**

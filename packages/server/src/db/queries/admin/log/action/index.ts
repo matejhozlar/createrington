@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queries";
 
 /**
@@ -46,7 +46,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     });
 
     logger.info(
-      `Admin action logged: ${data.adminDiscordUsername} updated ${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`
+      `Admin action logged: ${data.adminDiscordUsername} updated ${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`,
     );
   }
 }

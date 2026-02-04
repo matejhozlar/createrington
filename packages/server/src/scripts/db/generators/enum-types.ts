@@ -1,4 +1,4 @@
-import { EnumTypeInfo } from "../types";
+import type { EnumTypeInfo } from "../types";
 import { snakeToPascal } from "../utils";
 
 /**

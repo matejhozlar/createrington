@@ -1,5 +1,5 @@
 import { waitlist, waitlistRepo } from "@/db";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import { BadRequestError, ConflictError } from "@/app/middleware";
 
 /**

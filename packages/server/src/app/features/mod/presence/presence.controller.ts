@@ -1,12 +1,12 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { getService, Services } from "@/services";
-import {
+import { PlaytimeManagerService } from "@/services/playtime";
+import type {
   ModPlayerJoinData,
   ModPlayerLeaveData,
-  PlaytimeManagerService,
 } from "@/services/playtime";
 import { getServerByIp } from "@/services/playtime/config";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 /**
  * Presence Controller

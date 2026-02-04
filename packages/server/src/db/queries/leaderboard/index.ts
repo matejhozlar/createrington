@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { LeaderboardMessageQueries } from "@/db/queries/leaderboard/message";
 
 /**

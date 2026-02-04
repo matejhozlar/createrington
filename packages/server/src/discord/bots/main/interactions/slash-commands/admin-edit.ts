@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { confirmAdminChange } from "@/discord/utils/flows/confirmation/admin-confirmation";
-import { DatabaseTable, Player } from "@/generated/db";
+import { DatabaseTable, type Player } from "@/generated/db";
 import { AdminEdit } from "@/types";
 import { minecraftRcon, ServerId, WhitelistAction } from "@/utils/rcon";
 import {

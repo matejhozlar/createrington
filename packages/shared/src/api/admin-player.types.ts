@@ -15,7 +15,7 @@ import type {
   StrikeClassification,
   AdminLogActionApiData,
 } from "../db";
-import { DateToString } from "../types";
+import type { DateToString } from "../types";
 
 // ============================================================================
 // REQUEST TYPES

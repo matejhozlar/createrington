@@ -5,12 +5,12 @@ import {
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
 import { Q } from "@/db";
-import {
+import type {
   GetPlayerResponse,
   GetPlayersCountResponse,
   GetPlayersResponse,
 } from "@createrington/shared/api";
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 
 /**
  * Player controller

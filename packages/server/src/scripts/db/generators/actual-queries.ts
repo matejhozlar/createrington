@@ -61,7 +61,7 @@ import type { TableStructure } from "../types";
 export function generateActualQueries(structure: TableStructure): string {
   const { className, tableName } = structure;
 
-  return `import { Pool, PoolClient } from "pg";
+  return `import type { Pool, PoolClient } from "pg";
 import { ${className}BaseQueries } from "@/generated/db/${tableName}.queries";
 
 /**
