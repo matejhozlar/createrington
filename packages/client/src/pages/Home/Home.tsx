@@ -1,248 +1,588 @@
 import React from "react";
-import styles from "./Home.module.scss";
 import { useAuth } from "@/contexts/auth";
+import { Button } from "@/components/ui/button";
+import { NavLink } from "react-router-dom";
+import { ArrowRight, Download } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import Fade from "embla-carousel-fade";
+import {
+  Card,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Users,
+  TrendingUp,
+  Clock,
+  ExternalLink,
+  Cog,
+  Palette,
+  Map,
+  Wrench,
+  Wallet,
+  Coins,
+  Store,
+  Zap,
+} from "lucide-react";
+import { useServerData } from "@/contexts/socket";
 
 export const Home: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
+
+  const autoplayPlugin = React.useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: false }),
+  );
+
+  // TODO: When converting to multiple servers, update this to use the selected server
+  const serverId = 1;
+  const { servers } = useServerData();
+  const server = servers.find((s) => s.serverId === serverId);
+
+  const heroImages = [
+    "/assets/hero/gondola-station.webp",
+    "/assets/hero/dark-warehouse.webp",
+    "/assets/hero/high-speed-train.webp",
+    "/assets/hero/mountains-train-station.webp",
+    "/assets/hero/space-ship-station.webp",
+  ];
+
+  const features = [
+    {
+      title: "Create at the Core",
+      description:
+        "Gears, belts, steam, and logic-powered machines with Create and carefully chosen expansions.",
+      backgroundImage: "/assets/features/create-workshop.webp",
+      icon: "/assets/features/cogwheel.webp",
+    },
+    {
+      title: "Economy & Trading",
+      description:
+        "Build your fortune through player markets, automated shops, and strategic resource management.",
+      backgroundImage: "/assets/features/market-stall.webp",
+      icon: "/assets/features/currency.webp",
+    },
+    {
+      title: "Built for Multiplayer",
+      description:
+        "Player shops, shared infrastructure, and tools that encourage collaboration.",
+      backgroundImage: "/assets/features/map-overview.webp",
+      icon: "/assets/features/player-heads.webp",
+    },
+    {
+      title: "Curated, Not Bloated",
+      description:
+        "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
+      backgroundImage: "/assets/features/modpack.webp",
+      icon: "/assets/features/chipped-workbench.webp",
+    },
+  ];
+
+  const serverMetrics = [
+    {
+      icon: Users,
+      value: server?.playerCount ?? 0,
+      title: "Players Online",
+      description: "Active players right now",
+    },
+    {
+      icon: TrendingUp,
+      value: "1,247",
+      title: "Total Players",
+      description: "Registered community members",
+    },
+    {
+      icon: Clock,
+      value: "8,532",
+      title: "Hours Played",
+      description: "Total playtime across all players",
+    },
+  ];
+
+  const modCategories = [
+    {
+      title: "Tech & Automation",
+      icon: Cog,
+      mods: [
+        {
+          name: "Create",
+          description:
+            "The foundation of our server with rotational power and automation",
+          url: "https://www.curseforge.com/minecraft/mc-mods/create",
+        },
+        {
+          name: "Create: Steam 'n' Rails",
+          description: "Advanced trains, tracks, and railway systems",
+          url: "https://www.curseforge.com/minecraft/mc-mods/steam-n-rails-neoforge",
+        },
+        {
+          name: "Silent Gear",
+          description: "Custom gear and tool creation with unique materials",
+          url: "https://www.curseforge.com/minecraft/mc-mods/silent-gear",
+        },
+        {
+          name: "Open Parties and Claims",
+          description: "Claim and manage land and parties with friends",
+          url: "https://www.curseforge.com/minecraft/mc-mods/open-parties-and-claims",
+        },
+      ],
+    },
+    {
+      title: "Building & Decoration",
+      icon: Palette,
+      mods: [
+        {
+          name: "Chipped",
+          description: "Thousands of block variants for creative building",
+          url: "https://www.curseforge.com/minecraft/mc-mods/chipped",
+        },
+        {
+          name: "Rechiseled",
+          description: "Endless decorative styles and textures for blocks",
+          url: "https://www.curseforge.com/minecraft/mc-mods/rechiseled",
+        },
+        {
+          name: "Copycats+",
+          description: "Tons of custom block shapes and mimic textures",
+          url: "https://www.curseforge.com/minecraft/mc-mods/copycats",
+        },
+        {
+          name: "Macaw's Furniture",
+          description: "Stylish furniture and decor items for your builds",
+          url: "https://www.curseforge.com/minecraft/mc-mods/macaws-furniture",
+        },
+      ],
+    },
+    {
+      title: "Exploration",
+      icon: Map,
+      mods: [
+        {
+          name: "Xaero's Minimap",
+          description: "A minimap mod that provides a detailed map",
+          url: "https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap",
+        },
+        {
+          name: "Nature's Compass",
+          description: "Compass that helps you find specific biomes",
+          url: "https://www.curseforge.com/minecraft/mc-mods/natures-compass",
+        },
+        {
+          name: "Farmer's Delight",
+          description: "Expanded farming and cooking mechanics",
+          url: "https://www.curseforge.com/minecraft/mc-mods/farmers-delight",
+        },
+        {
+          name: "Deeper and Darker",
+          description: "Enhances the Deep Dark with a new dimension",
+          url: "https://www.curseforge.com/minecraft/mc-mods/deeperdarker",
+        },
+      ],
+    },
+    {
+      title: "Utility & QoL",
+      icon: Wrench,
+      mods: [
+        {
+          name: "Sophisticated Storage",
+          description: "Advanced barrels, chests, and shulker boxes",
+          url: "https://www.curseforge.com/minecraft/mc-mods/sophisticated-storage",
+        },
+        {
+          name: "Simple Voice Chat",
+          description: "Voice chat for multiplayer without external software",
+          url: "https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat",
+        },
+        {
+          name: "Jade",
+          description: "See block and entity information at a glance",
+          url: "https://www.curseforge.com/minecraft/mc-mods/jade",
+        },
+        {
+          name: "JEI (Just Enough Items)",
+          description: "Recipe viewer and item list for all mods",
+          url: "https://www.curseforge.com/minecraft/mc-mods/jei",
+        },
+      ],
+    },
+  ];
+
+  const economyFeatures = [
+    {
+      icon: Wallet,
+      title: "Physical Currency Items",
+      description:
+        "Collect and trade stackable bills with custom textures. Carry your wealth in your inventory.",
+    },
+    {
+      icon: Zap,
+      title: "Real-Time Synchronization",
+      description:
+        "Your balance updates instantly across Minecraft, Discord, web dashboard, and API.",
+    },
+    {
+      icon: Store,
+      title: "Automated Shop Integration",
+      description:
+        "Tap bank cards at Create-powered registers for seamless automated transactions.",
+    },
+    {
+      icon: Coins,
+      title: "ATM Banking System",
+      description:
+        "Deposit and withdraw currency at in-game ATMs. Virtual and physical money in perfect harmony.",
+    },
+  ];
 
   return (
-    <div className={styles.home}>
-      {/* Hero Section */}
-      <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          <h1 className={styles.heroTitle}>
-            Welcome to <span className={styles.highlight}>MyServer</span>
-          </h1>
-          <p className={styles.heroSubtitle}>
-            Join our amazing Minecraft community and experience the best
-            gameplay
-          </p>
-          {!user && (
-            <button className={styles.ctaButton} onClick={login}>
-              Get Started with Discord
-            </button>
-          )}
-          {user && (
-            <div className={styles.welcomeBack}>
-              <p className={styles.welcomeText}>
-                Welcome back,{" "}
-                <span className={styles.highlight}>
-                  {user.minecraftUsername}
+    <div>
+      {/* New Hero Section */}
+      <section className="relative w-full overflow-hidden">
+        <Carousel
+          opts={{ loop: true }}
+          plugins={[Fade(), autoplayPlugin.current]}
+          className="absolute inset-0 h-full"
+        >
+          <CarouselContent className="h-full ml-0">
+            {heroImages.map((image, index) => (
+              <CarouselItem key={index} className="h-full pl-0 basis-full">
+                <div
+                  className="w-full h-full bg-cover bg-center bg-no-repeat"
+                  style={{
+                    backgroundImage: `url('${image}')`,
+                  }}
+                />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+
+        <div className="absolute top-1/3 inset-0 bg-linear-to-t from-background via-background/80 to-transparent pointer-events-none" />
+
+        <div className="py-12 px-5 md:px-8">
+          <div className="relative h-full flex flex-col max-w-7xl mx-auto">
+            {/* Server Logo and Status */}
+            <div className="flex items-center justify-between gap-2 ">
+              <img
+                src="/assets/logo/cogs-and-steam-logo.webp"
+                alt="Cogs and Steam Logo"
+                className="h-16 w-auto md:h-20 lg:h-24 object-contain"
+              />
+
+              <Badge
+                className={`bg-zinc-900/70 text-lg px-2 sm:px-4 py-2 gap-2 shadow-md ${server?.online ? "text-green-500" : "text-red-500"}`}
+                variant={"outline"}
+              >
+                <span
+                  className={`size-4 rounded-full ${server?.online ? "bg-green-500 animate-pulse" : "bg-red-600"}`}
+                />
+                <span className="hidden sm:inline">
+                  {server?.online ? "Online" : "Offline"}
                 </span>
-                !
-              </p>
-              <a href="/servers" className={styles.ctaButton}>
-                View Servers
-              </a>
+              </Badge>
             </div>
-          )}
-        </div>
-        <div className={styles.heroDecoration}>
-          <div className={styles.glowOrb} />
-          <div className={styles.glowOrb} />
+
+            <div className="flex-1 flex items-end min-h-148">
+              <div className="space-y-6 pt-12">
+                {/* Tagline */}
+                <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
+                  Build Big. Automate Everything.
+                </h1>
+
+                <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">
+                  Cogs & Steam is a Create-powered server built for players who
+                  love clever machines, beautiful builds, and total creative
+                  freedom. From small farms to automated factories, every idea
+                  has a place here.
+                </p>
+
+                {/* CTA */}
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  {!user ? (
+                    <Button size="lg" className="text-lg" asChild>
+                      <NavLink to="/apply-to-join">
+                        Apply Now
+                        <ArrowRight />
+                      </NavLink>
+                    </Button>
+                  ) : (
+                    <Button size="lg" className="text-lg" asChild>
+                      <a
+                        href="https://www.curseforge.com/minecraft/modpacks/create-rington"
+                        target="_blank"
+                      >
+                        <Download />
+                        Download Modpack
+                      </a>
+                    </Button>
+                  )}
+
+                  <Button size="lg" variant="outline" asChild>
+                    <a href="#server-features">Learn More</a>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className={styles.features}>
-        <div className={styles.container}>
-          <h2 className={styles.sectionTitle}>Why Choose Us?</h2>
-          <div className={styles.featureGrid}>
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 2L2 7l10 5 10-5-10-5z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M2 17l10 5 10-5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M2 12l10 5 10-5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>Multiple Servers</h3>
-              <p className={styles.featureDescription}>
-                Choose from our diverse range of game modes and experiences
-              </p>
-            </div>
+      <section className="relative -mt-px py-12 px-5 md:px-8 bg-background">
+        <div className="max-w-7xl mx-auto">
+          <div
+            className="flex flex-col gap-3 items-center mb-12"
+            id="server-features"
+          >
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+              Why Join Cogs & Steam?
+            </h2>
 
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <circle
-                    cx="9"
-                    cy="7"
-                    r="4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M23 21v-2a4 4 0 0 0-3-3.87"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M16 3.13a4 4 0 0 1 0 7.75"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>Active Community</h3>
-              <p className={styles.featureDescription}>
-                Join thousands of players in our vibrant Discord community
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                  <polyline
-                    points="12 6 12 12 16 14"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>24/7 Uptime</h3>
-              <p className={styles.featureDescription}>
-                Reliable servers with minimal downtime and regular updates
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>Secure & Fair</h3>
-              <p className={styles.featureDescription}>
-                Advanced anti-cheat and moderation to ensure fair gameplay
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <polyline
-                    points="22 12 18 12 15 21 9 3 6 12 2 12"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>Performance</h3>
-              <p className={styles.featureDescription}>
-                Optimized servers for smooth gameplay with minimal lag
-              </p>
-            </div>
-
-            <div className={styles.featureCard}>
-              <div className={styles.featureIcon}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-              <h3 className={styles.featureTitle}>Support</h3>
-              <p className={styles.featureDescription}>
-                Dedicated staff team ready to help with any issues
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className={styles.stats}>
-        <div className={styles.container}>
-          <div className={styles.statsGrid}>
-            <div className={styles.statItem}>
-              <div className={styles.statValue}>1,000+</div>
-              <div className={styles.statLabel}>Active Players</div>
-            </div>
-            <div className={styles.statItem}>
-              <div className={styles.statValue}>99.9%</div>
-              <div className={styles.statLabel}>Uptime</div>
-            </div>
-            <div className={styles.statItem}>
-              <div className={styles.statValue}>5+</div>
-              <div className={styles.statLabel}>Game Modes</div>
-            </div>
-            <div className={styles.statItem}>
-              <div className={styles.statValue}>24/7</div>
-              <div className={styles.statLabel}>Support</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      {!user && (
-        <section className={styles.cta}>
-          <div className={styles.ctaContent}>
-            <h2 className={styles.ctaTitle}>Ready to Join?</h2>
-            <p className={styles.ctaSubtitle}>
-              Sign in with Discord and start your adventure today
+            <p className="text-lg md:text-xl text-primary max-w-2xl">
+              A carefully crafted server designed for engineers and builders
+              alike
             </p>
-            <button className={styles.ctaButtonLarge} onClick={login}>
-              Login with Discord
-            </button>
           </div>
-        </section>
-      )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {features.map((feature, index) => (
+              <Card key={index} className="overflow-hidden border-border pt-0">
+                <div className="p-2">
+                  <div className="relative aspect-video">
+                    {/* Background Image */}
+                    <div
+                      className="absolute inset-0 bg-cover bg-center rounded-lg"
+                      style={{
+                        backgroundImage: `url('${feature.backgroundImage}')`,
+                      }}
+                    />
+
+                    {/* Dark Overlay */}
+                    <div className="absolute inset-0 bg-black/70 rounded-lg" />
+
+                    {/* Feature Icon */}
+                    <div className="absolute top-2 left-2">
+                      <img
+                        src={feature.icon}
+                        alt={feature.title}
+                        className="max-w-24 max-h-24 shadow-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <CardHeader>
+                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+
+                  <CardDescription className="text-base">
+                    {feature.description}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Server Metrics Section */}
+      <section id="learn-more" className="py-16 px-5 md:px-8 bg-zinc-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col gap-3 items-center mb-12">
+            <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+              Join a Thriving Community
+            </h2>
+
+            <p className="text-lg md:text-xl text-primary max-w-2xl">
+              Our server is home to a vibrant community of builders and creators
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {serverMetrics.map((metric, index) => {
+              const IconComponent = metric.icon;
+              return (
+                <Card key={index} className="bg-background">
+                  <CardHeader className="text-center space-y-4">
+                    <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                      <IconComponent className="w-8 h-8 text-primary" />
+                    </div>
+
+                    <div>
+                      <div className="text-5xl font-bold text-foreground mb-2">
+                        {metric.value}
+                      </div>
+
+                      <CardTitle className="text-xl text-foreground">
+                        {metric.title}
+                      </CardTitle>
+
+                      <CardDescription className="text-base mt-2">
+                        {metric.description}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Modpack Section */}
+      <section className="py-16 px-5 md:px-8 bg-background">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div className="flex flex-col gap-3">
+              <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+                The Ultimate Create Experience
+              </h2>
+
+              <p className="text-lg md:text-xl text-primary max-w-2xl">
+                Just a few of the curated selection of mods that power our
+                server.
+              </p>
+            </div>
+
+            <Button size="lg" variant="secondary" asChild className="shrink-0">
+              <a
+                href="https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam/relations/dependencies"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View Full Modlist
+                <ExternalLink className="ml-2" />
+              </a>
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {modCategories.map((category, categoryIndex) => {
+              const IconComponent = category.icon;
+              return (
+                <div key={categoryIndex} className="flex flex-col gap-4">
+                  {/* Category Header */}
+                  <div className="flex items-center gap-2">
+                    <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <IconComponent className="size-5 text-primary" />
+                    </div>
+
+                    <h3 className="text-xl font-semibold text-foreground">
+                      {category.title}
+                    </h3>
+                  </div>
+
+                  {/* Mods List */}
+                  <div className="flex flex-col gap-3">
+                    {category.mods.map((mod, modIndex) => (
+                      <a
+                        key={modIndex}
+                        href={mod.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex flex-col gap-1 rounded-lg p-3 transition-colors hover:bg-muted"
+                      >
+                        <div className="flex items-center gap-1">
+                          <p className="font-medium text-foreground">
+                            {mod.name}
+                          </p>
+
+                          <ExternalLink className="size-3 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                        </div>
+
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {mod.description}
+                        </p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Economy Features Section */}
+      <section className="py-16 px-5 md:px-8 bg-zinc-950">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* Left Side - Content */}
+            <div className="flex-1 flex flex-col gap-8">
+              <div className="flex flex-col gap-3">
+                <h2 className="text-4xl md:text-5xl font-semibold text-foreground">
+                  A Revolutionary Economy System
+                </h2>
+
+                <p className="text-lg md:text-xl text-primary">
+                  Trade, invest, and manage your wealth with our custom-built
+                  economy plugin
+                </p>
+              </div>
+
+              {/* Features Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+                {economyFeatures.map((feature, index) => {
+                  const IconComponent = feature.icon;
+                  return (
+                    <div key={index} className="flex flex-col gap-5">
+                      <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <IconComponent className="text-primary size-5" />
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <h3 className="text-foreground font-semibold">
+                          {feature.title}
+                        </h3>
+
+                        <p className="text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Side - Image */}
+            <div className="w-full flex-1">
+              <div className="relative w-full aspect-square">
+                <img
+                  src="/assets/features/gondola-station-atms.webp"
+                  alt="Economy system featuring ATMs and banking"
+                  className="rounded-xl object-cover w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="bg-muted py-16 px-5 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex w-full flex-col items-center justify-between gap-8 text-center md:flex-row md:text-left">
+            <h2 className="text-foreground text-4xl md:text-5xl font-semibold max-w-lg text-pretty">
+              Join Us and Build Something Amazing
+            </h2>
+
+            <div className="flex flex-col gap-3 md:flex-row">
+              <Button size="lg" asChild>
+                <NavLink to="/apply-to-join" className="text-xl! px-8! py-6!">
+                  Apply Now
+                  <ArrowRight />
+                </NavLink>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };

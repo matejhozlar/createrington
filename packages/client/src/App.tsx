@@ -32,6 +32,7 @@ import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
+import { Footer } from "./components/footer";
 
 // Inner component that uses sidebar context
 function AppContent() {
@@ -46,7 +47,7 @@ function AppContent() {
           <Logo />
         </div>
 
-        <div className="flex flex-1 flex-col gap-4 pt-0">
+        <div className="flex flex-1 flex-col gap-4">
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Home />} />
@@ -130,6 +131,8 @@ function AppContent() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
+
+        <Footer />
       </SidebarInset>
     </>
   );
