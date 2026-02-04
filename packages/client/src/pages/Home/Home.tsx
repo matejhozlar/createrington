@@ -30,201 +30,7 @@ import {
   Store,
   Zap,
 } from "lucide-react";
-
-const heroImages = [
-  "/assets/hero/gondola-station.webp",
-  "/assets/hero/dark-warehouse.webp",
-  "/assets/hero/high-speed-train.webp",
-  "/assets/hero/mountains-train-station.webp",
-  "/assets/hero/space-ship-station.webp",
-];
-
-const features = [
-  {
-    title: "Create at the Core",
-    description:
-      "Gears, belts, steam, and logic-powered machines with Create and carefully chosen expansions.",
-    backgroundImage: "/assets/features/create-workshop.webp",
-    icon: "/assets/features/cogwheel.webp",
-  },
-  {
-    title: "Economy & Trading",
-    description:
-      "Build your fortune through player markets, automated shops, and strategic resource management.",
-    backgroundImage: "/assets/features/market-stall.webp",
-    icon: "/assets/features/currency.webp",
-  },
-  {
-    title: "Built for Multiplayer",
-    description:
-      "Player shops, shared infrastructure, and tools that encourage collaboration.",
-    backgroundImage: "/assets/features/map-overview.webp",
-    icon: "/assets/features/player-heads.webp",
-  },
-  {
-    title: "Curated, Not Bloated",
-    description:
-      "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
-    backgroundImage: "/assets/features/modpack.webp",
-    icon: "/assets/features/chipped-workbench.webp",
-  },
-];
-
-const serverMetrics = [
-  {
-    icon: Users,
-    value: "24",
-    title: "Players Online",
-    description: "Active players right now",
-  },
-  {
-    icon: TrendingUp,
-    value: "1,247",
-    title: "Total Players",
-    description: "Registered community members",
-  },
-  {
-    icon: Clock,
-    value: "8,532",
-    title: "Hours Played",
-    description: "Total playtime across all players",
-  },
-];
-
-const modCategories = [
-  {
-    title: "Tech & Automation",
-    icon: Cog,
-    mods: [
-      {
-        name: "Create",
-        description:
-          "The foundation of our server with rotational power and automation",
-        url: "https://www.curseforge.com/minecraft/mc-mods/create",
-      },
-      {
-        name: "Create: Steam 'n' Rails",
-        description: "Advanced trains, tracks, and railway systems",
-        url: "https://www.curseforge.com/minecraft/mc-mods/steam-n-rails-neoforge",
-      },
-      {
-        name: "Silent Gear",
-        description: "Custom gear and tool creation with unique materials",
-        url: "https://www.curseforge.com/minecraft/mc-mods/silent-gear",
-      },
-      {
-        name: "Open Parties and Claims",
-        description: "Claim and manage land and parties with friends",
-        url: "https://www.curseforge.com/minecraft/mc-mods/open-parties-and-claims",
-      },
-    ],
-  },
-  {
-    title: "Building & Decoration",
-    icon: Palette,
-    mods: [
-      {
-        name: "Chipped",
-        description: "Thousands of block variants for creative building",
-        url: "https://www.curseforge.com/minecraft/mc-mods/chipped",
-      },
-      {
-        name: "Rechiseled",
-        description: "Endless decorative styles and textures for blocks",
-        url: "https://www.curseforge.com/minecraft/mc-mods/rechiseled",
-      },
-      {
-        name: "Copycats+",
-        description: "Tons of custom block shapes and mimic textures",
-        url: "https://www.curseforge.com/minecraft/mc-mods/copycats",
-      },
-      {
-        name: "Macaw's Furniture",
-        description: "Stylish furniture and decor items for your builds",
-        url: "https://www.curseforge.com/minecraft/mc-mods/macaws-furniture",
-      },
-    ],
-  },
-  {
-    title: "Exploration",
-    icon: Map,
-    mods: [
-      {
-        name: "Xaero's Minimap",
-        description: "A minimap mod that provides a detailed map",
-        url: "https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap",
-      },
-      {
-        name: "Nature's Compass",
-        description: "Compass that helps you find specific biomes",
-        url: "https://www.curseforge.com/minecraft/mc-mods/natures-compass",
-      },
-      {
-        name: "Farmer's Delight",
-        description: "Expanded farming and cooking mechanics",
-        url: "https://www.curseforge.com/minecraft/mc-mods/farmers-delight",
-      },
-      {
-        name: "Deeper and Darker",
-        description: "Enhances the Deep Dark with a new dimension",
-        url: "https://www.curseforge.com/minecraft/mc-mods/deeperdarker",
-      },
-    ],
-  },
-  {
-    title: "Utility & QoL",
-    icon: Wrench,
-    mods: [
-      {
-        name: "Sophisticated Storage",
-        description: "Advanced barrels, chests, and shulker boxes",
-        url: "https://www.curseforge.com/minecraft/mc-mods/sophisticated-storage",
-      },
-      {
-        name: "Simple Voice Chat",
-        description: "Voice chat for multiplayer without external software",
-        url: "https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat",
-      },
-      {
-        name: "Jade",
-        description: "See block and entity information at a glance",
-        url: "https://www.curseforge.com/minecraft/mc-mods/jade",
-      },
-      {
-        name: "JEI (Just Enough Items)",
-        description: "Recipe viewer and item list for all mods",
-        url: "https://www.curseforge.com/minecraft/mc-mods/jei",
-      },
-    ],
-  },
-];
-
-const economyFeatures = [
-  {
-    icon: Wallet,
-    title: "Physical Currency Items",
-    description:
-      "Collect and trade stackable bills with custom textures. Carry your wealth in your inventory.",
-  },
-  {
-    icon: Zap,
-    title: "Real-Time Synchronization",
-    description:
-      "Your balance updates instantly across Minecraft, Discord, web dashboard, and API.",
-  },
-  {
-    icon: Store,
-    title: "Automated Shop Integration",
-    description:
-      "Tap bank cards at Create-powered registers for seamless automated transactions.",
-  },
-  {
-    icon: Coins,
-    title: "ATM Banking System",
-    description:
-      "Deposit and withdraw currency at in-game ATMs. Virtual and physical money in perfect harmony.",
-  },
-];
+import { usePlayerData } from "@/contexts/socket";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
@@ -232,6 +38,203 @@ export const Home: React.FC = () => {
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
+
+  const { stats: playerStats } = usePlayerData();
+
+  const heroImages = [
+    "/assets/hero/gondola-station.webp",
+    "/assets/hero/dark-warehouse.webp",
+    "/assets/hero/high-speed-train.webp",
+    "/assets/hero/mountains-train-station.webp",
+    "/assets/hero/space-ship-station.webp",
+  ];
+
+  const features = [
+    {
+      title: "Create at the Core",
+      description:
+        "Gears, belts, steam, and logic-powered machines with Create and carefully chosen expansions.",
+      backgroundImage: "/assets/features/create-workshop.webp",
+      icon: "/assets/features/cogwheel.webp",
+    },
+    {
+      title: "Economy & Trading",
+      description:
+        "Build your fortune through player markets, automated shops, and strategic resource management.",
+      backgroundImage: "/assets/features/market-stall.webp",
+      icon: "/assets/features/currency.webp",
+    },
+    {
+      title: "Built for Multiplayer",
+      description:
+        "Player shops, shared infrastructure, and tools that encourage collaboration.",
+      backgroundImage: "/assets/features/map-overview.webp",
+      icon: "/assets/features/player-heads.webp",
+    },
+    {
+      title: "Curated, Not Bloated",
+      description:
+        "No kitchen-sink chaos. Our 100+ mods were chosen for balance and performance.",
+      backgroundImage: "/assets/features/modpack.webp",
+      icon: "/assets/features/chipped-workbench.webp",
+    },
+  ];
+
+  const serverMetrics = [
+    {
+      icon: Users,
+      value: playerStats.total,
+      title: "Players Online",
+      description: "Active players right now",
+    },
+    {
+      icon: TrendingUp,
+      value: "1,247",
+      title: "Total Players",
+      description: "Registered community members",
+    },
+    {
+      icon: Clock,
+      value: "8,532",
+      title: "Hours Played",
+      description: "Total playtime across all players",
+    },
+  ];
+
+  const modCategories = [
+    {
+      title: "Tech & Automation",
+      icon: Cog,
+      mods: [
+        {
+          name: "Create",
+          description:
+            "The foundation of our server with rotational power and automation",
+          url: "https://www.curseforge.com/minecraft/mc-mods/create",
+        },
+        {
+          name: "Create: Steam 'n' Rails",
+          description: "Advanced trains, tracks, and railway systems",
+          url: "https://www.curseforge.com/minecraft/mc-mods/steam-n-rails-neoforge",
+        },
+        {
+          name: "Silent Gear",
+          description: "Custom gear and tool creation with unique materials",
+          url: "https://www.curseforge.com/minecraft/mc-mods/silent-gear",
+        },
+        {
+          name: "Open Parties and Claims",
+          description: "Claim and manage land and parties with friends",
+          url: "https://www.curseforge.com/minecraft/mc-mods/open-parties-and-claims",
+        },
+      ],
+    },
+    {
+      title: "Building & Decoration",
+      icon: Palette,
+      mods: [
+        {
+          name: "Chipped",
+          description: "Thousands of block variants for creative building",
+          url: "https://www.curseforge.com/minecraft/mc-mods/chipped",
+        },
+        {
+          name: "Rechiseled",
+          description: "Endless decorative styles and textures for blocks",
+          url: "https://www.curseforge.com/minecraft/mc-mods/rechiseled",
+        },
+        {
+          name: "Copycats+",
+          description: "Tons of custom block shapes and mimic textures",
+          url: "https://www.curseforge.com/minecraft/mc-mods/copycats",
+        },
+        {
+          name: "Macaw's Furniture",
+          description: "Stylish furniture and decor items for your builds",
+          url: "https://www.curseforge.com/minecraft/mc-mods/macaws-furniture",
+        },
+      ],
+    },
+    {
+      title: "Exploration",
+      icon: Map,
+      mods: [
+        {
+          name: "Xaero's Minimap",
+          description: "A minimap mod that provides a detailed map",
+          url: "https://www.curseforge.com/minecraft/mc-mods/xaeros-minimap",
+        },
+        {
+          name: "Nature's Compass",
+          description: "Compass that helps you find specific biomes",
+          url: "https://www.curseforge.com/minecraft/mc-mods/natures-compass",
+        },
+        {
+          name: "Farmer's Delight",
+          description: "Expanded farming and cooking mechanics",
+          url: "https://www.curseforge.com/minecraft/mc-mods/farmers-delight",
+        },
+        {
+          name: "Deeper and Darker",
+          description: "Enhances the Deep Dark with a new dimension",
+          url: "https://www.curseforge.com/minecraft/mc-mods/deeperdarker",
+        },
+      ],
+    },
+    {
+      title: "Utility & QoL",
+      icon: Wrench,
+      mods: [
+        {
+          name: "Sophisticated Storage",
+          description: "Advanced barrels, chests, and shulker boxes",
+          url: "https://www.curseforge.com/minecraft/mc-mods/sophisticated-storage",
+        },
+        {
+          name: "Simple Voice Chat",
+          description: "Voice chat for multiplayer without external software",
+          url: "https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat",
+        },
+        {
+          name: "Jade",
+          description: "See block and entity information at a glance",
+          url: "https://www.curseforge.com/minecraft/mc-mods/jade",
+        },
+        {
+          name: "JEI (Just Enough Items)",
+          description: "Recipe viewer and item list for all mods",
+          url: "https://www.curseforge.com/minecraft/mc-mods/jei",
+        },
+      ],
+    },
+  ];
+
+  const economyFeatures = [
+    {
+      icon: Wallet,
+      title: "Physical Currency Items",
+      description:
+        "Collect and trade stackable bills with custom textures. Carry your wealth in your inventory.",
+    },
+    {
+      icon: Zap,
+      title: "Real-Time Synchronization",
+      description:
+        "Your balance updates instantly across Minecraft, Discord, web dashboard, and API.",
+    },
+    {
+      icon: Store,
+      title: "Automated Shop Integration",
+      description:
+        "Tap bank cards at Create-powered registers for seamless automated transactions.",
+    },
+    {
+      icon: Coins,
+      title: "ATM Banking System",
+      description:
+        "Deposit and withdraw currency at in-game ATMs. Virtual and physical money in perfect harmony.",
+    },
+  ];
 
   return (
     <div>
@@ -554,10 +557,7 @@ export const Home: React.FC = () => {
             </h2>
 
             <div className="flex flex-col gap-3 md:flex-row">
-              <Button
-                size="lg"
-                asChild
-              >
+              <Button size="lg" asChild>
                 <NavLink to="/apply-to-join" className="text-xl! px-8! py-6!">
                   Apply Now
                   <ArrowRight />
