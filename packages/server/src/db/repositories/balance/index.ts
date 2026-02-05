@@ -653,7 +653,7 @@ export class BalanceRepository {
         limit,
         orderBy:
           DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }

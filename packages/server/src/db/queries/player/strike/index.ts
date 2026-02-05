@@ -50,7 +50,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       },
       {
         orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -117,7 +117,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
 
     return await this.findAll(filters, {
       orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "DESC",
+      orderDirection: "desc",
     });
   }
 
@@ -204,7 +204,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
 
     return await this.findAll(filters, {
       orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "DESC",
+      orderDirection: "desc",
     });
   }
 
@@ -219,7 +219,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       { issuedByDiscordId: adminDiscordId },
       {
         orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -240,7 +240,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     return await this.findAll(filters, {
       limit,
       orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "DESC",
+      orderDirection: "desc",
     });
   }
 
@@ -258,7 +258,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
 
     return await this.findAll(filters, {
       orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "DESC",
+      orderDirection: "desc",
     });
   }
 }

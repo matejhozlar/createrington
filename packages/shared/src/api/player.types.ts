@@ -44,7 +44,7 @@ export const GetPlayersQuerySchema = z.object({
   orderBy: z
     .enum(["createdAt", "minecraftUsername", "updatedAt"])
     .default("createdAt"),
-  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
+  orderDirection: z.enum(["asc", "desc"]).default("desc"),
 });
 
 /**

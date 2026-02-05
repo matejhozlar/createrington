@@ -103,7 +103,7 @@ export abstract class BaseReward {
       {
         limit: 1,
         orderBy: DatabaseTable.REWARD_CLAIM.CAMEL_FIELDS.CLAIMED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
 

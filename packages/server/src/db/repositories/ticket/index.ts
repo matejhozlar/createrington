@@ -223,7 +223,7 @@ export class TicketRepository {
       { id: ticketId },
       {
         orderBy: DatabaseTable.TICKET_ACTION.CAMEL_FIELDS.PERFORMED_AT,
-        orderDirection: "ASC",
+        orderDirection: "asc",
       },
     );
   }
@@ -255,7 +255,7 @@ export class TicketRepository {
       type?: TicketType;
       limit?: number;
       orderBy?: "createdAt" | "ticketNumber";
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
     },
   ): Promise<Ticket[]> {
     const filters: any = {
@@ -315,7 +315,7 @@ export class TicketRepository {
       { status: TicketStatus.OPEN },
       {
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -331,7 +331,7 @@ export class TicketRepository {
       { status },
       {
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -347,7 +347,7 @@ export class TicketRepository {
       { type },
       {
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -395,7 +395,7 @@ export class TicketRepository {
       limit,
       offset,
       orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-      orderDirection: "DESC",
+      orderDirection: "desc",
     });
   }
 }

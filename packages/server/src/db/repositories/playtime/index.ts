@@ -199,7 +199,7 @@ export class PlaytimeRepository {
             serverId,
             playDate: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
           },
-          { orderBy: "playDate", orderDirection: "ASC" },
+          { orderBy: "playDate", orderDirection: "asc" },
         ),
         Q.player.playtime.hourly.getPlayerHourlyPattern(
           playerMinecraftUuid,
@@ -240,7 +240,7 @@ export class PlaytimeRepository {
           serverId,
           playDate: { $between: [startDate, endDate] },
         },
-        { orderBy: "playDate", orderDirection: "ASC" },
+        { orderBy: "playDate", orderDirection: "asc" },
       );
     } catch (error) {
       logger.error("Failed to get player daily range:", error);
@@ -270,7 +270,7 @@ export class PlaytimeRepository {
           serverId,
           playHour: { $gte: startTime, $lt: endTime },
         },
-        { orderBy: "playHour", orderDirection: "ASC" },
+        { orderBy: "playHour", orderDirection: "asc" },
       );
     } catch (error) {
       logger.error("Failed to get player hourly range:", error);
@@ -299,7 +299,7 @@ export class PlaytimeRepository {
           serverId,
           ...(includeActive ? {} : { sessionEnd: { $ne: null } }),
         },
-        { limit, orderBy: "sessionStart", orderDirection: "DESC" },
+        { limit, orderBy: "sessionStart", orderDirection: "desc" },
       );
     } catch (error) {
       logger.error("Failed to get player session history:", error);
@@ -327,7 +327,7 @@ export class PlaytimeRepository {
           serverId,
           secondsPlayed: { $gte: minSeconds },
         },
-        { orderBy: "secondsPlayed", orderDirection: "DESC" },
+        { orderBy: "secondsPlayed", orderDirection: "desc" },
       );
     } catch (error) {
       logger.error("Failed to get long sessions:", error);

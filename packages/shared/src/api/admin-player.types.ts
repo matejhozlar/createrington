@@ -44,7 +44,7 @@ export const GetAdminPlayersQuerySchema = z.object({
   orderBy: z
     .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
     .default("createdAt"),
-  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
+  orderDirection: z.enum(["asc", "desc"]).default("desc"),
 
   includeStrikeCounts: z
     .enum(["true", "false"])

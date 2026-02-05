@@ -85,7 +85,7 @@ export function AdminWaitlists() {
 
   // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("submittedAt");
-  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
   // Modal state
   const [inviteModal, setInviteModal] = useState<{
@@ -213,10 +213,10 @@ export function AdminWaitlists() {
   const handleSort = useCallback(
     (field: SortField) => {
       if (orderBy === field) {
-        setOrderDirection((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
       } else {
         setOrderBy(field);
-        setOrderDirection("DESC");
+        setOrderDirection("desc");
       }
       setPage(0);
     },
@@ -279,7 +279,7 @@ export function AdminWaitlists() {
       if (orderBy !== field) {
         return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
       }
-      return orderDirection === "ASC" ? (
+      return orderDirection === "asc" ? (
         <ArrowUp className="ml-1 size-3.5" />
       ) : (
         <ArrowDown className="ml-1 size-3.5" />
