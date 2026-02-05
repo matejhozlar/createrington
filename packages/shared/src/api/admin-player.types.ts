@@ -96,6 +96,12 @@ export const GetAdminPlayersQuerySchema = z.object({
     .default("false")
     .transform((val) => val === "true")
     .optional(),
+
+  includeBanCounts: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((val) => val === "true")
+    .optional(),
 });
 
 /**
@@ -353,6 +359,7 @@ export interface AdminPlayerDetailed {
   tickets: AdminPlayerTickets;
   waitlist: DateToString<WaitlistEntryApiData> | null;
   strikes: AdminPlayerStrikes;
+  bans: AdminPlayerBans;
 }
 
 /**

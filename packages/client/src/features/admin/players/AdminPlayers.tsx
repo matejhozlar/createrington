@@ -39,9 +39,10 @@ import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
-// Extended player type with strike count
-interface PlayerWithStrikes extends PlayerApiData {
+// Extended player type with strike and ban counts
+interface PlayerWithCounts extends PlayerApiData {
   activeStrikeCount?: number;
+  activeBanCount?: number;
 }
 
 // Sort field type
@@ -60,7 +61,7 @@ export function AdminPlayers() {
   const toast = useToastActions();
 
   // Player list state
-  const [players, setPlayers] = useState<PlayerWithStrikes[]>([]);
+  const [players, setPlayers] = useState<PlayerWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -95,7 +96,8 @@ export function AdminPlayers() {
         limit: limit,
         orderBy,
         orderDirection,
-        includeStrikeCounts: true, // Request strike counts from API
+        includeStrikeCounts: true,
+        includeBanCounts: true,
       };
 
       if (debouncedSearch.trim()) {
@@ -109,8 +111,8 @@ export function AdminPlayers() {
       const data = await fetchPlayers(query);
 
       if (data) {
-        // Players already include activeStrikeCount from the API
-        setPlayers(data.data.players as PlayerWithStrikes[]);
+        // Players already include activeStrikeCount and activeBanCount from the API
+        setPlayers(data.data.players as PlayerWithCounts[]);
         setTotal(data.data.pagination.total);
         setTotalPages(data.data.pagination.totalPages);
       }
@@ -256,6 +258,28 @@ export function AdminPlayers() {
 
     return items;
   }, [page, totalPages]);
+
+  /**
+   * Get badge info based on strikes and bans
+   * Returns: { count: number, color: 'yellow' | 'red', hasIssues: boolean }
+   */
+  const getPlayerBadgeInfo = useCallback((player: PlayerWithCounts) => {
+    const strikeCount = player.activeStrikeCount ?? 0;
+    const banCount = player.activeBanCount ?? 0;
+    const totalCount = strikeCount + banCount;
+
+    if (totalCount === 0) {
+      return { count: 0, color: null, hasIssues: false };
+    }
+
+    // If player has any bans (with or without strikes), show red
+    if (banCount > 0) {
+      return { count: totalCount, color: "red" as const, hasIssues: true };
+    }
+
+    // If player only has strikes, show yellow
+    return { count: totalCount, color: "yellow" as const, hasIssues: true };
+  }, []);
 
   const navigate = useNavigate();
 
@@ -478,15 +502,20 @@ export function AdminPlayers() {
                       const serverName = currentServerId
                         ? getServerName(currentServerId)
                         : null;
-                      const hasActiveStrikes =
-                        (player.activeStrikeCount ?? 0) > 0;
+
+                      const badgeInfo = getPlayerBadgeInfo(player);
 
                       return (
                         <tr
                           key={player.minecraftUuid}
                           className={cn(
                             "transition-colors hover:bg-sidebar-accent/30",
-                            hasActiveStrikes && "bg-destructive/5",
+                            badgeInfo.hasIssues &&
+                              badgeInfo.color === "yellow" &&
+                              "bg-yellow-500/5",
+                            badgeInfo.hasIssues &&
+                              badgeInfo.color === "red" &&
+                              "bg-destructive/5",
                           )}
                         >
                           <td className="px-4 py-3">
@@ -496,9 +525,17 @@ export function AdminPlayers() {
                                   uuid={player.minecraftUuid}
                                   username={player.minecraftUsername}
                                 />
-                                {hasActiveStrikes && (
-                                  <div className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white ring-2 ring-background">
-                                    {player.activeStrikeCount}
+                                {badgeInfo.hasIssues && (
+                                  <div
+                                    className={cn(
+                                      "absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-background",
+                                      badgeInfo.color === "yellow" &&
+                                        "bg-yellow-500",
+                                      badgeInfo.color === "red" &&
+                                        "bg-destructive",
+                                    )}
+                                  >
+                                    {badgeInfo.count}
                                   </div>
                                 )}
                               </div>

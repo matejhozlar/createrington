@@ -65,6 +65,8 @@ router.post(
  * - limit: Results per page (1-100, default: 20)
  * - sort_by: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
  * - sort_order: Sort direction (asc/desc, default: desc)
+ * - includeStrikeCounts: Include active strike counts (true/false, default: false)
+ * - includeBanCounts: Include active ban counts (true/false, default: false)
  *
  * Response: GetAdminPlayersResponse
  */

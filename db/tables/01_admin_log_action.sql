@@ -117,14 +117,6 @@ CREATE INDEX idx_log_actions_target ON public.admin_log_action USING btree (targ
 
 
 --
--- Name: admin_log_action admin_log_action_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.admin_log_action
-    ADD CONSTRAINT admin_log_action_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
 -- PostgreSQL database dump complete
 --
 

@@ -1,6 +1,12 @@
 import { cn } from "@/lib/utils";
 
-type TabType = "overview" | "sessions" | "tickets" | "strikes" | "audit";
+type TabType =
+  | "overview"
+  | "sessions"
+  | "tickets"
+  | "strikes"
+  | "bans"
+  | "audit";
 
 interface PlayerTabsProps {
   activeTab: TabType;
@@ -13,6 +19,7 @@ export function PlayerTabs({ activeTab, onTabChange }: PlayerTabsProps) {
     { id: "sessions", label: "Sessions" },
     { id: "tickets", label: "Tickets" },
     { id: "strikes", label: "Strikes" },
+    { id: "bans", label: "Bans" },
     { id: "audit", label: "Audit Log" },
   ];
 

@@ -137,6 +137,9 @@ export class AdminPlayerController {
             activeCount: playerData.strikes.activeCount,
             totalCount: playerData.strikes.totalCount,
           },
+          bans: {
+            ...(playerData.bans as any),
+          },
         },
       };
 
@@ -181,9 +184,13 @@ export class AdminPlayerController {
    * - sortBy: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
    * - sortOrder: Sort direction (asc/desc, default: desc)
    *
+   * Enhancement:
+   * - includeStrikeCounts: Include active strike counts (true/false, default: false)
+   * - includeBanCounts: Include active ban counts (true/false, default: false)
+   *
    * @example
    * GET /api/admin/players?limit=50&online=true
-   * GET /api/admin/players?minecraft_username=Steve&sort_by=lastSeen
+   * GET /api/admin/players?includeStrikeCounts=true&includeBanCounts=true
    */
   static async getPlayers(req: Request, res: Response): Promise<void> {
     try {
@@ -211,8 +218,14 @@ export class AdminPlayerController {
         filters.online = req.query.online;
       }
 
-      const { orderBy, orderDirection, page, limit, includeStrikeCounts } =
-        query;
+      const {
+        orderBy,
+        orderDirection,
+        page,
+        limit,
+        includeStrikeCounts,
+        includeBanCounts,
+      } = query;
 
       const [players, total] = await Promise.all([
         playerService.core.getAll(filters, {
@@ -224,22 +237,36 @@ export class AdminPlayerController {
         playerService.core.count(filters),
       ]);
 
-      let playersWithStrikes = players as any;
-      if (includeStrikeCounts) {
-        const playerUuids = players.map((p) => p.minecraftUuid);
-        const strikeCounts =
-          await playerService.strikes.getActiveStrikeCounts(playerUuids);
+      let enrichedPlayers = players as any;
 
-        playersWithStrikes = players.map((player) => ({
+      // Fetch counts in parallel if requested
+      if (includeStrikeCounts || includeBanCounts) {
+        const playerUuids = players.map((p) => p.minecraftUuid);
+
+        const [strikeCounts, banCounts] = await Promise.all([
+          includeStrikeCounts
+            ? playerService.strikes.getActiveStrikeCounts(playerUuids)
+            : Promise.resolve({} as Record<string, number>),
+          includeBanCounts
+            ? playerService.bans.getActiveBanCounts(playerUuids)
+            : Promise.resolve({} as Record<string, number>),
+        ]);
+
+        enrichedPlayers = players.map((player) => ({
           ...player,
-          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
+          ...(includeStrikeCounts && {
+            activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
+          }),
+          ...(includeBanCounts && {
+            activeBanCount: banCounts[player.minecraftUuid] ?? 0,
+          }),
         }));
       }
 
       const response: GetAdminPlayersResponse = {
         success: true,
         data: {
-          players: playersWithStrikes,
+          players: enrichedPlayers,
           pagination: {
             page,
             limit,
@@ -266,7 +293,7 @@ export class AdminPlayerController {
         throw error;
       }
       logger.error("Failed to fetch players:", error);
-      throw new InternalServerError("Failed to update player");
+      throw new InternalServerError("Failed to fetch players");
     }
   }
 

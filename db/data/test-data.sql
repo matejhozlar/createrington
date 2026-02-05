@@ -14,6 +14,7 @@ TRUNCATE TABLE player CASCADE;
 TRUNCATE TABLE server CASCADE;
 TRUNCATE TABLE ticket_action CASCADE;
 TRUNCATE TABLE ticket CASCADE;
+TRUNCATE TABLE player_ban RESTART IDENTITY;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -607,6 +608,202 @@ INSERT INTO public.ticket_action (
  '{"resolution":"No action needed"}'::jsonb),
 (5, 'deleted', '99318080374607872', NOW() - INTERVAL '7 days',
  '{"reason":"Cleanup old accidental ticket"}'::jsonb);
+
+ -- ---------------------------------------------------------------------------
+-- Active temporary bans (unbanned = false => all unban_* fields MUST be NULL)
+-- expires_at MUST be NOT NULL and > banned_at
+-- ---------------------------------------------------------------------------
+INSERT INTO public.player_ban (
+  player_minecraft_uuid,
+  ban_type,
+  reason,
+  banned_by_discord_id,
+  banned_by_username,
+  banned_at,
+  expires_at,
+  unbanned,
+  server_id,
+  metadata
+) VALUES
+(
+  '550e8400-e29b-41d4-a716-446655440004'::uuid,
+  'temporary'::public.ban_type,
+  'Griefing at spawn; rollback performed',
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '2 hours',
+  NOW() + INTERVAL '2 days',
+  false,
+  1,
+  '{"case_id":"BAN-1001","evidence":["ticket:1002"],"coords":"0 70 0"}'::jsonb
+),
+(
+  '550e8400-e29b-41d4-a716-446655440006'::uuid,
+  'temporary'::public.ban_type,
+  'AFK farming with auto-clicker (12h)',
+  '547450242090532874',
+  'Agent772',
+  NOW() - INTERVAL '30 minutes',
+  NOW() + INTERVAL '11 hours',
+  false,
+  1,
+  '{"case_id":"BAN-1002","notes":"first offense"}'::jsonb
+),
+(
+  '550e8400-e29b-41d4-a716-446655440013'::uuid,
+  'temporary'::public.ban_type,
+  'Spamming chat after warnings (6h mute-ban)',
+  '99318080374607872',
+  'The_Bigshot',
+  NOW() - INTERVAL '10 minutes',
+  NOW() + INTERVAL '6 hours',
+  false,
+  2,
+  '{"case_id":"BAN-1003","warnings":3}'::jsonb
+);
+
+-- ---------------------------------------------------------------------------
+-- Unbanned temporary bans (unbanned = true => unbanned_* and unbanned_at required)
+-- expires_at MUST be NOT NULL and > banned_at (still enforced)
+-- ---------------------------------------------------------------------------
+INSERT INTO public.player_ban (
+  player_minecraft_uuid,
+  ban_type,
+  reason,
+  banned_by_discord_id,
+  banned_by_username,
+  banned_at,
+  expires_at,
+  unbanned,
+  unbanned_by_discord_id,
+  unbanned_by_username,
+  unbanned_at,
+  unban_reason,
+  server_id,
+  metadata
+) VALUES
+(
+  '550e8400-e29b-41d4-a716-446655440009'::uuid,
+  'temporary'::public.ban_type,
+  'Harassment / targeted killing (72h)',
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '7 days',
+  NOW() - INTERVAL '4 days',          -- still > banned_at, so valid
+  true,
+  '547450242090532874',
+  'Agent772',
+  NOW() - INTERVAL '6 days 12 hours',
+  'Appeal accepted; player apologized; restitution made',
+  1,
+  '{"case_id":"BAN-1004","appeal_id":"APL-77","victim":"Alex"}'::jsonb
+),
+(
+  '550e8400-e29b-41d4-a716-446655440010'::uuid,
+  'temporary'::public.ban_type,
+  'Inappropriate language (24h)',
+  '99318080374607872',
+  'The_Bigshot',
+  NOW() - INTERVAL '3 days',
+  NOW() - INTERVAL '2 days 12 hours',
+  true,
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '2 days 20 hours',
+  'Time served; reminded of chat rules',
+  1,
+  '{"case_id":"BAN-1005","chat_log_id":"msg_20260201_1523"}'::jsonb
+);
+
+-- ---------------------------------------------------------------------------
+-- Permanent bans (expires_at MUST be NULL)
+-- NOTE: With your current table, these UUIDs can be totally arbitrary.
+-- ---------------------------------------------------------------------------
+INSERT INTO public.player_ban (
+  player_minecraft_uuid,
+  ban_type,
+  reason,
+  banned_by_discord_id,
+  banned_by_username,
+  banned_at,
+  expires_at,
+  unbanned,
+  server_id,
+  metadata
+) VALUES
+(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid,
+  'permanent'::public.ban_type,
+  'Major griefing + ban evasion (account deletion)',
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '30 days',
+  NULL,
+  false,
+  NULL,
+  '{"case_id":"PBAN-2001","deleted_player_username":"GrieferAlt1"}'::jsonb
+),
+(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'::uuid,
+  'permanent'::public.ban_type,
+  'Chargeback / fraud (account deletion)',
+  '547450242090532874',
+  'Agent772',
+  NOW() - INTERVAL '90 days',
+  NULL,
+  false,
+  NULL,
+  '{"case_id":"PBAN-2002","deleted_player_username":"ChargebackKid"}'::jsonb
+),
+(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'::uuid,
+  'permanent'::public.ban_type,
+  'Botting / automation abuse (account deletion)',
+  '99318080374607872',
+  'The_Bigshot',
+  NOW() - INTERVAL '14 days',
+  NULL,
+  false,
+  NULL,
+  '{"case_id":"PBAN-2003","deleted_player_username":"BotRaidUser","evidence":["discord:raid-18"]}'::jsonb
+);
+
+-- ---------------------------------------------------------------------------
+-- Example: Permanent ban that was later pardoned (valid per chk_unban_fields)
+-- ---------------------------------------------------------------------------
+INSERT INTO public.player_ban (
+  player_minecraft_uuid,
+  ban_type,
+  reason,
+  banned_by_discord_id,
+  banned_by_username,
+  banned_at,
+  expires_at,
+  unbanned,
+  unbanned_by_discord_id,
+  unbanned_by_username,
+  unbanned_at,
+  unban_reason,
+  server_id,
+  metadata
+) VALUES
+(
+  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4'::uuid,
+  'permanent'::public.ban_type,
+  'Compromised account used for griefing (later verified & restored)',
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '45 days',
+  NULL,
+  true,
+  '818819241666281503',
+  'saunhardy',
+  NOW() - INTERVAL '44 days',
+  'Account compromise confirmed; ban reversed after verification',
+  NULL,
+  '{"case_id":"PBAN-2004","incident":"account-compromise"}'::jsonb
+);
+ 
  
 -- ============================================================================
 -- VERIFY DATA INTEGRITY

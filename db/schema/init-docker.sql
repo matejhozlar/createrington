@@ -1891,14 +1891,6 @@ ALTER TABLE ONLY public.admin
 
 
 --
--- Name: admin_log_action admin_log_action_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.admin_log_action
-    ADD CONSTRAINT admin_log_action_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
 -- Name: player_balance fk_player; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1919,14 +1911,6 @@ ALTER TABLE ONLY public.player_balance_transaction
 --
 
 ALTER TABLE ONLY public.player_strike
-    ADD CONSTRAINT fk_player FOREIGN KEY (player_minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: player_ban fk_player; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.player_ban
     ADD CONSTRAINT fk_player FOREIGN KEY (player_minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
 
 

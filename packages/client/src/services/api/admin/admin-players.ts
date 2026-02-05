@@ -26,6 +26,15 @@ import type {
   GetAdminPlayerStatsResponse,
   BulkBalanceAdjustResponse,
   BulkBalanceAdjustBody,
+  GetPlayerBansQuery,
+  GetPlayerBansResponse,
+  GetRecentBansResponse,
+  UnbanResponse,
+  UnbanBody,
+  IssuePermanentBanBody,
+  IssuePermanentBanResponse,
+  IssueTemporaryBanResponse,
+  IssueTemporaryBanBody,
 } from "@createrington/shared/api";
 import { api } from "../client";
 
@@ -410,6 +419,140 @@ export const adminPlayerApi = {
     const response = await api.post<BulkBalanceAdjustResponse>(
       "/api/admin/players/bulk/balance",
       body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Get all bans for a player
+   *
+   * @param id - Discord ID or Minecraft UUID
+   * @param query - Query parameters (filter for unbanned)
+   * @returns Bans, statistics, and current active ban
+   * @throws {Error} When the API request fails or player not found
+   *
+   * @example
+   * // Get only active bans
+   * const bans = await adminPlayerApi.getBans("123456789012345678");
+   *
+   * @example
+   * // Get all bans including unbanned
+   * const bans = await adminPlayerApi.getBans("123456789012345678", {
+   *   includeUnbanned: true
+   * });
+   */
+  async getBans(
+    id: string,
+    query?: GetPlayerBansQuery,
+  ): Promise<GetPlayerBansResponse["data"]> {
+    const response = await api.get<GetPlayerBansResponse>(
+      `/api/admin/players/${id}/bans`,
+      query,
+    );
+    return response.data;
+  },
+
+  /**
+   * Issue a temporary ban to a player
+   *
+   * @param id - Discord ID or Minecraft UUID
+   * @param body - Ban details (reason, duration, server, metadata)
+   * @returns Issued ban data
+   * @throws {Error} When the API request fails or player not found
+   *
+   * @example
+   * const ban = await adminPlayerApi.issueTemporaryBan("123456789012345678", {
+   *   reason: "Griefing in spawn area",
+   *   durationDays: 7,
+   *   serverId: 1,
+   *   metadata: { evidence: "screenshot_url.png" }
+   * });
+   */
+  async issueTemporaryBan(
+    id: string,
+    body: IssueTemporaryBanBody,
+  ): Promise<IssueTemporaryBanResponse["data"]> {
+    const response = await api.post<IssueTemporaryBanResponse>(
+      `/api/admin/players/${id}/bans/temporary`,
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Issue a permanent ban to a player (deletes all player data)
+   *
+   * WARNING: This action is irreversible and deletes the player entirely!
+   *
+   * @param id - Discord ID or Minecraft UUID
+   * @param body - Ban details (reason, server, metadata)
+   * @returns Ban ID before deletion
+   * @throws {Error} When the API request fails or player not found
+   *
+   * @example
+   * const result = await adminPlayerApi.issuePermanentBan("123456789012345678", {
+   *   reason: "Repeated severe violations after multiple warnings",
+   *   serverId: 1,
+   *   metadata: { previousBans: 3, previousStrikes: 15 }
+   * });
+   */
+  async issuePermanentBan(
+    id: string,
+    body: IssuePermanentBanBody,
+  ): Promise<IssuePermanentBanResponse["data"]> {
+    const response = await api.post<IssuePermanentBanResponse>(
+      `/api/admin/players/${id}/bans/permanent`,
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Unban/pardon a player
+   *
+   * @param banId - Ban ID to remove
+   * @param body - Unban reason
+   * @returns Unbanned ban data
+   * @throws {Error} When the API request fails or ban not found
+   *
+   * @example
+   * const ban = await adminPlayerApi.unban(42, {
+   *   reason: "Ban appealed - player showed improvement"
+   * });
+   */
+  async unban(banId: number, body: UnbanBody): Promise<UnbanResponse["data"]> {
+    const response = await api.delete<UnbanResponse>(
+      `/api/admin/players/bans/${banId}`, // Changed from /api/admin/bans/${banId}
+      body,
+    );
+    return response.data;
+  },
+
+  /**
+   * Get recent bans across all players
+   *
+   * @param query - Query parameters (limit, activeOnly filter)
+   * @returns Recent bans
+   * @throws {Error} When the API request fails
+   *
+   * @example
+   * // Get last 50 active bans
+   * const bans = await adminPlayerApi.getRecentBans();
+   *
+   * @example
+   * // Get last 100 bans including unbanned
+   * const bans = await adminPlayerApi.getRecentBans({
+   *   limit: 100,
+   *   activeOnly: false
+   * });
+   */
+  async getRecentBans(query?: {
+    limit?: number;
+    activeOnly?: boolean;
+  }): Promise<GetRecentBansResponse["data"]> {
+    const response = await api.get<GetRecentBansResponse>(
+      "/api/admin/players/bans/recent",
+      query,
     );
     return response.data;
   },
