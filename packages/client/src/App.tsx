@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
-import { AuthProvider } from "./contexts/auth";
+import { AuthProvider, useAuth } from "./contexts/auth";
 import {
   WebSocketProvider,
   ServerDataProvider,
@@ -33,9 +33,15 @@ import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDe
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { Footer } from "./components/footer";
+import { LoadingScreen } from "./components/loading-spinner";
 
 // Layout WITH footer
 function DefaultLayout() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen text="Logging in..." />;
+  }
   return (
     <>
       <AppSidebar />
