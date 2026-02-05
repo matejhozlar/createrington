@@ -85,9 +85,29 @@ export const playtimeRepo = new repositories.PlaytimeRepository();
 
 export const balanceRepo = new repositories.BalanceRepository();
 
+export const playerStrikeRepo = new repositories.PlayerStrikeRepository();
+
+export const playerSessionRepo = new repositories.PlayerSessionRepository();
+
+export const playerBalanceRepo = new repositories.PlayerBalanceRepository();
+
+export const playerTicketRepo = new repositories.PlayerTicketRepository();
+
+export const playerAuditRepo = new repositories.PlayerAuditRepository();
+
 export const playerRepo = new repositories.PlayerRepository();
 
-export const R = { waitlistRepo, playtimeRepo, balanceRepo, playerRepo };
+export const R = {
+  waitlistRepo,
+  playtimeRepo,
+  balanceRepo,
+  playerRepo,
+  playerAuditRepo,
+  playerBalanceRepo,
+  playerSessionRepo,
+  playerTicketRepo,
+  playerStrikeRepo,
+};
 
 // ============================================================================
 // EXPORTS
