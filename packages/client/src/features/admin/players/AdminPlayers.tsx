@@ -78,7 +78,7 @@ export function AdminPlayers() {
 
   // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
-  const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
+  const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
@@ -173,11 +173,11 @@ export function AdminPlayers() {
     (field: SortField) => {
       if (orderBy === field) {
         // Toggle sort order if same field
-        setOrderDirection((prev) => (prev === "ASC" ? "DESC" : "ASC"));
+        setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
       } else {
         // Set new field with default desc order
         setOrderBy(field);
-        setOrderDirection("ASC");
+        setOrderDirection("asc");
       }
       setPage(0); // Reset to first page
     },
@@ -208,7 +208,7 @@ export function AdminPlayers() {
       if (orderBy !== field) {
         return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
       }
-      return orderDirection === "ASC" ? (
+      return orderDirection === "asc" ? (
         <ArrowUp className="ml-1 size-3.5" />
       ) : (
         <ArrowDown className="ml-1 size-3.5" />
