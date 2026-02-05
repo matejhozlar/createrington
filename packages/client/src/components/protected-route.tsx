@@ -1,6 +1,6 @@
 import React from "react";
 import { useAuth } from "@/contexts/auth/";
-import { Loading } from "@/components/Loading";
+import { Loading } from "./loading-spinner";
 import { NotFound } from "@/pages/not-found";
 
 interface ProtectedRouteProps {

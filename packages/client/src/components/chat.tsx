@@ -7,7 +7,7 @@ import type {
   SubscriptionType,
 } from "@createrington/shared/socket";
 import { MessageSource } from "@createrington/shared/socket";
-import { Loading } from "@/components/Loading";
+import { Loading } from "./loading-spinner";
 import {
   Send,
   Paperclip,

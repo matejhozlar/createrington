@@ -4,7 +4,7 @@ import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServerData } from "@/contexts/socket";
 import { useSidebar } from "@/components/ui/sidebar";
-import { Loading } from "@/components/Loading";
+import { Loading } from "./loading-spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 function ServerStatus({
