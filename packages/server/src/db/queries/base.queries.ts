@@ -18,7 +18,7 @@ class QueryBuilder<
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "ASC" | "DESC";
+    orderDirection?: "asc" | "desc";
     select?: Array<keyof TConfig["Entity"]>;
   } = {};
 
@@ -48,15 +48,15 @@ class QueryBuilder<
    * Set sort order
    *
    * @param field - Field to sort by
-   * @param direction - Sort direction (default: "ASC")
+   * @param direction - Sort direction (default: "asc")
    * @returns This builder for chaining
    *
    * @example
-   * Q.player.where({ isActive: true }).orderBy("createdAt", "DESC")
+   * Q.player.where({ isActive: true }).orderBy("createdAt", "desc")
    */
   orderBy(
     field: keyof TConfig["Entity"],
-    direction: "ASC" | "DESC" = "ASC",
+    direction: "asc" | "desc" = "asc",
   ): this {
     this.options.orderBy = field;
     this.options.orderDirection = direction;
@@ -130,7 +130,7 @@ class QueryBuilder<
    * @example
    * const players = await Q.player
    *   .where({ isActive: true })
-   *   .orderBy("createdAt", "DESC")
+   *   .orderBy("createdAt", "desc")
    *   .limit(10)
    *   .all()
    */
@@ -973,7 +973,7 @@ export abstract class BaseQueries<
    * @example
    * const players = await Q.player
    *   .where({ isActive: true })
-   *   .orderBy("createdAt", "DESC")
+   *   .orderBy("createdAt", "desc")
    *   .limit(50)
    *   .all()
    *
@@ -995,18 +995,18 @@ export abstract class BaseQueries<
    * Create a query builder starting with orderBy
    *
    * @param field - Field to sort by
-   * @param direction - Sort direction (default: "ASC")
+   * @param direction - Sort direction (default: "asc")
    * @returns QueryBuilder instance
    *
    * @example
    * const players = await Q.player
-   *   .orderBy("createdAt", "DESC")
+   *   .orderBy("createdAt", "desc")
    *   .limit(10)
    *   .all()
    */
   orderBy(
     field: keyof TConfig["Entity"],
-    direction: "ASC" | "DESC" = "ASC",
+    direction: "asc" | "desc" = "asc",
   ): QueryBuilder<TConfig> {
     return new QueryBuilder<TConfig>((f, opts) =>
       this.findAll(f, opts),
@@ -1107,7 +1107,7 @@ export abstract class BaseQueries<
    * // With pagination and sorting
    * await Q.player.findAll(
    *   { isActive: true },
-   *   { limit: 10, offset: 0, orderBy: "createdAt", orderDirection: "DESC" }
+   *   { limit: 10, offset: 0, orderBy: "createdAt", orderDirection: "desc" }
    * )
    */
   async findAll(
@@ -1116,7 +1116,7 @@ export abstract class BaseQueries<
       limit?: number;
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
       select?: Array<keyof TConfig["Entity"]>;
     },
   ): Promise<TConfig["Entity"][]>;
@@ -1126,7 +1126,7 @@ export abstract class BaseQueries<
       limit?: number;
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
       select?: K[];
     },
   ): Promise<Pick<TConfig["Entity"], K>[]>;
@@ -1136,7 +1136,7 @@ export abstract class BaseQueries<
       limit?: number;
       offset?: number;
       orderBy?: keyof TConfig["Entity"];
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
       select?: Array<keyof TConfig["Entity"]>;
     },
   ): Promise<any[]> {
@@ -1155,7 +1155,7 @@ export abstract class BaseQueries<
 
     if (options?.orderBy) {
       const orderColumn = this.getColumnName(options.orderBy as string);
-      query += ` ORDER BY ${orderColumn} ${options.orderDirection || "ASC"}`;
+      query += ` ORDER BY ${orderColumn} ${options.orderDirection || "asc"}`;
     }
 
     if (options?.limit) {
@@ -1196,21 +1196,21 @@ export abstract class BaseQueries<
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "ASC" | "DESC";
+    orderDirection?: "asc" | "desc";
     select?: Array<keyof TConfig["Entity"]>;
   }): Promise<TConfig["Entity"][]>;
   async getAll<K extends keyof TConfig["Entity"]>(options?: {
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "ASC" | "DESC";
+    orderDirection?: "asc" | "desc";
     select?: K[];
   }): Promise<Pick<TConfig["Entity"], K>[]>;
   async getAll(options?: {
     limit?: number;
     offset?: number;
     orderBy?: keyof TConfig["Entity"];
-    orderDirection?: "ASC" | "DESC";
+    orderDirection?: "asc" | "desc";
     select?: Array<keyof TConfig["Entity"]>;
   }): Promise<any[]> {
     return this.findAll(undefined, options);

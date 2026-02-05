@@ -155,7 +155,7 @@ export class PlayerRepository {
           limit: transactionLimit,
           orderBy:
             DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.CREATED_AT,
-          orderDirection: "DESC",
+          orderDirection: "desc",
         },
       ),
     ]);
@@ -193,7 +193,7 @@ export class PlayerRepository {
         limit,
         offset,
         orderBy: DatabaseTable.PLAYER_SESSION.CAMEL_FIELDS.SESSION_START,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -239,7 +239,7 @@ export class PlayerRepository {
         limit,
         offset,
         orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
   }
@@ -278,7 +278,7 @@ export class PlayerRepository {
         limit,
         offset,
         orderBy: DatabaseTable.ADMIN_LOG_ACTION.CAMEL_FIELDS.PERFORMED_AT,
-        orderDirection: "DESC",
+        orderDirection: "desc",
       },
     );
 
@@ -308,7 +308,7 @@ export class PlayerRepository {
     },
     options?: {
       orderBy?: keyof Player;
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
       limit?: number;
       offset?: number;
     },

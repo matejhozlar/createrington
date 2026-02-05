@@ -48,7 +48,7 @@ export const GetAdminWaitlistEntriesQuerySchema = z.object({
   orderBy: z
     .enum(["submittedAt", "acceptedAt", "email", "discordName"])
     .default("submittedAt"),
-  orderDirection: z.enum(["ASC", "DESC"]).default("DESC"),
+  orderDirection: z.enum(["asc", "desc"]).default("desc"),
 });
 
 /**

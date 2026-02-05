@@ -315,7 +315,7 @@ export class WaitlistRepository {
     },
     options?: {
       orderBy?: keyof WaitlistEntry;
-      orderDirection?: "ASC" | "DESC";
+      orderDirection?: "asc" | "desc";
       limit?: number;
       offset?: number;
     },
