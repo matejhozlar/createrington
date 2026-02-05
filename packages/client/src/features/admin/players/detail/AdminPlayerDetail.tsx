@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Loading } from "@/components/Loading";
+import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { useAdminPlayers } from "@/contexts/admin";
