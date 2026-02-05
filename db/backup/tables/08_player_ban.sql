@@ -26,7 +26,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.player_ban (
     id integer NOT NULL,
-    player_minecraft_uuid uuid,
+    player_minecraft_uuid uuid NOT NULL,
     ban_type public.ban_type NOT NULL,
     reason text NOT NULL,
     banned_by_discord_id text NOT NULL,
@@ -151,14 +151,6 @@ CREATE INDEX idx_player_ban_player ON public.player_ban USING btree (player_mine
 --
 
 CREATE INDEX idx_player_ban_type ON public.player_ban USING btree (ban_type);
-
-
---
--- Name: player_ban fk_player; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.player_ban
-    ADD CONSTRAINT fk_player FOREIGN KEY (player_minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
