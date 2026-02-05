@@ -5,7 +5,6 @@ import {
   NotFoundError,
 } from "@/app/middleware";
 import { getIdType } from "@/app/utils/helpers";
-import { balanceRepo, playerRepo } from "@/db";
 import {
   type GetAdminPlayerResponse,
   type GetAdminPlayersResponse,
@@ -37,6 +36,8 @@ import {
 } from "@createrington/shared/api";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { z } from "zod";
+import { playerService } from "@/services/player";
+import { balanceRepo } from "@/db";
 
 /**
  * Admin Player Controller
@@ -71,7 +72,7 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const playerData = await playerRepo.getDetailed(identifier);
+      const playerData = await playerService.getComprehensive(identifier);
 
       const response: GetAdminPlayerResponse = {
         success: true,
@@ -206,20 +207,20 @@ export class AdminPlayerController {
         query;
 
       const [players, total] = await Promise.all([
-        playerRepo.getAll(filters, {
+        playerService.core.getAll(filters, {
           orderBy,
           orderDirection,
           limit,
           offset: page * limit,
         }),
-        playerRepo.count(filters),
+        playerService.core.count(filters),
       ]);
 
       let playersWithStrikes = players as any;
       if (includeStrikeCounts) {
         const playerUuids = players.map((p) => p.minecraftUuid);
         const strikeCounts =
-          await playerRepo.getActiveStrikeCounts(playerUuids);
+          await playerService.strikes.getActiveStrikeCounts(playerUuids);
 
         playersWithStrikes = players.map((player) => ({
           ...player,
@@ -300,7 +301,7 @@ export class AdminPlayerController {
       if (minecraftUsername) updates.minecraftUsername = minecraftUsername;
       if (discordId) updates.discordId = discordId;
 
-      const updatedPlayer = await playerRepo.adminUpdate(
+      const updatedPlayer = await playerService.core.adminUpdate(
         identifier,
         updates,
         req.user.discordId,
@@ -358,7 +359,7 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      await playerRepo.adminDelete(
+      await playerService.core.adminDelete(
         identifier,
         req.user.discordId,
         req.user.username,
@@ -411,7 +412,10 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const balanceInfo = await playerRepo.getBalanceInfo(identifier, limit);
+      const balanceInfo = await playerService.core.getBalanceInfo(
+        identifier,
+        limit,
+      );
 
       const response: GetPlayerBalanceResponse = {
         success: true,
@@ -554,8 +558,8 @@ export class AdminPlayerController {
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [auditLog, total] = await Promise.all([
-        playerRepo.getAuditLog(identifier, limit, page * limit),
-        playerRepo.countAuditLog(identifier),
+        playerService.audit.getLog(identifier, limit, page * limit),
+        playerService.audit.count(identifier),
       ]);
 
       const response: GetPlayerAuditLogResponse = {
@@ -626,7 +630,7 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const playerData = await playerRepo.getDetailed(identifier);
+      const playerData = await playerService.core.getDetailed(identifier);
 
       const response: GetPlayerPlaytimeResponse = {
         success: true,
@@ -689,13 +693,13 @@ export class AdminPlayerController {
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       // Get total count
-      const totalSessions = await playerRepo.getSessionCount(
+      const totalSessions = await playerService.sessions.count(
         identifier,
         serverId,
       );
 
       // Get paginated sessions
-      const sessions = await playerRepo.getSessionHistory(
+      const sessions = await playerService.sessions.getHistory(
         identifier,
         serverId,
         limit,
@@ -760,8 +764,8 @@ export class AdminPlayerController {
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [tickets, total] = await Promise.all([
-        playerRepo.getTickets(identifier, limit, page * limit),
-        playerRepo.countTickets(identifier),
+        playerService.tickets.getAll(identifier, limit, page * limit),
+        playerService.tickets.count(identifier),
       ]);
 
       const response: GetPlayerTicketsResponse = {
@@ -822,8 +826,8 @@ export class AdminPlayerController {
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [strikes, statistics] = await Promise.all([
-        playerRepo.getStrikes(identifier, activeOnly),
-        playerRepo.getStrikeStatistics(identifier),
+        playerService.strikes.get(identifier, activeOnly),
+        playerService.strikes.getStatistics(identifier),
       ]);
 
       const response: GetPlayerStrikesResponse = {
@@ -888,7 +892,7 @@ export class AdminPlayerController {
       const identifier =
         idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
-      const strike = await playerRepo.issueStrike(
+      const strike = await playerService.strikes.issue(
         identifier,
         {
           classification,
@@ -945,7 +949,7 @@ export class AdminPlayerController {
       const { id, strikeId } = RemoveStrikeParamsSchema.parse(req.params);
       const { reason } = RemoveStrikeBodySchema.parse(req.body);
 
-      const strike = await playerRepo.removeStrike(
+      const strike = await playerService.strikes.remove(
         strikeId,
         req.user.discordId,
         req.user.username,
@@ -988,7 +992,7 @@ export class AdminPlayerController {
    */
   static async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const stats = await playerRepo.getStats();
+      const stats = await playerService.core.getStats();
 
       const response: GetAdminPlayerStatsResponse = {
         success: true,
@@ -1020,7 +1024,7 @@ export class AdminPlayerController {
         req.body,
       );
 
-      const results = await playerRepo.bulkBalanceAdjust(
+      const results = await playerService.balance.bulkAdjust(
         playerUuids,
         amount,
         req.user.discordId,
