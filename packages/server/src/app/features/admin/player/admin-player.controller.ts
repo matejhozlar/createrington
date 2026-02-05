@@ -202,7 +202,8 @@ export class AdminPlayerController {
         filters.online = req.query.online;
       }
 
-      const { orderBy, orderDirection, page, limit } = query;
+      const { orderBy, orderDirection, page, limit, includeStrikeCounts } =
+        query;
 
       const [players, total] = await Promise.all([
         playerRepo.getAll(filters, {
@@ -214,10 +215,22 @@ export class AdminPlayerController {
         playerRepo.count(filters),
       ]);
 
+      let playersWithStrikes = players as any;
+      if (includeStrikeCounts) {
+        const playerUuids = players.map((p) => p.minecraftUuid);
+        const strikeCounts =
+          await playerRepo.getActiveStrikeCounts(playerUuids);
+
+        playersWithStrikes = players.map((player) => ({
+          ...player,
+          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
+        }));
+      }
+
       const response: GetAdminPlayersResponse = {
         success: true,
         data: {
-          players: players as any,
+          players: playersWithStrikes,
           pagination: {
             page,
             limit,

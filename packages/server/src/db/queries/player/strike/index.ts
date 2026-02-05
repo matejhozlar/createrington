@@ -56,6 +56,51 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   }
 
   /**
+   * Get active strike counts for multiple players in a single query
+   *
+   * @param playerUuids - Array of player UUIDs to get counts for
+   * @returns Promise resolving to a map of UUID -> active strike count
+   */
+  async getActiveStrikeCounts(
+    playerUUids: string[],
+  ): Promise<Record<string, number>> {
+    if (playerUUids.length === 0) return {};
+
+    const query = `
+      SELECT 
+        player_minecraft_uuid,
+        COUNT(*)::integer as count
+      FROM player_strike
+      WHERE 
+        player_minecraft_uuid = ANY($1)
+        AND removed = false
+      GROUP BY player_minecraft_uuid
+      `;
+
+    try {
+      const result = await this.db.query<{
+        player_minecraft_uuid: string;
+        count: number;
+      }>(query, [playerUUids]);
+
+      const counts: Record<string, number> = {};
+
+      playerUUids.forEach((uuid) => {
+        counts[uuid] = 0;
+      });
+
+      result.rows.forEach((row) => {
+        counts[row.player_minecraft_uuid] = row.count;
+      });
+
+      return counts;
+    } catch (error) {
+      logger.error("Failed to get active strike counts:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get complete strike history for a player (including removed)
    *
    * @param playerMinecraftUuid - Player Minecraft UUID to get all strikes for
