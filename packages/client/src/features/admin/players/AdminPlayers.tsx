@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import {
@@ -38,7 +38,6 @@ import type { PlayerApiData } from "@createrington/shared/db";
 import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
 // Extended player type with strike count
 interface PlayerWithStrikes extends PlayerApiData {
@@ -81,37 +80,7 @@ export function AdminPlayers() {
   const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
   const [orderDirection, setOrderDirection] = useState<"ASC" | "DESC">("DESC");
 
-  const strikeCacheRef = useRef<Record<string, number>>({});
-
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
-
-  /**
-   * Fetch active strike counts for players
-   */
-  const fetchStrikeCounts = useCallback(async (playerUuids: string[]) => {
-    const token = localStorage.getItem("auth_token");
-    if (!token || playerUuids.length === 0) return {};
-
-    const missing = playerUuids.filter(
-      (u) => strikeCacheRef.current[u] === undefined,
-    );
-    if (missing.length === 0) return strikeCacheRef.current;
-
-    await Promise.all(
-      missing.map(async (uuid) => {
-        try {
-          const data = await adminPlayerApi.getStrikes(uuid, {
-            activeOnly: true,
-          });
-          strikeCacheRef.current[uuid] = data.statistics.active;
-        } catch {
-          strikeCacheRef.current[uuid] = 0;
-        }
-      }),
-    );
-
-    return strikeCacheRef.current;
-  }, []);
 
   /**
    * Load players with current filters
@@ -126,6 +95,7 @@ export function AdminPlayers() {
         limit: limit,
         orderBy,
         orderDirection,
+        includeStrikeCounts: true, // Request strike counts from API
       };
 
       if (debouncedSearch.trim()) {
@@ -139,18 +109,8 @@ export function AdminPlayers() {
       const data = await fetchPlayers(query);
 
       if (data) {
-        const playersData = data.data.players;
-
-        // Fetch strike counts for all players
-        const playerUuids = playersData.map((p) => p.minecraftUuid);
-        const strikeCounts = await fetchStrikeCounts(playerUuids);
-
-        const playersWithStrikes = playersData.map((player) => ({
-          ...player,
-          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
-        }));
-
-        setPlayers(playersWithStrikes);
+        // Players already include activeStrikeCount from the API
+        setPlayers(data.data.players as PlayerWithStrikes[]);
         setTotal(data.data.pagination.total);
         setTotalPages(data.data.pagination.totalPages);
       }
@@ -162,7 +122,6 @@ export function AdminPlayers() {
     }
   }, [
     fetchPlayers,
-    fetchStrikeCounts,
     debouncedSearch,
     page,
     limit,

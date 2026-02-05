@@ -674,6 +674,18 @@ export class PlayerRepository {
   }
 
   /**
+   * Get active strike counts for multiple players efficiently
+   *
+   * @param playerUuids - Array of player UUIDs
+   * @returns Promise resolving to a map of UUID -> active strike count
+   */
+  async getActiveStrikeCounts(
+    playerUuids: string[],
+  ): Promise<Record<string, number>> {
+    return await Q.player.strike.getActiveStrikeCounts(playerUuids);
+  }
+
+  /**
    * Get strike statistics for a player
    *
    * @param identifier - Player identifier
