@@ -1069,7 +1069,7 @@ export class AdminPlayerController {
       }
 
       const [bans, statistics, currentBan] = await Promise.all([
-        playerService.bans.getHistory(identifier, includeUnbanned ?? false),
+        playerService.bans.getHistory(identifier, includeUnbanned),
         playerService.bans.getStatistics(identifier),
         playerService.bans.getCurrent(identifier),
       ]);
