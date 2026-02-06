@@ -32,6 +32,9 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  AlertTriangle,
+  Ban,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
@@ -47,6 +50,9 @@ interface PlayerWithCounts extends PlayerApiData {
 
 // Sort field type
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
+
+// Violation filter type
+type ViolationFilter = "all" | "strikes" | "bans" | "any";
 
 export function AdminPlayers() {
   const {
@@ -76,6 +82,8 @@ export function AdminPlayers() {
   const [onlineFilter, setOnlineFilter] = useState<boolean | undefined>(
     undefined,
   );
+  const [violationFilter, setViolationFilter] =
+    useState<ViolationFilter>("all");
 
   // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
@@ -108,6 +116,15 @@ export function AdminPlayers() {
         query.online = onlineFilter ? true : false;
       }
 
+      // Add violation filters
+      if (violationFilter === "strikes") {
+        query.hasStrikes = true;
+      } else if (violationFilter === "bans") {
+        query.hasBans = true;
+      } else if (violationFilter === "any") {
+        query.hasViolations = true;
+      }
+
       const data = await fetchPlayers(query);
 
       if (data) {
@@ -128,6 +145,7 @@ export function AdminPlayers() {
     page,
     limit,
     onlineFilter,
+    violationFilter,
     orderBy,
     orderDirection,
   ]);
@@ -139,7 +157,7 @@ export function AdminPlayers() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, onlineFilter, orderBy, orderDirection]);
+  }, [debouncedSearch, onlineFilter, violationFilter, orderBy, orderDirection]);
 
   /**
    * Handle search
@@ -164,6 +182,19 @@ export function AdminPlayers() {
       if (prev === undefined) return true;
       if (prev === true) return false;
       return undefined;
+    });
+    setPage(0);
+  }, []);
+
+  /**
+   * Cycle through violation filters
+   */
+  const cycleViolationFilter = useCallback(() => {
+    setViolationFilter((prev) => {
+      if (prev === "all") return "any";
+      if (prev === "any") return "strikes";
+      if (prev === "strikes") return "bans";
+      return "all";
     });
     setPage(0);
   }, []);
@@ -281,7 +312,40 @@ export function AdminPlayers() {
     return { count: totalCount, color: "yellow" as const, hasIssues: true };
   }, []);
 
+  /**
+   * Get violation filter button content
+   */
+  const getViolationFilterContent = useCallback(() => {
+    switch (violationFilter) {
+      case "all":
+        return {
+          icon: <Filter className="size-4" />,
+          text: "All Players",
+          variant: "outline" as const,
+        };
+      case "any":
+        return {
+          icon: <ShieldAlert className="size-4" />,
+          text: "Any Violations",
+          variant: "destructive" as const,
+        };
+      case "strikes":
+        return {
+          icon: <AlertTriangle className="size-4" />,
+          text: "With Strikes",
+          variant: "default" as const,
+        };
+      case "bans":
+        return {
+          icon: <Ban className="size-4" />,
+          text: "With Bans",
+          variant: "destructive" as const,
+        };
+    }
+  }, [violationFilter]);
+
   const navigate = useNavigate();
+  const violationContent = getViolationFilterContent();
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -415,6 +479,17 @@ export function AdminPlayers() {
                   : "Offline"}
             </Button>
 
+            <Button
+              type="button"
+              variant={violationContent.variant}
+              size="default"
+              onClick={cycleViolationFilter}
+              className="cursor-pointer min-w-[140px] gap-2"
+            >
+              {violationContent.icon}
+              {violationContent.text}
+            </Button>
+
             <Button type="submit" className="cursor-pointer min-w-[85px]">
               Search
             </Button>
@@ -451,6 +526,11 @@ export function AdminPlayers() {
               <div className="text-center">
                 <Users className="mx-auto size-12 text-muted-foreground" />
                 <p className="mt-2 text-muted-foreground">No players found</p>
+                {violationFilter !== "all" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Try changing the violation filter
+                  </p>
+                )}
               </div>
             </div>
           ) : (

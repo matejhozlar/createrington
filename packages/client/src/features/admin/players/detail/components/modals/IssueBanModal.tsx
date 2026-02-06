@@ -168,7 +168,7 @@ export function IssueBanModal({
                 <SelectTrigger id="ban-type">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[100]" position="popper">
                   <SelectItem value="temporary">Temporary</SelectItem>
                   <SelectItem value="permanent">
                     Permanent (Deletes Player)
@@ -187,7 +187,7 @@ export function IssueBanModal({
                   <SelectTrigger id="duration">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[100]" position="popper">
                     <SelectItem value="1">1 Day</SelectItem>
                     <SelectItem value="3">3 Days</SelectItem>
                     <SelectItem value="7">7 Days</SelectItem>

@@ -81,6 +81,19 @@ export const GetAdminPlayersQuerySchema = z.object({
     .transform((val) => val === "true")
     .optional(),
 
+  hasStrikes: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  hasBans: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  hasViolations: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+
   // Pagination
   page: z.coerce.number().int().min(0).default(0),
   limit: z.coerce.number().int().min(1).max(100).default(20),

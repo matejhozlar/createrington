@@ -47,8 +47,10 @@ import {
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { z } from "zod";
 import { playerService } from "@/services/player";
-import { balanceRepo } from "@/db";
+import { balanceRepo, Q } from "@/db";
 import type { PlayerBan } from "@createrington/shared/db";
+import { getService, Services } from "@/services";
+import { Client } from "discord.js";
 
 /**
  * Admin Player Controller
@@ -194,10 +196,8 @@ export class AdminPlayerController {
    */
   static async getPlayers(req: Request, res: Response): Promise<void> {
     try {
-      // Validate and transform query parameters
       const query = GetAdminPlayersQuerySchema.parse(req.query);
 
-      // Build filters
       const filters: any = {};
 
       if (query.discordId) {
@@ -216,6 +216,63 @@ export class AdminPlayerController {
 
       if (query.online !== undefined) {
         filters.online = req.query.online;
+      }
+
+      if (
+        query.hasStrikes !== undefined ||
+        query.hasBans !== undefined ||
+        query.hasViolations !== undefined
+      ) {
+        const fetchStrikes =
+          query.hasStrikes === true || query.hasViolations === true;
+        const fetchBans =
+          query.hasBans === true || query.hasViolations === true;
+
+        const [uuidsWithStrikes, uuidsWithBans] = await Promise.all([
+          fetchStrikes
+            ? Q.player.strike.getPlayersWithActiveStrikes()
+            : Promise.resolve([]),
+          fetchBans
+            ? Q.player.ban.getPlayersWithActiveBans()
+            : Promise.resolve([]),
+        ]);
+
+        let uuidsWithViolations: string[];
+
+        if (query.hasViolations === true) {
+          uuidsWithViolations = [
+            ...new Set([...uuidsWithStrikes, ...uuidsWithBans]),
+          ];
+        } else if (query.hasStrikes === true && query.hasBans === true) {
+          uuidsWithViolations = uuidsWithStrikes.filter((uuid) =>
+            uuidsWithBans.includes(uuid),
+          );
+        } else if (query.hasStrikes === true) {
+          uuidsWithViolations = uuidsWithStrikes;
+        } else if (query.hasBans === true) {
+          uuidsWithViolations = uuidsWithBans;
+        } else {
+          uuidsWithViolations = [];
+        }
+
+        if (uuidsWithViolations.length === 0) {
+          const response: GetAdminPlayersResponse = {
+            success: true,
+            data: {
+              players: [],
+              pagination: {
+                page: query.page,
+                limit: query.limit,
+                total: 0,
+                totalPages: 0,
+              },
+            },
+          };
+          res.json(response);
+          return;
+        }
+
+        filters.minecraftUuid = { $in: uuidsWithViolations };
       }
 
       const {
@@ -239,7 +296,6 @@ export class AdminPlayerController {
 
       let enrichedPlayers = players as any;
 
-      // Fetch counts in parallel if requested
       if (includeStrikeCounts || includeBanCounts) {
         const playerUuids = players.map((p) => p.minecraftUuid);
 
@@ -293,7 +349,7 @@ export class AdminPlayerController {
         throw error;
       }
       logger.error("Failed to fetch players:", error);
-      throw new InternalServerError("Failed to fetch players");
+      throw error;
     }
   }
 
