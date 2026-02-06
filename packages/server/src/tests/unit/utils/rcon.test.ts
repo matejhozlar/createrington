@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { MinecraftRconManager, WhitelistAction, type ServerId } from "@/utils/rcon";
+import {
+  MinecraftRconManager,
+  WhitelistAction,
+  type ServerId,
+} from "@/utils/rcon";
 
 describe("MinecraftRconManager", () => {
   let rconManager: MinecraftRconManager;
@@ -17,9 +21,9 @@ describe("MinecraftRconManager", () => {
     });
 
     it("should throw ServerNotFoundError for unknown server", async () => {
-      await expect(
-        rconManager.send(0 as ServerId, "list"),
-      ).rejects.toThrow("Server 'unknown' not found in configuration");
+      await expect(rconManager.send(0 as ServerId, "list")).rejects.toThrow(
+        "Server with ID 0 not found in configuration",
+      );
     });
   });
 
@@ -37,17 +41,17 @@ describe("MinecraftRconManager", () => {
     });
 
     it("should validate give command parameters", async () => {
-      await expect(
-        rconManager.give(1, "", "diamond", 1),
-      ).rejects.toThrow("Player cannot be empty");
+      await expect(rconManager.give(1, "", "diamond", 1)).rejects.toThrow(
+        "Player cannot be empty",
+      );
 
-      await expect(
-        rconManager.give(1, "player", "", 1),
-      ).rejects.toThrow("Item cannot be empty");
+      await expect(rconManager.give(1, "player", "", 1)).rejects.toThrow(
+        "Item cannot be empty",
+      );
 
-      await expect(
-        rconManager.give(1, "player", "diamond", 0),
-      ).rejects.toThrow("Amount must be at least 1");
+      await expect(rconManager.give(1, "player", "diamond", 0)).rejects.toThrow(
+        "Amount must be at least 1",
+      );
     });
   });
 
