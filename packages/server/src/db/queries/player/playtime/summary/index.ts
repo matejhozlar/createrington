@@ -190,4 +190,107 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       throw error;
     }
   }
+
+  /**
+   * Get total hours played on a server or across all servers
+   *
+   * Optimized single-query aggregation that returns floored hours.
+   * Uses SUM aggregation for efficiency.
+   *
+   * @param serverId - Optional server ID. If omitted, returns total across all servers
+   * @returns Total hours played, floored to whole number
+   *
+   * @example
+   * // Get hours for server 1
+   * const hours = await Q.player.playtime.summary.getTotalHours(1);
+   * // Result: 1234 (even if actual is 1234.99)
+   *
+   * @example
+   * // Get hours across all servers
+   * const hours = await Q.player.playtime.summary.getTotalHours();
+   * // Result: 5678
+   */
+  async getTotalHours(serverId?: number): Promise<number> {
+    const query = serverId
+      ? `
+        SELECT 
+          FLOOR(SUM(total_seconds) / 3600) as total_hours
+        FROM ${this.table}
+        WHERE server_id = $1
+      `
+      : `
+        SELECT 
+          FLOOR(SUM(total_seconds) / 3600) as total_hours
+        FROM ${this.table}
+      `;
+
+    try {
+      const result = await this.db.query<{ total_hours: string | null }>(
+        query,
+        serverId ? [serverId] : [],
+      );
+
+      // Handle null (no data) or convert string to number
+      const totalHours = result.rows[0]?.total_hours;
+      return totalHours ? parseInt(totalHours, 10) : 0;
+    } catch (error) {
+      logger.error("Failed to get total hours:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get total hours played with breakdown by server
+   *
+   * Returns floored hours for each server plus global total.
+   * Useful for dashboard displays.
+   *
+   * @returns Object with server breakdown and global total
+   *
+   * @example
+   * const breakdown = await Q.player.playtime.summary.getTotalHoursBreakdown();
+   * // Result: {
+   * //   byServer: [
+   * //     { serverId: 1, serverName: "Survival", hours: 1234 },
+   * //     { serverId: 2, serverName: "Creative", hours: 987 }
+   * //   ],
+   * //   total: 2221
+   * // }
+   */
+  async getTotalHoursBreakdown(): Promise<{
+    byServer: Array<{ serverId: number; serverName: string; hours: number }>;
+    total: number;
+  }> {
+    const query = `
+      SELECT 
+        s.server_id,
+        srv.name as server_name,
+        FLOOR(SUM(s.total_seconds) / 3600) as hours
+      FROM ${this.table} s
+      JOIN server srv ON srv.id = s.server_id
+      GROUP BY s.server_id, srv.name
+      ORDER BY hours DESC
+    `;
+
+    try {
+      const result = await this.db.query<{
+        server_id: number;
+        server_name: string;
+        hours: string;
+      }>(query);
+
+      const byServer = result.rows.map((row) => ({
+        serverId: row.server_id,
+        serverName: row.server_name,
+        hours: parseInt(row.hours, 10),
+      }));
+
+      const total = byServer.reduce((sum, server) => sum + server.hours, 0);
+
+      return { byServer, total };
+    } catch (error) {
+      logger.error("Failed to get total hours breakdown:", error);
+      throw error;
+    }
+  }
 }

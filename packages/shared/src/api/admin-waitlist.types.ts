@@ -9,7 +9,7 @@ import type { DateToString } from "../types";
 import type { PaginationMeta } from "./common";
 
 // ============================================================================
-// REQUEST SCHEMAS (Zod - Validates User Input)
+// REQUEST SCHEMAS
 // ============================================================================
 
 /**

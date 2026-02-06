@@ -187,12 +187,12 @@ export class PlayerController {
       // Build filters
       const filters: any = {};
 
-      // Filter by online status (already a boolean!)
+      // Filter by online status
       if (query.online !== undefined) {
         filters.online = query.online;
       }
 
-      // Filter by current server (already a number!)
+      // Filter by current server
       if (query.currentServerId !== undefined) {
         filters.currentServerId = query.currentServerId;
       }

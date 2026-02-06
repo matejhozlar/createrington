@@ -7,6 +7,7 @@ import playerRoutes from "./public/player/player.routes";
 import messageRoutes from "./user/message/message.routes";
 import adminPlayerRoutes from "./admin/player/admin-player.routes";
 import adminWaitlistRoutes from "./admin/waitlist/admin-waitlist.routes";
+import metricRoutes from "./public/metrics/metrics.routes";
 
 /**
  * Register all API routes
@@ -26,6 +27,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/admin/players`, adminPlayerRoutes);
   app.use(`${API_PREFIX}/admin/waitlists`, adminWaitlistRoutes);
+  app.use(`${API_PREFIX}/metrics`, metricRoutes);
 
   logger.info("API routes registered");
 }
