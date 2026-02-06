@@ -282,6 +282,7 @@ export const Services = {
   PLAYTIME_MANAGER_SERVICE: "minecraft.playtimeManagerService",
   ROLE_MANAGEMENT_SERVICE: "discord.roleManagementService",
   WEBSOCKET_SERVICE: "http.webSocketService",
+  PLAYER_BAN_SERVICE: "player.banService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];

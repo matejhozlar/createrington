@@ -1,4 +1,4 @@
-w<!DOCTYPE html>
+w<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -6,7 +6,12 @@ w<!DOCTYPE html>
     <title>Waitlist Tester (localhost:5000)</title>
     <style>
       body {
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
         margin: 24px;
       }
       .row {
@@ -108,7 +113,7 @@ w<!DOCTYPE html>
           <label for="baseUrl">Base URL</label>
           <input id="baseUrl" value="http://localhost:5000" />
           <div class="muted">
-            Waitlist base path: <code>/api/waitlist</code>
+            Waitlist base path: <code>/api/waitlists</code>
           </div>
         </div>
 
@@ -144,12 +149,12 @@ w<!DOCTYPE html>
 
       <div class="row">
         <button class="primary" id="createBtn">
-          POST /api/waitlist (Create)
+          POST /api/waitlists (Create)
         </button>
-        <button id="getAllBtn">GET /api/waitlist (Admin)</button>
-        <button id="statsBtn">GET /api/waitlist/stats (Admin)</button>
-        <button id="getByIdBtn">GET /api/waitlist/:id (Admin)</button>
-        <button id="deleteByIdBtn">DELETE /api/waitlist/:id (Admin)</button>
+        <button id="getAllBtn">GET /api/waitlists (Admin)</button>
+        <button id="statsBtn">GET /api/waitlists/stats (Admin)</button>
+        <button id="getByIdBtn">GET /api/waitlists/:id (Admin)</button>
+        <button id="deleteByIdBtn">DELETE /api/waitlists/:id (Admin)</button>
         <button id="clearBtn">Clear Output</button>
       </div>
 
@@ -171,11 +176,12 @@ w<!DOCTYPE html>
           <strong>Notes</strong>
           <ul class="muted">
             <li>
-              <strong>Create</strong> is public: <code>POST /api/waitlist</code>
+              <strong>Create</strong> is public:
+              <code>POST /api/waitlists</code>
             </li>
             <li>
-              Admin routes: <code>GET /api/waitlist</code>, <code>/stats</code>,
-              <code>/:id</code>, <code>DELETE /:id</code>
+              Admin routes: <code>GET /api/waitlists</code>,
+              <code>/stats</code>, <code>/:id</code>, <code>DELETE /:id</code>
             </li>
             <li>
               Your controller returns <code>success</code> in most places, but
@@ -229,7 +235,7 @@ w<!DOCTYPE html>
       function base() {
         return (els.baseUrl.value || "http://localhost:5000").replace(
           /\/+$/,
-          ""
+          "",
         );
       }
 
@@ -311,7 +317,7 @@ w<!DOCTYPE html>
         const discordName = els.discordName.value.trim();
         setBusy(true);
         try {
-          await request("POST", "/api/waitlist", { email, discordName });
+          await request("POST", "/api/waitlists", { email, discordName });
         } finally {
           setBusy(false);
         }
@@ -320,7 +326,7 @@ w<!DOCTYPE html>
       els.getAllBtn.addEventListener("click", async () => {
         setBusy(true);
         try {
-          await request("GET", "/api/waitlist");
+          await request("GET", "/api/waitlists");
         } finally {
           setBusy(false);
         }
@@ -329,7 +335,7 @@ w<!DOCTYPE html>
       els.statsBtn.addEventListener("click", async () => {
         setBusy(true);
         try {
-          await request("GET", "/api/waitlist/stats");
+          await request("GET", "/api/waitlists/stats");
         } finally {
           setBusy(false);
         }
@@ -346,7 +352,7 @@ w<!DOCTYPE html>
         }
         setBusy(true);
         try {
-          await request("GET", `/api/waitlist/${encodeURIComponent(id)}`);
+          await request("GET", `/api/waitlists/${encodeURIComponent(id)}`);
         } finally {
           setBusy(false);
         }
@@ -363,7 +369,7 @@ w<!DOCTYPE html>
         }
         setBusy(true);
         try {
-          await request("DELETE", `/api/waitlist/${encodeURIComponent(id)}`);
+          await request("DELETE", `/api/waitlists/${encodeURIComponent(id)}`);
         } finally {
           setBusy(false);
         }

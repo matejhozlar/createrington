@@ -51,6 +51,9 @@ import { balanceRepo, Q } from "@/db";
 import type { PlayerBan } from "@createrington/shared/db";
 import { getService, Services } from "@/services";
 import { Client } from "discord.js";
+import { Discord } from "@/discord/constants";
+import { EmbedColors, EmbedPresets } from "@/discord/embeds";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 
 /**
  * Admin Player Controller
@@ -1243,6 +1246,46 @@ export class AdminPlayerController {
         req.user.username,
       );
 
+      const player = await Q.player.get({
+        minecraftUuid: ban.playerMinecraftUuid,
+      });
+
+      try {
+        await minecraftRcon.banAll(
+          player.minecraftUsername,
+          `${reason} (Expires: ${expiresAt.toISOString()})`,
+        );
+        logger.info(
+          `Banned ${player.minecraftUsername} on all Minecraft servers`,
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to ban ${player.minecraftUsername} on Minecraft servers:`,
+          error,
+        );
+      }
+
+      try {
+        const embed = EmbedPresets.plain({
+          title: "⏰ Player Temporarily Banned",
+          description: [
+            `**Player**: ${player.minecraftUsername}`,
+            `**Reason**: ${reason}`,
+            `**Banned by**: <@${req.user.discordId}>`,
+            `**Duration**: ${durationDays} day${durationDays !== 1 ? "s" : ""}`,
+            `**Expires**: <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
+          ].join("\n"),
+          color: 0xffa500,
+        });
+
+        await Discord.Messages.send({
+          channelId: Discord.Channels.administration.NOTIFICATIONS,
+          embeds: embed.build(),
+        });
+      } catch (error) {
+        logger.error("Failed to send ban notification to Discord:", error);
+      }
+
       const response: IssueTemporaryBanResponse = {
         success: true,
         data: {
@@ -1303,6 +1346,25 @@ export class AdminPlayerController {
         );
       }
 
+      const player = await Q.player.get(identifier);
+
+      const mainBot = await getService<Client>(Services.DISCORD_MAIN_BOT);
+      const guild = mainBot.guilds.cache.first();
+      let member;
+      let discordTag = "Unknown";
+
+      if (guild) {
+        try {
+          member = await guild.members.fetch(player.discordId);
+          discordTag = member.user.tag;
+        } catch (error) {
+          logger.warn(
+            `Could not fetch Discord member ${player.discordId}:`,
+            error,
+          );
+        }
+      }
+
       const ban = await playerService.bans.issuePermanent(
         identifier,
         {
@@ -1313,6 +1375,61 @@ export class AdminPlayerController {
         req.user.discordId,
         req.user.username,
       );
+
+      try {
+        await minecraftRcon.whitelistAll(
+          WhitelistAction.REMOVE,
+          player.minecraftUsername,
+        );
+        await minecraftRcon.banAll(
+          player.minecraftUsername,
+          `${reason} (PERMANENT)`,
+        );
+        logger.info(
+          `Permanently banned ${player.minecraftUsername} on all Minecraft servers`,
+        );
+      } catch (error) {
+        logger.error(
+          `Failed to ban ${player.minecraftUsername} on Minecraft servers:`,
+          error,
+        );
+      }
+
+      if (member) {
+        try {
+          await member.kick(`Permanently banned: ${reason}`);
+          logger.info(
+            `Kicked ${player.minecraftUsername} (${discordTag}) from Discord`,
+          );
+        } catch (error) {
+          logger.warn(
+            `Failed to kick ${player.minecraftUsername} from Discord:`,
+            error,
+          );
+        }
+      }
+
+      try {
+        const embed = EmbedPresets.plain({
+          title: "🔴 Player Permanently Banned",
+          description: [
+            `**Player**: ${player.minecraftUsername}`,
+            `**Discord**: ${discordTag} (\`${player.discordId}\`)`,
+            `**Reason**: ${reason}`,
+            `**Banned by**: <@${req.user.discordId}>`,
+            ``,
+            `⚠️ **All player data has been permanently deleted**`,
+          ].join("\n"),
+          color: 0xff0000,
+        });
+
+        await Discord.Messages.send({
+          channelId: Discord.Channels.administration.NOTIFICATIONS,
+          embeds: embed.build(),
+        });
+      } catch (error) {
+        logger.error("Failed to send permanent ban notification:", error);
+      }
 
       const response: IssuePermanentBanResponse = {
         success: true,
@@ -1358,12 +1475,67 @@ export class AdminPlayerController {
       const { banId } = UnbanParamsSchema.parse(req.params);
       const { reason } = UnbanBodySchema.parse(req.body);
 
+      const existingBan = await Q.player.ban.get({ id: banId });
+
+      let minecraftUsername = "Unknown";
+      let wasDeleted = false;
+
+      try {
+        const player = await Q.player.find({
+          minecraftUuid: existingBan.playerMinecraftUuid,
+        });
+        if (player) {
+          minecraftUsername = player.minecraftUsername;
+        }
+      } catch {
+        minecraftUsername =
+          existingBan.metadata?.minecraftUsername || "Unknown (Deleted)";
+        wasDeleted = true;
+      }
+
       const ban = await playerService.bans.unban(
         banId,
         req.user.discordId,
         req.user.username,
         reason,
       );
+
+      if (!wasDeleted && minecraftUsername !== "Unknown") {
+        try {
+          await minecraftRcon.pardonAll(minecraftUsername);
+          logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
+        } catch (error) {
+          logger.error(
+            `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
+            error,
+          );
+        }
+      }
+
+      try {
+        const embed = EmbedPresets.plain({
+          title: "✅ Player Unbanned",
+          description: [
+            `**Player**: ${minecraftUsername}`,
+            `**Unbanned by**: <@${req.user.discordId}>`,
+            `**Reason**: ${reason}`,
+            `**Original ban reason**: ${existingBan.reason}`,
+            wasDeleted
+              ? `\n⚠️ *Player data was previously deleted (permanent ban)*`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+          color: EmbedColors.Success,
+        });
+
+        await Discord.Messages.send({
+          channelId: Discord.Channels.administration.NOTIFICATIONS,
+          embeds: embed.build(),
+        });
+      } catch (error) {
+        logger.error("Failed to send unban notification:", error);
+      }
 
       const response: UnbanResponse = {
         success: true,
