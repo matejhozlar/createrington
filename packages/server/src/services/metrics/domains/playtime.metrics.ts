@@ -1,5 +1,5 @@
 import { Q } from "@/db";
-import type { PlaytimeHoursBreakdown } from "@createrington/shared/api";
+import type { PlaytimeHoursBreakdown } from "@createrington/shared/api/public/metrics";
 
 /**
  * Playtime Metrics Domain
