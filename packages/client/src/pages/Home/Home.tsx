@@ -33,11 +33,15 @@ import {
 } from "lucide-react";
 import { useServerData } from "@/contexts/socket";
 import { playersApi } from "@/services/api/public/players";
+import { metricsApi } from "@/services/api/public/metrics";
+import { Loading } from "@/components/loading-spinner";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
   const [totalPlayers, setTotalPlayers] = useState<number | null>(null);
+  const [totalPlaytime, setTotalPlaytime] = useState<number | null>(null);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
+  const [isLoadingPlaytime, setIsLoadingPlaytime] = useState(true);
 
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
@@ -62,8 +66,21 @@ export const Home: React.FC = () => {
       }
     };
 
+    const fetchTotalPlaytime = async () => {
+      try {
+        setIsLoadingPlaytime(true);
+        const hours = await metricsApi.playtime.getTotalHours({ serverId });
+        setTotalPlaytime(hours.totalHours);
+      } catch (error) {
+        console.error("Failed to fetch playtime:", error);
+      } finally {
+        setIsLoadingPlaytime(false);
+      }
+    };
+
     fetchPlayerCount();
-  }, []);
+    fetchTotalPlaytime();
+  }, [serverId]);
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -119,7 +136,7 @@ export const Home: React.FC = () => {
     },
     {
       icon: Clock,
-      value: "8,532",
+      value: isLoadingPlaytime ? <Loading /> : (totalPlaytime ?? "N/A"),
       title: "Hours Played",
       description: "Total playtime across all players",
     },
