@@ -3,7 +3,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
-import { minecraftRcon, ServerId, WhitelistAction } from "@/utils/rcon";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -201,11 +201,7 @@ export async function execute(
     await randomDelay();
 
     try {
-      await minecraftRcon.whitelist(
-        ServerId.COGS,
-        WhitelistAction.ADD,
-        correctName,
-      );
+      await minecraftRcon.whitelistAll(WhitelistAction.ADD, correctName);
     } catch (error) {
       steps[currentStep].error = "Failed to add to whitelist";
       throw new Error(`Failed to whitelist ${correctName}: ${error}`);

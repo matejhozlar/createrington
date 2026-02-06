@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { minecraftRcon, ServerId, WhitelistAction } from "@/utils/rcon";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 
 /**
  * Service to automatically clean up departed members after 30 days
@@ -80,8 +80,7 @@ export class MemberCleanupService {
           await Q.player.delete(member);
 
           try {
-            await minecraftRcon.whitelist(
-              ServerId.COGS,
+            await minecraftRcon.whitelistAll(
               WhitelistAction.REMOVE,
               member.minecraftUsername,
             );

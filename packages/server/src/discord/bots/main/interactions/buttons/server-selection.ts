@@ -50,7 +50,8 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     return;
   }
 
-  const { serverId } = parsed;
+  const { serverId: id } = parsed;
+  const serverId = parseInt(id);
   const serverConfig = getServerConfig(serverId);
 
   if (!serverConfig) {

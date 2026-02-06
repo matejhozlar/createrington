@@ -11,11 +11,17 @@ interface RconConfig {
 }
 
 /**
- * Server identifiers
+ * Server identifier type (numeric ID that maps to config)
  */
-export enum ServerId {
-  COGS = "cogs",
-  TEST = "test",
+export type ServerId = number;
+
+/**
+ * Server info from config
+ */
+interface ServerInfo {
+  id: number;
+  name: string;
+  rcon: RconConfig;
 }
 
 /**
@@ -111,7 +117,7 @@ class RconCommandError extends Error {
     message: string,
     public readonly command: string,
     public readonly serverId: ServerId,
-    public readonly cause?: unknown
+    public readonly cause?: unknown,
   ) {
     super(message);
     this.name = "RconCommandError";
@@ -123,7 +129,7 @@ class RconCommandError extends Error {
  */
 class ServerNotFoundError extends Error {
   constructor(public readonly serverId: ServerId) {
-    super(`Server '${serverId}' not found in configuration`);
+    super(`Server with ID ${serverId} not found in configuration`);
     this.name = "ServerNotFoundError";
   }
 }
@@ -141,7 +147,8 @@ class ServerRconConnection {
 
   constructor(
     private readonly serverId: ServerId,
-    private readonly cfg: RconConfig
+    private readonly serverName: string,
+    private readonly cfg: RconConfig,
   ) {}
 
   /**
@@ -165,7 +172,7 @@ class ServerRconConnection {
       throw new RconCommandError(
         "Previous connection attempt failed",
         "connect",
-        this.serverId
+        this.serverId,
       );
     }
 
@@ -173,7 +180,7 @@ class ServerRconConnection {
 
     try {
       logger.info(
-        `[${this.serverId}] Connecting to RCON at ${this.cfg.host}:${this.cfg.port}`
+        `[Server ${this.serverId} - ${this.serverName}] Connecting to RCON at ${this.cfg.host}:${this.cfg.port}`,
       );
 
       this.connection = await Rcon.connect({
@@ -183,15 +190,20 @@ class ServerRconConnection {
       });
 
       this.lastUsed = Date.now();
-      logger.info(`[${this.serverId}] RCON connection established`);
+      logger.info(
+        `[Server ${this.serverId} - ${this.serverName}] RCON connection established`,
+      );
       return this.connection;
     } catch (error) {
-      logger.error(`[${this.serverId}] Failed to connect to RCON:`, error);
+      logger.error(
+        `[Server ${this.serverId} - ${this.serverName}] Failed to connect to RCON:`,
+        error,
+      );
       throw new RconCommandError(
         "Failed to establish RCON connection",
         "connect",
         this.serverId,
-        error
+        error,
       );
     } finally {
       this.isConnecting = false;
@@ -205,9 +217,14 @@ class ServerRconConnection {
     if (this.connection) {
       try {
         await this.connection.end();
-        logger.debug(`[${this.serverId}] RCON connection closed`);
+        logger.debug(
+          `[Server ${this.serverId} - ${this.serverName}] RCON connection closed`,
+        );
       } catch (error) {
-        logger.warn(`[${this.serverId}] Failed to close RCON:`, error);
+        logger.warn(
+          `[Server ${this.serverId} - ${this.serverName}] Failed to close RCON:`,
+          error,
+        );
       } finally {
         this.connection = null;
       }
@@ -222,7 +239,7 @@ class ServerRconConnection {
       throw new RconCommandError(
         "Command cannot be empty",
         command,
-        this.serverId
+        this.serverId,
       );
     }
 
@@ -230,23 +247,27 @@ class ServerRconConnection {
 
     try {
       const rcon = await this.connect();
-      logger.info(`[${this.serverId}] Sending RCON: ${trimmedCommand}`);
+      logger.info(
+        `[Server ${this.serverId} - ${this.serverName}] Sending RCON: ${trimmedCommand}`,
+      );
 
       const response = await rcon.send(trimmedCommand);
-      logger.debug(`[${this.serverId}] RCON response: ${response}`);
+      logger.debug(
+        `[Server ${this.serverId} - ${this.serverName}] RCON response: ${response}`,
+      );
 
       this.lastUsed = Date.now();
       return response;
     } catch (error) {
       logger.error(
-        `[${this.serverId}] RCON command failed: "${trimmedCommand}":`,
-        error
+        `[Server ${this.serverId} - ${this.serverName}] RCON command failed: "${trimmedCommand}":`,
+        error,
       );
       throw new RconCommandError(
         `Failed to execute RCON command: ${trimmedCommand}`,
         trimmedCommand,
         this.serverId,
-        error
+        error,
       );
     }
   }
@@ -275,7 +296,7 @@ class ServerRconConnection {
 export class MinecraftRconManager {
   private static instance: MinecraftRconManager | null = null;
   private readonly connections = new Map<ServerId, ServerRconConnection>();
-  private readonly serverConfigs = new Map<ServerId, RconConfig>();
+  private readonly serverConfigs = new Map<ServerId, ServerInfo>();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
@@ -295,53 +316,77 @@ export class MinecraftRconManager {
 
   /**
    * Loads server configurations from config
+   * Maps servers by their numeric ID
    */
   private loadServerConfigs(): void {
-    if (config.servers?.cogs?.rcon && !this.serverConfigs.has(ServerId.COGS)) {
-      this.serverConfigs.set(ServerId.COGS, {
-        host: config.servers.cogs.rcon.host,
-        port: config.servers.cogs.rcon.port,
-        password: config.servers.cogs.rcon.password,
+    // Load Cogs & Steam server
+    if (config.servers?.cogs?.rcon && config.servers.cogs.id) {
+      this.serverConfigs.set(config.servers.cogs.id, {
+        id: config.servers.cogs.id,
+        name: config.servers.cogs.name,
+        rcon: {
+          host: config.servers.cogs.rcon.host,
+          port: config.servers.cogs.rcon.port,
+          password: config.servers.cogs.rcon.password,
+        },
       });
     }
 
-    if (config.servers?.test?.rcon && !this.serverConfigs.has(ServerId.TEST)) {
-      this.serverConfigs.set(ServerId.TEST, {
-        host: config.servers.test.rcon.host,
-        port: config.servers.test.rcon.port,
-        password: config.servers.test.rcon.password,
+    // Load Test server
+    if (config.servers?.test?.rcon && config.servers.test.id) {
+      this.serverConfigs.set(config.servers.test.id, {
+        id: config.servers.test.id,
+        name: config.servers.test.name,
+        rcon: {
+          host: config.servers.test.rcon.host,
+          port: config.servers.test.rcon.port,
+          password: config.servers.test.rcon.password,
+        },
       });
     }
 
     logger.info(
       `Loaded RCON configs for ${this.serverConfigs.size} server(s):`,
-      Array.from(this.serverConfigs.keys())
+      Array.from(this.serverConfigs.values()).map((s) => `${s.id} (${s.name})`),
     );
   }
 
   /**
    * Dynamically registers a new server at runtime
    *
-   * @param serverId - Unique server identifier
-   * @param config - RCON configuration
+   * @param serverId - Unique numeric server identifier
+   * @param name - Server name
+   * @param rconConfig - RCON configuration
    */
-  public registerServer(serverId: ServerId, cfg: RconConfig): void {
+  public registerServer(
+    serverId: ServerId,
+    name: string,
+    rconConfig: RconConfig,
+  ): void {
     if (this.serverConfigs.has(serverId)) {
-      logger.warn(`[${serverId}] Server already registered, updating config`);
+      logger.warn(
+        `[Server ${serverId}] Server already registered, updating config`,
+      );
     }
-    this.serverConfigs.set(serverId, cfg);
-    logger.info(`[${serverId}] Server registered with RCON config`);
+    this.serverConfigs.set(serverId, {
+      id: serverId,
+      name,
+      rcon: rconConfig,
+    });
+    logger.info(
+      `[Server ${serverId} - ${name}] Server registered with RCON config`,
+    );
   }
 
   /**
-   * Removes a server from the manageer
+   * Removes a server from the manager
    *
    * @param serverId - Server to unregister
    */
   public async unregisterServer(serverId: ServerId): Promise<void> {
     await this.disconnect(serverId);
     this.serverConfigs.delete(serverId);
-    logger.info(`[${serverId}] Server unregistered`);
+    logger.info(`[Server ${serverId}] Server unregistered`);
   }
 
   /**
@@ -350,16 +395,20 @@ export class MinecraftRconManager {
    * @private
    */
   private getConnection(serverId: ServerId): ServerRconConnection {
-    const cfg = this.serverConfigs.get(serverId);
+    const serverInfo = this.serverConfigs.get(serverId);
 
-    if (!cfg) {
+    if (!serverInfo) {
       throw new ServerNotFoundError(serverId);
     }
 
     let connection = this.connections.get(serverId);
 
     if (!connection) {
-      connection = new ServerRconConnection(serverId, cfg);
+      connection = new ServerRconConnection(
+        serverId,
+        serverInfo.name,
+        serverInfo.rcon,
+      );
       this.connections.set(serverId, connection);
     }
 
@@ -382,7 +431,7 @@ export class MinecraftRconManager {
   /**
    * Sends a raw command to a specific server
    *
-   * @param serverId - Server to send command to
+   * @param serverId - Server ID to send command to
    * @param command - Command to execute
    * @returns Promise resolving to the server's response
    */
@@ -400,7 +449,7 @@ export class MinecraftRconManager {
    */
   public async sendToMultiple(
     serverIds: ServerId[],
-    command: string
+    command: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {
@@ -420,7 +469,7 @@ export class MinecraftRconManager {
             error: error as Error,
           });
         }
-      })
+      }),
     );
 
     return results;
@@ -433,7 +482,7 @@ export class MinecraftRconManager {
    * @returns Map of results per server
    */
   public async sendAll(
-    command: string
+    command: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {
@@ -457,7 +506,7 @@ export class MinecraftRconManager {
    */
   public async disconnectAll(): Promise<void> {
     await Promise.all(
-      Array.from(this.connections.values()).map((conn) => conn.disconnect())
+      Array.from(this.connections.values()).map((conn) => conn.disconnect()),
     );
     this.connections.clear();
     this.stopCleanup();
@@ -479,10 +528,10 @@ export class MinecraftRconManager {
           now - connection.getLastUsed() > IDLE_TIMEOUT
         ) {
           const idleSeconds = Math.floor(
-            (now - connection.getLastUsed()) / 1000
+            (now - connection.getLastUsed()) / 1000,
           );
           logger.debug(
-            `[${serverId}] Closing idle RCON connection (${idleSeconds}s idle)`
+            `[Server ${serverId}] Closing idle RCON connection (${idleSeconds}s idle)`,
           );
           connection.disconnect();
           this.connections.delete(serverId);
@@ -522,6 +571,20 @@ export class MinecraftRconManager {
   }
 
   /**
+   * Gets server info by ID
+   */
+  public getServerInfo(serverId: ServerId): ServerInfo | undefined {
+    return this.serverConfigs.get(serverId);
+  }
+
+  /**
+   * Gets all server info
+   */
+  public getAllServerInfo(): ServerInfo[] {
+    return Array.from(this.serverConfigs.values());
+  }
+
+  /**
    * Gets connection statistics
    */
   public getStats(): {
@@ -529,17 +592,19 @@ export class MinecraftRconManager {
     activeConnections: number;
     servers: Array<{
       serverId: ServerId;
+      serverName: string;
       connected: boolean;
       lastUsed?: number;
       idleSeconds?: number;
     }>;
   } {
-    const servers = Array.from(this.serverConfigs.keys()).map((serverId) => {
-      const connection = this.connections.get(serverId);
+    const servers = Array.from(this.serverConfigs.values()).map((info) => {
+      const connection = this.connections.get(info.id);
       const lastUsed = connection?.getLastUsed();
 
       return {
-        serverId,
+        serverId: info.id,
+        serverName: info.name,
         connected: connection?.isConnected() ?? false,
         lastUsed,
         idleSeconds: lastUsed
@@ -551,7 +616,7 @@ export class MinecraftRconManager {
     return {
       totalConfigured: this.serverConfigs.size,
       activeConnections: Array.from(this.connections.values()).filter((c) =>
-        c.isConnected()
+        c.isConnected(),
       ).length,
       servers,
     };
@@ -568,7 +633,7 @@ export class MinecraftRconManager {
   public async weather(
     serverId: ServerId,
     weather: MinecraftWeather,
-    duration?: number
+    duration?: number,
   ): Promise<string> {
     const durationArg = duration ? ` ${duration}` : "";
     return this.send(serverId, `weather ${weather}${durationArg}`);
@@ -576,7 +641,7 @@ export class MinecraftRconManager {
 
   public async difficulty(
     serverId: ServerId,
-    difficulty: MinecraftDifficulty
+    difficulty: MinecraftDifficulty,
   ): Promise<string> {
     return this.send(serverId, `difficulty ${difficulty}`);
   }
@@ -588,7 +653,7 @@ export class MinecraftRconManager {
   public async kick(
     serverId: ServerId,
     playerName: string,
-    reason?: string
+    reason?: string,
   ): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError("Player cannot be empty", "kick", serverId);
@@ -600,13 +665,13 @@ export class MinecraftRconManager {
   public async ban(
     serverId: ServerId,
     playerName: string,
-    reason?: string
+    reason?: string,
   ): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError(
         "Player name cannot be empty",
         "ban",
-        serverId
+        serverId,
       );
     }
     const reasonArg = reason ? ` ${reason}` : "";
@@ -618,7 +683,7 @@ export class MinecraftRconManager {
       throw new RconCommandError(
         "Player name cannot be empty",
         "pardon",
-        serverId
+        serverId,
       );
     }
     return this.send(serverId, `pardon ${playerName}`);
@@ -627,13 +692,13 @@ export class MinecraftRconManager {
   public async gamemode(
     serverId: ServerId,
     playerName: string,
-    gameMode: MinecraftGameMode
+    gameMode: MinecraftGameMode,
   ): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError(
         "Player name cannot be empty",
         "gamemode",
-        serverId
+        serverId,
       );
     }
     return this.send(serverId, `gamemode ${gameMode} ${playerName}`);
@@ -643,7 +708,7 @@ export class MinecraftRconManager {
     serverId: ServerId,
     playerName: string,
     item: string | MinecraftItem,
-    amount: number = 1
+    amount: number = 1,
   ): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError("Player cannot be empty", "give", serverId);
@@ -661,7 +726,7 @@ export class MinecraftRconManager {
   public async tp(
     serverId: ServerId,
     playerName: string,
-    destination: string | { x: number; y: number; z: number }
+    destination: string | { x: number; y: number; z: number },
   ): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError("Player name cannot be empty", "tp", serverId);
@@ -688,7 +753,7 @@ export class MinecraftRconManager {
   public async whitelist(
     serverId: ServerId,
     action: WhitelistAction,
-    playerName?: string
+    playerName?: string,
   ): Promise<string> {
     if (
       (action === WhitelistAction.ADD || action === WhitelistAction.REMOVE) &&
@@ -697,7 +762,7 @@ export class MinecraftRconManager {
       throw new RconCommandError(
         `Player name is required for whitelist ${action}`,
         "whitelist",
-        serverId
+        serverId,
       );
     }
     const playerArg = playerName ? ` ${playerName}` : "";
@@ -713,7 +778,7 @@ export class MinecraftRconManager {
    */
   public async broadcast(
     serverIds: ServerId[],
-    message: string
+    message: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {
@@ -727,7 +792,7 @@ export class MinecraftRconManager {
    * Broadcasts a message to all servers
    */
   public async broadcastAll(
-    message: string
+    message: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {
@@ -743,7 +808,7 @@ export class MinecraftRconManager {
   public async whitelistMultiple(
     serverIds: ServerId[],
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
-    playerName: string
+    playerName: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {
@@ -758,7 +823,7 @@ export class MinecraftRconManager {
    */
   public async whitelistAll(
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
-    playerName: string
+    playerName: string,
   ): Promise<
     Map<ServerId, { success: boolean; response?: string; error?: Error }>
   > {

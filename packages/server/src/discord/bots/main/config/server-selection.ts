@@ -1,13 +1,12 @@
 import config from "@/config";
 import { Discord } from "@/discord/constants";
-import { ServerId } from "@/utils/rcon";
 
 /**
  * Server configuration for role assignment
  */
 export interface ServerConfig {
   /** Internal server ID */
-  id: ServerId;
+  id: number;
   /** Display name for the server */
   label: string;
   /** Description of the server */
@@ -25,7 +24,7 @@ export interface ServerConfig {
  */
 export const SERVER_CONFIGS: ServerConfig[] = [
   {
-    id: ServerId.COGS,
+    id: config.servers.cogs.id,
     label: "Cogs & Steam",
     description: "Create focused server on NeoForge 1.21.1",
     roleId: Discord.Roles.COGS_AND_STEAM,
@@ -44,13 +43,13 @@ export function getEnabledServers(): ServerConfig[] {
 /**
  * Gets a server config by ID
  */
-export function getServerConfig(serverId: string): ServerConfig | undefined {
+export function getServerConfig(serverId: number): ServerConfig | undefined {
   return SERVER_CONFIGS.find((server) => server.id === serverId);
 }
 
 /**
  * Gets role ID for a server
  */
-export function getServerRoleId(serverId: string): string | undefined {
+export function getServerRoleId(serverId: number): string | undefined {
   return getServerConfig(serverId)?.roleId;
 }

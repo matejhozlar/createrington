@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { isAdminDb } from "@/db/utils";
 import { EmbedPresets } from "@/discord/embeds";
-import { minecraftRcon, ServerId, WhitelistAction } from "@/utils/rcon";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
 
 /**
@@ -91,7 +91,7 @@ async function handleDeleteNow(
 
     try {
       await minecraftRcon.whitelist(
-        ServerId.COGS,
+        1,
         WhitelistAction.REMOVE,
         departed.minecraftUsername,
       );

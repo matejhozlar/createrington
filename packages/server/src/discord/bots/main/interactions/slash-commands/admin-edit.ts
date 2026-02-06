@@ -4,7 +4,7 @@ import { EmbedPresets } from "@/discord/embeds";
 import { confirmAdminChange } from "@/discord/utils/flows/confirmation/admin-confirmation";
 import { DatabaseTable, type Player } from "@/generated/db";
 import { AdminEdit } from "@/types";
-import { minecraftRcon, ServerId, WhitelistAction } from "@/utils/rcon";
+import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -250,17 +250,9 @@ async function handleUsernameUpdate(
           });
         });
 
-        await minecraftRcon.whitelist(
-          ServerId.COGS,
-          WhitelistAction.REMOVE,
-          oldUsername,
-        );
+        await minecraftRcon.whitelistAll(WhitelistAction.REMOVE, oldUsername);
 
-        await minecraftRcon.whitelist(
-          ServerId.COGS,
-          WhitelistAction.ADD,
-          newUsername,
-        );
+        await minecraftRcon.whitelistAll(WhitelistAction.ADD, newUsername);
 
         const successEmbed = EmbedPresets.success(
           "Username Updated",
@@ -550,17 +542,9 @@ async function handleFullAccountUpdate(
             });
           });
 
-          minecraftRcon.whitelist(
-            ServerId.COGS,
-            WhitelistAction.REMOVE,
-            oldUsername,
-          );
+          minecraftRcon.whitelistAll(WhitelistAction.REMOVE, oldUsername);
 
-          minecraftRcon.whitelist(
-            ServerId.COGS,
-            WhitelistAction.ADD,
-            newUsername,
-          );
+          minecraftRcon.whitelistAll(WhitelistAction.ADD, newUsername);
 
           const successEmbed = EmbedPresets.success(
             "Account Updated",

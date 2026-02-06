@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { MinecraftRconManager, ServerId, WhitelistAction } from "@/utils/rcon";
+import { MinecraftRconManager, WhitelistAction, type ServerId } from "@/utils/rcon";
 
 describe("MinecraftRconManager", () => {
   let rconManager: MinecraftRconManager;
@@ -12,41 +12,41 @@ describe("MinecraftRconManager", () => {
   describe("Configuration", () => {
     it("should load server configuration on initialization", () => {
       const serverIds = rconManager.getServerIds();
-      expect(serverIds).toContain(ServerId.COGS);
-      expect(serverIds).toContain(ServerId.TEST);
+      expect(serverIds).toContain(1);
+      expect(serverIds).toContain(2);
     });
 
     it("should throw ServerNotFoundError for unknown server", async () => {
       await expect(
-        rconManager.send("unknown" as ServerId, "list")
+        rconManager.send(0 as ServerId, "list"),
       ).rejects.toThrow("Server 'unknown' not found in configuration");
     });
   });
 
   describe("Command validation", () => {
     it("should reject empty commands", async () => {
-      await expect(rconManager.send(ServerId.COGS, "")).rejects.toThrow(
-        "Command cannot be empty"
+      await expect(rconManager.send(1, "")).rejects.toThrow(
+        "Command cannot be empty",
       );
     });
 
     it("should reject whitelist without player name", async () => {
       await expect(
-        rconManager.whitelist(ServerId.COGS, WhitelistAction.ADD)
+        rconManager.whitelist(1, WhitelistAction.ADD),
       ).rejects.toThrow("Player name is required");
     });
 
     it("should validate give command parameters", async () => {
       await expect(
-        rconManager.give(ServerId.COGS, "", "diamond", 1)
+        rconManager.give(1, "", "diamond", 1),
       ).rejects.toThrow("Player cannot be empty");
 
       await expect(
-        rconManager.give(ServerId.COGS, "player", "", 1)
+        rconManager.give(1, "player", "", 1),
       ).rejects.toThrow("Item cannot be empty");
 
       await expect(
-        rconManager.give(ServerId.COGS, "player", "diamond", 0)
+        rconManager.give(1, "player", "diamond", 0),
       ).rejects.toThrow("Amount must be at least 1");
     });
   });
