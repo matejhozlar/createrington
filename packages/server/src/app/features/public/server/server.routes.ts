@@ -1,4 +1,4 @@
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { Router } from "express";
 import { ServerController } from "./server.controller";
 
@@ -28,7 +28,7 @@ const router = Router();
  *
  * Response: GetAllServersResponse
  */
-router.get("/", ...route(AuthLevel.PUBLIC, ServerController.getAllServers));
+router.get("/", ...route("public", ServerController.getAllServers));
 
 /**
  * GET /api/servers/:id
@@ -46,6 +46,6 @@ router.get("/", ...route(AuthLevel.PUBLIC, ServerController.getAllServers));
  * Response: GetServerResponse
  * Errors: 400 (invalid ID), 404 (server not found)
  */
-router.get("/:id", ...route(AuthLevel.PUBLIC, ServerController.getServer));
+router.get("/:id", ...route("public", ServerController.getServer));
 
 export default router;

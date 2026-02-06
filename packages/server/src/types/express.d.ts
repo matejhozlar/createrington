@@ -21,6 +21,18 @@ declare global {
        * Set by verifyServerIp middleware
        */
       serverIp?: string;
+      /**
+       * Validated zod schema
+       * Set by validation middleware
+       */
+      validatedParams?: any;
+      validatedQuery?: any;
+      validatedBody?: any;
+    }
+    interface Response {
+      ok<T>(data: T, message?: string): void;
+      created<T>(data: T, message?: string): void;
+      noContent(): void;
     }
   }
 }

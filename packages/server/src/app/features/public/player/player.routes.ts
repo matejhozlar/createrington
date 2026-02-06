@@ -1,4 +1,4 @@
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { Router } from "express";
 import { PlayerController } from "./player.controller";
 
@@ -35,7 +35,7 @@ const router = Router();
  *
  * Response: GetPlayersCountResponse
  */
-router.get("/count", ...route(AuthLevel.PUBLIC, PlayerController.getCount));
+router.get("/count", ...route("public", PlayerController.getCount));
 
 /**
  * GET /api/players
@@ -65,7 +65,7 @@ router.get("/count", ...route(AuthLevel.PUBLIC, PlayerController.getCount));
  *
  * Response: GetPlayersResponse
  */
-router.get("/", ...route(AuthLevel.PUBLIC, PlayerController.getPlayers));
+router.get("/", ...route("public", PlayerController.getPlayers));
 
 /**
  * GET /api/players/:id
@@ -82,6 +82,6 @@ router.get("/", ...route(AuthLevel.PUBLIC, PlayerController.getPlayers));
  * Response: GetPlayerResponse
  * Errors: 400 (invalid ID format), 404 (player not found)
  */
-router.get("/:id", ...route(AuthLevel.PUBLIC, PlayerController.getPlayer));
+router.get("/:id", ...route("public", PlayerController.getPlayer));
 
 export default router;

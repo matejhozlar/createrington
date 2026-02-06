@@ -1,4 +1,4 @@
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { Router } from "express";
 import { PlaytimeMetricsController } from "./controllers/playtime-metrics.controller";
 
@@ -14,7 +14,7 @@ const router = Router();
  */
 router.get(
   "/playtime/hours",
-  ...route(AuthLevel.PUBLIC, PlaytimeMetricsController.getTotalHours),
+  ...route("public", PlaytimeMetricsController.getTotalHours),
 );
 
 /**
@@ -23,7 +23,7 @@ router.get(
  */
 router.get(
   "/playtime/hours/breakdown",
-  ...route(AuthLevel.PUBLIC, PlaytimeMetricsController.getHoursBreakdown),
+  ...route("public", PlaytimeMetricsController.getHoursBreakdown),
 );
 
 export default router;

@@ -1,6 +1,4 @@
-// packages/server/src/app/features/admin/waitlist/admin-waitlist.routes.ts
-
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { Router } from "express";
 import { AdminWaitlistController } from "./admin-waitlist.controller";
 
@@ -24,10 +22,7 @@ const router = Router();
  *
  * Response: GetAdminWaitlistStatsResponse
  */
-router.get(
-  "/stats",
-  ...route(AuthLevel.ADMIN, AdminWaitlistController.getStats),
-);
+router.get("/stats", ...route("admin", AdminWaitlistController.getStats));
 
 // ============================================================================
 // WAITLIST ENTRY LIST
@@ -52,7 +47,7 @@ router.get(
  *
  * Response: GetAdminWaitlistEntriesResponse
  */
-router.get("/", ...route(AuthLevel.ADMIN, AdminWaitlistController.getEntries));
+router.get("/", ...route("admin", AdminWaitlistController.getEntries));
 
 // ============================================================================
 // INDIVIDUAL WAITLIST ENTRY OPERATIONS
@@ -68,7 +63,7 @@ router.get("/", ...route(AuthLevel.ADMIN, AdminWaitlistController.getEntries));
  *
  * Response: GetAdminWaitlistEntryResponse
  */
-router.get("/:id", ...route(AuthLevel.ADMIN, AdminWaitlistController.getEntry));
+router.get("/:id", ...route("admin", AdminWaitlistController.getEntry));
 
 /**
  * POST /api/admin/waitlist/:id/invite
@@ -87,7 +82,7 @@ router.get("/:id", ...route(AuthLevel.ADMIN, AdminWaitlistController.getEntry));
  */
 router.post(
   "/:id/invite",
-  ...route(AuthLevel.ADMIN, AdminWaitlistController.inviteEntry),
+  ...route("admin", AdminWaitlistController.inviteEntry),
 );
 
 /**
@@ -105,9 +100,6 @@ router.post(
  *
  * Response: DeleteWaitlistEntryResponse
  */
-router.delete(
-  "/:id",
-  ...route(AuthLevel.ADMIN, AdminWaitlistController.deleteEntry),
-);
+router.delete("/:id", ...route("admin", AdminWaitlistController.deleteEntry));
 
 export default router;

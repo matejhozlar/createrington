@@ -1,4 +1,4 @@
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { Router } from "express";
 import { AdminPlayerController } from "./admin-player.controller";
 
@@ -22,7 +22,7 @@ const router = Router();
  *
  * Response: GetAdminPlayerStatsResponse
  */
-router.get("/stats", ...route(AuthLevel.ADMIN, AdminPlayerController.getStats));
+router.get("/stats", ...route("admin", AdminPlayerController.getStats));
 
 // ============================================================================
 // BULK OPERATIONS
@@ -44,7 +44,7 @@ router.get("/stats", ...route(AuthLevel.ADMIN, AdminPlayerController.getStats));
  */
 router.post(
   "/bulk/balance",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.bulkBalanceAdjust),
+  ...route("admin", AdminPlayerController.bulkBalanceAdjust),
 );
 
 // ============================================================================
@@ -70,7 +70,7 @@ router.post(
  *
  * Response: GetAdminPlayersResponse
  */
-router.get("/", ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayers));
+router.get("/", ...route("admin", AdminPlayerController.getPlayers));
 
 // ============================================================================
 // INDIVIDUAL PLAYER OPERATIONS
@@ -86,7 +86,7 @@ router.get("/", ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayers));
  *
  * Response: GetAdminPlayerResponse
  */
-router.get("/:id", ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayer));
+router.get("/:id", ...route("admin", AdminPlayerController.getPlayer));
 
 /**
  * PATCH /api/admin/players/:id
@@ -105,10 +105,7 @@ router.get("/:id", ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayer));
  *
  * Response: UpdateAdminPlayerResponse
  */
-router.patch(
-  "/:id",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.updatePlayer),
-);
+router.patch("/:id", ...route("admin", AdminPlayerController.updatePlayer));
 
 /**
  * DELETE /api/admin/players/:id
@@ -125,10 +122,7 @@ router.patch(
  *
  * Response: { success: true, message: string }
  */
-router.delete(
-  "/:id",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.deletePlayer),
-);
+router.delete("/:id", ...route("admin", AdminPlayerController.deletePlayer));
 
 // ============================================================================
 // PLAYER SUB-RESOURCES
@@ -146,7 +140,7 @@ router.delete(
  */
 router.get(
   "/:id/balance",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerBalance),
+  ...route("admin", AdminPlayerController.getPlayerBalance),
 );
 
 /**
@@ -164,7 +158,7 @@ router.get(
  */
 router.post(
   "/:id/balance/adjust",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.adjustPlayerBalance),
+  ...route("admin", AdminPlayerController.adjustPlayerBalance),
 );
 
 /**
@@ -179,7 +173,7 @@ router.post(
  */
 router.get(
   "/:id/audit-log",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerAuditLog),
+  ...route("admin", AdminPlayerController.getPlayerAuditLog),
 );
 
 /**
@@ -191,7 +185,7 @@ router.get(
  */
 router.get(
   "/:id/playtime",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerPlaytime),
+  ...route("admin", AdminPlayerController.getPlayerPlaytime),
 );
 
 /**
@@ -207,7 +201,7 @@ router.get(
  */
 router.get(
   "/:id/sessions",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerSessions),
+  ...route("admin", AdminPlayerController.getPlayerSessions),
 );
 
 /**
@@ -219,7 +213,7 @@ router.get(
  */
 router.get(
   "/:id/tickets",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerTickets),
+  ...route("admin", AdminPlayerController.getPlayerTickets),
 );
 
 /**
@@ -229,7 +223,7 @@ router.get(
  */
 router.get(
   "/:id/strikes",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerStrikes),
+  ...route("admin", AdminPlayerController.getPlayerStrikes),
 );
 
 /**
@@ -239,7 +233,7 @@ router.get(
  */
 router.post(
   "/:id/strikes",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.issueStrike),
+  ...route("admin", AdminPlayerController.issueStrike),
 );
 
 /**
@@ -249,7 +243,7 @@ router.post(
  */
 router.delete(
   "/:id/strikes/:strikeId",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.removeStrike),
+  ...route("admin", AdminPlayerController.removeStrike),
 );
 
 // ============================================================================
@@ -266,10 +260,7 @@ router.delete(
  *
  * Response: GetPlayerBansResponse
  */
-router.get(
-  "/:id/bans",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerBans),
-);
+router.get("/:id/bans", ...route("admin", AdminPlayerController.getPlayerBans));
 
 /**
  * POST /api/admin/players/:id/bans/temporary
@@ -288,7 +279,7 @@ router.get(
  */
 router.post(
   "/:id/bans/temporary",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.issueTemporaryBan),
+  ...route("admin", AdminPlayerController.issueTemporaryBan),
 );
 
 /**
@@ -309,7 +300,7 @@ router.post(
  */
 router.post(
   "/:id/bans/permanent",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.issuePermanentBan),
+  ...route("admin", AdminPlayerController.issuePermanentBan),
 );
 
 // ============================================================================
@@ -330,7 +321,7 @@ router.post(
  */
 router.delete(
   "/bans/:banId",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.unbanPlayer),
+  ...route("admin", AdminPlayerController.unbanPlayer),
 );
 
 /**
@@ -346,7 +337,7 @@ router.delete(
  */
 router.get(
   "/bans/recent",
-  ...route(AuthLevel.ADMIN, AdminPlayerController.getRecentBans),
+  ...route("admin", AdminPlayerController.getRecentBans),
 );
 
 export default router;

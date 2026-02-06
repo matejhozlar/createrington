@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { AuthLevel, route } from "@/app/middleware";
+import { route } from "@/app/middleware";
 import { WaitlistController } from "./waitlist.controller";
 
 const router = Router();
@@ -10,6 +10,6 @@ const router = Router();
  */
 
 // POST /api/waitlists - Create new entry
-router.post("/", ...route(AuthLevel.PUBLIC, WaitlistController.create));
+router.post("/", ...route("public", WaitlistController.create));
 
 export default router;
