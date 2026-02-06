@@ -803,7 +803,264 @@ export class MinecraftRconManager {
   }
 
   /**
+   * Bans a player on multiple servers
+   * Logs failures on test server but throws for production servers
+   */
+  public async banMultiple(
+    serverIds: ServerId[],
+    playerName: string,
+    reason?: string,
+  ): Promise<
+    Map<ServerId, { success: boolean; response?: string; error?: Error }>
+  > {
+    if (!playerName || playerName.trim().length === 0) {
+      throw new Error("Player name cannot be empty");
+    }
+
+    const reasonArg = reason ? ` ${reason}` : "";
+    const results = await this.sendToMultiple(
+      serverIds,
+      `ban ${playerName}${reasonArg}`,
+    );
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to ban ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to ban ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(`[${serverName}] Successfully banned ${playerName}`);
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(`Ban failed for ${playerName} on: ${failureDetails}`);
+    }
+
+    return results;
+  }
+
+  /**
+   * Bans a player on all servers
+   * Logs failures on test server but throws for production servers
+   */
+  public async banAll(
+    playerName: string,
+    reason?: string,
+  ): Promise<
+    Map<ServerId, { success: boolean; response?: string; error?: Error }>
+  > {
+    if (!playerName || playerName.trim().length === 0) {
+      throw new Error("Player name cannot be empty");
+    }
+
+    const reasonArg = reason ? ` ${reason}` : "";
+    const results = await this.sendAll(`ban ${playerName}${reasonArg}`);
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to ban ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to ban ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(`[${serverName}] Successfully banned ${playerName}`);
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(`Ban failed for ${playerName} on: ${failureDetails}`);
+    }
+
+    return results;
+  }
+
+  /**
+   * Pardons (unbans) a player on multiple servers
+   * Logs failures on test server but throws for production servers
+   */
+  public async pardonMultiple(
+    serverIds: ServerId[],
+    playerName: string,
+  ): Promise<
+    Map<ServerId, { success: boolean; response?: string; error?: Error }>
+  > {
+    if (!playerName || playerName.trim().length === 0) {
+      throw new Error("Player name cannot be empty");
+    }
+
+    const results = await this.sendToMultiple(
+      serverIds,
+      `pardon ${playerName}`,
+    );
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to pardon ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to pardon ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(`[${serverName}] Successfully pardoned ${playerName}`);
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(`Pardon failed for ${playerName} on: ${failureDetails}`);
+    }
+
+    return results;
+  }
+
+  /**
+   * Pardons (unbans) a player on all servers
+   * Logs failures on test server but throws for production servers
+   */
+  public async pardonAll(
+    playerName: string,
+  ): Promise<
+    Map<ServerId, { success: boolean; response?: string; error?: Error }>
+  > {
+    if (!playerName || playerName.trim().length === 0) {
+      throw new Error("Player name cannot be empty");
+    }
+
+    const results = await this.sendAll(`pardon ${playerName}`);
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to pardon ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to pardon ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(`[${serverName}] Successfully pardoned ${playerName}`);
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(`Pardon failed for ${playerName} on: ${failureDetails}`);
+    }
+
+    return results;
+  }
+
+  /**
    * Whitelists a player on multiple servers
+   * Logs failures on test server but throws for production servers
    */
   public async whitelistMultiple(
     serverIds: ServerId[],
@@ -815,11 +1072,65 @@ export class MinecraftRconManager {
     if (!playerName || playerName.trim().length === 0) {
       throw new Error("Player name cannot be empty");
     }
-    return this.sendToMultiple(serverIds, `whitelist ${action} ${playerName}`);
+
+    const results = await this.sendToMultiple(
+      serverIds,
+      `whitelist ${action} ${playerName}`,
+    );
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to whitelist ${action} ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to whitelist ${action} ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(
+          `[${serverName}] Successfully whitelisted ${action} ${playerName}`,
+        );
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(
+        `Whitelist ${action} failed for ${playerName} on: ${failureDetails}`,
+      );
+    }
+
+    return results;
   }
 
   /**
    * Whitelists a player on all servers
+   * Logs failures on test server but throws for production servers
    */
   public async whitelistAll(
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
@@ -830,7 +1141,57 @@ export class MinecraftRconManager {
     if (!playerName || playerName.trim().length === 0) {
       throw new Error("Player name cannot be empty");
     }
-    return this.sendAll(`whitelist ${action} ${playerName}`);
+
+    const results = await this.sendAll(`whitelist ${action} ${playerName}`);
+
+    // Check results and handle failures
+    const failures: Array<{
+      serverId: ServerId;
+      serverName: string;
+      error: Error;
+    }> = [];
+
+    for (const [serverId, result] of results.entries()) {
+      const serverInfo = this.serverConfigs.get(serverId);
+      const serverName = serverInfo?.name || `Server ${serverId}`;
+
+      if (!result.success) {
+        // Test server (id: 2) - just log the error
+        if (serverId === 2) {
+          logger.warn(
+            `[${serverName}] Failed to whitelist ${action} ${playerName} (ignored):`,
+            result.error,
+          );
+        } else {
+          // Production servers - collect failure to throw
+          logger.error(
+            `[${serverName}] Failed to whitelist ${action} ${playerName}:`,
+            result.error,
+          );
+          failures.push({
+            serverId,
+            serverName,
+            error: result.error!,
+          });
+        }
+      } else {
+        logger.info(
+          `[${serverName}] Successfully whitelisted ${action} ${playerName}`,
+        );
+      }
+    }
+
+    // Throw if any non-test servers failed
+    if (failures.length > 0) {
+      const failureDetails = failures
+        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
+        .join(", ");
+      throw new Error(
+        `Whitelist ${action} failed for ${playerName} on: ${failureDetails}`,
+      );
+    }
+
+    return results;
   }
 }
 
