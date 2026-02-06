@@ -11,16 +11,25 @@ import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
 import { TicketsTab } from "./components/tabs/TicketsTab";
 import { StrikesTab } from "./components/tabs/StrikesTab";
+import { BansTab } from "./components/tabs/BansTab";
 import { AuditTab } from "./components/tabs/AuditTab";
 import { BalanceAdjustModal } from "./components/modals/BalanceAdjustModal";
 import { IssueStrikeModal } from "./components/modals/IssueStrikeModal";
+import { IssueBanModal } from "./components/modals/IssueBanModal";
+import { UnbanModal } from "./components/modals/UnbanModal";
 import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
 import type { AdminPlayerDetailed } from "@createrington/shared/api";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
 import { adminPlayerApi } from "@/services/api/admin/admin-players";
 
-type TabType = "overview" | "sessions" | "tickets" | "strikes" | "audit";
+type TabType =
+  | "overview"
+  | "sessions"
+  | "tickets"
+  | "strikes"
+  | "bans"
+  | "audit";
 
 export function AdminPlayerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -39,10 +48,13 @@ export function AdminPlayerDetail() {
   // Modals state
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showStrikeModal, setShowStrikeModal] = useState(false);
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [showUnbanModal, setShowUnbanModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRemoveStrikeModal, setShowRemoveStrikeModal] = useState(false);
   const [selectedStrikeId, setSelectedStrikeId] = useState<number | null>(null);
+  const [selectedBanId, setSelectedBanId] = useState<number | null>(null);
 
   const openRemoveStrikeModal = (strikeId: number) => {
     setSelectedStrikeId(strikeId);
@@ -52,6 +64,16 @@ export function AdminPlayerDetail() {
   const closeRemoveStrikeModal = () => {
     setShowRemoveStrikeModal(false);
     setSelectedStrikeId(null);
+  };
+
+  const openUnbanModal = (banId: number) => {
+    setSelectedBanId(banId);
+    setShowUnbanModal(true);
+  };
+
+  const closeUnbanModal = () => {
+    setShowUnbanModal(false);
+    setSelectedBanId(null);
   };
 
   /**
@@ -125,7 +147,6 @@ export function AdminPlayerDetail() {
       <PlayerStatsCards
         player={player}
         onAdjustBalance={() => setShowBalanceModal(true)}
-        onIssueStrike={() => setShowStrikeModal(true)}
       />
 
       <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -147,6 +168,15 @@ export function AdminPlayerDetail() {
             onIssueStrike={() => setShowStrikeModal(true)}
             onRefresh={fetchPlayer}
             onRemoveStrike={openRemoveStrikeModal}
+          />
+        )}
+
+        {activeTab === "bans" && (
+          <BansTab
+            player={player}
+            onIssueBan={() => setShowBanModal(true)}
+            onRefresh={fetchPlayer}
+            onUnban={openUnbanModal}
           />
         )}
 
@@ -175,6 +205,23 @@ export function AdminPlayerDetail() {
         playerId={id!}
         onSuccess={fetchPlayer}
       />
+
+      <IssueBanModal
+        open={showBanModal}
+        onClose={() => setShowBanModal(false)}
+        playerId={id!}
+        playerUsername={player.player.minecraftUsername}
+        onSuccess={fetchPlayer}
+      />
+
+      {selectedBanId !== null && (
+        <UnbanModal
+          open={showUnbanModal}
+          onClose={closeUnbanModal}
+          banId={selectedBanId}
+          onSuccess={fetchPlayer}
+        />
+      )}
 
       <DeletePlayerModal
         open={showDeleteModal}

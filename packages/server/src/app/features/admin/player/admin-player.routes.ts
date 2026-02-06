@@ -65,6 +65,8 @@ router.post(
  * - limit: Results per page (1-100, default: 20)
  * - sort_by: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
  * - sort_order: Sort direction (asc/desc, default: desc)
+ * - includeStrikeCounts: Include active strike counts (true/false, default: false)
+ * - includeBanCounts: Include active ban counts (true/false, default: false)
  *
  * Response: GetAdminPlayersResponse
  */
@@ -248,6 +250,103 @@ router.post(
 router.delete(
   "/:id/strikes/:strikeId",
   ...route(AuthLevel.ADMIN, AdminPlayerController.removeStrike),
+);
+
+// ============================================================================
+// BAN OPERATIONS
+// ============================================================================
+
+/**
+ * GET /api/admin/players/:id/bans
+ *
+ * Get all bans for a player
+ *
+ * Query Parameters:
+ * - includeUnbanned: Include unbanned entries (true/false, default: false)
+ *
+ * Response: GetPlayerBansResponse
+ */
+router.get(
+  "/:id/bans",
+  ...route(AuthLevel.ADMIN, AdminPlayerController.getPlayerBans),
+);
+
+/**
+ * POST /api/admin/players/:id/bans/temporary
+ *
+ * Issue a temporary ban to a player
+ *
+ * Body:
+ * {
+ *   reason: string,
+ *   durationDays: number,  // 1-365
+ *   serverId?: number,
+ *   metadata?: Record<string, any>
+ * }
+ *
+ * Response: IssueTemporaryBanResponse
+ */
+router.post(
+  "/:id/bans/temporary",
+  ...route(AuthLevel.ADMIN, AdminPlayerController.issueTemporaryBan),
+);
+
+/**
+ * POST /api/admin/players/:id/bans/permanent
+ *
+ * Issue a permanent ban (deletes all player data)
+ *
+ * WARNING: This action is irreversible!
+ *
+ * Body:
+ * {
+ *   reason: string,
+ *   serverId?: number,
+ *   metadata?: Record<string, any>
+ * }
+ *
+ * Response: IssuePermanentBanResponse
+ */
+router.post(
+  "/:id/bans/permanent",
+  ...route(AuthLevel.ADMIN, AdminPlayerController.issuePermanentBan),
+);
+
+// ============================================================================
+// GLOBAL BAN OPERATIONS (at root /api/admin/bans)
+// ============================================================================
+
+/**
+ * DELETE /api/admin/bans/:banId
+ *
+ * Unban/pardon a player
+ *
+ * Body:
+ * {
+ *   reason: string
+ * }
+ *
+ * Response: UnbanResponse
+ */
+router.delete(
+  "/bans/:banId",
+  ...route(AuthLevel.ADMIN, AdminPlayerController.unbanPlayer),
+);
+
+/**
+ * GET /api/admin/bans/recent
+ *
+ * Get recent bans across all players
+ *
+ * Query Parameters:
+ * - limit: Number of bans (default: 50, max: 200)
+ * - activeOnly: Only active bans (default: true)
+ *
+ * Response: GetRecentBansResponse
+ */
+router.get(
+  "/bans/recent",
+  ...route(AuthLevel.ADMIN, AdminPlayerController.getRecentBans),
 );
 
 export default router;

@@ -4,7 +4,7 @@ import {
   InternalServerError,
   NotFoundError,
 } from "@/app/middleware";
-import { getIdType } from "@/app/utils/helpers";
+import { idToObject } from "@/app/utils/helpers";
 import {
   type GetAdminPlayerResponse,
   type GetAdminPlayersResponse,
@@ -33,11 +33,24 @@ import {
   RemoveStrikeParamsSchema,
   RemoveStrikeBodySchema,
   BulkBalanceAdjustBodySchema,
+  GetPlayerBansQuerySchema,
+  type GetPlayerBansResponse,
+  IssueTemporaryBanBodySchema,
+  type IssueTemporaryBanResponse,
+  IssuePermanentBanBodySchema,
+  type IssuePermanentBanResponse,
+  UnbanParamsSchema,
+  UnbanBodySchema,
+  type UnbanResponse,
+  type GetRecentBansResponse,
 } from "@createrington/shared/api";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { z } from "zod";
 import { playerService } from "@/services/player";
-import { balanceRepo } from "@/db";
+import { balanceRepo, Q } from "@/db";
+import type { PlayerBan } from "@createrington/shared/db";
+import { getService, Services } from "@/services";
+import { Client } from "discord.js";
 
 /**
  * Admin Player Controller
@@ -62,15 +75,12 @@ export class AdminPlayerController {
     try {
       const { id } = GetPlayerParamsSchema.parse(req.params);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const playerData = await playerService.getComprehensive(identifier);
 
@@ -129,6 +139,9 @@ export class AdminPlayerController {
             activeCount: playerData.strikes.activeCount,
             totalCount: playerData.strikes.totalCount,
           },
+          bans: {
+            ...(playerData.bans as any),
+          },
         },
       };
 
@@ -173,16 +186,18 @@ export class AdminPlayerController {
    * - sortBy: Field to sort by (createdAt, minecraftUsername, updatedAt, lastSeen)
    * - sortOrder: Sort direction (asc/desc, default: desc)
    *
+   * Enhancement:
+   * - includeStrikeCounts: Include active strike counts (true/false, default: false)
+   * - includeBanCounts: Include active ban counts (true/false, default: false)
+   *
    * @example
    * GET /api/admin/players?limit=50&online=true
-   * GET /api/admin/players?minecraft_username=Steve&sort_by=lastSeen
+   * GET /api/admin/players?includeStrikeCounts=true&includeBanCounts=true
    */
   static async getPlayers(req: Request, res: Response): Promise<void> {
     try {
-      // Validate and transform query parameters
       const query = GetAdminPlayersQuerySchema.parse(req.query);
 
-      // Build filters
       const filters: any = {};
 
       if (query.discordId) {
@@ -203,8 +218,71 @@ export class AdminPlayerController {
         filters.online = req.query.online;
       }
 
-      const { orderBy, orderDirection, page, limit, includeStrikeCounts } =
-        query;
+      if (
+        query.hasStrikes !== undefined ||
+        query.hasBans !== undefined ||
+        query.hasViolations !== undefined
+      ) {
+        const fetchStrikes =
+          query.hasStrikes === true || query.hasViolations === true;
+        const fetchBans =
+          query.hasBans === true || query.hasViolations === true;
+
+        const [uuidsWithStrikes, uuidsWithBans] = await Promise.all([
+          fetchStrikes
+            ? Q.player.strike.getPlayersWithActiveStrikes()
+            : Promise.resolve([]),
+          fetchBans
+            ? Q.player.ban.getPlayersWithActiveBans()
+            : Promise.resolve([]),
+        ]);
+
+        let uuidsWithViolations: string[];
+
+        if (query.hasViolations === true) {
+          uuidsWithViolations = [
+            ...new Set([...uuidsWithStrikes, ...uuidsWithBans]),
+          ];
+        } else if (query.hasStrikes === true && query.hasBans === true) {
+          uuidsWithViolations = uuidsWithStrikes.filter((uuid) =>
+            uuidsWithBans.includes(uuid),
+          );
+        } else if (query.hasStrikes === true) {
+          uuidsWithViolations = uuidsWithStrikes;
+        } else if (query.hasBans === true) {
+          uuidsWithViolations = uuidsWithBans;
+        } else {
+          uuidsWithViolations = [];
+        }
+
+        if (uuidsWithViolations.length === 0) {
+          const response: GetAdminPlayersResponse = {
+            success: true,
+            data: {
+              players: [],
+              pagination: {
+                page: query.page,
+                limit: query.limit,
+                total: 0,
+                totalPages: 0,
+              },
+            },
+          };
+          res.json(response);
+          return;
+        }
+
+        filters.minecraftUuid = { $in: uuidsWithViolations };
+      }
+
+      const {
+        orderBy,
+        orderDirection,
+        page,
+        limit,
+        includeStrikeCounts,
+        includeBanCounts,
+      } = query;
 
       const [players, total] = await Promise.all([
         playerService.core.getAll(filters, {
@@ -216,22 +294,35 @@ export class AdminPlayerController {
         playerService.core.count(filters),
       ]);
 
-      let playersWithStrikes = players as any;
-      if (includeStrikeCounts) {
-        const playerUuids = players.map((p) => p.minecraftUuid);
-        const strikeCounts =
-          await playerService.strikes.getActiveStrikeCounts(playerUuids);
+      let enrichedPlayers = players as any;
 
-        playersWithStrikes = players.map((player) => ({
+      if (includeStrikeCounts || includeBanCounts) {
+        const playerUuids = players.map((p) => p.minecraftUuid);
+
+        const [strikeCounts, banCounts] = await Promise.all([
+          includeStrikeCounts
+            ? playerService.strikes.getActiveStrikeCounts(playerUuids)
+            : Promise.resolve({} as Record<string, number>),
+          includeBanCounts
+            ? playerService.bans.getActiveBanCounts(playerUuids)
+            : Promise.resolve({} as Record<string, number>),
+        ]);
+
+        enrichedPlayers = players.map((player) => ({
           ...player,
-          activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
+          ...(includeStrikeCounts && {
+            activeStrikeCount: strikeCounts[player.minecraftUuid] ?? 0,
+          }),
+          ...(includeBanCounts && {
+            activeBanCount: banCounts[player.minecraftUuid] ?? 0,
+          }),
         }));
       }
 
       const response: GetAdminPlayersResponse = {
         success: true,
         data: {
-          players: playersWithStrikes,
+          players: enrichedPlayers,
           pagination: {
             page,
             limit,
@@ -258,7 +349,7 @@ export class AdminPlayerController {
         throw error;
       }
       logger.error("Failed to fetch players:", error);
-      throw new InternalServerError("Failed to update player");
+      throw error;
     }
   }
 
@@ -283,19 +374,16 @@ export class AdminPlayerController {
       const { minecraftUsername, discordId, reason } =
         UpdateAdminPlayerBodySchema.parse(req.body);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
 
       if (!minecraftUsername && !discordId) {
         throw new BadRequestError("At least one field to update is required");
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const updates: any = {};
       if (minecraftUsername) updates.minecraftUsername = minecraftUsername;
@@ -349,15 +437,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { reason } = req.body;
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       await playerService.core.adminDelete(
         identifier,
@@ -403,14 +488,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { limit } = GetPlayerBalanceQuerySchema.parse(req.query);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const balanceInfo = await playerService.core.getBalanceInfo(
         identifier,
@@ -471,15 +554,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { amount, reason } = AdjustPlayerBalanceBodySchema.parse(req.body);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       let newBalance: number;
 
@@ -547,15 +627,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { page, limit } = GetPlayerAuditLogQuerySchema.parse(req.query);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [auditLog, total] = await Promise.all([
         playerService.audit.getLog(identifier, limit, page * limit),
@@ -620,15 +697,12 @@ export class AdminPlayerController {
     try {
       const { id } = GetPlayerParamsSchema.parse(req.params);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const playerData = await playerService.core.getDetailed(identifier);
 
@@ -682,15 +756,12 @@ export class AdminPlayerController {
         req.query,
       );
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       // Get total count
       const totalSessions = await playerService.sessions.count(
@@ -753,15 +824,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { page, limit } = GetPlayerTicketsQuerySchema.parse(req.query);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [tickets, total] = await Promise.all([
         playerService.tickets.getAll(identifier, limit, page * limit),
@@ -815,15 +883,12 @@ export class AdminPlayerController {
       const { id } = GetPlayerParamsSchema.parse(req.params);
       const { activeOnly } = GetPlayerStrikesQuerySchema.parse(req.query);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const [strikes, statistics] = await Promise.all([
         playerService.strikes.get(identifier, activeOnly),
@@ -882,15 +947,12 @@ export class AdminPlayerController {
       const { classification, description, severity, serverId, metadata } =
         IssueStrikeBodySchema.parse(req.body);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const strike = await playerService.strikes.issue(
         identifier,
@@ -1066,6 +1128,309 @@ export class AdminPlayerController {
       }
       logger.error("Failed to bulk adjust balance:", error);
       throw new InternalServerError("Failed to bulk adjust balance");
+    }
+  }
+
+  /**
+   * GET /api/admin/players/:id/bans
+   *
+   * Get all bans for a player
+   *
+   * Query Parameters:
+   * - includeUnbanned: Include unbanned entries (true/false, default: false)
+   */
+  static async getPlayerBans(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { includeUnbanned } = GetPlayerBansQuerySchema.parse(req.query);
+
+      const identifier = idToObject(id);
+      if (!identifier) {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
+        );
+      }
+
+      const [bans, statistics, currentBan] = await Promise.all([
+        playerService.bans.getHistory(identifier, includeUnbanned),
+        playerService.bans.getStatistics(identifier),
+        playerService.bans.getCurrent(identifier),
+      ]);
+
+      const response: GetPlayerBansResponse = {
+        success: true,
+        data: {
+          bans: bans.map((b: PlayerBan) => ({
+            ...b,
+            bannedAt: b.bannedAt.toISOString(),
+            expiresAt: b.expiresAt?.toISOString() || null,
+            unbannedAt: b.unbannedAt?.toISOString() || null,
+          })) as any,
+          statistics: {
+            ...statistics,
+          } as any,
+          current: currentBan
+            ? ({
+                ...currentBan,
+                bannedAt: currentBan.bannedAt.toISOString(),
+                expiresAt: currentBan.expiresAt?.toISOString() || null,
+                unbannedAt: currentBan.unbannedAt?.toISOString() || null,
+              } as any)
+            : null,
+        },
+      };
+
+      res.json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
+      logger.error("Failed to fetch player bans:", error);
+      throw new InternalServerError("Failed to fetch player bans");
+    }
+  }
+
+  /**
+   * POST /api/admin/players/:id/bans/temporary
+   *
+   * Issue a temporary ban to a player
+   *
+   * Body:
+   * {
+   *   reason: string,
+   *   durationDays: number,
+   *   serverId?: number,
+   *   metadata?: Record<string, any>
+   * }
+   */
+  static async issueTemporaryBan(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { reason, durationDays, serverId, metadata } =
+        IssueTemporaryBanBodySchema.parse(req.body);
+
+      const identifier = idToObject(id);
+      if (!identifier) {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
+        );
+      }
+
+      const expiresAt = new Date(
+        Date.now() + durationDays * 24 * 60 * 60 * 1000,
+      );
+
+      const ban = await playerService.bans.issueTemporary(
+        identifier,
+        {
+          reason,
+          expiresAt,
+          serverId,
+          metadata,
+        },
+        req.user.discordId,
+        req.user.username,
+      );
+
+      const response: IssueTemporaryBanResponse = {
+        success: true,
+        data: {
+          ban: {
+            ...ban,
+            bannedAt: ban.bannedAt.toISOString(),
+            expiresAt: ban.expiresAt?.toISOString() || null,
+            unbannedAt: ban.unbannedAt?.toISOString() || null,
+          } as any,
+        },
+        message: `Player temporarily banned for ${durationDays} days`,
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
+      logger.error("Failed to issue temporary ban:", error);
+      throw new InternalServerError("Failed to issue temporary ban");
+    }
+  }
+
+  /**
+   * POST /api/admin/players/:id/bans/permanent
+   *
+   * Issue a permanent ban to a player (deletes all player data)
+   *
+   * Body:
+   * {
+   *   reason: string,
+   *   serverId?: number,
+   *   metadata?: Record<string, any>
+   * }
+   */
+  static async issuePermanentBan(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = GetPlayerParamsSchema.parse(req.params);
+      const { reason, serverId, metadata } = IssuePermanentBanBodySchema.parse(
+        req.body,
+      );
+
+      const identifier = idToObject(id);
+      if (!identifier) {
+        throw new BadRequestError(
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
+        );
+      }
+
+      const ban = await playerService.bans.issuePermanent(
+        identifier,
+        {
+          reason,
+          serverId,
+          metadata,
+        },
+        req.user.discordId,
+        req.user.username,
+      );
+
+      const response: IssuePermanentBanResponse = {
+        success: true,
+        data: {
+          banId: ban.id,
+        },
+        message: "Player permanently banned and deleted",
+      };
+
+      res.status(201).json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
+      logger.error("Failed to issue permanent ban:", error);
+      throw new InternalServerError("Failed to issue permanent ban");
+    }
+  }
+
+  /**
+   * DELETE /api/admin/bans/:banId
+   *
+   * Unban/pardon a player
+   *
+   * Body:
+   * {
+   *   reason: string
+   * }
+   */
+  static async unbanPlayer(req: Request, res: Response): Promise<void> {
+    try {
+      const { banId } = UnbanParamsSchema.parse(req.params);
+      const { reason } = UnbanBodySchema.parse(req.body);
+
+      const ban = await playerService.bans.unban(
+        banId,
+        req.user.discordId,
+        req.user.username,
+        reason,
+      );
+
+      const response: UnbanResponse = {
+        success: true,
+        data: {
+          ban: {
+            ...ban,
+            bannedAt: ban.bannedAt.toISOString(),
+            expiresAt: ban.expiresAt?.toISOString() || null,
+            unbannedAt: ban.unbannedAt?.toISOString() || null,
+          } as any,
+        },
+        message: "Player unbanned successfully",
+      };
+
+      res.json(response);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        throw new BadRequestError(
+          error.issues
+            .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+            .join(", "),
+        );
+      }
+      if (
+        error instanceof NotFoundError ||
+        error instanceof BadRequestError ||
+        error instanceof InternalServerError
+      ) {
+        throw error;
+      }
+      logger.error("Failed to unban player:", error);
+      throw new InternalServerError("Failed to unban player");
+    }
+  }
+
+  /**
+   * GET /api/admin/bans/recent
+   *
+   * Get recent bans across all players
+   *
+   * Query Parameters:
+   * - limit: Number of bans to return (default: 50, max: 200)
+   * - activeOnly: Only active bans (default: true)
+   */
+  static async getRecentBans(req: Request, res: Response): Promise<void> {
+    try {
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
+      const activeOnly = (req.query.activeOnly as string) !== "false";
+
+      const bans = await playerService.bans.getRecent(limit, activeOnly);
+
+      const response: GetRecentBansResponse = {
+        success: true,
+        data: {
+          bans: bans.map((b) => ({
+            ...b,
+            bannedAt: b.bannedAt.toISOString(),
+            expiresAt: b.expiresAt?.toISOString() || null,
+            unbannedAt: b.unbannedAt?.toISOString() || null,
+          })) as any,
+        },
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error("Failed to fetch recent bans:", error);
+      throw new InternalServerError("Failed to fetch recent bans");
     }
   }
 }

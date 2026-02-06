@@ -1,17 +1,50 @@
 /**
  * Function to detect ID type
- * Properly detects between discordId and minecraftUuid
+ * Properly detects between discordId, minecraftUuid, and minecraftUsername
  *
  * @param id - The ID to extract
  * @returns Type of ID
  */
-export function getIdType(id: string): "minecraft" | "discord" | "invalid" {
+export function getIdType(
+  id: string,
+): "minecraftUuid" | "minecraftUsername" | "discord" | "invalid" {
   const isMinecraftUUID =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-  if (isMinecraftUUID) return "minecraft";
+  if (isMinecraftUUID) return "minecraftUuid";
 
   const isDiscordID = /^\d{17,20}$/.test(id);
   if (isDiscordID) return "discord";
 
+  // Minecraft usernames: 3-16 characters, alphanumeric and underscore only
+  const isMinecraftUsername = /^[a-zA-Z0-9_]{3,16}$/.test(id);
+  if (isMinecraftUsername) return "minecraftUsername";
+
   return "invalid";
+}
+
+/**
+ * Converts an ID string into a typed object based on its type
+ *
+ * @param id - The ID to convert
+ * @returns Object with the appropriate key-value pair, or null if invalid
+ */
+export function idToObject(
+  id: string,
+):
+  | { minecraftUuid: string }
+  | { minecraftUsername: string }
+  | { discordId: string }
+  | null {
+  const type = getIdType(id);
+
+  switch (type) {
+    case "minecraftUuid":
+      return { minecraftUuid: id };
+    case "minecraftUsername":
+      return { minecraftUsername: id };
+    case "discord":
+      return { discordId: id };
+    case "invalid":
+      return null;
+  }
 }

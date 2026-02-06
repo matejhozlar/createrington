@@ -15,6 +15,7 @@ import type {
   PlayerStrikeApiData,
   StrikeClassification,
   AdminLogActionApiData,
+  PlayerBanApiData,
 } from "../db";
 import type { DateToString } from "../types";
 import type { PaginationMeta } from "./common";
@@ -22,6 +23,50 @@ import type { PaginationMeta } from "./common";
 // ============================================================================
 // REQUEST SCHEMAS (Zod - Validates User Input)
 // ============================================================================
+
+/**
+ * Query parameters for GET /api/admin/players/:id/bans
+ */
+export const GetPlayerBansQuerySchema = z.object({
+  includeUnbanned: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((val) => val === "true")
+    .optional(),
+});
+
+/**
+ * Body for POST /api/admin/players/:id/bans/temporary
+ */
+export const IssueTemporaryBanBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+  durationDays: z.number().int().min(1).max(365),
+  serverId: z.number().int().positive().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+/**
+ * Body for POST /api/admin/players/:id/bans/permanent
+ */
+export const IssuePermanentBanBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+  serverId: z.number().int().positive().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+/**
+ * Path parameters for DELETE /api/admin/bans/:banId
+ */
+export const UnbanParamsSchema = z.object({
+  banId: z.coerce.number().int().positive(),
+});
+
+/**
+ * Body for DELETE /api/admin/bans/:banId
+ */
+export const UnbanBodySchema = z.object({
+  reason: z.string().min(1, "Reason is required"),
+});
 
 /**
  * Query parameters for GET /api/admin/players
@@ -32,6 +77,19 @@ export const GetAdminPlayersQuerySchema = z.object({
   minecraftUuid: z.string().optional(),
   minecraftUsername: z.string().optional(),
   online: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+
+  hasStrikes: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  hasBans: z
+    .enum(["true", "false"])
+    .transform((val) => val === "true")
+    .optional(),
+  hasViolations: z
     .enum(["true", "false"])
     .transform((val) => val === "true")
     .optional(),
@@ -47,6 +105,12 @@ export const GetAdminPlayersQuerySchema = z.object({
   orderDirection: z.enum(["asc", "desc"]).default("desc"),
 
   includeStrikeCounts: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((val) => val === "true")
+    .optional(),
+
+  includeBanCounts: z
     .enum(["true", "false"])
     .default("false")
     .transform((val) => val === "true")
@@ -196,10 +260,38 @@ export type IssueStrikeBody = z.infer<typeof IssueStrikeBodySchema>;
 export type RemoveStrikeParams = z.infer<typeof RemoveStrikeParamsSchema>;
 export type RemoveStrikeBody = z.infer<typeof RemoveStrikeBodySchema>;
 export type BulkBalanceAdjustBody = z.infer<typeof BulkBalanceAdjustBodySchema>;
+export type GetPlayerBansQuery = z.infer<typeof GetPlayerBansQuerySchema>;
+export type IssueTemporaryBanBody = z.infer<typeof IssueTemporaryBanBodySchema>;
+export type IssuePermanentBanBody = z.infer<typeof IssuePermanentBanBodySchema>;
+export type UnbanParams = z.infer<typeof UnbanParamsSchema>;
+export type UnbanBody = z.infer<typeof UnbanBodySchema>;
 
 // ============================================================================
 // RESPONSE DATA TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
+
+/**
+ * Ban statistics for a player
+ */
+export interface BanStatistics {
+  total: number;
+  active: number;
+  unbanned: number;
+  temporary: number;
+  permanent: number;
+  expired: number;
+}
+
+/**
+ * Ban data for admin view
+ */
+export interface AdminPlayerBans {
+  current: DateToString<PlayerBanApiData> | null;
+  history: DateToString<PlayerBanApiData>[];
+  active: DateToString<PlayerBanApiData>[];
+  activeCount: number;
+  totalCount: number;
+}
 
 /**
  * Admin action audit log entry
@@ -280,6 +372,7 @@ export interface AdminPlayerDetailed {
   tickets: AdminPlayerTickets;
   waitlist: DateToString<WaitlistEntryApiData> | null;
   strikes: AdminPlayerStrikes;
+  bans: AdminPlayerBans;
 }
 
 /**
@@ -347,6 +440,61 @@ export interface AdminPlayerStats {
 // ============================================================================
 // RESPONSE TYPES (Plain TypeScript - No Validation Needed)
 // ============================================================================
+
+/**
+ * Response for GET /api/admin/players/:id/bans
+ */
+export interface GetPlayerBansResponse {
+  success: true;
+  data: {
+    bans: DateToString<PlayerBanApiData>[];
+    statistics: BanStatistics;
+    current: DateToString<PlayerBanApiData> | null;
+  };
+}
+
+/**
+ * Response for POST /api/admin/players/:id/bans/temporary
+ */
+export interface IssueTemporaryBanResponse {
+  success: true;
+  data: {
+    ban: DateToString<PlayerBanApiData>;
+  };
+  message: string;
+}
+
+/**
+ * Response for POST /api/admin/players/:id/bans/permanent
+ */
+export interface IssuePermanentBanResponse {
+  success: true;
+  data: {
+    banId: number;
+  };
+  message: string;
+}
+
+/**
+ * Response for DELETE /api/admin/bans/:banId
+ */
+export interface UnbanResponse {
+  success: true;
+  data: {
+    ban: DateToString<PlayerBanApiData>;
+  };
+  message: string;
+}
+
+/**
+ * Response for GET /api/admin/bans/recent
+ */
+export interface GetRecentBansResponse {
+  success: true;
+  data: {
+    bans: DateToString<PlayerBanApiData>[];
+  };
+}
 
 /**
  * Response for GET /api/admin/players/:id

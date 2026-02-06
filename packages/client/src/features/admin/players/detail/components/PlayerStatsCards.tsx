@@ -6,17 +6,28 @@ import type { AdminPlayerDetailed } from "@createrington/shared/api";
 interface PlayerStatsCardsProps {
   player: AdminPlayerDetailed;
   onAdjustBalance: () => void;
-  onIssueStrike: () => void;
 }
 
 export function PlayerStatsCards({
   player,
   onAdjustBalance,
-  onIssueStrike,
 }: PlayerStatsCardsProps) {
   const balance = player.balance ? parseFloat(player.balance.balance) : 0;
   const totalPlaytimeHours = Math.floor(player.playtime.totalSeconds / 3600);
   const activeStrikes = player.strikes.activeCount;
+  const activeBans = player.bans.activeCount;
+  const totalStrikes = player.strikes.totalCount;
+  const totalBans = player.bans.totalCount;
+
+  // Calculate total offenses and determine color
+  const totalOffenses = activeStrikes + activeBans;
+  const allTimeOffenses = totalStrikes + totalBans;
+  const hasAnyBans = activeBans > 0;
+  const offenseColor = hasAnyBans
+    ? "red"
+    : activeStrikes > 0
+      ? "yellow"
+      : "green";
 
   return (
     <div className="mx-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -59,35 +70,34 @@ export function PlayerStatsCards({
         </p>
       </div>
 
-      {/* Strikes */}
+      {/* Active Offenses (Strikes + Bans) */}
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Active Strikes</p>
-            <p className="text-2xl font-semibold">{activeStrikes}</p>
+            <p className="text-sm text-muted-foreground">Active Offenses</p>
+            <p className="text-2xl font-semibold">{totalOffenses}</p>
           </div>
           <div
             className={cn(
               "flex size-12 items-center justify-center rounded-full",
-              activeStrikes > 0 ? "bg-destructive/10" : "bg-green-500/10",
+              offenseColor === "red" && "bg-destructive/10",
+              offenseColor === "yellow" && "bg-yellow-500/10",
+              offenseColor === "green" && "bg-green-500/10",
             )}
           >
             <AlertTriangle
               className={cn(
                 "size-6",
-                activeStrikes > 0 ? "text-destructive" : "text-green-500",
+                offenseColor === "red" && "text-destructive",
+                offenseColor === "yellow" && "text-yellow-500",
+                offenseColor === "green" && "text-green-500",
               )}
             />
           </div>
         </div>
-        <Button
-          size="sm"
-          variant="outline"
-          className="mt-4 w-full cursor-pointer"
-          onClick={onIssueStrike}
-        >
-          Issue Strike
-        </Button>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {allTimeOffenses} total
+        </p>
       </div>
 
       {/* Tickets */}

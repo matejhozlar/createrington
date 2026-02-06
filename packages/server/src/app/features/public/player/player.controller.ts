@@ -3,7 +3,7 @@ import {
   InternalServerError,
   NotFoundError,
 } from "@/app/middleware";
-import { getIdType } from "@/app/utils/helpers";
+import { idToObject } from "@/app/utils/helpers";
 import { Q } from "@/db";
 import {
   GetPlayerParamsSchema,
@@ -39,15 +39,12 @@ export class PlayerController {
       // Validate path parameters
       const { id } = GetPlayerParamsSchema.parse(req.params);
 
-      const idType = getIdType(id);
-      if (idType === "invalid") {
+      const identifier = idToObject(id);
+      if (!identifier) {
         throw new BadRequestError(
-          "Invalid player ID. Must be a Discord ID or Minecraft UUID.",
+          "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
         );
       }
-
-      const identifier =
-        idType === "discord" ? { discordId: id } : { minecraftUuid: id };
 
       const player = await Q.player.find(identifier);
 
