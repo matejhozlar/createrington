@@ -6,10 +6,10 @@ const router = Router();
 
 /**
  * Waitlist routes
- * Base path: /api/waitlist
+ * Base path: /api/waitlists
  */
 
-// POST /api/waitlist - Create new entry
+// POST /api/waitlists - Create new entry
 router.post("/", ...route(AuthLevel.PUBLIC, WaitlistController.create));
 
 export default router;

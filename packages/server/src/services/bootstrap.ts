@@ -22,6 +22,7 @@ import { RotatingStatusService } from "./discord/status";
 import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
+import { PlayerBanService } from "./player/ban";
 
 /**
  * Register all services with the container
@@ -171,6 +172,23 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_WEB_BOT] },
+  );
+
+  container.register(
+    Services.PLAYER_BAN_SERVICE,
+    async (c) => {
+      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const service = new PlayerBanService(mainBot);
+      await service.initialize();
+      return service;
+    },
+    {
+      dependencies: [
+        Services.DISCORD_MAIN_BOT,
+        Services.DATABASE,
+        Services.MESSAGE_SERVICE,
+      ],
+    },
   );
 
   // =========================================================================
