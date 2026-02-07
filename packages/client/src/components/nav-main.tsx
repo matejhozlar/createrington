@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/tooltip";
 import { NavLink } from "react-router-dom";
 import { Badge, IconBadge } from "./ui/badge";
+import { cn } from "@/lib/utils";
 
 export function NavMain({
   items,
@@ -40,26 +41,30 @@ export function NavMain({
                   end={item.url === "/" || item.url === "/market"}
                 >
                   {({ isActive }) => (
-                    <SidebarMenuButton isActive={isActive} size="lg">
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      size="lg"
+                      className={cn(isActive && "text-primary! bg-primary/5!")}
+                    >
                       {item.icon && (
                         <div className="relative">
                           <item.icon
-                            className={`size-6! transition-all ${state === "collapsed" ? "ml-3" : ""}`}
+                            className={cn(
+                              "size-6! transition-all",
+                              state === "collapsed" && "ml-3",
+                              isActive ? "text-primary/75!" : "text-zinc-400!",
+                            )}
                           />
-                          
-                          {item.badge && state === "collapsed" && (
-                            <IconBadge />
-                          )}
+
+                          {item.badge && state === "collapsed" && <IconBadge />}
                         </div>
                       )}
 
                       {item.title}
-                      
+
                       {item.badge && (
                         <SidebarMenuBadge>
-                          <Badge>
-                            {item.badge}
-                          </Badge>
+                          <Badge className="font-semibold bg-primary/90">{item.badge}</Badge>
                         </SidebarMenuBadge>
                       )}
                     </SidebarMenuButton>
