@@ -1,11 +1,10 @@
 import express, { type Express } from "express";
 import { registerRoutes } from "./features";
-import { errorHandler, notFoundHandler, ResponseHelpers } from "./middleware";
+import { errorHandler, notFoundHandler } from "./middleware";
 import cors from "cors";
 
 export function createApp(): Express {
   const app = express();
-  ResponseHelpers.initialize();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cors({ origin: true, credentials: true }));

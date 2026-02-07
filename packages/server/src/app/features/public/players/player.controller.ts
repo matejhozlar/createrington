@@ -1,10 +1,19 @@
-import { buildResponse, NotFoundError, TypedResponse } from "@/app/middleware";
+import {
+  BadRequestError,
+  buildResponse,
+  getValidated,
+  NotFoundError,
+  TypedResponse,
+} from "@/app/middleware";
 import { idToObject } from "@/app/utils/helpers";
 import { Q } from "@/db";
-import type {
-  GetPlayersResponse,
-  GetPlayerResponse,
-  GetPlayersCountResponse,
+import {
+  type GetPlayerResponse,
+  type GetPlayerParams,
+  type GetPlayersQuery,
+  type GetPlayersResponse,
+  type GetPlayersCountQuery,
+  type GetPlayersCountResponse,
 } from "@createrington/shared/api/public/players";
 import type { Request, Response } from "express";
 
@@ -24,18 +33,23 @@ export class PlayerController {
    * GET /api/players/550e8400-e29b-41d4-a716-446655440000
    * GET /api/players/Notch
    */
-  static async getPlayer(req: Request, res: Response): Promise<void> {
-    const { id } = req.validatedParams;
+  static async show(req: Request, res: Response): Promise<void> {
+    const { params } = getValidated<{
+      params: GetPlayerParams;
+      query: {};
+      body: {};
+    }>(res);
+
+    const { id } = params;
 
     const identifier = idToObject(id);
     if (!identifier) {
-      throw new NotFoundError(
+      throw new BadRequestError(
         "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
       );
     }
 
     const player = await Q.player.find(identifier);
-
     if (!player) {
       throw new NotFoundError(`Player with ID ${id} not found`);
     }
@@ -45,9 +59,8 @@ export class PlayerController {
       data: player,
     });
 
-    return TypedResponse.ok<GetPlayerResponse>(res, response);
+    return TypedResponse.ok(res, response);
   }
-
   /**
    * GET /api/players
    *
@@ -58,11 +71,14 @@ export class PlayerController {
    * GET /api/players?minecraftUsername=Steve
    * GET /api/players?isActive=true&orderBy=minecraftUsername&orderDirection=asc
    */
-  static async getPlayers(req: Request, res: Response): Promise<void> {
-    const query = req.validatedQuery;
+  static async index(req: Request, res: Response): Promise<void> {
+    const { query } = getValidated<{
+      params: {};
+      query: GetPlayersQuery;
+      body: {};
+    }>(res);
 
     const filters: any = {};
-
     if (query.discordId) filters.discordId = query.discordId;
     if (query.minecraftUuid) filters.minecraftUuid = query.minecraftUuid;
     if (query.minecraftUsername) {
@@ -72,14 +88,12 @@ export class PlayerController {
     }
     if (query.isActive !== undefined) filters.isActive = query.isActive;
 
-    const { orderBy, orderDirection, limit, page } = query;
-
     const [players, total] = await Promise.all([
       Q.player.findAll(filters, {
-        orderBy,
-        orderDirection,
-        limit,
-        offset: page * limit,
+        orderBy: query.orderBy,
+        orderDirection: query.orderDirection,
+        limit: query.limit,
+        offset: query.page * query.limit,
       }),
       Q.player.count(filters),
     ]);
@@ -97,9 +111,8 @@ export class PlayerController {
       },
     });
 
-    return TypedResponse.ok<GetPlayersResponse>(res, response);
+    return TypedResponse.ok(res, response);
   }
-
   /**
    * GET /api/players/count
    *
@@ -110,8 +123,12 @@ export class PlayerController {
    * GET /api/players/count?online=true
    * GET /api/players/count?currentServerId=1
    */
-  static async getCount(req: Request, res: Response): Promise<void> {
-    const query = req.validatedQuery;
+  static async count(req: Request, res: Response): Promise<void> {
+    const { query } = getValidated<{
+      params: {};
+      query: GetPlayersCountQuery;
+      body: {};
+    }>(res);
 
     const filters: any = {};
 
@@ -139,6 +156,6 @@ export class PlayerController {
       data: { count },
     });
 
-    return TypedResponse.ok<GetPlayersCountResponse>(res, response);
+    return TypedResponse.ok(res, response);
   }
 }

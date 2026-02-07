@@ -11,20 +11,36 @@ export interface RouteValidation {
 }
 
 /**
- * Creates a validation middleware that validates request data against Zod schemas
+ * Validated request data stored in res.locals
+ * This is more explicit and debuggable than magic req properties
+ */
+export interface ValidatedData<TParams = any, TQuery = any, TBody = any> {
+  params: TParams;
+  query: TQuery;
+  body: TBody;
+}
+
+/**
+ * Creates validation middleware that validates and stores parsed data in res.locals
  *
- * Automatically validates and attaches parsed data to req.validatedParams, req.validatedQuery, req.validatedBody
- * Throws ZodError on validation failure, which is caught by the error handler
- *
- * @param schemas - Object containing Zod schemas for params, query, and/or body
- * @returns Express middleware function
+ * Benefits over your current approach:
+ * - Explicit typing (no magic properties)
+ * - Standard Express pattern (res.locals)
+ * - Better autocomplete
+ * - Easier to debug
  *
  * @example
  * router.get(
  *   '/:id',
- *   validate({ params: GetPlayerParamsSchema, query: GetPlayerQuerySchema }),
+ *   validate({
+ *     params: GetPlayerParamsSchema,
+ *     query: GetPlayerQuerySchema
+ *   }),
  *   PlayerController.getPlayer
  * );
+ *
+ * // In controller:
+ * const { params, query } = res.locals.validated;
  */
 export function validate(schemas: RouteValidation) {
   return async (
@@ -33,27 +49,50 @@ export function validate(schemas: RouteValidation) {
     next: NextFunction,
   ): Promise<void> => {
     try {
-      if (schemas.params) {
-        req.validatedParams = await schemas.params.parseAsync(req.params);
-      }
-      if (schemas.query) {
-        req.validatedQuery = await schemas.query.parseAsync(req.query);
-      }
-      if (schemas.body) {
-        req.body = await schemas.body.parseAsync(req.body);
-      }
+      // Parse all schemas, defaulting to empty objects
+      const validated: ValidatedData = {
+        params: schemas.params
+          ? await schemas.params.parseAsync(req.params)
+          : {},
+        query: schemas.query ? await schemas.query.parseAsync(req.query) : {},
+        body: schemas.body ? await schemas.body.parseAsync(req.body) : {},
+      };
+
+      // Store in res.locals (standard Express pattern)
+      res.locals.validated = validated;
 
       next();
     } catch (error) {
+      // Zod errors are caught by error handler
       next(error);
     }
   };
 }
 
 /**
- * Shorthand validation functions for common scenarios
+ * Type helper for controllers to get validated data with proper types
+ *
+ * @example
+ * type Validated = ValidatedRequest<
+ *   typeof GetPlayerParamsSchema,
+ *   typeof GetPlayerQuerySchema
+ * >;
+ *
+ * const { params, query } = getValidated<Validated>(res);
  */
-export const validateParams = (schema: ZodSchema) =>
-  validate({ params: schema });
-export const validateQuery = (schema: ZodSchema) => validate({ query: schema });
-export const validateBody = (schema: ZodSchema) => validate({ body: schema });
+export type ValidatedRequest<
+  TParamsSchema extends ZodSchema = ZodSchema,
+  TQuerySchema extends ZodSchema = ZodSchema,
+  TBodySchema extends ZodSchema = ZodSchema,
+> = ValidatedData<
+  TParamsSchema extends ZodSchema ? ReturnType<TParamsSchema["parse"]> : never,
+  TQuerySchema extends ZodSchema ? ReturnType<TQuerySchema["parse"]> : never,
+  TBodySchema extends ZodSchema ? ReturnType<TBodySchema["parse"]> : never
+>;
+
+/**
+ * Helper to get typed validated data from res.locals
+ */
+export function getValidated<T extends ValidatedData>(res: Response): T {
+  return res.locals.validated as T;
+}

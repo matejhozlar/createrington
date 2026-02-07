@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { BadRequestError, NotFoundError } from "@/app/middleware";
+import { NotFoundError } from "@/app/middleware";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
 import {
   GetServerParamsSchema,

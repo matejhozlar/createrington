@@ -2,7 +2,7 @@ import type { Express } from "express";
 import waitlistRoutes from "./public/waitlists/waitlist.routes";
 import authRoutes from "./auth/auth.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
-import serverRoutes from "./public/server/server.routes";
+import serverRoutes from "./public/servers/server.routes";
 import playerRoutes from "./public/players/player.routes";
 import messageRoutes from "./user/message/message.routes";
 import adminPlayerRoutes from "./admin/player/admin-player.routes";

@@ -30,9 +30,15 @@ declare global {
       validatedBody?: any;
     }
     interface Response {
-      ok<T>(data: T, message?: string): void;
-      created<T>(data: T, message?: string): void;
-      noContent(): void;
+      /**
+       * Validated request data
+       * Set by validate() middleware
+       * Access via: const { params, query, body } = res.locals.validated;
+       */
+      locals: {
+        validated?: ValidatedData;
+        [key: string]: any;
+      };
     }
   }
 }
