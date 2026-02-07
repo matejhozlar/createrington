@@ -1,10 +1,11 @@
-import {
+import type {
+  GetPlayersQuery,
+  GetPlayersCountQuery,
+  GetPlayersCountResponse,
+  GetPlayerResponse,
   GetPlayersResponse,
-  type GetPlayerResponse,
-  type GetPlayersCountQuery,
-  type GetPlayersCountResponse,
-  type GetPlayersQuery,
-} from "@createrington/shared/api";
+} from "@createrington/shared/api/public/players";
+import type { Serialize } from "@createrington/shared/api/utils";
 import { api } from "../client";
 
 /**
@@ -31,7 +32,8 @@ export const playersApi = {
    * const server1 = await playersApi.getCount({ currentServerId: 1 });
    */
   async getCount(filters?: GetPlayersCountQuery): Promise<number> {
-    const response = await api.get<GetPlayersCountResponse>(
+    // Serialize<T> tells TypeScript that Dates become strings on client
+    const response = await api.get<Serialize<GetPlayersCountResponse>>(
       "/api/players/count",
       filters,
     );
@@ -42,14 +44,19 @@ export const playersApi = {
    * Get a single player by Discord ID or Minecraft UUID
    *
    * @param id - Discord ID or Minecraft UUID
-   * @returns Player data
+   * @returns Player data (with dates as strings)
    * @throws {Error} When the API request fails or player not found
    *
    * @example
    * const player = await playersApi.getById("123456789012345678");
+   * // player.createdAt is string (not Date)
+   * console.log(new Date(player.createdAt).toLocaleDateString());
    */
-  async getById(id: string): Promise<GetPlayerResponse["data"]> {
-    const response = await api.get<GetPlayerResponse>(`/api/players/${id}`);
+  async getById(id: string): Promise<Serialize<GetPlayerResponse>["data"]> {
+    // Serialize<GetPlayerResponse> = { success: true, data: { createdAt: string, ... } }
+    const response = await api.get<Serialize<GetPlayerResponse>>(
+      `/api/players/${id}`,
+    );
     return response.data;
   },
 
@@ -57,7 +64,7 @@ export const playersApi = {
    * Get all players with optional filtering, pagination, and sorting
    *
    * @param query - Query parameters for filtering, pagination, and sorting
-   * @returns Players and pagination metadata
+   * @returns Players and pagination metadata (dates as strings)
    * @throws {Error} When the API request fails
    *
    * @example
@@ -76,8 +83,12 @@ export const playersApi = {
    */
   async getAll(
     query?: Partial<GetPlayersQuery>,
-  ): Promise<GetPlayersResponse["data"]> {
-    const response = await api.get<GetPlayersResponse>("/api/players", query);
+  ): Promise<Serialize<GetPlayersResponse>["data"]> {
+    // Serialize transforms all Date fields to string
+    const response = await api.get<Serialize<GetPlayersResponse>>(
+      "/api/players",
+      query,
+    );
     return response.data;
   },
 };

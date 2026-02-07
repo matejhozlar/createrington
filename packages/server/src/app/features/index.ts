@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import waitlistRoutes from "./public/waitlist/waitlist.routes";
+import waitlistRoutes from "./public/waitlists/waitlist.routes";
 import authRoutes from "./auth/auth.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import serverRoutes from "./public/server/server.routes";

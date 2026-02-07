@@ -1,6 +1,11 @@
 import { waitlist, waitlistRepo } from "@/db";
 import type { Request, Response } from "express";
-import { BadRequestError, ConflictError } from "@/app/middleware";
+import {
+  BadRequestError,
+  ConflictError,
+  TypedResponse,
+} from "@/app/middleware";
+import type { CreateWaitlistEntryResponse } from "@createrington/shared/api/public/waitlists";
 
 /**
  * Waitlist controller
@@ -15,19 +20,10 @@ export class WaitlistController {
    * Body: { email: string, discordName: string }
    */
   static async create(req: Request, res: Response): Promise<void> {
-    const { email, discordName } = req.body;
+    const { email, discordName } = req.validatedBody;
 
-    if (!email || !discordName) {
-      throw new BadRequestError("Email and Discord name are required");
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new BadRequestError("Invalid email format");
-    }
-
-    const emailExists = await waitlist.entry.find({ email });
-    if (emailExists) {
+    const emailsExists = await waitlist.entry.find({ email });
+    if (emailsExists) {
       throw new ConflictError("This email is already on the waitlist");
     }
 
@@ -44,7 +40,7 @@ export class WaitlistController {
     });
 
     if (result.autoInvited && result.token) {
-      res.status(201).json({
+      return TypedResponse.created<CreateWaitlistEntryResponse>(res, {
         success: true,
         data: {
           entry: result.entry,
@@ -52,17 +48,18 @@ export class WaitlistController {
           token: result.token,
           redirectUrl: `/invite/${encodeURIComponent(result.token)}`,
         },
-        message: "You were auto-invited. Check your email for the invite link.",
+        message:
+          "You were auto-invited. Check your email address for the invite link.",
       });
     } else {
-      res.status(201).json({
-        sucess: true,
+      return TypedResponse.created<CreateWaitlistEntryResponse>(res, {
+        success: true,
         data: {
           entry: result.entry,
           autoInvited: false,
         },
         message:
-          "Thanks! We've added you to the waitlist. We'll contact when a spot opens up.",
+          "Thanks! We've added you to the waitlist. We'll contact you when a spot opens up.",
       });
     }
   }
