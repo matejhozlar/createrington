@@ -12,7 +12,6 @@ export interface RouteValidation {
 
 /**
  * Validated request data stored in res.locals
- * This is more explicit and debuggable than magic req properties
  */
 export interface ValidatedData<TParams = any, TQuery = any, TBody = any> {
   params: TParams;
@@ -22,12 +21,6 @@ export interface ValidatedData<TParams = any, TQuery = any, TBody = any> {
 
 /**
  * Creates validation middleware that validates and stores parsed data in res.locals
- *
- * Benefits over your current approach:
- * - Explicit typing (no magic properties)
- * - Standard Express pattern (res.locals)
- * - Better autocomplete
- * - Easier to debug
  *
  * @example
  * router.get(
@@ -39,8 +32,11 @@ export interface ValidatedData<TParams = any, TQuery = any, TBody = any> {
  *   PlayerController.getPlayer
  * );
  *
- * // In controller:
- * const { params, query } = res.locals.validated;
+ * // In controller - only specify what you validated!
+ * const { params, query } = getValidated<{
+ *   params: GetPlayerParams;
+ *   query: GetPlayerQuery;
+ * }>(res);
  */
 export function validate(schemas: RouteValidation) {
   return async (
@@ -70,29 +66,30 @@ export function validate(schemas: RouteValidation) {
 }
 
 /**
- * Type helper for controllers to get validated data with proper types
+ * Helper to get typed validated data from res.locals
+ * Only specify the parts you actually validated!
  *
  * @example
- * type Validated = ValidatedRequest<
- *   typeof GetPlayerParamsSchema,
- *   typeof GetPlayerQuerySchema
- * >;
+ * // Only params
+ * const { params } = getValidated<{ params: GetPlayerParams }>(res);
  *
- * const { params, query } = getValidated<Validated>(res);
+ * @example
+ * // Params and query
+ * const { params, query } = getValidated<{
+ *   params: GetPlayerParams;
+ *   query: GetPlayersQuery;
+ * }>(res);
+ *
+ * @example
+ * // All three
+ * const { params, query, body } = getValidated<{
+ *   params: GetPlayerParams;
+ *   query: GetPlayersQuery;
+ *   body: CreatePlayerBody;
+ * }>(res);
  */
-export type ValidatedRequest<
-  TParamsSchema extends ZodSchema = ZodSchema,
-  TQuerySchema extends ZodSchema = ZodSchema,
-  TBodySchema extends ZodSchema = ZodSchema,
-> = ValidatedData<
-  TParamsSchema extends ZodSchema ? ReturnType<TParamsSchema["parse"]> : never,
-  TQuerySchema extends ZodSchema ? ReturnType<TQuerySchema["parse"]> : never,
-  TBodySchema extends ZodSchema ? ReturnType<TBodySchema["parse"]> : never
->;
-
-/**
- * Helper to get typed validated data from res.locals
- */
-export function getValidated<T extends ValidatedData>(res: Response): T {
-  return res.locals.validated as T;
+export function getValidated<T extends Partial<ValidatedData>>(
+  res: Response,
+): ValidatedData & T {
+  return res.locals.validated as ValidatedData & T;
 }

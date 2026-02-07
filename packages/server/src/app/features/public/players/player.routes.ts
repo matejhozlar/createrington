@@ -60,7 +60,7 @@ router.get(
   ...route(
     "public",
     validate({ query: GetPlayersQuerySchema }),
-    PlayerController.index,
+    PlayerController.getAll,
   ),
 );
 
@@ -80,7 +80,7 @@ router.get(
   ...route(
     "public",
     validate({ params: GetPlayerParamsSchema }),
-    PlayerController.show,
+    PlayerController.get,
   ),
 );
 

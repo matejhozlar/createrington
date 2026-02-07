@@ -33,11 +33,9 @@ export class PlayerController {
    * GET /api/players/550e8400-e29b-41d4-a716-446655440000
    * GET /api/players/Notch
    */
-  static async show(req: Request, res: Response): Promise<void> {
+  static async get(req: Request, res: Response): Promise<void> {
     const { params } = getValidated<{
       params: GetPlayerParams;
-      query: {};
-      body: {};
     }>(res);
 
     const { id } = params;
@@ -71,11 +69,9 @@ export class PlayerController {
    * GET /api/players?minecraftUsername=Steve
    * GET /api/players?isActive=true&orderBy=minecraftUsername&orderDirection=asc
    */
-  static async index(req: Request, res: Response): Promise<void> {
+  static async getAll(req: Request, res: Response): Promise<void> {
     const { query } = getValidated<{
-      params: {};
       query: GetPlayersQuery;
-      body: {};
     }>(res);
 
     const filters: any = {};
@@ -125,9 +121,7 @@ export class PlayerController {
    */
   static async count(req: Request, res: Response): Promise<void> {
     const { query } = getValidated<{
-      params: {};
       query: GetPlayersCountQuery;
-      body: {};
     }>(res);
 
     const filters: any = {};
