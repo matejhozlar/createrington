@@ -687,13 +687,13 @@ export function AdminPlayers() {
               </div>
 
               {/* Pagination */}
-              <div className="flex items-center border-t border-border p-4">
+              <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <p className="text-sm text-muted-foreground">
                   Showing {page * limit + 1}-
                   {Math.min((page + 1) * limit, total)} of {total} players
                 </p>
 
-                <PaginationContent className="flex-nowrap justify-end ml-auto">
+                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
