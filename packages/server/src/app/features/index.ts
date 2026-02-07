@@ -3,7 +3,7 @@ import waitlistRoutes from "./public/waitlist/waitlist.routes";
 import authRoutes from "./auth/auth.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import serverRoutes from "./public/server/server.routes";
-import playerRoutes from "./public/player/player.routes";
+import playerRoutes from "./public/players/player.routes";
 import messageRoutes from "./user/message/message.routes";
 import adminPlayerRoutes from "./admin/player/admin-player.routes";
 import adminWaitlistRoutes from "./admin/waitlist/admin-waitlist.routes";

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import type { ZodSchema } from "zod/v3";
+import type { ZodSchema } from "zod";
 
 /**
  * Validation schemas for a route
