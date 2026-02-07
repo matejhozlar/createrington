@@ -29,14 +29,7 @@ const router = Router();
  *
  * Response: GetAllServersResponse
  */
-router.get(
-  "/",
-  ...route(
-    "public",
-    validate({ params: GetServerParamsSchema }),
-    ServerController.getAll,
-  ),
-);
+router.get("/", ...route("public", ServerController.getAll));
 
 /**
  * GET /api/servers/:id
@@ -54,6 +47,13 @@ router.get(
  * Response: GetServerResponse
  * Errors: 400 (invalid ID), 404 (server not found)
  */
-router.get("/:id", ...route("public", ServerController.get));
+router.get(
+  "/:id",
+  ...route(
+    "public",
+    validate({ params: GetServerParamsSchema }),
+    ServerController.get,
+  ),
+);
 
 export default router;
