@@ -57,7 +57,7 @@ export class PlayerController {
       data: player,
     });
 
-    return TypedResponse.ok(res, response);
+    return TypedResponse.ok<GetPlayerResponse>(res, response);
   }
   /**
    * GET /api/players
@@ -107,7 +107,7 @@ export class PlayerController {
       },
     });
 
-    return TypedResponse.ok(res, response);
+    return TypedResponse.ok<GetPlayersResponse>(res, response);
   }
   /**
    * GET /api/players/count
@@ -150,6 +150,6 @@ export class PlayerController {
       data: { count },
     });
 
-    return TypedResponse.ok(res, response);
+    return TypedResponse.ok<GetPlayersCountResponse>(res, response);
   }
 }
