@@ -87,21 +87,21 @@ export class ServerController {
       }
 
       servers.sort((a, b) => a.serverId - b.serverId);
-
-      const response = buildResponse<GetServersResponse>({
-        success: true,
-        data: {
-          servers,
-          summary: {
-            totalServers: servers.length,
-            onlineServers,
-            totalPlayers,
-          },
-        },
-      });
-
-      return TypedResponse.ok<GetServersResponse>(res, response);
     }
+
+    const response = buildResponse<GetServersResponse>({
+      success: true,
+      data: {
+        servers,
+        summary: {
+          totalServers: servers.length,
+          onlineServers,
+          totalPlayers,
+        },
+      },
+    });
+
+    return TypedResponse.ok<GetServersResponse>(res, response);
   }
 
   /**
