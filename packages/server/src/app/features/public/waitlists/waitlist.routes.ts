@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { route } from "@/app/middleware";
+import { route, validate } from "@/app/middleware";
 import { WaitlistController } from "./waitlist.controller";
+import { CreateWaitlistEntryBodySchema } from "@createrington/shared/api/public/waitlists";
 
 const router = Router();
 
@@ -10,6 +11,10 @@ const router = Router();
  */
 
 // POST /api/waitlists - Create new entry
-router.post("/", ...route("public", WaitlistController.create));
+router.post(
+  "/",
+  validate({ body: CreateWaitlistEntryBodySchema }),
+  ...route("public", WaitlistController.create),
+);
 
 export default router;

@@ -1,11 +1,10 @@
 import { waitlist, waitlistRepo } from "@/db";
 import type { Request, Response } from "express";
-import {
-  BadRequestError,
-  ConflictError,
-  TypedResponse,
-} from "@/app/middleware";
-import type { CreateWaitlistEntryResponse } from "@createrington/shared/api/public/waitlists";
+import { ConflictError, getValidated, TypedResponse } from "@/app/middleware";
+import type {
+  CreateWaitlistEntryResponse,
+  CreateWaitlistEntryBody,
+} from "@createrington/shared/api/public/waitlists";
 
 /**
  * Waitlist controller
@@ -20,7 +19,11 @@ export class WaitlistController {
    * Body: { email: string, discordName: string }
    */
   static async create(req: Request, res: Response): Promise<void> {
-    const { email, discordName } = req.validatedBody;
+    const { body } = getValidated<{
+      body: CreateWaitlistEntryBody;
+    }>(res);
+
+    const { email, discordName } = body;
 
     const emailsExists = await waitlist.entry.find({ email });
     if (emailsExists) {

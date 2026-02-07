@@ -3,22 +3,6 @@
  */
 
 // ============================================================================
-// REQUEST SCHEMAS
-// ============================================================================
-
-/**
- * Place query and body schemas here
- *
- * @example
- * // Query parameters for GET /api/players/:id
- * //
- * // Validates the player ID from the URL path
- * export const GetPlayerParamsSchema = z.object({
- *  id: z.string().min(1, "Player ID is required"),
- * });
- */
-
-// ============================================================================
 // REQUEST TYPES (Auto-Inferred from Schemas)
 // ============================================================================
 

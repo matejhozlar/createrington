@@ -1,6 +1,7 @@
-import { route } from "@/app/middleware";
+import { route, validate } from "@/app/middleware";
 import { Router } from "express";
 import { ServerController } from "./server.controller";
+import { GetServerParamsSchema } from "@createrington/shared/api/public/servers";
 
 const router = Router();
 
@@ -28,7 +29,14 @@ const router = Router();
  *
  * Response: GetAllServersResponse
  */
-router.get("/", ...route("public", ServerController.getAllServers));
+router.get(
+  "/",
+  ...route(
+    "public",
+    validate({ params: GetServerParamsSchema }),
+    ServerController.getAll,
+  ),
+);
 
 /**
  * GET /api/servers/:id
@@ -46,6 +54,6 @@ router.get("/", ...route("public", ServerController.getAllServers));
  * Response: GetServerResponse
  * Errors: 400 (invalid ID), 404 (server not found)
  */
-router.get("/:id", ...route("public", ServerController.getServer));
+router.get("/:id", ...route("public", ServerController.get));
 
 export default router;

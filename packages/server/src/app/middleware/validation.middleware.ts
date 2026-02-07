@@ -66,6 +66,16 @@ export function validate(schemas: RouteValidation) {
 }
 
 /**
+ * Merge validated types properly, overriding 'any' defaults
+ * when specific types are provided
+ */
+type MergeValidated<T> = {
+  params: T extends { params: infer P } ? P : any;
+  query: T extends { query: infer Q } ? Q : any;
+  body: T extends { body: infer B } ? B : any;
+};
+
+/**
  * Helper to get typed validated data from res.locals
  * Only specify the parts you actually validated!
  *
@@ -90,6 +100,6 @@ export function validate(schemas: RouteValidation) {
  */
 export function getValidated<T extends Partial<ValidatedData>>(
   res: Response,
-): ValidatedData & T {
-  return res.locals.validated as ValidatedData & T;
+): MergeValidated<T> {
+  return res.locals.validated as MergeValidated<T>;
 }
