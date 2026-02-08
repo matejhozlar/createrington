@@ -68,7 +68,6 @@ jobs:
         run: npm run test:unit
 
       - name: Run integration tests
-        if: false # Enable when integration tests are ready
         working-directory: ./packages/server
         run: npm run test:integration
 

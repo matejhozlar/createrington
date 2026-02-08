@@ -25,10 +25,12 @@ export default defineConfig({
       ],
     },
     testTimeout: 10000,
+    fileParallelism: false,
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@createrington/shared": path.resolve(__dirname, "../shared/src"),
     },
   },
 });
