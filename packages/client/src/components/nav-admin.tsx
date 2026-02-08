@@ -1,4 +1,3 @@
-// packages/client/src/components/nav-admin.tsx
 import {
   type LucideIcon,
   ChevronDown,
