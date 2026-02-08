@@ -15,7 +15,7 @@ import crypto from "node:crypto";
 
 interface RegistrationResult {
   entry: WaitlistEntry;
-  autoInvited: boolean;
+  autoAccepted: boolean;
   token?: string;
 }
 
@@ -28,17 +28,16 @@ export enum ProgressStep {
 
 export class WaitlistRepository {
   // ============================================================================
-  // PRIVATE HELPERS
+  // CAPACITY CHECK
   // ============================================================================
 
   /**
-   * Checks if auto-invite should be triggered
+   * Checks if the server has capacity for new players
    * Based on current player count vs limit
    *
-   * @returns True if should auto-invite
-   * @private
+   * @returns True if under player limit
    */
-  private async checkAutoInviteEligibility(): Promise<boolean> {
+  async hasCapacity(): Promise<boolean> {
     try {
       const currentPlayers = await Q.player.count();
 
@@ -48,66 +47,38 @@ export class WaitlistRepository {
         Number.isFinite(playerLimit) && playerLimit > currentPlayers;
 
       logger.debug(
-        `Auto-invite check: players=${currentPlayers}, limit=${playerLimit}, hasCapacity=${hasCapacity}`,
+        `Capacity check: players=${currentPlayers}, limit=${playerLimit}, hasCapacity=${hasCapacity}`,
       );
 
       return hasCapacity;
     } catch (error) {
-      logger.error("Failed to check auto-invite eligibility:", error);
+      logger.error("Failed to check capacity:", error);
       return false;
     }
   }
 
-  /**
-   * Auto-invites a user
-   * Generates token, updates entry, sends emails and Discord notifications
-   *
-   * @param entryId - Waitlist entry ID
-   * @returns Generated token
-   * @private
-   */
-  private async autoInvite(entryId: number): Promise<string> {
-    const entry = await Q.waitlist.entry.get({ id: entryId });
-
-    const token = crypto.randomBytes(32).toString("hex");
-
-    await Q.waitlist.entry.update(
-      { id: entryId },
-      {
-        token,
-        status: "accepted",
-        acceptedAt: new Date(),
-        acceptedBy: config.discord.bots.main.id,
-      },
-    );
-
-    await email.sendTemplate(entry.email, EmailTemplate.WAITLIST_INVITATION, {
-      discordName: entry.discordName,
-      token,
-    });
-
-    return token;
-  }
+  // ============================================================================
+  // PRIVATE HELPERS
+  // ============================================================================
 
   /**
    * Notifies admins in Discord about new waitlist entry
    *
    * @param entry - Waitlist entry
-   * @param autoInvited - Whether the user was autoInvited
+   * @param autoAccepted - Whether the user was auto-accepted
    * @private
    */
   private async notifyAdmins(
     entry: WaitlistEntry,
-    autoInvited: boolean,
+    autoAccepted: boolean,
   ): Promise<string | null> {
     try {
-      if (autoInvited) {
+      if (autoAccepted) {
         const { embed, components, content } =
-          EmbedPresets.waitlist.autoInviteNotification({
+          EmbedPresets.waitlist.autoAcceptNotification({
             id: entry.id,
             email: entry.email,
             discordName: entry.discordName,
-            success: true,
             botMention: `<@${config.discord.bots.main.id}>` || "bot",
           });
 
@@ -133,7 +104,7 @@ export class WaitlistRepository {
         });
 
         logger.debug(
-          `Admin notification sent for entry #${entry.id} (autoInvited: ${autoInvited})`,
+          `Admin notification sent for entry #${entry.id} (autoAccepted: ${autoAccepted})`,
         );
 
         return result.messageId || null;
@@ -169,63 +140,57 @@ export class WaitlistRepository {
   /**
    * Registers a new user to the waitlist with full notification flow
    *
-   * Handles:
-   * - Entry creation
-   * - Auto-invite check
-   * - Token generation
-   * - Email notifications
-   * - Discord notifications
+   * Two modes based on capacity:
+   * - Under capacity (open mode): Auto-accepted, token generated, no email sent
+   * - At/over capacity (waitlist mode): Pending status, confirmation email sent
    *
    * @param data - User registration data
-   * @returns Registration result with auto-invite status
+   * @returns Registration result with auto-accept status
    */
   async register(data: WaitlistEntryCreate): Promise<RegistrationResult> {
-    const entry = await Q.waitlist.entry.createAndReturn({
-      email: data.email,
-      discordName: data.discordName,
-    });
+    const shouldAutoAccept = await this.hasCapacity();
 
-    logger.info(
-      `New waitlist entry: ${data.email} (${data.discordName}) - ID: ${entry.id}`,
-    );
+    if (shouldAutoAccept) {
+      const token = crypto.randomBytes(32).toString("hex");
 
-    const shouldAutoInvite = await this.checkAutoInviteEligibility();
+      const entry = await Q.waitlist.entry.createAndReturn({
+        email: data.email,
+        discordName: data.discordName,
+        metadata: data.metadata,
+        token,
+        status: "auto_accepted",
+        acceptedAt: new Date(),
+        acceptedBy: config.discord.bots.main.id,
+      });
 
-    if (shouldAutoInvite) {
-      try {
-        const token = await this.autoInvite(entry.id);
+      logger.info(
+        `New waitlist entry (auto-accepted): ${data.discordName} - ID: ${entry.id}`,
+      );
 
-        const messageId = await this.notifyAdmins(entry, true);
-        if (messageId) {
-          await Q.waitlist.entry.update(
-            { id: entry.id },
-            { discordMessageId: messageId },
-          );
-        }
-        logger.info(`Auto-invited waitlist entry #${entry.id}`);
-
-        return {
-          entry: { ...entry, token },
-          autoInvited: true,
-          token,
-        };
-      } catch (error) {
-        logger.error(`Auto-invite failed for entry ${entry.id}:`, error);
-
-        const messageId = await this.notifyAdmins(entry, false);
-        if (messageId) {
-          await Q.waitlist.entry.update(
-            { id: entry.id },
-            { discordMessageId: messageId },
-          );
-        }
-
-        return {
-          entry,
-          autoInvited: false,
-        };
+      const messageId = await this.notifyAdmins(entry, true);
+      if (messageId) {
+        await Q.waitlist.entry.update(
+          { id: entry.id },
+          { discordMessageId: messageId },
+        );
       }
+
+      return {
+        entry,
+        autoAccepted: true,
+        token,
+      };
     } else {
+      const entry = await Q.waitlist.entry.createAndReturn({
+        email: data.email,
+        discordName: data.discordName,
+        metadata: data.metadata,
+      });
+
+      logger.info(
+        `New waitlist entry (pending): ${data.email} (${data.discordName}) - ID: ${entry.id}`,
+      );
+
       const messageId = await this.notifyAdmins(entry, false);
       if (messageId) {
         await Q.waitlist.entry.update(
@@ -234,17 +199,19 @@ export class WaitlistRepository {
         );
       }
 
-      await email.sendTemplate(
-        data.email,
-        EmailTemplate.WAITLIST_CONFIRMATION,
-        {
-          discordName: data.discordName,
-        },
-      );
+      if (data.email) {
+        await email.sendTemplate(
+          data.email,
+          EmailTemplate.WAITLIST_CONFIRMATION,
+          {
+            discordName: data.discordName,
+          },
+        );
+      }
 
       return {
         entry,
-        autoInvited: false,
+        autoAccepted: false,
       };
     }
   }
@@ -273,10 +240,12 @@ export class WaitlistRepository {
       },
     );
 
-    await email.sendTemplate(entry.email, EmailTemplate.WAITLIST_INVITATION, {
-      discordName: entry.discordName,
-      token,
-    });
+    if (entry.email) {
+      await email.sendTemplate(entry.email, EmailTemplate.WAITLIST_INVITATION, {
+        discordName: entry.discordName,
+        token,
+      });
+    }
 
     await this.updateProgressEmbed(entryId);
 
@@ -366,7 +335,7 @@ export class WaitlistRepository {
       await tx.waitlist.entry.delete({ id: entryId });
 
       logger.info(
-        `Admin ${adminDiscordUsername} deleted waitlist entry #${entryId} (${entry.email})`,
+        `Admin ${adminDiscordUsername} deleted waitlist entry #${entryId} (${entry.email || entry.discordName})`,
       );
     });
   }
@@ -457,6 +426,7 @@ export class WaitlistRepository {
     total: number;
     pending: number;
     accepted: number;
+    autoAccepted: number;
     rejected: number;
     verified: number;
     registered: number;
@@ -476,6 +446,7 @@ export class WaitlistRepository {
       total,
       pending,
       accepted,
+      autoAccepted,
       rejected,
       verified,
       registered,
@@ -487,6 +458,7 @@ export class WaitlistRepository {
       Q.waitlist.entry.count(),
       Q.waitlist.entry.count({ status: "pending" }),
       Q.waitlist.entry.count({ status: "accepted" }),
+      Q.waitlist.entry.count({ status: "auto_accepted" }),
       Q.waitlist.entry.count({ status: "declined" }),
       Q.waitlist.entry.count({ verified: true }),
       Q.waitlist.entry.count({ registered: true }),
@@ -500,6 +472,7 @@ export class WaitlistRepository {
       total,
       pending,
       accepted,
+      autoAccepted,
       rejected,
       verified,
       registered,

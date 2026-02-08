@@ -26,7 +26,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.waitlist_entry (
     id integer NOT NULL,
-    email text NOT NULL,
+    email text,
     discord_name text NOT NULL,
     discord_id text,
     token text,
@@ -38,7 +38,8 @@ CREATE TABLE public.waitlist_entry (
     registered boolean DEFAULT false NOT NULL,
     joined_minecraft boolean DEFAULT false NOT NULL,
     accepted_at timestamp with time zone,
-    accepted_by text
+    accepted_by text,
+    metadata jsonb
 );
 
 
@@ -48,7 +49,14 @@ ALTER TABLE public.waitlist_entry OWNER TO postgres;
 -- Name: TABLE waitlist_entry; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON TABLE public.waitlist_entry IS 'Stores waitlist entries with progress tracking for new player onboarding';
+COMMENT ON TABLE public.waitlist_entry IS 'Stores waitlist entries with progress tracking for new player onboarding. When under PLAYER_LIMIT, entries are auto-accepted without email. When at capacity, entries require email and go through admin review.';
+
+
+--
+-- Name: COLUMN waitlist_entry.email; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.waitlist_entry.email IS 'Email address, required only when server is at player capacity (waitlist mode)';
 
 
 --
@@ -62,7 +70,7 @@ COMMENT ON COLUMN public.waitlist_entry.discord_message_id IS 'Discord message I
 -- Name: COLUMN waitlist_entry.status; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.waitlist_entry.status IS 'Current status: pending (waiting for admin), accepted (invite sent), declined (rejected), completed (fully onboarded)';
+COMMENT ON COLUMN public.waitlist_entry.status IS 'Current status: pending (waiting for admin review), auto_accepted (auto-invited when under player limit), accepted (admin approved), declined (rejected), completed (fully onboarded)';
 
 
 --
@@ -97,7 +105,14 @@ COMMENT ON COLUMN public.waitlist_entry.joined_minecraft IS 'True when user join
 -- Name: COLUMN waitlist_entry.accepted_by; Type: COMMENT; Schema: public; Owner: postgres
 --
 
-COMMENT ON COLUMN public.waitlist_entry.accepted_by IS 'Discord ID of the admin who accepted the entry';
+COMMENT ON COLUMN public.waitlist_entry.accepted_by IS 'Discord ID of the admin who accepted the entry (NULL for auto-accepted entries)';
+
+
+--
+-- Name: COLUMN waitlist_entry.metadata; Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON COLUMN public.waitlist_entry.metadata IS 'Optional metadata JSON (e.g. referral_source, notes)';
 
 
 --
@@ -151,14 +166,6 @@ ALTER TABLE ONLY public.waitlist_entry
 
 ALTER TABLE ONLY public.waitlist_entry
     ADD CONSTRAINT uq_waitlist_discord_name UNIQUE (discord_name);
-
-
---
--- Name: waitlist_entry uq_waitlist_email; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.waitlist_entry
-    ADD CONSTRAINT uq_waitlist_email UNIQUE (email);
 
 
 --

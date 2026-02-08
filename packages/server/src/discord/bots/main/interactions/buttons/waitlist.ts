@@ -105,16 +105,21 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
     const entry = await waitlist.entry.get({ id: parsedId });
 
     if (action === "accept") {
-      if (entry.status === "accepted" || entry.token) {
+      if (
+        entry.status === "accepted" ||
+        entry.status === "auto_accepted" ||
+        entry.token
+      ) {
         await interaction.editReply(`⚠️ This user has already been invited`);
         return;
       }
 
       await waitlistRepo.manualInvite(parsedId, interaction.user.id);
 
-      await interaction.editReply(
-        `✅ Invite sent successfully to ${entry.email}. Progress tracking is now active!`,
-      );
+      const replyMessage = entry.email
+        ? `✅ Invite sent successfully to ${entry.email}. Progress tracking is now active!`
+        : `✅ Entry accepted (no email on file). Progress tracking is now active!`;
+      await interaction.editReply(replyMessage);
 
       logger.info(`Waitlist entry ${id} accepted by ${interaction.user.tag}`);
     } else if (action === "decline") {

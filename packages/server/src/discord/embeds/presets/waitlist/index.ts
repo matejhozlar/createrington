@@ -8,13 +8,17 @@ export const WaitlistEmbedPresets = {
   /**
    * Admin notification for new waitlist submission
    */
-  adminNotification(data: { id: number; discordName: string; email: string }) {
+  adminNotification(data: {
+    id: number;
+    discordName: string;
+    email: string | null;
+  }) {
     const embed = createEmbed()
       .title("📥 New Waitlist Submission")
       .color(EmbedColors.Info)
       .field("🆔 Submission ID", data.id.toString())
       .field("💬 Discord", data.discordName)
-      .field("📧 Email", data.email)
+      .field("📧 Email", data.email || "N/A")
       .build();
 
     // Use reusable button presets
@@ -31,30 +35,27 @@ export const WaitlistEmbedPresets = {
   },
 
   /**
-   * Auto-invite notification (no action buttons, just admin panel link)
+   * Auto-accept notification (no action buttons, just admin panel link)
    */
-  autoInviteNotification(data: {
+  autoAcceptNotification(data: {
     id: number;
     discordName: string;
-    email: string;
-    success: boolean;
+    email: string | null;
     botMention: string;
   }) {
     const embed = createEmbed()
-      .title("📥 New Waitlist Submission")
-      .color(data.success ? EmbedColors.Success : EmbedColors.Error)
+      .title("📥 New Waitlist Submission (Auto-Accepted)")
+      .color(EmbedColors.Success)
       .field("🆔 Submission ID", data.id.toString())
       .field("💬 Discord", data.discordName)
-      .field("📧 Email", data.email)
+      .field("📧 Email", data.email || "N/A")
       .build();
 
     const linkRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       ButtonPresets.links.adminPanel(),
     );
 
-    const content = data.success
-      ? `✅ Accepted by ${data.botMention}`
-      : "Auto-invite attempted — please review.";
+    const content = `✅ Auto-accepted by ${data.botMention}`;
 
     return { embed, components: [linkRow], content };
   },
@@ -70,7 +71,7 @@ export const WaitlistEmbedPresets = {
     const steps = [
       {
         name: "Accepted",
-        done: entry.status === "accepted",
+        done: entry.status === "accepted" || entry.status === "auto_accepted",
         timestamp: entry.acceptedAt,
       },
       { name: "Joined Discord", done: entry.joinedDiscord },

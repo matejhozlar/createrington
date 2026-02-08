@@ -105,8 +105,11 @@ export function DeleteWaitlistModal({
 
           <p className="mb-4 text-sm text-muted-foreground">
             This will permanently delete the waitlist entry for{" "}
-            <span className="font-semibold">{entry.email}</span> (
-            {entry.discordName}). This action cannot be undone.
+            <span className="font-semibold">
+              {entry.email || entry.discordName}
+            </span>
+            {entry.email ? ` (${entry.discordName})` : ""}. This action cannot
+            be undone.
           </p>
 
           <div className="space-y-4">
@@ -118,7 +121,7 @@ export function DeleteWaitlistModal({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium">{entry.email}</span>
+                  <span className="font-medium">{entry.email || "-"}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Discord:</span>

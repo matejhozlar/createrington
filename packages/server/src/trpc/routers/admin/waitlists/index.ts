@@ -19,7 +19,7 @@ export const waitlistsRouter = router({
     .input(
       z.object({
         status: z
-          .enum(["pending", "accepted", "declined", "completed"])
+          .enum(["pending", "auto_accepted", "accepted", "declined", "completed"])
           .optional(),
         email: z.string().optional(),
         discordName: z.string().optional(),
