@@ -22,6 +22,17 @@ export function createApp(): Express {
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError({ error, path }) {
+        if (error.code === "INTERNAL_SERVER_ERROR") {
+          logger.error(`[tRPC] ${path}:`, {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          });
+        } else {
+          logger.warn(`[tRPC] ${path}: ${error.message}`);
+        }
+      },
     }),
   );
 

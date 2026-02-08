@@ -1,12 +1,16 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
+import config from "@/config";
 
 export interface Meta {
   description?: string;
 }
 
-const t = initTRPC.context<Context>().meta<Meta>().create();
+const t = initTRPC
+  .context<Context>()
+  .meta<Meta>()
+  .create({ isDev: config.envMode.isDev });
 
 export const router = t.router;
 export const middleware = t.middleware;
@@ -32,14 +36,7 @@ const isAuthenticated = middleware(async ({ ctx, next }) => {
 });
 
 const isAdmin = middleware(async ({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Authentication required",
-    });
-  }
-
-  if (!ctx.user.isAdmin) {
+  if (!ctx.user?.isAdmin) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Admin access required",
@@ -50,4 +47,4 @@ const isAdmin = middleware(async ({ ctx, next }) => {
 });
 
 export const userProcedure = t.procedure.use(isAuthenticated);
-export const adminProcedure = t.procedure.use(isAdmin);
+export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
