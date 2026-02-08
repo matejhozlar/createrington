@@ -207,3 +207,4 @@ CREATE INDEX idx_waitlist_token ON public.waitlist_entry USING btree (token);
 --
 -- PostgreSQL database dump complete
 --
+
