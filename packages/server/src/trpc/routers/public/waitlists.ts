@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../../trpc";
 import { waitlist, waitlistRepo } from "@/db";
-import { CreateWaitlistEntryBodySchema } from "@createrington/shared/api/public/waitlists";
+import { z } from "zod";
 
 export const waitlistsRouter = router({
   create: publicProcedure
@@ -9,7 +9,15 @@ export const waitlistsRouter = router({
       description:
         "Registers a new waitlist entry. Checks for duplicate email/Discord name (throws CONFLICT). If auto-invite is enabled and spots are available, returns a token and redirect URL; otherwise returns a pending message.",
     })
-    .input(CreateWaitlistEntryBodySchema)
+    .input(
+      z.object({
+        email: z.email("Invalid email format"),
+        discordName: z
+          .string()
+          .min(1, "Discord name is required")
+          .max(100, "Discord name too long"),
+      }),
+    )
     .mutation(async ({ input }) => {
       const { email, discordName } = input;
 

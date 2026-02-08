@@ -41,6 +41,15 @@ export type PlayerPlaytimeBreakdown = {
   };
 };
 
+export interface PlaytimeHoursBreakdown {
+  byServer: Array<{
+    serverId: number;
+    serverName: string;
+    hours: number;
+  }>;
+  total: number;
+}
+
 /**
  * Custom queries for player_playtime_summary table
  *
@@ -257,10 +266,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * //   total: 2221
    * // }
    */
-  async getTotalHoursBreakdown(): Promise<{
-    byServer: Array<{ serverId: number; serverName: string; hours: number }>;
-    total: number;
-  }> {
+  async getTotalHoursBreakdown(): Promise<PlaytimeHoursBreakdown> {
     const query = `
       SELECT 
         s.server_id,

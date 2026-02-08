@@ -2,11 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../../trpc";
 import { idToObject } from "@/app/utils/helpers";
 import { Q } from "@/db";
-import {
-  GetPlayerParamsSchema,
-  GetPlayersQuerySchema,
-  GetPlayersCountQuerySchema,
-} from "@createrington/shared/api/public/players";
+import { z } from "zod";
 
 export const playersRouter = router({
   get: publicProcedure
@@ -14,7 +10,11 @@ export const playersRouter = router({
       description:
         "Looks up a single player by Discord ID, Minecraft UUID, or Minecraft username. Returns the full player record or NOT_FOUND.",
     })
-    .input(GetPlayerParamsSchema)
+    .input(
+      z.object({
+        id: z.string().min(1, "Player ID is required"),
+      }),
+    )
     .query(async ({ input }) => {
       const identifier = idToObject(input.id);
       if (!identifier) {
@@ -41,7 +41,25 @@ export const playersRouter = router({
       description:
         "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, isActive) and sorting. Response includes players array and pagination metadata.",
     })
-    .input(GetPlayersQuerySchema)
+    .input(
+      z.object({
+        // Filtering
+        discordId: z.string().optional(),
+        minecraftUuid: z.string().optional(),
+        minecraftUsername: z.string().optional(),
+        isActive: z.enum(["true"], "false").transform((val) => val === "true"),
+
+        // Pagination
+        page: z.coerce.number().int().positive().min(0).default(0),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+
+        // Sorting
+        orderBy: z
+          .enum(["createdAt", "minecraftUsername", "updatedAt"])
+          .default("createdAt"),
+        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+      }),
+    )
     .query(async ({ input }) => {
       const filters: any = {};
       if (input.discordId) filters.discordId = input.discordId;
@@ -79,7 +97,18 @@ export const playersRouter = router({
       description:
         "Returns a count of players matching optional filters (online status, server, registration date range, last seen). Used for dashboard metrics.",
     })
-    .input(GetPlayersCountQuerySchema)
+    .input(
+      z.object({
+        online: z
+          .enum(["true", "false"])
+          .transform((val) => val === "true")
+          .optional(),
+        currentServerId: z.coerce.number().int().positive().optional(),
+        createdAfter: z.iso.datetime().optional(),
+        createdBefore: z.iso.datetime().optional(),
+        lastSeenAfter: z.iso.datetime().optional(),
+      }),
+    )
     .query(async ({ input }) => {
       const filters: any = {};
 
