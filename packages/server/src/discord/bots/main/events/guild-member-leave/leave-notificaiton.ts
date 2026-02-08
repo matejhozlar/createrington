@@ -8,6 +8,7 @@ import {
   ButtonBuilder,
   type Client,
   type GuildMember,
+  type PartialGuildMember,
 } from "discord.js";
 
 /**
@@ -35,7 +36,7 @@ export const prodOnly = false;
  */
 export async function execute(
   client: Client,
-  member: GuildMember,
+  member: GuildMember | PartialGuildMember,
 ): Promise<void> {
   try {
     const player = await Q.player.find({ discordId: member.user.id });
