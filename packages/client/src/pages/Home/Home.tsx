@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
@@ -32,16 +32,11 @@ import {
   Zap,
 } from "lucide-react";
 import { useServerData } from "@/contexts/socket";
-import { playersApi } from "@/services/api/public/players";
-import { metricsApi } from "@/services/api/public/metrics";
+import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 
 export const Home: React.FC = () => {
   const { user } = useAuth();
-  const [totalPlayers, setTotalPlayers] = useState<number | null>(null);
-  const [totalPlaytime, setTotalPlaytime] = useState<number | null>(null);
-  const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
-  const [isLoadingPlaytime, setIsLoadingPlaytime] = useState(true);
 
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
@@ -52,35 +47,11 @@ export const Home: React.FC = () => {
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
 
-  useEffect(() => {
-    const fetchPlayerCount = async () => {
-      try {
-        setIsLoadingPlayers(true);
-        const count = await playersApi.getCount();
-        setTotalPlayers(count);
-      } catch (error) {
-        console.error("Failed to fetch player count:", error);
-        setTotalPlayers(null);
-      } finally {
-        setIsLoadingPlayers(false);
-      }
-    };
+  const { data: playerCount, isLoading: isLoadingPlayers } =
+    trpc.players.count.useQuery({});
 
-    const fetchTotalPlaytime = async () => {
-      try {
-        setIsLoadingPlaytime(true);
-        const hours = await metricsApi.playtime.getTotalHours({ serverId });
-        setTotalPlaytime(hours.totalHours);
-      } catch (error) {
-        console.error("Failed to fetch playtime:", error);
-      } finally {
-        setIsLoadingPlaytime(false);
-      }
-    };
-
-    fetchPlayerCount();
-    fetchTotalPlaytime();
-  }, [serverId]);
+  const { data: playtimeData, isLoading: isLoadingPlaytime } =
+    trpc.metrics.playtime.getTotalHours.useQuery({ serverId });
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -130,13 +101,13 @@ export const Home: React.FC = () => {
     },
     {
       icon: TrendingUp,
-      value: isLoadingPlayers ? "..." : (totalPlayers ?? "N/A"),
+      value: isLoadingPlayers ? "..." : (playerCount?.count ?? "N/A"),
       title: "Total Players",
       description: "Registered community members",
     },
     {
       icon: Clock,
-      value: isLoadingPlaytime ? <Loading /> : (totalPlaytime ?? "N/A"),
+      value: isLoadingPlaytime ? <Loading /> : (playtimeData?.totalHours ?? "N/A"),
       title: "Hours Played",
       description: "Total playtime across all players",
     },

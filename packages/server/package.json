@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.ts",
+  "exports": {
+    "./trpc": {
+      "types": "./dist/server/src/trpc/router.d.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:types": "tsc --emitDeclarationOnly --watch & tsc-alias --watch",
     "build": "tsc && tsc-alias && npm run post-build && npm run build:copy-assets",
     "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" dist/server/src",
     "post-build": "tsx src/scripts/tools/post-build.ts",
@@ -65,6 +71,7 @@
     "@createrington/shared": "*",
     "axios": "^1.13.2",
     "canvas": "^3.2.0",
+    "@trpc/server": "^11.1.0",
     "cors": "^2.8.5",
     "discord-html-transcripts": "^3.2.0",
     "discord.js": "^14.25.1",

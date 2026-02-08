@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { AuthProvider, useAuth } from "./contexts/auth";
 import {
   WebSocketProvider,
@@ -167,29 +169,33 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <WebSocketProvider
-        config={{
-          autoConnect: true,
-          maxReconnectAttempts: 5,
-          url: "http://localhost:5000",
-          reconnectDelay: 1000,
-          healthCheckInterval: 30000,
-        }}
-      >
-        <ServerDataProvider autoSubscribe>
-          <PlayerDataProvider autoSubscribe>
-            <ToastProvider>
-              <BrowserRouter>
-                <SidebarProvider>
-                  <AppContent />
-                </SidebarProvider>
-              </BrowserRouter>
-            </ToastProvider>
-          </PlayerDataProvider>
-        </ServerDataProvider>
-      </WebSocketProvider>
-    </AuthProvider>
+    <trpc.Provider client={trpcClient} queryClient={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <WebSocketProvider
+            config={{
+              autoConnect: true,
+              maxReconnectAttempts: 5,
+              url: "http://localhost:5000",
+              reconnectDelay: 1000,
+              healthCheckInterval: 30000,
+            }}
+          >
+            <ServerDataProvider autoSubscribe>
+              <PlayerDataProvider autoSubscribe>
+                <ToastProvider>
+                  <BrowserRouter>
+                    <SidebarProvider>
+                      <AppContent />
+                    </SidebarProvider>
+                  </BrowserRouter>
+                </ToastProvider>
+              </PlayerDataProvider>
+            </ServerDataProvider>
+          </WebSocketProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </trpc.Provider>
   );
 }
 
