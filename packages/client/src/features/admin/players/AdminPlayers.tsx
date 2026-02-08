@@ -681,6 +681,7 @@ export function AdminPlayers() {
                                   `/admin/players/${player.minecraftUuid}`,
                                 )
                               }
+                              className="cursor-pointer"
                             >
                               View
                             </Button>
