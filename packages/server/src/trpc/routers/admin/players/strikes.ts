@@ -23,13 +23,7 @@ export const strikesRouter = router({
         playerService.strikes.getStatistics(identifier),
       ]);
 
-      return {
-        strikes,
-        statistics: {
-          ...statistics,
-          mostRecent: statistics.mostRecent?.toISOString(),
-        },
-      };
+      return { strikes, statistics };
     }),
 
   issue: adminProcedure

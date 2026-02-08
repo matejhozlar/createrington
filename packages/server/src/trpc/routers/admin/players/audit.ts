@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
 
 export const auditRouter = router({
   list: adminProcedure
@@ -9,8 +9,7 @@ export const auditRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        page: z.number().int().min(0).default(0),
-        limit: z.number().int().min(1).max(200).default(50),
+        ...paginationInput({ maxLimit: 200, defaultLimit: 50 }),
       }),
     )
     .query(async ({ input }) => {
@@ -22,28 +21,8 @@ export const auditRouter = router({
       ]);
 
       return {
-        actions: auditLog.map((action) => ({
-          id: action.id,
-          adminDiscordId: action.adminDiscordId,
-          adminDiscordUsername: action.adminDiscordUsername,
-          actionType: action.actionType,
-          targetPlayerUuid: action.targetPlayerUuid,
-          targetPlayerName: action.targetPlayerName,
-          tableName: action.tableName,
-          fieldName: action.fieldName,
-          oldValue: action.oldValue,
-          newValue: action.newValue,
-          reason: action.reason,
-          serverId: action.serverId,
-          performedAt: action.performedAt.toISOString(),
-          metadata: action.metadata,
-        })),
-        pagination: {
-          page: input.page,
-          limit: input.limit,
-          total,
-          totalPages: Math.ceil(total / input.limit),
-        },
+        actions: auditLog,
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 });
