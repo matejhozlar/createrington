@@ -88,6 +88,10 @@
   body {
     @apply bg-background text-foreground;
   }
+  button,
+  [role="button"] {
+    @apply cursor-pointer;
+  }
 
   /* Global scrollbar styles */
   *::-webkit-scrollbar {

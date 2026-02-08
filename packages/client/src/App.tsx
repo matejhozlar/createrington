@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { AuthProvider, useAuth } from "./contexts/auth";
@@ -37,32 +37,18 @@ import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 
-// Layout WITH footer
-function DefaultLayout() {
+function AppLayout() {
   const { loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <LoadingScreen text="Logging in..." />;
   }
-  return (
-    <>
-      <AppSidebar />
-      <SidebarInset>
-        <div className="flex md:hidden items-center gap-2 p-2">
-          <SidebarTrigger />
-          <Logo />
-        </div>
-        <div className="flex flex-1 flex-col gap-4">
-          <Outlet />
-        </div>
-        <Footer />
-      </SidebarInset>
-    </>
-  );
-}
 
-// Layout WITHOUT footer (for chat, full-screen pages, etc.)
-function FullScreenLayout() {
+  const hideFooter =
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/chat");
+
   return (
     <>
       <AppSidebar />
@@ -74,6 +60,7 @@ function FullScreenLayout() {
         <div className="flex flex-1 flex-col gap-4">
           <Outlet />
         </div>
+        {!hideFooter && <Footer />}
       </SidebarInset>
     </>
   );
@@ -82,8 +69,7 @@ function FullScreenLayout() {
 function AppContent() {
   return (
     <Routes>
-      {/* Routes WITH footer */}
-      <Route element={<DefaultLayout />}>
+      <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<div>Rules Page</div>} />
         <Route path="/team" element={<div>Team Page</div>} />
@@ -134,15 +120,10 @@ function AppContent() {
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/shop" element={<Shop />} />
 
-        {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
-      </Route>
-
-      {/* Routes WITHOUT footer (full-screen) */}
-      <Route element={<FullScreenLayout />}>
+        {/* Full-screen Routes (no footer) */}
         <Route path="/chat/:serverId" element={<ServerChat />} />
 
-        {/* Admin Routes - also without footer */}
+        {/* Admin Routes (no footer) */}
         <Route
           path="/admin/*"
           element={
@@ -162,6 +143,9 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+
+        {/* 404 Route */}
+        <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
   );

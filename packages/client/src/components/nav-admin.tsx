@@ -5,7 +5,7 @@ import {
   ChevronRight,
   Shield,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
 import {
   SidebarGroup,
@@ -39,12 +39,14 @@ export function NavAdmin({
   }[];
 }) {
   const { state } = useSidebar();
-  const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   // Check if we're on an admin page
   const isAdminActive = items.some((item) =>
-    window.location.pathname.startsWith(item.url),
+    location.pathname.startsWith(item.url),
   );
+
+  const [isOpen, setIsOpen] = useState(isAdminActive);
 
   return (
     <SidebarGroup>
