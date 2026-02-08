@@ -23,7 +23,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const sessionsQuery = trpc.adminPlayers.sessions.list.useQuery({
+  const sessionsQuery = trpc.admin.players.sessions.list.useQuery({
     id: playerId,
     page,
     limit,

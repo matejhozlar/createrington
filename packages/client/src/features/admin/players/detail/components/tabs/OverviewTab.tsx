@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface OverviewTabProps {
   player: PlayerDetailed;

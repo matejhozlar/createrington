@@ -4,9 +4,7 @@ import {
   playersRouter,
   waitlistsRouter,
   metricsRouter,
-  authRouter,
-  adminPlayersRouter,
-  adminWaitlistsRouter,
+  adminRouter,
 } from "./routers";
 
 export const appRouter = router({
@@ -14,9 +12,7 @@ export const appRouter = router({
   players: playersRouter,
   waitlists: waitlistsRouter,
   metrics: metricsRouter,
-  auth: authRouter,
-  adminPlayers: adminPlayersRouter,
-  adminWaitlists: adminWaitlistsRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

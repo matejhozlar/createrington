@@ -40,7 +40,10 @@ export const playersRouter = router({
         discordId: z.string().optional(),
         minecraftUuid: z.string().optional(),
         minecraftUsername: z.string().optional(),
-        isActive: z.enum(["true"], "false").transform((val) => val === "true"),
+        isActive: z
+          .enum(["true"], "false")
+          .transform((val) => val === "true")
+          .optional(),
 
         // Pagination
         page: z.coerce.number().int().positive().min(0).default(0),

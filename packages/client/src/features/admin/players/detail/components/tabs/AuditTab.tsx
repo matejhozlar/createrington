@@ -22,7 +22,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const auditQuery = trpc.adminPlayers.audit.list.useQuery({
+  const auditQuery = trpc.admin.players.audit.list.useQuery({
     id: playerId,
     page,
     limit,

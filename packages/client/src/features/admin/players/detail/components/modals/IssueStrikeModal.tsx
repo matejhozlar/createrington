@@ -28,7 +28,7 @@ export function IssueStrikeModal({
   onSuccess,
 }: IssueStrikeModalProps) {
   const toast = useToastActions();
-  const issueStrike = trpc.adminPlayers.strikes.issue.useMutation();
+  const issueStrike = trpc.admin.players.strikes.issue.useMutation();
 
   const [classification, setClassification] =
     useState<StrikeClassification>("rule_violation");

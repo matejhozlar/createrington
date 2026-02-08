@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, adminProcedure } from "../../trpc";
+import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
@@ -9,7 +9,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import type { PlayerBan } from "@createrington/shared/db";
-import { parsePlayerId } from "../../utils";
+import { parsePlayerId } from "../../../utils";
 
 export const bansRouter = router({
   list: adminProcedure

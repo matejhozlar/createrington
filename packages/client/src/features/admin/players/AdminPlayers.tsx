@@ -95,9 +95,9 @@ export function AdminPlayers() {
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
   // tRPC queries
-  const statsQuery = trpc.adminPlayers.players.stats.useQuery();
+  const statsQuery = trpc.admin.players.players.stats.useQuery();
 
-  const playersQuery = trpc.adminPlayers.players.list.useQuery({
+  const playersQuery = trpc.admin.players.players.list.useQuery({
     page,
     limit,
     orderBy,

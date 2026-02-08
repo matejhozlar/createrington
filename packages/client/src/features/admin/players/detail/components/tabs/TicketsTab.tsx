@@ -22,7 +22,7 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  const ticketsQuery = trpc.adminPlayers.tickets.list.useQuery({
+  const ticketsQuery = trpc.admin.players.tickets.list.useQuery({
     id: playerId,
     page,
     limit,

@@ -19,7 +19,7 @@ export function InviteWaitlistModal({
   onSuccess,
 }: InviteWaitlistModalProps) {
   const toast = useToastActions();
-  const inviteEntry = trpc.adminWaitlists.invite.useMutation();
+  const inviteEntry = trpc.admin.waitlists.invite.useMutation();
 
   const [reason, setReason] = useState("");
 

@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface EditPlayerModalProps {
   open: boolean;
@@ -44,7 +44,7 @@ export function EditPlayerModal({
   onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
-  const updatePlayer = trpc.adminPlayers.players.update.useMutation();
+  const updatePlayer = trpc.admin.players.players.update.useMutation();
 
   const [minecraftUsername, setMinecraftUsername] = useState(
     player.minecraftUsername,

@@ -3,7 +3,7 @@ import { Coins, Clock, AlertTriangle, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RouterOutput } from "@/lib/trpc";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface PlayerStatsCardsProps {
   player: PlayerDetailed;

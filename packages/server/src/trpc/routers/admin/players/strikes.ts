@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../trpc";
+import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
-import { parsePlayerId } from "../../utils";
+import { parsePlayerId } from "../../../utils";
 
 export const strikesRouter = router({
   list: adminProcedure

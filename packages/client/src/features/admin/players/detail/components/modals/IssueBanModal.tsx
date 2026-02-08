@@ -42,8 +42,8 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
-  const issueTemporaryBan = trpc.adminPlayers.bans.issueTemporary.useMutation();
-  const issuePermanentBan = trpc.adminPlayers.bans.issuePermanent.useMutation();
+  const issueTemporaryBan = trpc.admin.players.bans.issueTemporary.useMutation();
+  const issuePermanentBan = trpc.admin.players.bans.issuePermanent.useMutation();
 
   const [banType, setBanType] = useState<BanType>("temporary");
   const [reason, setReason] = useState("");

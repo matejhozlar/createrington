@@ -25,7 +25,7 @@ export function BalanceAdjustModal({
   const [reason, setReason] = useState("");
 
   const toast = useToastActions();
-  const adjustBalance = trpc.adminPlayers.balance.adjust.useMutation();
+  const adjustBalance = trpc.admin.players.balance.adjust.useMutation();
 
   if (!open) return null;
 

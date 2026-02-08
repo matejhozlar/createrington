@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../trpc";
+import { router, adminProcedure } from "../../../trpc";
 import { waitlistRepo } from "@/db";
 
 export const waitlistsRouter = router({

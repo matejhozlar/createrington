@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface StrikesTabProps {
   player: PlayerDetailed;

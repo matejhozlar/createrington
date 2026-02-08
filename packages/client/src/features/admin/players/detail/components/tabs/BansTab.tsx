@@ -4,7 +4,7 @@ import { Ban, Clock } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface BansTabProps {
   player: PlayerDetailed;

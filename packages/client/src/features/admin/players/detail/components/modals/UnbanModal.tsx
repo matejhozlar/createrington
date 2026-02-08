@@ -19,7 +19,7 @@ export function UnbanModal({
   onSuccess,
 }: UnbanModalProps) {
   const toast = useToastActions();
-  const unbanPlayer = trpc.adminPlayers.bans.unban.useMutation();
+  const unbanPlayer = trpc.admin.players.bans.unban.useMutation();
 
   const [reason, setReason] = useState("");
 

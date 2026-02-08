@@ -71,7 +71,7 @@ export function AdminPlayerDetail() {
   };
 
   // tRPC query for player data
-  const playerQuery = trpc.adminPlayers.players.get.useQuery(
+  const playerQuery = trpc.admin.players.players.get.useQuery(
     { id: id! },
     { enabled: !!id },
   );

@@ -40,7 +40,7 @@ import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type WaitlistEntry = RouterOutput["adminWaitlists"]["list"]["entries"][number];
+type WaitlistEntry = RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
@@ -76,11 +76,11 @@ export function AdminWaitlists() {
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
   // tRPC queries
-  const statsQuery = trpc.adminWaitlists.stats.useQuery();
+  const statsQuery = trpc.admin.waitlists.stats.useQuery();
   const stats = statsQuery.data ?? null;
   const statsLoading = statsQuery.isLoading;
 
-  const entriesQuery = trpc.adminWaitlists.list.useQuery({
+  const entriesQuery = trpc.admin.waitlists.list.useQuery({
     page,
     limit,
     orderBy,

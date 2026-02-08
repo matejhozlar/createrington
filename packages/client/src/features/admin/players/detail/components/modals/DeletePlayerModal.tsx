@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
-type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface DeletePlayerModalProps {
   open: boolean;
@@ -34,7 +34,7 @@ export function DeletePlayerModal({
 }: DeletePlayerModalProps) {
   const toast = useToastActions();
 
-  const deletePlayer = trpc.adminPlayers.players.delete.useMutation();
+  const deletePlayer = trpc.admin.players.players.delete.useMutation();
 
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");

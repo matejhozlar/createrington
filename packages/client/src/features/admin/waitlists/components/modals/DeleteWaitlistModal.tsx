@@ -16,7 +16,7 @@ import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type WaitlistEntry = RouterOutput["adminWaitlists"]["list"]["entries"][number];
+type WaitlistEntry = RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 interface DeleteWaitlistModalProps {
   open: boolean;
@@ -33,7 +33,7 @@ export function DeleteWaitlistModal({
 }: DeleteWaitlistModalProps) {
   const toast = useToastActions();
 
-  const deleteEntry = trpc.adminWaitlists.delete.useMutation();
+  const deleteEntry = trpc.admin.waitlists.delete.useMutation();
 
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");
