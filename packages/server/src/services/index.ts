@@ -60,5 +60,3 @@ export async function waitForService<T>(
 
   throw new Error(`Service ${key} did not become ready within ${timeoutMs}ms`);
 }
-
-export * from "./bootstrap";
