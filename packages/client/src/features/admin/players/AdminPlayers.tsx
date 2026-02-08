@@ -10,6 +10,14 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
@@ -22,6 +30,14 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Search,
   Filter,
@@ -373,156 +389,153 @@ export function AdminPlayers() {
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* Total Players */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Players</p>
-                  <p className="text-2xl font-semibold">{stats.total}</p>
+                  <CardDescription>Total Players</CardDescription>
+                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.online} currently online
+                  </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
                   <Users className="size-6 text-sidebar-primary" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.online} currently online
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* New This Week */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">New This Week</p>
-                  <p className="text-2xl font-semibold">
+                  <CardDescription>New This Week</CardDescription>
+                  <CardTitle className="text-2xl">
                     {stats.registered.thisWeek}
+                  </CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.registered.today} today
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
                   <UserPlus className="size-6 text-chart-2" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.registered.today} today
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Total Balance */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Balance</p>
-                  <p className="text-2xl font-semibold">
+                  <CardDescription>Total Balance</CardDescription>
+                  <CardTitle className="text-2xl">
                     ${parseFloat(stats.balance.total).toLocaleString()}
+                  </CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Avg: ${parseFloat(stats.balance.average).toFixed(2)}
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
                   <Coins className="size-6 text-chart-3" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Avg: ${parseFloat(stats.balance.average).toFixed(2)}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Growth Rate */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">
-                    Monthly Growth
-                  </p>
-                  <p className="text-2xl font-semibold">
+                  <CardDescription>Monthly Growth</CardDescription>
+                  <CardTitle className="text-2xl">
                     {stats.registered.thisMonth}
+                  </CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    New registrations
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
                   <TrendingUp className="size-6 text-chart-4" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                New registrations
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         ) : null}
 
         {/* Filters & Search */}
-        <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground" />
-            <h3 className="font-semibold">Filters</h3>
-          </div>
+        <Card className="gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="size-4 text-muted-foreground" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by username..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
 
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by username..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+              <Button
+                type="button"
+                variant={onlineFilter === undefined ? "outline" : "default"}
+                onClick={toggleOnlineFilter}
+                className="min-w-[85px]"
+              >
+                {onlineFilter === undefined
+                  ? "All"
+                  : onlineFilter
+                    ? "Online"
+                    : "Offline"}
+              </Button>
 
-            <Button
-              type="button"
-              variant={onlineFilter === undefined ? "outline" : "default"}
-              size="default"
-              onClick={toggleOnlineFilter}
-              className="cursor-pointer min-w-[85px]"
-            >
-              {onlineFilter === undefined
-                ? "All"
-                : onlineFilter
-                  ? "Online"
-                  : "Offline"}
-            </Button>
+              <Button
+                type="button"
+                variant={violationContent.variant}
+                onClick={cycleViolationFilter}
+                className="min-w-[140px] gap-2"
+              >
+                {violationContent.icon}
+                {violationContent.text}
+              </Button>
 
-            <Button
-              type="button"
-              variant={violationContent.variant}
-              size="default"
-              onClick={cycleViolationFilter}
-              className="cursor-pointer min-w-[140px] gap-2"
-            >
-              {violationContent.icon}
-              {violationContent.text}
-            </Button>
-
-            <Button type="submit" className="cursor-pointer min-w-[85px]">
-              Search
-            </Button>
-          </form>
-        </div>
+              <Button type="submit" className="min-w-[85px]">
+                Search
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Players Table */}
-        <div className="flex flex-1 flex-col gap-4 rounded-lg border border-border bg-card">
-          <div className="border-b border-border p-4">
-            <h2 className="font-semibold">
-              Players ({total.toLocaleString()})
-            </h2>
-          </div>
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle>Players ({total.toLocaleString()})</CardTitle>
+          </CardHeader>
 
           {loading ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <Loading size="medium" text="Loading players..." />
-            </div>
+            </CardContent>
           ) : error ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
                 <Button
                   onClick={loadPlayers}
-                  className="mt-4 cursor-pointer"
+                  className="mt-4"
                   variant="outline"
                 >
                   Try Again
                 </Button>
               </div>
-            </div>
+            </CardContent>
           ) : players.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Users className="mx-auto size-12 text-muted-foreground" />
                 <p className="mt-2 text-muted-foreground">No players found</p>
@@ -532,47 +545,41 @@ export function AdminPlayers() {
                   </p>
                 )}
               </div>
-            </div>
+            </CardContent>
           ) : (
             <>
               {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-sidebar-accent/50">
-                    <tr>
-                      <th
-                        className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-sidebar-accent/80 transition-colors select-none"
-                        onClick={() => handleSort("minecraftUsername")}
-                      >
-                        <div className="flex items-center">
+              <CardContent className="px-0">
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
+                    <TableRow>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("minecraftUsername")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Player
                           {renderSortIcon("minecraftUsername")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Discord ID
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Server
-                      </th>
-                      <th
-                        className="px-4 py-3 text-left text-sm font-medium cursor-pointer hover:bg-sidebar-accent/80 transition-colors select-none"
-                        onClick={() => handleSort("lastSeen")}
-                      >
-                        <div className="flex items-center">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4">Discord ID</TableHead>
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">Server</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("lastSeen")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Last Seen
                           {renderSortIcon("lastSeen")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {players.map((player) => {
                       // Get real-time online status from socket data
                       const isOnline = isPlayerOnline(player.minecraftUuid);
@@ -586,10 +593,9 @@ export function AdminPlayers() {
                       const badgeInfo = getPlayerBadgeInfo(player);
 
                       return (
-                        <tr
+                        <TableRow
                           key={player.minecraftUuid}
                           className={cn(
-                            "transition-colors hover:bg-sidebar-accent/30",
                             badgeInfo.hasIssues &&
                               badgeInfo.color === "yellow" &&
                               "bg-yellow-500/5",
@@ -598,7 +604,7 @@ export function AdminPlayers() {
                               "bg-destructive/5",
                           )}
                         >
-                          <td className="px-4 py-3">
+                          <TableCell className="px-4">
                             <div className="flex items-center gap-3">
                               <div className="relative">
                                 <MinecraftAvatar
@@ -628,19 +634,20 @@ export function AdminPlayers() {
                                 </p>
                               </div>
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <button
                               onClick={() =>
                                 handleCopyDiscordId(player.discordId)
                               }
-                              className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                              className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                               title="Click to copy"
+                              type="button"
                             >
                               {player.discordId}
                             </button>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <Badge
                               variant={isOnline ? "default" : "outline"}
                               className={cn(
@@ -650,8 +657,8 @@ export function AdminPlayers() {
                             >
                               {isOnline ? "Online" : "Offline"}
                             </Badge>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             {isOnline && serverName ? (
                               <p className="text-sm text-foreground">
                                 {serverName}
@@ -659,17 +666,16 @@ export function AdminPlayers() {
                             ) : (
                               <p className="text-sm text-muted-foreground">—</p>
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <p className="text-sm text-muted-foreground">
                               {new Date(player.lastSeen).toLocaleDateString()}
                             </p>
-                          </td>
-                          <td className="px-4 py-3 text-right">
+                          </TableCell>
+                          <TableCell className="px-4 text-right">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="cursor-pointer"
                               onClick={() =>
                                 navigate(
                                   `/admin/players/${player.minecraftUuid}`,
@@ -678,16 +684,16 @@ export function AdminPlayers() {
                             >
                               View
                             </Button>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
 
               {/* Pagination */}
-              <div className="flex flex-col gap-3 border-t border-border p-4 sm:flex-row sm:flex-wrap sm:items-center">
+              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
                 <p className="text-sm text-muted-foreground">
                   Showing {page * limit + 1}-
                   {Math.min((page + 1) * limit, total)} of {total} players
@@ -703,7 +709,6 @@ export function AdminPlayers() {
                       }}
                       className={cn(
                         page === 0 && "pointer-events-none opacity-50",
-                        "cursor-pointer",
                       )}
                     />
                   </PaginationItem>
@@ -720,7 +725,6 @@ export function AdminPlayers() {
                             handlePageChange(item);
                           }}
                           isActive={page === item}
-                          className="cursor-pointer"
                         >
                           {item + 1}
                         </PaginationLink>
@@ -738,15 +742,14 @@ export function AdminPlayers() {
                       className={cn(
                         page >= totalPages - 1 &&
                           "pointer-events-none opacity-50",
-                        "cursor-pointer",
                       )}
                     />
                   </PaginationItem>
                 </PaginationContent>
-              </div>
+              </CardFooter>
             </>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
