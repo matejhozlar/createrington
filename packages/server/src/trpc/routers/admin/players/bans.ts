@@ -81,7 +81,7 @@ export const bansRouter = router({
           metadata: input.metadata,
         },
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
       );
 
       const player = await Q.player.get({
@@ -177,7 +177,7 @@ export const bansRouter = router({
           metadata: input.metadata,
         },
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
       );
 
       try {
@@ -271,7 +271,7 @@ export const bansRouter = router({
       const ban = await playerService.bans.unban(
         input.banId,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 

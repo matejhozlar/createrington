@@ -69,7 +69,7 @@ export const balanceRouter = router({
           identifier,
           input.amount,
           ctx.user.discordId,
-          ctx.user.username,
+          ctx.user.minecraftUsername,
           input.reason,
         );
       } else {
@@ -77,7 +77,7 @@ export const balanceRouter = router({
           identifier,
           Math.abs(input.amount),
           ctx.user.discordId,
-          ctx.user.username,
+          ctx.user.minecraftUsername,
           input.reason,
         );
       }
@@ -107,7 +107,7 @@ export const balanceRouter = router({
         input.playerUuids,
         input.amount,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 
