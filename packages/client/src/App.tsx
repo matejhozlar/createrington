@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { AuthProvider, useAuth } from "./contexts/auth";
@@ -25,7 +31,7 @@ import {
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
 import { ServerChat } from "./components/chat";
-import { AdminLogs } from "./pages/Admin/Logs";
+import { AdminLogs } from "./features/admin/logs/AdminLogs";
 import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./pages/Admin/Servers";
 import { AdminPlayerProvider } from "./contexts/admin";

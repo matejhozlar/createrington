@@ -1,4 +1,3 @@
-// packages/client/src/components/nav-admin.tsx
 import {
   type LucideIcon,
   ChevronDown,
@@ -112,17 +111,16 @@ export function NavAdmin({
               <SidebarMenuSub>
                 {items.map((item) => {
                   const Icon = item.icon;
+                  const isActive = location.pathname.startsWith(item.url);
                   return (
                     <SidebarMenuSubItem key={item.title}>
                       <SidebarMenuSubButton asChild>
                         <NavLink
                           to={item.url}
-                          className={({ isActive }) =>
-                            cn(
-                              "transition-colors duration-150 cursor-pointer",
-                              isActive && "text-destructive bg-destructive/10",
-                            )
-                          }
+                          className={cn(
+                            "transition-colors duration-150 cursor-pointer",
+                            isActive && "text-destructive bg-destructive/10",
+                          )}
                         >
                           {Icon && <Icon className="size-4" />}
                           <span>{item.title}</span>
@@ -139,21 +137,19 @@ export function NavAdmin({
               <div className="flex flex-col gap-1 px-2 py-1">
                 {items.map((item) => {
                   const Icon = item.icon;
+                  const isActive = location.pathname.startsWith(item.url);
                   return (
                     <Tooltip key={item.title}>
                       <TooltipTrigger asChild>
-                        <NavLink to={item.url}>
-                          {({ isActive }) => (
-                            <button
-                              className={cn(
-                                "flex size-8 items-center justify-center rounded-md transition-colors cursor-pointer",
-                                "text-destructive hover:bg-destructive/10",
-                                isActive && "bg-destructive/20 font-medium",
-                              )}
-                            >
-                              {Icon && <Icon className="size-4" />}
-                            </button>
+                        <NavLink
+                          to={item.url}
+                          className={cn(
+                            "flex size-8 items-center justify-center rounded-md transition-colors cursor-pointer",
+                            "text-destructive hover:bg-destructive/10",
+                            isActive && "bg-destructive/20 font-medium",
                           )}
+                        >
+                          {Icon && <Icon className="size-4" />}
                         </NavLink>
                       </TooltipTrigger>
                       <TooltipContent side="right">
