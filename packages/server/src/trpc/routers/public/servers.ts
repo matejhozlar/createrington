@@ -72,7 +72,7 @@ function mapSessionToPlayerInfo(
   };
 }
 
-function buildServerStatus(
+export function buildServerStatus(
   id: number,
   serverConfig: { name: string; ip: string; port: number; maxPlayers: number },
   service: PlaytimeService | undefined,

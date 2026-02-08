@@ -33,7 +33,8 @@ import { Logo } from "./components/logo";
 import { ServerChat } from "./components/chat";
 import { AdminLogs } from "./features/admin/logs/AdminLogs";
 import { AdminMessages } from "./pages/Admin/Messages";
-import { AdminServers } from "./pages/Admin/Servers";
+import { AdminServers } from "./features/admin/servers/AdminServers";
+import { AdminServerDetail } from "./features/admin/servers/detail/AdminServerDetail";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
@@ -141,6 +142,7 @@ function AppContent() {
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="players/:id" element={<AdminPlayerDetail />} />
                   <Route path="servers" element={<AdminServers />} />
+                  <Route path="servers/:id" element={<AdminServerDetail />} />
                   <Route path="messages" element={<AdminMessages />} />
                   <Route path="settings" element={<AdminSettings />} />
                   <Route path="logs" element={<AdminLogs />} />
