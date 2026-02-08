@@ -9,111 +9,66 @@ const ENV_PATH = path.resolve(__dirname, "..", "..", "..", "..", "..");
 
 dotenv.config({ path: path.join(ENV_PATH, ".env"), quiet: true });
 
-/**
- * Zod schema defining structure and validation rules for environment variables
- * // Server
- * @property {number} PORT - Server port number (must be a positive integer, default 5000)
- * @property {string} NODE_ENV - Application environment (development, production, test)
- * // Database
- * @property {string} DB_USER - The PostgreSQL username
- * @property {string} DB_HOST - The PostgreSQL host
- * @property {string} DB_DATABASE - The name of the database
- * @property {string} DB_PASSWORD - The database user's password
- * @property {string} DB_PORT - The port PostgreSQL is running on
- * // Discord
- * @property {string} DISCORD_GUILD_ID - Discord server/guild ID
- * @property {string} DISCORD_MAIN_BOT_TOKEN - Discord bot authentication token
- * @property {string} DISCORD_MAIN_BOT_ID - Discord bot application/client ID
- * @property {string} DISCORD_MAIN_BOT_WEBHOOK_ID - Discord bot webhook application/client ID
- * @property {string} DISCORD_WEB_BOT_TOKEN - Discord bot authentication token
- * @property {string} DISCORD_WEB_BOT_ID - Discord bot application/client ID
- * @property {string} DISCORD_OAUTH_CLIENT_ID - Discord auth app ID
- * @property {string} DISCORD_OAUTH_CLIENT_SECRET - Application secret used for OAuth
- * @property {string} DISCORD_OAUTH_REDIRECT_URI_DEV - Development mode redirect uri
- * @property {string} DISCORD_OAUTH_REDIRECT_URI_PROD - Production mode redirect uri
- * // Minecraft Servers
- * @property {string} COGS_AND_STEAM_SERVER_IP_ADDRESS - Cogs and Steam server IP address
- * @property {number} COGS_AND_STEAM_SERVER_PORT - Cogs and Steam server port
- * @property {string} TEST_SERVER_IP_ADDRESS - Test server IP address
- * @property {number} TEST_SERVER_PORT - Test server port
- * @property {string} LOCAL_SERVER_IP_ADDRESS - Dev env IP address
- * @property {number} PLAYER_LIMIT - Player limit shared on all servers
- * // RCON (Minecraft server)
- * @property {number} COGS_AND_STEAM_RCON_PORT - RCON server port
- * @property {string} COGS_AND_STEAM_RCON_PASSWORD - RCON authentication password
- * @property {number} TEST_SERVER_RCON_PORT - RCON server port
- * @property {string} TEST_SERVER_RCON_PASSWORD - RCON authentication
- * // Auth
- * @property {string} JWT_SECRET - Secret for cookies
- * @property {string} JWT_EXPIRES_IN - Expiry for json tokens
- * // Email
- * @property {string} EMAIL_HOST - SMTP host server (e.g., smtp.gmail.com)
- * @property {number} EMAIL_PORT - SMTP port (587 for TLS, 465 for SSL, 25 for non-secure)
- * @property {boolean} EMAIL_SECURE - Whether to use TLS/SSL (true for port 465, false for 587)
- * @property {string} EMAIL_ADDRESS - Email address to send from
- * @property {string} EMAIL_PASS - Password/app password for the email account
- */
+// Reusable validators
+const port = (label = "Port") =>
+  z.coerce
+    .number()
+    .int()
+    .min(1, `${label} must be at least 1`)
+    .max(65535, `${label} must be between 1 and 65535`);
+
+const ipv4 = (label = "IP") =>
+  z
+    .string()
+    .min(1, `${label} is required`)
+    .refine(
+      (ip) =>
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) &&
+        ip.split(".").every((o) => {
+          const n = parseInt(o, 10);
+          return n >= 0 && n <= 255;
+        }),
+      { message: `${label} must be a valid IPv4 address` },
+    );
+
+const discordId = (label = "ID") =>
+  z
+    .string()
+    .min(1, `${label} is required`)
+    .regex(/^\d+$/, `${label} must be numeric`);
+
+const discordToken = (label = "Token") =>
+  z
+    .string()
+    .min(1, `${label} is required`)
+    .regex(/^[\w\-\.]+$/, `${label} format is invalid`);
+
 const envSchema = z.object({
   // Server
-  PORT: z.coerce.number().int().positive().default(5000),
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
-  // Server
+  PORT: port("Server port").default(5000),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+
+  // Database
   DB_USER: z.string().min(1, "Database user is required"),
   DB_HOST: z.string().min(1, "Database host is required"),
   DB_DATABASE: z.string().min(1, "Database name is required"),
   DB_PASSWORD: z.string().min(1, "Database password is required"),
-  DB_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5432)
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "Database port must be between 1 and 65535",
-    }),
+  DB_PORT: port("Database port").default(5432),
 
   // Discord
-  DISCORD_GUILD_ID: z
-    .string()
-    .min(1, "Guild ID is required")
-    .regex(/^\d+$/, "Guild ID must be numeric"),
-  DISCORD_MAIN_BOT_TOKEN: z
-    .string()
-    .min(1, "Bot token is required")
-    .regex(/^[\w\-\.]+$/, "Bot token must be a valid Discord token format"),
-  DISCORD_MAIN_BOT_ID: z
-    .string()
-    .min(1, "Bot ID is required")
-    .regex(/^\d+$/, "Bot ID must be numeric"),
-  DISCORD_MAIN_BOT_WEBHOOK_ID: z
-    .string()
-    .min(1, "Bot ID is required")
-    .regex(/^\d+$/, "Bot ID must be numeric"),
-  DISCORD_WEB_BOT_TOKEN: z
-    .string()
-    .min(1, "Bot token is required")
-    .regex(/^[\w\-\.]+$/, "Bot token must be a valid Discord token format"),
-  DISCORD_WEB_BOT_ID: z
-    .string()
-    .min(1, "Bot ID is required")
-    .regex(/^\d+$/, "Bot ID must be numeric"),
-  DISCORD_OAUTH_CLIENT_ID: z
-    .string()
-    .min(1, "OAuth client ID is required")
-    .regex(/^\d+$/, "OAuth client ID must be numeric"),
+  DISCORD_GUILD_ID: discordId("Guild ID"),
+  DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
+  DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
+  DISCORD_MAIN_BOT_WEBHOOK_ID: discordId("Main bot webhook ID"),
+  DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
+  DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
+  DISCORD_OAUTH_CLIENT_ID: discordId("OAuth client ID"),
   DISCORD_OAUTH_CLIENT_SECRET: z
     .string()
     .min(1, "OAuth client secret is required")
     .min(32, "OAuth client secret must be at least 32 characters"),
-  DISCORD_OAUTH_REDIRECT_URI_DEV: z
-    .string()
-    .url("Development redirect URI must be a valid URL")
-    .min(1, "Development redirect URI is required"),
-  DISCORD_OAUTH_REDIRECT_URI_PROD: z
-    .string()
-    .url("Production redirect URI must be a valid URL")
-    .min(1, "Production redirect URI is required"),
+  DISCORD_OAUTH_REDIRECT_URI_DEV: z.string().url("Development redirect URI must be a valid URL"),
+  DISCORD_OAUTH_REDIRECT_URI_PROD: z.string().url("Production redirect URI must be a valid URL"),
 
   // Auth
   JWT_SECRET: z.string().min(1, "JWT secret is required"),
@@ -126,104 +81,20 @@ const envSchema = z.object({
     .default("7d"),
 
   // Minecraft Servers
-  COGS_AND_STEAM_SERVER_IP: z
-    .string()
-    .min(1, "Cogs and Steam server IP is required")
-    .refine(
-      (ip) => {
-        // IPv4 validation
-        const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-        if (!ipv4Regex.test(ip)) return false;
+  COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),
+  COGS_AND_STEAM_SERVER_PORT: port("Cogs and Steam server port"),
+  TEST_SERVER_IP: ipv4("Test server IP"),
+  TEST_SERVER_PORT: port("Test server port"),
+  LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP"),
+  PLAYER_LIMIT: z.coerce.number().int().min(0).max(1000, "Player limit must be between 0 and 1000"),
 
-        // Validate each octet is 0-255
-        const octets = ip.split(".");
-        return octets.every((octet) => {
-          const num = parseInt(octet, 10);
-          return num >= 0 && num <= 255;
-        });
-      },
-      { message: "Cogs and Steam server IP must be a valid IPv4 address" },
-    ),
-  COGS_AND_STEAM_SERVER_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "Cogs and Steam server port must be between 1 and 65535",
-    }),
-  TEST_SERVER_IP: z
-    .string()
-    .min(1, "Cogs and Steam server IP is required")
-    .refine(
-      (ip) => {
-        // IPv4 validation
-        const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-        if (!ipv4Regex.test(ip)) return false;
+  // RCON
+  COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port"),
+  COGS_AND_STEAM_RCON_PASSWORD: z.string().min(1, "RCON password is required").max(100, "RCON password is too long"),
+  TEST_RCON_PORT: port("Test RCON port"),
+  TEST_RCON_PASSWORD: z.string().min(1, "RCON password is required").max(100, "RCON password is too long"),
 
-        // Validate each octet is 0-255
-        const octets = ip.split(".");
-        return octets.every((octet) => {
-          const num = parseInt(octet, 10);
-          return num >= 0 && num <= 255;
-        });
-      },
-      { message: "Cogs and Steam server IP must be a valid IPv4 address" },
-    ),
-  TEST_SERVER_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "Cogs and Steam server port must be between 1 and 65535",
-    }),
-  LOCAL_SERVER_IP_ADDRESS: z
-    .string()
-    .min(1, "Dev IP address is required")
-    .refine(
-      (ip) => {
-        const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-        if (!ipv4Regex.test(ip)) return false;
-
-        const octets = ip.split(".");
-        return octets.every((octet) => {
-          const num = parseInt(octet, 10);
-          return num >= 0 && num <= 255;
-        });
-      },
-      { message: "Dev server IP must be a valid IPv4 address" },
-    ),
-  PLAYER_LIMIT: z.coerce
-    .number()
-    .int()
-    .refine((limit) => limit >= 0 && limit <= 1000, {
-      message: "Player limit must be between 0 and 1000",
-    }),
-
-  // RCON (Minecraft server)
-  COGS_AND_STEAM_RCON_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "RCON port must be between 1 and 65535",
-    }),
-  COGS_AND_STEAM_RCON_PASSWORD: z
-    .string()
-    .min(1, "RCON password is required")
-    .max(100, "RCON password is too long"),
-  TEST_RCON_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "RCON port must be between 1 and 65535",
-    }),
-  TEST_RCON_PASSWORD: z
-    .string()
-    .min(1, "RCON password is required")
-    .max(100, "RCON password is too long"),
-
-  // Email: TODO
+  // Email
   EMAIL_HOST: z
     .string()
     .min(1, "Email host is required")
@@ -236,30 +107,9 @@ const envSchema = z.object({
       },
       { message: "Email host must be a valid hostname or IP address" },
     ),
-  EMAIL_PORT: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(587)
-    .refine((port) => port >= 1 && port <= 65535, {
-      message: "Email port must be between 1 and 65535",
-    })
-    .refine((port) => [25, 465, 587, 2525].includes(port), {
-      message:
-        "Email port should be typically 25, 465 (SSL), 587 (TLS), or 2525",
-    })
-    .or(
-      z.coerce
-        .number()
-        .int()
-        .positive()
-        .refine((port) => port >= 1 && port <= 65535),
-    ),
+  EMAIL_PORT: port("Email port").default(587),
   EMAIL_SECURE: z.coerce.boolean().default(false),
-  EMAIL_ADDRESS: z
-    .string()
-    .email("Must be valid email address")
-    .min(1, "Email address is required"),
+  EMAIL_ADDRESS: z.string().email("Must be valid email address").min(1, "Email address is required"),
   EMAIL_PASS: z
     .string()
     .min(1, "Email password is required")
