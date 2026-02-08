@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,23 +12,27 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
-import type { TicketApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 interface TicketsTabProps {
   playerId: string; // minecraftUuid (route param)
 }
 
 export function TicketsTab({ playerId }: TicketsTabProps) {
-  const [tickets, setTickets] = useState<TicketApiData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination state (same pattern as your players list)
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+
+  const ticketsQuery = trpc.adminPlayers.tickets.list.useQuery({
+    id: playerId,
+    page,
+    limit,
+  });
+
+  const tickets = ticketsQuery.data?.tickets ?? [];
+  const total = ticketsQuery.data?.pagination.total ?? 0;
+  const totalPages = ticketsQuery.data?.pagination.totalPages ?? 0;
+  const loading = ticketsQuery.isLoading;
+  const error = ticketsQuery.error?.message ?? null;
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -62,38 +66,13 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
     return items;
   }, [page, totalPages]);
 
-  const loadTickets = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await adminPlayerApi.getTickets(playerId, {
-        page,
-        limit,
-      });
-
-      setTickets(data.tickets);
-      setTotal(data.pagination.total);
-      setTotalPages(data.pagination.totalPages);
-    } catch (err) {
-      console.error("Failed to load tickets:", err);
-      setError(err instanceof Error ? err.message : "Failed to load tickets");
-    } finally {
-      setLoading(false);
-    }
-  }, [playerId, page, limit]);
-
-  useEffect(() => {
-    loadTickets();
-  }, [loadTickets]);
-
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  const isClosed = (t: TicketApiData) =>
+  const isClosed = (t: (typeof tickets)[number]) =>
     String(t.status).toLowerCase() === "closed";
-  const isOpen = (t: TicketApiData) =>
+  const isOpen = (t: (typeof tickets)[number]) =>
     String(t.status).toLowerCase() === "open";
 
   return (
@@ -116,7 +95,7 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
           <div className="text-center">
             <p className="text-destructive">{error}</p>
             <Button
-              onClick={loadTickets}
+              onClick={() => ticketsQuery.refetch()}
               className="mt-4 cursor-pointer"
               variant="outline"
             >

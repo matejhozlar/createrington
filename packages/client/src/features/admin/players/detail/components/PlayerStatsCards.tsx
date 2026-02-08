@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Coins, Clock, AlertTriangle, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import type { RouterOutput } from "@/lib/trpc";
+
+type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
 
 interface PlayerStatsCardsProps {
-  player: AdminPlayerDetailed;
+  player: PlayerDetailed;
   onAdjustBalance: () => void;
 }
 

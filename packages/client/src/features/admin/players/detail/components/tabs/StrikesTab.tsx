@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Shield } from "lucide-react";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import type { RouterOutput } from "@/lib/trpc";
+
+type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
 
 interface StrikesTabProps {
-  player: AdminPlayerDetailed;
+  player: PlayerDetailed;
   onIssueStrike: () => void;
   onRefresh: () => void;
   onRemoveStrike: (strikeId: number) => void;

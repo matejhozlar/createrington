@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../../trpc";
-import { idToObject } from "@/app/utils/helpers";
 import { Q } from "@/db";
 import { z } from "zod";
+import { parsePlayerId } from "../../utils";
 
 export const playersRouter = router({
   get: publicProcedure
@@ -16,14 +16,7 @@ export const playersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const identifier = idToObject(input.id);
-      if (!identifier) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Invalid player ID. Must be a Discord ID, Minecraft UUID, or Minecraft Username.",
-        });
-      }
+      const identifier = parsePlayerId(input.id);
 
       const player = await Q.player.find(identifier);
       if (!player) {

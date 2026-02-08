@@ -26,13 +26,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
-import { PlayerApiData } from "@createrington/shared/db";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+
+type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
 
 interface EditPlayerModalProps {
   open: boolean;
   onClose: () => void;
-  player: PlayerApiData;
+  player: PlayerDetailed["player"];
   onSuccess: () => void;
 }
 
@@ -43,13 +44,13 @@ export function EditPlayerModal({
   onSuccess,
 }: EditPlayerModalProps) {
   const toast = useToastActions();
+  const updatePlayer = trpc.adminPlayers.players.update.useMutation();
 
   const [minecraftUsername, setMinecraftUsername] = useState(
     player.minecraftUsername,
   );
   const [discordId, setDiscordId] = useState(player.discordId);
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [errors, setErrors] = useState<{
     minecraftUsername?: string;
@@ -109,30 +110,30 @@ export function EditPlayerModal({
 
   const handleConfirmSubmit = async () => {
     try {
-      setLoading(true);
-
-      const updates: {
+      const input: {
+        id: string;
         reason: string;
         minecraftUsername?: string;
         discordId?: string;
       } = {
+        id: player.minecraftUuid,
         reason: reason.trim(),
       };
 
       if (minecraftUsername.trim() !== player.minecraftUsername) {
-        updates.minecraftUsername = minecraftUsername.trim();
+        input.minecraftUsername = minecraftUsername.trim();
       }
       if (discordId.trim() !== player.discordId) {
-        updates.discordId = discordId.trim();
+        input.discordId = discordId.trim();
       }
 
       // Check if at least one field is being updated
-      if (!updates.minecraftUsername && !updates.discordId) {
+      if (!input.minecraftUsername && !input.discordId) {
         toast.error("No changes to save");
         return;
       }
 
-      await adminPlayerApi.update(player.minecraftUuid, updates);
+      await updatePlayer.mutateAsync(input);
 
       toast.success("Player updated successfully");
       setReason("");
@@ -144,8 +145,6 @@ export function EditPlayerModal({
       toast.error(
         err instanceof Error ? err.message : "Failed to update player",
       );
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -201,7 +200,7 @@ export function EditPlayerModal({
                   }
                 }}
                 aria-invalid={!!errors.minecraftUsername}
-                disabled={loading}
+                disabled={updatePlayer.isPending}
               />
               <FieldDescription>
                 3-16 characters, letters, numbers, and underscores only
@@ -225,7 +224,7 @@ export function EditPlayerModal({
                   }
                 }}
                 aria-invalid={!!errors.discordId}
-                disabled={loading}
+                disabled={updatePlayer.isPending}
               />
               <FieldDescription>17-20 digit Discord user ID</FieldDescription>
               {errors.discordId && <FieldError>{errors.discordId}</FieldError>}
@@ -246,7 +245,7 @@ export function EditPlayerModal({
                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
                 rows={3}
                 aria-invalid={!!errors.reason}
-                disabled={loading}
+                disabled={updatePlayer.isPending}
               />
               <FieldDescription>
                 Minimum 5 characters required for audit trail
@@ -282,14 +281,14 @@ export function EditPlayerModal({
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={loading}
+              disabled={updatePlayer.isPending}
               className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleReviewChanges}
-              disabled={loading}
+              disabled={updatePlayer.isPending}
               className="cursor-pointer"
             >
               Review Changes
@@ -335,15 +334,15 @@ export function EditPlayerModal({
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={loading} className="cursor-pointer">
+            <AlertDialogCancel disabled={updatePlayer.isPending} className="cursor-pointer">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSubmit}
-              disabled={loading}
+              disabled={updatePlayer.isPending}
               className="cursor-pointer"
             >
-              {loading ? "Updating..." : "Confirm & Update"}
+              {updatePlayer.isPending ? "Updating..." : "Confirm & Update"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

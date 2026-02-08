@@ -1,11 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Ban, Clock } from "lucide-react";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
+type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
+
 interface BansTabProps {
-  player: AdminPlayerDetailed;
+  player: PlayerDetailed;
   onIssueBan: () => void;
   onRefresh: () => void;
   onUnban: (banId: number) => void;

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,8 @@ import { IssueBanModal } from "./components/modals/IssueBanModal";
 import { UnbanModal } from "./components/modals/UnbanModal";
 import { DeletePlayerModal } from "./components/modals/DeletePlayerModal";
 import { EditPlayerModal } from "./components/modals/EditPlayerModal";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
 import { RemoveStrikeModal } from "./components/modals/RemoveStrikeModal";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 type TabType =
   | "overview"
@@ -36,11 +35,6 @@ export function AdminPlayerDetail() {
   const navigate = useNavigate();
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
-
-  // Player data state
-  const [player, setPlayer] = useState<AdminPlayerDetailed | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Active tab
   const [activeTab, setActiveTab] = useState<TabType>("overview");
@@ -76,32 +70,19 @@ export function AdminPlayerDetail() {
     setSelectedBanId(null);
   };
 
-  /**
-   * Fetch player details
-   */
-  const fetchPlayer = useCallback(async () => {
-    if (!id) return;
+  // tRPC query for player data
+  const playerQuery = trpc.adminPlayers.players.get.useQuery(
+    { id: id! },
+    { enabled: !!id },
+  );
 
-    try {
-      setLoading(true);
-      setError(null);
+  const player = playerQuery.data;
+  const loading = playerQuery.isLoading;
+  const error = playerQuery.error?.message ?? null;
 
-      const data = await adminPlayerApi.getById(id);
-      setPlayer(data);
-    } catch (error) {
-      console.error("Failed to fetch player:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to fetch player data",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  // Load player on mount
-  React.useEffect(() => {
-    fetchPlayer();
-  }, [fetchPlayer]);
+  const refetchPlayer = () => {
+    playerQuery.refetch();
+  };
 
   if (loading) {
     return (
@@ -166,7 +147,7 @@ export function AdminPlayerDetail() {
           <StrikesTab
             player={player}
             onIssueStrike={() => setShowStrikeModal(true)}
-            onRefresh={fetchPlayer}
+            onRefresh={refetchPlayer}
             onRemoveStrike={openRemoveStrikeModal}
           />
         )}
@@ -175,7 +156,7 @@ export function AdminPlayerDetail() {
           <BansTab
             player={player}
             onIssueBan={() => setShowBanModal(true)}
-            onRefresh={fetchPlayer}
+            onRefresh={refetchPlayer}
             onUnban={openUnbanModal}
           />
         )}
@@ -188,7 +169,7 @@ export function AdminPlayerDetail() {
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         player={player.player}
-        onSuccess={fetchPlayer}
+        onSuccess={refetchPlayer}
       />
 
       <BalanceAdjustModal
@@ -196,14 +177,14 @@ export function AdminPlayerDetail() {
         onClose={() => setShowBalanceModal(false)}
         playerId={id!}
         currentBalance={player.balance ? parseFloat(player.balance.balance) : 0}
-        onSuccess={fetchPlayer}
+        onSuccess={refetchPlayer}
       />
 
       <IssueStrikeModal
         open={showStrikeModal}
         onClose={() => setShowStrikeModal(false)}
         playerId={id!}
-        onSuccess={fetchPlayer}
+        onSuccess={refetchPlayer}
       />
 
       <IssueBanModal
@@ -211,7 +192,7 @@ export function AdminPlayerDetail() {
         onClose={() => setShowBanModal(false)}
         playerId={id!}
         playerUsername={player.player.minecraftUsername}
-        onSuccess={fetchPlayer}
+        onSuccess={refetchPlayer}
       />
 
       {selectedBanId !== null && (
@@ -219,7 +200,7 @@ export function AdminPlayerDetail() {
           open={showUnbanModal}
           onClose={closeUnbanModal}
           banId={selectedBanId}
-          onSuccess={fetchPlayer}
+          onSuccess={refetchPlayer}
         />
       )}
 
@@ -236,7 +217,7 @@ export function AdminPlayerDetail() {
           onClose={closeRemoveStrikeModal}
           playerId={id!}
           strikeId={selectedStrikeId}
-          onSuccess={fetchPlayer}
+          onSuccess={refetchPlayer}
         />
       )}
     </div>

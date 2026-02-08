@@ -54,9 +54,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
-import type { GetAdminPlayersQuery } from "@createrington/shared/api";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { trpc } from "@/lib/trpc";
 
 // Extended player type with strike and ban counts
 interface PlayerWithCounts extends PlayerApiData {
@@ -71,27 +71,14 @@ type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 type ViolationFilter = "all" | "strikes" | "bans" | "any";
 
 export function AdminPlayers() {
-  const {
-    stats,
-    loading: statsLoading,
-    fetchPlayers,
-    isPlayerOnline,
-    getPlayerServerId,
-    getServerName,
-  } = useAdminPlayers();
+  const { isPlayerOnline, getPlayerServerId, getServerName } =
+    useAdminPlayers();
 
   const toast = useToastActions();
-
-  // Player list state
-  const [players, setPlayers] = useState<PlayerWithCounts[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -107,70 +94,32 @@ export function AdminPlayers() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  /**
-   * Load players with current filters
-   */
-  const loadPlayers = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // tRPC queries
+  const statsQuery = trpc.adminPlayers.players.stats.useQuery();
 
-      const query: GetAdminPlayersQuery = {
-        page: page,
-        limit: limit,
-        orderBy,
-        orderDirection,
-        includeStrikeCounts: true,
-        includeBanCounts: true,
-      };
-
-      if (debouncedSearch.trim()) {
-        query.minecraftUsername = debouncedSearch.trim();
-      }
-
-      if (onlineFilter !== undefined) {
-        query.online = onlineFilter ? true : false;
-      }
-
-      // Add violation filters
-      if (violationFilter === "strikes") {
-        query.hasStrikes = true;
-      } else if (violationFilter === "bans") {
-        query.hasBans = true;
-      } else if (violationFilter === "any") {
-        query.hasViolations = true;
-      }
-
-      const data = await fetchPlayers(query);
-
-      if (data) {
-        // Players already include activeStrikeCount and activeBanCount from the API
-        setPlayers(data.data.players as PlayerWithCounts[]);
-        setTotal(data.data.pagination.total);
-        setTotalPages(data.data.pagination.totalPages);
-      }
-    } catch (err) {
-      console.error("Failed to load players:", err);
-      setError("Failed to load players");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    fetchPlayers,
-    debouncedSearch,
+  const playersQuery = trpc.adminPlayers.players.list.useQuery({
     page,
     limit,
-    onlineFilter,
-    violationFilter,
     orderBy,
     orderDirection,
-  ]);
+    minecraftUsername: debouncedSearch.trim() || undefined,
+    online: onlineFilter,
+    hasStrikes: violationFilter === "strikes" ? true : undefined,
+    hasBans: violationFilter === "bans" ? true : undefined,
+    hasViolations: violationFilter === "any" ? true : undefined,
+    includeStrikeCounts: true,
+    includeBanCounts: true,
+  });
 
-  // Load players on mount and when filters change
-  useEffect(() => {
-    loadPlayers();
-  }, [loadPlayers]);
+  const stats = statsQuery.data;
+  const statsLoading = statsQuery.isLoading;
+  const players = (playersQuery.data?.players ?? []) as PlayerWithCounts[];
+  const total = playersQuery.data?.pagination.total ?? 0;
+  const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
+  const loading = playersQuery.isLoading;
+  const error = playersQuery.error?.message ?? null;
 
+  // Reset page when filters change
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch, onlineFilter, violationFilter, orderBy, orderDirection]);
@@ -526,7 +475,7 @@ export function AdminPlayers() {
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
                 <Button
-                  onClick={loadPlayers}
+                  onClick={() => playersQuery.refetch()}
                   className="mt-4"
                   variant="outline"
                 >

@@ -1,9 +1,9 @@
 import { db, Q } from "@/db";
 import { DatabaseTable } from "@/generated/db";
 import type { PlayerBan, BanType } from "@createrington/shared/db";
-import type { BanStatistics } from "@createrington/shared/api/admin-player.types";
 import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
+import type { BanStatistics } from "@/db/queries/player/ban";
 
 /**
  * Repository for player ban management

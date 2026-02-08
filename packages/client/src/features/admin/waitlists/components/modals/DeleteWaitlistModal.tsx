@@ -14,16 +14,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import type { WaitlistEntryApiData } from "@createrington/shared/db";
-import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+
+type WaitlistEntry = RouterOutput["adminWaitlists"]["list"]["entries"][number];
 
 interface DeleteWaitlistModalProps {
   open: boolean;
   onClose: () => void;
-  entry: Omit<WaitlistEntryApiData, "submittedAt" | "acceptedAt"> & {
-    submittedAt: string;
-    acceptedAt: string | null;
-  };
+  entry: WaitlistEntry;
   onSuccess: () => void;
 }
 
@@ -35,8 +33,9 @@ export function DeleteWaitlistModal({
 }: DeleteWaitlistModalProps) {
   const toast = useToastActions();
 
+  const deleteEntry = trpc.adminWaitlists.delete.useMutation();
+
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -57,9 +56,10 @@ export function DeleteWaitlistModal({
     }
 
     try {
-      setLoading(true);
-
-      await adminWaitlistApi.delete(entry.id, { reason: reason.trim() });
+      await deleteEntry.mutateAsync({
+        id: entry.id,
+        reason: reason.trim(),
+      });
 
       toast.success("Waitlist entry deleted successfully!");
       setShowConfirmDialog(false);
@@ -69,7 +69,6 @@ export function DeleteWaitlistModal({
       console.error("Failed to delete waitlist entry:", err);
       toast.error("Failed to delete waitlist entry");
     } finally {
-      setLoading(false);
       onClose();
     }
   };
@@ -156,7 +155,7 @@ export function DeleteWaitlistModal({
                 variant="outline"
                 className="flex-1 cursor-pointer"
                 onClick={onClose}
-                disabled={loading}
+                disabled={deleteEntry.isPending}
               >
                 Cancel
               </Button>
@@ -164,7 +163,7 @@ export function DeleteWaitlistModal({
                 variant="destructive"
                 className="flex-1 cursor-pointer"
                 onClick={handleDeleteClick}
-                disabled={!reason.trim() || loading}
+                disabled={!reason.trim() || deleteEntry.isPending}
               >
                 Delete Entry
               </Button>
@@ -204,9 +203,9 @@ export function DeleteWaitlistModal({
               variant="destructive"
               className="cursor-pointer"
               onClick={handleConfirmDelete}
-              disabled={confirmText !== "DELETE" || loading}
+              disabled={confirmText !== "DELETE" || deleteEntry.isPending}
             >
-              {loading ? "Deleting..." : "Confirm"}
+              {deleteEntry.isPending ? "Deleting..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

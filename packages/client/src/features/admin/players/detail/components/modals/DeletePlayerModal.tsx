@@ -14,14 +14,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { PlayerApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+
+type PlayerDetailed = RouterOutput["adminPlayers"]["players"]["get"];
 
 interface DeletePlayerModalProps {
   open: boolean;
   onClose: () => void;
-  player: PlayerApiData;
+  player: PlayerDetailed["player"];
   onSuccess: () => void;
 }
 
@@ -33,8 +34,9 @@ export function DeletePlayerModal({
 }: DeletePlayerModalProps) {
   const toast = useToastActions();
 
+  const deletePlayer = trpc.adminPlayers.players.delete.useMutation();
+
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
   const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
@@ -55,9 +57,8 @@ export function DeletePlayerModal({
     }
 
     try {
-      setLoading(true);
-
-      await adminPlayerApi.delete(player.minecraftUuid, {
+      await deletePlayer.mutateAsync({
+        id: player.minecraftUuid,
         reason: reason.trim(),
       });
 
@@ -69,7 +70,6 @@ export function DeletePlayerModal({
       console.error("Failed to delete player:", err);
       toast.error("Failed to delete player");
     } finally {
-      setLoading(false);
       onClose();
     }
   };
@@ -157,7 +157,7 @@ export function DeletePlayerModal({
                 variant="outline"
                 className="flex-1 cursor-pointer"
                 onClick={onClose}
-                disabled={loading}
+                disabled={deletePlayer.isPending}
               >
                 Cancel
               </Button>
@@ -165,7 +165,7 @@ export function DeletePlayerModal({
                 variant="destructive"
                 className="flex-1 cursor-pointer"
                 onClick={handleDeleteClick}
-                disabled={!reason.trim() || loading}
+                disabled={!reason.trim() || deletePlayer.isPending}
               >
                 Delete Player
               </Button>
@@ -206,9 +206,9 @@ export function DeletePlayerModal({
               variant="destructive"
               className="cursor-pointer"
               onClick={handleConfirmDelete}
-              disabled={confirmText !== "DELETE" || loading}
+              disabled={confirmText !== "DELETE" || deletePlayer.isPending}
             >
-              {loading ? "Deleting..." : "Confirm"}
+              {deletePlayer.isPending ? "Deleting..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

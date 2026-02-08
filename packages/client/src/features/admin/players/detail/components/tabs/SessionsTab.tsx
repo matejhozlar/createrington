@@ -7,13 +7,12 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
-import type { PlayerSessionApiData } from "@createrington/shared/db";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 interface SessionsTabProps {
   playerId: string;
@@ -21,13 +20,20 @@ interface SessionsTabProps {
 }
 
 export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
-  const [sessions, setSessions] = useState<PlayerSessionApiData[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+
+  const sessionsQuery = trpc.adminPlayers.sessions.list.useQuery({
+    id: playerId,
+    page,
+    limit,
+  });
+
+  const sessions = sessionsQuery.data?.sessions ?? [];
+  const total = sessionsQuery.data?.pagination.total ?? 0;
+  const totalPages = sessionsQuery.data?.pagination.totalPages ?? 0;
+  const loading = sessionsQuery.isLoading;
+  const error = sessionsQuery.error?.message ?? null;
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -61,31 +67,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
     return items;
   }, [page, totalPages]);
 
-  const fetchSessions = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await adminPlayerApi.getSessions(playerId, {
-        page,
-        limit,
-      });
-
-      setSessions(data.sessions);
-      setTotal(data.pagination.total);
-      setTotalPages(data.pagination.totalPages);
-    } catch (err) {
-      console.error("Failed to fetch sessions:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch sessions");
-    } finally {
-      setLoading(false);
-    }
-  }, [playerId, page, limit]);
-
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
-
   const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -110,7 +91,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           <Button
             size="sm"
             variant="outline"
-            onClick={fetchSessions}
+            onClick={() => sessionsQuery.refetch()}
             disabled={loading}
             className="cursor-pointer"
           >
@@ -130,7 +111,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           <Button
             size="sm"
             variant="outline"
-            onClick={fetchSessions}
+            onClick={() => sessionsQuery.refetch()}
             className="mt-4 cursor-pointer"
           >
             Retry
@@ -166,7 +147,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                 {sessions.map((session) => {
                   const serverName = getServerName(session.serverId);
                   const duration = session.secondsPlayed
-                    ? session.secondsPlayed
+                    ? Number(session.secondsPlayed)
                     : 0;
                   const joinedAt = new Date(session.sessionStart);
                   const leftAt = session.sessionEnd

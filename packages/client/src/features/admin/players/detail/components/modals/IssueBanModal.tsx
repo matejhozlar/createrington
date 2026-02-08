@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { X, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface IssueBanModalProps {
@@ -42,11 +42,12 @@ export function IssueBanModal({
   onSuccess,
 }: IssueBanModalProps) {
   const toast = useToastActions();
+  const issueTemporaryBan = trpc.adminPlayers.bans.issueTemporary.useMutation();
+  const issuePermanentBan = trpc.adminPlayers.bans.issuePermanent.useMutation();
 
   const [banType, setBanType] = useState<BanType>("temporary");
   const [reason, setReason] = useState("");
   const [durationDays, setDurationDays] = useState<number>(7);
-  const [loading, setLoading] = useState(false);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
@@ -69,18 +70,20 @@ export function IssueBanModal({
     await executeBan();
   };
 
+  const loading = issueTemporaryBan.isPending || issuePermanentBan.isPending;
+
   const executeBan = async () => {
     try {
-      setLoading(true);
-
       if (banType === "temporary") {
-        await adminPlayerApi.issueTemporaryBan(playerId, {
+        await issueTemporaryBan.mutateAsync({
+          id: playerId,
           reason: reason.trim(),
           durationDays,
         });
         toast.success(`Player banned for ${durationDays} days`);
       } else {
-        await adminPlayerApi.issuePermanentBan(playerId, {
+        await issuePermanentBan.mutateAsync({
+          id: playerId,
           reason: reason.trim(),
         });
         toast.success("Player permanently banned and deleted");
@@ -98,8 +101,6 @@ export function IssueBanModal({
     } catch (err) {
       console.error("Failed to issue ban:", err);
       toast.error("Failed to issue ban");
-    } finally {
-      setLoading(false);
     }
   };
 

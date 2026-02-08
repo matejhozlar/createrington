@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import {
   Breadcrumb,
@@ -34,26 +34,13 @@ import {
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type {
-  WaitlistEntryApiData,
-  WaitlistStatus,
-} from "@createrington/shared/db";
-import type {
-  GetAdminWaitlistEntriesQuery,
-  AdminWaitlistStats,
-} from "@createrington/shared/api";
+import type { WaitlistStatus } from "@createrington/shared/db";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
-import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type WaitlistEntryWithDates = Omit<
-  WaitlistEntryApiData,
-  "submittedAt" | "acceptedAt"
-> & {
-  submittedAt: string;
-  acceptedAt: string | null;
-};
+type WaitlistEntry = RouterOutput["adminWaitlists"]["list"]["entries"][number];
 
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
@@ -61,20 +48,9 @@ type StatusFilter = "all" | WaitlistStatus;
 export function AdminWaitlists() {
   const toast = useToastActions();
 
-  // Stats state
-  const [stats, setStats] = useState<AdminWaitlistStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  // Waitlist entries state
-  const [entries, setEntries] = useState<WaitlistEntryWithDates[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -94,91 +70,32 @@ export function AdminWaitlists() {
   }>({ open: false, entryId: null });
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
-    entry: WaitlistEntryWithDates | null;
+    entry: WaitlistEntry | null;
   }>({ open: false, entry: null });
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  /**
-   * Fetch waitlist statistics
-   */
-  const fetchStats = useCallback(async () => {
-    try {
-      setStatsLoading(true);
+  // tRPC queries
+  const statsQuery = trpc.adminWaitlists.stats.useQuery();
+  const stats = statsQuery.data ?? null;
+  const statsLoading = statsQuery.isLoading;
 
-      const data = await adminWaitlistApi.getStats();
-
-      setStats(data);
-    } catch (err) {
-      console.error("Failed to fetch waitlist stats:", err);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, []);
-
-  /**
-   * Load waitlist entries with current filters
-   */
-  const loadEntries = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const query: Partial<GetAdminWaitlistEntriesQuery> = {
-        page,
-        limit,
-        orderBy,
-        orderDirection,
-      };
-
-      if (debouncedSearch.trim()) {
-        // Search in both email and discord name
-        query.email = debouncedSearch.trim();
-        query.discordName = debouncedSearch.trim();
-      }
-
-      if (statusFilter !== "all") {
-        query.status = statusFilter;
-      }
-
-      if (verifiedFilter !== undefined) {
-        query.verified = verifiedFilter;
-      }
-
-      const data = await adminWaitlistApi.getAll(query);
-
-      setEntries(data.entries as WaitlistEntryWithDates[]);
-      setTotal(data.pagination.total);
-      setTotalPages(data.pagination.totalPages);
-    } catch (err) {
-      console.error("Failed to load waitlist entries:", err);
-      setError("Failed to load waitlist entries");
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    debouncedSearch,
+  const entriesQuery = trpc.adminWaitlists.list.useQuery({
     page,
     limit,
-    statusFilter,
-    verifiedFilter,
     orderBy,
     orderDirection,
-  ]);
+    email: debouncedSearch.trim() || undefined,
+    discordName: debouncedSearch.trim() || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    verified: verifiedFilter,
+  });
 
-  // Load stats and entries on mount
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
-
-  useEffect(() => {
-    loadEntries();
-  }, [loadEntries]);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch, statusFilter, verifiedFilter, orderBy, orderDirection]);
+  const entries = entriesQuery.data?.entries ?? [];
+  const total = entriesQuery.data?.pagination.total ?? 0;
+  const totalPages = entriesQuery.data?.pagination.totalPages ?? 0;
+  const loading = entriesQuery.isLoading;
+  const error = entriesQuery.error?.message ?? null;
 
   /**
    * Handle search form submission
@@ -249,7 +166,7 @@ export function AdminWaitlists() {
   /**
    * Open delete modal
    */
-  const handleDelete = useCallback((entry: WaitlistEntryWithDates) => {
+  const handleDelete = useCallback((entry: WaitlistEntry) => {
     setDeleteModal({ open: true, entry });
   }, []);
 
@@ -258,18 +175,18 @@ export function AdminWaitlists() {
    */
   const handleInviteSuccess = useCallback(() => {
     setInviteModal({ open: false, entryId: null });
-    loadEntries();
-    fetchStats();
-  }, [loadEntries, fetchStats]);
+    entriesQuery.refetch();
+    statsQuery.refetch();
+  }, [entriesQuery, statsQuery]);
 
   /**
    * Handle successful deletion
    */
   const handleDeleteSuccess = useCallback(() => {
     setDeleteModal({ open: false, entry: null });
-    loadEntries();
-    fetchStats();
-  }, [loadEntries, fetchStats]);
+    entriesQuery.refetch();
+    statsQuery.refetch();
+  }, [entriesQuery, statsQuery]);
 
   /**
    * Render sort icon for column header
@@ -534,7 +451,7 @@ export function AdminWaitlists() {
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
                 <Button
-                  onClick={loadEntries}
+                  onClick={() => entriesQuery.refetch()}
                   className="mt-4 cursor-pointer"
                   variant="outline"
                 >

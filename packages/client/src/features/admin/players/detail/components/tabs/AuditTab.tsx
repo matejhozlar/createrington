@@ -6,29 +6,33 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from "lucide-react";
-import type { AdminLogActionApiData } from "@createrington/shared/db";
 import { cn } from "@/lib/utils";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 interface AuditTabProps {
   playerId: string; // minecraftUuid (route param)
 }
 
 export function AuditTab({ playerId }: AuditTabProps) {
-  const [actions, setActions] = useState<AdminLogActionApiData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
+
+  const auditQuery = trpc.adminPlayers.audit.list.useQuery({
+    id: playerId,
+    page,
+    limit,
+  });
+
+  const actions = auditQuery.data?.actions ?? [];
+  const total = auditQuery.data?.pagination.total ?? 0;
+  const totalPages = auditQuery.data?.pagination.totalPages ?? 0;
+  const loading = auditQuery.isLoading;
+  const error = auditQuery.error?.message ?? null;
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -61,34 +65,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
     return items;
   }, [page, totalPages]);
-
-  const loadAuditLog = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
-
-      const data = await adminPlayerApi.getAuditLog(playerId, {
-        page,
-        limit,
-      });
-
-      setActions(data.actions);
-      setTotal(data.pagination.total);
-      setTotalPages(data.pagination.totalPages);
-    } catch (err) {
-      console.error("Failed to load audit log:", err);
-      setError(err instanceof Error ? err.message : "Failed to load audit log");
-    } finally {
-      setLoading(false);
-    }
-  }, [playerId, page, limit]);
-
-  useEffect(() => {
-    loadAuditLog();
-  }, [loadAuditLog]);
 
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
@@ -126,7 +102,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
         <Button
           size="sm"
           variant="outline"
-          onClick={loadAuditLog}
+          onClick={() => auditQuery.refetch()}
           disabled={loading}
           className="cursor-pointer"
         >
@@ -144,7 +120,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
           <div className="text-center">
             <p className="text-destructive">{error}</p>
             <Button
-              onClick={loadAuditLog}
+              onClick={() => auditQuery.refetch()}
               className="mt-4 cursor-pointer"
               variant="outline"
             >

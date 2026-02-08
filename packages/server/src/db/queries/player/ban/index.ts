@@ -2,7 +2,15 @@ import type { Pool, PoolClient } from "pg";
 import { PlayerBanBaseQueries } from "@/generated/db/player_ban.queries";
 import type { PlayerBan, BanType } from "@createrington/shared/db";
 import { DatabaseTable } from "@/generated/db";
-import type { BanStatistics } from "@createrington/shared/api";
+
+export interface BanStatistics {
+  total: number;
+  active: number;
+  unbanned: number;
+  temporary: number;
+  permanent: number;
+  expired: number;
+}
 
 /**
  * Custom queries for player_ban table
@@ -133,7 +141,7 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     const allBans = await this.findAll({ playerMinecraftUuid });
     const now = new Date();
 
-    const stats: BanStatistics = {
+    const stats = {
       total: allBans.length,
       active: 0,
       unbanned: 0,
