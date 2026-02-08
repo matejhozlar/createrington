@@ -33,7 +33,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth";
 import { ServerStatus } from "./server-status";
-import { usePlayerData } from "@/contexts/socket";
+import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
 

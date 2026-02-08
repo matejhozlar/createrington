@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
-import { useServerData, usePlayerData } from "@/contexts/socket";
+import { useServerData } from "@/contexts/server-data";
+import { usePlayerData } from "@/contexts/player-data";
 import { AdminPlayerContextType } from "./types";
 import { AdminPlayersContext } from "./context";
 

@@ -1,5 +1,4 @@
 import React, {
-  createContext,
   useCallback,
   useEffect,
   useState,
@@ -11,8 +10,9 @@ import type {
   ServerStatusUpdatePayload,
   SubscriptionType,
 } from "@createrington/shared/socket";
-import { WebSocketContext } from "./context";
+import { WebSocketContext } from "@/contexts/websocket";
 import type { ServerDataContextType } from "./types";
+import { ServerDataContext } from "./context";
 
 interface ServerDataProviderProps {
   children: React.ReactNode;
@@ -21,10 +21,6 @@ interface ServerDataProviderProps {
   /** Specific server IDs to track (if not provided, tracks all) */
   serverIds?: number[];
 }
-
-export const ServerDataContext = createContext<
-  ServerDataContextType | undefined
->(undefined);
 
 /**
  * Server Data Provider

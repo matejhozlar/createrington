@@ -1,5 +1,4 @@
 import React, {
-  createContext,
   useCallback,
   useEffect,
   useState,
@@ -11,8 +10,9 @@ import type {
   PlayersUpdatePayload,
   SubscriptionType,
 } from "@createrington/shared/socket";
-import { WebSocketContext } from "./context";
+import { WebSocketContext } from "@/contexts/websocket";
 import type { PlayerDataContextType } from "./types";
+import { PlayerDataContext } from "./context";
 
 interface PlayerDataProviderProps {
   children: React.ReactNode;
@@ -21,10 +21,6 @@ interface PlayerDataProviderProps {
   /** Specific server IDs to track (if not provided, tracks all) */
   serverIds?: number[];
 }
-
-export const PlayerDataContext = createContext<
-  PlayerDataContextType | undefined
->(undefined);
 
 /**
  * Player Data Provider

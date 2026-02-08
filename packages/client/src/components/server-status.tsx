@@ -2,7 +2,7 @@ import * as React from "react";
 import { Server } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { useServerData } from "@/contexts/socket";
+import { useServerData } from "@/contexts/server-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Loading } from "./loading-spinner";
 import { useIsMobile } from "@/hooks/use-mobile";

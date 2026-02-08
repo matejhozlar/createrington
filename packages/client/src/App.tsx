@@ -2,11 +2,9 @@ import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
 import { AuthProvider, useAuth } from "./contexts/auth";
-import {
-  WebSocketProvider,
-  ServerDataProvider,
-  PlayerDataProvider,
-} from "./contexts/socket";
+import { WebSocketProvider } from "./contexts/websocket";
+import { ServerDataProvider } from "./contexts/server-data";
+import { PlayerDataProvider } from "./contexts/player-data";
 import { ProtectedRoute } from "./components/protected-route";
 import { Home } from "./pages/Home/Home";
 import { Profile } from "./pages/Profile/Profile";

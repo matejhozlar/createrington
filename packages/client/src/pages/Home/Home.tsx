@@ -31,7 +31,7 @@ import {
   Store,
   Zap,
 } from "lucide-react";
-import { useServerData } from "@/contexts/socket";
+import { useServerData } from "@/contexts/server-data";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 

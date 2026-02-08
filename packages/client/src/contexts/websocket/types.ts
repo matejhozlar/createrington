@@ -3,8 +3,6 @@ import type {
   InitialDataPayload,
   ServerInitialDataPayload,
   SubscriptionType,
-  PlayerData,
-  ServerStatus,
 } from "@createrington/shared/socket";
 
 /**
@@ -89,77 +87,4 @@ export interface WebSocketContextType {
     serverId?: number,
     options?: { includeMessages?: boolean; messageLimit?: number },
   ) => Promise<InitialDataPayload | ServerInitialDataPayload | null>;
-}
-
-/**
- * Server statistics
- */
-export interface ServerStats {
-  total: number;
-  online: number;
-  offline: number;
-  totalPlayers: number;
-  totalCapacity: number;
-  averageLoad: number;
-}
-
-/**
- * Server data context type
- */
-export interface ServerDataContextType {
-  // State
-  servers: ServerStatus[];
-  serverMap: Map<number, ServerStatus>;
-  loading: boolean;
-  error: Error | null;
-  stats: ServerStats;
-  isSubscribed: boolean;
-
-  // Methods
-  getServer: (serverId: number) => ServerStatus | undefined;
-  getAllServers: () => ServerStatus[];
-  getOnlineServers: () => ServerStatus[];
-  getOfflineServers: () => ServerStatus[];
-  isServerOnline: (serverId: number) => boolean;
-  refresh: () => Promise<void>;
-  subscribeToUpdates: () => Promise<void>;
-  unsubscribeFromUpdates: () => Promise<void>;
-}
-
-/**
- * Player statistics
- */
-export interface PlayerStats {
-  total: number;
-  byServer: Record<number, number>;
-  averageSessionDuration: number; // in seconds
-  recentJoins: number;
-  recentLeaves: number;
-}
-
-/**
- * Player data context type
- */
-export interface PlayerDataContextType {
-  // State
-  players: PlayerData[];
-  playerMap: Map<string, PlayerData>;
-  loading: boolean;
-  error: Error | null;
-  stats: PlayerStats;
-  isSubscribed: boolean;
-  recentJoins: PlayerData[];
-  recentLeaves: PlayerData[];
-
-  // Methods
-  getPlayer: (uuid: string) => PlayerData | undefined;
-  getPlayerByUsername: (username: string) => PlayerData | undefined;
-  getAllPlayers: () => PlayerData[];
-  getServerPlayers: (serverId: number) => PlayerData[];
-  isPlayerOnline: (uuid: string) => boolean;
-  getServerPlayerCount: (serverId: number) => number;
-  refresh: () => Promise<void>;
-  clearRecentEvents: () => void;
-  subscribeToUpdates: () => Promise<void>;
-  unsubscribeFromUpdates: () => Promise<void>;
 }
