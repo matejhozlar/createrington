@@ -17,7 +17,7 @@
   },
   "scripts": {
     "generate": "npm run generate --workspace=@createrington/server && npm run build:shared && npm run typecheck",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build:types --workspace=@createrington/server && npm run typecheck --workspaces --if-present",
     "typecheck:shared": "npm run typecheck --workspace=@createrington/shared",
     "typecheck:server": "npm run typecheck --workspace=@createrington/server",
     "typecheck:client": "npm run typecheck --workspace=@createrington/client",
