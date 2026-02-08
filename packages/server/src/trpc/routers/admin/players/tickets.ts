@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
 
 export const ticketsRouter = router({
   list: adminProcedure
@@ -9,8 +9,7 @@ export const ticketsRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        page: z.number().int().min(0).default(0),
-        limit: z.number().int().min(1).max(100).default(20),
+        ...paginationInput(),
       }),
     )
     .query(async ({ input }) => {
@@ -23,12 +22,7 @@ export const ticketsRouter = router({
 
       return {
         tickets,
-        pagination: {
-          page: input.page,
-          limit: input.limit,
-          total,
-          totalPages: Math.ceil(total / input.limit),
-        },
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 });

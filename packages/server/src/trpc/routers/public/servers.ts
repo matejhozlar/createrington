@@ -3,6 +3,7 @@ import { router, publicProcedure } from "../../trpc";
 import { getService, Services } from "@/services";
 import {
   PlaytimeManagerService,
+  PlaytimeService,
   type ActiveSession,
 } from "@/services/playtime";
 import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
@@ -48,7 +49,7 @@ export interface ServerStatus {
 
 function mapSessionToPlayerInfo(
   session: ActiveSession,
-  service: any,
+  service: PlaytimeService,
 ): PlayerInfo {
   const sessionDuration = service.getSessionDuration(session) || 0;
 
@@ -71,6 +72,45 @@ function mapSessionToPlayerInfo(
   };
 }
 
+function buildServerStatus(
+  id: number,
+  serverConfig: { name: string; ip: string; port: number; maxPlayers: number },
+  service: PlaytimeService | undefined,
+): ServerStatus {
+  if (!service) {
+    return {
+      serverId: id,
+      serverName: serverConfig.name,
+      ip: serverConfig.ip,
+      port: serverConfig.port,
+      maxPlayers: serverConfig.maxPlayers,
+      status: "unknown",
+      playerCount: 0,
+      players: [],
+      lastChecked: new Date(),
+    };
+  }
+
+  const activeSessions = service.getActiveSessions();
+  const isOnline = service.getStatus().isInitialized;
+
+  const players: PlayerInfo[] = activeSessions.map(
+    (session: ActiveSession) => mapSessionToPlayerInfo(session, service),
+  );
+
+  return {
+    serverId: id,
+    serverName: serverConfig.name,
+    ip: serverConfig.ip,
+    port: serverConfig.port,
+    maxPlayers: serverConfig.maxPlayers,
+    status: isOnline ? "online" : "offline",
+    playerCount: players.length,
+    players,
+    lastChecked: new Date(),
+  };
+}
+
 export const serversRouter = router({
   getAll: publicProcedure
     .meta({
@@ -78,6 +118,10 @@ export const serversRouter = router({
         "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list.",
     })
     .query(async () => {
+      const manager = await getService<PlaytimeManagerService>(
+        Services.PLAYTIME_MANAGER_SERVICE,
+      );
+
       const servers: ServerStatus[] = [];
       let totalPlayers = 0;
       let onlineServers = 0;
@@ -86,53 +130,13 @@ export const serversRouter = router({
         MINECRAFT_SERVERS,
       )) {
         const id = parseInt(serverId, 10);
-
-        const manager = await getService<PlaytimeManagerService>(
-          Services.PLAYTIME_MANAGER_SERVICE,
-        );
-
         const service = manager.getService(id);
+        const status = buildServerStatus(id, serverConfig, service);
 
-        let status: ServerStatus;
-
-        if (!service) {
-          status = {
-            serverId: id,
-            serverName: serverConfig.name,
-            ip: serverConfig.ip,
-            port: serverConfig.port,
-            maxPlayers: serverConfig.maxPlayers,
-            status: "unknown",
-            playerCount: 0,
-            players: [],
-            lastChecked: new Date(),
-          };
-        } else {
-          const activeSessions = service.getActiveSessions();
-          const isOnline = service.getStatus().isInitialized;
-
-          const players: PlayerInfo[] = activeSessions.map(
-            (session: ActiveSession) =>
-              mapSessionToPlayerInfo(session, service),
-          );
-
-          status = {
-            serverId: id,
-            serverName: serverConfig.name,
-            ip: serverConfig.ip,
-            port: serverConfig.port,
-            maxPlayers: serverConfig.maxPlayers,
-            status: isOnline ? "online" : "offline",
-            playerCount: players.length,
-            players,
-            lastChecked: new Date(),
-          };
-
-          if (isOnline) {
-            onlineServers++;
-          }
-          totalPlayers += players.length;
+        if (status.status === "online") {
+          onlineServers++;
         }
+        totalPlayers += status.playerCount;
 
         servers.push(status);
       }
@@ -173,41 +177,7 @@ export const serversRouter = router({
       );
 
       const service = manager.getService(input.id);
-
-      let status: ServerStatus;
-
-      if (!service) {
-        status = {
-          serverId: input.id,
-          serverName: serverConfig.name,
-          ip: serverConfig.ip,
-          port: serverConfig.port,
-          maxPlayers: serverConfig.maxPlayers,
-          status: "unknown",
-          playerCount: 0,
-          players: [],
-          lastChecked: new Date(),
-        };
-      } else {
-        const activeSessions = service.getActiveSessions();
-        const isOnline = service.getStatus().isInitialized;
-
-        const players: PlayerInfo[] = activeSessions.map(
-          (session: ActiveSession) => mapSessionToPlayerInfo(session, service),
-        );
-
-        status = {
-          serverId: input.id,
-          serverName: serverConfig.name,
-          ip: serverConfig.ip,
-          port: serverConfig.port,
-          maxPlayers: serverConfig.maxPlayers,
-          status: isOnline ? "online" : "offline",
-          playerCount: players.length,
-          players,
-          lastChecked: new Date(),
-        };
-      }
+      const status = buildServerStatus(input.id, serverConfig, service);
 
       return { server: status };
     }),

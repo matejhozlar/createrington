@@ -2,7 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../../trpc";
 import { Q } from "@/db";
 import { z } from "zod";
-import { parsePlayerId } from "../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "../../utils";
+import type { PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
   get: publicProcedure
@@ -32,7 +33,7 @@ export const playersRouter = router({
   getAll: publicProcedure
     .meta({
       description:
-        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, isActive) and sorting. Response includes players array and pagination metadata.",
+        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata.",
     })
     .input(
       z.object({
@@ -40,16 +41,12 @@ export const playersRouter = router({
         discordId: z.string().optional(),
         minecraftUuid: z.string().optional(),
         minecraftUsername: z.string().optional(),
-        isActive: z
-          .enum(["true"], "false")
+        online: z
+          .enum(["true", "false"])
           .transform((val) => val === "true")
           .optional(),
 
-        // Pagination
-        page: z.coerce.number().int().positive().min(0).default(0),
-        limit: z.coerce.number().int().min(1).max(100).default(20),
-
-        // Sorting
+        ...paginationInput(),
         orderBy: z
           .enum(["createdAt", "minecraftUsername", "updatedAt"])
           .default("createdAt"),
@@ -57,7 +54,7 @@ export const playersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const filters: any = {};
+      const filters: PlayerFilters = {};
       if (input.discordId) filters.discordId = input.discordId;
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
@@ -65,7 +62,7 @@ export const playersRouter = router({
           $ilike: `%${input.minecraftUsername}%`,
         };
       }
-      if (input.isActive !== undefined) filters.isActive = input.isActive;
+      if (input.online !== undefined) filters.online = input.online;
 
       const [players, total] = await Promise.all([
         Q.player.findAll(filters, {
@@ -79,12 +76,7 @@ export const playersRouter = router({
 
       return {
         players,
-        pagination: {
-          page: input.page,
-          limit: input.limit,
-          total,
-          totalPages: Math.ceil(total / input.limit),
-        },
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
@@ -106,7 +98,7 @@ export const playersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const filters: any = {};
+      const filters: PlayerFilters = {};
 
       if (input.online !== undefined) filters.online = input.online;
       if (input.currentServerId !== undefined) {
