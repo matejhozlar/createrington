@@ -63,6 +63,7 @@
     "pg-mem": "^3.0.5",
     "supertest": "^7.1.4",
     "testcontainers": "^11.10.0",
+    "trpc-ui": "npm:trpc-ui-zod4@^1.1.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -70,9 +71,9 @@
   },
   "dependencies": {
     "@createrington/shared": "*",
+    "@trpc/server": "^11.1.0",
     "axios": "^1.13.2",
     "canvas": "^3.2.0",
-    "@trpc/server": "^11.1.0",
     "cors": "^2.8.5",
     "discord-html-transcripts": "^3.2.0",
     "discord.js": "^14.25.1",

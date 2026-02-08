@@ -2,7 +2,11 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 
-const t = initTRPC.context<Context>().create();
+export interface Meta {
+  description?: string;
+}
+
+const t = initTRPC.context<Context>().meta<Meta>().create();
 
 export const router = t.router;
 export const middleware = t.middleware;

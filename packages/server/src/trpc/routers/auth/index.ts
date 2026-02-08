@@ -8,7 +8,12 @@ import {
 } from "@/services/discord/oauth/oauth.service";
 
 export const authRouter = router({
-  getDiscordUrl: publicProcedure.query(() => {
+  getDiscordUrl: publicProcedure
+    .meta({
+      description:
+        "Returns a Discord OAuth authorization URL and a CSRF state token. Redirect the user to the returned URL to start the login flow.",
+    })
+    .query(() => {
     const state = Math.random().toString(36).substring(7);
     const url = discordOAuth.generateAuthUrl(state);
 
@@ -16,6 +21,10 @@ export const authRouter = router({
   }),
 
   discordCallback: publicProcedure
+    .meta({
+      description:
+        "Completes the Discord OAuth flow. Pass the authorization code received from Discord. Returns a JWT token and user profile on success. Throws UNAUTHORIZED if the user is not registered.",
+    })
     .input(
       z.object({
         code: z.string().min(1, "Authorization code is required"),
@@ -70,6 +79,10 @@ export const authRouter = router({
     }),
 
   refreshToken: publicProcedure
+    .meta({
+      description:
+        "Refreshes an expired or near-expiry JWT. Pass the old token as input (not via Authorization header, since it may be expired). Returns a new token with a fresh 7-day expiry.",
+    })
     .input(
       z.object({
         token: z.string().min(1, "Token is required"),
@@ -87,16 +100,31 @@ export const authRouter = router({
       }
     }),
 
-  me: userProcedure.query(({ ctx }) => {
+  me: userProcedure
+    .meta({
+      description:
+        "Returns the current authenticated user's profile from the JWT. Requires a valid Bearer token. Use this to hydrate user state on page load.",
+    })
+    .query(({ ctx }) => {
     return { user: ctx.user };
   }),
 
-  logout: userProcedure.mutation(({ ctx }) => {
+  logout: userProcedure
+    .meta({
+      description:
+        "Logs out the current user. Server-side this is a no-op (logs the event); the client should delete the stored token from localStorage.",
+    })
+    .mutation(({ ctx }) => {
     logger.info(`User ${ctx.user.username} logged out`);
     return { success: true };
   }),
 
-  status: publicProcedure.query(({ ctx }) => {
+  status: publicProcedure
+    .meta({
+      description:
+        "Checks if the current request is authenticated. Returns `{ authenticated: boolean, user }`. Works with or without a token — unauthenticated requests get `{ authenticated: false, user: null }`.",
+    })
+    .query(({ ctx }) => {
     return {
       authenticated: !!ctx.user,
       user: ctx.user ?? null,

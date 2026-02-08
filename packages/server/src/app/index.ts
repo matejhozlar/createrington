@@ -6,6 +6,7 @@ import { registerRoutes } from "./features";
 import { errorHandler, notFoundHandler } from "./middleware";
 import { appRouter } from "@/trpc/router";
 import { createContext } from "@/trpc/context";
+import config from "@/config";
 import cors from "cors";
 
 export function createApp(): Express {
@@ -23,6 +24,15 @@ export function createApp(): Express {
       createContext,
     }),
   );
+
+  if (config.envMode.isDev) {
+    app.use("/panel", async (_req, res) => {
+      const { renderTrpcPanel } = await import("trpc-ui");
+      return res.send(
+        renderTrpcPanel(appRouter, { url: "/trpc" }),
+      );
+    });
+  }
 
   // Serve client static files in production
   const clientDir = path.join(import.meta.dirname, "../../../public");

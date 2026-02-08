@@ -5,6 +5,10 @@ import { CreateWaitlistEntryBodySchema } from "@createrington/shared/api/public/
 
 export const waitlistsRouter = router({
   create: publicProcedure
+    .meta({
+      description:
+        "Registers a new waitlist entry. Checks for duplicate email/Discord name (throws CONFLICT). If auto-invite is enabled and spots are available, returns a token and redirect URL; otherwise returns a pending message.",
+    })
     .input(CreateWaitlistEntryBodySchema)
     .mutation(async ({ input }) => {
       const { email, discordName } = input;

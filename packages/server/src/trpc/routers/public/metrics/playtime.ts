@@ -4,6 +4,10 @@ import { z } from "zod";
 
 export const playtimeRouter = router({
   getTotalHours: publicProcedure
+    .meta({
+      description:
+        "Returns total playtime hours across all players. Optionally filter by serverId to get hours for a specific server. Used for the 'Hours Played' metric on the home page.",
+    })
     .input(
       z.object({
         serverId: z.coerce.number().int().positive().optional(),
@@ -20,7 +24,12 @@ export const playtimeRouter = router({
       };
     }),
 
-  getHoursBreakdown: publicProcedure.query(async () => {
+  getHoursBreakdown: publicProcedure
+    .meta({
+      description:
+        "Returns a breakdown of total playtime hours per server. Useful for comparing activity across servers.",
+    })
+    .query(async () => {
     const breakdown = await metricsService.playtime.getTotalHoursBreakdown();
     return breakdown;
   }),

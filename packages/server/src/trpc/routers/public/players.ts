@@ -10,6 +10,10 @@ import {
 
 export const playersRouter = router({
   get: publicProcedure
+    .meta({
+      description:
+        "Looks up a single player by Discord ID, Minecraft UUID, or Minecraft username. Returns the full player record or NOT_FOUND.",
+    })
     .input(GetPlayerParamsSchema)
     .query(async ({ input }) => {
       const identifier = idToObject(input.id);
@@ -33,6 +37,10 @@ export const playersRouter = router({
     }),
 
   getAll: publicProcedure
+    .meta({
+      description:
+        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, isActive) and sorting. Response includes players array and pagination metadata.",
+    })
     .input(GetPlayersQuerySchema)
     .query(async ({ input }) => {
       const filters: any = {};
@@ -67,6 +75,10 @@ export const playersRouter = router({
     }),
 
   count: publicProcedure
+    .meta({
+      description:
+        "Returns a count of players matching optional filters (online status, server, registration date range, last seen). Used for dashboard metrics.",
+    })
     .input(GetPlayersCountQuerySchema)
     .query(async ({ input }) => {
       const filters: any = {};
