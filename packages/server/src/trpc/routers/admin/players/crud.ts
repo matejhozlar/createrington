@@ -4,7 +4,8 @@ import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
+import type { Player, PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
   stats: adminProcedure
@@ -27,8 +28,7 @@ export const playersRouter = router({
         hasStrikes: z.boolean().optional(),
         hasBans: z.boolean().optional(),
         hasViolations: z.boolean().optional(),
-        page: z.number().int().min(0).default(0),
-        limit: z.number().int().min(1).max(100).default(20),
+        ...paginationInput(),
         orderBy: z
           .enum(["createdAt", "minecraftUsername", "updatedAt", "lastSeen"])
           .default("createdAt"),
@@ -38,7 +38,7 @@ export const playersRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const filters: any = {};
+      const filters: PlayerFilters = {};
 
       if (input.discordId) filters.discordId = input.discordId;
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
@@ -89,12 +89,7 @@ export const playersRouter = router({
         if (uuidsWithViolations.length === 0) {
           return {
             players: [],
-            pagination: {
-              page: input.page,
-              limit: input.limit,
-              total: 0,
-              totalPages: 0,
-            },
+            pagination: buildPagination(input.page, input.limit, 0),
           };
         }
 
@@ -111,7 +106,7 @@ export const playersRouter = router({
         playerService.core.count(filters),
       ]);
 
-      let enrichedPlayers = players as any;
+      let enrichedPlayers: (Player & { activeStrikeCount?: number; activeBanCount?: number })[] = players;
 
       if (input.includeStrikeCounts || input.includeBanCounts) {
         const playerUuids = players.map((p) => p.minecraftUuid);
@@ -138,12 +133,7 @@ export const playersRouter = router({
 
       return {
         players: enrichedPlayers,
-        pagination: {
-          page: input.page,
-          limit: input.limit,
-          total,
-          totalPages: Math.ceil(total / input.limit),
-        },
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
@@ -158,58 +148,28 @@ export const playersRouter = router({
       const playerData = await playerService.getComprehensive(identifier);
 
       return {
-        player: {
-          ...playerData.player,
-          createdAt: playerData.player.createdAt.toISOString(),
-          updatedAt: playerData.player.updatedAt.toISOString(),
-          lastSeen: playerData.player.lastSeen.toISOString(),
-        },
+        player: playerData.player,
         balance: playerData.balance
           ? {
               minecraftUuid: playerData.balance.minecraftUuid,
               balance: BalanceUtils.fromStorage(
                 playerData.balance.balance,
               ).toString(),
-              updatedAt: playerData.balance.updatedAt.toISOString(),
+              updatedAt: playerData.balance.updatedAt,
             }
           : null,
         playtime: {
           summary: playerData.playtime.summary.map((s) => ({
-            playerMinecraftUuid: s.playerMinecraftUuid,
-            serverId: s.serverId,
+            ...s,
             totalSeconds: s.totalSeconds.toString(),
-            totalSessions: s.totalSessions,
             avgSessionSeconds: s.avgSessionSeconds?.toString() || "0",
-            firstSeen: s.firstSeen?.toISOString() || null,
-            lastSeen: s.lastSeen?.toISOString() || null,
-            updatedAt: s.updatedAt.toISOString(),
           })),
           totalSeconds: playerData.playtime.totalSeconds,
           totalSessions: playerData.playtime.totalSessions,
         },
         tickets: playerData.tickets,
-        waitlist: playerData.waitlist
-          ? {
-              ...playerData.waitlist,
-              submittedAt: playerData.waitlist.submittedAt.toISOString(),
-              acceptedAt:
-                playerData.waitlist.acceptedAt?.toISOString() || null,
-            }
-          : null,
-        strikes: {
-          all: playerData.strikes.all.map((s) => ({
-            ...s,
-            issuedAt: s.issuedAt.toISOString(),
-            removedAt: s.removedAt?.toISOString() || null,
-          })),
-          active: playerData.strikes.active.map((s) => ({
-            ...s,
-            issuedAt: s.issuedAt.toISOString(),
-            removedAt: s.removedAt?.toISOString() || null,
-          })),
-          activeCount: playerData.strikes.activeCount,
-          totalCount: playerData.strikes.totalCount,
-        },
+        waitlist: playerData.waitlist,
+        strikes: playerData.strikes,
         bans: playerData.bans,
       };
     }),
@@ -234,7 +194,7 @@ export const playersRouter = router({
         });
       }
 
-      const updates: any = {};
+      const updates: { minecraftUsername?: string; discordId?: string } = {};
       if (input.minecraftUsername)
         updates.minecraftUsername = input.minecraftUsername;
       if (input.discordId) updates.discordId = input.discordId;

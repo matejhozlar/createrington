@@ -5,6 +5,7 @@ import { EmbedPresets } from "@/discord/embeds";
 import type {
   WaitlistEntry,
   WaitlistEntryCreate,
+  WaitlistEntryFilters,
   WaitlistStatus,
 } from "@createrington/shared/db";
 import { email, EmailTemplate } from "@/services/email";
@@ -305,14 +306,7 @@ export class WaitlistRepository {
    * (For admin list view)
    */
   async getAll(
-    filters?: {
-      status?: WaitlistStatus;
-      email?: { $ilike: string };
-      discordName?: { $ilike: string };
-      discordId?: string;
-      verified?: boolean;
-      registered?: boolean;
-    },
+    filters?: WaitlistEntryFilters,
     options?: {
       orderBy?: keyof WaitlistEntry;
       orderDirection?: "asc" | "desc";
@@ -326,14 +320,7 @@ export class WaitlistRepository {
   /**
    * Counts waitlist entries matching filters
    */
-  async count(filters?: {
-    status?: WaitlistStatus;
-    email?: { $ilike: string };
-    discordName?: { $ilike: string };
-    discordId?: string;
-    verified?: boolean;
-    registered?: boolean;
-  }): Promise<number> {
+  async count(filters?: WaitlistEntryFilters): Promise<number> {
     return await Q.waitlist.entry.count(filters);
   }
 

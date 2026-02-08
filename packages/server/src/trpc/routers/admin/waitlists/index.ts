@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "../../../trpc";
 import { waitlistRepo } from "@/db";
+import { paginationInput, buildPagination } from "../../../utils";
+import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 export const waitlistsRouter = router({
   stats: adminProcedure
@@ -24,8 +26,7 @@ export const waitlistsRouter = router({
         discordId: z.string().optional(),
         verified: z.boolean().optional(),
         registered: z.boolean().optional(),
-        page: z.number().int().min(0).default(0),
-        limit: z.number().int().min(1).max(100).default(20),
+        ...paginationInput(),
         orderBy: z
           .enum(["submittedAt", "acceptedAt", "email", "discordName"])
           .default("submittedAt"),
@@ -33,7 +34,7 @@ export const waitlistsRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const filters: any = {};
+      const filters: WaitlistEntryFilters = {};
 
       if (input.status) filters.status = input.status;
       if (input.email) filters.email = { $ilike: `%${input.email}%` };
@@ -55,17 +56,8 @@ export const waitlistsRouter = router({
       ]);
 
       return {
-        entries: entries.map((entry) => ({
-          ...entry,
-          submittedAt: entry.submittedAt.toISOString(),
-          acceptedAt: entry.acceptedAt?.toISOString() || null,
-        })),
-        pagination: {
-          page: input.page,
-          limit: input.limit,
-          total,
-          totalPages: Math.ceil(total / input.limit),
-        },
+        entries,
+        pagination: buildPagination(input.page, input.limit, total),
       };
     }),
 
@@ -75,13 +67,7 @@ export const waitlistsRouter = router({
     .query(async ({ input }) => {
       const entry = await waitlistRepo.getDetailed(input.id);
 
-      return {
-        entry: {
-          ...entry,
-          submittedAt: entry.submittedAt.toISOString(),
-          acceptedAt: entry.acceptedAt?.toISOString() || null,
-        },
-      };
+      return { entry };
     }),
 
   invite: adminProcedure
@@ -98,13 +84,7 @@ export const waitlistsRouter = router({
         ctx.user.discordId,
       );
 
-      return {
-        entry: {
-          ...updatedEntry,
-          submittedAt: updatedEntry.submittedAt.toISOString(),
-          acceptedAt: updatedEntry.acceptedAt?.toISOString() || null,
-        },
-      };
+      return { entry: updatedEntry };
     }),
 
   delete: adminProcedure

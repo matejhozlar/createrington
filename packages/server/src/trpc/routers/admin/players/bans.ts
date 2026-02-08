@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "../../../trpc";
 import { playerService } from "@/services/player";
@@ -8,7 +7,6 @@ import { Client } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import type { PlayerBan } from "@createrington/shared/db";
 import { parsePlayerId } from "../../../utils";
 
 export const bansRouter = router({
@@ -32,23 +30,7 @@ export const bansRouter = router({
         playerService.bans.getCurrent(identifier),
       ]);
 
-      return {
-        bans: bans.map((b: PlayerBan) => ({
-          ...b,
-          bannedAt: b.bannedAt.toISOString(),
-          expiresAt: b.expiresAt?.toISOString() || null,
-          unbannedAt: b.unbannedAt?.toISOString() || null,
-        })),
-        statistics,
-        current: currentBan
-          ? {
-              ...currentBan,
-              bannedAt: currentBan.bannedAt.toISOString(),
-              expiresAt: currentBan.expiresAt?.toISOString() || null,
-              unbannedAt: currentBan.unbannedAt?.toISOString() || null,
-            }
-          : null,
-      };
+      return { bans, statistics, current: currentBan };
     }),
 
   issueTemporary: adminProcedure
@@ -124,14 +106,7 @@ export const bansRouter = router({
         logger.error("Failed to send ban notification to Discord:", error);
       }
 
-      return {
-        ban: {
-          ...ban,
-          bannedAt: ban.bannedAt.toISOString(),
-          expiresAt: ban.expiresAt?.toISOString() || null,
-          unbannedAt: ban.unbannedAt?.toISOString() || null,
-        },
-      };
+      return { ban };
     }),
 
   issuePermanent: adminProcedure
@@ -278,9 +253,7 @@ export const bansRouter = router({
       if (!wasDeleted && minecraftUsername !== "Unknown") {
         try {
           await minecraftRcon.pardonAll(minecraftUsername);
-          logger.info(
-            `Pardoned ${minecraftUsername} on all Minecraft servers`,
-          );
+          logger.info(`Pardoned ${minecraftUsername} on all Minecraft servers`);
         } catch (error) {
           logger.error(
             `Failed to pardon ${minecraftUsername} on Minecraft servers:`,
@@ -314,14 +287,7 @@ export const bansRouter = router({
         logger.error("Failed to send unban notification:", error);
       }
 
-      return {
-        ban: {
-          ...ban,
-          bannedAt: ban.bannedAt.toISOString(),
-          expiresAt: ban.expiresAt?.toISOString() || null,
-          unbannedAt: ban.unbannedAt?.toISOString() || null,
-        },
-      };
+      return { ban };
     }),
 
   getRecent: adminProcedure
@@ -341,13 +307,6 @@ export const bansRouter = router({
         input.activeOnly,
       );
 
-      return {
-        bans: bans.map((b) => ({
-          ...b,
-          bannedAt: b.bannedAt.toISOString(),
-          expiresAt: b.expiresAt?.toISOString() || null,
-          unbannedAt: b.unbannedAt?.toISOString() || null,
-        })),
-      };
+      return { bans };
     }),
 });

@@ -4,6 +4,7 @@ import type {
   Player,
   PlayerBalance,
   PlayerBalanceTransaction,
+  PlayerFilters,
   PlayerPlaytimeSummary,
   WaitlistEntry,
 } from "@createrington/shared/db";
@@ -133,12 +134,7 @@ export class PlayerRepository extends BasePlayerRepository {
    * (For admin list view)
    */
   async getAll(
-    filters?: {
-      discordId?: string;
-      minecraftUuid?: string;
-      minecraftUsername?: { $ilike: string };
-      online?: boolean;
-    },
+    filters?: PlayerFilters,
     options?: {
       orderBy?: keyof Player;
       orderDirection?: "asc" | "desc";
@@ -152,12 +148,7 @@ export class PlayerRepository extends BasePlayerRepository {
   /**
    * Counts players matching filters
    */
-  async count(filters?: {
-    discordId?: string;
-    minecraftUuid?: string;
-    minecraftUsername?: { $ilike: string };
-    online?: boolean;
-  }): Promise<number> {
+  async count(filters?: PlayerFilters): Promise<number> {
     return await Q.player.count(filters);
   }
 
