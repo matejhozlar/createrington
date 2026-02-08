@@ -66,8 +66,8 @@ export function AdminWaitlists() {
   // Modal state
   const [inviteModal, setInviteModal] = useState<{
     open: boolean;
-    entryId: number | null;
-  }>({ open: false, entryId: null });
+    entry: WaitlistEntry | null;
+  }>({ open: false, entry: null });
   const [deleteModal, setDeleteModal] = useState<{
     open: boolean;
     entry: WaitlistEntry | null;
@@ -159,8 +159,8 @@ export function AdminWaitlists() {
   /**
    * Open invite modal
    */
-  const handleInvite = useCallback((entryId: number) => {
-    setInviteModal({ open: true, entryId });
+  const handleInvite = useCallback((entry: WaitlistEntry) => {
+    setInviteModal({ open: true, entry });
   }, []);
 
   /**
@@ -174,7 +174,7 @@ export function AdminWaitlists() {
    * Handle successful invite
    */
   const handleInviteSuccess = useCallback(() => {
-    setInviteModal({ open: false, entryId: null });
+    setInviteModal({ open: false, entry: null });
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
@@ -250,6 +250,11 @@ export function AdminWaitlists() {
           variant: "outline" as const,
           className: "border-success bg-success/10 text-success",
         };
+      case "auto_accepted":
+        return {
+          variant: "outline" as const,
+          className: "border-chart-2 bg-chart-2/10 text-chart-2",
+        };
       case "declined":
         return {
           variant: "destructive" as const,
@@ -309,14 +314,17 @@ export function AdminWaitlists() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Accepted</p>
-                  <p className="text-2xl font-semibold">{stats.accepted}</p>
+                  <p className="text-2xl font-semibold">
+                    {stats.accepted + stats.autoAccepted}
+                  </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
                   <UserCheck className="size-6 text-chart-2" />
                 </div>
               </div>
               <div className="mt-2 text-xs text-muted-foreground">
-                {stats.joinedMinecraft} joined Minecraft
+                {stats.autoAccepted} auto-accepted · {stats.joinedMinecraft}{" "}
+                joined Minecraft
               </div>
             </div>
 
@@ -411,6 +419,18 @@ export function AdminWaitlists() {
                 className="min-w-[90px] cursor-pointer"
               >
                 Accepted
+              </Button>
+              <Button
+                type="button"
+                variant={statusFilter === "auto_accepted" ? "default" : "outline"}
+                size="default"
+                onClick={() => {
+                  setStatusFilter("auto_accepted");
+                  setPage(0);
+                }}
+                className="min-w-[110px] cursor-pointer"
+              >
+                Auto-Accepted
               </Button>
             </div>
 
@@ -520,6 +540,7 @@ export function AdminWaitlists() {
                     {entries.map((entry) => {
                       const isPending = entry.status === "pending";
                       const isAccepted = entry.status === "accepted";
+                      const isAutoAccepted = entry.status === "auto_accepted";
 
                       return (
                         <tr
@@ -530,16 +551,22 @@ export function AdminWaitlists() {
                             <p className="font-mono text-sm">#{entry.id}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <button
-                              onClick={() => handleCopyEmail(entry.email)}
-                              className="cursor-pointer text-sm transition-colors hover:text-foreground"
-                              title="Click to copy"
-                            >
-                              <div className="flex items-center gap-2">
-                                <Mail className="size-4 text-muted-foreground" />
-                                <span>{entry.email}</span>
-                              </div>
-                            </button>
+                            {entry.email ? (
+                              <button
+                                onClick={() => handleCopyEmail(entry.email!)}
+                                className="cursor-pointer text-sm transition-colors hover:text-foreground"
+                                title="Click to copy"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Mail className="size-4 text-muted-foreground" />
+                                  <span>{entry.email}</span>
+                                </div>
+                              </button>
+                            ) : (
+                              <span className="text-sm text-muted-foreground">
+                                -
+                              </span>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <p className="font-medium">{entry.discordName}</p>
@@ -617,13 +644,21 @@ export function AdminWaitlists() {
                                   size="sm"
                                   variant="default"
                                   className="cursor-pointer"
-                                  onClick={() => handleInvite(entry.id)}
+                                  onClick={() => handleInvite(entry)}
                                 >
                                   Invite
                                 </Button>
                               )}
                               {isAccepted && (
                                 <Badge variant="default">Invited</Badge>
+                              )}
+                              {isAutoAccepted && (
+                                <Badge
+                                  variant="outline"
+                                  className="border-chart-2 bg-chart-2/10 text-chart-2"
+                                >
+                                  Auto-Accepted
+                                </Badge>
                               )}
                               <Button
                                 size="sm"
@@ -706,11 +741,11 @@ export function AdminWaitlists() {
       </div>
 
       {/* Modals */}
-      {inviteModal.entryId !== null && (
+      {inviteModal.entry !== null && (
         <InviteWaitlistModal
           open={inviteModal.open}
-          onClose={() => setInviteModal({ open: false, entryId: null })}
-          entryId={inviteModal.entryId}
+          onClose={() => setInviteModal({ open: false, entry: null })}
+          entry={inviteModal.entry}
           onSuccess={handleInviteSuccess}
         />
       )}

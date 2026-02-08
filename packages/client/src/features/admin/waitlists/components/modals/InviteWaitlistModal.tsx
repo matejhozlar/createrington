@@ -3,19 +3,21 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+
+type WaitlistEntry = RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 interface InviteWaitlistModalProps {
   open: boolean;
   onClose: () => void;
-  entryId: number;
+  entry: WaitlistEntry;
   onSuccess: () => void;
 }
 
 export function InviteWaitlistModal({
   open,
   onClose,
-  entryId,
+  entry,
   onSuccess,
 }: InviteWaitlistModalProps) {
   const toast = useToastActions();
@@ -28,7 +30,7 @@ export function InviteWaitlistModal({
   const handleSubmit = async () => {
     try {
       await inviteEntry.mutateAsync({
-        id: entryId,
+        id: entry.id,
         reason: reason.trim() || undefined,
       });
 
@@ -65,8 +67,9 @@ export function InviteWaitlistModal({
         </div>
 
         <p className="mb-4 text-sm text-muted-foreground">
-          This will send an invitation email to the applicant with their access
-          token and Discord invite link.
+          {entry.email
+            ? "This will send an invitation email to the applicant with their access token and Discord invite link."
+            : "This will accept the applicant (no email on file — no invitation email will be sent)."}
         </p>
 
         <div className="space-y-4">
@@ -96,7 +99,11 @@ export function InviteWaitlistModal({
               onClick={handleSubmit}
               disabled={inviteEntry.isPending}
             >
-              {inviteEntry.isPending ? "Sending..." : "Send Invitation"}
+              {inviteEntry.isPending
+                ? "Sending..."
+                : entry.email
+                  ? "Send Invitation"
+                  : "Accept Entry"}
             </Button>
           </div>
         </div>

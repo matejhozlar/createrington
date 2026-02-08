@@ -41,6 +41,7 @@ import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
+import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 
 function AppLayout() {
   const { loading } = useAuth();
@@ -78,7 +79,7 @@ function AppContent() {
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<Rules />} />
         <Route path="/team" element={<div>Team Page</div>} />
-        <Route path="/apply-to-join" element={<div>Apply Page</div>} />
+        <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<div>Map Page</div>} />
         <Route path="/server-chat" element={<div>Chat Page</div>} />
         <Route path="/online-players" element={<div>Players Page</div>} />
