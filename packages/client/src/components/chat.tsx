@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { useWebSocket, useServerData, usePlayerData } from "@/contexts/socket";
+import { useWebSocket } from "@/contexts/websocket";
+import { useServerData } from "@/contexts/server-data";
+import { usePlayerData } from "@/contexts/player-data";
 import { useAuth } from "@/contexts/auth";
 import type {
   CachedMessage,
