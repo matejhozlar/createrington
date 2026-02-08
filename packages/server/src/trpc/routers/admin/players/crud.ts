@@ -243,7 +243,7 @@ export const playersRouter = router({
         identifier,
         updates,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 
@@ -264,7 +264,7 @@ export const playersRouter = router({
       await playerService.core.adminDelete(
         identifier,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 

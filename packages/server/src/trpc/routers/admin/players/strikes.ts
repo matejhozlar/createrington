@@ -73,7 +73,7 @@ export const strikesRouter = router({
           metadata: input.metadata,
         },
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
       );
 
       return { strike };
@@ -92,7 +92,7 @@ export const strikesRouter = router({
       const strike = await playerService.strikes.remove(
         input.strikeId,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 

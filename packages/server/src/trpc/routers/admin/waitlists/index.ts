@@ -119,7 +119,7 @@ export const waitlistsRouter = router({
       await waitlistRepo.adminDelete(
         input.id,
         ctx.user.discordId,
-        ctx.user.username,
+        ctx.user.minecraftUsername,
         input.reason,
       );
 
