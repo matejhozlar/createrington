@@ -45,8 +45,10 @@ const discordToken = (label = "Token") =>
 
 const envSchema = z.object({
   // Server
-  PORT: port("Server port").default(5000),
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  PORT: port("Server port").default(5001),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
 
   // Database
   DB_USER: z.string().min(1, "Database user is required"),
@@ -67,8 +69,12 @@ const envSchema = z.object({
     .string()
     .min(1, "OAuth client secret is required")
     .min(32, "OAuth client secret must be at least 32 characters"),
-  DISCORD_OAUTH_REDIRECT_URI_DEV: z.string().url("Development redirect URI must be a valid URL"),
-  DISCORD_OAUTH_REDIRECT_URI_PROD: z.string().url("Production redirect URI must be a valid URL"),
+  DISCORD_OAUTH_REDIRECT_URI_DEV: z
+    .string()
+    .url("Development redirect URI must be a valid URL"),
+  DISCORD_OAUTH_REDIRECT_URI_PROD: z
+    .string()
+    .url("Production redirect URI must be a valid URL"),
 
   // Auth
   JWT_SECRET: z.string().min(1, "JWT secret is required"),
@@ -86,13 +92,23 @@ const envSchema = z.object({
   TEST_SERVER_IP: ipv4("Test server IP"),
   TEST_SERVER_PORT: port("Test server port"),
   LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP"),
-  PLAYER_LIMIT: z.coerce.number().int().min(0).max(1000, "Player limit must be between 0 and 1000"),
+  PLAYER_LIMIT: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1000, "Player limit must be between 0 and 1000"),
 
   // RCON
   COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port"),
-  COGS_AND_STEAM_RCON_PASSWORD: z.string().min(1, "RCON password is required").max(100, "RCON password is too long"),
+  COGS_AND_STEAM_RCON_PASSWORD: z
+    .string()
+    .min(1, "RCON password is required")
+    .max(100, "RCON password is too long"),
   TEST_RCON_PORT: port("Test RCON port"),
-  TEST_RCON_PASSWORD: z.string().min(1, "RCON password is required").max(100, "RCON password is too long"),
+  TEST_RCON_PASSWORD: z
+    .string()
+    .min(1, "RCON password is required")
+    .max(100, "RCON password is too long"),
 
   // Email
   EMAIL_HOST: z
@@ -109,7 +125,10 @@ const envSchema = z.object({
     ),
   EMAIL_PORT: port("Email port").default(587),
   EMAIL_SECURE: z.coerce.boolean().default(false),
-  EMAIL_ADDRESS: z.string().email("Must be valid email address").min(1, "Email address is required"),
+  EMAIL_ADDRESS: z
+    .string()
+    .email("Must be valid email address")
+    .min(1, "Email address is required"),
   EMAIL_PASS: z
     .string()
     .min(1, "Email password is required")

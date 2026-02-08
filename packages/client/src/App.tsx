@@ -160,7 +160,6 @@ function App() {
             config={{
               autoConnect: true,
               maxReconnectAttempts: 5,
-              url: "http://localhost:5000",
               reconnectDelay: 1000,
               healthCheckInterval: 30000,
             }}

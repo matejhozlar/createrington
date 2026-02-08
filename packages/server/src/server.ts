@@ -3,7 +3,6 @@ import { env } from "@/config/env/env.config";
 import { initializeServices, shutdownServices } from "@/services/bootstrap";
 import { container, Services } from "@/services";
 import type { Server as HttpServer } from "node:http";
-// import { registerCommands } from "./discord/deployers/command-deployer";
 
 const PORT = env.PORT;
 
@@ -11,8 +10,6 @@ async function start() {
   try {
     // Initialize everything
     await initializeServices();
-
-    // await registerCommands()
 
     // Start HTTP server
     const httpServer = await container.get<HttpServer>(Services.HTTP_SERVER);
