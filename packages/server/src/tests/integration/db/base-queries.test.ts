@@ -351,7 +351,8 @@ describe("BaseQueries (server table)", () => {
     });
 
     it("should updateAll without filter (all rows)", async () => {
-      const updated = await Q.server.updateAll({ name: "Same" });
+      const date = new Date("2020-01-01T00:00:00Z");
+      const updated = await Q.server.updateAll({ createdAt: date });
       expect(updated).toBe(3);
     });
   });
