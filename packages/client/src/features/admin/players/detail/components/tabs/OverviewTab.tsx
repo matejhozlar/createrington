@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import type { AdminPlayerDetailed } from "@createrington/shared/api";
+import type { RouterOutput } from "@/lib/trpc";
+
+type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
 interface OverviewTabProps {
-  player: AdminPlayerDetailed;
+  player: PlayerDetailed;
   getServerName: (serverId: number) => string | null;
 }
 

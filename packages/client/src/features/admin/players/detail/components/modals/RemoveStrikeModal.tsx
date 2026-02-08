@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 interface RemoveStrikeModalProps {
   open: boolean;
@@ -21,9 +21,9 @@ export function RemoveStrikeModal({
   onSuccess,
 }: RemoveStrikeModalProps) {
   const toast = useToastActions();
+  const removeStrike = trpc.admin.players.strikes.remove.useMutation();
 
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
@@ -31,9 +31,9 @@ export function RemoveStrikeModal({
     if (!reason.trim()) return;
 
     try {
-      setLoading(true);
-
-      await adminPlayerApi.removeStrike(playerId, strikeId, {
+      await removeStrike.mutateAsync({
+        id: playerId,
+        strikeId,
         reason: reason.trim(),
       });
 
@@ -44,8 +44,6 @@ export function RemoveStrikeModal({
     } catch (err) {
       console.error("Failed to remove strike:", err);
       toast.error("Failed to remove strike");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -89,16 +87,16 @@ export function RemoveStrikeModal({
               variant="outline"
               className="flex-1 cursor-pointer"
               onClick={onClose}
-              disabled={loading}
+              disabled={removeStrike.isPending}
             >
               Cancel
             </Button>
             <Button
               className="flex-1 cursor-pointer"
               onClick={handleSubmit}
-              disabled={!reason.trim() || loading}
+              disabled={!reason.trim() || removeStrike.isPending}
             >
-              {loading ? "Removing..." : "Remove Strike"}
+              {removeStrike.isPending ? "Removing..." : "Remove Strike"}
             </Button>
           </div>
         </div>

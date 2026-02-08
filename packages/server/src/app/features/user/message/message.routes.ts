@@ -1,4 +1,4 @@
-import { AuthLevel, BadRequestError, route } from "@/app/middleware";
+import { BadRequestError, route } from "@/app/middleware";
 import { Router } from "express";
 import multer from "multer";
 import { MessageController } from "./message.controller";
@@ -58,11 +58,7 @@ const upload = multer({
  */
 router.post(
   "/",
-  ...route(
-    AuthLevel.USER,
-    upload.single("image"),
-    MessageController.sendMessage,
-  ),
+  ...route("user", upload.single("image"), MessageController.sendMessage),
 );
 
 export default router;

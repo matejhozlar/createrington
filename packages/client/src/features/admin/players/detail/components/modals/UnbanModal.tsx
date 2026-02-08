@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface UnbanModalProps {
@@ -19,9 +19,9 @@ export function UnbanModal({
   onSuccess,
 }: UnbanModalProps) {
   const toast = useToastActions();
+  const unbanPlayer = trpc.admin.players.bans.unban.useMutation();
 
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
@@ -32,9 +32,8 @@ export function UnbanModal({
     }
 
     try {
-      setLoading(true);
-
-      await adminPlayerApi.unban(banId, {
+      await unbanPlayer.mutateAsync({
+        banId,
         reason: reason.trim(),
       });
 
@@ -47,8 +46,6 @@ export function UnbanModal({
     } catch (err) {
       console.error("Failed to unban player:", err);
       toast.error("Failed to unban player");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -108,16 +105,16 @@ export function UnbanModal({
               variant="outline"
               className="flex-1 cursor-pointer"
               onClick={handleClose}
-              disabled={loading}
+              disabled={unbanPlayer.isPending}
             >
               Cancel
             </Button>
             <Button
               className="flex-1 cursor-pointer"
               onClick={handleSubmit}
-              disabled={!reason.trim() || loading}
+              disabled={!reason.trim() || unbanPlayer.isPending}
             >
-              {loading ? "Unbanning..." : "Unban Player"}
+              {unbanPlayer.isPending ? "Unbanning..." : "Unban Player"}
             </Button>
           </div>
         </div>

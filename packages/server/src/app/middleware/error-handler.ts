@@ -1,6 +1,7 @@
 import config from "@/config";
-import { DatabaseError } from "@/db/utils/errors";
+import { DatabaseError } from "@/db/utils";
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 
 /**
  * Custom app error class with HTTP status code
@@ -10,6 +11,7 @@ export class AppError extends Error {
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
+    public details?: any,
   ) {
     super(message);
     this.name = "AppError";
@@ -21,8 +23,8 @@ export class AppError extends Error {
  * Common HTTP error constructors
  */
 export class BadRequestError extends AppError {
-  constructor(message: string = "Bad Request") {
-    super(message, 400);
+  constructor(message: string = "Bad Request", details?: any) {
+    super(message, 400, true, details);
     this.name = "BadRequestError";
   }
 }
@@ -63,6 +65,19 @@ export class InternalServerError extends AppError {
 }
 
 /**
+ * Validation error from Zod with field-level details
+ */
+export class ValidationError extends BadRequestError {
+  constructor(
+    message: string,
+    public fieldErrors: Array<{ field: string; message: string }>,
+  ) {
+    super(message, fieldErrors);
+    this.name = "ValidationError";
+  }
+}
+
+/**
  * Error response interface
  */
 interface ErrorResponse {
@@ -70,15 +85,40 @@ interface ErrorResponse {
   error: {
     message: string;
     statusCode: number;
+    details?: any;
     stack?: string;
   };
 }
 
 /**
+ * Format Zod validation errors into a readable structure
+ */
+export function formatZodError(error: ZodError<unknown>): {
+  message: string;
+  fieldErrors: Array<{ field: string; message: string }>;
+} {
+  // Zod v3 uses `issues` (not `errors`)
+  const fieldErrors = error.issues.map((issue) => ({
+    field: issue.path.map(String).join("."),
+    message: issue.message,
+  }));
+
+  const message =
+    fieldErrors.length === 1
+      ? fieldErrors[0].message
+      : `Validation failed: ${fieldErrors.map((fe) => fe.field).join(", ")}`;
+
+  return { message, fieldErrors };
+}
+
+/**
  * Centralized error handling middleware
  *
- * Catches all errors thrown in route handlers and converts them to appropriate HTTP response
- * Logs errors and includes stack traces in development mode
+ * Automatically handles:
+ * - Zod validation errors
+ * - App errors (custom errors)
+ * - Database errors
+ * - Unknown errors
  *
  * @param err - Error object
  * @param req - Express request
@@ -86,7 +126,7 @@ interface ErrorResponse {
  * @param next - Express next function
  */
 export function errorHandler(
-  err: Error | AppError | DatabaseError,
+  err: Error | AppError | DatabaseError | ZodError,
   req: Request,
   res: Response,
   next: NextFunction,
@@ -94,11 +134,26 @@ export function errorHandler(
   let statusCode = 500;
   let message = "Internal Server Error";
   let isOperational = false;
+  let details: any = undefined;
 
-  if (err instanceof AppError) {
+  if (err instanceof ZodError) {
+    const { message: ZodMessage, fieldErrors } = formatZodError(err);
+    statusCode = 400;
+    message = ZodMessage;
+    details = config.envMode.isDev ? fieldErrors : undefined;
+    isOperational = true;
+
+    logger.warn("Validation error:", {
+      message: ZodMessage,
+      fields: fieldErrors,
+      path: req.path,
+      method: req.method,
+    });
+  } else if (err instanceof AppError) {
     statusCode = err.statusCode;
     message = err.message;
     isOperational = err.isOperational;
+    details = err.details;
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
@@ -122,6 +177,9 @@ export function errorHandler(
       stack: err.stack,
       path: req.path,
       method: req.method,
+      body: req.body,
+      params: req.params,
+      query: req.query,
     });
   } else {
     logger.warn("Client Error:", {
@@ -137,6 +195,7 @@ export function errorHandler(
     error: {
       message,
       statusCode,
+      ...(details && { details }),
       ...(config.envMode.isDev && { stack: err.stack }),
     },
   };

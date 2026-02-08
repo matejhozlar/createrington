@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X, Plus, Minus } from "lucide-react";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface BalanceAdjustModalProps {
@@ -23,9 +23,9 @@ export function BalanceAdjustModal({
 }: BalanceAdjustModalProps) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const toast = useToastActions();
+  const adjustBalance = trpc.admin.players.balance.adjust.useMutation();
 
   if (!open) return null;
 
@@ -33,9 +33,8 @@ export function BalanceAdjustModal({
     if (!amount || !reason) return;
 
     try {
-      setLoading(true);
-
-      await adminPlayerApi.adjustBalance(playerId, {
+      await adjustBalance.mutateAsync({
+        id: playerId,
         amount: Number(amount),
         reason,
       });
@@ -48,8 +47,6 @@ export function BalanceAdjustModal({
     } catch (err) {
       console.error("Failed to adjust balance:", err);
       toast.error("Failed to adjust balance");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -123,9 +120,9 @@ export function BalanceAdjustModal({
             <Button
               className="flex-1 cursor-pointer"
               onClick={handleSubmit}
-              disabled={!amount || !reason || loading}
+              disabled={!amount || !reason || adjustBalance.isPending}
             >
-              {loading ? "Adjusting..." : "Confirm"}
+              {adjustBalance.isPending ? "Adjusting..." : "Confirm"}
             </Button>
           </div>
         </div>

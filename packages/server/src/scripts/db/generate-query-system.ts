@@ -304,7 +304,7 @@ function generateTableFiles(
  * ```
  */
 export async function generate(): Promise<GenerationResult> {
-  console.log("📡 Connecting to database...");
+  console.log("[generate] Connecting to database...");
 
   // Setup all directory paths for monorepo structure
   const context = setupContext();
@@ -314,7 +314,7 @@ export async function generate(): Promise<GenerationResult> {
   const { tables, enums } = schema;
 
   console.log(
-    `✅ Found ${tables.length} tables and ${enums.length} enum types`,
+    `[generate] Found ${tables.length} tables and ${enums.length} enum types`,
   );
 
   // Detect changes by comparing with cached schema
@@ -333,7 +333,7 @@ export async function generate(): Promise<GenerationResult> {
 
   // Build hierarchical structure from table naming conventions
   const hierarchy = buildTableHierarchy(tables);
-  console.log(`Built hierarchy with ${hierarchy.length} root nodes`);
+  console.log(`[generate] Built hierarchy with ${hierarchy.length} root nodes`);
 
   // Track all generated and scaffolded files
   const generatedFiles: string[] = [];
@@ -530,21 +530,21 @@ export default generate;
 if (import.meta.url === `file://${process.argv[1]}`) {
   generate()
     .then((result) => {
-      console.log(`\n✅ Generated ${result.files.length} files`);
-      console.log(`📝 Scaffolded ${result.scaffolds.length} new query files`);
-      console.log(`📊 Total tables: ${result.tablesFound}`);
+      console.log(`[generate] Generated ${result.files.length} files`);
+      console.log(`[generate] Scaffolded ${result.scaffolds.length} new query files`);
+      console.log(`[generate] Total tables: ${result.tablesFound}`);
 
       if (result.changes > 0) {
-        console.log(`🔄 Schema changes: ${result.changes}`);
+        console.log(`[generate] Schema changes: ${result.changes}`);
       }
 
       if (result.scaffolds.length > 0) {
-        console.log("\n📂 Scaffolded files (edit these in src/db/queries/):");
-        result.scaffolds.forEach((file) => console.log(`   - ${file}`));
+        console.log("[generate] Scaffolded files (edit these in src/db/queries/):");
+        result.scaffolds.forEach((file) => console.log(`[generate]   - ${file}`));
       }
     })
     .catch((error) => {
-      console.error("❌ Error:", error.message);
+      console.error("[generate] Error:", error.message);
       console.error(error);
       process.exit(1);
     });

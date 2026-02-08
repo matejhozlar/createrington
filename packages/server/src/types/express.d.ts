@@ -21,6 +21,24 @@ declare global {
        * Set by verifyServerIp middleware
        */
       serverIp?: string;
+      /**
+       * Validated zod schema
+       * Set by validation middleware
+       */
+      validatedParams?: any;
+      validatedQuery?: any;
+      validatedBody?: any;
+    }
+    interface Response {
+      /**
+       * Validated request data
+       * Set by validate() middleware
+       * Access via: const { params, query, body } = res.locals.validated;
+       */
+      locals: {
+        validated?: ValidatedData;
+        [key: string]: any;
+      };
     }
   }
 }

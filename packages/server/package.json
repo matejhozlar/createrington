@@ -3,12 +3,19 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.ts",
+  "exports": {
+    "./trpc": {
+      "types": "./dist/server/src/trpc/router.d.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:types": "tsc --emitDeclarationOnly --watch & tsc-alias --watch",
     "build": "tsc && tsc-alias && npm run post-build && npm run build:copy-assets",
     "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" dist/server/src",
     "post-build": "tsx src/scripts/tools/post-build.ts",
     "start": "node dist/server/src/server.js",
+    "build:types": "tsc --declaration --emitDeclarationOnly && tsc-alias",
     "typecheck": "tsc --noEmit",
     "generate": "tsx src/scripts/generate.ts",
     "util:generate-structure": "node src/scripts/tools/generate-structure.js",
@@ -56,6 +63,7 @@
     "pg-mem": "^3.0.5",
     "supertest": "^7.1.4",
     "testcontainers": "^11.10.0",
+    "trpc-ui": "npm:trpc-ui-zod4@^1.1.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -63,6 +71,7 @@
   },
   "dependencies": {
     "@createrington/shared": "*",
+    "@trpc/server": "^11.1.0",
     "axios": "^1.13.2",
     "canvas": "^3.2.0",
     "cors": "^2.8.5",

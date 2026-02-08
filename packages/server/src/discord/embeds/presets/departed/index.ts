@@ -1,7 +1,7 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 
-interface DepartedMemberInfo {
+export interface DepartedMemberInfo {
   discordId: string;
   discordTag: string;
   minecraftUsername: string;

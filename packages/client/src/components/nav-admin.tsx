@@ -112,20 +112,20 @@ export function NavAdmin({
                   const Icon = item.icon;
                   return (
                     <SidebarMenuSubItem key={item.title}>
-                      <NavLink to={item.url}>
-                        {({ isActive }) => (
-                          <SidebarMenuSubButton
-                            isActive={isActive}
-                            className={cn(
+                      <SidebarMenuSubButton asChild>
+                        <NavLink
+                          to={item.url}
+                          className={({ isActive }) =>
+                            cn(
                               "transition-colors duration-150 cursor-pointer",
                               isActive && "text-destructive bg-destructive/10",
-                            )}
-                          >
-                            {Icon && <Icon className="size-4" />}
-                            <span>{item.title}</span>
-                          </SidebarMenuSubButton>
-                        )}
-                      </NavLink>
+                            )
+                          }
+                        >
+                          {Icon && <Icon className="size-4" />}
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
                   );
                 })}

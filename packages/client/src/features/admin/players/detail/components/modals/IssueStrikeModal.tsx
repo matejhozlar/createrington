@@ -12,7 +12,7 @@ import {
 import { X } from "lucide-react";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminPlayerApi } from "@/services/api/admin/admin-players";
+import { trpc } from "@/lib/trpc";
 
 interface IssueStrikeModalProps {
   open: boolean;
@@ -28,12 +28,12 @@ export function IssueStrikeModal({
   onSuccess,
 }: IssueStrikeModalProps) {
   const toast = useToastActions();
+  const issueStrike = trpc.admin.players.strikes.issue.useMutation();
 
   const [classification, setClassification] =
     useState<StrikeClassification>("rule_violation");
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
@@ -41,12 +41,8 @@ export function IssueStrikeModal({
     if (!description) return;
 
     try {
-      setLoading(true);
-
-      const token = localStorage.getItem("auth_token");
-      if (!token) throw new Error("No authentication token");
-
-      await adminPlayerApi.issueStrike(playerId, {
+      await issueStrike.mutateAsync({
+        id: playerId,
         classification,
         description,
         severity,
@@ -60,8 +56,6 @@ export function IssueStrikeModal({
     } catch (err) {
       console.error("Failed to issue strike:", err);
       toast.error("Failed to issue strike");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -176,9 +170,9 @@ export function IssueStrikeModal({
             <Button
               className="flex-1 cursor-pointer"
               onClick={handleSubmit}
-              disabled={!description || loading}
+              disabled={!description || issueStrike.isPending}
             >
-              {loading ? "Issuing..." : "Issue Strike"}
+              {issueStrike.isPending ? "Issuing..." : "Issue Strike"}
             </Button>
           </div>
         </div>

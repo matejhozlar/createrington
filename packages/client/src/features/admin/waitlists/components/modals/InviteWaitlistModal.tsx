@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
-import { adminWaitlistApi } from "@/services/api/admin/admin-waitlists";
+import { trpc } from "@/lib/trpc";
 
 interface InviteWaitlistModalProps {
   open: boolean;
@@ -19,17 +19,16 @@ export function InviteWaitlistModal({
   onSuccess,
 }: InviteWaitlistModalProps) {
   const toast = useToastActions();
+  const inviteEntry = trpc.admin.waitlists.invite.useMutation();
 
   const [reason, setReason] = useState("");
-  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
   const handleSubmit = async () => {
     try {
-      setLoading(true);
-
-      await adminWaitlistApi.invite(entryId, {
+      await inviteEntry.mutateAsync({
+        id: entryId,
         reason: reason.trim() || undefined,
       });
 
@@ -40,8 +39,6 @@ export function InviteWaitlistModal({
     } catch (err) {
       console.error("Failed to invite waitlist entry:", err);
       toast.error("Failed to invite waitlist entry");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -90,16 +87,16 @@ export function InviteWaitlistModal({
               variant="outline"
               className="flex-1 cursor-pointer"
               onClick={onClose}
-              disabled={loading}
+              disabled={inviteEntry.isPending}
             >
               Cancel
             </Button>
             <Button
               className="flex-1 cursor-pointer"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={inviteEntry.isPending}
             >
-              {loading ? "Sending..." : "Send Invitation"}
+              {inviteEntry.isPending ? "Sending..." : "Send Invitation"}
             </Button>
           </div>
         </div>
