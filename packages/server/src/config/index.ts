@@ -1,5 +1,9 @@
-import type { Config } from "./types";
 import { env, envMode } from "./env/env.config";
+import type {
+  MemberRolesConfig,
+  ChannelConfig,
+  CategoriesConfig,
+} from "./discord.types";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -8,7 +12,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const discordEntitiesPath = path.join(__dirname, "./discord-entities.json");
 
-let discordEntities;
+interface DiscordEntities {
+  roles: MemberRolesConfig;
+  channels: ChannelConfig;
+  categories: CategoriesConfig;
+}
+
+let discordEntities: DiscordEntities;
 try {
   discordEntities = JSON.parse(fs.readFileSync(discordEntitiesPath, "utf-8"));
 } catch (error) {
@@ -16,13 +26,13 @@ try {
     "Warning: discord-entities.json not found. Run 'npm run scrape-discord' to generate it.",
   );
   discordEntities = {
-    roles: {},
-    channels: {},
-    categories: {},
+    roles: {} as MemberRolesConfig,
+    channels: {} as ChannelConfig,
+    categories: {} as CategoriesConfig,
   };
 }
 
-const config: Config = {
+const config = {
   envMode,
 
   meta: {
@@ -192,5 +202,7 @@ const config: Config = {
     },
   },
 } as const;
+
+export type Config = typeof config;
 
 export default config;
