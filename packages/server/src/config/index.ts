@@ -49,6 +49,7 @@ const config = {
       adminPanel: "https://create-rington.com/login-admin/",
       modpack: "https://www.curseforge.com/minecraft/modpacks/create-rington",
       map: "https://create-rington.com/blue-map",
+      assets: "https://assets.create-rington.com",
     },
   },
 
