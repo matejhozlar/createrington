@@ -1,8 +1,8 @@
 interface MemberRolesConfig {
   readonly owner: string;
+  readonly bot: string;
   readonly admin: string;
   readonly developer: string;
-  readonly bot: string;
   readonly theSleepless: string;
   readonly clockworkArchitect: string;
   readonly masterAutomaton: string;
@@ -67,6 +67,7 @@ interface ChannelConfig {
   readonly dev: {
     readonly createrington: string;
     readonly chat: string;
+    readonly createringtonCurrency: string;
   };
 
   readonly textChannels: {
