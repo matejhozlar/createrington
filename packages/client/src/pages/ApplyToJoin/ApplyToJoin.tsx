@@ -229,7 +229,7 @@ export function ApplyToJoin() {
               <SelectTrigger id="referral" className="cursor-pointer">
                 <SelectValue placeholder="Select an option" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {REFERRAL_OPTIONS.map((option) => (
                   <SelectItem
                     key={option}
