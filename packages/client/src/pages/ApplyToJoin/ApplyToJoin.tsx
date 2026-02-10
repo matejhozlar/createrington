@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/page-header";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 const REFERRAL_OPTIONS = [
   "Discord",
@@ -167,109 +171,177 @@ export function ApplyToJoin() {
 
   // Form state
   return (
-    <div className="flex flex-1 items-center justify-center px-4 py-20">
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <h1 className="mb-2 text-3xl font-bold">Apply to Join</h1>
-          <p className="text-muted-foreground">
-            {isWaitlistMode
-              ? "We're currently at capacity. Join the waitlist and we'll reach out when a spot opens."
-              : "We have open spots available! Fill out the form below to get started."}
-          </p>
-          <Badge
-            variant="outline"
-            className={
-              isWaitlistMode
-                ? "mt-3 border-amber-500 bg-amber-500/10 text-amber-500"
-                : "mt-3 border-success bg-success/10 text-success"
-            }
-          >
-            {isWaitlistMode ? "Waitlist Mode" : "Open Enrollment"}
-          </Badge>
-        </div>
+    <div className="flex flex-1 flex-col pb-20">
+      <PageHeader
+        title="Apply to Join"
+        imageSrc="/assets/hero/space-ship-station.webp"
+        description="Join our community and become a part of Createrington!"
+      />
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded-lg border border-border bg-card p-6"
-        >
-          <Field>
-            <FieldLabel htmlFor="discord-name">Discord Username</FieldLabel>
-            <Input
-              id="discord-name"
-              type="text"
-              placeholder="e.g. username"
-              value={discordName}
-              onChange={(e) => setDiscordName(e.target.value)}
-              required
-            />
-          </Field>
+      <div className="pb-12 md:py-16 px-5 md:px-8">
+        <Card className="mx-auto w-full max-w-7xl py-6 md:py-10 md:px-4">
+          <CardContent>
+            <div className="grid gap-8 md:gap-16 lg:grid-cols-[1fr_1.2fr]">
+              <div className="rounded-xl border border-border/60 bg-background p-6">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold">
+                    {isWaitlistMode
+                      ? "Waitlist Application"
+                      : "Open Enrollment Application"}
+                  </h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    {isWaitlistMode
+                      ? "Tell us a bit about yourself so we can reach out when a spot opens."
+                      : "Share your details to start building with the community today."}
+                  </p>
+                </div>
 
-          {isWaitlistMode && (
-            <Field>
-              <FieldLabel htmlFor="email">Email Address</FieldLabel>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </Field>
-          )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <Field>
+                    <FieldLabel htmlFor="discord-name">
+                      Discord Username
+                    </FieldLabel>
+                    <Input
+                      id="discord-name"
+                      type="text"
+                      placeholder="e.g. username"
+                      value={discordName}
+                      onChange={(e) => setDiscordName(e.target.value)}
+                      required
+                    />
+                  </Field>
 
-          <Field>
-            <FieldLabel htmlFor="referral">
-              How did you find us?{" "}
-              <span className="font-normal text-muted-foreground">
-                (optional)
-              </span>
-            </FieldLabel>
-            <Select value={referralSource} onValueChange={setReferralSource}>
-              <SelectTrigger id="referral" className="cursor-pointer">
-                <SelectValue placeholder="Select an option" />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {REFERRAL_OPTIONS.map((option) => (
-                  <SelectItem
-                    key={option}
-                    value={option}
-                    className="cursor-pointer"
+                  {isWaitlistMode && (
+                    <Field>
+                      <FieldLabel htmlFor="email">Email Address</FieldLabel>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </Field>
+                  )}
+
+                  <Field>
+                    <FieldLabel htmlFor="referral">
+                      How did you find us?{" "}
+                      <span className="font-normal text-muted-foreground">
+                        (optional)
+                      </span>
+                    </FieldLabel>
+                    <Select
+                      value={referralSource}
+                      onValueChange={setReferralSource}
+                    >
+                      <SelectTrigger id="referral" className="cursor-pointer">
+                        <SelectValue placeholder="Select an option" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {REFERRAL_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option}
+                            value={option}
+                            className="cursor-pointer"
+                          >
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {referralSource === "Other" && (
+                    <Field>
+                      <FieldLabel htmlFor="referral-other">
+                        Please specify
+                      </FieldLabel>
+                      <Input
+                        id="referral-other"
+                        type="text"
+                        placeholder="Where did you hear about us?"
+                        value={referralOther}
+                        onChange={(e) => setReferralOther(e.target.value)}
+                      />
+                    </Field>
+                  )}
+
+                  {formError && <FieldError>{formError}</FieldError>}
+
+                  <Button
+                    type="submit"
+                    className="w-full cursor-pointer"
+                    disabled={createMutation.isPending}
                   >
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+                    {createMutation.isPending
+                      ? "Submitting..."
+                      : isWaitlistMode
+                        ? "Join Waitlist"
+                        : "Apply Now"}
+                  </Button>
+                </form>
+              </div>
 
-          {referralSource === "Other" && (
-            <Field>
-              <FieldLabel htmlFor="referral-other">Please specify</FieldLabel>
-              <Input
-                id="referral-other"
-                type="text"
-                placeholder="Where did you hear about us?"
-                value={referralOther}
-                onChange={(e) => setReferralOther(e.target.value)}
-              />
-            </Field>
-          )}
+              <div className="flex flex-col gap-6">
+                <div>
+                  <h2 className="text-3xl md:text-4xl font-semibold text-foreground">
+                    Current Status
+                  </h2>
 
-          {formError && <FieldError>{formError}</FieldError>}
+                  <div className="mt-4">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "px-6 py-2 text-xl rounded-md",
+                        isWaitlistMode
+                          ? "bg-primary text-primary-foreground font-bold"
+                          : "border-success bg-success/10 text-success",
+                      )}
+                    >
+                      {isWaitlistMode ? "AT CAPACITY" : "Open Enrollment"}
+                    </Badge>
+                  </div>
 
-          <Button
-            type="submit"
-            className="w-full cursor-pointer"
-            disabled={createMutation.isPending}
-          >
-            {createMutation.isPending
-              ? "Submitting..."
-              : isWaitlistMode
-                ? "Join Waitlist"
-                : "Apply Now"}
-          </Button>
-        </form>
+                  <p className="mt-4 text-base md:text-lg text-muted-foreground">
+                    {isWaitlistMode
+                      ? "Thank you for showing interest in our server! We're currently at our capacity, but you can join the waitlist to reserve a spot."
+                      : "Thank you for showing interest in our server! We have open spots available. Apply now to get started."}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-6">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    What happens next
+                  </h3>
+                  <ol className="mt-4 space-y-3 text-sm md:text-base text-muted-foreground">
+                    <li className="flex gap-3">
+                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
+                        1
+                      </span>
+                      Submit your application with your Discord username.
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
+                        2
+                      </span>
+                      {isWaitlistMode
+                        ? "We'll review and notify you by email when a spot opens."
+                        : "You'll get immediate access if approved."}
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
+                        3
+                      </span>
+                      Join the Discord and start building with the community.
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
