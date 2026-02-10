@@ -1,33 +1,35 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, R } from "@/db";
 import { getService, Services } from "@/services";
-import {
-  MINECRAFT_SERVERS,
-  getServerById,
-} from "@/services/playtime/config";
-import { buildPagination, paginationInput } from "../../../utils";
+import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
+import { buildPagination, paginationInput } from "@/trpc/utils";
 import {
   buildServerStatus,
   type ServerStatus,
-} from "../../public/servers";
+} from "@/trpc/routers/public/servers";
 
 export const adminServersRouter = router({
   list: adminProcedure
     .meta({ description: "List all servers with aggregate stats" })
     .query(async () => {
-      const manager = await getService(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
+      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
       const servers: Array<
         ServerStatus & {
-          stats: { uniquePlayers: number; totalHours: number; totalSessions: number; avgSessionSeconds: number };
+          stats: {
+            uniquePlayers: number;
+            totalHours: number;
+            totalSessions: number;
+            avgSessionSeconds: number;
+          };
         }
       > = [];
 
-      for (const [serverId, serverConfig] of Object.entries(MINECRAFT_SERVERS)) {
+      for (const [serverId, serverConfig] of Object.entries(
+        MINECRAFT_SERVERS,
+      )) {
         const id = parseInt(serverId, 10);
         const service = manager.getService(id);
         const status = buildServerStatus(id, serverConfig, service);
@@ -38,8 +40,13 @@ export const adminServersRouter = router({
           ...status,
           stats: {
             uniquePlayers: Number(serverStats.totalPlayers) || 0,
-            totalHours: Math.floor(Number(serverStats.totalSeconds || 0) / 3600),
-            totalSessions: Number(serverStats.totalSeconds || 0) > 0 ? Number(serverStats.totalPlayers || 0) : 0,
+            totalHours: Math.floor(
+              Number(serverStats.totalSeconds || 0) / 3600,
+            ),
+            totalSessions:
+              Number(serverStats.totalSeconds || 0) > 0
+                ? Number(serverStats.totalPlayers || 0)
+                : 0,
             avgSessionSeconds: Number(serverStats.avgSessionSeconds) || 0,
           },
         });
@@ -54,7 +61,10 @@ export const adminServersRouter = router({
         totals: {
           totalServers: servers.length,
           onlineServers: servers.filter((s) => s.status === "online").length,
-          totalPlayersOnline: servers.reduce((sum, s) => sum + s.playerCount, 0),
+          totalPlayersOnline: servers.reduce(
+            (sum, s) => sum + s.playerCount,
+            0,
+          ),
           totalHours,
         },
       };
@@ -72,9 +82,7 @@ export const adminServersRouter = router({
         });
       }
 
-      const manager = await getService(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
+      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
       const service = manager.getService(input.id);
       const status = buildServerStatus(input.id, serverConfig, service);
@@ -138,7 +146,8 @@ export const adminServersRouter = router({
         })),
         summary: {
           peakDailyPlayers: peakPlayers,
-          avgDailyPlayers: activeDays > 0 ? Math.round(totalPlayers / activeDays) : 0,
+          avgDailyPlayers:
+            activeDays > 0 ? Math.round(totalPlayers / activeDays) : 0,
           activeDays,
           totalDays: input.days,
         },

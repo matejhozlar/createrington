@@ -1,15 +1,17 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
   stats: adminProcedure
-    .meta({ description: "Get overall player statistics for the admin dashboard." })
+    .meta({
+      description: "Get overall player statistics for the admin dashboard.",
+    })
     .query(async () => {
       return await playerService.core.getStats();
     }),
@@ -106,7 +108,10 @@ export const playersRouter = router({
         playerService.core.count(filters),
       ]);
 
-      let enrichedPlayers: (Player & { activeStrikeCount?: number; activeBanCount?: number })[] = players;
+      let enrichedPlayers: (Player & {
+        activeStrikeCount?: number;
+        activeBanCount?: number;
+      })[] = players;
 
       if (input.includeStrikeCounts || input.includeBanCounts) {
         const playerUuids = players.map((p) => p.minecraftUuid);
@@ -175,7 +180,9 @@ export const playersRouter = router({
     }),
 
   update: adminProcedure
-    .meta({ description: "Update a player's Minecraft username or Discord ID." })
+    .meta({
+      description: "Update a player's Minecraft username or Discord ID.",
+    })
     .input(
       z.object({
         id: z.string().min(1),
@@ -211,7 +218,9 @@ export const playersRouter = router({
     }),
 
   delete: adminProcedure
-    .meta({ description: "Permanently delete a player and all associated data." })
+    .meta({
+      description: "Permanently delete a player and all associated data.",
+    })
     .input(
       z.object({
         id: z.string().min(1),

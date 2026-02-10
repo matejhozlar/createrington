@@ -1,10 +1,7 @@
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure } from "../../trpc";
+import { router, publicProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
-import {
-  PlaytimeService,
-  type ActiveSession,
-} from "@/services/playtime";
+import { PlaytimeService, type ActiveSession } from "@/services/playtime";
 import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
 import { z } from "zod";
 
@@ -93,8 +90,8 @@ export function buildServerStatus(
   const activeSessions = service.getActiveSessions();
   const isOnline = service.getStatus().isInitialized;
 
-  const players: PlayerInfo[] = activeSessions.map(
-    (session: ActiveSession) => mapSessionToPlayerInfo(session, service),
+  const players: PlayerInfo[] = activeSessions.map((session: ActiveSession) =>
+    mapSessionToPlayerInfo(session, service),
   );
 
   return {
@@ -117,9 +114,7 @@ export const serversRouter = router({
         "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list.",
     })
     .query(async () => {
-      const manager = await getService(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
+      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
       const servers: ServerStatus[] = [];
       let totalPlayers = 0;
@@ -171,9 +166,7 @@ export const serversRouter = router({
         });
       }
 
-      const manager = await getService(
-        Services.PLAYTIME_MANAGER_SERVICE,
-      );
+      const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
       const service = manager.getService(input.id);
       const status = buildServerStatus(input.id, serverConfig, service);

@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
-import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
 export const sessionsRouter = router({
   list: adminProcedure

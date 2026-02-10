@@ -1,4 +1,4 @@
-import { router } from "../../trpc";
+import { router } from "@/trpc/trpc";
 import { logsRouter } from "./logs";
 import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";

@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId } from "@/trpc/utils";
 
 export const bansRouter = router({
   list: adminProcedure
