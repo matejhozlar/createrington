@@ -1,6 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
-import type { PlaytimeManagerService } from "@/services/playtime";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -48,7 +47,7 @@ export async function execute(
   const serverId = parseInt(serverOpt, 10);
 
   try {
-    const playtimeManager = await getService<PlaytimeManagerService>(
+    const playtimeManager = await getService(
       Services.PLAYTIME_MANAGER_SERVICE,
     );
 

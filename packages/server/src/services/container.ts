@@ -1,4 +1,18 @@
 import EventEmitter from "node:events";
+import type { Server } from "node:http";
+import type { Pool } from "pg";
+import type { Client } from "discord.js";
+import type { DiscordMessageService } from "./discord/message/message.service";
+import type { MessageCacheService } from "./discord/message/cache";
+import type { TicketService } from "./discord/tickets";
+import type { LeaderboardService } from "./discord/leaderboard";
+import type { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
+import type { ServerStatsService } from "./discord/stats";
+import type { RotatingStatusService } from "./discord/status";
+import type { PlaytimeManagerService } from "./playtime/playtime-manager.service";
+import type { RoleManagementService } from "./discord/role/role-management.service";
+import type { WebSocketService } from "./websocket";
+import type { PlayerBanService } from "./player/ban";
 
 /**
  * Service lifecycle states
@@ -79,7 +93,9 @@ export class ServiceContainer extends EventEmitter {
   /**
    * Get a service instance (initializes if needed)
    */
-  async get<T>(name: string): Promise<T> {
+  async get<K extends ServiceKey>(name: K): Promise<ServiceTypeMap[K]>;
+  async get<T>(name: string): Promise<T>;
+  async get(name: string): Promise<unknown> {
     const service = this.services.get(name);
 
     if (!service) {
@@ -87,7 +103,7 @@ export class ServiceContainer extends EventEmitter {
     }
 
     if (service.state === ServiceState.READY && service.instance) {
-      return service.instance as T;
+      return service.instance;
     }
 
     if (service.state === ServiceState.INITIALIZING) {
@@ -216,6 +232,31 @@ export class ServiceContainer extends EventEmitter {
   }
 
   /**
+   * Get a service instance synchronously (throws if not ready)
+   */
+  getSync<K extends ServiceKey>(name: K): ServiceTypeMap[K];
+  getSync<T>(name: string): T;
+  getSync(name: string): unknown {
+    const service = this.services.get(name);
+    if (!service) {
+      throw new Error(`Service ${name} is not registered`);
+    }
+    if (service.state !== ServiceState.READY || !service.instance) {
+      throw new Error(
+        `Service ${name} is not ready (state: ${service.state}). Use async get() instead.`,
+      );
+    }
+    return service.instance;
+  }
+
+  /**
+   * Number of registered services
+   */
+  get size(): number {
+    return this.services.size;
+  }
+
+  /**
    * Get service state
    */
   getState(name: string): ServiceState | undefined {
@@ -286,3 +327,25 @@ export const Services = {
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
+
+/**
+ * Maps each service key to its concrete type for type-safe access
+ */
+export interface ServiceTypeMap {
+  [Services.DATABASE]: Pool;
+  [Services.HTTP_SERVER]: Server;
+  [Services.DISCORD_MAIN_BOT]: Client;
+  [Services.DISCORD_WEB_BOT]: Client;
+  [Services.MESSAGE_SERVICE]: DiscordMessageService;
+  [Services.WEB_MESSAGE_SERVICE]: DiscordMessageService;
+  [Services.MESSAGE_CACHE]: MessageCacheService;
+  [Services.TICKET_SERVICE]: TicketService;
+  [Services.LEADERBOARD_SERVICE]: LeaderboardService;
+  [Services.MEMBER_CLEANUP_SERVICE]: MemberCleanupService;
+  [Services.SERVER_STATS_SERVICE]: ServerStatsService;
+  [Services.ROTATING_STATUS_SERVICE]: RotatingStatusService;
+  [Services.PLAYTIME_MANAGER_SERVICE]: PlaytimeManagerService;
+  [Services.ROLE_MANAGEMENT_SERVICE]: RoleManagementService;
+  [Services.WEBSOCKET_SERVICE]: WebSocketService;
+  [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
+}

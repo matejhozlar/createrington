@@ -6,7 +6,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
-import { TicketService, TicketType } from "@/services/discord/tickets";
+import { TicketType } from "@/services/discord/tickets";
 import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 
@@ -71,7 +71,7 @@ export const prodOnly = false;
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const ticketService = await getService<TicketService>(
+  const ticketService = await getService(
     Services.TICKET_SERVICE,
   );
 

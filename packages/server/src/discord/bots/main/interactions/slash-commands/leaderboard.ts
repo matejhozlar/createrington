@@ -102,7 +102,7 @@ export async function execute(
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
 
-  const leaderboardService = await getService<LeaderboardService>(
+  const leaderboardService = await getService(
     Services.LEADERBOARD_SERVICE,
   );
 

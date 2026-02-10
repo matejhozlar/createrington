@@ -3,7 +3,6 @@ import { z } from "zod";
 import { router, adminProcedure } from "../../../trpc";
 import { Q, R } from "@/db";
 import { getService, Services } from "@/services";
-import { PlaytimeManagerService } from "@/services/playtime";
 import {
   MINECRAFT_SERVERS,
   getServerById,
@@ -18,7 +17,7 @@ export const adminServersRouter = router({
   list: adminProcedure
     .meta({ description: "List all servers with aggregate stats" })
     .query(async () => {
-      const manager = await getService<PlaytimeManagerService>(
+      const manager = await getService(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 
@@ -73,7 +72,7 @@ export const adminServersRouter = router({
         });
       }
 
-      const manager = await getService<PlaytimeManagerService>(
+      const manager = await getService(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 

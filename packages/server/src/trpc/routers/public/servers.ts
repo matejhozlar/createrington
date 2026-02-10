@@ -2,7 +2,6 @@ import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "../../trpc";
 import { getService, Services } from "@/services";
 import {
-  PlaytimeManagerService,
   PlaytimeService,
   type ActiveSession,
 } from "@/services/playtime";
@@ -118,7 +117,7 @@ export const serversRouter = router({
         "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list.",
     })
     .query(async () => {
-      const manager = await getService<PlaytimeManagerService>(
+      const manager = await getService(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 
@@ -172,7 +171,7 @@ export const serversRouter = router({
         });
       }
 
-      const manager = await getService<PlaytimeManagerService>(
+      const manager = await getService(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 
