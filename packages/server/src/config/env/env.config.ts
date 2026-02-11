@@ -57,6 +57,19 @@ const envSchema = z.object({
   DB_PASSWORD: z.string().min(1, "Database password is required"),
   DB_PORT: port("Database port").default(5432),
 
+  // SFTP
+  // Cogs & Steam
+  COGS_AND_STEAM_SFTP_HOST: z
+    .string()
+    .min(1, "Cogs and Steam SFTP host required"),
+  COGS_AND_STEAM_SFTP_PORT: port("Cogs and Steam SFTP port"),
+  COGS_AND_STEAM_SFTP_USER: z
+    .string()
+    .min(1, "Cogs and Steam SFTP user required"),
+  COGS_AND_STEAM_SFTP_PASS: z
+    .string()
+    .min(1, "Cogs and Steam SFTP password required"),
+
   // Discord
   DISCORD_GUILD_ID: discordId("Guild ID"),
   DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
