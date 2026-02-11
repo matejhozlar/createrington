@@ -1,6 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
-import type { LeaderboardService } from "@/services/discord/leaderboard";
 import { isValidLeaderboardType } from "@/services/discord/leaderboard/config";
 import type { LeaderboardType } from "@/services/discord/leaderboard/types";
 import { type ButtonInteraction, MessageFlags } from "discord.js";
@@ -93,7 +92,7 @@ async function handleRefresh(
   interaction: ButtonInteraction,
   type: LeaderboardType,
 ): Promise<void> {
-  const leaderboardService = await getService<LeaderboardService>(
+  const leaderboardService = await getService(
     Services.LEADERBOARD_SERVICE,
   );
   const cooldownCheck = await leaderboardService.canRefresh(type);

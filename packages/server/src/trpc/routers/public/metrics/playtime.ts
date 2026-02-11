@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../../../trpc";
+import { router, publicProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import { z } from "zod";
 
@@ -30,7 +30,7 @@ export const playtimeRouter = router({
         "Returns a breakdown of total playtime hours per server. Useful for comparing activity across servers.",
     })
     .query(async () => {
-    const breakdown = await metricsService.playtime.getTotalHoursBreakdown();
-    return breakdown;
-  }),
+      const breakdown = await metricsService.playtime.getTotalHoursBreakdown();
+      return breakdown;
+    }),
 });

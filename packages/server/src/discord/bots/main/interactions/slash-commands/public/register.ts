@@ -43,7 +43,6 @@ export const cooldown = {
  * Whether this command should only be available in production
  * Set to false to allow usage in development
  */
-export const prodOnly = false;
 
 /**
  * Random delay helper for realistic progress updates

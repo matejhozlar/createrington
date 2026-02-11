@@ -1,6 +1,5 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { getService, Services } from "@/services";
-import { PlaytimeManagerService } from "@/services/playtime";
 import type {
   ModPlayerJoinData,
   ModPlayerLeaveData,
@@ -68,7 +67,7 @@ export class PresenceController {
     }
 
     try {
-      const playtimeManager = await getService<PlaytimeManagerService>(
+      const playtimeManager = await getService(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 

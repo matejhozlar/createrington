@@ -1,4 +1,4 @@
-import { router } from "../../../trpc";
+import { router } from "@/trpc/trpc";
 import { playersRouter } from "./crud";
 import { balanceRouter } from "./balance";
 import { strikesRouter } from "./strikes";

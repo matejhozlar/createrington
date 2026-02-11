@@ -9,6 +9,10 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { CommandModule } from "../bots/common/loaders/command-loader";
+import {
+  commandRegistry,
+  type CommandEnv,
+} from "../bots/main/command-registry";
 
 const BOT_TOKEN = config.discord.bots.main.token;
 const BOT_ID = config.discord.bots.main.id;
@@ -21,10 +25,51 @@ const isDev = config.envMode.isDev;
 const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
 
 /**
+ * Checks if a command should be deployed in the current environment
+ */
+function shouldDeployCommand(commandName: string): boolean {
+  const env: CommandEnv | undefined = commandRegistry[commandName];
+
+  if (!env) {
+    logger.warn(
+      `Command "${commandName}" not found in registry, deploying anyway`,
+    );
+    return true;
+  }
+
+  if (env === "both") return true;
+  if (env === "dev" && isDev) return true;
+  if (env === "prod" && !isDev) return true;
+
+  return false;
+}
+
+/**
+ * Collects all command files from a directory and its subdirectories
+ */
+function collectCommandFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+
+  const ext = isDev ? ".ts" : ".js";
+  const files: string[] = [];
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectCommandFiles(fullPath));
+    } else if (entry.name.endsWith(ext)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+/**
  * Dynamically loads command data from slash command files
  *
- * Scans the slash-commands directory and extracts the `data` export
- * from each command module for deployment
+ * Scans the slash-commands directory and its subdirectories, extracts the
+ * `data` export from each command module for deployment
  *
  * @returns Promise resolving to an array of command JSON data
  */
@@ -47,14 +92,11 @@ async function loadCommandData(): Promise<
     return [];
   }
 
-  const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter((file) => (isDev ? file.endsWith(".ts") : file.endsWith(".js")));
-
+  const commandFiles = collectCommandFiles(commandsPath);
   const commands: RESTPostAPIApplicationCommandsJSONBody[] = [];
 
-  for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
+  for (const filePath of commandFiles) {
+    const file = path.basename(filePath);
     try {
       const commandModule = (await import(
         pathToFileURL(filePath).href
@@ -67,6 +109,15 @@ async function loadCommandData(): Promise<
 
       if (typeof commandModule.data.toJSON !== "function") {
         logger.warn(`Skipped ${file}: 'data' does not have toJSON method`);
+        continue;
+      }
+
+      const commandName = commandModule.data.name;
+
+      if (!shouldDeployCommand(commandName)) {
+        logger.warn(
+          `Skipped deploying "${commandName}": not enabled in ${isDev ? "dev" : "prod"}`,
+        );
         continue;
       }
 

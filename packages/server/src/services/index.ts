@@ -1,5 +1,5 @@
 import { container } from "./container";
-import { Services, type ServiceKey } from "./container";
+import { Services, type ServiceKey, type ServiceTypeMap } from "./container";
 
 /**
  * Type-safe service accessors
@@ -9,30 +9,30 @@ import { Services, type ServiceKey } from "./container";
  * import { getService } from "@/services";
  *
  * const ticketService = await getService(Services.TICKET_SERVICE);
+ * // ticketService is typed as TicketService automatically
  * ```
  */
 
 export { Services, container };
+export type { ServiceTypeMap };
 
 /**
  * Get a service from the container (async)
  */
-export async function getService<T>(key: ServiceKey): Promise<T> {
-  return container.get<T>(key);
+export async function getService<K extends ServiceKey>(
+  key: K,
+): Promise<ServiceTypeMap[K]> {
+  return container.get<ServiceTypeMap[K]>(key);
 }
 
 /**
  * Get a service synchronously (throws if not initialized)
- * Should only be used if the service is 100% already initialzied
+ * Should only be used if the service is 100% already initialized
  */
-export function getServiceSync<T>(key: ServiceKey): T {
-  const service = container.get<T>(key);
-  if (service instanceof Promise) {
-    throw new Error(
-      `Service ${key} is not yet initialized. Use getService() instead`,
-    );
-  }
-  return service as T;
+export function getServiceSync<K extends ServiceKey>(
+  key: K,
+): ServiceTypeMap[K] {
+  return container.getSync<ServiceTypeMap[K]>(key);
 }
 
 /**
@@ -45,15 +45,15 @@ export function isServiceReady(key: ServiceKey): boolean {
 /**
  * Wait for a service to be ready
  */
-export async function waitForService<T>(
-  key: ServiceKey,
+export async function waitForService<K extends ServiceKey>(
+  key: K,
   timeoutMs: number = 30000,
-): Promise<T> {
+): Promise<ServiceTypeMap[K]> {
   const startTime = Date.now();
 
   while (Date.now() - startTime < timeoutMs) {
     if (isServiceReady(key)) {
-      return container.get<T>(key);
+      return container.get<ServiceTypeMap[K]>(key);
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }

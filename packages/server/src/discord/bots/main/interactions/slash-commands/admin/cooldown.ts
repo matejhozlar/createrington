@@ -51,7 +51,6 @@ export const data = new SlashCommandBuilder()
  * Whether this command should only be available in production
  * Set to false to allow usage in development environments
  */
-export const prodOnly = false;
 
 /**
  * Executes the cooldown management command

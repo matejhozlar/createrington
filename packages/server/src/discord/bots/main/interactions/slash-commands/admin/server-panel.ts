@@ -9,7 +9,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
-import { getEnabledServers } from "../../config/server-selection";
+import { getEnabledServers } from "../../../config/server-selection";
 
 /**
  * Slash command definition for the server-panel command
@@ -23,7 +23,6 @@ export const data = new SlashCommandBuilder()
 /**
  * Whether this command should only be available in production
  */
-export const prodOnly = false;
 
 /**
  * Permission configuration for the server-panel command

@@ -1,13 +1,12 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
-import { Client } from "discord.js";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId } from "@/trpc/utils";
 
 export const bansRouter = router({
   list: adminProcedure
@@ -127,7 +126,7 @@ export const bansRouter = router({
 
       const player = await Q.player.get(identifier);
 
-      const mainBot = await getService<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await getService(Services.DISCORD_MAIN_BOT);
       const guild = mainBot.guilds.cache.first();
       let member;
       let discordTag = "Unknown";

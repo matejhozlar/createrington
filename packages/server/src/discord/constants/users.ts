@@ -1,5 +1,5 @@
 import { getService, Services } from "@/services";
-import type { Client, User } from "discord.js";
+import type { User } from "discord.js";
 
 /**
  * Discord server utility functions for fetching, validating, and working with Discord users
@@ -25,7 +25,7 @@ export const DiscordUsers = {
    */
   async fetch(discordId: string): Promise<User | null> {
     try {
-      const client = await getService<Client>(Services.DISCORD_MAIN_BOT);
+      const client = await getService(Services.DISCORD_MAIN_BOT);
       return await client.users.fetch(discordId);
     } catch (error) {
       logger.error(`Failed to fetch user ${discordId}:`, error);
@@ -209,7 +209,7 @@ export const DiscordUsers = {
    */
   async resolve(discordId: string): Promise<User | null> {
     try {
-      const client = await getService<Client>(Services.DISCORD_MAIN_BOT);
+      const client = await getService(Services.DISCORD_MAIN_BOT);
 
       const cached = client.users.cache.get(discordId);
 

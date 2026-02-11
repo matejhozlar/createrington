@@ -8,6 +8,10 @@ import {
 } from "discord.js";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  commandRegistry,
+  type CommandEnv,
+} from "@/discord/bots/main/command-registry";
 
 const isDev = config.envMode.isDev;
 
@@ -17,7 +21,6 @@ const isDev = config.envMode.isDev;
 export interface CommandModule {
   data: SlashCommandBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-  prodOnly?: boolean;
 
   // Permission configurations
   permissions?: {
@@ -42,6 +45,47 @@ export interface CommandModule {
 }
 
 /**
+ * Checks if a command should be loaded in the current environment
+ */
+function shouldLoadCommand(commandName: string): boolean {
+  const env: CommandEnv | undefined = commandRegistry[commandName];
+
+  if (!env) {
+    logger.warn(
+      `Command "${commandName}" not found in registry, loading anyway`,
+    );
+    return true;
+  }
+
+  if (env === "both") return true;
+  if (env === "dev" && isDev) return true;
+  if (env === "prod" && !isDev) return true;
+
+  return false;
+}
+
+/**
+ * Collects all command files from a directory and its subdirectories
+ */
+function collectCommandFiles(dir: string): string[] {
+  if (!fs.existsSync(dir)) return [];
+
+  const ext = isDev ? ".ts" : ".js";
+  const files: string[] = [];
+
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectCommandFiles(fullPath));
+    } else if (entry.name.endsWith(ext)) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+/**
  * Loads Discord command handlers
  *
  * @returns Promise resolving to the commandHandlers
@@ -54,14 +98,11 @@ export async function loadCommandHandlers(
     return new Collection();
   }
 
-  const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter((file) => (isDev ? file.endsWith(".ts") : file.endsWith(".js")));
-
+  const commandFiles = collectCommandFiles(commandsPath);
   const commandHandlers = new Collection<string, CommandModule>();
 
-  for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
+  for (const filePath of commandFiles) {
+    const file = path.basename(filePath);
     try {
       const commandModule = (await import(
         pathToFileURL(filePath).href
@@ -82,10 +123,10 @@ export async function loadCommandHandlers(
         continue;
       }
 
-      const isProdOnly = commandModule.prodOnly === true;
-
-      if (isDev && isProdOnly) {
-        logger.warn(`Skipped loading production-only command: ${file}`);
+      if (!shouldLoadCommand(commandModule.data.name)) {
+        logger.warn(
+          `Skipped command "${commandModule.data.name}": not enabled in ${isDev ? "dev" : "prod"}`,
+        );
         continue;
       }
 

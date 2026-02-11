@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
-import { parsePlayerId, paginationInput, buildPagination } from "../../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
 export const auditRouter = router({
   list: adminProcedure
@@ -16,7 +16,11 @@ export const auditRouter = router({
       const identifier = parsePlayerId(input.id);
 
       const [auditLog, total] = await Promise.all([
-        playerService.audit.getLog(identifier, input.limit, input.page * input.limit),
+        playerService.audit.getLog(
+          identifier,
+          input.limit,
+          input.page * input.limit,
+        ),
         playerService.audit.count(identifier),
       ]);
 

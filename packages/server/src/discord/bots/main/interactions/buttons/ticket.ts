@@ -8,7 +8,6 @@ import {
 } from "discord.js";
 import {
   parseTicketButtonId,
-  type TicketService,
   TicketStatus,
 } from "@/services/discord/tickets";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
@@ -113,7 +112,7 @@ async function handleTranscript(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService<TicketService>(
+  const ticketService = await getService(
     Services.TICKET_SERVICE,
   );
   await interaction.deferUpdate();
@@ -193,7 +192,7 @@ async function handleCreate(
   interaction: ButtonInteraction,
   type: any,
 ): Promise<void> {
-  const ticketService = await getService<TicketService>(
+  const ticketService = await getService(
     Services.TICKET_SERVICE,
   );
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
@@ -285,7 +284,7 @@ async function handleConfirmClose(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService<TicketService>(
+  const ticketService = await getService(
     Services.TICKET_SERVICE,
   );
   await interaction.deferUpdate();
@@ -331,7 +330,7 @@ async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService<TicketService>(
+  const ticketService = await getService(
     Services.TICKET_SERVICE,
   );
   await ticketService.reopenTicket(ticketId, interaction.user.id);
@@ -353,7 +352,7 @@ async function handleDelete(
   ticketId: number,
 ): Promise<void> {
   try {
-    const ticketService = await getService<TicketService>(
+    const ticketService = await getService(
       Services.TICKET_SERVICE,
     );
     const channel = interaction.channel;

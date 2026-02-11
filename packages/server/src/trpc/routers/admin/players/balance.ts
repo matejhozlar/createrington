@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { balanceRepo } from "@/db";
-import { parsePlayerId } from "../../../utils";
+import { parsePlayerId } from "@/trpc/utils";
 
 export const balanceRouter = router({
   get: adminProcedure

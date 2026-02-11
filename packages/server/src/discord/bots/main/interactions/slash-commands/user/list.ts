@@ -1,6 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
-import type { PlaytimeManagerService } from "@/services/playtime";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -27,7 +26,6 @@ export const data = new SlashCommandBuilder()
  * Whether this command should only be available in production
  * Set to false to allow usage in development environments
  */
-export const prodOnly = false;
 
 /**
  * Executes the list command
@@ -48,7 +46,7 @@ export async function execute(
   const serverId = parseInt(serverOpt, 10);
 
   try {
-    const playtimeManager = await getService<PlaytimeManagerService>(
+    const playtimeManager = await getService(
       Services.PLAYTIME_MANAGER_SERVICE,
     );
 

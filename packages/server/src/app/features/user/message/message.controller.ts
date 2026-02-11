@@ -1,6 +1,5 @@
 import { BadRequestError, NotFoundError } from "@/app/middleware";
 import { getService, Services } from "@/services";
-import type { DiscordMessageService } from "@/services/discord/message";
 import { MESSAGE_CACHE_CONFIG } from "@/services/discord/message/cache";
 import { AttachmentBuilder } from "discord.js";
 import type { Request, Response } from "express";
@@ -104,7 +103,7 @@ export class MessageController {
       }
     }
 
-    const messageService = await getService<DiscordMessageService>(
+    const messageService = await getService(
       Services.WEB_MESSAGE_SERVICE,
     );
 
