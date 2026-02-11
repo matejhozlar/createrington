@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, Q } from "@/db";
 import { DatabaseTable } from "@/generated/db";
 import type {
   Player,
@@ -17,6 +17,8 @@ export type PlayerIdentifier =
 export enum BalanceTransactionType {
   TRANSFER_SEND = "transfer_send",
   TRANSFER_RECEIVE = "transfer_receive",
+  DEPOSIT = "deposit",
+  WITHDRAW = "withdraw",
   ADMIN_GRANT = "admin_grant",
   ADMIN_DEDUCT = "admin_deduct",
   PURCHASE = "purchase",
@@ -164,6 +166,18 @@ export class BalanceRepository {
     });
     const required = BalanceUtils.toStorage(amount);
     return balance >= required;
+  }
+
+  /**
+   * Gets top N players by balance
+   *
+   * @param limit - Number of top players to return (default: 10)
+   * @returns Array of { name, balance } sorted by balance DESC
+   */
+  async getTop(
+    limit: number = 10,
+  ): Promise<Array<{ name: string; balance: number }>> {
+    return Q.player.balance.getTop(limit);
   }
 
   /**
