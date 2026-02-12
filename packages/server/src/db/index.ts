@@ -6,6 +6,7 @@ import {
   createQueries,
 } from "@/generated/db";
 import * as repositories from "./repositories";
+import { PoolMonitor } from "./pool-monitor";
 
 /**
  * PostgreSQL database pool instance using environment variables
@@ -28,6 +29,9 @@ try {
   logger.error("Failed to connect to DB:", error);
   process.exit(1);
 }
+
+export const poolMonitor = new PoolMonitor(pool);
+poolMonitor.start();
 
 // ============================================================================
 // UNIFIED DATABASE QUERIES

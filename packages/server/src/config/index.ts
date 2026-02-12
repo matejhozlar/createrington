@@ -80,8 +80,13 @@ const config = {
       database: env.DB_DATABASE,
       password: env.DB_PASSWORD,
       port: env.DB_PORT,
+      max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
+    },
+    monitoring: {
+      intervalMs: 60_000,
+      warnUtilizationPercent: 80,
     },
   },
 
