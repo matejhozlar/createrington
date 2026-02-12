@@ -1,6 +1,7 @@
 import { AttachmentBuilder, GuildMember } from "discord.js";
 import { createCanvas, loadImage } from "canvas";
 
+/** Configuration for welcome card colors */
 interface WelcomeCardConfig {
   backgroundColor: string;
   accentColor: string;
@@ -15,6 +16,14 @@ const DEFAULT_CONFIG: WelcomeCardConfig = {
   secondaryTextColor: "#99AAB5",
 };
 
+/**
+ * Generates a welcome card image with the member's avatar, username, and member number
+ *
+ * @param member - The guild member who joined
+ * @param memberCount - The server's current member count
+ * @param config - Optional color overrides
+ * @returns Discord attachment containing the generated PNG image
+ */
 export async function generateWelcomeCard(
   member: GuildMember,
   memberCount: number,
@@ -110,6 +119,7 @@ export async function generateWelcomeCard(
   return new AttachmentBuilder(buffer, { name: "welcome.png" });
 }
 
+/** Adjusts a hex color's brightness by the given amount (-255 to 255) */
 function adjustBrightness(color: string, amount: number): string {
   const hex = color.replace("#", "");
   const num = parseInt(hex, 16);
@@ -122,6 +132,7 @@ function adjustBrightness(color: string, amount: number): string {
   return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
 }
 
+/** Draws text with a stroke outline for better readability over background images */
 function drawTextWithStroke(
   ctx: any,
   text: string,
@@ -138,6 +149,14 @@ function drawTextWithStroke(
   ctx.fillText(text, x, y);
 }
 
+/**
+ * Generates a custom welcome card with optional background image and bold stroke text
+ *
+ * @param member - The guild member who joined
+ * @param memberCount - The server's current member count
+ * @param options - Optional background image URL, message, and color overrides
+ * @returns Discord attachment containing the generated PNG image
+ */
 export async function generateCustomWelcomeCard(
   member: GuildMember,
   memberCount: number,

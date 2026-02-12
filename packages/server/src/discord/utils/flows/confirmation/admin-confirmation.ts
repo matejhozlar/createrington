@@ -2,6 +2,7 @@ import { EmbedPresets } from "@/discord/embeds";
 import { ButtonStyle, type ChatInputCommandInteraction } from "discord.js";
 import { ConfirmationFlow } from ".";
 
+/** Options for the admin change confirmation flow */
 export interface AdminChangeConfirmation {
   interaction: ChatInputCommandInteraction;
   title: string;
@@ -15,6 +16,14 @@ export interface AdminChangeConfirmation {
   isDeferred?: boolean;
 }
 
+/**
+ * Creates an ephemeral confirmation flow for admin actions
+ *
+ * Shows a confirmation embed with change details and warnings,
+ * then waits for the admin to confirm or cancel via buttons.
+ *
+ * @param options - Confirmation configuration including changes, warnings, and handlers
+ */
 export async function confirmAdminChange(
   options: AdminChangeConfirmation,
 ): Promise<void> {

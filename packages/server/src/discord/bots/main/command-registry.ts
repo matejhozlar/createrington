@@ -1,5 +1,7 @@
+/** Environment in which a command should be deployed and loaded */
 export type CommandEnv = "dev" | "prod" | "both";
 
+/** Registry mapping command names to their deployment environment */
 export const commandRegistry: Record<string, CommandEnv> = {
   // Public
   verify: "both",
