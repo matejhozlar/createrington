@@ -23,6 +23,11 @@ import type {
  * queried for progress display on the client.
  */
 export class AchievementService {
+  /**
+   * Initializes the service
+   *
+   * @returns Promise resolving when the service is initialized
+   */
   async initialize(): Promise<void> {
     validateDefinitions();
     logger.info(
@@ -41,11 +46,12 @@ export class AchievementService {
   /**
    * Evaluate achievements for all players on a server.
    * Called after stats import completes.
+   *
+   * @param serverId - Server to evaluate for
+   * @param playerUuids - Minecraft UUIDs of the players
+   * @returns Promise resolving when the server is evaluated
    */
-  async evaluateServer(
-    serverId: number,
-    playerUuids: string[],
-  ): Promise<void> {
+  async evaluateServer(serverId: number, playerUuids: string[]): Promise<void> {
     let totalNew = 0;
 
     for (const uuid of playerUuids) {
@@ -69,24 +75,24 @@ export class AchievementService {
 
   /**
    * Evaluate all achievement groups for a single player on a server.
-   * Returns descriptions of newly completed achievements.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @param serverId - Server ID to evaluate on
+   * @returns Promise resolving to an object with evaluated achievements
    */
   async evaluatePlayer(
     playerUuid: string,
     serverId: number,
   ): Promise<string[]> {
     // Load completed achievements from DB
-    const completedRows =
-      await Q.player.achievement.getCompletedForPlayer(
-        playerUuid,
-        serverId,
-      );
+    const completedRows = await Q.player.achievement.getCompletedForPlayer(
+      playerUuid,
+      serverId,
+    );
 
     // Build set of completed (groupId, tier) for fast lookup
     const completedSet = new Set(
-      completedRows.map(
-        (r) => `${r.achievementGroupId}:${r.tier}`,
-      ),
+      completedRows.map((r) => `${r.achievementGroupId}:${r.tier}`),
     );
 
     // Load player data for evaluation
@@ -97,9 +103,7 @@ export class AchievementService {
       Q.player.playtime.summary
         .find({ playerMinecraftUuid: playerUuid, serverId })
         .catch(() => null),
-      Q.player.balance.transaction
-        .getTotalEarned(playerUuid)
-        .catch(() => 0),
+      Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
     ]);
 
     const statsJson = (stats as any)?.stats ?? {};
@@ -171,6 +175,10 @@ export class AchievementService {
   /**
    * Get progress for all achievement groups for a player on a server.
    * Runs evaluation first to ensure newly earned tiers are captured.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @param serverId - Server to get progress on
+   * @returns Promise resolving to an object achievement group progress
    */
   async getProgress(
     playerUuid: string,
@@ -179,11 +187,10 @@ export class AchievementService {
     // Evaluate first so progress is always up to date
     await this.evaluatePlayer(playerUuid, serverId);
 
-    const completedRows =
-      await Q.player.achievement.getCompletedForPlayer(
-        playerUuid,
-        serverId,
-      );
+    const completedRows = await Q.player.achievement.getCompletedForPlayer(
+      playerUuid,
+      serverId,
+    );
 
     // Group completed rows by achievement group ID
     const completedByGroup = new Map<
@@ -208,9 +215,7 @@ export class AchievementService {
       Q.player.playtime.summary
         .find({ playerMinecraftUuid: playerUuid, serverId })
         .catch(() => null),
-      Q.player.balance.transaction
-        .getTotalEarned(playerUuid)
-        .catch(() => 0),
+      Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
     ]);
 
     const statsJson = (stats as any)?.stats ?? {};
@@ -233,8 +238,7 @@ export class AchievementService {
       );
 
       const nextTier: AchievementTier | null =
-        group.tiers.find((t) => t.tier === highestCompletedTier + 1) ??
-        null;
+        group.tiers.find((t) => t.tier === highestCompletedTier + 1) ?? null;
 
       return {
         group,
@@ -252,6 +256,12 @@ export class AchievementService {
 
   /**
    * Claim reward for a single completed achievement tier.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @param serverId - Server ID of the claim action
+   * @param groupId - Group ID of the achievement
+   * @param tier - Tier of the achievement
+   * @returns Promise resolving to the claim result
    */
   async claim(
     playerUuid: string,
@@ -264,13 +274,12 @@ export class AchievementService {
       throw new Error(`Unknown achievement group: ${groupId}`);
     }
 
-    const rewardAmount =
-      await Q.player.achievement.claimAndReturnReward(
-        playerUuid,
-        serverId,
-        groupId,
-        tier,
-      );
+    const rewardAmount = await Q.player.achievement.claimAndReturnReward(
+      playerUuid,
+      serverId,
+      groupId,
+      tier,
+    );
 
     if (rewardAmount === null) {
       throw new Error(
@@ -295,16 +304,16 @@ export class AchievementService {
 
   /**
    * Claim all unclaimed completed achievements for a player on a server.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @param serverId - Server ID to claim on
+   * @returns Promise resolving to claim result
    */
-  async claimAll(
-    playerUuid: string,
-    serverId: number,
-  ): Promise<ClaimResult[]> {
-    const unclaimed =
-      await Q.player.achievement.getUnclaimedForPlayer(
-        playerUuid,
-        serverId,
-      );
+  async claimAll(playerUuid: string, serverId: number): Promise<ClaimResult[]> {
+    const unclaimed = await Q.player.achievement.getUnclaimedForPlayer(
+      playerUuid,
+      serverId,
+    );
 
     if (unclaimed.length === 0) return [];
 
@@ -336,6 +345,12 @@ export class AchievementService {
 
   /**
    * Resolve the current value for an achievement criteria.
+   *
+   * @param criteria - Achievement criteria
+   * @param stats - Record of stats
+   * @param totalSeconds - Number of seconds (playtime)
+   * @param totalEarned - Total earned
+   * @returns Current value of the achievement
    */
   private getCurrentValue(
     criteria: AchievementCriteria,
