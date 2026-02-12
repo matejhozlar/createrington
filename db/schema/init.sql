@@ -37,6 +37,8 @@
 \i tables/18_ticket.sql
 \i tables/19_ticket_action.sql
 \i tables/20_waitlist_entry.sql
+\i tables/21_faq_entry.sql
+\i tables/22_faq_welcome_message.sql
 
 -- ============================================================================
 -- FUNCTIONS
