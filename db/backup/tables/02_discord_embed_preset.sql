@@ -66,19 +66,19 @@ ALTER TABLE ONLY public.discord_embed_preset ALTER COLUMN id SET DEFAULT nextval
 
 
 --
--- Name: discord_embed_preset discord_embed_preset_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.discord_embed_preset
-    ADD CONSTRAINT discord_embed_preset_pkey PRIMARY KEY (id);
-
-
---
 -- Name: discord_embed_preset discord_embed_preset_name_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.discord_embed_preset
     ADD CONSTRAINT discord_embed_preset_name_key UNIQUE (name);
+
+
+--
+-- Name: discord_embed_preset discord_embed_preset_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.discord_embed_preset
+    ADD CONSTRAINT discord_embed_preset_pkey PRIMARY KEY (id);
 
 
 --
@@ -91,3 +91,4 @@ CREATE TRIGGER update_discord_embed_preset_updated_at BEFORE UPDATE ON public.di
 --
 -- PostgreSQL database dump complete
 --
+

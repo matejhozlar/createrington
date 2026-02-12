@@ -27,7 +27,7 @@ SET default_table_access_method = heap;
 CREATE TABLE public.admin_log_action (
     id integer NOT NULL,
     admin_discord_id text NOT NULL,
-    admin_discord_username text NOT NULL,
+    admin_username text NOT NULL,
     action_type text NOT NULL,
     target_player_uuid uuid NOT NULL,
     target_player_name text NOT NULL,
