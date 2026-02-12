@@ -10,6 +10,7 @@
 
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
+export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { FaqEntryQueries } from "./faq/entry";

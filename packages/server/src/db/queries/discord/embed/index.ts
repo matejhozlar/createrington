@@ -1,23 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { DiscordEmbedQueries } from "@/db/queries/discord/embed";
-import { DiscordGuildQueries } from "@/db/queries/discord/guild";
+import { DiscordEmbedPresetQueries } from "@/db/queries/discord/embed/preset";
 
 /**
- * Namespace queries for discord
+ * Namespace queries for discord_embed
  * 
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'discord_' prefix.
+ * access to child tables that share the 'discord_embed_' prefix.
  * 
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all DiscordQueries instances using same connection
+ * - Shared across all DiscordEmbedQueries instances using same connection
  * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: npm run generate
  */
-export class DiscordQueries {
+export class DiscordEmbedQueries {
   /**
    * Static singleton registry for child query instances
    * 
@@ -25,7 +24,7 @@ export class DiscordQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "discord.actions")
+   * - Keys are fully qualified (e.g., "discord_embed.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -44,7 +43,7 @@ export class DiscordQueries {
    * @returns Cached or newly created child query instance
    * 
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "discord.actions")
+   * - Cache key is prefixed with namespace (e.g., "discord_embed.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -53,12 +52,12 @@ export class DiscordQueries {
     QueryClass: new (db: Pool | PoolClient) => T
   ): T {
     // Initialize cache for this connection if not exists
-    if (!DiscordQueries.queryInstances.has(this.db)) {
-      DiscordQueries.queryInstances.set(this.db, new Map());
+    if (!DiscordEmbedQueries.queryInstances.has(this.db)) {
+      DiscordEmbedQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = DiscordQueries.queryInstances.get(this.db)!;
-    const fullKey = `discord.${key}`;
+    const cache = DiscordEmbedQueries.queryInstances.get(this.db)!;
+    const fullKey = `discord_embed.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -73,41 +72,22 @@ export class DiscordQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded discord_embed queries */
-  private _embed?: DiscordEmbedQueries;
+  /** Private backing field for lazy-loaded discord_embed_preset queries */
+  private _preset?: DiscordEmbedPresetQueries;
 
   /**
-   * Lazy-loaded singleton accessor for discord_embed
+   * Lazy-loaded singleton accessor for discord_embed_preset
    * 
-   * Returns a DiscordEmbedQueries instance that shares this namespace's
+   * Returns a DiscordEmbedPresetQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    * 
-   * @returns Singleton DiscordEmbedQueries instance
+   * @returns Singleton DiscordEmbedPresetQueries instance
    */
-  get embed(): DiscordEmbedQueries {
-    if (!this._embed) {
-      this._embed = this.getOrCreateChild<DiscordEmbedQueries>('embed', DiscordEmbedQueries);
+  get preset(): DiscordEmbedPresetQueries {
+    if (!this._preset) {
+      this._preset = this.getOrCreateChild<DiscordEmbedPresetQueries>('preset', DiscordEmbedPresetQueries);
     }
-    return this._embed;
-  }
-
-  /** Private backing field for lazy-loaded discord_guild queries */
-  private _guild?: DiscordGuildQueries;
-
-  /**
-   * Lazy-loaded singleton accessor for discord_guild
-   * 
-   * Returns a DiscordGuildQueries instance that shares this namespace's
-   * database connection. The instance is created once on first access and
-   * cached for all subsequent calls.
-   * 
-   * @returns Singleton DiscordGuildQueries instance
-   */
-  get guild(): DiscordGuildQueries {
-    if (!this._guild) {
-      this._guild = this.getOrCreateChild<DiscordGuildQueries>('guild', DiscordGuildQueries);
-    }
-    return this._guild;
+    return this._preset;
   }
 }
