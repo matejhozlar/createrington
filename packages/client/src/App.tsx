@@ -37,6 +37,7 @@ import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
+import { AdminFaq } from "./features/admin/faq/AdminFaq";
 import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
@@ -155,6 +156,7 @@ function AppContent() {
                   <Route path="players/:id" element={<AdminPlayerDetail />} />
                   <Route path="servers" element={<AdminServers />} />
                   <Route path="servers/:id" element={<AdminServerDetail />} />
+                  <Route path="faq" element={<AdminFaq />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>
