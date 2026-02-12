@@ -688,6 +688,20 @@ ALTER SEQUENCE public.player_id_seq OWNED BY public.player.id;
 
 
 --
+-- Name: player_minecraft_stats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_minecraft_stats (
+    minecraft_uuid uuid NOT NULL,
+    server_id integer NOT NULL,
+    stats jsonb NOT NULL,
+    data_version integer,
+    imported_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: player_playtime_daily; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1281,6 +1295,14 @@ ALTER TABLE ONLY public.player_ban
 
 
 --
+-- Name: player_minecraft_stats player_minecraft_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_pkey PRIMARY KEY (minecraft_uuid, server_id);
+
+
+--
 -- Name: player player_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1639,6 +1661,13 @@ CREATE INDEX idx_player_last_seen ON public.player USING btree (last_seen);
 
 
 --
+-- Name: idx_player_minecraft_stats_server; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_minecraft_stats_server ON public.player_minecraft_stats USING btree (server_id);
+
+
+--
 -- Name: idx_player_minecraft_username; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1884,6 +1913,13 @@ CREATE TRIGGER update_player_balance_updated_at BEFORE UPDATE ON public.player_b
 
 
 --
+-- Name: player_minecraft_stats update_player_minecraft_stats_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_player_minecraft_stats_updated_at BEFORE UPDATE ON public.player_minecraft_stats FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: player update_player_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1952,6 +1988,22 @@ ALTER TABLE ONLY public.player_ban
 
 ALTER TABLE ONLY public.player
     ADD CONSTRAINT player_current_server_id_fkey FOREIGN KEY (current_server_id) REFERENCES public.server(id) ON DELETE SET NULL;
+
+
+--
+-- Name: player_minecraft_stats player_minecraft_stats_minecraft_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_minecraft_uuid_fkey FOREIGN KEY (minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: player_minecraft_stats player_minecraft_stats_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --

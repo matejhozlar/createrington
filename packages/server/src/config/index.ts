@@ -172,6 +172,13 @@ const config = {
         port: env.COGS_AND_STEAM_RCON_PORT,
         password: env.COGS_AND_STEAM_RCON_PASSWORD,
       },
+      sftp: {
+        host: env.COGS_AND_STEAM_SFTP_HOST,
+        port: env.COGS_AND_STEAM_SFTP_PORT,
+        username: env.COGS_AND_STEAM_SFTP_USER,
+        password: env.COGS_AND_STEAM_SFTP_PASS,
+        statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH,
+      },
     },
     test: {
       ip: env.TEST_SERVER_IP,

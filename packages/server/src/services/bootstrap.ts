@@ -19,6 +19,7 @@ import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
+import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 
 /**
  * Register all services with the container
@@ -199,6 +200,22 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_WEB_BOT, Services.MESSAGE_CACHE] },
+  );
+
+  container.register(
+    Services.STATS_IMPORT_SERVICE,
+    async (c) => {
+      const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
+      const service = new StatsImportService(
+        playtimeManager,
+        STATS_IMPORT_SERVERS,
+      );
+      await service.initialize();
+      return service;
+    },
+    {
+      dependencies: [Services.DATABASE, Services.PLAYTIME_MANAGER_SERVICE],
+    },
   );
 
   container.register(
