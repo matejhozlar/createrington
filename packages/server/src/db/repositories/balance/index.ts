@@ -436,12 +436,9 @@ export class BalanceRepository {
         );
       }
 
-      console.log(
-        "senderBalance.balance type:",
-        typeof senderBalance.balance,
-        senderBalance.balance,
+      logger.debug(
+        `Transfer: sender balance=${senderBalance.balance} (${typeof senderBalance.balance}), amount=${amountBigInt} (${typeof amountBigInt})`,
       );
-      console.log("amountBigInt type:", typeof amountBigInt, amountBigInt);
       const newSenderBalance = BalanceUtils.subtract(
         senderBalance.balance,
         amountBigInt,

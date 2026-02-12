@@ -94,7 +94,7 @@ export class PlayerRepository extends BasePlayerRepository {
   }
 
   /**
-   * Get's player's balance information with recent transactions
+   * Gets player's balance information with recent transactions
    *
    * @param identifier - Player identifier
    * @param transactionLimit - Number of recent transactions to include
