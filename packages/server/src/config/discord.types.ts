@@ -52,6 +52,7 @@ interface ChannelConfig {
     readonly botSpam: string;
     readonly leaderboards: string;
     readonly commands: string;
+    readonly questions: string;
   };
 
   readonly cogsAndSteam: {
