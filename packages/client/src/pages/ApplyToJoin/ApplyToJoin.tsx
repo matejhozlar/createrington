@@ -1,9 +1,12 @@
+import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
-import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
+import { PageHeader } from "@/components/page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -11,11 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { PageHeader } from "@/components/page-header";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 
 const REFERRAL_OPTIONS = [
@@ -178,20 +177,20 @@ export function ApplyToJoin() {
         description="Join our community and become a part of Createrington!"
       />
 
-      <div className="pb-12 md:py-16 px-5 md:px-8">
-        <Card className="mx-auto w-full max-w-7xl py-6 md:py-10 md:px-4">
-          <CardContent>
+      <div className="pb-12 lg:py-16 px-5 md:px-8">
+        <Card className="mx-auto w-full max-w-7xl py-3 sm:py-6 xl:py-10">
+          <CardContent className="px-3 sm:px-6 xl:px-10">
             <div className="grid gap-8 md:gap-16 lg:grid-cols-[1fr_1.2fr]">
-              <div className="rounded-xl border border-border/60 bg-background p-6">
+              <div className="rounded-xl h-fit border border-border/60 bg-background p-6">
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold">
                     {isWaitlistMode
                       ? "Waitlist Application"
-                      : "Open Enrollment Application"}
+                      : "Server Application"}
                   </h2>
                   <p className="mt-2 text-sm text-muted-foreground">
                     {isWaitlistMode
-                      ? "Tell us a bit about yourself so we can reach out when a spot opens."
+                      ? "Share your details and we'll reach out when a spot opens."
                       : "Share your details to start building with the community today."}
                   </p>
                 </div>
@@ -294,13 +293,13 @@ export function ApplyToJoin() {
                     <Badge
                       variant="outline"
                       className={cn(
-                        "px-6 py-2 text-xl rounded-md",
+                        "px-8 py-2 text-xl rounded-md uppercase font-bold",
                         isWaitlistMode
-                          ? "bg-primary text-primary-foreground font-bold"
-                          : "border-success bg-success/10 text-success",
+                          ? "bg-amber-500 text-background"
+                          : "bg-success text-background",
                       )}
                     >
-                      {isWaitlistMode ? "AT CAPACITY" : "Open Enrollment"}
+                      {isWaitlistMode ? "Waitlist" : "Open Enrollment"}
                     </Badge>
                   </div>
 
