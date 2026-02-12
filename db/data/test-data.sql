@@ -15,6 +15,16 @@ TRUNCATE TABLE server CASCADE;
 TRUNCATE TABLE ticket_action CASCADE;
 TRUNCATE TABLE ticket CASCADE;
 TRUNCATE TABLE player_ban RESTART IDENTITY;
+TRUNCATE TABLE player_strike CASCADE;
+TRUNCATE TABLE discord_embed_preset CASCADE;
+TRUNCATE TABLE discord_guild_member_leave CASCADE;
+TRUNCATE TABLE faq_entry CASCADE;
+TRUNCATE TABLE faq_welcome_message CASCADE;
+TRUNCATE TABLE leaderboard_message CASCADE;
+TRUNCATE TABLE player_achievement CASCADE;
+TRUNCATE TABLE player_balance_transaction CASCADE;
+TRUNCATE TABLE player_minecraft_stats CASCADE;
+TRUNCATE TABLE reward_claim CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -25,6 +35,14 @@ ALTER SEQUENCE discord_guild_member_join_join_number_seq RESTART WITH 1;
 ALTER SEQUENCE admin_log_action_id_seq RESTART WITH 1;
 ALTER SEQUENCE ticket_id_seq RESTART WITH 1;
 ALTER SEQUENCE ticket_action_id_seq RESTART WITH 1;
+ALTER SEQUENCE player_strike_id_seq RESTART WITH 1;
+ALTER SEQUENCE discord_embed_preset_id_seq RESTART WITH 1;
+ALTER SEQUENCE discord_guild_member_leave_id_seq RESTART WITH 1;
+ALTER SEQUENCE faq_entry_id_seq RESTART WITH 1;
+ALTER SEQUENCE faq_welcome_message_id_seq RESTART WITH 1;
+ALTER SEQUENCE leaderboard_message_id_seq RESTART WITH 1;
+ALTER SEQUENCE player_balance_transaction_id_seq RESTART WITH 1;
+ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
 
 -- ============================================================================
 -- SERVERS
@@ -433,7 +451,7 @@ INSERT INTO waitlist_entry (
 
 INSERT INTO admin_log_action (
     admin_discord_id,
-    admin_discord_username,
+    admin_username,
     action_type,
     target_player_uuid,
     target_player_name,
@@ -803,8 +821,149 @@ INSERT INTO public.player_ban (
   NULL,
   '{"case_id":"PBAN-2004","incident":"account-compromise"}'::jsonb
 );
- 
- 
+-- ============================================================================
+-- DISCORD EMBED PRESETS
+-- ============================================================================
+
+INSERT INTO discord_embed_preset (name, data, created_by) VALUES
+('welcome', '{"title":"Welcome to Createrington!","description":"Thanks for joining our community. Please read the rules in #rules and verify your account.","color":5814783,"thumbnail":{"url":"https://example.com/logo.png"},"fields":[{"name":"Getting Started","value":"Use /verify to link your Minecraft account","inline":false}]}', 'saunhardy'),
+('ban-notification', '{"title":"Player Banned","description":"A player has been banned from the server.","color":16711680,"fields":[{"name":"Reason","value":"{reason}","inline":true},{"name":"Duration","value":"{duration}","inline":true}]}', 'Agent772'),
+('event-announcement', '{"title":"{event_name}","description":"{event_description}","color":16776960,"fields":[{"name":"Date","value":"{date}","inline":true},{"name":"Prize","value":"{prize}","inline":true}],"footer":{"text":"React to sign up!"}}', 'The_Bigshot'),
+('server-status', '{"title":"Server Status","description":"Current server information","color":65280,"fields":[{"name":"Players Online","value":"{online_count}","inline":true},{"name":"TPS","value":"{tps}","inline":true},{"name":"Uptime","value":"{uptime}","inline":true}]}', 'saunhardy');
+
+-- ============================================================================
+-- DISCORD GUILD MEMBER LEAVES
+-- ============================================================================
+
+INSERT INTO discord_guild_member_leave (discord_id, minecraft_uuid, minecraft_username, departed_at, notification_message_id, deleted_at) VALUES
+('123456789012345688', '550e8400-e29b-41d4-a716-446655440011', 'Scar', NOW() - INTERVAL '15 days', '1100000000000000001', NULL),
+('123456789012345689', '550e8400-e29b-41d4-a716-446655440012', 'Iskall', NOW() - INTERVAL '20 days', '1100000000000000002', NOW() - INTERVAL '5 days');
+
+-- ============================================================================
+-- FAQ ENTRIES
+-- ============================================================================
+
+INSERT INTO faq_entry (match_mode, pattern, title, response, enabled, priority) VALUES
+('keywords', 'whitelist,join,how to join,apply', 'How to Join', 'To join Createrington, fill out the application in #apply and wait for approval. Once accepted, you''ll be whitelisted automatically.', true, 10),
+('keywords', 'ip,address,server ip,connect', 'Server IP', 'The server IP is `play.createrington.com`. Make sure you''re using Minecraft Java Edition 1.20+.', true, 9),
+('keywords', 'rules,guidelines,policy', 'Server Rules', 'Please read our full rules in #rules. Key points: no griefing, no hacking, be respectful, and no spam.', true, 8),
+('keywords', 'balance,money,coins,economy', 'Economy System', 'Use `/balance` to check your coins. Earn coins by playing, completing achievements, and trading with other players.', true, 7),
+('keywords', 'ban,banned,appeal,unban', 'Ban Appeals', 'If you''ve been banned, you can submit an appeal by opening a ticket with `/ticket`. Include your username and reason for appeal.', true, 6),
+('keywords', 'discord,role,rank', 'Discord Roles', 'Roles are assigned based on your playtime and contributions. Check #roles for more info on available ranks.', false, 3);
+
+-- ============================================================================
+-- FAQ WELCOME MESSAGES
+-- ============================================================================
+
+INSERT INTO faq_welcome_message (channel_id, message_id) VALUES
+('900000000000000001', '950000000000000001'),
+('900000000000000002', '950000000000000002');
+
+-- ============================================================================
+-- LEADERBOARD MESSAGES
+-- ============================================================================
+
+INSERT INTO leaderboard_message (leaderboard_type, channel_id, message_id, last_refreshed, last_manual_refresh) VALUES
+('playtime', '800000000000000001', '850000000000000001', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '2 hours'),
+('balance', '800000000000000001', '850000000000000002', NOW() - INTERVAL '15 minutes', NULL),
+('achievements', '800000000000000001', '850000000000000003', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 day');
+
+-- ============================================================================
+-- PLAYER ACHIEVEMENTS
+-- ============================================================================
+
+INSERT INTO player_achievement (minecraft_uuid, server_id, achievement_group_id, tier, completed_at, claimed_at, reward_amount) VALUES
+-- saunhardy: veteran player with claimed achievements
+('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 1, NOW() - INTERVAL '150 days', NOW() - INTERVAL '149 days', 5000),
+('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 2, NOW() - INTERVAL '120 days', NOW() - INTERVAL '119 days', 15000),
+('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'playtime', 3, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 50000),
+('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 1, NOW() - INTERVAL '140 days', NOW() - INTERVAL '140 days', 3000),
+('091b900c-4174-478c-900c-a0fe5a31a329', 1, 'mining', 2, NOW() - INTERVAL '90 days', NULL, 10000),
+
+-- Steve: active player with some achievements
+('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 1, NOW() - INTERVAL '60 days', NOW() - INTERVAL '59 days', 5000),
+('550e8400-e29b-41d4-a716-446655440001', 1, 'playtime', 2, NOW() - INTERVAL '30 days', NULL, 15000),
+('550e8400-e29b-41d4-a716-446655440001', 1, 'building', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 3000),
+
+-- Alex: a few achievements
+('550e8400-e29b-41d4-a716-446655440002', 1, 'playtime', 1, NOW() - INTERVAL '50 days', NOW() - INTERVAL '49 days', 5000),
+('550e8400-e29b-41d4-a716-446655440002', 1, 'combat', 1, NOW() - INTERVAL '40 days', NOW() - INTERVAL '39 days', 4000),
+
+-- Technoblade: combat-focused
+('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 1, NOW() - INTERVAL '45 days', NOW() - INTERVAL '44 days', 4000),
+('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 2, NOW() - INTERVAL '30 days', NOW() - INTERVAL '29 days', 12000),
+('550e8400-e29b-41d4-a716-446655440007', 1, 'combat', 3, NOW() - INTERVAL '10 days', NULL, 40000);
+
+-- ============================================================================
+-- PLAYER BALANCE TRANSACTIONS
+-- ============================================================================
+
+INSERT INTO player_balance_transaction (player_minecraft_uuid, amount, balance_before, balance_after, transaction_type, description, related_player_uuid, metadata) VALUES
+-- Steve: earning and spending
+('550e8400-e29b-41d4-a716-446655440001', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440001', 5000, 50000, 55000, 'achievement', 'Playtime tier 1 achievement reward', NULL, '{"achievement_group_id":"playtime","tier":1}'),
+('550e8400-e29b-41d4-a716-446655440001', 200500, 55000, 255500, 'playtime_reward', 'Weekly playtime reward', NULL, '{"week":"2026-W04"}'),
+('550e8400-e29b-41d4-a716-446655440001', -5000, 255500, 250500, 'transfer', 'Sent to Alex', '550e8400-e29b-41d4-a716-446655440002', '{}'),
+('550e8400-e29b-41d4-a716-446655440001', 1000000, 250500, 1250500, 'admin_adjust', 'Admin balance correction', NULL, '{"admin_discord_id":"818819241666281503","reason":"compensation for lost items"}'),
+
+-- Alex: receiving and trading
+('550e8400-e29b-41d4-a716-446655440002', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440002', 5000, 50000, 55000, 'transfer', 'Received from Steve', '550e8400-e29b-41d4-a716-446655440001', '{}'),
+('550e8400-e29b-41d4-a716-446655440002', 3365750, 55000, 3420750, 'playtime_reward', 'Accumulated playtime rewards', NULL, '{}'),
+
+-- Notch: high earner
+('550e8400-e29b-41d4-a716-446655440003', 50000, 0, 50000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}'),
+('550e8400-e29b-41d4-a716-446655440003', 8949990, 50000, 8999990, 'shop_sale', 'Sold rare items at shop', NULL, '{"items":["minecraft:netherite_ingot","minecraft:elytra"]}'),
+
+-- Newbie1: only welcome bonus
+('550e8400-e29b-41d4-a716-446655440013', 100000, 0, 100000, 'welcome_bonus', 'Welcome bonus for new player', NULL, '{}');
+
+-- ============================================================================
+-- PLAYER MINECRAFT STATS
+-- ============================================================================
+
+INSERT INTO player_minecraft_stats (minecraft_uuid, server_id, stats, data_version) VALUES
+('091b900c-4174-478c-900c-a0fe5a31a329', 1,
+ '{"minecraft:mined":{"minecraft:diamond_ore":342,"minecraft:stone":28451,"minecraft:deepslate":12893},"minecraft:killed":{"minecraft:zombie":1523,"minecraft:skeleton":982,"minecraft:creeper":456},"minecraft:custom":{"minecraft:play_time":15552000,"minecraft:walk_one_cm":8945123,"minecraft:jump":234567}}',
+ 3837),
+('550e8400-e29b-41d4-a716-446655440001', 1,
+ '{"minecraft:mined":{"minecraft:diamond_ore":87,"minecraft:stone":9821,"minecraft:deepslate":4532},"minecraft:killed":{"minecraft:zombie":432,"minecraft:skeleton":287,"minecraft:creeper":123},"minecraft:custom":{"minecraft:play_time":5184000,"minecraft:walk_one_cm":3456789,"minecraft:jump":98765}}',
+ 3837),
+('550e8400-e29b-41d4-a716-446655440002', 1,
+ '{"minecraft:mined":{"minecraft:diamond_ore":124,"minecraft:stone":15234,"minecraft:deepslate":7891},"minecraft:killed":{"minecraft:zombie":678,"minecraft:skeleton":432,"minecraft:creeper":234},"minecraft:custom":{"minecraft:play_time":6480000,"minecraft:walk_one_cm":5678901,"minecraft:jump":145678}}',
+ 3837),
+('550e8400-e29b-41d4-a716-446655440007', 1,
+ '{"minecraft:mined":{"minecraft:diamond_ore":56,"minecraft:stone":5432},"minecraft:killed":{"minecraft:zombie":2341,"minecraft:skeleton":1876,"minecraft:creeper":923,"minecraft:player":47},"minecraft:custom":{"minecraft:play_time":4320000,"minecraft:walk_one_cm":2345678,"minecraft:jump":67890}}',
+ 3837);
+
+-- ============================================================================
+-- REWARD CLAIMS
+-- ============================================================================
+
+INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, amount, metadata) VALUES
+-- Daily login rewards
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":45}'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '2 days', 1000, '{"streak":44}'),
+('550e8400-e29b-41d4-a716-446655440001', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":12}'),
+('550e8400-e29b-41d4-a716-446655440002', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":8}'),
+('550e8400-e29b-41d4-a716-446655440003', 'daily_login', NOW() - INTERVAL '2 days', 1000, '{"streak":30}'),
+
+-- Weekly playtime rewards
+('091b900c-4174-478c-900c-a0fe5a31a329', 'weekly_playtime', NOW() - INTERVAL '3 days', 25000, '{"hours_played":42,"week":"2026-W05"}'),
+('550e8400-e29b-41d4-a716-446655440001', 'weekly_playtime', NOW() - INTERVAL '3 days', 15000, '{"hours_played":28,"week":"2026-W05"}'),
+('550e8400-e29b-41d4-a716-446655440007', 'weekly_playtime', NOW() - INTERVAL '3 days', 10000, '{"hours_played":18,"week":"2026-W05"}'),
+
+-- Voting rewards
+('550e8400-e29b-41d4-a716-446655440001', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
+('550e8400-e29b-41d4-a716-446655440002', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
+('550e8400-e29b-41d4-a716-446655440005', 'vote', NOW() - INTERVAL '2 days', 500, '{"site":"minecraft-server-list"}'),
+
+-- Event participation
+('550e8400-e29b-41d4-a716-446655440007', 'event', NOW() - INTERVAL '10 days', 50000, '{"event":"winter_games_2026","placement":1}'),
+('550e8400-e29b-41d4-a716-446655440001', 'event', NOW() - INTERVAL '10 days', 25000, '{"event":"winter_games_2026","placement":2}'),
+('550e8400-e29b-41d4-a716-446655440002', 'event', NOW() - INTERVAL '10 days', 10000, '{"event":"winter_games_2026","placement":3}');
+
+
 -- ============================================================================
 -- VERIFY DATA INTEGRITY
 -- ============================================================================
