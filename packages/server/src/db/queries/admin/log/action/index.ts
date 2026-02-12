@@ -18,7 +18,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
    */
   async logAction(data: {
     adminDiscordId: string;
-    adminDiscordUsername: string;
+    adminUsername: string;
     actionType: string;
     targetPlayerUuid: string;
     targetPlayerName: string;
@@ -32,7 +32,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   }): Promise<void> {
     await this.create({
       adminDiscordId: data.adminDiscordId,
-      adminDiscordUsername: data.adminDiscordUsername,
+      adminUsername: data.adminUsername,
       actionType: data.actionType,
       targetPlayerUuid: data.targetPlayerUuid,
       targetPlayerName: data.targetPlayerName,
@@ -46,7 +46,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     });
 
     logger.info(
-      `Admin action logged: ${data.adminDiscordUsername} updated ${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`,
+      `Admin action logged: ${data.adminUsername} updated ${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`,
     );
   }
 }

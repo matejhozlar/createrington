@@ -162,7 +162,7 @@ export class PlayerRepository extends BasePlayerRepository {
    * @param identifier - Player identifier
    * @param updates - Fields to update
    * @param adminDiscordId - Admin performing the action
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for update
    */
   async adminUpdate(
@@ -172,7 +172,7 @@ export class PlayerRepository extends BasePlayerRepository {
       discordId?: string;
     },
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<Player> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -187,7 +187,7 @@ export class PlayerRepository extends BasePlayerRepository {
         if (oldValue !== newValue) {
           await tx.admin.log.action.create({
             adminDiscordId,
-            adminDiscordUsername,
+            adminUsername,
             actionType: AdminEdit.UPDATE_PLAYER,
             targetPlayerUuid: uuid,
             targetPlayerName: oldPlayer.minecraftUsername,
@@ -219,13 +219,13 @@ export class PlayerRepository extends BasePlayerRepository {
    *
    * @param identifier - Player identifier
    * @param adminDiscordId - Admin performing the deletion
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for deletion
    */
   async adminDelete(
     identifier: PlayerIdentifier,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<void> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -234,7 +234,7 @@ export class PlayerRepository extends BasePlayerRepository {
     await db.inTransaction(async (tx) => {
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername,
+        adminUsername,
         actionType: AdminEdit.DELETE_PLAYER,
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
@@ -252,7 +252,7 @@ export class PlayerRepository extends BasePlayerRepository {
       await tx.player.delete({ minecraftUuid: uuid });
 
       logger.info(
-        `Admin ${adminDiscordUsername} deleted player ${player.minecraftUsername} (${uuid})`,
+        `Admin ${adminUsername} deleted player ${player.minecraftUsername} (${uuid})`,
       );
     });
   }

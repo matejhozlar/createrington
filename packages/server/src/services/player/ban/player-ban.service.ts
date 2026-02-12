@@ -136,7 +136,7 @@ export class PlayerBanService {
 
     await Q.admin.log.action.create({
       adminDiscordId: "system",
-      adminDiscordUsername: "System",
+      adminUsername: "System",
       actionType: "unban_player" as any,
       targetPlayerUuid: ban.playerMinecraftUuid,
       targetPlayerName: minecraftUsername,

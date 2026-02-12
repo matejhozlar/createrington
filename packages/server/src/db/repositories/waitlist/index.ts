@@ -312,13 +312,13 @@ export class WaitlistRepository {
    *
    * @param entryId - Waitlist entry ID
    * @param adminDiscordId - Admin performing the deletion
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for deletion
    */
   async adminDelete(
     entryId: number,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<void> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
@@ -326,7 +326,7 @@ export class WaitlistRepository {
     await db.inTransaction(async (tx) => {
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername,
+        adminUsername,
         actionType: AdminEdit.DELETE_WAITLIST,
         targetPlayerUuid: "00000000-0000-0000-0000-000000000000",
         targetPlayerName: entry.discordName,
@@ -345,7 +345,7 @@ export class WaitlistRepository {
       await tx.waitlist.entry.delete({ id: entryId });
 
       logger.info(
-        `Admin ${adminDiscordUsername} deleted waitlist entry #${entryId} (${entry.email || entry.discordName})`,
+        `Admin ${adminUsername} deleted waitlist entry #${entryId} (${entry.email || entry.discordName})`,
       );
     });
   }
