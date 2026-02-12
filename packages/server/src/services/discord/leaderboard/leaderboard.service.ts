@@ -22,6 +22,11 @@ export class LeaderboardService {
   private refreshInterval?: NodeJS.Timeout;
   private readonly REFRESH_INTERVAL = 60 * 60 * 1000;
   constructor(private readonly bot: Client) {}
+
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Initialize the service and start automatic refresh scheduler
    * Called by the service container during startup
@@ -55,6 +60,10 @@ export class LeaderboardService {
       logger.info("LeaderboardService refresh scheduler stopped");
     }
   }
+
+  // ==========================================================================
+  // LEADERBOARD MANAGEMENT
+  // ==========================================================================
 
   /**
    * Creates a new leaderboard message or updates an existing one
@@ -219,6 +228,10 @@ export class LeaderboardService {
     return results;
   }
 
+  // ==========================================================================
+  // COOLDOWN
+  // ==========================================================================
+
   /**
    * Checks if a leaderboard can be manually refreshed
    *
@@ -262,6 +275,10 @@ export class LeaderboardService {
       lastRefreshed: existing?.lastManualRefresh,
     };
   }
+
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
   /**
    * Builds the button components for a leaderboard message

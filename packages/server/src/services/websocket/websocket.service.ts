@@ -68,6 +68,10 @@ export class WebSocketService {
     this.setupConnectionHandlers();
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Initialize the WebSocket service
    *
@@ -93,6 +97,10 @@ export class WebSocketService {
     this.isInitialized = true;
     logger.info("WebSocketService initialized");
   }
+
+  // ==========================================================================
+  // CONNECTION HANDLERS
+  // ==========================================================================
 
   /**
    * Set up Socket.IO connection handlers
@@ -343,6 +351,10 @@ export class WebSocketService {
     }
   }
 
+  // ==========================================================================
+  // SERVICE INTEGRATION
+  // ==========================================================================
+
   /**
    * Connect to external services and listen for events
    *
@@ -392,6 +404,10 @@ export class WebSocketService {
 
     logger.debug("Connected to external services");
   }
+
+  // ==========================================================================
+  // BROADCASTING
+  // ==========================================================================
 
   /**
    * Broadcast server status update
@@ -554,6 +570,10 @@ export class WebSocketService {
       `Broadcast message ${type}: ${messageId || message?.messageId} on server ${serverId}`,
     );
   }
+
+  // ==========================================================================
+  // STATS & CLEANUP
+  // ==========================================================================
 
   /**
    * Get service statistics

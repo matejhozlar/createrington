@@ -28,6 +28,10 @@ import { ServerAgeCondition } from "./conditions/server-age-condition";
 export class RoleAssignmentService {
   constructor(private readonly bot: Client) {}
 
+  // ==========================================================================
+  // ELIGIBILITY
+  // ==========================================================================
+
   /**
    * Creates the appropriate condition checker for a given rule
    *
@@ -131,6 +135,10 @@ export class RoleAssignmentService {
         return 0;
     }
   }
+
+  // ==========================================================================
+  // ASSIGNMENT
+  // ==========================================================================
 
   /**
    * Processes role assignment for a hierarchy of roles
@@ -477,6 +485,10 @@ export class RoleAssignmentService {
       rules.map((rule) => this.processRoleAssignment(discordId, rule)),
     );
   }
+
+  // ==========================================================================
+  // BATCH PROCESSING
+  // ==========================================================================
 
   /**
    * Process role assignments for all registered players
