@@ -170,11 +170,15 @@ export class AchievementService {
 
   /**
    * Get progress for all achievement groups for a player on a server.
+   * Runs evaluation first to ensure newly earned tiers are captured.
    */
   async getProgress(
     playerUuid: string,
     serverId: number,
   ): Promise<AchievementGroupProgress[]> {
+    // Evaluate first so progress is always up to date
+    await this.evaluatePlayer(playerUuid, serverId);
+
     const completedRows =
       await Q.player.achievement.getCompletedForPlayer(
         playerUuid,

@@ -31,7 +31,9 @@ CREATE TABLE public.player_achievement (
     tier integer NOT NULL,
     completed_at timestamp with time zone DEFAULT now() NOT NULL,
     claimed_at timestamp with time zone,
-    reward_amount integer NOT NULL
+    reward_amount integer NOT NULL,
+    CONSTRAINT chk_reward_non_negative CHECK ((reward_amount >= 0)),
+    CONSTRAINT chk_tier_positive CHECK ((tier > 0))
 );
 
 
@@ -43,22 +45,6 @@ ALTER TABLE public.player_achievement OWNER TO postgres;
 
 ALTER TABLE ONLY public.player_achievement
     ADD CONSTRAINT player_achievement_pkey PRIMARY KEY (minecraft_uuid, server_id, achievement_group_id, tier);
-
-
---
--- Name: player_achievement chk_tier_positive; Type: CHECK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE public.player_achievement
-    ADD CONSTRAINT chk_tier_positive CHECK (tier > 0);
-
-
---
--- Name: player_achievement chk_reward_non_negative; Type: CHECK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE public.player_achievement
-    ADD CONSTRAINT chk_reward_non_negative CHECK (reward_amount >= 0);
 
 
 --
@@ -94,3 +80,4 @@ ALTER TABLE ONLY public.player_achievement
 --
 -- PostgreSQL database dump complete
 --
+

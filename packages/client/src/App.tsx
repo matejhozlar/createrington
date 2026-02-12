@@ -43,6 +43,7 @@ import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
+import { Achievements } from "./pages/Achievements/Achievements";
 
 function AppLayout() {
   const { loading } = useAuth();
@@ -107,6 +108,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/achievements"
+          element={
+            <ProtectedRoute>
+              <Achievements />
             </ProtectedRoute>
           }
         />
