@@ -15,7 +15,7 @@ import config from "@/config";
 import cors from "cors";
 import { Status } from "discord.js";
 import { container, Services, getServiceSync } from "@/services";
-import { poolMonitor } from "@/db";
+// import { poolMonitor } from "@/db";
 
 /** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
@@ -40,15 +40,15 @@ export function createApp(): Express {
           : "starting";
 
     // Database component
-    const dbStats = poolMonitor.getStats();
-    const database = {
-      available: true,
-      totalCount: dbStats.totalCount,
-      idleCount: dbStats.idleCount,
-      waitingCount: dbStats.waitingCount,
-      maxSize: dbStats.maxSize,
-      utilization: dbStats.utilization,
-    };
+    // const dbStats = poolMonitor.getStats();
+    // const database = {
+    //   available: true,
+    //   totalCount: dbStats.totalCount,
+    //   idleCount: dbStats.idleCount,
+    //   waitingCount: dbStats.waitingCount,
+    //   maxSize: dbStats.maxSize,
+    //   utilization: dbStats.utilization,
+    // };
 
     // Discord bots component
     const discordBots: Record<string, unknown> = {};
@@ -114,7 +114,7 @@ export function createApp(): Express {
         entries.map(([name, state]) => [name, state]),
       ),
       components: {
-        database,
+        // database,
         discord: discordBots,
         websocket,
         playtime,
@@ -146,9 +146,7 @@ export function createApp(): Express {
   if (config.envMode.isDev) {
     app.use("/panel", async (_req, res) => {
       const { renderTrpcPanel } = await import("trpc-ui");
-      return res.send(
-        renderTrpcPanel(appRouter, { url: "/trpc" }),
-      );
+      return res.send(renderTrpcPanel(appRouter, { url: "/trpc" }));
     });
   }
 

@@ -221,21 +221,25 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_WEB_BOT, Services.MESSAGE_CACHE] },
   );
 
-  container.register(
-    Services.STATS_IMPORT_SERVICE,
-    async (c) => {
-      const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
-      const service = new StatsImportService(
-        playtimeManager,
-        STATS_IMPORT_SERVERS,
-      );
-      await service.initialize();
-      return service;
-    },
-    {
-      dependencies: [Services.DATABASE, Services.PLAYTIME_MANAGER_SERVICE],
-    },
-  );
+  if (!config.envMode.isDev) {
+    container.register(
+      Services.STATS_IMPORT_SERVICE,
+      async (c) => {
+        const playtimeManager = await c.get(Services.PLAYTIME_MANAGER_SERVICE);
+        const service = new StatsImportService(
+          playtimeManager,
+          STATS_IMPORT_SERVERS,
+        );
+        await service.initialize();
+        return service;
+      },
+      {
+        dependencies: [Services.DATABASE, Services.PLAYTIME_MANAGER_SERVICE],
+      },
+    );
+  } else {
+    logger.info("Skipping StatsImportService in development mode");
+  }
 
   container.register(
     Services.ACHIEVEMENT_SERVICE,
@@ -314,7 +318,7 @@ export function registerServices(): void {
       playtimeManager.setupMessageCacheIntegration(messageCache);
     }
 
-    if (serviceName === Services.STATS_IMPORT_SERVICE) {
+    if (serviceName === Services.STATS_IMPORT_SERVICE && !config.envMode.isDev) {
       const statsImport = await container.get(Services.STATS_IMPORT_SERVICE);
       const achievement = await container.get(Services.ACHIEVEMENT_SERVICE);
 

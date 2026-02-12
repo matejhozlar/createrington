@@ -289,31 +289,15 @@ export class PlayerRepository extends BasePlayerRepository {
       registeredToday,
       registeredThisWeek,
       registeredThisMonth,
-      balances,
+      balanceStats,
     ] = await Promise.all([
       Q.player.count(),
       Q.player.count({ online: true }),
       Q.player.count({ createdAt: { $gte: today } }),
       Q.player.count({ createdAt: { $gte: weekAgo } }),
       Q.player.count({ createdAt: { $gte: monthAgo } }),
-      Q.player.balance.getAll(),
+      Q.player.balance.getAggregateStats(),
     ]);
-
-    const totalBalance = balances.reduce(
-      (sum, b) => sum + b.balance,
-      BigInt(0),
-    );
-
-    const avgBalance =
-      balances.length > 0 ? totalBalance / BigInt(balances.length) : BigInt(0);
-
-    const sortedBalances = balances
-      .map((b) => b.balance)
-      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
-    const medianBalance =
-      sortedBalances.length > 0
-        ? sortedBalances[Math.floor(sortedBalances.length / 2)]
-        : BigInt(0);
 
     return {
       total,
@@ -324,9 +308,9 @@ export class PlayerRepository extends BasePlayerRepository {
         thisMonth: registeredThisMonth,
       },
       balance: {
-        total: BalanceUtils.format(totalBalance),
-        average: BalanceUtils.format(avgBalance),
-        median: BalanceUtils.format(medianBalance),
+        total: BalanceUtils.format(balanceStats.total),
+        average: BalanceUtils.format(balanceStats.average),
+        median: BalanceUtils.format(balanceStats.median),
       },
     };
   }

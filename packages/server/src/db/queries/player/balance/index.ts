@@ -78,6 +78,34 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }
 
   /**
+   * Get aggregate balance statistics (total, average, median) in a single query
+   *
+   * Uses SQL aggregation instead of loading all rows into memory.
+   * Balances are returned in storage format (bigint).
+   */
+  async getAggregateStats(): Promise<{ total: bigint; average: bigint; median: bigint }> {
+    const query = `
+      SELECT
+        COALESCE(SUM(balance), 0) AS total,
+        COALESCE(AVG(balance), 0)::bigint AS average,
+        COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY balance), 0)::bigint AS median
+      FROM ${this.table}`;
+
+    try {
+      const result = await this.db.query<{ total: bigint; average: bigint; median: bigint }>(query);
+      const row = result.rows[0];
+      return {
+        total: BigInt(row.total),
+        average: BigInt(row.average),
+        median: BigInt(row.median),
+      };
+    } catch (error) {
+      logger.error("Failed to get balance aggregate stats:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Gets top N players by balance, joined with player table for usernames
    */
   async getTop(limit: number = 10): Promise<BalanceLeaderboardEntry[]> {
