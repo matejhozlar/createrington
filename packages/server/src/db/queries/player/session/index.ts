@@ -22,6 +22,182 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   }
 
   /**
+   * Get unique active player counts grouped by time period
+   *
+   * Counts distinct players who started a session within each period.
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @param granularity - Bucketing interval: "day", "week", or "month"
+   * @returns Array of periods with unique player counts
+   */
+  async getActivePlayerCounts(
+    start: Date,
+    end: Date,
+    granularity: "day" | "week" | "month" = "day",
+  ): Promise<Array<{ period: string; uniquePlayers: number }>> {
+    const query = `
+      SELECT
+        DATE_TRUNC($3, session_start)::text AS period,
+        COUNT(DISTINCT player_minecraft_uuid)::integer AS unique_players
+      FROM ${this.table}
+      WHERE session_start >= $1 AND session_start < $2
+      GROUP BY 1
+      ORDER BY 1`;
+
+    try {
+      const result = await this.db.query<{ period: string; unique_players: number }>(
+        query,
+        [start, end, granularity],
+      );
+      return result.rows.map((row) => ({
+        period: row.period,
+        uniquePlayers: row.unique_players,
+      }));
+    } catch (error) {
+      logger.error("Failed to get active player counts:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get average session length in seconds
+   *
+   * Only considers sessions where seconds_played is recorded.
+   * Date filters are optional — omit both for all-time average.
+   *
+   * @param start - Optional start of date range (inclusive)
+   * @param end - Optional end of date range (exclusive)
+   * @returns Average session duration in seconds, or 0 if no sessions
+   */
+  async getAverageSessionLength(start?: Date, end?: Date): Promise<number> {
+    const conditions = ["seconds_played IS NOT NULL"];
+    const params: any[] = [];
+
+    if (start) {
+      params.push(start);
+      conditions.push(`session_start >= $${params.length}`);
+    }
+    if (end) {
+      params.push(end);
+      conditions.push(`session_start < $${params.length}`);
+    }
+
+    const query = `
+      SELECT COALESCE(AVG(seconds_played), 0)::float AS avg_seconds
+      FROM ${this.table}
+      WHERE ${conditions.join(" AND ")}`;
+
+    try {
+      const result = await this.db.query<{ avg_seconds: number }>(query, params);
+      return result.rows[0].avg_seconds;
+    } catch (error) {
+      logger.error("Failed to get average session length:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get peak concurrent player count within a time range
+   *
+   * Generates hourly time slots via generate_series, then counts
+   * overlapping sessions at each slot to find the peak.
+   *
+   * @param start - Start of the date range
+   * @param end - End of the date range
+   * @returns Peak concurrent count and the timestamp it occurred at
+   */
+  async getPeakConcurrent(
+    start: Date,
+    end: Date,
+  ): Promise<{ peakCount: number; peakTime: string }> {
+    const query = `
+      WITH hours AS (
+        SELECT generate_series($1::timestamptz, $2::timestamptz, '1 hour') AS hour
+      )
+      SELECT
+        h.hour::text AS peak_time,
+        COUNT(s.id)::integer AS peak_count
+      FROM hours h
+      LEFT JOIN ${this.table} s
+        ON s.session_start <= h.hour
+        AND (s.session_end IS NULL OR s.session_end > h.hour)
+      GROUP BY h.hour
+      ORDER BY peak_count DESC, h.hour
+      LIMIT 1`;
+
+    try {
+      const result = await this.db.query<{ peak_time: string; peak_count: number }>(
+        query,
+        [start, end],
+      );
+      const row = result.rows[0];
+      return {
+        peakCount: row?.peak_count ?? 0,
+        peakTime: row?.peak_time ?? start.toISOString(),
+      };
+    } catch (error) {
+      logger.error("Failed to get peak concurrent:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get new vs returning players per day within a time range
+   *
+   * Uses a CTE to determine each player's first-ever session, then
+   * classifies daily sessions as "new" (first session that day) or
+   * "returning" (had sessions before that day).
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @returns Array of dates with new and returning player counts
+   */
+  async getNewVsReturning(
+    start: Date,
+    end: Date,
+  ): Promise<Array<{ date: string; newPlayers: number; returningPlayers: number }>> {
+    const query = `
+      WITH first_sessions AS (
+        SELECT player_minecraft_uuid, MIN(session_start) AS first_session
+        FROM ${this.table}
+        GROUP BY player_minecraft_uuid
+      ),
+      daily AS (
+        SELECT
+          DATE_TRUNC('day', s.session_start)::text AS date,
+          COUNT(DISTINCT s.player_minecraft_uuid) FILTER (
+            WHERE DATE_TRUNC('day', fs.first_session) = DATE_TRUNC('day', s.session_start)
+          )::integer AS new_players,
+          COUNT(DISTINCT s.player_minecraft_uuid) FILTER (
+            WHERE DATE_TRUNC('day', fs.first_session) < DATE_TRUNC('day', s.session_start)
+          )::integer AS returning_players
+        FROM ${this.table} s
+        JOIN first_sessions fs ON fs.player_minecraft_uuid = s.player_minecraft_uuid
+        WHERE s.session_start >= $1 AND s.session_start < $2
+        GROUP BY 1
+      )
+      SELECT * FROM daily ORDER BY date`;
+
+    try {
+      const result = await this.db.query<{
+        date: string;
+        new_players: number;
+        returning_players: number;
+      }>(query, [start, end]);
+
+      return result.rows.map((row) => ({
+        date: row.date,
+        newPlayers: row.new_players,
+        returningPlayers: row.returning_players,
+      }));
+    } catch (error) {
+      logger.error("Failed to get new vs returning:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get paginated sessions for a specific server with player usernames
    */
   async getServerSessions(

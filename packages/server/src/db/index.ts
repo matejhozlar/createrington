@@ -29,6 +29,9 @@ try {
   process.exit(1);
 }
 
+// export const poolMonitor = new PoolMonitor(pool);
+// poolMonitor.start();
+
 // ============================================================================
 // UNIFIED DATABASE QUERIES
 // ============================================================================

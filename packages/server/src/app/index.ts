@@ -3,12 +3,19 @@ import fs from "fs";
 import express, { type Express } from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerRoutes } from "./features";
-import { errorHandler, notFoundHandler } from "./middleware";
+import {
+  errorHandler,
+  notFoundHandler,
+  globalLimiter,
+  authLimiter,
+} from "./middleware";
 import { appRouter } from "@/trpc/router";
 import { createContext } from "@/trpc/context";
 import config from "@/config";
 import cors from "cors";
-import { container } from "@/services";
+import { Status } from "discord.js";
+import { container, Services, getServiceSync } from "@/services";
+// import { poolMonitor } from "@/db";
 
 /** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
@@ -16,8 +23,10 @@ export function createApp(): Express {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cors({ origin: true, credentials: true }));
+  app.use(globalLimiter);
+  app.use("/api/auth", authLimiter);
 
-  app.get("/health", (_req, res) => {
+  app.get("/health", async (_req, res) => {
     const states = container.getAllStates();
     const entries = Object.entries(states);
     const failed = entries.filter(([, s]) => s === "failed");
@@ -30,12 +39,86 @@ export function createApp(): Express {
           ? "healthy"
           : "starting";
 
+    // Database component
+    // const dbStats = poolMonitor.getStats();
+    // const database = {
+    //   available: true,
+    //   totalCount: dbStats.totalCount,
+    //   idleCount: dbStats.idleCount,
+    //   waitingCount: dbStats.waitingCount,
+    //   maxSize: dbStats.maxSize,
+    //   utilization: dbStats.utilization,
+    // };
+
+    // Discord bots component
+    const discordBots: Record<string, unknown> = {};
+    for (const [key, serviceKey] of [
+      ["mainBot", Services.DISCORD_MAIN_BOT],
+      ["webBot", Services.DISCORD_WEB_BOT],
+    ] as const) {
+      try {
+        const bot = getServiceSync(serviceKey);
+        discordBots[key] = {
+          available: true,
+          status: Status[bot.ws.status],
+          ping: bot.ws.ping,
+        };
+      } catch {
+        discordBots[key] = { available: false };
+      }
+    }
+
+    // WebSocket component
+    let websocket: Record<string, unknown>;
+    try {
+      const ws = getServiceSync(Services.WEBSOCKET_SERVICE);
+      const wsStats = await ws.getStats();
+      websocket = {
+        available: true,
+        connectedClients: wsStats.connectedClients,
+        rooms: Object.keys(wsStats.rooms).length,
+        subscriptions: wsStats.subscriptions,
+        uptime: wsStats.uptime,
+      };
+    } catch {
+      websocket = { available: false };
+    }
+
+    // Playtime component
+    let playtime: Record<string, unknown>;
+    try {
+      const pm = getServiceSync(Services.PLAYTIME_MANAGER_SERVICE);
+      const pmStatus = pm.getStatus();
+      const servers: Record<string, unknown> = {};
+      for (const [serverId, info] of Object.entries(pmStatus)) {
+        const s = info as {
+          isInitialized: boolean;
+          activeSessions: number;
+          serverState: string;
+        };
+        servers[serverId] = {
+          isInitialized: s.isInitialized,
+          activeSessions: s.activeSessions,
+          serverState: s.serverState,
+        };
+      }
+      playtime = { available: true, servers };
+    } catch {
+      playtime = { available: false };
+    }
+
     res.json({
       status,
       uptime: process.uptime(),
       services: Object.fromEntries(
         entries.map(([name, state]) => [name, state]),
       ),
+      components: {
+        // database,
+        discord: discordBots,
+        websocket,
+        playtime,
+      },
     });
   });
 
@@ -63,9 +146,7 @@ export function createApp(): Express {
   if (config.envMode.isDev) {
     app.use("/panel", async (_req, res) => {
       const { renderTrpcPanel } = await import("trpc-ui");
-      return res.send(
-        renderTrpcPanel(appRouter, { url: "/trpc" }),
-      );
+      return res.send(renderTrpcPanel(appRouter, { url: "/trpc" }));
     });
   }
 

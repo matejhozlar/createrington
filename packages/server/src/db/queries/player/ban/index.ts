@@ -23,6 +23,87 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   }
 
   /**
+   * Get ban counts grouped by time period
+   *
+   * Aggregates bans into buckets with a total count plus
+   * breakdowns by temporary and permanent ban types.
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @param granularity - Bucketing interval: "day", "week", or "month"
+   * @returns Array of periods with total, temporary, and permanent counts
+   */
+  async getCountsByPeriod(
+    start: Date,
+    end: Date,
+    granularity: "day" | "week" | "month" = "day",
+  ): Promise<Array<{ period: string; total: number; temporary: number; permanent: number }>> {
+    const query = `
+      SELECT
+        DATE_TRUNC($3, banned_at)::text AS period,
+        COUNT(*)::integer AS total,
+        COUNT(*) FILTER (WHERE ban_type = 'temporary')::integer AS temporary,
+        COUNT(*) FILTER (WHERE ban_type = 'permanent')::integer AS permanent
+      FROM ${this.table}
+      WHERE banned_at >= $1 AND banned_at < $2
+      GROUP BY 1
+      ORDER BY 1`;
+
+    try {
+      const result = await this.db.query<{
+        period: string;
+        total: number;
+        temporary: number;
+        permanent: number;
+      }>(query, [start, end, granularity]);
+      return result.rows;
+    } catch (error) {
+      logger.error("Failed to get ban counts by period:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get moderator activity ranked by ban count
+   *
+   * Groups all bans by the issuing admin and returns them
+   * sorted by total bans descending.
+   *
+   * @param limit - Maximum number of moderators to return
+   * @returns Array of moderators with their Discord ID, username, and ban count
+   */
+  async getModeratorActivity(
+    limit: number = 10,
+  ): Promise<Array<{ discordId: string; username: string; banCount: number }>> {
+    const query = `
+      SELECT
+        banned_by_discord_id AS discord_id,
+        banned_by_username AS username,
+        COUNT(*)::integer AS ban_count
+      FROM ${this.table}
+      GROUP BY banned_by_discord_id, banned_by_username
+      ORDER BY ban_count DESC
+      LIMIT $1`;
+
+    try {
+      const result = await this.db.query<{
+        discord_id: string;
+        username: string;
+        ban_count: number;
+      }>(query, [limit]);
+
+      return result.rows.map((row) => ({
+        discordId: row.discord_id,
+        username: row.username,
+        banCount: row.ban_count,
+      }));
+    } catch (error) {
+      logger.error("Failed to get moderator activity:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Get all active (non-unbanned, non-expired) bans for a player
    *
    * @param playerMinecraftUuid - Player Minecraft UUID

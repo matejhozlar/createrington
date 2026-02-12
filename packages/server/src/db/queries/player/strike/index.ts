@@ -27,15 +27,82 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     super(db);
   }
 
-  // Add your custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<PlayerStrike[]> {
-  //   const result = await this.db.query<PlayerStrike>(
-  //     `SELECT * FROM player_strike WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /**
+   * Get strike counts grouped by time period with classification breakdown
+   *
+   * Queries per-period + per-classification counts, then aggregates
+   * in JS to build a nested { total, byClassification } structure.
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @param granularity - Bucketing interval: "day", "week", or "month"
+   * @returns Array of periods with total count and classification-keyed breakdown
+   */
+  async getCountsByPeriod(
+    start: Date,
+    end: Date,
+    granularity: "day" | "week" | "month" = "day",
+  ): Promise<Array<{ period: string; total: number; byClassification: Record<string, number> }>> {
+    try {
+      const rawQuery = `
+        SELECT
+          DATE_TRUNC($3, issued_at)::text AS period,
+          classification,
+          COUNT(*)::integer AS count
+        FROM ${this.table}
+        WHERE issued_at >= $1 AND issued_at < $2
+        GROUP BY 1, classification
+        ORDER BY 1`;
+
+      const result = await this.db.query<{
+        period: string;
+        classification: string;
+        count: number;
+      }>(rawQuery, [start, end, granularity]);
+
+      const periodMap = new Map<string, { total: number; byClassification: Record<string, number> }>();
+
+      for (const row of result.rows) {
+        if (!periodMap.has(row.period)) {
+          periodMap.set(row.period, { total: 0, byClassification: {} });
+        }
+        const entry = periodMap.get(row.period)!;
+        entry.total += row.count;
+        entry.byClassification[row.classification] = row.count;
+      }
+
+      return Array.from(periodMap.entries()).map(([period, data]) => ({
+        period,
+        ...data,
+      }));
+    } catch (error) {
+      logger.error("Failed to get strike counts by period:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get severity distribution for active (non-removed) strikes
+   *
+   * @returns Array of severity levels (1-5) with their active strike counts
+   */
+  async getSeverityDistribution(): Promise<Array<{ severity: number; count: number }>> {
+    const query = `
+      SELECT severity, COUNT(*)::integer AS count
+      FROM ${this.table}
+      WHERE removed = false
+      GROUP BY severity
+      ORDER BY severity`;
+
+    try {
+      const result = await this.db.query<{ severity: number; count: number }>(query);
+      return result.rows;
+    } catch (error) {
+      logger.error("Failed to get severity distribution:", error);
+      throw error;
+    }
+  }
+
   /**
    * Get all active (non-removed) strikes for a player
    *

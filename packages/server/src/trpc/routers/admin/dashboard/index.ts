@@ -1,6 +1,26 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { getService, Services } from "@/services";
+import { MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { buildServerStatus } from "@/trpc/routers/public/servers";
+import { minecraftRcon } from "@/utils/rcon";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
+
+function parseTpsResponse(response: string): {
+  tps: number | null;
+  meanTickTime: number | null;
+} {
+  const match = response.match(
+    /Overall:\s*Mean tick time:\s*([\d.]+)\s*ms\.\s*Mean TPS:\s*([\d.]+)/,
+  );
+  if (!match) {
+    return { tps: null, meanTickTime: null };
+  }
+  return {
+    tps: parseFloat(match[2]),
+    meanTickTime: parseFloat(match[1]),
+  };
+}
 
 export const dashboardRouter = router({
   profile: adminProcedure
