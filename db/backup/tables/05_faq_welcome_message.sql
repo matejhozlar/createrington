@@ -90,3 +90,4 @@ CREATE TRIGGER update_faq_welcome_message_updated_at BEFORE UPDATE ON public.faq
 --
 -- PostgreSQL database dump complete
 --
+
