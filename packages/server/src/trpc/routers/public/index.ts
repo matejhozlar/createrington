@@ -1,3 +1,12 @@
-export { serversRouter } from "./servers";
-export { playersRouter } from "./players";
-export { waitlistsRouter } from "./waitlists";
+import { router } from "@/trpc/trpc";
+import { serversRouter } from "./servers";
+import { playersRouter } from "./players";
+import { waitlistsRouter } from "./waitlists";
+import { metricsRouter } from "./metrics";
+
+export const publicRouter = router({
+  servers: serversRouter,
+  players: playersRouter,
+  waitlists: waitlistsRouter,
+  metrics: metricsRouter,
+});
