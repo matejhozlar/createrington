@@ -12,6 +12,43 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
   }
 
   /**
+   * Get guild member leaves grouped by time period
+   *
+   * Excludes soft-deleted records (deleted_at IS NULL).
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @param granularity - Bucketing interval: "day", "week", or "month"
+   * @returns Array of periods with leave counts
+   */
+  async getLeavesByPeriod(
+    start: Date,
+    end: Date,
+    granularity: "day" | "week" | "month" = "day",
+  ): Promise<Array<{ period: string; count: number }>> {
+    const query = `
+      SELECT
+        DATE_TRUNC($3, departed_at)::text AS period,
+        COUNT(*)::integer AS count
+      FROM ${this.table}
+      WHERE departed_at >= $1 AND departed_at < $2
+        AND deleted_at IS NULL
+      GROUP BY 1
+      ORDER BY 1`;
+
+    try {
+      const result = await this.db.query<{ period: string; count: number }>(
+        query,
+        [start, end, granularity],
+      );
+      return result.rows;
+    } catch (error) {
+      logger.error("Failed to get leaves by period:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Finds all members who departed more than 30 days ago
    * and haven't been deleted
    *

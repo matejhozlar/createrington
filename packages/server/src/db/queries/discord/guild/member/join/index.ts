@@ -11,7 +11,39 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Get guild member joins grouped by time period
+   *
+   * @param start - Start of the date range (inclusive)
+   * @param end - End of the date range (exclusive)
+   * @param granularity - Bucketing interval: "day", "week", or "month"
+   * @returns Array of periods with join counts
+   */
+  async getJoinsByPeriod(
+    start: Date,
+    end: Date,
+    granularity: "day" | "week" | "month" = "day",
+  ): Promise<Array<{ period: string; count: number }>> {
+    const query = `
+      SELECT
+        DATE_TRUNC($3, joined_at)::text AS period,
+        COUNT(*)::integer AS count
+      FROM ${this.table}
+      WHERE joined_at >= $1 AND joined_at < $2
+      GROUP BY 1
+      ORDER BY 1`;
+
+    try {
+      const result = await this.db.query<{ period: string; count: number }>(
+        query,
+        [start, end, granularity],
+      );
+      return result.rows;
+    } catch (error) {
+      logger.error("Failed to get joins by period:", error);
+      throw error;
+    }
+  }
 
   /**
    * Records a new member join and returns their join number
