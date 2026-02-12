@@ -1,0 +1,166 @@
+import { z } from "zod";
+import { router, adminProcedure } from "@/trpc/trpc";
+import { Q } from "@/db";
+import { paginationInput, buildPagination } from "@/trpc/utils";
+import { container, Services } from "@/services/container";
+import { TRPCError } from "@trpc/server";
+
+export const faqRouter = router({
+  list: adminProcedure
+    .meta({ description: "List FAQ entries with filtering and pagination." })
+    .input(
+      z.object({
+        enabled: z.boolean().optional(),
+        search: z.string().optional(),
+        ...paginationInput(),
+        orderBy: z
+          .enum(["priority", "title", "createdAt"])
+          .default("priority"),
+        orderDirection: z.enum(["asc", "desc"]).default("desc"),
+      }),
+    )
+    .query(async ({ input }) => {
+      let query = Q.faq.entry.where({});
+
+      if (input.enabled !== undefined) {
+        query = query.where({ enabled: input.enabled });
+      }
+
+      if (input.search) {
+        query = query.where({ title: { $ilike: `%${input.search}%` } });
+      }
+
+      const countQuery = Q.faq.entry.where({});
+      if (input.enabled !== undefined) {
+        countQuery.where({ enabled: input.enabled });
+      }
+      if (input.search) {
+        countQuery.where({ title: { $ilike: `%${input.search}%` } });
+      }
+
+      const [entries, total] = await Promise.all([
+        query
+          .orderBy(input.orderBy, input.orderDirection)
+          .paginate(input.page, input.limit)
+          .all(),
+        countQuery.count(),
+      ]);
+
+      return {
+        entries,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
+    }),
+
+  get: adminProcedure
+    .meta({ description: "Get a single FAQ entry by ID." })
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const entry = await Q.faq.entry.find({ id: input.id });
+
+      if (!entry) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+      }
+
+      return { entry };
+    }),
+
+  create: adminProcedure
+    .meta({ description: "Create a new FAQ entry." })
+    .input(
+      z.object({
+        pattern: z.string().min(1),
+        title: z.string().min(1).max(100),
+        response: z.string().min(1),
+        priority: z.number().int().default(0),
+        enabled: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      try {
+        new RegExp(input.pattern, "i");
+      } catch {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Invalid regex pattern",
+        });
+      }
+
+      await Q.faq.entry.create({
+        pattern: input.pattern,
+        title: input.title,
+        response: input.response,
+        priority: input.priority,
+        enabled: input.enabled,
+      });
+
+      const faqService = container.getSync(Services.FAQ_SERVICE);
+      await faqService.refreshPatterns();
+
+      return { message: "FAQ entry created" };
+    }),
+
+  update: adminProcedure
+    .meta({ description: "Update an existing FAQ entry." })
+    .input(
+      z.object({
+        id: z.number().int().positive(),
+        pattern: z.string().min(1).optional(),
+        title: z.string().min(1).max(100).optional(),
+        response: z.string().min(1).optional(),
+        priority: z.number().int().optional(),
+        enabled: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const existing = await Q.faq.entry.find({ id: input.id });
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+      }
+
+      if (input.pattern) {
+        try {
+          new RegExp(input.pattern, "i");
+        } catch {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid regex pattern",
+          });
+        }
+      }
+
+      const { id, ...updates } = input;
+      await Q.faq.entry.update({ id }, updates);
+
+      const faqService = container.getSync(Services.FAQ_SERVICE);
+      await faqService.refreshPatterns();
+
+      return { message: "FAQ entry updated" };
+    }),
+
+  delete: adminProcedure
+    .meta({ description: "Delete a FAQ entry." })
+    .input(z.object({ id: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const existing = await Q.faq.entry.find({ id: input.id });
+      if (!existing) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+      }
+
+      await Q.faq.entry.delete({ id: input.id });
+
+      const faqService = container.getSync(Services.FAQ_SERVICE);
+      await faqService.refreshPatterns();
+
+      return { message: "FAQ entry deleted" };
+    }),
+
+  repostWelcome: adminProcedure
+    .meta({ description: "Manually trigger a welcome message repost." })
+    .mutation(async () => {
+      const faqService = container.getSync(Services.FAQ_SERVICE);
+      await faqService.repostWelcomeMessage();
+
+      return { message: "Welcome message reposted" };
+    }),
+});
