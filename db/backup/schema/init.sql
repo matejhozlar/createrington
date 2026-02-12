@@ -1,6 +1,6 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-02-08T20:43:01.331Z
+-- Generated at: 2026-02-12T08:38:14.599Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
@@ -25,16 +25,17 @@
 \i tables/06_player_balance.sql
 \i tables/07_player_balance_transaction.sql
 \i tables/08_player_ban.sql
-\i tables/09_player_playtime_daily.sql
-\i tables/10_player_playtime_hourly.sql
-\i tables/11_player_playtime_summary.sql
-\i tables/12_player_session.sql
-\i tables/13_player_strike.sql
-\i tables/14_reward_claim.sql
-\i tables/15_server.sql
-\i tables/16_ticket.sql
-\i tables/17_ticket_action.sql
-\i tables/18_waitlist_entry.sql
+\i tables/09_player_minecraft_stats.sql
+\i tables/10_player_playtime_daily.sql
+\i tables/11_player_playtime_hourly.sql
+\i tables/12_player_playtime_summary.sql
+\i tables/13_player_session.sql
+\i tables/14_player_strike.sql
+\i tables/15_reward_claim.sql
+\i tables/16_server.sql
+\i tables/17_ticket.sql
+\i tables/18_ticket_action.sql
+\i tables/19_waitlist_entry.sql
 
 -- ============================================================================
 -- FUNCTIONS

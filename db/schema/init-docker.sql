@@ -474,6 +474,23 @@ CREATE TABLE public.player (
 
 
 --
+-- Name: player_achievement; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_achievement (
+    minecraft_uuid uuid NOT NULL,
+    server_id integer NOT NULL,
+    achievement_group_id text NOT NULL,
+    tier integer NOT NULL,
+    completed_at timestamp with time zone DEFAULT now() NOT NULL,
+    claimed_at timestamp with time zone,
+    reward_amount integer NOT NULL,
+    CONSTRAINT chk_reward_non_negative CHECK ((reward_amount >= 0)),
+    CONSTRAINT chk_tier_positive CHECK ((tier > 0))
+);
+
+
+--
 -- Name: player_balance; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1271,6 +1288,14 @@ ALTER TABLE ONLY public.leaderboard_message
 
 
 --
+-- Name: player_achievement player_achievement_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_pkey PRIMARY KEY (minecraft_uuid, server_id, achievement_group_id, tier);
+
+
+--
 -- Name: player_balance player_balance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1581,6 +1606,20 @@ CREATE INDEX idx_log_actions_table_name ON public.admin_log_action USING btree (
 --
 
 CREATE INDEX idx_log_actions_target ON public.admin_log_action USING btree (target_player_uuid);
+
+
+--
+-- Name: idx_player_achievement_player_server; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_achievement_player_server ON public.player_achievement USING btree (minecraft_uuid, server_id);
+
+
+--
+-- Name: idx_player_achievement_unclaimed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_achievement_unclaimed ON public.player_achievement USING btree (minecraft_uuid, server_id) WHERE (claimed_at IS NULL);
 
 
 --
@@ -1980,6 +2019,22 @@ ALTER TABLE ONLY public.player_strike
 
 ALTER TABLE ONLY public.player_ban
     ADD CONSTRAINT fk_server FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: player_achievement player_achievement_minecraft_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_minecraft_uuid_fkey FOREIGN KEY (minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: player_achievement player_achievement_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
