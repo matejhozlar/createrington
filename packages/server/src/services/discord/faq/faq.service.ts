@@ -62,15 +62,20 @@ export class FaqService {
 
     for (const entry of entries) {
       try {
+        const regex =
+          entry.matchMode === "keywords"
+            ? keywordsToRegex(entry.pattern)
+            : new RegExp(entry.pattern, "i");
+
         this.patterns.push({
           id: entry.id,
-          regex: new RegExp(entry.pattern, "i"),
+          regex,
           title: entry.title,
           response: entry.response,
         });
       } catch (error) {
         logger.warn(
-          `FAQ entry #${entry.id} has invalid regex "${entry.pattern}":`,
+          `FAQ entry #${entry.id} has invalid pattern "${entry.pattern}":`,
           error,
         );
       }
@@ -143,6 +148,10 @@ export class FaqService {
     }, REPOST_DELAY_MS);
   }
 
+  static keywordsToRegex(keywords: string): RegExp {
+    return keywordsToRegex(keywords);
+  }
+
   private async ensureWelcomeMessage(): Promise<void> {
     const existing = await Q.faq.welcome.message.find({
       channelId: this.channelId,
@@ -167,4 +176,22 @@ export class FaqService {
 
     await this.repostWelcomeMessage();
   }
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function keywordsToRegex(keywords: string): RegExp {
+  const words = keywords
+    .split(",")
+    .map((w) => w.trim())
+    .filter(Boolean)
+    .map(escapeRegex);
+
+  if (words.length === 0) {
+    throw new Error("Keywords pattern must contain at least one keyword");
+  }
+
+  return new RegExp(`(?:${words.join("|")})`, "i");
 }

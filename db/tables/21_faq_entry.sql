@@ -26,6 +26,7 @@ SET default_table_access_method = heap;
 
 CREATE TABLE public.faq_entry (
     id integer NOT NULL,
+    match_mode character varying(20) DEFAULT 'keywords' NOT NULL,
     pattern text NOT NULL,
     title character varying(100) NOT NULL,
     response text NOT NULL,

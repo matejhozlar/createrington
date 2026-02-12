@@ -4,6 +4,31 @@ import { Q } from "@/db";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { TRPCError } from "@trpc/server";
+import { FaqService } from "@/services/discord/faq";
+
+const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
+
+function validatePattern(matchMode: string, pattern: string): void {
+  if (matchMode === "regex") {
+    try {
+      new RegExp(pattern, "i");
+    } catch {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Invalid regex pattern",
+      });
+    }
+  } else {
+    try {
+      FaqService.keywordsToRegex(pattern);
+    } catch {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Keywords must contain at least one keyword (comma-separated)",
+      });
+    }
+  }
+}
 
 export const faqRouter = router({
   list: adminProcedure
@@ -69,6 +94,7 @@ export const faqRouter = router({
     .meta({ description: "Create a new FAQ entry." })
     .input(
       z.object({
+        matchMode: matchModeSchema,
         pattern: z.string().min(1),
         title: z.string().min(1).max(100),
         response: z.string().min(1),
@@ -77,16 +103,10 @@ export const faqRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      try {
-        new RegExp(input.pattern, "i");
-      } catch {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Invalid regex pattern",
-        });
-      }
+      validatePattern(input.matchMode, input.pattern);
 
       await Q.faq.entry.create({
+        matchMode: input.matchMode,
         pattern: input.pattern,
         title: input.title,
         response: input.response,
@@ -105,6 +125,7 @@ export const faqRouter = router({
     .input(
       z.object({
         id: z.number().int().positive(),
+        matchMode: z.enum(["keywords", "regex"]).optional(),
         pattern: z.string().min(1).optional(),
         title: z.string().min(1).max(100).optional(),
         response: z.string().min(1).optional(),
@@ -118,16 +139,9 @@ export const faqRouter = router({
         throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
       }
 
-      if (input.pattern) {
-        try {
-          new RegExp(input.pattern, "i");
-        } catch {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "Invalid regex pattern",
-          });
-        }
-      }
+      const effectiveMode = input.matchMode ?? existing.matchMode;
+      const effectivePattern = input.pattern ?? existing.pattern;
+      validatePattern(effectiveMode, effectivePattern);
 
       const { id, ...updates } = input;
       await Q.faq.entry.update({ id }, updates);

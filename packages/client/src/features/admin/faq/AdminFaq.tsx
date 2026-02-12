@@ -346,6 +346,9 @@ export function AdminFaq() {
                         </div>
                       </th>
                       <th className="px-4 py-3 text-left text-sm font-medium">
+                        Mode
+                      </th>
+                      <th className="px-4 py-3 text-left text-sm font-medium">
                         Pattern
                       </th>
                       <th
@@ -387,8 +390,21 @@ export function AdminFaq() {
                           <p className="font-medium">{entry.title}</p>
                         </td>
                         <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className="text-xs"
+                          >
+                            {entry.matchMode === "regex"
+                              ? "Regex"
+                              : "Keywords"}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3">
                           <p
-                            className="max-w-[200px] truncate font-mono text-xs text-muted-foreground"
+                            className={cn(
+                              "max-w-[200px] truncate text-xs text-muted-foreground",
+                              entry.matchMode === "regex" && "font-mono",
+                            )}
                             title={entry.pattern}
                           >
                             {entry.pattern}

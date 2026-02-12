@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +14,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
+type MatchMode = "keywords" | "regex";
 
 interface EditFaqModalProps {
   open: boolean;
@@ -31,6 +33,9 @@ export function EditFaqModal({
   const updateEntry = trpc.admin.faq.update.useMutation();
 
   const [title, setTitle] = useState(entry.title);
+  const [matchMode, setMatchMode] = useState<MatchMode>(
+    (entry.matchMode as MatchMode) || "keywords",
+  );
   const [pattern, setPattern] = useState(entry.pattern);
   const [response, setResponse] = useState(entry.response);
   const [priority, setPriority] = useState(entry.priority);
@@ -44,17 +49,20 @@ export function EditFaqModal({
       return;
     }
 
-    try {
-      new RegExp(pattern, "i");
-    } catch {
-      toast.error("Invalid regex pattern");
-      return;
+    if (matchMode === "regex") {
+      try {
+        new RegExp(pattern, "i");
+      } catch {
+        toast.error("Invalid regex pattern");
+        return;
+      }
     }
 
     try {
       await updateEntry.mutateAsync({
         id: entry.id,
         title: title.trim(),
+        matchMode,
         pattern: pattern.trim(),
         response: response.trim(),
         priority,
@@ -89,14 +97,49 @@ export function EditFaqModal({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="faq-pattern">Pattern (Regex)</FieldLabel>
+            <FieldLabel>Match Mode</FieldLabel>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={matchMode === "keywords" ? "default" : "outline"}
+                onClick={() => setMatchMode("keywords")}
+                className="cursor-pointer"
+              >
+                Keywords
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={matchMode === "regex" ? "default" : "outline"}
+                onClick={() => setMatchMode("regex")}
+                className="cursor-pointer"
+              >
+                Regex
+              </Button>
+            </div>
+          </Field>
+
+          <Field>
+            <FieldLabel htmlFor="faq-pattern">
+              {matchMode === "keywords" ? "Keywords" : "Pattern (Regex)"}
+            </FieldLabel>
             <Input
               id="faq-pattern"
               value={pattern}
               onChange={(e) => setPattern(e.target.value)}
-              placeholder="e.g. how.*(register|sign up)"
-              className="font-mono"
+              placeholder={
+                matchMode === "keywords"
+                  ? "register, sign up, how to join"
+                  : "how.*(register|sign up)"
+              }
+              className={matchMode === "regex" ? "font-mono" : ""}
             />
+            <FieldDescription>
+              {matchMode === "keywords"
+                ? "Comma-separated words or phrases. A message matching any keyword will trigger this response."
+                : "A regular expression pattern (case-insensitive). Use this for advanced matching."}
+            </FieldDescription>
           </Field>
 
           <Field>
@@ -105,14 +148,17 @@ export function EditFaqModal({
               id="faq-response"
               value={response}
               onChange={(e) => setResponse(e.target.value)}
-              placeholder="The auto-reply message..."
+              placeholder="The auto-reply message... (supports **bold**, *italic*, `code`, etc.)"
               rows={4}
               className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
+            <FieldDescription>
+              Supports Discord markdown: **bold**, *italic*, `code`, [links](url)
+            </FieldDescription>
           </Field>
 
-          <div className="flex gap-4">
-            <Field>
+          <div className="flex items-end gap-4">
+            <Field className="flex-1">
               <FieldLabel htmlFor="faq-priority">Priority</FieldLabel>
               <Input
                 id="faq-priority"
@@ -120,21 +166,17 @@ export function EditFaqModal({
                 value={priority}
                 onChange={(e) => setPriority(Number(e.target.value))}
               />
+              <FieldDescription>Higher = checked first</FieldDescription>
             </Field>
 
-            <Field>
-              <FieldLabel htmlFor="faq-enabled">Enabled</FieldLabel>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  id="faq-enabled"
-                  type="checkbox"
-                  checked={enabled}
-                  onChange={(e) => setEnabled(e.target.checked)}
-                  className="size-4 rounded border-input"
-                />
-                <span className="text-sm">{enabled ? "Yes" : "No"}</span>
-              </label>
-            </Field>
+            <label className="flex h-9 cursor-pointer items-center gap-2 mb-6">
+              <Checkbox
+                id="faq-enabled"
+                checked={enabled}
+                onCheckedChange={(checked) => setEnabled(checked === true)}
+              />
+              <span className="text-sm font-medium">Enabled</span>
+            </label>
           </div>
 
           <DialogFooter>
