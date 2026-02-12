@@ -20,6 +20,7 @@ import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
+import { AchievementService } from "./achievement";
 
 /**
  * Register all services with the container
@@ -219,6 +220,16 @@ export function registerServices(): void {
   );
 
   container.register(
+    Services.ACHIEVEMENT_SERVICE,
+    async () => {
+      const service = new AchievementService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
+
+  container.register(
     Services.ROLE_MANAGEMENT_SERVICE,
     async (c) => {
       const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
@@ -283,6 +294,17 @@ export function registerServices(): void {
       );
 
       playtimeManager.setupMessageCacheIntegration(messageCache);
+    }
+
+    if (serviceName === Services.STATS_IMPORT_SERVICE) {
+      const statsImport = await container.get(Services.STATS_IMPORT_SERVICE);
+      const achievement = await container.get(Services.ACHIEVEMENT_SERVICE);
+
+      statsImport.onImportComplete((serverId, uuids) => {
+        achievement.evaluateServer(serverId, uuids).catch((err) =>
+          logger.error("Achievement evaluation failed:", err),
+        );
+      });
     }
 
     if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {

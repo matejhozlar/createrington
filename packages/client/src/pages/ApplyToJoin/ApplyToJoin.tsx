@@ -27,8 +27,8 @@ const REFERRAL_OPTIONS = [
 ] as const;
 
 export function ApplyToJoin() {
-  const statusQuery = trpc.waitlists.status.useQuery();
-  const createMutation = trpc.waitlists.create.useMutation();
+  const statusQuery = trpc.public.waitlists.status.useQuery();
+  const createMutation = trpc.public.waitlists.create.useMutation();
 
   const [discordName, setDiscordName] = useState("");
   const [email, setEmail] = useState("");

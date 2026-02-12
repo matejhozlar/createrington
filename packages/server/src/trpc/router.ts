@@ -1,17 +1,9 @@
 import { router } from "./trpc";
-import {
-  serversRouter,
-  playersRouter,
-  waitlistsRouter,
-  metricsRouter,
-  adminRouter,
-} from "./routers";
+import { publicRouter, userRouter, adminRouter } from "./routers";
 
 export const appRouter = router({
-  servers: serversRouter,
-  players: playersRouter,
-  waitlists: waitlistsRouter,
-  metrics: metricsRouter,
+  public: publicRouter,
+  user: userRouter,
   admin: adminRouter,
 });
 

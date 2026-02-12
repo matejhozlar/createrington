@@ -1,3 +1,3 @@
-export { serversRouter, playersRouter, waitlistsRouter } from "./public";
-export { metricsRouter } from "./public/metrics";
+export { publicRouter } from "./public";
+export { userRouter } from "./user";
 export { adminRouter } from "./admin";

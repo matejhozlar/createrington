@@ -33,11 +33,24 @@ const DEBOUNCE_MS = 30_000;
 export class StatsImportService {
   private debounceTimers: Map<number, NodeJS.Timeout> = new Map();
   private importInProgress: Map<number, boolean> = new Map();
+  private importCompleteCallbacks: Array<
+    (serverId: number, uuids: string[]) => void
+  > = [];
 
   constructor(
     private readonly playtimeManager: PlaytimeManagerService,
     private readonly configs: StatsImportServerConfig[],
   ) {}
+
+  /**
+   * Register a callback to be invoked after a successful stats import.
+   * The callback receives the server ID and the list of player UUIDs that were imported.
+   */
+  onImportComplete(
+    callback: (serverId: number, uuids: string[]) => void,
+  ): void {
+    this.importCompleteCallbacks.push(callback);
+  }
 
   /**
    * Initializes the service and performs initial imports
@@ -242,6 +255,16 @@ export class StatsImportService {
         `Stats import complete for server ${serverId} (${cfg.serverName}): ` +
           `${statsToUpsert.length} imported, ${skipped} skipped, ${duration}ms`,
       );
+
+      // Notify listeners (e.g. AchievementService)
+      const importedUuids = statsToUpsert.map((e) => e.minecraftUuid);
+      for (const callback of this.importCompleteCallbacks) {
+        try {
+          callback(serverId, importedUuids);
+        } catch (error) {
+          logger.error("Import complete callback failed:", error);
+        }
+      }
     } catch (error) {
       logger.error(
         `Stats import failed for server ${serverId} (${cfg.serverName}):`,

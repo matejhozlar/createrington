@@ -11,5 +11,25 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Get the total amount earned (sum of positive transactions) for a player.
+   * Returns 0 if no positive transactions exist.
+   */
+  async getTotalEarned(playerUuid: string): Promise<number> {
+    const query = `
+      SELECT COALESCE(SUM(amount), 0) AS total_earned
+      FROM ${this.table}
+      WHERE player_minecraft_uuid = $1 AND amount > 0`;
+
+    try {
+      const result = await this.db.query<{ total_earned: bigint }>(
+        query,
+        [playerUuid],
+      );
+      return Number(result.rows[0].total_earned);
+    } catch (error) {
+      logger.error("Failed to get total earned:", error);
+      throw error;
+    }
+  }
 }

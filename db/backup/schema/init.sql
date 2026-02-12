@@ -1,6 +1,6 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-02-08T20:43:01.331Z
+-- Generated at: 2026-02-12T09:07:31.060Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
@@ -22,19 +22,21 @@
 \i tables/03_discord_guild_member_leave.sql
 \i tables/04_leaderboard_message.sql
 \i tables/05_player.sql
-\i tables/06_player_balance.sql
-\i tables/07_player_balance_transaction.sql
-\i tables/08_player_ban.sql
-\i tables/09_player_playtime_daily.sql
-\i tables/10_player_playtime_hourly.sql
-\i tables/11_player_playtime_summary.sql
-\i tables/12_player_session.sql
-\i tables/13_player_strike.sql
-\i tables/14_reward_claim.sql
-\i tables/15_server.sql
-\i tables/16_ticket.sql
-\i tables/17_ticket_action.sql
-\i tables/18_waitlist_entry.sql
+\i tables/06_player_achievement.sql
+\i tables/07_player_balance.sql
+\i tables/08_player_balance_transaction.sql
+\i tables/09_player_ban.sql
+\i tables/10_player_minecraft_stats.sql
+\i tables/11_player_playtime_daily.sql
+\i tables/12_player_playtime_hourly.sql
+\i tables/13_player_playtime_summary.sql
+\i tables/14_player_session.sql
+\i tables/15_player_strike.sql
+\i tables/16_reward_claim.sql
+\i tables/17_server.sql
+\i tables/18_ticket.sql
+\i tables/19_ticket_action.sql
+\i tables/20_waitlist_entry.sql
 
 -- ============================================================================
 -- FUNCTIONS

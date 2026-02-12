@@ -474,6 +474,23 @@ CREATE TABLE public.player (
 
 
 --
+-- Name: player_achievement; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_achievement (
+    minecraft_uuid uuid NOT NULL,
+    server_id integer NOT NULL,
+    achievement_group_id text NOT NULL,
+    tier integer NOT NULL,
+    completed_at timestamp with time zone DEFAULT now() NOT NULL,
+    claimed_at timestamp with time zone,
+    reward_amount integer NOT NULL,
+    CONSTRAINT chk_reward_non_negative CHECK ((reward_amount >= 0)),
+    CONSTRAINT chk_tier_positive CHECK ((tier > 0))
+);
+
+
+--
 -- Name: player_balance; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -685,6 +702,20 @@ CREATE SEQUENCE public.player_id_seq
 --
 
 ALTER SEQUENCE public.player_id_seq OWNED BY public.player.id;
+
+
+--
+-- Name: player_minecraft_stats; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.player_minecraft_stats (
+    minecraft_uuid uuid NOT NULL,
+    server_id integer NOT NULL,
+    stats jsonb NOT NULL,
+    data_version integer,
+    imported_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -1257,6 +1288,14 @@ ALTER TABLE ONLY public.leaderboard_message
 
 
 --
+-- Name: player_achievement player_achievement_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_pkey PRIMARY KEY (minecraft_uuid, server_id, achievement_group_id, tier);
+
+
+--
 -- Name: player_balance player_balance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1278,6 +1317,14 @@ ALTER TABLE ONLY public.player_balance_transaction
 
 ALTER TABLE ONLY public.player_ban
     ADD CONSTRAINT player_ban_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: player_minecraft_stats player_minecraft_stats_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_pkey PRIMARY KEY (minecraft_uuid, server_id);
 
 
 --
@@ -1562,6 +1609,20 @@ CREATE INDEX idx_log_actions_target ON public.admin_log_action USING btree (targ
 
 
 --
+-- Name: idx_player_achievement_player_server; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_achievement_player_server ON public.player_achievement USING btree (minecraft_uuid, server_id);
+
+
+--
+-- Name: idx_player_achievement_unclaimed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_achievement_unclaimed ON public.player_achievement USING btree (minecraft_uuid, server_id) WHERE (claimed_at IS NULL);
+
+
+--
 -- Name: idx_player_balance_amount; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1636,6 +1697,13 @@ CREATE INDEX idx_player_discord_id ON public.player USING btree (discord_id);
 --
 
 CREATE INDEX idx_player_last_seen ON public.player USING btree (last_seen);
+
+
+--
+-- Name: idx_player_minecraft_stats_server; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_player_minecraft_stats_server ON public.player_minecraft_stats USING btree (server_id);
 
 
 --
@@ -1884,6 +1952,13 @@ CREATE TRIGGER update_player_balance_updated_at BEFORE UPDATE ON public.player_b
 
 
 --
+-- Name: player_minecraft_stats update_player_minecraft_stats_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_player_minecraft_stats_updated_at BEFORE UPDATE ON public.player_minecraft_stats FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: player update_player_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -1947,11 +2022,43 @@ ALTER TABLE ONLY public.player_ban
 
 
 --
+-- Name: player_achievement player_achievement_minecraft_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_minecraft_uuid_fkey FOREIGN KEY (minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: player_achievement player_achievement_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_achievement
+    ADD CONSTRAINT player_achievement_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: player player_current_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.player
     ADD CONSTRAINT player_current_server_id_fkey FOREIGN KEY (current_server_id) REFERENCES public.server(id) ON DELETE SET NULL;
+
+
+--
+-- Name: player_minecraft_stats player_minecraft_stats_minecraft_uuid_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_minecraft_uuid_fkey FOREIGN KEY (minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: player_minecraft_stats player_minecraft_stats_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.player_minecraft_stats
+    ADD CONSTRAINT player_minecraft_stats_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.server(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
