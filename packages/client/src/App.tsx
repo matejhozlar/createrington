@@ -22,7 +22,6 @@ import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/not-found";
 import { ToastProvider } from "./components/ui/toast";
-import { AdminDashboard, AdminSettings } from "./pages/Admin";
 import { AppSidebar } from "./components/app-sidebar";
 import {
   SidebarInset,
@@ -32,13 +31,13 @@ import {
 import { Logo } from "./components/logo";
 import { ServerChat } from "./components/chat";
 import { AdminLogs } from "./features/admin/logs/AdminLogs";
-import { AdminMessages } from "./pages/Admin/Messages";
 import { AdminServers } from "./features/admin/servers/AdminServers";
 import { AdminServerDetail } from "./features/admin/servers/detail/AdminServerDetail";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
 import { AdminPlayers } from "./features/admin/players/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
+import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -152,8 +151,6 @@ function AppContent() {
                   <Route path="players/:id" element={<AdminPlayerDetail />} />
                   <Route path="servers" element={<AdminServers />} />
                   <Route path="servers/:id" element={<AdminServerDetail />} />
-                  <Route path="messages" element={<AdminMessages />} />
-                  <Route path="settings" element={<AdminSettings />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>
