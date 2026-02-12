@@ -40,6 +40,7 @@ postgres_data/
 .cache/
 temp
 CLAUDE.md
+COMMENTING.md
 storage/transcripts
 
 # Database migration data
