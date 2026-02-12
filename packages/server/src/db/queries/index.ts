@@ -14,6 +14,7 @@ export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { PlayerQueries } from "./player";
+export { PlayerAchievementQueries } from "./player/achievement";
 export { PlayerBalanceQueries } from "./player/balance";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
