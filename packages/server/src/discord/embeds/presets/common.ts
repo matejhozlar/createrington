@@ -3,7 +3,9 @@ import { EmbedColors } from "../colors";
 import { Discord } from "@/discord/constants";
 import type { ColorResolvable } from "discord.js";
 
+/** Reusable embed presets for common response patterns (success, error, info, loading) */
 export const CommonEmbedPresets = {
+  /** Creates a green success embed */
   success(title: string, description?: string) {
     const embed = createEmbed().title(`✅ ${title}`).color(EmbedColors.Success);
 
@@ -14,6 +16,7 @@ export const CommonEmbedPresets = {
     return embed;
   },
 
+  /** Creates a red error embed */
   error(title: string, description?: string) {
     const embed = createEmbed().title(`❌ ${title}`).color(EmbedColors.Error);
 
@@ -24,6 +27,7 @@ export const CommonEmbedPresets = {
     return embed;
   },
 
+  /** Creates a red error embed with an admin contact prompt appended */
   errorWithAdmin(title: string, description?: string) {
     const embed = createEmbed().title(`❌ ${title}`).color(EmbedColors.Error);
 
@@ -40,6 +44,7 @@ export const CommonEmbedPresets = {
     return embed;
   },
 
+  /** Creates a blue info embed */
   info(title: string, description?: string) {
     const embed = createEmbed().title(`ℹ️ ${title}`).color(EmbedColors.Info);
 
@@ -50,6 +55,7 @@ export const CommonEmbedPresets = {
     return embed;
   },
 
+  /** Creates a plain embed with optional title, description, and color overrides */
   plain(data: {
     description?: string;
     title?: string;
@@ -72,6 +78,7 @@ export const CommonEmbedPresets = {
     return embed;
   },
 
+  /** Creates a loading/processing embed */
   loading(message: string = "Processing...") {
     return createEmbed()
       .title("⏳ Please wait")
@@ -79,6 +86,7 @@ export const CommonEmbedPresets = {
       .color(EmbedColors.Info);
   },
 
+  /** Creates a channel deletion warning embed */
   channelDeletion() {
     const embed = createEmbed()
       .title("🗑️ Channel Deletion")

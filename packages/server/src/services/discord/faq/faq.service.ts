@@ -10,8 +10,22 @@ interface CompiledPattern {
   response: string;
 }
 
+/** Delay before reposting the welcome message after channel activity */
 const REPOST_DELAY_MS = 30_000;
 
+/**
+ * Discord FAQ Auto-Reply Service
+ *
+ * Monitors the questions channel and automatically replies to messages
+ * matching configured FAQ patterns (keywords or regex):
+ * - Loads enabled FAQ entries from the database on startup
+ * - Matches incoming messages against compiled patterns (priority-ordered)
+ * - Replies with a formatted embed when a match is found
+ * - Manages a sticky welcome message that reposts after channel activity
+ *
+ * NOTE: Requires a Discord client (main bot) and is initialized
+ * by the service container during startup
+ */
 export class FaqService {
   private patterns: CompiledPattern[] = [];
   private repostTimer?: ReturnType<typeof setTimeout>;
@@ -19,6 +33,16 @@ export class FaqService {
 
   constructor(private readonly bot: Client) {}
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
+  /**
+   * Initializes the service by loading FAQ patterns and ensuring
+   * the welcome message exists in the questions channel
+   *
+   * @returns Promise resolving when the service is initialized
+   */
   async initialize(): Promise<void> {
     logger.info("Initializing FaqService...");
 
@@ -28,6 +52,11 @@ export class FaqService {
     logger.info("FaqService initialized");
   }
 
+  /**
+   * Shuts down the service and clears the repost timer
+   *
+   * @returns Promise resolving when the service is stopped
+   */
   async shutdown(): Promise<void> {
     if (this.repostTimer) {
       clearTimeout(this.repostTimer);
@@ -36,6 +65,20 @@ export class FaqService {
     }
   }
 
+  // ==========================================================================
+  // MESSAGE HANDLING
+  // ==========================================================================
+
+  /**
+   * Handles an incoming message in the questions channel
+   *
+   * Checks the message against all loaded FAQ patterns and replies
+   * with the first match. Also schedules a welcome message repost
+   * regardless of whether a match was found.
+   *
+   * @param message - Discord message to process
+   * @returns Promise resolving when handling is complete
+   */
   async handleMessage(message: Message): Promise<void> {
     const matched = this.matchPattern(message.content);
 
@@ -52,6 +95,15 @@ export class FaqService {
     this.scheduleWelcomeRepost();
   }
 
+  /**
+   * Reloads FAQ patterns from the database
+   *
+   * Fetches all enabled entries ordered by priority, compiles their
+   * patterns (keywords or regex), and replaces the in-memory cache.
+   * Invalid patterns are logged and skipped.
+   *
+   * @returns Promise resolving when patterns are refreshed
+   */
   async refreshPatterns(): Promise<void> {
     const entries = await Q.faq.entry
       .where({ enabled: true })
@@ -84,6 +136,18 @@ export class FaqService {
     logger.info(`Loaded ${this.patterns.length} FAQ patterns`);
   }
 
+  // ==========================================================================
+  // WELCOME MESSAGE
+  // ==========================================================================
+
+  /**
+   * Deletes the existing welcome message and posts a fresh one
+   *
+   * Ensures the welcome message is always at the bottom of the channel.
+   * Updates the database record with the new message ID.
+   *
+   * @returns Promise resolving when the welcome message is reposted
+   */
   async repostWelcomeMessage(): Promise<void> {
     try {
       const existing = await Q.faq.welcome.message.find({
@@ -126,6 +190,18 @@ export class FaqService {
     }
   }
 
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
+
+  /**
+   * Finds the first FAQ pattern matching the message content
+   *
+   * @param content - Message content to match against
+   * @returns The first matching pattern, or null if no match
+   *
+   * @private
+   */
   private matchPattern(
     content: string,
   ): CompiledPattern | null {
@@ -137,6 +213,14 @@ export class FaqService {
     return null;
   }
 
+  /**
+   * Schedules a debounced welcome message repost
+   *
+   * Resets the timer on each call so the repost only happens
+   * after a period of inactivity (REPOST_DELAY_MS).
+   *
+   * @private
+   */
   private scheduleWelcomeRepost(): void {
     if (this.repostTimer) {
       clearTimeout(this.repostTimer);
@@ -148,10 +232,19 @@ export class FaqService {
     }, REPOST_DELAY_MS);
   }
 
+  /** Converts a comma-separated keywords string to a regex pattern */
   static keywordsToRegex(keywords: string): RegExp {
     return keywordsToRegex(keywords);
   }
 
+  /**
+   * Ensures the welcome message exists in the channel
+   *
+   * Checks if the stored message ID still exists in the channel.
+   * If not found (deleted or channel cleared), reposts it.
+   *
+   * @private
+   */
   private async ensureWelcomeMessage(): Promise<void> {
     const existing = await Q.faq.welcome.message.find({
       channelId: this.channelId,
@@ -178,10 +271,12 @@ export class FaqService {
   }
 }
 
+/** Escapes special regex characters in a string */
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Converts comma-separated keywords into a case-insensitive alternation regex */
 function keywordsToRegex(keywords: string): RegExp {
   const words = keywords
     .split(",")

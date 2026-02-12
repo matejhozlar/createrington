@@ -79,6 +79,10 @@ export class PlaytimeService extends EventEmitter {
     };
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Initializes the service and performs recovery sync
    *
@@ -297,6 +301,10 @@ export class PlaytimeService extends EventEmitter {
     }
   }
 
+  // ==========================================================================
+  // MOD NOTIFICATIONS
+  // ==========================================================================
+
   /**
    * Handles player join notification from Minecraft mod
    *
@@ -398,6 +406,10 @@ export class PlaytimeService extends EventEmitter {
     );
   }
 
+  // ==========================================================================
+  // SERVER STATE
+  // ==========================================================================
+
   /**
    * Handles server shutdown detected by message cache
    *
@@ -439,6 +451,10 @@ export class PlaytimeService extends EventEmitter {
     this.serverState = ServerState.ONLINE;
     this.emit("serverOnline");
   }
+
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
   /**
    * Fetches current server status via minecraft-server-util library
@@ -576,6 +592,10 @@ export class PlaytimeService extends EventEmitter {
 
     this.activeSessions.clear();
   }
+
+  // ==========================================================================
+  // PUBLIC API
+  // ==========================================================================
 
   /**
    * Associates a database session ID with an active in-memory session

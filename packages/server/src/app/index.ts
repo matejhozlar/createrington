@@ -10,6 +10,7 @@ import config from "@/config";
 import cors from "cors";
 import { container } from "@/services";
 
+/** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
   const app = express();
   app.use(express.json());

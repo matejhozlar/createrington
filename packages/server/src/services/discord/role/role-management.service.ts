@@ -25,6 +25,10 @@ export class RoleManagementService {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Initialize the service
    * Called by the service container during startup
@@ -49,6 +53,10 @@ export class RoleManagementService {
     this.stopDailyScheduler();
     logger.info("RoleManagementService stopped");
   }
+
+  // ==========================================================================
+  // REALTIME CHECKING
+  // ==========================================================================
 
   /**
    * Setup realtime role checking for a playtime service
@@ -86,6 +94,10 @@ export class RoleManagementService {
 
     logger.info(`Realtime role checking setup for server ${serverId}`);
   }
+
+  // ==========================================================================
+  // DAILY SCHEDULER
+  // ==========================================================================
 
   /**
    * Start the daily role scheduler
@@ -194,6 +206,10 @@ export class RoleManagementService {
       logger.error("Daily role check failed:", error);
     }
   }
+
+  // ==========================================================================
+  // MANUAL TRIGGERS
+  // ==========================================================================
 
   /**
    * Manually trigger a role check for a specific player

@@ -16,6 +16,10 @@ import {
   findButtonHandler,
 } from "../../common/loaders/button-loader";
 
+// ==========================================================================
+// HELPERS
+// ==========================================================================
+
 /**
  * Formats a cooldown duration in seconds into a human-readable string
  *
@@ -128,6 +132,10 @@ async function checkPermission(
 
   return true;
 }
+
+// ==========================================================================
+// HANDLERS
+// ==========================================================================
 
 /**
  * Handles execution of slash commands with cooldown management
@@ -332,6 +340,10 @@ async function handleButtonInteractions(
     }
   }
 }
+
+// ==========================================================================
+// SETUP
+// ==========================================================================
 
 /**
  * Registers the interaction event handler for the Discord client

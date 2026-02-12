@@ -12,12 +12,14 @@ import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
 import crypto from "node:crypto";
 
+/** Result of a waitlist registration attempt */
 interface RegistrationResult {
   entry: WaitlistEntry;
   autoAccepted: boolean;
   token?: string;
 }
 
+/** Onboarding progress steps tracked per waitlist entry */
 export enum ProgressStep {
   JOINED_DISCORD = "joinedDiscord",
   VERIFIED = "verified",
@@ -25,6 +27,15 @@ export enum ProgressStep {
   JOINED_MINECRAFT = "joinedMinecraft",
 }
 
+/**
+ * Repository for waitlist and onboarding management
+ *
+ * Handles:
+ * - Waitlist registration (auto-accept or pending based on capacity)
+ * - Manual invitation by admins
+ * - Onboarding progress tracking (Discord join, verification, registration, Minecraft join)
+ * - Admin queries, deletion, and statistics
+ */
 export class WaitlistRepository {
   // ============================================================================
   // CAPACITY CHECK
