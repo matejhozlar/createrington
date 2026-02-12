@@ -33,7 +33,6 @@ export const cooldown = {
  * Whether this command should only be available in production
  * Set to false to allow usage in development mode
  */
-export const prodOnly = false;
 
 /**
  * Executes the money command to retrieve and display user's balance

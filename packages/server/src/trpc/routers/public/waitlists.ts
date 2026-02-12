@@ -1,11 +1,13 @@
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure } from "../../trpc";
+import { router, publicProcedure } from "@/trpc/trpc";
 import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
 
 export const waitlistsRouter = router({
   status: publicProcedure
-    .meta({ description: "Check whether the server is in open or waitlist mode." })
+    .meta({
+      description: "Check whether the server is in open or waitlist mode.",
+    })
     .query(async () => {
       const hasCapacity = await waitlistRepo.hasCapacity();
       return { mode: hasCapacity ? ("open" as const) : ("waitlist" as const) };

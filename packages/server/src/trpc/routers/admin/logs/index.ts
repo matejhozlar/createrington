@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination } from "../../../utils";
+import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
 export const logsRouter = router({

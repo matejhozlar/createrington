@@ -1,12 +1,14 @@
 import { z } from "zod";
-import { router, adminProcedure } from "../../../trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { waitlistRepo } from "@/db";
-import { paginationInput, buildPagination } from "../../../utils";
+import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
 export const waitlistsRouter = router({
   stats: adminProcedure
-    .meta({ description: "Get overall waitlist statistics for the admin dashboard." })
+    .meta({
+      description: "Get overall waitlist statistics for the admin dashboard.",
+    })
     .query(async () => {
       return await waitlistRepo.getStats();
     }),
@@ -19,7 +21,13 @@ export const waitlistsRouter = router({
     .input(
       z.object({
         status: z
-          .enum(["pending", "auto_accepted", "accepted", "declined", "completed"])
+          .enum([
+            "pending",
+            "auto_accepted",
+            "accepted",
+            "declined",
+            "completed",
+          ])
           .optional(),
         email: z.string().optional(),
         discordName: z.string().optional(),
@@ -62,7 +70,9 @@ export const waitlistsRouter = router({
     }),
 
   get: adminProcedure
-    .meta({ description: "Get detailed information for a single waitlist entry." })
+    .meta({
+      description: "Get detailed information for a single waitlist entry.",
+    })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
       const entry = await waitlistRepo.getDetailed(input.id);

@@ -40,7 +40,6 @@ export const cooldown = {
  * Whether this command should only be available in production
  * Set to false to allow usage in development environments
  */
-export const prodOnly = false;
 
 /**
  * Executes the playtime command to display the users playtime

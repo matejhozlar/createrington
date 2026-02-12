@@ -82,6 +82,7 @@ export class ValidationError extends BadRequestError {
  */
 interface ErrorResponse {
   success: false;
+  message: string;
   error: {
     message: string;
     statusCode: number;
@@ -192,6 +193,7 @@ export function errorHandler(
 
   const errorResponse: ErrorResponse = {
     success: false,
+    message,
     error: {
       message,
       statusCode,

@@ -7,13 +7,9 @@ import config from "@/config";
 import { setupMainBotHandlers } from "@/discord/bots/main/setup";
 import { webBot } from "@/discord/bots/web/client";
 import { setupWebBotHandlers } from "@/discord/bots/web/setup";
-import { Client } from "discord.js";
 import { createDiscordMessageService } from "./discord/message";
 import { Discord } from "@/discord/constants";
-import {
-  MESSAGE_CACHE_CONFIG,
-  MessageCacheService,
-} from "./discord/message/cache";
+import { MESSAGE_CACHE_CONFIG, MessageCacheService } from "./discord/message/cache";
 import { TicketService } from "./discord/tickets";
 import { LeaderboardService } from "./discord/leaderboard";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
@@ -91,7 +87,7 @@ export function registerServices(): void {
   container.register(
     Services.MESSAGE_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = createDiscordMessageService(mainBot);
 
       Discord._setMessageService(service);
@@ -104,7 +100,7 @@ export function registerServices(): void {
   container.register(
     Services.WEB_MESSAGE_SERVICE,
     async (c) => {
-      const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
+      const webBot = await c.get(Services.DISCORD_WEB_BOT);
       const service = createDiscordMessageService(webBot);
       return service;
     },
@@ -114,7 +110,7 @@ export function registerServices(): void {
   container.register(
     Services.MESSAGE_CACHE,
     async (c) => {
-      const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
+      const webBot = await c.get(Services.DISCORD_WEB_BOT);
       const service = new MessageCacheService(webBot, MESSAGE_CACHE_CONFIG);
       await service.initialize();
       return service;
@@ -125,7 +121,7 @@ export function registerServices(): void {
   container.register(
     Services.LEADERBOARD_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new LeaderboardService(mainBot);
       await service.initialize();
       return service;
@@ -136,7 +132,7 @@ export function registerServices(): void {
   container.register(
     Services.TICKET_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       return new TicketService(mainBot);
     },
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
@@ -155,7 +151,7 @@ export function registerServices(): void {
   container.register(
     Services.SERVER_STATS_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new ServerStatsService(mainBot, SERVER_STATS_CONFIG);
       await service.initialize();
       return service;
@@ -166,7 +162,7 @@ export function registerServices(): void {
   container.register(
     Services.ROTATING_STATUS_SERVICE,
     async (c) => {
-      const webBot = await c.get<Client>(Services.DISCORD_WEB_BOT);
+      const webBot = await c.get(Services.DISCORD_WEB_BOT);
       const service = new RotatingStatusService(webBot);
       await service.initialize();
       return service;
@@ -177,7 +173,7 @@ export function registerServices(): void {
   container.register(
     Services.PLAYER_BAN_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new PlayerBanService(mainBot);
       await service.initialize();
       return service;
@@ -208,7 +204,7 @@ export function registerServices(): void {
   container.register(
     Services.ROLE_MANAGEMENT_SERVICE,
     async (c) => {
-      const mainBot = await c.get<Client>(Services.DISCORD_MAIN_BOT);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
       const service = new RoleManagementService(mainBot, 0);
       await service.initialize();
       return service;
@@ -223,11 +219,11 @@ export function registerServices(): void {
   container.register(
     Services.WEBSOCKET_SERVICE,
     async (c) => {
-      const httpServer = await c.get<http.Server>(Services.HTTP_SERVER);
-      const messageCacheService = await c.get<MessageCacheService>(
+      const httpServer = await c.get(Services.HTTP_SERVER);
+      const messageCacheService = await c.get(
         Services.MESSAGE_CACHE,
       );
-      const playtimeManagerService = await c.get<PlaytimeManagerService>(
+      const playtimeManagerService = await c.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
 
@@ -262,10 +258,10 @@ export function registerServices(): void {
 
   container.on("serviceReady", async (serviceName) => {
     if (serviceName === Services.MESSAGE_CACHE) {
-      const playtimeManager = await container.get<PlaytimeManagerService>(
+      const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
-      const messageCache = await container.get<MessageCacheService>(
+      const messageCache = await container.get(
         Services.MESSAGE_CACHE,
       );
 
@@ -273,10 +269,10 @@ export function registerServices(): void {
     }
 
     if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
-      const playtimeManager = await container.get<PlaytimeManagerService>(
+      const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
-      const roleService = await container.get<RoleManagementService>(
+      const roleService = await container.get(
         Services.ROLE_MANAGEMENT_SERVICE,
       );
 
@@ -289,9 +285,7 @@ export function registerServices(): void {
     }
   });
 
-  logger.info(
-    `Registered ${Array.from(container["services"].keys()).length} services`,
-  );
+  logger.info(`Registered ${container.size} services`);
 }
 
 /**

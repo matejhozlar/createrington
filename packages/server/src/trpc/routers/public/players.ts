@@ -1,8 +1,8 @@
 import { TRPCError } from "@trpc/server";
-import { router, publicProcedure } from "../../trpc";
+import { router, publicProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { z } from "zod";
-import { parsePlayerId, paginationInput, buildPagination } from "../../utils";
+import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 import type { PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
