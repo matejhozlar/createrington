@@ -43,6 +43,7 @@ import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
+import { Advertisement } from "./pages/Advertisement";
 
 function AppLayout() {
   const { loading } = useAuth();
@@ -76,6 +77,9 @@ function AppLayout() {
 function AppContent() {
   return (
     <Routes>
+      {/* Standalone full-screen route (no sidebar/footer) — temporary */}
+      <Route path="/ad" element={<Advertisement />} />
+
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<Rules />} />
