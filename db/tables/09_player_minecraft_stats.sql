@@ -77,3 +77,4 @@ ALTER TABLE ONLY public.player_minecraft_stats
 --
 -- PostgreSQL database dump complete
 --
+
