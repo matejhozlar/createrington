@@ -250,7 +250,7 @@ CREATE TABLE public.admin (
 CREATE TABLE public.admin_log_action (
     id integer NOT NULL,
     admin_discord_id text NOT NULL,
-    admin_discord_username text NOT NULL,
+    admin_username text NOT NULL,
     action_type text NOT NULL,
     target_player_uuid uuid NOT NULL,
     target_player_name text NOT NULL,
@@ -303,7 +303,7 @@ CREATE TABLE public.server (
 
 CREATE VIEW public.admin_log_action_readable AS
  SELECT al.id,
-    al.admin_discord_username,
+    al.admin_username AS admin_discord_username,
     al.action_type,
     al.target_player_name,
     al.table_name,

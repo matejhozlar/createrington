@@ -1,6 +1,6 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-02-12T19:07:37.198Z
+-- Generated at: 2026-02-12T19:22:34.006Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
