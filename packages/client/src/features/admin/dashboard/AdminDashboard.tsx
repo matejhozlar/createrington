@@ -355,7 +355,7 @@ export const AdminDashboard: React.FC = () => {
                       <div className="flex items-center justify-between py-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <span className="text-sm font-medium shrink-0">
-                            {action.adminDiscordUsername}
+                            {action.adminUsername}
                           </span>
                           <Badge variant="outline" className="shrink-0">
                             {action.actionType}

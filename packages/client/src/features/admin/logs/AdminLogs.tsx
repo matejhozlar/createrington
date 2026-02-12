@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
 
-type SortField = "performedAt" | "actionType" | "tableName" | "adminDiscordUsername";
+type SortField = "performedAt" | "actionType" | "tableName" | "adminUsername";
 
 const ACTION_TYPES = ["UPDATE", "CREATE", "DELETE"];
 const TABLE_NAMES = ["player", "player_balance", "player_strike", "player_ban"];
@@ -308,11 +308,11 @@ export function AdminLogs() {
                       <TableHead className="px-4">
                         <button
                           type="button"
-                          onClick={() => handleSort("adminDiscordUsername")}
+                          onClick={() => handleSort("adminUsername")}
                           className="inline-flex items-center gap-1 text-sm font-medium"
                         >
                           Admin
-                          {renderSortIcon("adminDiscordUsername")}
+                          {renderSortIcon("adminUsername")}
                         </button>
                       </TableHead>
                       <TableHead className="px-4">
@@ -349,7 +349,7 @@ export function AdminLogs() {
                           {new Date(action.performedAt).toLocaleString()}
                         </TableCell>
                         <TableCell className="px-4 text-sm">
-                          {action.adminDiscordUsername}
+                          {action.adminUsername}
                         </TableCell>
                         <TableCell className="px-4">
                           <Badge variant="outline">
