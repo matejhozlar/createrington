@@ -48,10 +48,10 @@ export const Home: React.FC = () => {
   const server = servers.find((s) => s.serverId === serverId);
 
   const { data: playerCount, isLoading: isLoadingPlayers } =
-    trpc.players.count.useQuery({});
+    trpc.public.players.count.useQuery({});
 
   const { data: playtimeData, isLoading: isLoadingPlaytime } =
-    trpc.metrics.playtime.getTotalHours.useQuery({ serverId });
+    trpc.public.metrics.playtime.getTotalHours.useQuery({ serverId });
 
   const heroImages = [
     "/assets/hero/gondola-station.webp",
@@ -107,7 +107,11 @@ export const Home: React.FC = () => {
     },
     {
       icon: Clock,
-      value: isLoadingPlaytime ? <Loading /> : (playtimeData?.totalHours ?? "N/A"),
+      value: isLoadingPlaytime ? (
+        <Loading />
+      ) : (
+        (playtimeData?.totalHours ?? "N/A")
+      ),
       title: "Hours Played",
       description: "Total playtime across all players",
     },
