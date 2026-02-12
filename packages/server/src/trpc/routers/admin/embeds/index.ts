@@ -191,7 +191,7 @@ export const embedsRouter = router({
         await Q.discord.embed.preset.create({
           name: input.name,
           data: input.data,
-          createdBy: ctx.user.username,
+          createdBy: ctx.user.minecraftUsername,
         });
 
         return { message: "Preset created" };

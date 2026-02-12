@@ -30,7 +30,7 @@ export const playersRouter = router({
       return player;
     }),
 
-  getAll: publicProcedure
+  list: publicProcedure
     .meta({
       description:
         "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata.",

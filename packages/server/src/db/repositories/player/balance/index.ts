@@ -20,7 +20,7 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
    * @param playerUuids - Array of player UUIDs
    * @param amount - Amount to adjust (positive = grant, negative = deduct)
    * @param adminDiscordId - Admin performing the action
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for bulk adjustment
    * @returns Promise resolving to an array of results with success/failure status
    */
@@ -28,7 +28,7 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
     playerUuids: string[],
     amount: number,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<
     Array<{
@@ -61,7 +61,7 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
                   description: reason,
                   metadata: {
                     adminDiscordId,
-                    adminDiscordUsername,
+                    adminUsername,
                     bulkOperation: true,
                   },
                 });
@@ -80,7 +80,7 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
                   description: reason,
                   metadata: {
                     adminDiscordId,
-                    adminDiscordUsername,
+                    adminUsername,
                     bulkOperation: true,
                   },
                 });

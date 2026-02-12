@@ -75,7 +75,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
 
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername: adminUsername,
+        adminUsername,
         actionType: AdminEdit.BAN_PLAYER_TEMPORARY,
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
@@ -147,7 +147,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       // Log the ban action before deletion
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername: adminUsername,
+        adminUsername,
         actionType: AdminEdit.BAN_PLAYER_PERMANENT,
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
@@ -229,7 +229,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
 
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername: adminUsername,
+        adminUsername,
         actionType: AdminEdit.UNBAN_PLAYER,
         targetPlayerUuid: ban.playerMinecraftUuid,
         targetPlayerName: playerName,

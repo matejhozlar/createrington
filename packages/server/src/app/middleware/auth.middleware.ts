@@ -80,7 +80,7 @@ export const requireAdmin = (
 
   if (!req.user.isAdmin) {
     logger.warn(
-      `User ${req.user.username} (${req.user.discordId}) attempted to access admin endpoint`,
+      `User ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access admin endpoint`,
     );
     throw new ForbiddenError("Admin access required");
   }
@@ -105,7 +105,7 @@ export const requireUser = (
 
   if (req.user.role === AuthRole.UNVERIFIED) {
     logger.warn(
-      `Unverified user ${req.user.username} (${req.user.discordId}) attempted to access user endpoint`,
+      `Unverified user ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access user endpoint`,
     );
     throw new ForbiddenError("Account verification required");
   }
@@ -126,7 +126,7 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
 
     if (!allowedRoles.includes(req.user.role)) {
       logger.warn(
-        `User ${req.user.username} with role ${
+        `User ${req.user.minecraftUsername} with role ${
           req.user.role
         } attempted to access endpoint requiring ${allowedRoles.join(" or ")}`,
       );
@@ -152,7 +152,7 @@ export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
 
     if (req.user.discordId !== resourceUserId && !req.user.isAdmin) {
       logger.warn(
-        `User ${req.user.username} attempted to access resource owned by ${resourceUserId}`,
+        `User ${req.user.minecraftUsername} attempted to access resource owned by ${resourceUserId}`,
       );
       throw new ForbiddenError("Access denied");
     }

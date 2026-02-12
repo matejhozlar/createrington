@@ -320,6 +320,40 @@ CREATE VIEW public.admin_log_action_readable AS
 
 
 --
+-- Name: discord_embed_preset; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.discord_embed_preset (
+    id integer NOT NULL,
+    name character varying(100) NOT NULL,
+    data jsonb NOT NULL,
+    created_by character varying(100) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: discord_embed_preset_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.discord_embed_preset_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: discord_embed_preset_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.discord_embed_preset_id_seq OWNED BY public.discord_embed_preset.id;
+
+
+--
 -- Name: discord_guild_member_join; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1218,6 +1252,13 @@ ALTER TABLE ONLY public.admin_log_action ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: discord_embed_preset id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_embed_preset ALTER COLUMN id SET DEFAULT nextval('public.discord_embed_preset_id_seq'::regclass);
+
+
+--
 -- Name: discord_guild_member_join join_number; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1329,6 +1370,22 @@ ALTER TABLE ONLY public.admin_log_action
 
 ALTER TABLE ONLY public.admin
     ADD CONSTRAINT admin_pkey PRIMARY KEY (discord_id);
+
+
+--
+-- Name: discord_embed_preset discord_embed_preset_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_embed_preset
+    ADD CONSTRAINT discord_embed_preset_name_key UNIQUE (name);
+
+
+--
+-- Name: discord_embed_preset discord_embed_preset_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.discord_embed_preset
+    ADD CONSTRAINT discord_embed_preset_pkey PRIMARY KEY (id);
 
 
 --
@@ -2064,6 +2121,13 @@ CREATE TRIGGER trigger_sync_player_online AFTER INSERT OR UPDATE ON public.playe
 --
 
 CREATE TRIGGER trigger_update_playtime_aggregates AFTER INSERT OR UPDATE OF session_end ON public.player_session FOR EACH ROW EXECUTE FUNCTION public.update_playtime_aggregates();
+
+
+--
+-- Name: discord_embed_preset update_discord_embed_preset_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_discord_embed_preset_updated_at BEFORE UPDATE ON public.discord_embed_preset FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --

@@ -207,7 +207,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
                     </div>
 
                     <p className="mt-2 text-xs text-muted-foreground">
-                      Performed by {action.adminDiscordUsername} on{" "}
+                      Performed by {action.adminUsername} on{" "}
                       {new Date(action.performedAt).toLocaleString()}
                     </p>
                   </div>

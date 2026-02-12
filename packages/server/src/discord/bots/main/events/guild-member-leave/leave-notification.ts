@@ -32,7 +32,7 @@ export const prodOnly = false;
  * Executes when a member leaves the guild
  *
  * @param client - The Discord client instance
- * @param member - The guild member who joined
+ * @param member - The guild member who left
  */
 export async function execute(
   client: Client,

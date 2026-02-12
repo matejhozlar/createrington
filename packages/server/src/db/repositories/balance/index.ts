@@ -436,12 +436,9 @@ export class BalanceRepository {
         );
       }
 
-      console.log(
-        "senderBalance.balance type:",
-        typeof senderBalance.balance,
-        senderBalance.balance,
+      logger.debug(
+        `Transfer: sender balance=${senderBalance.balance} (${typeof senderBalance.balance}), amount=${amountBigInt} (${typeof amountBigInt})`,
       );
-      console.log("amountBigInt type:", typeof amountBigInt, amountBigInt);
       const newSenderBalance = BalanceUtils.subtract(
         senderBalance.balance,
         amountBigInt,
@@ -499,7 +496,7 @@ export class BalanceRepository {
    * @param identifier - Player identifier
    * @param amount - Amount to grant
    * @param adminDiscordId - Admin performing the action
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for grant
    * @returns Promise resolving to new balance
    */
@@ -507,7 +504,7 @@ export class BalanceRepository {
     identifier: PlayerIdentifier,
     amount: number,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -521,14 +518,14 @@ export class BalanceRepository {
       BalanceTransactionType.ADMIN_GRANT,
       {
         adminDiscordId,
-        adminDiscordUsername,
+        adminUsername,
       },
     );
 
     // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
-      adminDiscordUsername,
+      adminUsername,
       actionType: "balance_grant",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,
@@ -552,7 +549,7 @@ export class BalanceRepository {
    * @param identifier - Player identifier
    * @param amount - Amount to deduct
    * @param adminDiscordId - Admin performing the action
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for deduction
    * @returns Promise resolving to new balance
    */
@@ -560,7 +557,7 @@ export class BalanceRepository {
     identifier: PlayerIdentifier,
     amount: number,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -574,14 +571,14 @@ export class BalanceRepository {
       BalanceTransactionType.ADMIN_DEDUCT,
       {
         adminDiscordId,
-        adminDiscordUsername,
+        adminUsername,
       },
     );
 
     // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
-      adminDiscordUsername,
+      adminUsername,
       actionType: "balance_deduct",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,
@@ -605,7 +602,7 @@ export class BalanceRepository {
    * @param identifier - Player identifier
    * @param amount - New balance amount
    * @param adminDiscordId - Admin performing the action
-   * @param adminDiscordUsername - Admin username
+   * @param adminUsername - Admin Minecraft username
    * @param reason - Reason for setting balance
    * @returns Promise resolving to new balance
    */
@@ -613,7 +610,7 @@ export class BalanceRepository {
     identifier: PlayerIdentifier,
     amount: number,
     adminDiscordId: string,
-    adminDiscordUsername: string,
+    adminUsername: string,
     reason: string,
   ): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -627,14 +624,14 @@ export class BalanceRepository {
       BalanceTransactionType.ADMIN_GRANT,
       {
         adminDiscordId,
-        adminDiscordUsername,
+        adminUsername,
       },
     );
 
     // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
-      adminDiscordUsername,
+      adminUsername,
       actionType: "balance_set",
       targetPlayerUuid: uuid,
       targetPlayerName: player.minecraftUsername,

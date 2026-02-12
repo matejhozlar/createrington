@@ -16,13 +16,13 @@ export const logsRouter = router({
         search: z.string().optional(),
         actionType: z.string().optional(),
         tableName: z.string().optional(),
-        adminDiscordUsername: z.string().optional(),
+        adminUsername: z.string().optional(),
         orderBy: z
           .enum([
             "performedAt",
             "actionType",
             "tableName",
-            "adminDiscordUsername",
+            "adminUsername",
           ])
           .default("performedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
@@ -36,9 +36,9 @@ export const logsRouter = router({
       }
       if (input.actionType) filters.actionType = input.actionType;
       if (input.tableName) filters.tableName = input.tableName;
-      if (input.adminDiscordUsername) {
-        filters.adminDiscordUsername = {
-          $ilike: `%${input.adminDiscordUsername}%`,
+      if (input.adminUsername) {
+        filters.adminUsername = {
+          $ilike: `%${input.adminUsername}%`,
         };
       }
 

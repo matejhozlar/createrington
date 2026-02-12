@@ -59,7 +59,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
 
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername: adminUsername,
+        adminUsername,
         actionType: "strike_issued",
         targetPlayerUuid: uuid,
         targetPlayerName: player.minecraftUsername,
@@ -122,7 +122,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
 
       await tx.admin.log.action.create({
         adminDiscordId,
-        adminDiscordUsername: adminUsername,
+        adminUsername,
         actionType: "strike_removed",
         targetPlayerUuid: strike.playerMinecraftUuid,
         targetPlayerName: player.minecraftUsername,

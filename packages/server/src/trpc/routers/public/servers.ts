@@ -108,7 +108,7 @@ export function buildServerStatus(
 }
 
 export const serversRouter = router({
-  getAll: publicProcedure
+  list: publicProcedure
     .meta({
       description:
         "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list.",

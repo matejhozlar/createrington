@@ -8,7 +8,7 @@ import {
 
 /**
  * Slash command definition for the delete command
- * Simple utility command to check bot responsiveness and latency
+ * Admin utility command to bulk delete recent messages from a channel
  */
 export const data = new SlashCommandBuilder()
   .setName("delete")
