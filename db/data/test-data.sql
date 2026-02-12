@@ -862,11 +862,8 @@ INSERT INTO faq_welcome_message (channel_id, message_id) VALUES
 -- ============================================================================
 -- LEADERBOARD MESSAGES
 -- ============================================================================
-
-INSERT INTO leaderboard_message (leaderboard_type, channel_id, message_id, last_refreshed, last_manual_refresh) VALUES
-('playtime', '800000000000000001', '850000000000000001', NOW() - INTERVAL '15 minutes', NOW() - INTERVAL '2 hours'),
-('balance', '800000000000000001', '850000000000000002', NOW() - INTERVAL '15 minutes', NULL),
-('achievements', '800000000000000001', '850000000000000003', NOW() - INTERVAL '1 hour', NOW() - INTERVAL '1 day');
+-- Omitted: fake channel/message IDs cause DiscordAPIError[10003] (Unknown Channel)
+-- when the leaderboard service tries to refresh them at startup.
 
 -- ============================================================================
 -- PLAYER ACHIEVEMENTS
