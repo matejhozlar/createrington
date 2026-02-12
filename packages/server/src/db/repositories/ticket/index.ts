@@ -12,12 +12,26 @@ import type {
 import { DatabaseTable } from "@/generated/db";
 import { Q } from "@/db";
 
+/** Data required to close a ticket */
 interface TicketCloseData {
   closedByDiscordId: string;
   transcriptPath?: string;
 }
 
+/**
+ * Repository for ticket lifecycle and querying
+ *
+ * Handles:
+ * - Ticket creation, closing, reopening, and deletion
+ * - Ticket action audit logging
+ * - User and admin ticket queries
+ * - Ticket statistics
+ */
 export class TicketRepository {
+  // ============================================================================
+  // TICKET LIFECYCLE
+  // ============================================================================
+
   /**
    * Gets the next available ticket number
    *
@@ -178,6 +192,10 @@ export class TicketRepository {
     return updatedTicket;
   }
 
+  // ============================================================================
+  // METADATA & ACTIONS
+  // ============================================================================
+
   /**
    * Updates ticket metadata
    *
@@ -227,6 +245,10 @@ export class TicketRepository {
       },
     );
   }
+
+  // ============================================================================
+  // QUERIES
+  // ============================================================================
 
   /**
    * Gets all open tickets for a user
@@ -351,6 +373,10 @@ export class TicketRepository {
       },
     );
   }
+
+  // ============================================================================
+  // STATISTICS
+  // ============================================================================
 
   /**
    * Gets statistics about tickets
