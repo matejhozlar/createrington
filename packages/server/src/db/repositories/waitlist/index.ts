@@ -6,7 +6,6 @@ import type {
   WaitlistEntry,
   WaitlistEntryCreate,
   WaitlistEntryFilters,
-  WaitlistStatus,
 } from "@createrington/shared/db";
 import { email, EmailTemplate } from "@/services/email";
 import { DatabaseTable } from "@/generated/db";
