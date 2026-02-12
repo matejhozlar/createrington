@@ -190,6 +190,10 @@ export function AdminFaq() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/messages">Messages</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
               <BreadcrumbPage>FAQ</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>

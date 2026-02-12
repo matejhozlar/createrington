@@ -8,7 +8,7 @@ import {
   Home,
   LayoutDashboard,
   Map,
-  MessageCircleQuestion,
+  MessageSquare,
   Server,
   Shield,
   Store,
@@ -67,9 +67,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: Server,
       },
       {
-        title: "FAQ",
-        url: "/admin/faq",
-        icon: MessageCircleQuestion,
+        title: "Messages",
+        url: "/admin/messages",
+        icon: MessageSquare,
       },
       {
         title: "Logs",
