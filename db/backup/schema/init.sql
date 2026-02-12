@@ -1,6 +1,6 @@
 -- Auto-generated schema initialization file
 -- This file sources all individual type, table and function files
--- Generated at: 2026-02-12T09:19:15.878Z
+-- Generated at: 2026-02-12T11:36:09.421Z
 
 -- ============================================================================
 -- CUSTOM TYPES (ENUMS)
@@ -37,6 +37,8 @@
 \i tables/18_ticket.sql
 \i tables/19_ticket_action.sql
 \i tables/20_waitlist_entry.sql
+\i tables/21_faq_entry.sql
+\i tables/22_faq_welcome_message.sql
 
 -- ============================================================================
 -- FUNCTIONS

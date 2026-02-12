@@ -422,6 +422,76 @@ ALTER SEQUENCE public.discord_guild_member_leave_id_seq OWNED BY public.discord_
 
 
 --
+-- Name: faq_entry; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.faq_entry (
+    id integer NOT NULL,
+    match_mode character varying(20) DEFAULT 'keywords'::character varying NOT NULL,
+    pattern text NOT NULL,
+    title character varying(100) NOT NULL,
+    response text NOT NULL,
+    enabled boolean DEFAULT true NOT NULL,
+    priority integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: faq_entry_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.faq_entry_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: faq_entry_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.faq_entry_id_seq OWNED BY public.faq_entry.id;
+
+
+--
+-- Name: faq_welcome_message; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.faq_welcome_message (
+    id integer NOT NULL,
+    channel_id text NOT NULL,
+    message_id text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: faq_welcome_message_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.faq_welcome_message_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: faq_welcome_message_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.faq_welcome_message_id_seq OWNED BY public.faq_welcome_message.id;
+
+
+--
 -- Name: leaderboard_message; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1162,6 +1232,20 @@ ALTER TABLE ONLY public.discord_guild_member_leave ALTER COLUMN id SET DEFAULT n
 
 
 --
+-- Name: faq_entry id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faq_entry ALTER COLUMN id SET DEFAULT nextval('public.faq_entry_id_seq'::regclass);
+
+
+--
+-- Name: faq_welcome_message id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faq_welcome_message ALTER COLUMN id SET DEFAULT nextval('public.faq_welcome_message_id_seq'::regclass);
+
+
+--
 -- Name: leaderboard_message id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1269,6 +1353,22 @@ ALTER TABLE ONLY public.discord_guild_member_leave
 
 ALTER TABLE ONLY public.discord_guild_member_leave
     ADD CONSTRAINT discord_guild_member_leave_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: faq_entry faq_entry_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faq_entry
+    ADD CONSTRAINT faq_entry_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: faq_welcome_message faq_welcome_message_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faq_welcome_message
+    ADD CONSTRAINT faq_welcome_message_pkey PRIMARY KEY (id);
 
 
 --
@@ -1448,6 +1548,14 @@ ALTER TABLE ONLY public.waitlist_entry
 
 
 --
+-- Name: faq_welcome_message uq_faq_welcome_channel_id; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faq_welcome_message
+    ADD CONSTRAINT uq_faq_welcome_channel_id UNIQUE (channel_id);
+
+
+--
 -- Name: leaderboard_message uq_leaderboard_type; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1564,6 +1672,20 @@ CREATE INDEX idx_discord_guild_member_leave_discord_id ON public.discord_guild_m
 --
 
 CREATE INDEX idx_discord_guild_member_leave_minecraft_uuid ON public.discord_guild_member_leave USING btree (minecraft_uuid);
+
+
+--
+-- Name: idx_faq_entry_enabled; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_faq_entry_enabled ON public.faq_entry USING btree (enabled);
+
+
+--
+-- Name: idx_faq_entry_priority; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_faq_entry_priority ON public.faq_entry USING btree (priority DESC);
 
 
 --
@@ -1942,6 +2064,20 @@ CREATE TRIGGER trigger_sync_player_online AFTER INSERT OR UPDATE ON public.playe
 --
 
 CREATE TRIGGER trigger_update_playtime_aggregates AFTER INSERT OR UPDATE OF session_end ON public.player_session FOR EACH ROW EXECUTE FUNCTION public.update_playtime_aggregates();
+
+
+--
+-- Name: faq_entry update_faq_entry_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_faq_entry_updated_at BEFORE UPDATE ON public.faq_entry FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
+-- Name: faq_welcome_message update_faq_welcome_message_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_faq_welcome_message_updated_at BEFORE UPDATE ON public.faq_welcome_message FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
