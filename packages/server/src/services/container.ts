@@ -15,6 +15,7 @@ import type { WebSocketService } from "./websocket";
 import type { PlayerBanService } from "./player/ban";
 import type { StatsImportService } from "./stats-import";
 import type { AchievementService } from "./achievement";
+import type { FaqService } from "./discord/faq";
 
 /**
  * Service lifecycle states
@@ -328,6 +329,7 @@ export const Services = {
   PLAYER_BAN_SERVICE: "player.banService",
   STATS_IMPORT_SERVICE: "minecraft.statsImportService",
   ACHIEVEMENT_SERVICE: "achievement.achievementService",
+  FAQ_SERVICE: "discord.faqService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -354,4 +356,5 @@ export interface ServiceTypeMap {
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
   [Services.STATS_IMPORT_SERVICE]: StatsImportService;
   [Services.ACHIEVEMENT_SERVICE]: AchievementService;
+  [Services.FAQ_SERVICE]: FaqService;
 }

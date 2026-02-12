@@ -21,6 +21,7 @@ import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
+import { FaqService } from "./discord/faq";
 
 /**
  * Register all services with the container
@@ -129,6 +130,23 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
+  );
+
+  container.register(
+    Services.FAQ_SERVICE,
+    async (c) => {
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+      const service = new FaqService(mainBot);
+      await service.initialize();
+      return service;
+    },
+    {
+      dependencies: [
+        Services.DISCORD_MAIN_BOT,
+        Services.DATABASE,
+        Services.MESSAGE_SERVICE,
+      ],
+    },
   );
 
   container.register(

@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   Map,
+  MessageSquare,
   Server,
   Shield,
   Store,
@@ -64,6 +65,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Servers",
         url: "/admin/servers",
         icon: Server,
+      },
+      {
+        title: "Messages",
+        url: "/admin/messages",
+        icon: MessageSquare,
       },
       {
         title: "Logs",

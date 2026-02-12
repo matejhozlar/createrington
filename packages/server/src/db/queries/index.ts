@@ -10,8 +10,11 @@
 
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
+export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
+export { FaqEntryQueries } from "./faq/entry";
+export { FaqWelcomeMessageQueries } from "./faq/welcome/message";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
 export { PlayerQueries } from "./player";
 export { PlayerAchievementQueries } from "./player/achievement";

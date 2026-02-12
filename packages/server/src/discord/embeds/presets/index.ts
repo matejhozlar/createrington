@@ -2,6 +2,7 @@ import { CommandEmbedPresets } from "./commands";
 import { CommonEmbedPresets } from "./common";
 import { ConfirmationEmbedPresets } from "./confirmation";
 import { DepartedEmbedPresets } from "./departed";
+import { FaqEmbedPresets } from "./faq";
 import { LeaderboardEmbedPresets } from "./leaderboard";
 import { ProgressEmbedPresets } from "./progress";
 import { RegistrationEmbedPresets } from "./registration";
@@ -20,4 +21,5 @@ export const EmbedPresets = {
   leaderboard: LeaderboardEmbedPresets,
   roleAssignment: RoleAssignmentEmbedPresets,
   departed: DepartedEmbedPresets,
+  faq: FaqEmbedPresets,
 };
