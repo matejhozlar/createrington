@@ -17,6 +17,7 @@ export { PlayerQueries } from "./player";
 export { PlayerBalanceQueries } from "./player/balance";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
+export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";
 export { PlayerPlaytimeSummaryQueries } from "./player/playtime/summary";

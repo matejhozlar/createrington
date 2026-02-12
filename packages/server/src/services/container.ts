@@ -13,6 +13,7 @@ import type { PlaytimeManagerService } from "./playtime/playtime-manager.service
 import type { RoleManagementService } from "./discord/role/role-management.service";
 import type { WebSocketService } from "./websocket";
 import type { PlayerBanService } from "./player/ban";
+import type { StatsImportService } from "./stats-import";
 
 /**
  * Service lifecycle states
@@ -324,6 +325,7 @@ export const Services = {
   ROLE_MANAGEMENT_SERVICE: "discord.roleManagementService",
   WEBSOCKET_SERVICE: "http.webSocketService",
   PLAYER_BAN_SERVICE: "player.banService",
+  STATS_IMPORT_SERVICE: "minecraft.statsImportService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -348,4 +350,5 @@ export interface ServiceTypeMap {
   [Services.ROLE_MANAGEMENT_SERVICE]: RoleManagementService;
   [Services.WEBSOCKET_SERVICE]: WebSocketService;
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
+  [Services.STATS_IMPORT_SERVICE]: StatsImportService;
 }

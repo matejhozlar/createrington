@@ -69,6 +69,9 @@ const envSchema = z.object({
   COGS_AND_STEAM_SFTP_PASS: z
     .string()
     .min(1, "Cogs and Steam SFTP password required"),
+  COGS_AND_STEAM_SFTP_STATS_PATH: z
+    .string()
+    .min(1, "Cogs and Steam SFTP stats path required"),
 
   // Discord
   DISCORD_GUILD_ID: discordId("Guild ID"),
