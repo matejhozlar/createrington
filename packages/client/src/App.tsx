@@ -44,6 +44,7 @@ import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
+import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
@@ -58,7 +59,8 @@ function AppLayout() {
 
   const hideFooter =
     location.pathname.startsWith("/admin") ||
-    location.pathname.startsWith("/chat");
+    location.pathname.startsWith("/chat") ||
+    location.pathname.startsWith("/blue-map");
 
   return (
     <>
@@ -88,7 +90,7 @@ function AppContent() {
         <Route path="/rules" element={<Rules />} />
         <Route path="/team" element={<div>Team Page</div>} />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
-        <Route path="/blue-map" element={<div>Map Page</div>} />
+        <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/server-chat" element={<div>Chat Page</div>} />
         <Route path="/online-players" element={<div>Players Page</div>} />
         <Route path="/crypto" element={<div>Crypto Page</div>} />
