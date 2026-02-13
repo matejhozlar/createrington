@@ -61,10 +61,40 @@ export function EmbedBuilder() {
   }
 
   function handleLoad(loaded: EmbedData) {
+    const raw = loaded as Record<string, unknown>;
+
+    // Normalize fields that may come back as Discord API objects from saved presets
+    const footer =
+      raw.footer && typeof raw.footer === "object" && "text" in raw.footer
+        ? (raw.footer as { text: string }).text
+        : (loaded.footer as string | undefined);
+
+    const author =
+      raw.author && typeof raw.author === "object" && "name" in raw.author
+        ? (raw.author as { name: string }).name
+        : (loaded.author as string | undefined);
+
+    const authorUrl =
+      raw.author && typeof raw.author === "object" && "url" in raw.author
+        ? ((raw.author as { url?: string }).url ?? loaded.authorUrl)
+        : loaded.authorUrl;
+
+    const authorIconUrl =
+      raw.author &&
+      typeof raw.author === "object" &&
+      "icon_url" in raw.author
+        ? ((raw.author as { icon_url?: string }).icon_url ??
+          loaded.authorIconUrl)
+        : loaded.authorIconUrl;
+
     setData({
       ...DEFAULT_EMBED,
       ...loaded,
       fields: loaded.fields ?? [],
+      footer,
+      author,
+      authorUrl,
+      authorIconUrl,
     });
   }
 
