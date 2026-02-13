@@ -201,14 +201,6 @@ export class CurrencyController {
   // PLACEHOLDER STUBS
   // ============================================================================
 
-  static async checkMobLimit(_req: Request, _res: Response): Promise<void> {
-    throw new BadRequestError("Not implemented");
-  }
-
-  static async markMobLimit(_req: Request, _res: Response): Promise<void> {
-    throw new BadRequestError("Not implemented");
-  }
-
   static async startLottery(_req: Request, _res: Response): Promise<void> {
     throw new BadRequestError("Not implemented");
   }
