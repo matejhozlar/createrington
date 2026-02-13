@@ -1,9 +1,9 @@
-import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
 import { PlaytimeService, type ActiveSession } from "@/services/playtime";
 import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
 import { z } from "zod";
+import { trpcError } from "@/trpc/utils";
 
 /**
  * Basic player information for server status
@@ -160,10 +160,7 @@ export const serversRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.id);
       if (!serverConfig) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Server with id ${input.id} not found`,
-        });
+        throw trpcError.badRequest(`Server with id ${input.id} not found`);
       }
 
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);

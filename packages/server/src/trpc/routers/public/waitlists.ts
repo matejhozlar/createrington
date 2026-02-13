@@ -1,7 +1,7 @@
-import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
+import { trpcError } from "@/trpc/utils";
 
 export const waitlistsRouter = router({
   status: publicProcedure
@@ -34,10 +34,7 @@ export const waitlistsRouter = router({
       const hasCapacity = await waitlistRepo.hasCapacity();
 
       if (!hasCapacity && !email) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Email is required when the server is at capacity",
-        });
+        throw trpcError.badRequest("Email is required when the server is at capacity");
       }
 
       if (email) {
@@ -46,10 +43,7 @@ export const waitlistsRouter = router({
           { limit: 1 },
         );
         if (emailExists) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "This email is already on the waitlist",
-          });
+          throw trpcError.conflict("This email is already on the waitlist");
         }
       }
 
@@ -58,10 +52,7 @@ export const waitlistsRouter = router({
         { limit: 1 },
       );
       if (discordExists) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "This Discord username is already on the waitlist",
-        });
+        throw trpcError.conflict("This Discord username is already on the waitlist");
       }
 
       const result = await waitlistRepo.register({

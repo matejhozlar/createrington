@@ -1,10 +1,9 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
+import { parsePlayerId, paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import type { Player, PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
@@ -195,10 +194,7 @@ export const playersRouter = router({
       const identifier = parsePlayerId(input.id);
 
       if (!input.minecraftUsername && !input.discordId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "At least one field to update is required",
-        });
+        throw trpcError.badRequest("At least one field to update is required");
       }
 
       const updates: { minecraftUsername?: string; discordId?: string } = {};

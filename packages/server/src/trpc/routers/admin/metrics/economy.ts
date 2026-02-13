@@ -22,8 +22,8 @@ export const economyMetricsRouter = router({
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.economy.getTransactionVolume(
-        input.start,
-        input.end,
+        new Date(input.start),
+        new Date(input.end),
         input.granularity,
       );
     }),

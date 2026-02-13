@@ -1,7 +1,7 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
+import { trpcError } from "@/trpc/utils";
 
 export const achievementsRouter = router({
   /**
@@ -45,19 +45,13 @@ export const achievementsRouter = router({
           error instanceof Error &&
           error.message.includes("No unclaimed achievement")
         ) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: error.message,
-          });
+          throw trpcError.notFound(error.message);
         }
         if (
           error instanceof Error &&
           error.message.includes("Unknown achievement group")
         ) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: error.message,
-          });
+          throw trpcError.badRequest(error.message);
         }
         throw error;
       }

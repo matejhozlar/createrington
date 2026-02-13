@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { EmbedBuilder } from "discord.js";
-import { TRPCError } from "@trpc/server";
 import config from "@/config";
 import { embedDataSchema } from "@createrington/shared/api/embed";
 
@@ -66,11 +65,9 @@ export const embedsRouter = router({
       const { channelId, embed: data } = input;
 
       if (!data.title && !data.description && data.fields.length === 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message:
-            "Embed must have at least a title, description, or one field.",
-        });
+        throw trpcError.badRequest(
+          "Embed must have at least a title, description, or one field.",
+        );
       }
 
       const embed = new EmbedBuilder();
@@ -109,10 +106,7 @@ export const embedsRouter = router({
       });
 
       if (!result.success) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: result.error ?? "Failed to send embed",
-        });
+        throw trpcError.internal(result.error ?? "Failed to send embed");
       }
 
       return { messageId: result.messageId };
@@ -160,10 +154,7 @@ export const embedsRouter = router({
         const preset = await Q.discord.embed.preset.find({ id: input.id });
 
         if (!preset) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Preset not found",
-          });
+          throw trpcError.notFound("Preset not found");
         }
 
         return { preset };
@@ -182,10 +173,7 @@ export const embedsRouter = router({
           name: input.name,
         });
         if (existing) {
-          throw new TRPCError({
-            code: "CONFLICT",
-            message: "A preset with that name already exists",
-          });
+          throw trpcError.conflict("A preset with that name already exists");
         }
 
         await Q.discord.embed.preset.create({
@@ -209,10 +197,7 @@ export const embedsRouter = router({
       .mutation(async ({ input }) => {
         const existing = await Q.discord.embed.preset.find({ id: input.id });
         if (!existing) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Preset not found",
-          });
+          throw trpcError.notFound("Preset not found");
         }
 
         if (input.name && input.name !== existing.name) {
@@ -220,10 +205,7 @@ export const embedsRouter = router({
             name: input.name,
           });
           if (nameConflict) {
-            throw new TRPCError({
-              code: "CONFLICT",
-              message: "A preset with that name already exists",
-            });
+            throw trpcError.conflict("A preset with that name already exists");
           }
         }
 
@@ -242,10 +224,7 @@ export const embedsRouter = router({
       .mutation(async ({ input }) => {
         const existing = await Q.discord.embed.preset.find({ id: input.id });
         if (!existing) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Preset not found",
-          });
+          throw trpcError.notFound("Preset not found");
         }
 
         await Q.discord.embed.preset.delete({ id: input.id });

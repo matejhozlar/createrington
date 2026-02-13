@@ -1,9 +1,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
-import { TRPCError } from "@trpc/server";
 import { FaqService } from "@/services/discord/faq";
 
 const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
@@ -13,19 +12,13 @@ function validatePattern(matchMode: string, pattern: string): void {
     try {
       new RegExp(pattern, "i");
     } catch {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Invalid regex pattern",
-      });
+      throw trpcError.badRequest("Invalid regex pattern");
     }
   } else {
     try {
       FaqService.keywordsToRegex(pattern);
     } catch {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: "Keywords must contain at least one keyword (comma-separated)",
-      });
+      throw trpcError.badRequest("Keywords must contain at least one keyword (comma-separated)");
     }
   }
 }
@@ -84,7 +77,7 @@ export const faqRouter = router({
       const entry = await Q.faq.entry.find({ id: input.id });
 
       if (!entry) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+        throw trpcError.notFound("FAQ entry not found");
       }
 
       return { entry };
@@ -136,7 +129,7 @@ export const faqRouter = router({
     .mutation(async ({ input }) => {
       const existing = await Q.faq.entry.find({ id: input.id });
       if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+        throw trpcError.notFound("FAQ entry not found");
       }
 
       const effectiveMode = input.matchMode ?? existing.matchMode;
@@ -158,7 +151,7 @@ export const faqRouter = router({
     .mutation(async ({ input }) => {
       const existing = await Q.faq.entry.find({ id: input.id });
       if (!existing) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "FAQ entry not found" });
+        throw trpcError.notFound("FAQ entry not found");
       }
 
       await Q.faq.entry.delete({ id: input.id });

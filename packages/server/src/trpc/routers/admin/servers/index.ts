@@ -1,10 +1,9 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, R } from "@/db";
 import { getService, Services } from "@/services";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
-import { buildPagination, paginationInput } from "@/trpc/utils";
+import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
 import {
   buildServerStatus,
   type ServerStatus,
@@ -76,10 +75,7 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.id);
       if (!serverConfig) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Server with id ${input.id} not found`,
-        });
+        throw trpcError.badRequest(`Server with id ${input.id} not found`);
       }
 
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
@@ -117,10 +113,7 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Server with id ${input.serverId} not found`,
-        });
+        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
       }
 
       const activity = await R.playtimeRepo.getServerActivity(
@@ -165,10 +158,7 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Server with id ${input.serverId} not found`,
-        });
+        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
       }
 
       const heatmapData = await R.playtimeRepo.getServerHeatmap(
@@ -197,10 +187,7 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `Server with id ${input.serverId} not found`,
-        });
+        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
       }
 
       const offset = input.page * input.limit;

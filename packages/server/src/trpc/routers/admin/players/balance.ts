@@ -1,9 +1,8 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { balanceRepo } from "@/db";
-import { parsePlayerId } from "@/trpc/utils";
+import { parsePlayerId, trpcError } from "@/trpc/utils";
 
 export const balanceRouter = router({
   get: adminProcedure
@@ -56,10 +55,7 @@ export const balanceRouter = router({
       const identifier = parsePlayerId(input.id);
 
       if (input.amount === 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Amount cannot be zero",
-        });
+        throw trpcError.badRequest("Amount cannot be zero");
       }
 
       let newBalance: number;

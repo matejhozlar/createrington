@@ -1,8 +1,7 @@
-import { TRPCError } from "@trpc/server";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { z } from "zod";
-import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
+import { parsePlayerId, paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import type { PlayerFilters } from "@createrington/shared/db";
 
 export const playersRouter = router({
@@ -21,10 +20,7 @@ export const playersRouter = router({
 
       const player = await Q.player.find(identifier);
       if (!player) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: `Player with ID ${input.id} not found`,
-        });
+        throw trpcError.notFound(`Player with ID ${input.id} not found`);
       }
 
       return player;

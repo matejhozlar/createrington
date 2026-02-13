@@ -10,19 +10,19 @@ export const activityMetricsRouter = router({
     .input(dateRangeWithMonthInput)
     .query(async ({ input }) => {
       return await metricsService.activity.getActivePlayers(
-        input.start,
-        input.end,
+        new Date(input.start),
+        new Date(input.end),
         input.granularity,
       );
     }),
 
   getPeakConcurrent: adminProcedure
     .meta({ description: "Get peak concurrent player count within a time range." })
-    .input(z.object({ start: z.coerce.date(), end: z.coerce.date() }))
+    .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
     .query(async ({ input }) => {
       return await metricsService.activity.getPeakConcurrent(
-        input.start,
-        input.end,
+        new Date(input.start),
+        new Date(input.end),
       );
     }),
 
@@ -30,24 +30,24 @@ export const activityMetricsRouter = router({
     .meta({ description: "Get average session length in seconds." })
     .input(
       z.object({
-        start: z.coerce.date().optional(),
-        end: z.coerce.date().optional(),
+        start: z.iso.datetime().optional(),
+        end: z.iso.datetime().optional(),
       }),
     )
     .query(async ({ input }) => {
       return await metricsService.activity.getAverageSessionLength(
-        input.start,
-        input.end,
+        input.start ? new Date(input.start) : undefined,
+        input.end ? new Date(input.end) : undefined,
       );
     }),
 
   getNewVsReturning: adminProcedure
     .meta({ description: "Get new vs returning players per day." })
-    .input(z.object({ start: z.coerce.date(), end: z.coerce.date() }))
+    .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
     .query(async ({ input }) => {
       return await metricsService.activity.getNewVsReturning(
-        input.start,
-        input.end,
+        new Date(input.start),
+        new Date(input.end),
       );
     }),
 });
