@@ -62,22 +62,6 @@ router.post(
 // PLACEHOLDERS
 // ============================================================================
 
-router.get(
-  "/mob-limit",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT],
-    CurrencyController.checkMobLimit,
-  ),
-);
-
-router.post(
-  "/mob-limit",
-  ...customRoute(
-    [verifyServerIP, verifyModJWT],
-    CurrencyController.markMobLimit,
-  ),
-);
-
 router.post(
   "/lottery/start",
   ...customRoute(
