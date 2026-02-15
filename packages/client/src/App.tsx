@@ -44,6 +44,7 @@ import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
+import { Team } from "./features/team/Team";
 import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
@@ -88,7 +89,7 @@ function AppContent() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<Rules />} />
-        <Route path="/team" element={<div>Team Page</div>} />
+        <Route path="/team" element={<Team />} />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/server-chat" element={<div>Chat Page</div>} />
