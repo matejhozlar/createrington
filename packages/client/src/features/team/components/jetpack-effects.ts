@@ -9,137 +9,7 @@ import {
   PointsMaterial,
   type Scene,
 } from "three";
-
-// ── Astronaut skin generator ───────────────────────────────────────
-
-/**
- * Creates a 64×64 Minecraft skin canvas with a simple astronaut suit.
- * Modify the color constants below to change the suit appearance,
- * or replace this function entirely to load a skin image from a URL.
- */
-export function createAstronautSkin(): HTMLCanvasElement {
-  const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
-  // biome-ignore lint/style/noNonNullAssertion: canvas we just created always returns a context
-  const ctx = canvas.getContext("2d")!;
-
-  // Fill entire canvas transparent first
-  ctx.clearRect(0, 0, 64, 64);
-
-  const suit = "#e8e8e8"; // white suit
-  const suitShade = "#c8c8c8"; // suit shading
-  const visor = "#1a3a5c"; // dark blue visor
-  const visorGlow = "#3a7abd"; // visor reflection
-  const boot = "#6b6b6b"; // gray boots
-  const glove = "#808080"; // gray gloves
-  const accent = "#cc3030"; // red accent patch
-  const backpack = "#a0a0a0"; // jetpack backpack
-
-  // Helper to fill a rect
-  const fill = (color: string, x: number, y: number, w: number, h: number) => {
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
-  };
-
-  // ── Head (8×8 at 8,0) ─────────────────────────────────────────
-  // Helmet base
-  fill(suit, 8, 0, 8, 8);
-  // Visor (front face area)
-  fill(visor, 10, 2, 4, 4);
-  fill(visorGlow, 10, 2, 2, 1); // reflection highlight
-  // Helmet top highlight
-  fill(suitShade, 8, 0, 8, 1);
-
-  // Head top (texture region 8,0 is already covered)
-  // Head right (0,8 — 8×8)
-  fill(suit, 0, 8, 8, 8);
-  fill(visor, 2, 10, 4, 4);
-  // Head front (8,8 — 8×8)
-  fill(suit, 8, 8, 8, 8);
-  fill(visor, 10, 10, 4, 4);
-  fill(visorGlow, 10, 10, 2, 1);
-  // Head left (16,8 — 8×8)
-  fill(suit, 16, 8, 8, 8);
-  fill(visor, 18, 10, 4, 4);
-  // Head back (24,8 — 8×8)
-  fill(suit, 24, 8, 8, 8);
-  fill(suitShade, 26, 10, 4, 4);
-
-  // ── Body (8×12 at 20,16→front) ────────────────────────────────
-  // Body top (20,16 — 8×4)
-  fill(suit, 20, 16, 8, 4);
-  // Body right (16,20 — 4×12)
-  fill(suit, 16, 20, 4, 12);
-  fill(backpack, 17, 22, 2, 6);
-  // Body front (20,20 — 8×12)
-  fill(suit, 20, 20, 8, 12);
-  fill(accent, 22, 21, 4, 2); // chest patch
-  fill(suitShade, 20, 28, 8, 4); // belt area
-  // Body left (28,20 — 4×12)
-  fill(suit, 28, 20, 4, 12);
-  fill(backpack, 29, 22, 2, 6);
-  // Body back (32,20 — 8×12)
-  fill(suit, 32, 20, 8, 12);
-  fill(backpack, 34, 22, 4, 6); // jetpack on back
-  fill("#555555", 35, 23, 2, 4); // jetpack detail
-
-  // ── Right arm (4×12 at 44,16→front) ───────────────────────────
-  // Arm top (44,16 — 4×4)
-  fill(suit, 44, 16, 4, 4);
-  // Arm right (40,20 — 4×12)
-  fill(suit, 40, 20, 4, 12);
-  fill(glove, 40, 28, 4, 4);
-  // Arm front (44,20 — 4×12)
-  fill(suit, 44, 20, 4, 12);
-  fill(glove, 44, 28, 4, 4);
-  // Arm left (48,20 — 4×12)
-  fill(suit, 48, 20, 4, 12);
-  fill(glove, 48, 28, 4, 4);
-  // Arm back (52,20 — 4×12)
-  fill(suit, 52, 20, 4, 12);
-  fill(glove, 52, 28, 4, 4);
-
-  // ── Right leg (4×12 at 4,16→front) ────────────────────────────
-  // Leg top (4,16 — 4×4)
-  fill(suit, 4, 16, 4, 4);
-  // Leg right (0,20 — 4×12)
-  fill(suit, 0, 20, 4, 12);
-  fill(boot, 0, 28, 4, 4);
-  // Leg front (4,20 — 4×12)
-  fill(suit, 4, 20, 4, 12);
-  fill(boot, 4, 28, 4, 4);
-  // Leg left (8,20 — 4×12)
-  fill(suit, 8, 20, 4, 12);
-  fill(boot, 8, 28, 4, 4);
-  // Leg back (12,20 — 4×12)
-  fill(suit, 12, 20, 4, 12);
-  fill(boot, 12, 28, 4, 4);
-
-  // ── Left arm (second layer: 4×12 at 36,48→front) ─────────────
-  fill(suit, 36, 48, 4, 4); // top
-  fill(suit, 32, 52, 4, 12); // right
-  fill(glove, 32, 60, 4, 4);
-  fill(suit, 36, 52, 4, 12); // front
-  fill(glove, 36, 60, 4, 4);
-  fill(suit, 40, 52, 4, 12); // left
-  fill(glove, 40, 60, 4, 4);
-  fill(suit, 44, 52, 4, 12); // back
-  fill(glove, 44, 60, 4, 4);
-
-  // ── Left leg (second layer: 4×12 at 20,48→front) ─────────────
-  fill(suit, 20, 48, 4, 4); // top
-  fill(suit, 16, 52, 4, 12); // right
-  fill(boot, 16, 60, 4, 4);
-  fill(suit, 20, 52, 4, 12); // front
-  fill(boot, 20, 60, 4, 4);
-  fill(suit, 24, 52, 4, 12); // left
-  fill(boot, 24, 60, 4, 4);
-  fill(suit, 28, 52, 4, 12); // back
-  fill(boot, 28, 60, 4, 4);
-
-  return canvas;
-}
+import astronautSkinUrl from "@/assets/skins/astronaut.png";
 
 // ── Smoke texture generator ────────────────────────────────────────
 
@@ -359,8 +229,7 @@ export class JetpackAnimation extends PlayerAnimation {
     // Swap skin on first frame
     if (!this.skinSwapped) {
       this.skinSwapped = true;
-      const astronautSkin = createAstronautSkin();
-      this.viewer.loadSkin(astronautSkin);
+      this.viewer.loadSkin(astronautSkinUrl);
     }
 
     // Add particles to scene on first frame
