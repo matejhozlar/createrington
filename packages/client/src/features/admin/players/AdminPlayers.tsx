@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import {
@@ -118,11 +118,6 @@ export function AdminPlayers() {
   const totalPages = playersQuery.data?.pagination.totalPages ?? 0;
   const loading = playersQuery.isLoading;
   const error = playersQuery.error?.message ?? null;
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(0);
-  }, [debouncedSearch, onlineFilter, violationFilter, orderBy, orderDirection]);
 
   /**
    * Handle search
@@ -425,7 +420,10 @@ export function AdminPlayers() {
                   type="text"
                   placeholder="Search by username..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPage(0);
+                  }}
                   className="pl-9"
                 />
               </div>
