@@ -5,7 +5,16 @@ export const Team = () => {
   return (
     <div>
       <PageHeader
-        title="Our Team"
+        title={
+          <span
+            className="cursor-pointer select-none"
+            onClick={() =>
+              document.dispatchEvent(new CustomEvent("team-dance-start"))
+            }
+          >
+            Our Team
+          </span>
+        }
         description="Meet the people who keep Createrington running."
         imageSrc="/assets/hero/gondola-station.webp"
       />

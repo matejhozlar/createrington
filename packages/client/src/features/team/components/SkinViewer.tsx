@@ -16,6 +16,7 @@ import { HeadKickAnimation, KickAnimation } from "./headkick-effects";
 import { HulkAnimation } from "./hulk-effects";
 import { JetpackAnimation } from "./jetpack-effects";
 import { MoonwalkAnimation } from "./moonwalk-effects";
+import { DiscoAnimation } from "./dance-effects";
 import { NukeAnimation } from "./nuke-effects";
 
 export type SkinViewerHandle = {
@@ -77,6 +78,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(({
   const nukeRef = useRef<NukeAnimation | null>(null);
   const nukeExplosionRef = useRef<Animation | null>(null);
   const kickAnimRef = useRef<KickAnimation | null>(null);
+  const danceTimerRef = useRef<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -291,9 +293,61 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(({
     };
   }, [username]);
 
+  // All members listen for disco dance event from title click
+  useEffect(() => {
+    const handleDanceStart = () => {
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+
+      // Skip if any hover animation is active
+      if (
+        moonwalkRef.current ||
+        flashlightRef.current ||
+        jetpackRef.current ||
+        headkickRef.current ||
+        hulkRef.current ||
+        nukeRef.current ||
+        kickAnimRef.current
+      )
+        return;
+
+      // Clear any existing dance timer (double-click restarts)
+      if (danceTimerRef.current !== null) {
+        clearTimeout(danceTimerRef.current);
+      }
+
+      viewer.animation = new DiscoAnimation();
+
+      danceTimerRef.current = window.setTimeout(() => {
+        danceTimerRef.current = null;
+        const v = viewerRef.current;
+        if (v) {
+          v.animation = new LookAroundIdleAnimation(index, total);
+        }
+      }, 20_000);
+    };
+
+    document.addEventListener("team-dance-start", handleDanceStart);
+
+    return () => {
+      document.removeEventListener("team-dance-start", handleDanceStart);
+      if (danceTimerRef.current !== null) {
+        clearTimeout(danceTimerRef.current);
+        danceTimerRef.current = null;
+      }
+    };
+  }, [index, total]);
+
   const handleMouseEnter = () => {
     const viewer = viewerRef.current;
     if (!viewer || !hoverAnimation) return;
+
+    // Cancel dance if active — hover takes priority
+    if (danceTimerRef.current !== null) {
+      clearTimeout(danceTimerRef.current);
+      danceTimerRef.current = null;
+      viewer.playerObject.rotation.y = 0;
+    }
 
     if (hoverAnimation === "flashlight") {
       viewer.animation = new FlashlightAimAnimation();
