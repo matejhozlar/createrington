@@ -59,22 +59,15 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
     viewer.animation = new LookAroundIdleAnimation(index, total);
 
     viewer
-      .loadSkin(`https://crafatar.com/skins/${uuid}`)
+      .loadSkin(`/api/skin/${uuid}`)
       .then(() => {
         if (!disposed) setLoading(false);
       })
       .catch(() => {
-        viewer
-          .loadSkin(`https://mc-heads.net/skin/${uuid}`)
-          .then(() => {
-            if (!disposed) setLoading(false);
-          })
-          .catch(() => {
-            if (!disposed) {
-              setLoading(false);
-              setError(true);
-            }
-          });
+        if (!disposed) {
+          setLoading(false);
+          setError(true);
+        }
       });
 
     container.appendChild(viewer.canvas);

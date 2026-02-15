@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import authRoutes from "./auth/auth.routes";
+import skinRoutes from "./skin/skin.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
@@ -15,6 +16,7 @@ export function registerRoutes(app: Express): void {
 
   // Register route modules
   app.use(`${API_PREFIX}/auth`, authRoutes);
+  app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);
