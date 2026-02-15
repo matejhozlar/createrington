@@ -19,7 +19,7 @@ type SkinViewerProps = {
   username: string;
   width: number;
   height: number;
-  hoverAnimation?: HoverAnimation;
+  hoverAnimation?: HoverAnimation | undefined;
   index: number;
   total: number;
   className?: string;
@@ -47,7 +47,7 @@ export const SkinViewer = ({
   username,
   width,
   height,
-  hoverAnimation = "walking",
+  hoverAnimation,
   index,
   total,
   className,
@@ -120,7 +120,7 @@ export const SkinViewer = ({
 
   const handleMouseEnter = () => {
     const viewer = viewerRef.current;
-    if (!viewer) return;
+    if (!viewer || !hoverAnimation) return;
 
     if (hoverAnimation === "flashlight") {
       const flashlight = new FlashlightEffect(viewer.canvas);
@@ -166,8 +166,8 @@ export const SkinViewer = ({
     <div
       className={cn("relative", className)}
       style={{ width, height }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseEnter={hoverAnimation ? handleMouseEnter : undefined}
+      onMouseLeave={hoverAnimation ? handleMouseLeave : undefined}
       role="img"
       aria-label={`3D skin of ${username}`}
     >

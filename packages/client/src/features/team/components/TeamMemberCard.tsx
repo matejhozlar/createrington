@@ -21,7 +21,7 @@ export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCard
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 cursor-pointer opacity-0"
+      className="flex flex-col items-center gap-2 transition-transform duration-300 md:hover:scale-105 cursor-pointer opacity-0"
       style={{
         animation: "fade-in-up 0.5s ease-out forwards",
         animationDelay: `${index * 100}ms`,
@@ -32,7 +32,7 @@ export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCard
         username={member.username}
         width={size.width}
         height={size.height}
-        hoverAnimation={member.hoverAnimation}
+        hoverAnimation={isMobile ? undefined : member.hoverAnimation}
         index={index}
         total={total}
       />
