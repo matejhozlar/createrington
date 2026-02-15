@@ -66,6 +66,12 @@ export class HeadKickAnimation extends PlayerAnimation {
   private canvasHeight = 0;
   private originalParent: HTMLElement | null = null;
 
+  // Head region within the canvas (for collision)
+  private headOffsetX = 0;
+  private headOffsetY = 0;
+  private headW = 0;
+  private headH = 0;
+
   constructor(viewer: SkinViewerLib) {
     super();
     this.viewer = viewer;
@@ -133,22 +139,23 @@ export class HeadKickAnimation extends PlayerAnimation {
         this.bounceX += this.bounceVx * delta;
         this.bounceY += this.bounceVy * delta;
 
-        const maxX = window.innerWidth - this.canvasWidth;
-        const maxY = window.innerHeight - this.canvasHeight;
+        // Collide based on the visible head region, not the full canvas
+        const headLeft = this.bounceX + this.headOffsetX;
+        const headTop = this.bounceY + this.headOffsetY;
 
-        if (this.bounceX <= 0) {
-          this.bounceX = 0;
+        if (headLeft <= 0) {
+          this.bounceX = -this.headOffsetX;
           this.bounceVx = Math.abs(this.bounceVx);
-        } else if (this.bounceX >= maxX) {
-          this.bounceX = maxX;
+        } else if (headLeft + this.headW >= window.innerWidth) {
+          this.bounceX = window.innerWidth - this.headOffsetX - this.headW;
           this.bounceVx = -Math.abs(this.bounceVx);
         }
 
-        if (this.bounceY <= 0) {
-          this.bounceY = 0;
+        if (headTop <= 0) {
+          this.bounceY = -this.headOffsetY;
           this.bounceVy = Math.abs(this.bounceVy);
-        } else if (this.bounceY >= maxY) {
-          this.bounceY = maxY;
+        } else if (headTop + this.headH >= window.innerHeight) {
+          this.bounceY = window.innerHeight - this.headOffsetY - this.headH;
           this.bounceVy = -Math.abs(this.bounceVy);
         }
 
@@ -212,6 +219,12 @@ export class HeadKickAnimation extends PlayerAnimation {
     this.bounceY = rect.top;
     this.canvasWidth = rect.width;
     this.canvasHeight = rect.height;
+
+    // Estimate the visible head region within the canvas (for collision)
+    this.headW = this.canvasWidth * 0.28;
+    this.headH = this.headW;
+    this.headOffsetX = (this.canvasWidth - this.headW) / 2;
+    this.headOffsetY = this.canvasHeight * 0.38;
 
     // Center the head in the canvas for bounce visibility
     player.position.y = -10;
