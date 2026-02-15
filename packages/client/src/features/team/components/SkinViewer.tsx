@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
 import { LookAroundIdleAnimation } from "./animations";
 import { FlashlightAimAnimation, FlashlightEffect } from "./flashlight-effects";
+import { HeadKickAnimation, KickAnimation } from "./headkick-effects";
 import { JetpackAnimation } from "./jetpack-effects";
 import { MoonwalkAnimation } from "./moonwalk-effects";
 
@@ -27,7 +28,7 @@ type SkinViewerProps = {
 };
 
 function createAnimation(
-  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk">,
+  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk" | "headkick">,
 ) {
   switch (type) {
     case "wave":
@@ -59,6 +60,7 @@ export const SkinViewer = ({
   const flashlightRef = useRef<FlashlightEffect | null>(null);
   const flashlightTimerRef = useRef<number | null>(null);
   const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
+  const headkickRef = useRef<HeadKickAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -121,6 +123,10 @@ export const SkinViewer = ({
         moonwalkRef.current.dispose();
         moonwalkRef.current = null;
       }
+      if (headkickRef.current) {
+        headkickRef.current.dispose();
+        headkickRef.current = null;
+      }
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -128,6 +134,45 @@ export const SkinViewer = ({
       viewerRef.current = null;
     };
   }, [uuid, width, height, index, total]);
+
+  // Cailin05 listens for kick requests from imahomen's headkick animation
+  useEffect(() => {
+    if (username !== "Cailin05") return;
+
+    const handleKickRequest = (e: Event) => {
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+
+      // Ignore if any custom animation is active (e.g., moonwalk hover)
+      if (
+        moonwalkRef.current ||
+        flashlightRef.current ||
+        jetpackRef.current ||
+        headkickRef.current
+      )
+        return;
+
+      const { headCenterX } = (e as CustomEvent<{ headCenterX: number }>)
+        .detail;
+      const myRect = viewer.canvas.getBoundingClientRect();
+      const slideDistance = myRect.left + myRect.width / 2 - headCenterX;
+      viewer.animation = new KickAnimation(viewer, slideDistance);
+    };
+
+    const handleKickDone = () => {
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+      viewer.animation = new LookAroundIdleAnimation(index, total);
+    };
+
+    document.addEventListener("team-kick-request", handleKickRequest);
+    document.addEventListener("team-kick-done", handleKickDone);
+
+    return () => {
+      document.removeEventListener("team-kick-request", handleKickRequest);
+      document.removeEventListener("team-kick-done", handleKickDone);
+    };
+  }, [username, index, total]);
 
   const handleMouseEnter = () => {
     const viewer = viewerRef.current;
@@ -149,6 +194,10 @@ export const SkinViewer = ({
       const moonwalk = new MoonwalkAnimation(viewer);
       moonwalkRef.current = moonwalk;
       viewer.animation = moonwalk;
+    } else if (hoverAnimation === "headkick") {
+      const headkick = new HeadKickAnimation(viewer);
+      headkickRef.current = headkick;
+      viewer.animation = headkick;
     } else {
       viewer.animation = createAnimation(hoverAnimation);
     }
@@ -185,6 +234,11 @@ export const SkinViewer = ({
     if (moonwalkRef.current) {
       moonwalkRef.current.dispose();
       moonwalkRef.current = null;
+    }
+
+    if (headkickRef.current) {
+      headkickRef.current.dispose();
+      headkickRef.current = null;
     }
 
     viewer.animation = new LookAroundIdleAnimation(index, total);
