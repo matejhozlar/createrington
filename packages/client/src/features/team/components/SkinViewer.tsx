@@ -1,5 +1,5 @@
 import { Loader2, UserRound } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   FlyingAnimation,
   HitAnimation,
@@ -18,12 +18,18 @@ import { JetpackAnimation } from "./jetpack-effects";
 import { MoonwalkAnimation } from "./moonwalk-effects";
 import { NukeAnimation } from "./nuke-effects";
 
+export type SkinViewerHandle = {
+  playAnimation: () => void;
+  stopAnimation: () => void;
+};
+
 type SkinViewerProps = {
   uuid: string;
   username: string;
   width: number;
   height: number;
   hoverAnimation?: HoverAnimation | undefined;
+  enableHover?: boolean;
   index: number;
   total: number;
   className?: string;
@@ -49,16 +55,17 @@ function createAnimation(
   }
 }
 
-export const SkinViewer = ({
+export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(({
   uuid,
   username,
   width,
   height,
   hoverAnimation,
+  enableHover = true,
   index,
   total,
   className,
-}: SkinViewerProps) => {
+}, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const jetpackRef = useRef<JetpackAnimation | null>(null);
@@ -374,12 +381,17 @@ export const SkinViewer = ({
     viewer.animation = new LookAroundIdleAnimation(index, total);
   };
 
+  useImperativeHandle(ref, () => ({
+    playAnimation: () => handleMouseEnter(),
+    stopAnimation: () => handleMouseLeave(),
+  }));
+
   return (
     <div
       className={cn("relative", className)}
       style={{ width, height }}
-      onMouseEnter={hoverAnimation ? handleMouseEnter : undefined}
-      onMouseLeave={hoverAnimation ? handleMouseLeave : undefined}
+      onMouseEnter={enableHover && hoverAnimation ? handleMouseEnter : undefined}
+      onMouseLeave={enableHover && hoverAnimation ? handleMouseLeave : undefined}
       role="img"
       aria-label={`3D skin of ${username}`}
     >
@@ -402,4 +414,6 @@ export const SkinViewer = ({
       )}
     </div>
   );
-};
+});
+
+SkinViewer.displayName = "SkinViewer";

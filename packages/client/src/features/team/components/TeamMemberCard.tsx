@@ -1,7 +1,8 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { SkinViewer } from "./SkinViewer";
+import { SkinViewer, type SkinViewerHandle } from "./SkinViewer";
 import type { TeamMember } from "../data";
 import { TIER_CONFIG } from "../data";
 
@@ -12,15 +13,53 @@ type TeamMemberCardProps = {
   onClick: () => void;
 };
 
+const AUTO_RESET_MS = 6000;
+
 export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCardProps) => {
   const isMobile = useIsMobile();
   const config = TIER_CONFIG[member.tier];
   const size = isMobile ? config.size.mobile : config.size.desktop;
 
+  const skinRef = useRef<SkinViewerHandle>(null);
+  const [animationActive, setAnimationActive] = useState(false);
+  const timerRef = useRef<number | null>(null);
+
+  const clearTimer = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => clearTimer, [clearTimer]);
+
+  const handleClick = () => {
+    if (!isMobile) {
+      onClick();
+      return;
+    }
+
+    if (!animationActive) {
+      skinRef.current?.playAnimation();
+      setAnimationActive(true);
+      clearTimer();
+      timerRef.current = window.setTimeout(() => {
+        timerRef.current = null;
+        skinRef.current?.stopAnimation();
+        setAnimationActive(false);
+      }, AUTO_RESET_MS);
+    } else {
+      clearTimer();
+      skinRef.current?.stopAnimation();
+      setAnimationActive(false);
+      onClick();
+    }
+  };
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       className="flex flex-col items-center gap-2 transition-transform duration-300 md:hover:scale-105 cursor-pointer opacity-0"
       style={{
         animation: "fade-in-up 0.5s ease-out forwards",
@@ -28,11 +67,13 @@ export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCard
       }}
     >
       <SkinViewer
+        ref={skinRef}
         uuid={member.uuid}
         username={member.username}
         width={size.width}
         height={size.height}
-        hoverAnimation={isMobile ? undefined : member.hoverAnimation}
+        hoverAnimation={member.hoverAnimation}
+        enableHover={!isMobile}
         index={index}
         total={total}
       />
