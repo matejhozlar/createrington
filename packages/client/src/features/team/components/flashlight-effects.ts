@@ -1,7 +1,5 @@
 import { PlayerAnimation, type PlayerObject } from "skinview3d";
 
-// ── Aim animation (3D character pose) ────────────────────────────
-
 const AIM_DURATION = 0.4;
 
 function easeOutCubic(t: number): number {
@@ -28,8 +26,6 @@ export class FlashlightAimAnimation extends PlayerAnimation {
     player.skin.body.rotation.y = -0.1 * e;
   }
 }
-
-// ── Flashlight beam effect (DOM canvas overlay) ──────────────────
 
 const FADE_OUT_DURATION = 500;
 const OVERLAY_OPACITY = 0.92;
@@ -88,12 +84,12 @@ export class FlashlightEffect {
       overlay.height = h;
     }
 
-    // Beam extension progress (0 → 1 over BEAM_EXTEND_DURATION)
+    // Beam extension progress
     const elapsed = now - this.startTime;
     const extendT = Math.min(elapsed / BEAM_EXTEND_DURATION, 1);
     const extendEased = easeInOutCubic(extendT);
 
-    // Source: character's right hand area (right arm = left side in viewer)
+    // Source: character's right hand area
     const srcRect = this.sourceElement.getBoundingClientRect();
     const sx = srcRect.left + srcRect.width * 0.35;
     const sy = srcRect.top + srcRect.height * 0.5;
@@ -116,8 +112,6 @@ export class FlashlightEffect {
     const beamX = sx + (tx - sx) * extendEased;
     const beamY = sy + (ty - sy) * extendEased;
 
-    // ── Draw ──────────────────────────────────────────────────────
-
     ctx.clearRect(0, 0, w, h);
 
     // Dark overlay
@@ -132,7 +126,7 @@ export class FlashlightEffect {
     // Spotlight circle where beam currently ends
     this.drawSpotCircle(ctx, beamX, beamY, extendEased);
 
-    // ── Scroll (synced to beam extension) ────────────────────────
+    // Scroll (synced to beam extension)
 
     if (extendT < 1 && tgtRect.top > h * 0.7) {
       window.scrollBy({ top: SCROLL_PX_PER_FRAME, behavior: "instant" });
@@ -236,11 +230,9 @@ export class FlashlightEffect {
 
     // Fade out then remove
     overlay.style.opacity = "0";
-    overlay.addEventListener(
-      "transitionend",
-      () => overlay.remove(),
-      { once: true },
-    );
+    overlay.addEventListener("transitionend", () => overlay.remove(), {
+      once: true,
+    });
     setTimeout(() => overlay.remove(), FADE_OUT_DURATION + 100);
   }
 }

@@ -2,7 +2,7 @@ import type { PlayerObject, SkinViewer as SkinViewerLib } from "skinview3d";
 import { PlayerAnimation } from "skinview3d";
 import hulkSkinUrl from "@/assets/skins/hulk.png";
 
-// ── Hulk transformation animation ────────────────────────────────────
+// Hulk transformation animation
 
 type HulkPhase = "anger" | "transform" | "grow" | "idle";
 
@@ -31,7 +31,7 @@ export class HulkAnimation extends PlayerAnimation {
     this.viewer = viewer;
   }
 
-  protected animate(player: PlayerObject, _delta: number): void {
+  protected animate(player: PlayerObject): void {
     const elapsed = this.progress - this.phaseStart;
 
     switch (this.phase) {

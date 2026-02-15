@@ -77,8 +77,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     this.stateDuration = 2 + Math.random() * 6;
   }
 
-  // ── Easing helpers ───────────────────────────────────────────────
-
   private easeInOutCubic(t: number): number {
     return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
   }
@@ -90,8 +88,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
   private easeOut(t: number): number {
     return 1 - (1 - t) * (1 - t);
   }
-
-  // ── Glance target ────────────────────────────────────────────────
 
   private pickGlanceTarget(): { y: number; x: number } {
     const canLookLeft = this.index > 0;
@@ -116,8 +112,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       x: (Math.random() - 0.5) * 0.25,
     };
   }
-
-  // ── State machine ────────────────────────────────────────────────
 
   private enterState(state: AnimState) {
     this.state = state;
@@ -246,8 +240,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     }
   }
 
-  // ── Animate ──────────────────────────────────────────────────────
-
   protected animate(player: PlayerObject): void {
     const elapsed = this.progress - this.stateStart;
     const t = Math.min(elapsed / this.stateDuration, 1);
@@ -268,7 +260,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     let legRightZ = 0;
 
     switch (this.state) {
-      // ── Idle ────────────────────────────────────────────────────
       case "idle":
         if (t >= 1) {
           const roll = Math.random();
@@ -284,7 +275,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         }
         break;
 
-      // ── Glance ─────────────────────────────────────────────────
       case "turning": {
         const e = this.easeInOutCubic(t);
         this.headY = this.fromY + (this.toY - this.fromY) * e;
@@ -315,7 +305,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Sneeze ─────────────────────────────────────────────────
       case "sneeze-windup": {
         const e = this.easeInOutCubic(t);
         const hitches = Math.sin(t * Math.PI * 3) * 0.06 * t;
@@ -377,7 +366,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Nod off ────────────────────────────────────────────────
       case "nod-drooping": {
         // Head slowly droops forward (ease-in: starts slow, accelerates)
         const e = this.easeIn(t);
@@ -393,8 +381,8 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "nod-snap": {
         // Startled awake: head snaps back, overshoots
         const e = this.easeOut(t);
-        this.headX = 0.45 - 0.6 * e; // 0.45 → -0.15
-        bodyX = 0.06 - 0.09 * e; // 0.06 → -0.03
+        this.headX = 0.45 - 0.6 * e;
+        bodyX = 0.06 - 0.09 * e;
         posY = 0.2 * e; // slight jump up
         armLeftZ = 0.1 - 0.04 * e;
         armRightZ = -0.1 + 0.04 * e;
@@ -418,7 +406,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Stretch ────────────────────────────────────────────────
       case "stretch-up": {
         // Arms overhead, body leans back, rises on toes
         const e = this.easeInOutCubic(t);
@@ -464,12 +451,11 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Shift weight ───────────────────────────────────────────
       case "shift-lean": {
         const d = this.shiftDir;
         const e = this.easeInOutCubic(t);
         bodyZ = d * 0.06 * e; // lean sideways
-        headZ = d * -0.04 * e; // head tilts opposite for balance
+        headZ = d * -0.04 * e; // head tilts opposite
         // Bend the leg on the side we lean toward
         if (d > 0) {
           legRightX = 0.15 * e;
@@ -510,7 +496,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Scratch head ───────────────────────────────────────────
       case "scratch-raise": {
         // Right arm goes up to head, head tilts
         const e = this.easeInOutCubic(t);
@@ -547,7 +532,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Jumping jacks ──────────────────────────────────────────
       case "jacks-ready": {
         // Quick knee bend to prep for jumping
         const e = this.easeInOutCubic(t);
@@ -584,7 +568,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Peek at viewer ────────────────────────────────────────
       case "peek-lean": {
         // Lean forward curiously, head tilts to one side
         const e = this.easeInOutCubic(t);
@@ -616,8 +599,8 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "peek-startle": {
         // Oh no, caught looking! Snap backward, arms flail up
         const e = this.easeOut(t);
-        bodyX = 0.25 - 0.4 * e; // 0.25 → -0.15
-        this.headX = 0.15 - 0.35 * e; // 0.15 → -0.2
+        bodyX = 0.25 - 0.4 * e;
+        this.headX = 0.15 - 0.35 * e;
         this.headY = this.headY * (1 - e); // snap head forward
         headZ = 0.12 * (1 - e);
         armLeftX = 0.3 - 1.8 * e; // fling arms up
@@ -648,7 +631,6 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Tripping / stumble ────────────────────────────────────
       case "trip-lurch": {
         // Sudden forward pitch, leg catches
         const e = this.easeOut(t);
@@ -668,14 +650,14 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "trip-catch": {
         // Snap upright, overcorrect backward, arms spread for balance
         const e = this.easeOut(t);
-        bodyX = 0.35 - 0.45 * e; // 0.35 → -0.1
-        this.headX = 0.3 - 0.45 * e; // 0.3 → -0.15
-        posY = -0.3 + 0.4 * e; // -0.3 → 0.1
+        bodyX = 0.35 - 0.45 * e;
+        this.headX = 0.3 - 0.45 * e;
+        posY = -0.3 + 0.4 * e;
         legLeftX = 0.4 - 0.25 * e; // relax catch leg
         // Arms spread wide for balance
-        armLeftX = -0.8 - 0.2 * e; // -0.8 → -1.0
+        armLeftX = -0.8 - 0.2 * e;
         armLeftZ = 0.26 + 0.4 * e; // spread out wide
-        armRightX = -0.6 - 0.4 * e; // -0.6 → -1.0
+        armRightX = -0.6 - 0.4 * e;
         armRightZ = -0.21 - 0.45 * e; // spread out wide
         if (t >= 1) this.enterState("trip-look");
         break;

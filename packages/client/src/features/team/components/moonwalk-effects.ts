@@ -1,7 +1,6 @@
 import type { PlayerObject, SkinViewer as SkinViewerLib } from "skinview3d";
 import { PlayerAnimation } from "skinview3d";
 
-// ── Phase state machine ──────────────────────────────────────────
 
 type MoonwalkPhase = "turn" | "head-snap" | "hold" | "moonwalk" | "gone";
 
@@ -10,10 +9,7 @@ const HEAD_SNAP_DURATION = 0.2;
 const HOLD_DURATION = 1.0;
 const MOONWALK_DURATION = 2.0;
 
-// Head snaps back ~60° (not the full 90°) for an angled side-eye stare
 const HEAD_SNAP_AMOUNT = Math.PI / 3;
-
-// ── Easing helpers ───────────────────────────────────────────────
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
@@ -23,7 +19,7 @@ function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t);
 }
 
-// ── Moonwalk animation ───────────────────────────────────────────
+// Moonwalk animation 
 
 export class MoonwalkAnimation extends PlayerAnimation {
   private viewer: SkinViewerLib;
@@ -44,15 +40,15 @@ export class MoonwalkAnimation extends PlayerAnimation {
     const elapsed = this.progress - this.phaseStart;
 
     switch (this.phase) {
-      // ── Spin 270° the long way, head turns with body ──────
+      // Spin 270° the long way, head turns with body
       case "turn": {
         const t = Math.min(elapsed / TURN_DURATION, 1);
         const e = easeInOutCubic(t);
 
-        // 270° positive rotation (the long way around to face left)
+        // 270° positive rotation
         player.rotation.y = ((3 * Math.PI) / 2) * e;
 
-        // Natural arm swing — more cycles for the longer spin
+        // Natural arm swing - more cycles for the longer spin
         const armSwing = Math.sin(t * Math.PI * 2) * 0.4;
         player.skin.leftArm.rotation.x = armSwing;
         player.skin.rightArm.rotation.x = -armSwing;
@@ -68,14 +64,14 @@ export class MoonwalkAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Head snaps back toward viewer (not fully — side-eye) ──
+      // Head snaps back toward viewer
       case "head-snap": {
         const t = Math.min(elapsed / HEAD_SNAP_DURATION, 1);
         const e = easeOutQuad(t);
 
         player.rotation.y = (3 * Math.PI) / 2;
 
-        // Snap head back partway — angled stare, not dead-on
+        // Snap head back partway
         player.skin.head.rotation.y = HEAD_SNAP_AMOUNT * e;
         // Creepy tilt
         player.skin.head.rotation.z = 0.12 * e;
@@ -93,7 +89,7 @@ export class MoonwalkAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Hold the creepy angled stare ───────────────────────
+      // Hold the creepy angled stare
       case "hold": {
         const t = Math.min(elapsed / HOLD_DURATION, 1);
 
@@ -118,9 +114,7 @@ export class MoonwalkAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Moonwalk off the right edge ────────────────────────
-      // Legs walk left (where she's facing) but canvas slides
-      // right — the classic moonwalk illusion from profile view.
+      // Moonwalk off the right edge
       case "moonwalk": {
         const t = Math.min(elapsed / MOONWALK_DURATION, 1);
 
@@ -128,8 +122,7 @@ export class MoonwalkAnimation extends PlayerAnimation {
           this.slideStarted = true;
           const canvas = this.viewer.canvas;
           const rect = canvas.getBoundingClientRect();
-          this.slideDistance =
-            window.innerWidth - rect.left + rect.width + 100;
+          this.slideDistance = window.innerWidth - rect.left + rect.width + 100;
           canvas.style.zIndex = "9999";
           canvas.style.pointerEvents = "none";
 
@@ -144,7 +137,7 @@ export class MoonwalkAnimation extends PlayerAnimation {
         player.skin.head.rotation.y = HEAD_SNAP_AMOUNT;
         player.skin.head.rotation.z = 0.12;
 
-        // Walking leg cycle (visible from profile view)
+        // Walking leg cycle
         const walkSpeed = 8;
         const legAmplitude = 0.6;
         const armAmplitude = 0.4;
@@ -159,7 +152,7 @@ export class MoonwalkAnimation extends PlayerAnimation {
         player.skin.rightArm.rotation.x =
           Math.sin(this.progress * walkSpeed) * armAmplitude;
 
-        // Slide canvas to the right (opposite of walking direction)
+        // Slide canvas to the right
         const slideProgress = easeInOutCubic(t);
         this.viewer.canvas.style.transform = `translateX(${this.slideDistance * slideProgress}px)`;
 
@@ -170,7 +163,6 @@ export class MoonwalkAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Off-screen, hold position ──────────────────────────
       case "gone": {
         player.rotation.y = (3 * Math.PI) / 2;
         player.skin.head.rotation.y = HEAD_SNAP_AMOUNT;

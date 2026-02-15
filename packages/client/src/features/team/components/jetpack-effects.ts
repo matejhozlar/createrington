@@ -11,14 +11,13 @@ import {
 } from "three";
 import astronautSkinUrl from "@/assets/skins/astronaut.png";
 
-// ── Smoke texture generator ────────────────────────────────────────
+// Smoke texture generator
 
 function createSmokeTexture(): HTMLCanvasElement {
   const size = 32;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
-  // biome-ignore lint/style/noNonNullAssertion: canvas we just created always returns a context
   const ctx = canvas.getContext("2d")!;
   const center = size / 2;
   const gradient = ctx.createRadialGradient(
@@ -38,7 +37,7 @@ function createSmokeTexture(): HTMLCanvasElement {
   return canvas;
 }
 
-// ── Particle system ────────────────────────────────────────────────
+// Particle system
 
 const PARTICLE_COUNT = 80;
 const PARTICLE_LIFETIME = 1.0;
@@ -191,7 +190,7 @@ export class JetpackParticleSystem {
   }
 }
 
-// ── Jetpack animation ──────────────────────────────────────────────
+// Jetpack animation
 
 type JetpackPhase = "crouch" | "ignition" | "liftoff" | "gone";
 

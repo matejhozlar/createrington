@@ -16,6 +16,7 @@ import { HeadKickAnimation, KickAnimation } from "./headkick-effects";
 import { HulkAnimation } from "./hulk-effects";
 import { JetpackAnimation } from "./jetpack-effects";
 import { MoonwalkAnimation } from "./moonwalk-effects";
+import { NukeAnimation } from "./nuke-effects";
 
 type SkinViewerProps = {
   uuid: string;
@@ -29,7 +30,10 @@ type SkinViewerProps = {
 };
 
 function createAnimation(
-  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk" | "headkick" | "hulk">,
+  type: Exclude<
+    HoverAnimation,
+    "jetpack" | "flashlight" | "moonwalk" | "headkick" | "hulk" | "nuke"
+  >,
 ) {
   switch (type) {
     case "wave":
@@ -63,11 +67,12 @@ export const SkinViewer = ({
   const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
   const headkickRef = useRef<HeadKickAnimation | null>(null);
   const hulkRef = useRef<HulkAnimation | null>(null);
+  const nukeRef = useRef<NukeAnimation | null>(null);
+  const nukeExplosionRef = useRef<Animation | null>(null);
   const kickAnimRef = useRef<KickAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  // Reset state when effect deps change (render-time pattern)
   const depsKey = `${uuid}-${width}-${height}-${index}-${total}`;
   const [prevDepsKey, setPrevDepsKey] = useState(depsKey);
   if (prevDepsKey !== depsKey) {
@@ -134,6 +139,14 @@ export const SkinViewer = ({
         hulkRef.current.dispose();
         hulkRef.current = null;
       }
+      if (nukeRef.current) {
+        nukeRef.current.dispose();
+        nukeRef.current = null;
+      }
+      if (nukeExplosionRef.current) {
+        nukeExplosionRef.current.cancel();
+        nukeExplosionRef.current = null;
+      }
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -156,7 +169,8 @@ export const SkinViewer = ({
         flashlightRef.current ||
         jetpackRef.current ||
         headkickRef.current ||
-        hulkRef.current
+        hulkRef.current ||
+        nukeRef.current
       )
         return;
 
@@ -190,6 +204,86 @@ export const SkinViewer = ({
     };
   }, [username, index, total]);
 
+  // Non-Stratos members listen for nuke events
+  useEffect(() => {
+    if (username === "Stratos65") return;
+
+    const handleDetonate = () => {
+      // Skip if any custom animation is active on this member
+      if (
+        moonwalkRef.current ||
+        flashlightRef.current ||
+        jetpackRef.current ||
+        headkickRef.current ||
+        hulkRef.current ||
+        kickAnimRef.current
+      )
+        return;
+
+      const card = containerRef.current?.closest(
+        "button",
+      ) as HTMLElement | null;
+      if (!card) return;
+
+      // Cancel any previous explosion
+      if (nukeExplosionRef.current) {
+        nukeExplosionRef.current.cancel();
+        nukeExplosionRef.current = null;
+      }
+
+      // Random explosion direction
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 800 + Math.random() * 400;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+      const rot = (Math.random() - 0.5) * 720;
+      const shakeX = (Math.random() - 0.5) * 12;
+      const shakeY = (Math.random() - 0.5) * 12;
+
+      const anim = card.animate(
+        [
+          { transform: "none", opacity: 1, offset: 0 },
+          {
+            transform: `translate(${shakeX}px, ${shakeY}px)`,
+            opacity: 1,
+            offset: 0.15,
+          },
+          {
+            transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`,
+            opacity: 0,
+            offset: 1,
+          },
+        ],
+        {
+          duration: 900,
+          easing: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+          fill: "forwards",
+        },
+      );
+
+      nukeExplosionRef.current = anim;
+    };
+
+    const handleReset = () => {
+      if (nukeExplosionRef.current) {
+        nukeExplosionRef.current.cancel();
+        nukeExplosionRef.current = null;
+      }
+    };
+
+    document.addEventListener("team-nuke-detonate", handleDetonate);
+    document.addEventListener("team-nuke-reset", handleReset);
+
+    return () => {
+      document.removeEventListener("team-nuke-detonate", handleDetonate);
+      document.removeEventListener("team-nuke-reset", handleReset);
+      if (nukeExplosionRef.current) {
+        nukeExplosionRef.current.cancel();
+        nukeExplosionRef.current = null;
+      }
+    };
+  }, [username]);
+
   const handleMouseEnter = () => {
     const viewer = viewerRef.current;
     if (!viewer || !hoverAnimation) return;
@@ -218,6 +312,10 @@ export const SkinViewer = ({
       const hulk = new HulkAnimation(viewer);
       hulkRef.current = hulk;
       viewer.animation = hulk;
+    } else if (hoverAnimation === "nuke") {
+      const nuke = new NukeAnimation(viewer);
+      nukeRef.current = nuke;
+      viewer.animation = nuke;
     } else {
       viewer.animation = createAnimation(hoverAnimation);
     }
@@ -266,6 +364,11 @@ export const SkinViewer = ({
       hulkRef.current = null;
       // Reload original skin after hulk transformation
       viewer.loadSkin(`/api/skin/${uuid}`);
+    }
+
+    if (nukeRef.current) {
+      nukeRef.current.dispose();
+      nukeRef.current = null;
     }
 
     viewer.animation = new LookAroundIdleAnimation(index, total);

@@ -1,8 +1,6 @@
 import type { PlayerObject, SkinViewer as SkinViewerLib } from "skinview3d";
 import { PlayerAnimation } from "skinview3d";
 
-// ── Phase state machines ──────────────────────────────────────────
-
 type HeadKickPhase = "vanish" | "head-fall" | "wait-kick" | "bounce" | "gone";
 type KickPhase =
   | "turn"
@@ -12,8 +10,6 @@ type KickPhase =
   | "recover"
   | "retreat"
   | "done";
-
-// ── Timing ────────────────────────────────────────────────────────
 
 const VANISH_DURATION = 0.4;
 const HEAD_FALL_DURATION = 0.5;
@@ -30,7 +26,7 @@ const RETREAT_DURATION = 0.7;
 const BOUNCE_SPEED = 200; // px/s
 const HEAD_SPIN_SPEED = 1.5; // rad/s
 
-// ── Easing ────────────────────────────────────────────────────────
+// Easing
 
 function easeInQuad(t: number): number {
   return t * t;
@@ -44,7 +40,7 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
 
-// ── HeadKick animation (imahomen) ─────────────────────────────────
+// HeadKick animation
 
 export class HeadKickAnimation extends PlayerAnimation {
   private viewer: SkinViewerLib;
@@ -66,7 +62,7 @@ export class HeadKickAnimation extends PlayerAnimation {
   private canvasHeight = 0;
   private originalParent: HTMLElement | null = null;
 
-  // Head region within the canvas (for collision)
+  // Head region within the canvas
   private headOffsetX = 0;
   private headOffsetY = 0;
   private headW = 0;
@@ -81,7 +77,7 @@ export class HeadKickAnimation extends PlayerAnimation {
     const elapsed = this.progress - this.phaseStart;
 
     switch (this.phase) {
-      // ── Body parts vanish in rapid stagger ────────────────
+      // Body parts vanish in rapid stagger
       case "vanish": {
         const t = Math.min(elapsed / VANISH_DURATION, 1);
 
@@ -98,7 +94,7 @@ export class HeadKickAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Head drops with gravity, small bounce ─────────────
+      // Head drops with gravity, small bounce
       case "head-fall": {
         const t = Math.min(elapsed / HEAD_FALL_DURATION, 1);
 
@@ -107,8 +103,7 @@ export class HeadKickAnimation extends PlayerAnimation {
           player.position.y = -FALL_DISTANCE * easeInQuad(fallT);
         } else if (t < 0.85) {
           const bounceT = (t - 0.7) / 0.15;
-          player.position.y =
-            -FALL_DISTANCE + 2 * Math.sin(bounceT * Math.PI);
+          player.position.y = -FALL_DISTANCE + 2 * Math.sin(bounceT * Math.PI);
         } else {
           const settleT = (t - 0.85) / 0.15;
           player.position.y =
@@ -124,13 +119,13 @@ export class HeadKickAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Wait for kick connect event ───────────────────────
+      // Wait for kick connect event
       case "wait-kick": {
         player.position.y = -FALL_DISTANCE;
         break;
       }
 
-      // ── DVD bounce around viewport ────────────────────────
+      // DVD bounce around viewport
       case "bounce": {
         if (!this.bounceStarted) {
           this.initBounce(player);
@@ -306,7 +301,7 @@ export class HeadKickAnimation extends PlayerAnimation {
   }
 }
 
-// ── Kick animation (Cailin05) ─────────────────────────────────────
+// Kick animation (Cailin05)
 // Cailin turns, walks toward imahomen's fallen head, kicks it,
 // then retreats back to her original position.
 
@@ -331,7 +326,7 @@ export class KickAnimation extends PlayerAnimation {
     const elapsed = this.progress - this.phaseStart;
 
     switch (this.phase) {
-      // ── Turn to face left (toward imahomen) ──────────────
+      //  Turn to face left (toward imahomen)
       case "turn": {
         const t = Math.min(elapsed / TURN_DURATION, 1);
         const e = easeInOutCubic(t);

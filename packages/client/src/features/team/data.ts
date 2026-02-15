@@ -10,7 +10,8 @@ export type HoverAnimation =
   | "flashlight"
   | "moonwalk"
   | "headkick"
-  | "hulk";
+  | "hulk"
+  | "nuke";
 
 export type TeamMember = {
   username: string;
@@ -48,7 +49,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "25f73ab5-39e3-4bf7-bd52-9ad7407fdb3e",
     role: "Admin",
     tier: "admin",
-    hoverAnimation: "walking",
+    hoverAnimation: "nuke",
   },
   {
     username: "imahomen",
