@@ -25,6 +25,9 @@ export enum BalanceTransactionType {
   SALE = "sale",
   REWARD = "reward",
   REFUND = "refund",
+  LOTTERY_ENTRY = "lottery_entry",
+  LOTTERY_WIN = "lottery_win",
+  LOTTERY_REFUND = "lottery_refund",
   OTHER = "other",
 }
 

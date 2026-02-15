@@ -16,6 +16,7 @@ export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { FaqEntryQueries } from "./faq/entry";
 export { FaqWelcomeMessageQueries } from "./faq/welcome/message";
 export { LeaderboardMessageQueries } from "./leaderboard/message";
+export { LotteryParticipantQueries } from "./lottery/participant";
 export { PlayerQueries } from "./player";
 export { PlayerAchievementQueries } from "./player/achievement";
 export { PlayerBalanceQueries } from "./player/balance";

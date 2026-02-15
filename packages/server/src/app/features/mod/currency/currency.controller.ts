@@ -2,6 +2,7 @@ import { BadRequestError } from "@/app/middleware";
 import config from "@/config";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
 import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
@@ -201,12 +202,38 @@ export class CurrencyController {
   // PLACEHOLDER STUBS
   // ============================================================================
 
-  static async startLottery(_req: Request, _res: Response): Promise<void> {
-    throw new BadRequestError("Not implemented");
+  static async startLottery(req: Request, res: Response): Promise<void> {
+    const { uuid, name } = req.modAuth;
+    const { amount } = req.body;
+
+    if (amount == null) {
+      throw new BadRequestError("amount is required");
+    }
+
+    if (typeof amount !== "number" || amount <= 0) {
+      throw new BadRequestError("amount must be a positive number");
+    }
+
+    const result = await lotteryService.start(uuid, name, amount);
+
+    res.json(result);
   }
 
-  static async joinLottery(_req: Request, _res: Response): Promise<void> {
-    throw new BadRequestError("Not implemented");
+  static async joinLottery(req: Request, res: Response): Promise<void> {
+    const { uuid, name } = req.modAuth;
+    const { amount } = req.body;
+
+    if (amount == null) {
+      throw new BadRequestError("amount is required");
+    }
+
+    if (typeof amount !== "number" || amount <= 0) {
+      throw new BadRequestError("amount must be a positive number");
+    }
+
+    const result = await lotteryService.join(uuid, name, amount);
+
+    res.json(result);
   }
 
   static async startVote(_req: Request, _res: Response): Promise<void> {

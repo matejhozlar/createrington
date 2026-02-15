@@ -561,6 +561,33 @@ ALTER SEQUENCE public.leaderboard_message_id_seq OWNED BY public.leaderboard_mes
 
 
 --
+-- Name: lottery_participant; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lottery_participant (
+    id integer NOT NULL,
+    minecraft_uuid uuid NOT NULL,
+    minecraft_username text NOT NULL,
+    amount bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: lottery_participant_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lottery_participant ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.lottery_participant_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
 -- Name: player; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1445,6 +1472,14 @@ ALTER TABLE ONLY public.leaderboard_message
 
 
 --
+-- Name: lottery_participant lottery_participant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lottery_participant
+    ADD CONSTRAINT lottery_participant_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: player_achievement player_achievement_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2171,6 +2206,14 @@ CREATE TRIGGER update_player_updated_at BEFORE UPDATE ON public.player FOR EACH 
 
 ALTER TABLE ONLY public.admin
     ADD CONSTRAINT admin_discord_id_fkey FOREIGN KEY (discord_id) REFERENCES public.player(discord_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: lottery_participant fk_lottery_participant_player; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lottery_participant
+    ADD CONSTRAINT fk_lottery_participant_player FOREIGN KEY (minecraft_uuid) REFERENCES public.player(minecraft_uuid) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
