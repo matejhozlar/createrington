@@ -8,10 +8,11 @@ import { TIER_CONFIG } from "../data";
 type TeamMemberCardProps = {
   member: TeamMember;
   index: number;
+  total: number;
   onClick: () => void;
 };
 
-export const TeamMemberCard = ({ member, index, onClick }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCardProps) => {
   const isMobile = useIsMobile();
   const config = TIER_CONFIG[member.tier];
   const size = isMobile ? config.size.mobile : config.size.desktop;
@@ -32,6 +33,8 @@ export const TeamMemberCard = ({ member, index, onClick }: TeamMemberCardProps) 
         width={size.width}
         height={size.height}
         hoverAnimation={member.hoverAnimation}
+        index={index}
+        total={total}
       />
 
       <div className="flex flex-col items-center gap-1">

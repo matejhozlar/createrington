@@ -15,6 +15,7 @@ export const TeamPodium = () => {
             key={member.uuid}
             member={member}
             index={index}
+            total={PODIUM_ORDER.length}
             onClick={() => setSelectedMember(member)}
           />
         ))}

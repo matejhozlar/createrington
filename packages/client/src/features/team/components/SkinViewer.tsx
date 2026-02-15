@@ -18,6 +18,8 @@ type SkinViewerProps = {
   width: number;
   height: number;
   hoverAnimation?: HoverAnimation;
+  index: number;
+  total: number;
   className?: string;
 };
 
@@ -31,7 +33,7 @@ function createAnimation(type: HoverAnimation) {
   }
 }
 
-export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "walking", className }: SkinViewerProps) => {
+export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "walking", index, total, className }: SkinViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,7 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
     });
 
     viewer.autoRotate = false;
-    viewer.animation = new LookAroundIdleAnimation();
+    viewer.animation = new LookAroundIdleAnimation(index, total);
 
     viewer
       .loadSkin(`https://crafatar.com/skins/${uuid}`)
@@ -96,7 +98,7 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
 
   const handleMouseLeave = () => {
     if (viewerRef.current) {
-      viewerRef.current.animation = new LookAroundIdleAnimation();
+      viewerRef.current.animation = new LookAroundIdleAnimation(index, total);
     }
   };
 
