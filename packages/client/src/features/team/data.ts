@@ -9,7 +9,8 @@ export type HoverAnimation =
   | "jetpack"
   | "flashlight"
   | "moonwalk"
-  | "headkick";
+  | "headkick"
+  | "hulk";
 
 export type TeamMember = {
   username: string;
@@ -26,7 +27,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
     role: "Owner",
     tier: "owner",
-    hoverAnimation: "wave",
+    hoverAnimation: "flashlight",
   },
   {
     username: "Agent772",
@@ -40,7 +41,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
     role: "Developer & Admin",
     tier: "dev-admin",
-    hoverAnimation: "flashlight",
+    hoverAnimation: "hulk",
   },
   {
     username: "Stratos65",

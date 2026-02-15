@@ -13,6 +13,7 @@ import type { HoverAnimation } from "../data";
 import { LookAroundIdleAnimation } from "./animations";
 import { FlashlightAimAnimation, FlashlightEffect } from "./flashlight-effects";
 import { HeadKickAnimation, KickAnimation } from "./headkick-effects";
+import { HulkAnimation } from "./hulk-effects";
 import { JetpackAnimation } from "./jetpack-effects";
 import { MoonwalkAnimation } from "./moonwalk-effects";
 
@@ -28,7 +29,7 @@ type SkinViewerProps = {
 };
 
 function createAnimation(
-  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk" | "headkick">,
+  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk" | "headkick" | "hulk">,
 ) {
   switch (type) {
     case "wave":
@@ -61,6 +62,7 @@ export const SkinViewer = ({
   const flashlightTimerRef = useRef<number | null>(null);
   const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
   const headkickRef = useRef<HeadKickAnimation | null>(null);
+  const hulkRef = useRef<HulkAnimation | null>(null);
   const kickAnimRef = useRef<KickAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -128,6 +130,10 @@ export const SkinViewer = ({
         headkickRef.current.dispose();
         headkickRef.current = null;
       }
+      if (hulkRef.current) {
+        hulkRef.current.dispose();
+        hulkRef.current = null;
+      }
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -149,7 +155,8 @@ export const SkinViewer = ({
         moonwalkRef.current ||
         flashlightRef.current ||
         jetpackRef.current ||
-        headkickRef.current
+        headkickRef.current ||
+        hulkRef.current
       )
         return;
 
@@ -207,6 +214,10 @@ export const SkinViewer = ({
       const headkick = new HeadKickAnimation(viewer);
       headkickRef.current = headkick;
       viewer.animation = headkick;
+    } else if (hoverAnimation === "hulk") {
+      const hulk = new HulkAnimation(viewer);
+      hulkRef.current = hulk;
+      viewer.animation = hulk;
     } else {
       viewer.animation = createAnimation(hoverAnimation);
     }
@@ -248,6 +259,13 @@ export const SkinViewer = ({
     if (headkickRef.current) {
       headkickRef.current.dispose();
       headkickRef.current = null;
+    }
+
+    if (hulkRef.current) {
+      hulkRef.current.dispose();
+      hulkRef.current = null;
+      // Reload original skin after hulk transformation
+      viewer.loadSkin(`/api/skin/${uuid}`);
     }
 
     viewer.animation = new LookAroundIdleAnimation(index, total);
