@@ -236,6 +236,9 @@ export class HeadKickAnimation extends PlayerAnimation {
   }
 
   dispose() {
+    // Tell Cailin to abort her kick if in progress
+    document.dispatchEvent(new CustomEvent("team-kick-cancel"));
+
     // Clean up event listeners and timeout
     if (this.kickConnectHandler) {
       document.removeEventListener(

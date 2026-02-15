@@ -61,6 +61,7 @@ export const SkinViewer = ({
   const flashlightTimerRef = useRef<number | null>(null);
   const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
   const headkickRef = useRef<HeadKickAnimation | null>(null);
+  const kickAnimRef = useRef<KickAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -156,21 +157,29 @@ export const SkinViewer = ({
         .detail;
       const myRect = viewer.canvas.getBoundingClientRect();
       const slideDistance = myRect.left + myRect.width / 2 - headCenterX;
-      viewer.animation = new KickAnimation(viewer, slideDistance);
+      const kick = new KickAnimation(viewer, slideDistance);
+      kickAnimRef.current = kick;
+      viewer.animation = kick;
     };
 
     const handleKickDone = () => {
       const viewer = viewerRef.current;
       if (!viewer) return;
+      if (kickAnimRef.current) {
+        kickAnimRef.current.dispose();
+        kickAnimRef.current = null;
+      }
       viewer.animation = new LookAroundIdleAnimation(index, total);
     };
 
     document.addEventListener("team-kick-request", handleKickRequest);
     document.addEventListener("team-kick-done", handleKickDone);
+    document.addEventListener("team-kick-cancel", handleKickDone);
 
     return () => {
       document.removeEventListener("team-kick-request", handleKickRequest);
       document.removeEventListener("team-kick-done", handleKickDone);
+      document.removeEventListener("team-kick-cancel", handleKickDone);
     };
   }, [username, index, total]);
 
