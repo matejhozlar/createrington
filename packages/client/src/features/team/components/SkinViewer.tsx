@@ -57,6 +57,7 @@ export const SkinViewer = ({
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const jetpackRef = useRef<JetpackAnimation | null>(null);
   const flashlightRef = useRef<FlashlightEffect | null>(null);
+  const flashlightTimerRef = useRef<number | null>(null);
   const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -104,6 +105,10 @@ export const SkinViewer = ({
 
     return () => {
       disposed = true;
+      if (flashlightTimerRef.current !== null) {
+        clearTimeout(flashlightTimerRef.current);
+        flashlightTimerRef.current = null;
+      }
       if (flashlightRef.current) {
         flashlightRef.current.dispose();
         flashlightRef.current = null;
@@ -129,10 +134,13 @@ export const SkinViewer = ({
     if (!viewer || !hoverAnimation) return;
 
     if (hoverAnimation === "flashlight") {
-      const flashlight = new FlashlightEffect(viewer.canvas);
-      flashlightRef.current = flashlight;
-      flashlight.start();
       viewer.animation = new FlashlightAimAnimation();
+      flashlightTimerRef.current = window.setTimeout(() => {
+        flashlightTimerRef.current = null;
+        const flashlight = new FlashlightEffect(viewer.canvas);
+        flashlightRef.current = flashlight;
+        flashlight.start();
+      }, 1000);
     } else if (hoverAnimation === "jetpack") {
       const jetpack = new JetpackAnimation(viewer);
       jetpackRef.current = jetpack;
@@ -149,6 +157,11 @@ export const SkinViewer = ({
   const handleMouseLeave = () => {
     const viewer = viewerRef.current;
     if (!viewer) return;
+
+    if (flashlightTimerRef.current !== null) {
+      clearTimeout(flashlightTimerRef.current);
+      flashlightTimerRef.current = null;
+    }
 
     if (flashlightRef.current) {
       flashlightRef.current.dispose();
