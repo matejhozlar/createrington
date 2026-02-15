@@ -13,6 +13,7 @@ import type { HoverAnimation } from "../data";
 import { LookAroundIdleAnimation } from "./animations";
 import { FlashlightAimAnimation, FlashlightEffect } from "./flashlight-effects";
 import { JetpackAnimation } from "./jetpack-effects";
+import { MoonwalkAnimation } from "./moonwalk-effects";
 
 type SkinViewerProps = {
   uuid: string;
@@ -26,7 +27,7 @@ type SkinViewerProps = {
 };
 
 function createAnimation(
-  type: Exclude<HoverAnimation, "jetpack" | "flashlight">,
+  type: Exclude<HoverAnimation, "jetpack" | "flashlight" | "moonwalk">,
 ) {
   switch (type) {
     case "wave":
@@ -56,6 +57,7 @@ export const SkinViewer = ({
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const jetpackRef = useRef<JetpackAnimation | null>(null);
   const flashlightRef = useRef<FlashlightEffect | null>(null);
+  const moonwalkRef = useRef<MoonwalkAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -110,6 +112,10 @@ export const SkinViewer = ({
         jetpackRef.current.dispose();
         jetpackRef.current = null;
       }
+      if (moonwalkRef.current) {
+        moonwalkRef.current.dispose();
+        moonwalkRef.current = null;
+      }
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -131,6 +137,10 @@ export const SkinViewer = ({
       const jetpack = new JetpackAnimation(viewer);
       jetpackRef.current = jetpack;
       viewer.animation = jetpack;
+    } else if (hoverAnimation === "moonwalk") {
+      const moonwalk = new MoonwalkAnimation(viewer);
+      moonwalkRef.current = moonwalk;
+      viewer.animation = moonwalk;
     } else {
       viewer.animation = createAnimation(hoverAnimation);
     }
@@ -157,6 +167,11 @@ export const SkinViewer = ({
         .catch(() => {
           // Skin reload failed, still reset animation
         });
+    }
+
+    if (moonwalkRef.current) {
+      moonwalkRef.current.dispose();
+      moonwalkRef.current = null;
     }
 
     viewer.animation = new LookAroundIdleAnimation(index, total);
