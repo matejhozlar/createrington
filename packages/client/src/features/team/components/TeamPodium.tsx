@@ -10,10 +10,11 @@ export const TeamPodium = () => {
   return (
     <>
       <div className="flex items-end justify-center gap-2 md:gap-6">
-        {PODIUM_ORDER.map((member) => (
+        {PODIUM_ORDER.map((member, index) => (
           <TeamMemberCard
             key={member.uuid}
             member={member}
+            index={index}
             onClick={() => setSelectedMember(member)}
           />
         ))}

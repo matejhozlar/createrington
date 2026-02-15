@@ -7,10 +7,11 @@ import { TIER_CONFIG } from "../data";
 
 type TeamMemberCardProps = {
   member: TeamMember;
+  index: number;
   onClick: () => void;
 };
 
-export const TeamMemberCard = ({ member, onClick }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({ member, index, onClick }: TeamMemberCardProps) => {
   const isMobile = useIsMobile();
   const config = TIER_CONFIG[member.tier];
   const size = isMobile ? config.size.mobile : config.size.desktop;
@@ -19,7 +20,11 @@ export const TeamMemberCard = ({ member, onClick }: TeamMemberCardProps) => {
     <button
       type="button"
       onClick={onClick}
-      className="flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 cursor-pointer"
+      className="flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 cursor-pointer opacity-0"
+      style={{
+        animation: "fade-in-up 0.5s ease-out forwards",
+        animationDelay: `${index * 100}ms`,
+      }}
     >
       <SkinViewer
         uuid={member.uuid}
