@@ -1,16 +1,17 @@
+import { Loader2, UserRound } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  FlyingAnimation,
+  HitAnimation,
+  RunningAnimation,
   SkinViewer as SkinViewerLib,
   WalkingAnimation,
   WaveAnimation,
-  RunningAnimation,
-  FlyingAnimation,
-  HitAnimation,
 } from "skinview3d";
-import { Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
 import { LookAroundIdleAnimation } from "./animations";
+import { JetpackAnimation } from "./jetpack-effects";
 
 type SkinViewerProps = {
   uuid: string;
@@ -23,7 +24,7 @@ type SkinViewerProps = {
   className?: string;
 };
 
-function createAnimation(type: HoverAnimation) {
+function createAnimation(type: Exclude<HoverAnimation, "jetpack">) {
   switch (type) {
     case "wave":
       return new WaveAnimation();
@@ -50,6 +51,7 @@ export const SkinViewer = ({
 }: SkinViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
+  const jetpackRef = useRef<JetpackAnimation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -96,6 +98,10 @@ export const SkinViewer = ({
 
     return () => {
       disposed = true;
+      if (jetpackRef.current) {
+        jetpackRef.current.dispose();
+        jetpackRef.current = null;
+      }
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -105,15 +111,37 @@ export const SkinViewer = ({
   }, [uuid, width, height, index, total]);
 
   const handleMouseEnter = () => {
-    if (viewerRef.current) {
-      viewerRef.current.animation = createAnimation(hoverAnimation);
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    if (hoverAnimation === "jetpack") {
+      const jetpack = new JetpackAnimation(viewer, uuid);
+      jetpackRef.current = jetpack;
+      viewer.animation = jetpack;
+    } else {
+      viewer.animation = createAnimation(hoverAnimation);
     }
   };
 
   const handleMouseLeave = () => {
-    if (viewerRef.current) {
-      viewerRef.current.animation = new LookAroundIdleAnimation(index, total);
+    const viewer = viewerRef.current;
+    if (!viewer) return;
+
+    if (jetpackRef.current) {
+      jetpackRef.current.dispose();
+      jetpackRef.current = null;
+      // Reload original skin, then set idle animation
+      viewer
+        .loadSkin(`/api/skin/${uuid}`)
+        .then(() => {
+          // Skin loaded, idle animation already handles pose reset
+        })
+        .catch(() => {
+          // Skin reload failed, still reset animation
+        });
     }
+
+    viewer.animation = new LookAroundIdleAnimation(index, total);
   };
 
   return (

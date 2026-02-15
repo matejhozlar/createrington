@@ -1,6 +1,12 @@
 export type TeamTier = "owner" | "dev-admin" | "admin";
 
-export type HoverAnimation = "walking" | "wave" | "running" | "flying" | "hit";
+export type HoverAnimation =
+  | "walking"
+  | "wave"
+  | "running"
+  | "flying"
+  | "hit"
+  | "jetpack";
 
 export type TeamMember = {
   username: string;
@@ -24,7 +30,7 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
     role: "Developer & Admin",
     tier: "dev-admin",
-    hoverAnimation: "running",
+    hoverAnimation: "jetpack",
   },
   {
     username: "The_BigShot",
@@ -68,15 +74,24 @@ export const PODIUM_ORDER = [
 
 export const TIER_CONFIG = {
   owner: {
-    size: { desktop: { width: 150, height: 230 }, mobile: { width: 110, height: 165 } },
+    size: {
+      desktop: { width: 150, height: 230 },
+      mobile: { width: 110, height: 165 },
+    },
     badgeClass: "bg-[#ff0000]/20 text-[#ff0000] border-[#ff0000]/30",
   },
   "dev-admin": {
-    size: { desktop: { width: 120, height: 185 }, mobile: { width: 90, height: 135 } },
+    size: {
+      desktop: { width: 120, height: 185 },
+      mobile: { width: 90, height: 135 },
+    },
     badgeClass: "bg-[#50c878]/20 text-[#50c878] border-[#50c878]/30",
   },
   admin: {
-    size: { desktop: { width: 110, height: 170 }, mobile: { width: 80, height: 120 } },
+    size: {
+      desktop: { width: 110, height: 170 },
+      mobile: { width: 80, height: 120 },
+    },
     badgeClass: "bg-[#e36009]/20 text-[#e36009] border-[#e36009]/30",
   },
 } as const;
