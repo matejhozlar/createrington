@@ -46,9 +46,11 @@ export const TeamMemberDialog = ({ member, open, onOpenChange }: TeamMemberDialo
           </div>
         </DialogHeader>
 
-        <DialogDescription className="text-sm text-muted-foreground">
-          {member.description}
-        </DialogDescription>
+        {member.description && (
+          <DialogDescription className="text-sm text-muted-foreground">
+            {member.description}
+          </DialogDescription>
+        )}
       </DialogContent>
     </Dialog>
   );

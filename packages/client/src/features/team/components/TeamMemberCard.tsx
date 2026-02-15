@@ -19,10 +19,11 @@ export const TeamMemberCard = ({ member, onClick }: TeamMemberCardProps) => {
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 cursor-pointer"
+      className="flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 cursor-pointer"
     >
       <SkinViewer
         uuid={member.uuid}
+        username={member.username}
         width={size.width}
         height={size.height}
         hoverAnimation={member.hoverAnimation}

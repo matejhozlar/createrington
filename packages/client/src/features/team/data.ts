@@ -7,7 +7,7 @@ export type TeamMember = {
   uuid: string;
   role: string;
   tier: TeamTier;
-  description: string;
+  description?: string;
   hoverAnimation: HoverAnimation;
 };
 
@@ -17,7 +17,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "091b900c-4174-478c-900c-a0fe5a31a329",
     role: "Owner",
     tier: "owner",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "wave",
   },
   {
@@ -25,7 +24,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
     role: "Developer & Admin",
     tier: "dev-admin",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "running",
   },
   {
@@ -33,7 +31,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
     role: "Developer & Admin",
     tier: "dev-admin",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "hit",
   },
   {
@@ -41,7 +38,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "25f73ab5-39e3-4bf7-bd52-9ad7407fdb3e",
     role: "Admin",
     tier: "admin",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "walking",
   },
   {
@@ -49,7 +45,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "69bc13fe-1972-480e-8075-c88340d7b7da",
     role: "Admin",
     tier: "admin",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "flying",
   },
   {
@@ -57,7 +52,6 @@ export const TEAM_MEMBERS: TeamMember[] = [
     uuid: "aee71815-6420-444c-a245-9047c41f4a39",
     role: "Admin",
     tier: "admin",
-    description: "Placeholder description — to be filled in later.",
     hoverAnimation: "walking",
   },
 ];

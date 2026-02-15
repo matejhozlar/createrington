@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   SkinViewer as SkinViewerLib,
   IdleAnimation,
@@ -8,10 +8,13 @@ import {
   FlyingAnimation,
   HitAnimation,
 } from "skinview3d";
+import { Loader2, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
 
 type SkinViewerProps = {
   uuid: string;
+  username: string;
   width: number;
   height: number;
   hoverAnimation?: HoverAnimation;
@@ -28,13 +31,19 @@ function createAnimation(type: HoverAnimation) {
   }
 }
 
-export const SkinViewer = ({ uuid, width, height, hoverAnimation = "walking", className }: SkinViewerProps) => {
+export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "walking", className }: SkinViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    let disposed = false;
+    setLoading(true);
+    setError(false);
 
     const viewer = new SkinViewerLib({
       width,
@@ -47,14 +56,30 @@ export const SkinViewer = ({ uuid, width, height, hoverAnimation = "walking", cl
     viewer.autoRotate = false;
     viewer.animation = new IdleAnimation();
 
-    viewer.loadSkin(`https://crafatar.com/skins/${uuid}`).catch(() => {
-      viewer.loadSkin(`https://mc-heads.net/skin/${uuid}`).catch(() => {});
-    });
+    viewer
+      .loadSkin(`https://crafatar.com/skins/${uuid}`)
+      .then(() => {
+        if (!disposed) setLoading(false);
+      })
+      .catch(() => {
+        viewer
+          .loadSkin(`https://mc-heads.net/skin/${uuid}`)
+          .then(() => {
+            if (!disposed) setLoading(false);
+          })
+          .catch(() => {
+            if (!disposed) {
+              setLoading(false);
+              setError(true);
+            }
+          });
+      });
 
     container.appendChild(viewer.canvas);
     viewerRef.current = viewer;
 
     return () => {
+      disposed = true;
       viewer.dispose();
       if (container.contains(viewer.canvas)) {
         container.removeChild(viewer.canvas);
@@ -77,11 +102,30 @@ export const SkinViewer = ({ uuid, width, height, hoverAnimation = "walking", cl
 
   return (
     <div
-      ref={containerRef}
-      className={className}
+      className={cn("relative", className)}
       style={{ width, height }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-    />
+      role="img"
+      aria-label={`3D skin of ${username}`}
+    >
+      <div
+        ref={containerRef}
+        className={cn(
+          "transition-opacity duration-300",
+          loading || error ? "opacity-0" : "opacity-100",
+        )}
+      />
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <UserRound className="size-10 text-muted-foreground" />
+        </div>
+      )}
+    </div>
   );
 };
