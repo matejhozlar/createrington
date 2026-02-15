@@ -115,7 +115,7 @@ export const SkinViewer = ({
     if (!viewer) return;
 
     if (hoverAnimation === "jetpack") {
-      const jetpack = new JetpackAnimation(viewer, uuid);
+      const jetpack = new JetpackAnimation(viewer);
       jetpackRef.current = jetpack;
       viewer.animation = jetpack;
     } else {

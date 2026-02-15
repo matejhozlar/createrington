@@ -12,7 +12,11 @@ import {
 
 // ── Astronaut skin generator ───────────────────────────────────────
 
-/** Creates a 64×64 Minecraft skin canvas with a simple astronaut suit. */
+/**
+ * Creates a 64×64 Minecraft skin canvas with a simple astronaut suit.
+ * Modify the color constants below to change the suit appearance,
+ * or replace this function entirely to load a skin image from a URL.
+ */
 export function createAstronautSkin(): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = 64;
@@ -166,8 +170,8 @@ function createSmokeTexture(): HTMLCanvasElement {
 
 // ── Particle system ────────────────────────────────────────────────
 
-const PARTICLE_COUNT = 60;
-const PARTICLE_LIFETIME = 0.8;
+const PARTICLE_COUNT = 80;
+const PARTICLE_LIFETIME = 1.0;
 
 export class JetpackParticleSystem {
   private geometry: BufferGeometry;
@@ -207,7 +211,7 @@ export class JetpackParticleSystem {
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,
-      opacity: 0.8,
+      opacity: 0.7,
     });
 
     this.points = new Points(this.geometry, this.material);
@@ -237,7 +241,7 @@ export class JetpackParticleSystem {
     // Emit new particles
     if (this.emitting) {
       this.emitAccumulator += dt;
-      const emitInterval = 1 / 120; // ~120 particles per second
+      const emitInterval = 1 / 120;
       while (this.emitAccumulator >= emitInterval) {
         this.emitAccumulator -= emitInterval;
         this.spawnParticle(emitY);
@@ -245,7 +249,7 @@ export class JetpackParticleSystem {
     }
 
     // Update existing particles
-    const drag = 0.97;
+    const drag = 0.96;
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       if (!this.alive[i]) continue;
 
@@ -267,10 +271,9 @@ export class JetpackParticleSystem {
       posArray[idx + 1] += this.velocitiesY[i] * dt;
       posArray[idx + 2] += this.velocitiesZ[i] * dt;
 
-      // Fade size based on age
+      // Size grows as particle ages (texture gradient handles visual fade)
       const life = this.ages[i] / PARTICLE_LIFETIME;
-      sizeArray[i] = 3 + life * 5; // grow as they fade
-      this.material.opacity = 0.8 * (1 - life * life);
+      sizeArray[i] = 3 + life * 6;
     }
 
     positions.needsUpdate = true;
@@ -300,7 +303,7 @@ export class JetpackParticleSystem {
 
     // Velocity: mostly downward with outward spread
     this.velocitiesX[slot] = (Math.random() - 0.5) * 8;
-    this.velocitiesY[slot] = -(15 + Math.random() * 10);
+    this.velocitiesY[slot] = -(12 + Math.random() * 8);
     this.velocitiesZ[slot] = (Math.random() - 0.5) * 8;
 
     this.ages[slot] = 0;
@@ -342,7 +345,11 @@ export class JetpackAnimation extends PlayerAnimation {
   private skinSwapped = false;
   private particlesAdded = false;
 
-  constructor(viewer: SkinViewerLib, _uuid: string) {
+  // Canvas fly-out state
+  private flyStarted = false;
+  private flyDistance = 0;
+
+  constructor(viewer: SkinViewerLib) {
     super();
     this.viewer = viewer;
     this.particles = new JetpackParticleSystem();
@@ -425,26 +432,39 @@ export class JetpackAnimation extends PlayerAnimation {
 
       case "liftoff": {
         const t = Math.min(elapsed / LIFTOFF_DURATION, 1);
-        const accel = easeInCubic(t);
+
+        // On first liftoff frame, calculate fly distance and apply styles
+        if (!this.flyStarted) {
+          this.flyStarted = true;
+          const canvas = this.viewer.canvas;
+          const rect = canvas.getBoundingClientRect();
+          // Fly past the top of the viewport
+          this.flyDistance = rect.top + rect.height + 200;
+          canvas.style.zIndex = "9999";
+          canvas.style.pointerEvents = "none";
+        }
+
+        // Fly the canvas upward using transform (stays in layout flow)
+        const flyProgress = easeInCubic(t);
+        this.viewer.canvas.style.transform = `translateY(${-this.flyDistance * flyProgress}px)`;
+
+        // Small rise within 3D scene for launch feel (keep head in frame)
+        const riseT = Math.min(t * 4, 1);
+        player.position.y = -1.5 + 2 * easeInOutCubic(riseT);
 
         // Straighten pose during liftoff
-        const straighten = Math.min(t * 3, 1); // straighten quickly
+        const straighten = Math.min(t * 3, 1);
         player.skin.leftLeg.rotation.x = 0.4 * (1 - straighten);
         player.skin.rightLeg.rotation.x = 0.4 * (1 - straighten);
         player.skin.body.rotation.x = 0.1 * (1 - straighten);
         player.skin.head.rotation.x = -0.15 - 0.2 * straighten; // look up
-        // Arms to sides
         player.skin.leftArm.rotation.x = -0.3 * (1 - straighten);
         player.skin.leftArm.rotation.z = 0.2 + 0.1 * straighten;
         player.skin.rightArm.rotation.x = -0.3 * (1 - straighten);
         player.skin.rightArm.rotation.z = -0.2 - 0.1 * straighten;
 
-        // Rise: from -1.5 to 40
-        const targetY = -1.5 + 41.5 * accel;
-        player.position.y = targetY;
-
-        // Reduce shake during liftoff
-        const shakeDecay = 1 - t;
+        // Shake dies out during liftoff
+        const shakeDecay = Math.max(1 - t * 2, 0);
         player.position.x = Math.sin(this.progress * 60) * 0.3 * shakeDecay;
         player.position.z = Math.cos(this.progress * 45) * 0.15 * shakeDecay;
 
@@ -460,11 +480,11 @@ export class JetpackAnimation extends PlayerAnimation {
       }
 
       case "gone": {
-        // Player stays above viewport, particles finish fading
-        player.position.y = 40;
+        // Hold final position, let remaining particles fade
+        player.position.y = 5;
         player.position.x = 0;
         player.position.z = 0;
-        this.particles.update(delta, 24);
+        this.particles.update(delta, player.position.y - 16);
         break;
       }
     }
@@ -473,5 +493,16 @@ export class JetpackAnimation extends PlayerAnimation {
   dispose() {
     this.particles.stopEmitting();
     this.particles.dispose();
+
+    // Reset player state
+    this.viewer.playerObject.position.set(0, 0, 0);
+
+    // Reset canvas styles from fly-out
+    if (this.flyStarted) {
+      const canvas = this.viewer.canvas;
+      canvas.style.transform = "";
+      canvas.style.zIndex = "";
+      canvas.style.pointerEvents = "";
+    }
   }
 }
