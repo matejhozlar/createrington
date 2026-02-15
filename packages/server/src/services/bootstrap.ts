@@ -22,6 +22,7 @@ import { PlayerBanService } from "./player/ban";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
+import { lotteryService } from "./lottery";
 
 /**
  * Register all services with the container
@@ -307,6 +308,11 @@ export function registerServices(): void {
   );
 
   container.on("serviceReady", async (serviceName) => {
+    if (serviceName === Services.DATABASE) {
+      lotteryService.initialize().catch((err) =>
+        logger.error("LotteryService initialization failed:", err),
+      );
+    }
     if (serviceName === Services.MESSAGE_CACHE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
