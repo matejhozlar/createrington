@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
 import { LookAroundIdleAnimation } from "./animations";
+import { FlashlightAimAnimation, FlashlightEffect } from "./flashlight-effects";
 import { JetpackAnimation } from "./jetpack-effects";
 
 type SkinViewerProps = {
@@ -24,7 +25,9 @@ type SkinViewerProps = {
   className?: string;
 };
 
-function createAnimation(type: Exclude<HoverAnimation, "jetpack">) {
+function createAnimation(
+  type: Exclude<HoverAnimation, "jetpack" | "flashlight">,
+) {
   switch (type) {
     case "wave":
       return new WaveAnimation();
@@ -52,6 +55,7 @@ export const SkinViewer = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const jetpackRef = useRef<JetpackAnimation | null>(null);
+  const flashlightRef = useRef<FlashlightEffect | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -98,6 +102,10 @@ export const SkinViewer = ({
 
     return () => {
       disposed = true;
+      if (flashlightRef.current) {
+        flashlightRef.current.dispose();
+        flashlightRef.current = null;
+      }
       if (jetpackRef.current) {
         jetpackRef.current.dispose();
         jetpackRef.current = null;
@@ -114,7 +122,12 @@ export const SkinViewer = ({
     const viewer = viewerRef.current;
     if (!viewer) return;
 
-    if (hoverAnimation === "jetpack") {
+    if (hoverAnimation === "flashlight") {
+      const flashlight = new FlashlightEffect(viewer.canvas);
+      flashlightRef.current = flashlight;
+      flashlight.start();
+      viewer.animation = new FlashlightAimAnimation();
+    } else if (hoverAnimation === "jetpack") {
       const jetpack = new JetpackAnimation(viewer);
       jetpackRef.current = jetpack;
       viewer.animation = jetpack;
@@ -126,6 +139,11 @@ export const SkinViewer = ({
   const handleMouseLeave = () => {
     const viewer = viewerRef.current;
     if (!viewer) return;
+
+    if (flashlightRef.current) {
+      flashlightRef.current.dispose();
+      flashlightRef.current = null;
+    }
 
     if (jetpackRef.current) {
       jetpackRef.current.dispose();
