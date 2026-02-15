@@ -15,18 +15,18 @@ const tools = [
     description:
       "Manage keyword-triggered FAQ entries that automatically respond to common questions in Discord.",
     icon: MessageCircleQuestion,
-    href: "/admin/messages/faq",
+    href: "/admin/tools/faq",
   },
   {
     title: "Embed Builder",
     description:
       "Visually build Discord embeds with a live preview and send them to any channel. Save and load presets.",
     icon: Paintbrush,
-    href: "/admin/messages/embed-builder",
+    href: "/admin/tools/embed-builder",
   },
 ];
 
-export function AdminMessages() {
+export function AdminTools() {
   const navigate = useNavigate();
 
   return (
@@ -39,14 +39,14 @@ export function AdminMessages() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Messages</BreadcrumbPage>
+              <BreadcrumbPage>Tools</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
       </header>
 
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Message Tools</h1>
+        <h1 className="text-2xl font-semibold">Tools</h1>
 
         <div className="grid gap-4 sm:grid-cols-2">
           {tools.map((tool) => (
