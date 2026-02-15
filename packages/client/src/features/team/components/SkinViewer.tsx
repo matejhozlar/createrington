@@ -25,27 +25,48 @@ type SkinViewerProps = {
 
 function createAnimation(type: HoverAnimation) {
   switch (type) {
-    case "wave": return new WaveAnimation();
-    case "running": return new RunningAnimation();
-    case "flying": return new FlyingAnimation();
-    case "hit": return new HitAnimation();
-    case "walking": return new WalkingAnimation();
+    case "wave":
+      return new WaveAnimation();
+    case "running":
+      return new RunningAnimation();
+    case "flying":
+      return new FlyingAnimation();
+    case "hit":
+      return new HitAnimation();
+    case "walking":
+      return new WalkingAnimation();
   }
 }
 
-export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "walking", index, total, className }: SkinViewerProps) => {
+export const SkinViewer = ({
+  uuid,
+  username,
+  width,
+  height,
+  hoverAnimation = "walking",
+  index,
+  total,
+  className,
+}: SkinViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<SkinViewerLib | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Reset state when effect deps change (render-time pattern)
+  const depsKey = `${uuid}-${width}-${height}-${index}-${total}`;
+  const [prevDepsKey, setPrevDepsKey] = useState(depsKey);
+  if (prevDepsKey !== depsKey) {
+    setPrevDepsKey(depsKey);
+    setLoading(true);
+    setError(false);
+  }
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let disposed = false;
-    setLoading(true);
-    setError(false);
 
     const viewer = new SkinViewerLib({
       width,
@@ -81,7 +102,7 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
       }
       viewerRef.current = null;
     };
-  }, [uuid, width, height]);
+  }, [uuid, width, height, index, total]);
 
   const handleMouseEnter = () => {
     if (viewerRef.current) {

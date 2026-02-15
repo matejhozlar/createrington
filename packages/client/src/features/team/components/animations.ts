@@ -21,7 +21,17 @@ type AnimState =
   | "shift-return"
   | "scratch-raise"
   | "scratch-loop"
-  | "scratch-lower";
+  | "scratch-lower"
+  | "jacks-ready"
+  | "jacks"
+  | "peek-lean"
+  | "peek-scan"
+  | "peek-startle"
+  | "peek-recovery"
+  | "trip-lurch"
+  | "trip-catch"
+  | "trip-look"
+  | "trip-recovery";
 
 /**
  * Rich idle animation for team page characters. Combines several
@@ -33,6 +43,10 @@ type AnimState =
  *  - **Stretching** — arms overhead, body leans back
  *  - **Shifting weight** — sways to one side, one knee bends
  *  - **Scratching head** — arm goes up, small scratch motion
+ *  - **Jumping jacks** — 5 full jumping jacks with arms and legs spreading
+ *  - **Peeking** — leans forward curiously, scans, then startles back
+ *  - **Tripping** — lurches forward, catches balance, looks around embarrassed
+
  *
  * Each instance runs on its own random schedule so multiple
  * characters never move in sync.
@@ -193,6 +207,42 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "scratch-lower":
         this.stateDuration = 0.8;
         break;
+
+      // Jumping jacks
+      case "jacks-ready":
+        this.stateDuration = 0.4;
+        break;
+      case "jacks":
+        this.stateDuration = 4.0; // 5 jacks × 0.8s each
+        break;
+
+      // Peeking at viewer
+      case "peek-lean":
+        this.stateDuration = 1.2;
+        break;
+      case "peek-scan":
+        this.stateDuration = 1.5 + Math.random() * 1.0;
+        break;
+      case "peek-startle":
+        this.stateDuration = 0.2;
+        break;
+      case "peek-recovery":
+        this.stateDuration = 1.0;
+        break;
+
+      // Tripping
+      case "trip-lurch":
+        this.stateDuration = 0.2;
+        break;
+      case "trip-catch":
+        this.stateDuration = 0.3;
+        break;
+      case "trip-look":
+        this.stateDuration = 1.8 + Math.random() * 0.7;
+        break;
+      case "trip-recovery":
+        this.stateDuration = 0.8;
+        break;
     }
   }
 
@@ -214,6 +264,8 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     let posY = 0;
     let legLeftX = 0;
     let legRightX = 0;
+    let legLeftZ = 0;
+    let legRightZ = 0;
 
     switch (this.state) {
       // ── Idle ────────────────────────────────────────────────────
@@ -222,9 +274,12 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
           const roll = Math.random();
           if (roll < 0.05) this.enterState("sneeze-windup");
           else if (roll < 0.12) this.enterState("nod-drooping");
-          else if (roll < 0.20) this.enterState("stretch-up");
+          else if (roll < 0.2) this.enterState("stretch-up");
           else if (roll < 0.28) this.enterState("scratch-raise");
           else if (roll < 0.45) this.enterState("shift-lean");
+          else if (roll < 0.52) this.enterState("jacks-ready");
+          else if (roll < 0.58) this.enterState("peek-lean");
+          else if (roll < 0.62) this.enterState("trip-lurch");
           else this.enterState("turning");
         }
         break;
@@ -309,7 +364,7 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         bodyX = 0.2 * (1 - e);
         posY = -0.6 * (1 - e);
         armRightX = -1.5 * (1 - e);
-        armRightZ = 0.3 + (-0.36) * e;
+        armRightZ = 0.3 + -0.36 * e;
         armLeftX = -0.4 * (1 - e);
         armLeftZ = -0.08 + (0.14 + Math.cos(bt) * 0.03) * e;
         legLeftX = 0.1 * (1 - e);
@@ -338,9 +393,9 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "nod-snap": {
         // Startled awake: head snaps back, overshoots
         const e = this.easeOut(t);
-        this.headX = 0.45 - 0.6 * e;             // 0.45 → -0.15
-        bodyX = 0.06 - 0.09 * e;                  // 0.06 → -0.03
-        posY = 0.2 * e;                            // slight jump up
+        this.headX = 0.45 - 0.6 * e; // 0.45 → -0.15
+        bodyX = 0.06 - 0.09 * e; // 0.06 → -0.03
+        posY = 0.2 * e; // slight jump up
         armLeftZ = 0.1 - 0.04 * e;
         armRightZ = -0.1 + 0.04 * e;
         if (t >= 1) this.enterState("nod-recovery");
@@ -368,12 +423,12 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         // Arms overhead, body leans back, rises on toes
         const e = this.easeInOutCubic(t);
         armLeftX = -2.8 * e;
-        armLeftZ = 0.06 + 0.15 * e;               // slightly outward
+        armLeftZ = 0.06 + 0.15 * e; // slightly outward
         armRightX = -2.8 * e;
-        armRightZ = -0.06 - 0.15 * e;             // slightly outward
-        this.headX = -0.2 * e;                     // look up
-        bodyX = -0.08 * e;                         // lean back
-        posY = 0.3 * e;                            // rise on toes
+        armRightZ = -0.06 - 0.15 * e; // slightly outward
+        this.headX = -0.2 * e; // look up
+        bodyX = -0.08 * e; // lean back
+        posY = 0.3 * e; // rise on toes
         if (t >= 1) this.enterState("stretch-hold");
         break;
       }
@@ -413,15 +468,15 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
       case "shift-lean": {
         const d = this.shiftDir;
         const e = this.easeInOutCubic(t);
-        bodyZ = d * 0.06 * e;                     // lean sideways
-        headZ = d * -0.04 * e;                    // head tilts opposite for balance
+        bodyZ = d * 0.06 * e; // lean sideways
+        headZ = d * -0.04 * e; // head tilts opposite for balance
         // Bend the leg on the side we lean toward
         if (d > 0) {
           legRightX = 0.15 * e;
         } else {
           legLeftX = 0.15 * e;
         }
-        posY = -0.15 * e;                         // dip from bent knee
+        posY = -0.15 * e; // dip from bent knee
         if (t >= 1) this.enterState("shift-hold");
         break;
       }
@@ -460,9 +515,9 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         // Right arm goes up to head, head tilts
         const e = this.easeInOutCubic(t);
         armRightX = -2.0 * e;
-        armRightZ = 0.5 * e;                      // inward toward head
-        this.headY = -0.12 * e;                   // turn toward hand
-        headZ = 0.08 * e;                         // tilt toward hand
+        armRightZ = 0.5 * e; // inward toward head
+        this.headY = -0.12 * e; // turn toward hand
+        headZ = 0.08 * e; // tilt toward hand
         if (t >= 1) this.enterState("scratch-loop");
         break;
       }
@@ -491,6 +546,178 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
         }
         break;
       }
+
+      // ── Jumping jacks ──────────────────────────────────────────
+      case "jacks-ready": {
+        // Quick knee bend to prep for jumping
+        const e = this.easeInOutCubic(t);
+        legLeftX = 0.15 * e; // bend knees
+        legRightX = 0.15 * e;
+        posY = -0.3 * e; // dip down
+        armLeftZ = 0.06 + 0.1 * e; // arms drift out slightly
+        armRightZ = -0.06 - 0.1 * e;
+        if (t >= 1) this.enterState("jacks");
+        break;
+      }
+
+      case "jacks": {
+        // 5 bumps via raised cosine, with fade-out over the last ~2 jacks
+        const raw = (1 - Math.cos(t * 2 * Math.PI * 5)) / 2;
+        const fade = t < 0.6 ? 1 : 1 - this.easeInOutCubic((t - 0.6) / 0.4);
+        const jack = raw * fade;
+        // Arms swing from sides to overhead V
+        armLeftX = -2.8 * jack;
+        armLeftZ = 0.06 + 0.6 * jack;
+        armRightX = -2.8 * jack;
+        armRightZ = -0.06 - 0.6 * jack;
+        // Legs spread apart
+        legLeftZ = 0.3 * jack;
+        legRightZ = -0.3 * jack;
+        // Jump up (sqrt for snappier peak, larger magnitude)
+        posY = 1.5 * Math.sqrt(jack);
+        // Slight look-up at peak
+        this.headX = -0.1 * jack;
+        if (t >= 1) {
+          this.headX = 0;
+          this.enterState("idle");
+        }
+        break;
+      }
+
+      // ── Peek at viewer ────────────────────────────────────────
+      case "peek-lean": {
+        // Lean forward curiously, head tilts to one side
+        const e = this.easeInOutCubic(t);
+        bodyX = 0.25 * e; // lean forward
+        this.headX = 0.15 * e; // look forward/down
+        headZ = 0.12 * e; // curious head tilt
+        // Arms drift back for balance
+        armLeftX = 0.3 * e;
+        armRightX = 0.3 * e;
+        posY = -0.2 * e; // slight crouch
+        if (t >= 1) this.enterState("peek-scan");
+        break;
+      }
+
+      case "peek-scan": {
+        // Hold the lean, slowly scan left-right like looking past the screen
+        const scan = Math.sin(t * Math.PI * 2) * 0.2;
+        bodyX = 0.25;
+        this.headX = 0.15;
+        this.headY = scan;
+        headZ = 0.12;
+        armLeftX = 0.3;
+        armRightX = 0.3;
+        posY = -0.2;
+        if (t >= 1) this.enterState("peek-startle");
+        break;
+      }
+
+      case "peek-startle": {
+        // Oh no, caught looking! Snap backward, arms flail up
+        const e = this.easeOut(t);
+        bodyX = 0.25 - 0.4 * e; // 0.25 → -0.15
+        this.headX = 0.15 - 0.35 * e; // 0.15 → -0.2
+        this.headY = this.headY * (1 - e); // snap head forward
+        headZ = 0.12 * (1 - e);
+        armLeftX = 0.3 - 1.8 * e; // fling arms up
+        armLeftZ = 0.06 + 0.3 * e; // spread out
+        armRightX = 0.3 - 1.8 * e;
+        armRightZ = -0.06 - 0.3 * e;
+        posY = -0.2 + 0.5 * e; // jump back up
+        if (t >= 1) this.enterState("peek-recovery");
+        break;
+      }
+
+      case "peek-recovery": {
+        // Settle back to neutral, sheepish
+        const e = this.easeInOutCubic(t);
+        bodyX = -0.15 * (1 - e);
+        this.headX = -0.2 * (1 - e);
+        this.headY = 0;
+        armLeftX = -1.5 * (1 - e);
+        armLeftZ = 0.36 + (Math.cos(bt) * 0.03 + 0.06 - 0.36) * e;
+        armRightX = -1.5 * (1 - e);
+        armRightZ = -0.36 + (Math.cos(bt + Math.PI) * 0.03 - 0.06 + 0.36) * e;
+        posY = 0.3 * (1 - e);
+        if (t >= 1) {
+          this.headX = 0;
+          this.headY = 0;
+          this.enterState("idle");
+        }
+        break;
+      }
+
+      // ── Tripping / stumble ────────────────────────────────────
+      case "trip-lurch": {
+        // Sudden forward pitch, leg catches
+        const e = this.easeOut(t);
+        bodyX = 0.35 * e; // pitch forward hard
+        this.headX = 0.3 * e; // head follows
+        posY = -0.3 * e; // stumble down
+        legLeftX = 0.4 * e; // leg shoots forward to catch
+        // Arms flail forward
+        armLeftX = -0.8 * e;
+        armLeftZ = 0.06 + 0.2 * e;
+        armRightX = -0.6 * e;
+        armRightZ = -0.06 - 0.15 * e;
+        if (t >= 1) this.enterState("trip-catch");
+        break;
+      }
+
+      case "trip-catch": {
+        // Snap upright, overcorrect backward, arms spread for balance
+        const e = this.easeOut(t);
+        bodyX = 0.35 - 0.45 * e; // 0.35 → -0.1
+        this.headX = 0.3 - 0.45 * e; // 0.3 → -0.15
+        posY = -0.3 + 0.4 * e; // -0.3 → 0.1
+        legLeftX = 0.4 - 0.25 * e; // relax catch leg
+        // Arms spread wide for balance
+        armLeftX = -0.8 - 0.2 * e; // -0.8 → -1.0
+        armLeftZ = 0.26 + 0.4 * e; // spread out wide
+        armRightX = -0.6 - 0.4 * e; // -0.6 → -1.0
+        armRightZ = -0.21 - 0.45 * e; // spread out wide
+        if (t >= 1) this.enterState("trip-look");
+        break;
+      }
+
+      case "trip-look": {
+        // Hold recovered pose, look around nervously
+        const scan = Math.sin(t * Math.PI * 3) * 0.3;
+        const armSettle = Math.min(t * 2, 1); // arms slowly lower over first half
+        bodyX = -0.1;
+        this.headX = -0.15;
+        this.headY = scan;
+        posY = 0.1;
+        legLeftX = 0.15;
+        // Arms gradually come down from spread
+        armLeftX = -1.0 + 0.5 * armSettle;
+        armLeftZ = 0.66 - 0.3 * armSettle;
+        armRightX = -1.0 + 0.5 * armSettle;
+        armRightZ = -0.66 + 0.3 * armSettle;
+        if (t >= 1) this.enterState("trip-recovery");
+        break;
+      }
+
+      case "trip-recovery": {
+        // Settle back to neutral
+        const e = this.easeInOutCubic(t);
+        bodyX = -0.1 * (1 - e);
+        this.headX = -0.15 * (1 - e);
+        this.headY = this.headY * (1 - e);
+        posY = 0.1 * (1 - e);
+        legLeftX = 0.15 * (1 - e);
+        armLeftX = -0.5 * (1 - e);
+        armLeftZ = 0.36 + (Math.cos(bt) * 0.03 + 0.06 - 0.36) * e;
+        armRightX = -0.5 * (1 - e);
+        armRightZ = -0.36 + (Math.cos(bt + Math.PI) * 0.03 - 0.06 + 0.36) * e;
+        if (t >= 1) {
+          this.headX = 0;
+          this.headY = 0;
+          this.enterState("idle");
+        }
+        break;
+      }
     }
 
     // Apply all rotations
@@ -505,7 +732,9 @@ export class LookAroundIdleAnimation extends PlayerAnimation {
     player.skin.rightArm.rotation.x = armRightX;
     player.skin.rightArm.rotation.z = armRightZ;
     player.skin.leftLeg.rotation.x = legLeftX;
+    player.skin.leftLeg.rotation.z = legLeftZ;
     player.skin.rightLeg.rotation.x = legRightX;
+    player.skin.rightLeg.rotation.z = legRightZ;
     player.position.y = posY;
   }
 }
