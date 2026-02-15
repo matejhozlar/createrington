@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   SkinViewer as SkinViewerLib,
-  IdleAnimation,
   WalkingAnimation,
   WaveAnimation,
   RunningAnimation,
@@ -11,6 +10,7 @@ import {
 import { Loader2, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HoverAnimation } from "../data";
+import { LookAroundIdleAnimation } from "./animations";
 
 type SkinViewerProps = {
   uuid: string;
@@ -54,7 +54,7 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
     });
 
     viewer.autoRotate = false;
-    viewer.animation = new IdleAnimation();
+    viewer.animation = new LookAroundIdleAnimation();
 
     viewer
       .loadSkin(`https://crafatar.com/skins/${uuid}`)
@@ -96,7 +96,7 @@ export const SkinViewer = ({ uuid, username, width, height, hoverAnimation = "wa
 
   const handleMouseLeave = () => {
     if (viewerRef.current) {
-      viewerRef.current.animation = new IdleAnimation();
+      viewerRef.current.animation = new LookAroundIdleAnimation();
     }
   };
 
