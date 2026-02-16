@@ -11,6 +11,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+/**
+ * Slash command definition for the lottery command
+ * Allows users to start or join a lottery with a bet amount
+ */
 export const data = new SlashCommandBuilder()
   .setName("lottery")
   .setDescription("Start or join a lottery")
@@ -22,12 +26,28 @@ export const data = new SlashCommandBuilder()
       .setMinValue(config.economy.lottery.minAmount),
   );
 
+/**
+ * Cooldown configuration for the lottery command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before using the lottery command again!",
 };
 
+/**
+ * Executes the lottery command to start or join a lottery
+ *
+ * Process:
+ * 1. Verify the player is registered
+ * 2. If a lottery is active, join it with the specified amount
+ * 3. If no lottery is active, start a new one
+ * 4. Reply with the entry details, pot size, and participant count
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
