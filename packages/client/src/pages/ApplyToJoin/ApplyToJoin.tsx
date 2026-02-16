@@ -1,10 +1,12 @@
 import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
 import { useState } from "react";
+import { NavLink } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +36,7 @@ export function ApplyToJoin() {
   const [email, setEmail] = useState("");
   const [referralSource, setReferralSource] = useState("");
   const [referralOther, setReferralOther] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -49,6 +52,13 @@ export function ApplyToJoin() {
 
     if (!discordName.trim()) {
       setFormError("Discord username is required");
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setFormError(
+        "You must agree to the Privacy Policy and Terms of Service",
+      );
       return;
     }
 
@@ -266,6 +276,38 @@ export function ApplyToJoin() {
                       />
                     </Field>
                   )}
+
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="agree-terms"
+                      checked={agreedToTerms}
+                      onCheckedChange={(checked) =>
+                        setAgreedToTerms(checked === true)
+                      }
+                      className="mt-0.5 cursor-pointer"
+                    />
+                    <label
+                      htmlFor="agree-terms"
+                      className="text-sm text-muted-foreground cursor-pointer select-none"
+                    >
+                      I agree to the{" "}
+                      <NavLink
+                        to="/privacy"
+                        target="_blank"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </NavLink>{" "}
+                      and{" "}
+                      <NavLink
+                        to="/terms"
+                        target="_blank"
+                        className="text-primary hover:underline"
+                      >
+                        Terms of Service
+                      </NavLink>
+                    </label>
+                  </div>
 
                   {formError && <FieldError>{formError}</FieldError>}
 
