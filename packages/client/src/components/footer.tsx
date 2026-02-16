@@ -4,7 +4,7 @@ export const Footer = () => {
   return (
     <footer className="w-full border-t bg-background px-5 md:px-8 py-12">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-7 gap-8">
           <div className="flex flex-col sm:justify-center col-span-2 lg:col-span-4 gap-2">
             <NavLink to="/" className="flex items-center gap-3">
               <img
@@ -20,6 +20,10 @@ export const Footer = () => {
 
             <p className="text-sm text-muted-foreground">
               A Create-powered Minecraft server for builders and engineers.
+            </p>
+
+            <p className="text-xs text-muted-foreground/60 mt-2">
+              &copy; {new Date().getFullYear()} Createrington
             </p>
           </div>
 
@@ -77,6 +81,25 @@ export const Footer = () => {
             </nav>
           </div>
 
+          <div className="flex flex-col gap-3">
+            <h3 className="font-semibold text-foreground">Legal</h3>
+
+            <nav className="flex flex-col gap-2">
+              <NavLink
+                to="/privacy"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Privacy Policy
+              </NavLink>
+
+              <NavLink
+                to="/terms"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Terms of Service
+              </NavLink>
+            </nav>
+          </div>
         </div>
       </div>
     </footer>
