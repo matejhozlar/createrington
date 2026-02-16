@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -54,6 +54,16 @@ import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+}
 
 function AppLayout() {
   const { loading } = useAuth();
@@ -209,6 +219,7 @@ function App() {
               <PlayerDataProvider autoSubscribe>
                 <ToastProvider>
                   <BrowserRouter>
+                    <ScrollToTop />
                     <SidebarProvider>
                       <AppContent />
                     </SidebarProvider>
