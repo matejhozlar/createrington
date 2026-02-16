@@ -16,6 +16,8 @@ export const commandRegistry: Record<string, CommandEnv> = {
   playtime: "both",
   seen: "both",
   skin: "both",
+  coinflip: "both",
+  compare: "both",
   list: "both",
   username: "both",
 
