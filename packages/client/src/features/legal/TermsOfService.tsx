@@ -233,6 +233,19 @@ export const TermsOfService: React.FC = () => {
 								</React.Fragment>
 							))}
 						</div>
+
+						<Separator className="my-6" />
+
+						<p className="text-sm text-muted-foreground">
+							Please also review our{" "}
+							<NavLink
+								to="/privacy"
+								className="text-primary hover:underline"
+							>
+								Privacy Policy
+							</NavLink>
+							.
+						</p>
 					</div>
 				</div>
 			</section>

@@ -1,4 +1,5 @@
 import React from "react";
+import { NavLink } from "react-router-dom";
 import { PageHeader } from "../../components/page-header";
 import { Separator } from "../../components/ui/separator";
 
@@ -215,6 +216,19 @@ export const PrivacyPolicy: React.FC = () => {
 								</React.Fragment>
 							))}
 						</div>
+
+						<Separator className="my-6" />
+
+						<p className="text-sm text-muted-foreground">
+							Please also review our{" "}
+							<NavLink
+								to="/terms"
+								className="text-primary hover:underline"
+							>
+								Terms of Service
+							</NavLink>
+							.
+						</p>
 					</div>
 				</div>
 			</section>
