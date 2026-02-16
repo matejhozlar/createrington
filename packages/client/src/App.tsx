@@ -45,6 +45,8 @@ import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
+import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
+import { TermsOfService } from "./features/legal/TermsOfService";
 const Team = lazy(() =>
   import("./features/team/Team").then((m) => ({ default: m.Team })),
 );
@@ -92,6 +94,8 @@ function AppContent() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<Rules />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route
           path="/team"
           element={

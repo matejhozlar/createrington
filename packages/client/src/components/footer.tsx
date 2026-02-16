@@ -76,6 +76,7 @@ export const Footer = () => {
               </NavLink>
             </nav>
           </div>
+
         </div>
       </div>
     </footer>
