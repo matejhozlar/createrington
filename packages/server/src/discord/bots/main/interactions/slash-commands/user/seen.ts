@@ -6,6 +6,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+/**
+ * Slash command definition for the seen command
+ * Displays a player's online status and last seen time
+ */
 export const data = new SlashCommandBuilder()
   .setName("seen")
   .setDescription("Check when a player was last online")
@@ -16,12 +20,28 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
+/**
+ * Cooldown configuration for the seen command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking again!",
 };
 
+/**
+ * Executes the seen command to display a player's online status
+ *
+ * Process:
+ * 1. Get the target user (from option or command initiator)
+ * 2. Fetch player record from the database
+ * 3. If online, show current server; if offline, show last seen time
+ * 4. Reply with status embed including avatar thumbnail
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

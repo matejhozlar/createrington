@@ -7,16 +7,35 @@ import {
 } from "@/services/playtime/config";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
+/**
+ * Slash command definition for the status command
+ * Displays game server status and online player counts
+ */
 export const data = new SlashCommandBuilder()
   .setName("status")
   .setDescription("Show game server status and online player counts");
 
+/**
+ * Cooldown configuration for the status command
+ *
+ * - duration: 10 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 10,
   type: CooldownType.USER,
   message: "Please wait before checking status again!",
 };
 
+/**
+ * Executes the status command to display game server status
+ *
+ * Process:
+ * 1. Fetch all configured servers from the playtime manager
+ * 2. For each server, get online/offline state and player count
+ * 3. Reply with an embed listing all servers and total online players
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

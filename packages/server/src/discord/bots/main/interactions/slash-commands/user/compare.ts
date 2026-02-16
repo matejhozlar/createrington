@@ -8,6 +8,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+/**
+ * Slash command definition for the compare command
+ * Displays a side-by-side comparison of two players' stats
+ */
 export const data = new SlashCommandBuilder()
   .setName("compare")
   .setDescription("Compare stats between two players")
@@ -24,12 +28,28 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
+/**
+ * Cooldown configuration for the compare command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before comparing again!",
 };
 
+/**
+ * Executes the compare command to show a side-by-side player comparison
+ *
+ * Process:
+ * 1. Get both target users (player2 defaults to command initiator)
+ * 2. Validate they are not the same user
+ * 3. Fetch detailed stats for both players
+ * 4. Reply with an embed comparing balance, playtime, sessions, and join date
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

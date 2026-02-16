@@ -12,6 +12,10 @@ import {
 
 const MAX_BET = 50;
 
+/**
+ * Slash command definition for the coinflip command
+ * Allows users to bet money on a 50/50 coin flip
+ */
 export const data = new SlashCommandBuilder()
   .setName("coinflip")
   .setDescription("Flip a coin and bet money — double or nothing!")
@@ -24,12 +28,29 @@ export const data = new SlashCommandBuilder()
       .setMaxValue(MAX_BET),
   );
 
+/**
+ * Cooldown configuration for the coinflip command
+ *
+ * - duration: 300 seconds (5 minutes)
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 300,
   type: CooldownType.USER,
   message: "Please wait before flipping again!",
 };
 
+/**
+ * Executes the coinflip command to bet money on a coin flip
+ *
+ * Process:
+ * 1. Validate the bet amount (max 3 decimals)
+ * 2. Verify the player is registered and has sufficient balance
+ * 3. Flip the coin (50/50 odds)
+ * 4. Add winnings or deduct the bet from the player's balance
+ * 5. Reply with the result and new balance
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

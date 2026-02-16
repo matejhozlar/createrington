@@ -6,6 +6,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+/**
+ * Slash command definition for the skin command
+ * Displays a player's full-body Minecraft skin render
+ */
 export const data = new SlashCommandBuilder()
   .setName("skin")
   .setDescription("Display a player's Minecraft skin")
@@ -16,12 +20,27 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
+/**
+ * Cooldown configuration for the skin command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking skins again!",
 };
 
+/**
+ * Executes the skin command to display a player's Minecraft skin
+ *
+ * Process:
+ * 1. Get the target user (from option or command initiator)
+ * 2. Fetch player record for MC UUID
+ * 3. Reply with full-body skin render from mc-heads.net
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

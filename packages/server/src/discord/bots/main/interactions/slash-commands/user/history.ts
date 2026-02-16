@@ -27,16 +27,36 @@ const typeLabels: Record<string, string> = {
   other: "Other",
 };
 
+/**
+ * Slash command definition for the history command
+ * Displays a player's recent balance transactions
+ */
 export const data = new SlashCommandBuilder()
   .setName("history")
   .setDescription("View your recent balance transactions");
 
+/**
+ * Cooldown configuration for the history command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before checking history again!",
 };
 
+/**
+ * Executes the history command to display recent balance transactions
+ *
+ * Process:
+ * 1. Verify the player is registered
+ * 2. Fetch the last 10 transactions from the balance repository
+ * 3. Format each transaction with timestamp, amount, type, and description
+ * 4. Reply with an ephemeral embed listing the transactions
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
