@@ -41,6 +41,7 @@ postgres_data/
 temp.txt
 CLAUDE.md
 COMMENTING.md
+IDEAS.md
 storage/transcripts
 
 # Database migration data
