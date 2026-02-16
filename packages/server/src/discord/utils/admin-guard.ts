@@ -1,4 +1,3 @@
-import { admin } from "@/db";
 import {
   type ChatInputCommandInteraction,
   type GuildMember,
@@ -10,6 +9,41 @@ import { RoleManager } from "./roles/role-manager";
 import { Discord } from "../constants";
 
 /**
+ * Resolves a GuildMember from an interaction's member field
+ *
+ * @returns The GuildMember, or null if unavailable or not a proper GuildMember
+ */
+function resolveGuildMember(
+  interaction: ChatInputCommandInteraction,
+): GuildMember | null {
+  const member = interaction.member as GuildMember | null;
+
+  if (
+    !member ||
+    typeof member.roles === "string" ||
+    Array.isArray(member.roles)
+  ) {
+    return null;
+  }
+
+  return member;
+}
+
+/**
+ * Checks if a guild member is an admin by verifying either:
+ * - Has the ADMIN role in Discord, OR
+ * - Is registered as admin in the database
+ *
+ * @param member - The Discord guild member
+ * @returns True if admin by either Discord role or database
+ */
+export async function isAdmin(member: GuildMember): Promise<boolean> {
+  if (RoleManager.has(member, Discord.Roles.ADMIN)) return true;
+
+  return await isAdminDb(member.id);
+}
+
+/**
  * Checks if the user is an admin
  * Replies with error if not and returns false
  *
@@ -19,9 +53,9 @@ import { Discord } from "../constants";
 export async function requireAdmin(
   interaction: ChatInputCommandInteraction,
 ): Promise<boolean> {
-  const isAdmin = await admin.exists({ discordId: interaction.user.id });
+  const member = resolveGuildMember(interaction);
 
-  if (!isAdmin) {
+  if (!member || !(await isAdmin(member))) {
     const embed = EmbedPresets.error(
       "Permission denied",
       "This command requires administrator privileges",
@@ -46,9 +80,9 @@ export async function requireAdmin(
 export async function requireOwner(
   interaction: ChatInputCommandInteraction,
 ): Promise<boolean> {
-  const isAdmin = await admin.exists({ discordId: interaction.user.id });
+  const member = resolveGuildMember(interaction);
 
-  if (!isAdmin) {
+  if (!member || !(await isAdmin(member))) {
     const embed = EmbedPresets.error(
       "Permission denied",
       "This command requires administrator privileges",
@@ -60,19 +94,7 @@ export async function requireOwner(
     return false;
   }
 
-  const member = interaction.member as GuildMember;
-
-  if (
-    !member ||
-    typeof member.roles === "string" ||
-    Array.isArray(member.roles)
-  ) {
-    return false;
-  }
-
-  const isOwner = RoleManager.has(member, Discord.Roles.OWNER);
-
-  return isOwner;
+  return RoleManager.has(member, Discord.Roles.OWNER);
 }
 
 /**
@@ -85,32 +107,9 @@ export async function requireOwner(
 export async function assertAdmin(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const isAdmin = await admin.exists({ discordId: interaction.user.id });
+  const member = resolveGuildMember(interaction);
 
-  if (!isAdmin) {
+  if (!member || !(await isAdmin(member))) {
     throw new Error("User is not an admin");
   }
-}
-
-/**
- * Checks if a user is an admin
- *
- * - Has a role ADMIN in Discord
- *
- * @param member - The Discord guild member
- * @returns Promise resolving to true if user is an admin, false otherwise
- */
-export async function isAdminDc(member: GuildMember): Promise<boolean> {
-  return RoleManager.has(member, Discord.Roles.ADMIN);
-}
-
-/**
- * Checks if a user is an admin in both Discord and Database
- *
- * @param member - The Discord guild member
- */
-export async function isAdmin(member: GuildMember): Promise<boolean> {
-  if (!isAdminDc(member)) return false;
-
-  return await isAdminDb(member.id);
 }
