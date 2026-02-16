@@ -18,6 +18,8 @@ export const commandRegistry: Record<string, CommandEnv> = {
   skin: "both",
   coinflip: "both",
   compare: "both",
+  status: "both",
+  history: "both",
   list: "both",
   username: "both",
 
