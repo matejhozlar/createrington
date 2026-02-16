@@ -162,7 +162,13 @@ export class LeaderboardService {
       });
 
       if (!existing) {
-        throw new Error(`No leaderboard message found for type: ${type}`);
+        logger.warn(`No leaderboard message found for type: ${type}, skipping refresh`);
+        return {
+          success: false,
+          type,
+          entries: [],
+          error: `No leaderboard message found for type: ${type}`,
+        };
       }
 
       const embed = EmbedPresets.leaderboard.display(type, entries);
