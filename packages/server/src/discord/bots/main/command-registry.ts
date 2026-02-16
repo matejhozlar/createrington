@@ -14,6 +14,8 @@ export const commandRegistry: Record<string, CommandEnv> = {
   pay: "both",
   lottery: "both",
   playtime: "both",
+  seen: "both",
+  skin: "both",
   list: "both",
   username: "both",
 
