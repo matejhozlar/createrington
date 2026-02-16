@@ -67,10 +67,6 @@ const sections = [
 						<strong>Discord API</strong> — for OAuth authentication
 						and bot functionality
 					</li>
-					<li>
-						<strong>Amazon SES</strong> — for sending email
-						notifications (e.g., waitlist updates)
-					</li>
 				</ul>
 				<p className="mt-2">
 					These services have their own privacy policies. We recommend
