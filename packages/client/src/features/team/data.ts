@@ -33,14 +33,14 @@ export const TEAM_MEMBERS: TeamMember[] = [
   {
     username: "Agent772",
     uuid: "3e0db446-147a-4692-87fd-c3facc4341db",
-    role: "Developer & Admin",
+    role: "Developer",
     tier: "dev-admin",
     hoverAnimation: "jetpack",
   },
   {
     username: "The_BigShot",
     uuid: "4cada83a-c012-4a31-8d80-942f3f79e8a1",
-    role: "Developer & Admin",
+    role: "Developer",
     tier: "dev-admin",
     hoverAnimation: "hulk",
   },
