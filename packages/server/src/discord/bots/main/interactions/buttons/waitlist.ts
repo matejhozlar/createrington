@@ -1,32 +1,13 @@
 import { waitlist, waitlistRepo } from "@/db";
-import { Discord } from "@/discord/constants";
+import { isAdmin } from "@/discord/utils/admin-guard";
 import {
   ActionRowBuilder,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
+  type GuildMember,
   MessageFlags,
 } from "discord.js";
-
-/**
- * Checks if user is an admin (has admin role or is in admin database)
- */
-async function isAdmin(interaction: ButtonInteraction): Promise<boolean> {
-  if (!interaction.guild || !interaction.member) {
-    return false;
-  }
-
-  const member = interaction.member;
-  if (member && "roles" in member) {
-    if (typeof member.roles !== "string" && !Array.isArray(member.roles)) {
-      const hasAdminRole = member.roles.cache.has(Discord.Roles.ADMIN);
-      if (hasAdminRole) return true;
-    }
-  }
-
-  // TODO: Add database check
-  return false;
-}
 
 /**
  * Disables all non-link buttons in the message components
@@ -81,7 +62,13 @@ export const permissionDeniedMessage = "You must be an admin to do that.";
 export async function checkPermission(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
-  return isAdmin(interaction);
+  const member = interaction.member as GuildMember | null;
+
+  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+    return false;
+  }
+
+  return isAdmin(member);
 }
 
 export async function execute(interaction: ButtonInteraction): Promise<void> {

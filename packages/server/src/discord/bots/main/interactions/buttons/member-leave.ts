@@ -1,8 +1,8 @@
 import { Q } from "@/db";
-import { isAdminDb } from "@/db/utils";
+import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { type ButtonInteraction, MessageFlags } from "discord.js";
+import { type ButtonInteraction, type GuildMember, MessageFlags } from "discord.js";
 
 /**
  * Handles departed member management buttons
@@ -18,12 +18,18 @@ export const prodOnly = false;
 export const permissionDeniedMessage = "You must be an admin to do that.";
 
 /**
- * Permission check - requires admin role
+ * Permission check - requires admin role or database admin
  */
 export async function checkPermission(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
-  return await isAdminDb(interaction.user.id);
+  const member = interaction.member as GuildMember | null;
+
+  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+    return false;
+  }
+
+  return await isAdmin(member);
 }
 
 /**
