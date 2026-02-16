@@ -134,6 +134,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
           status: "declined",
           acceptedBy: interaction.user.id,
           acceptedAt: new Date(),
+          email: null,
         },
       );
       await interaction.message.edit({

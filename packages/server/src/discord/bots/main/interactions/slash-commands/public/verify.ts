@@ -125,6 +125,7 @@ export async function execute(
         discordId,
         verified: true,
         joinedDiscord: true,
+        email: null,
       },
     );
 
