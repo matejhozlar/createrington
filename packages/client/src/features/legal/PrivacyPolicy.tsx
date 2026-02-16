@@ -114,7 +114,39 @@ const sections = [
 		),
 	},
 	{
-		title: "6. Your Rights",
+		title: "6. Data Deletion",
+		content: (
+			<>
+				<p>
+					You may request deletion of your personal data at any time.
+					Upon request, we will remove your personal data from our
+					systems within a reasonable timeframe.
+				</p>
+				{/* TODO: Add link to data deletion request form once implemented */}
+				<p className="mt-2">
+					To request data deletion, contact us at{" "}
+					<a
+						href="mailto:admin@create-rington.com"
+						className="text-primary hover:underline"
+					>
+						admin@create-rington.com
+					</a>{" "}
+					or through our{" "}
+					<a
+						href="https://discord.gg/createrington"
+						target="_blank"
+						rel="noopener noreferrer"
+						className="text-primary hover:underline"
+					>
+						Discord server
+					</a>
+					.
+				</p>
+			</>
+		),
+	},
+	{
+		title: "7. Your Rights",
 		content: (
 			<>
 				<p>You have the right to:</p>
@@ -144,7 +176,7 @@ const sections = [
 		),
 	},
 	{
-		title: "7. Changes to This Policy",
+		title: "8. Changes to This Policy",
 		content: (
 			<p>
 				We may update this Privacy Policy from time to time. Changes will
@@ -155,7 +187,7 @@ const sections = [
 		),
 	},
 	{
-		title: "8. Contact Us",
+		title: "9. Contact Us",
 		content: (
 			<p>
 				If you have questions about this Privacy Policy or want to
