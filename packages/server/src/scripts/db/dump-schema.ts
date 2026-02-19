@@ -100,7 +100,7 @@ async function rotateOutputsToBackup(): Promise<void> {
  * ```
  */
 async function query(sql: string): Promise<string> {
-  const command = `psql -h ${poolConfig.host} -U ${poolConfig.user} -d ${poolConfig.database} -t -A -c "${sql.replace(/"/g, '\\"')}"`;
+  const command = `psql -h ${poolConfig.host} -p ${poolConfig.port} -U ${poolConfig.user} -d ${poolConfig.database} -t -A -c "${sql.replace(/"/g, '\\"')}"`;
 
   try {
     const { stdout } = await execAsync(command, {
@@ -348,7 +348,7 @@ async function dumpTable(tableName: string, index: number): Promise<string> {
   const fileName = `${String(index).padStart(2, "0")}_${tableName}.sql`;
   const outputFile = path.join(TABLES_DIR, fileName);
 
-  const command = `pg_dump -h ${poolConfig.host} -U ${poolConfig.user} -d ${poolConfig.database} --table=public.${tableName} --schema-only -f "${outputFile}"`;
+  const command = `pg_dump -h ${poolConfig.host} -p ${poolConfig.port} -U ${poolConfig.user} -d ${poolConfig.database} --table=public.${tableName} --schema-only -f "${outputFile}"`;
 
   try {
     await execAsync(command, {
@@ -601,7 +601,7 @@ async function generateInitFile(
 async function generateDockerInitFile(): Promise<void> {
   const dockerInitFile = path.join(SCHEMA_DIR, "init-docker.sql");
 
-  const command = `pg_dump -h ${poolConfig.host} -U ${poolConfig.user} -d ${poolConfig.database} --schema-only --no-owner --no-acl -f "${dockerInitFile}"`;
+  const command = `pg_dump -h ${poolConfig.host} -p ${poolConfig.port} -U ${poolConfig.user} -d ${poolConfig.database} --schema-only --no-owner --no-acl -f "${dockerInitFile}"`;
 
   try {
     await execAsync(command, {
