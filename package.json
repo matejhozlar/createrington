@@ -44,6 +44,7 @@
     "db:shell": "docker exec -it createrington-db psql -U postgres -d createrington_db",
     "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
+    "db:setup": "npm run db:up && sleep 5 && npm run db:up",
     "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin"
   },
   "devDependencies": {
