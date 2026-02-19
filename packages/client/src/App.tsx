@@ -116,7 +116,6 @@ function AppContent() {
         />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
-        <Route path="/server-chat" element={<div>Chat Page</div>} />
         <Route path="/online-players" element={<div>Players Page</div>} />
         <Route path="/crypto" element={<div>Crypto Page</div>} />
 

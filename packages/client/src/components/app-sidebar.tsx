@@ -8,6 +8,7 @@ import {
   Home,
   LayoutDashboard,
   Map,
+  MessageCircle,
   Wrench,
   Server,
   Shield,
@@ -94,6 +95,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/crypto",
         icon: Coins,
         requiresAuth: true,
+      },
+      {
+        title: "Chat",
+        url: "/chat/1",
+        icon: MessageCircle,
       },
       {
         title: "Players",
