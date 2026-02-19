@@ -1,9 +1,9 @@
 /**
  * Barrel export for all actual query classes
- * 
+ *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: npm run generate
- * 
+ *
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
  */
