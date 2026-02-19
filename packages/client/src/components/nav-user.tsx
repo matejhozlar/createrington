@@ -121,7 +121,7 @@ export function NavUser({ user }: { user: User }) {
             {user.isAdmin && (
               <>
                 <DropdownMenuItem asChild>
-                  <NavLink to="/admin" className="cursor-pointer">
+                  <NavLink to="/admin/dashboard" className="cursor-pointer">
                     <BadgeCheck />
                     Admin Panel
                   </NavLink>
