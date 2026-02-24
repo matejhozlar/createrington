@@ -7,29 +7,30 @@ import {
 } from "discord.js";
 
 /**
- * Slash command definition for the delete command
- * Admin utility command to bulk delete recent messages from a channel
+ * Slash command definition for the purge command
+ * Admin utility command to bulk purge recent messages from a channel
  */
 export const data = new SlashCommandBuilder()
-  .setName("delete")
-  .setDescription("Delete up to 100 recent messages")
+  .setName("purge")
+  .setDescription("Purge up to 100 recent messages")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addIntegerOption((option) =>
     option
       .setName("count")
-      .setDescription("Number of messages to delete (1-100)")
+      .setDescription("Number of messages to purge (1-100)")
       .setRequired(true)
       .setMinValue(1)
       .setMaxValue(100),
+  )
+  .addUserOption((option) =>
+    option
+      .setName("user")
+      .setDescription("Only purge messages from this user")
+      .setRequired(false),
   );
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
-
-/**
- * Executes the delete command to bulk delete messages from a channel
+ * Executes the purge command to bulk delete messages from a channel
  *
  * @param interaction - The chat input command interaction
  * @returns Promise resolving when the command execution is completed
@@ -38,6 +39,7 @@ export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const count = interaction.options.getInteger("count", true);
+  const targetUser = interaction.options.getUser("user");
 
   if (!interaction.channel || !("bulkDelete" in interaction.channel)) {
     const embed = EmbedPresets.error(
@@ -55,13 +57,25 @@ export async function execute(
   try {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const deletedMessages = await interaction.channel.bulkDelete(count, true);
+    let deletedMessages;
+
+    if (targetUser) {
+      const fetched = await interaction.channel.messages.fetch({
+        limit: count,
+      });
+      const filtered = fetched.filter((m) => m.author.id === targetUser.id);
+      deletedMessages = await interaction.channel.bulkDelete(filtered, true);
+    } else {
+      deletedMessages = await interaction.channel.bulkDelete(count, true);
+    }
+
+    const userSuffix = targetUser ? ` from ${targetUser.tag}` : "";
 
     const embed = EmbedPresets.success(
-      "Message deleted",
-      `Successfully deleted **${deletedMessages.size}** message${
+      "Messages purged",
+      `Successfully purged **${deletedMessages.size}** message${
         deletedMessages.size === 1 ? "" : "s"
-      }.`,
+      }${userSuffix}.`,
     );
 
     await interaction.editReply({
@@ -69,14 +83,14 @@ export async function execute(
     });
 
     logger.info(
-      `${interaction.user.tag} deleted ${deletedMessages.size} messages in ${interaction.channel.name}`,
+      `${interaction.user.tag} purged ${deletedMessages.size} messages${userSuffix} in ${interaction.channel.name}`,
     );
   } catch (error) {
-    logger.error("/delete failed:", error);
+    logger.error("/purge failed:", error);
 
     const embed = EmbedPresets.error(
-      "Deletion Failed",
-      "Failed to delete messages. Make sure they are not older than 14 days.",
+      "Purge Failed",
+      "Failed to purge messages. Make sure they are not older than 14 days.",
     );
 
     await interaction.editReply({
