@@ -8,9 +8,11 @@ import config from "@/config";
  *
  * This is the main entry point for the database type generation system. It
  * coordinates the complete process of introspecting a PostgreSQL database,
- * detecting schema changes, building hierarchical structures, and generating
- * comprehensive TypeScript types and query classes across multiple packages
- * in a monorepo structure.
+ * building hierarchical structures, and generating comprehensive TypeScript
+ * types and query classes across multiple packages in a monorepo structure.
+ *
+ * Each run performs a clean generation — output directories are wiped and
+ * fully regenerated from the current database schema.
  */
 
 // Types
@@ -23,16 +25,6 @@ import type {
 
 // Schema operations
 import { readSchemaFromDatabase } from "./schema/introspection";
-import {
-  loadSchemaCache,
-  buildSchemaCache,
-  saveSchemaCache,
-} from "./schema/cache";
-import {
-  detectSchemaChanges,
-  printChanges,
-  updateChangelog,
-} from "./schema/change-detection";
 
 // Hierarchy
 import { buildTableHierarchy, collectAllStructures } from "./hierarchy/builder";
@@ -58,6 +50,7 @@ import {
   writeFileIfNotExists,
   copyFile,
   getRelativePath,
+  cleanDirectory,
 } from "./utils/file-writer";
 import { generateEnumTypes } from "./generators/enum-types";
 
@@ -91,8 +84,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * - sharedTypesDir: Where TypeScript types are written (shared)
  * - generatedDir: Where base queries are written (current package)
  * - actualQueriesDir: Where user query classes are scaffolded
- * - cacheFile: Schema cache for incremental generation
- * - changelogFile: Markdown changelog of schema changes
  *
  * @example
  * ```typescript
@@ -108,8 +99,6 @@ function setupContext(): GenerationContext {
   const sharedTypesDir = path.resolve(sharedPackageRoot, "src/db");
   const generatedDir = path.resolve(projectRoot, "src/generated/db");
   const actualQueriesDir = path.resolve(projectRoot, "src/db/queries");
-  const cacheFile = path.join(generatedDir, ".schema-cache.json");
-  const changelogFile = path.join(generatedDir, "CHANGELOG.md");
 
   return {
     projectRoot,
@@ -118,8 +107,6 @@ function setupContext(): GenerationContext {
     sharedTypesDir,
     generatedDir,
     actualQueriesDir,
-    cacheFile,
-    changelogFile,
   };
 }
 
@@ -248,66 +235,23 @@ function generateTableFiles(
 }
 
 /**
- * Main generation function - orchestrates complete type generation process
+ * Main generation function — performs a clean generation from the current database schema
  *
- * This is the primary entry point that coordinates all aspects of the generation
- * process: database introspection, change detection, hierarchy building, file
- * generation, and result tracking. Designed to be both a library function and
- * a CLI tool.
+ * Wipes output directories (`shared/src/db/` and `server/src/generated/db/`), then
+ * introspects the database and regenerates all TypeScript types and query classes.
  *
  * @returns Generation result with statistics and file lists
- *
- * @remarks
- * Generation process (in order):
- * 1. **Connection**: Connect to PostgreSQL database
- * 2. **Introspection**: Read complete schema metadata
- * 3. **Change Detection**: Compare with cached schema, identify changes
- * 4. **Changelog**: Update CHANGELOG.md with detected changes
- * 5. **Hierarchy**: Build table hierarchy from naming conventions
- * 6. **Table Files**: Generate types, base queries, and scaffolds
- * 7. **Shared Files**: Generate constants, helpers, and barrel exports
- * 8. **Cache Update**: Save current schema for next run
- * 9. **Results**: Return statistics and file lists
- *
- * Incremental generation:
- * - Schema cache enables change detection
- * - Only regenerates when schema changes
- * - Changelog provides audit trail
- * - User files never overwritten
- *
- * Output organization:
- * - Shared package: TypeScript types (for all packages)
- * - Generated directory: Base query classes (auto-generated)
- * - Queries directory: User query classes (user-editable)
- * - Constants: Type-safe table/field name access
- * - Helpers: Factory functions and utilities
- *
- * Error handling:
- * - Database connection failures propagate
- * - File write errors propagate
- * - CLI catches and formats errors
- *
- * @example
- * ```typescript
- * // As library function:
- * const result = await generate();
- * console.log(`Generated ${result.files.length} files`);
- * console.log(`Detected ${result.changes} schema changes`);
- *
- * // As CLI tool (auto-executed when run directly):
- * // npm run generate
- * // Output:
- * // 📡 Connecting to database...
- * // ✅ Found 25 tables
- * // Built hierarchy with 8 root nodes
- * // ✅ Generated 127 files
- * ```
  */
 export async function generate(): Promise<GenerationResult> {
   console.log("[generate] Connecting to database...");
 
   // Setup all directory paths for monorepo structure
   const context = setupContext();
+
+  // Clean output directories for a fresh generation
+  console.log("[generate] Cleaning output directories...");
+  await cleanDirectory(context.sharedTypesDir);
+  await cleanDirectory(context.generatedDir);
 
   // Read complete schema from PostgreSQL database
   const schema = await readSchemaFromDatabase(config.database);
@@ -316,20 +260,6 @@ export async function generate(): Promise<GenerationResult> {
   console.log(
     `[generate] Found ${tables.length} tables and ${enums.length} enum types`,
   );
-
-  // Detect changes by comparing with cached schema
-  const previousSchema = loadSchemaCache(context.cacheFile);
-  const currentSchema = buildSchemaCache(tables);
-  const changes = previousSchema
-    ? detectSchemaChanges(previousSchema, currentSchema)
-    : [];
-
-  // Display and log schema changes
-  printChanges(changes);
-
-  if (changes.length > 0) {
-    updateChangelog(context.changelogFile, changes);
-  }
 
   // Build hierarchical structure from table naming conventions
   const hierarchy = buildTableHierarchy(tables);
@@ -355,14 +285,10 @@ export async function generate(): Promise<GenerationResult> {
   // Generate shared files (constants, helpers, barrel exports)
   generateSharedFiles(tables, enums, hierarchy, context, generatedFiles);
 
-  // Save schema cache for next incremental run
-  saveSchemaCache(context.cacheFile, currentSchema);
-
   return {
     files: generatedFiles,
     scaffolds: scaffoldedFiles,
     tablesFound: tables.length,
-    changes: changes.length,
   };
 }
 
@@ -533,10 +459,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.log(`[generate] Generated ${result.files.length} files`);
       console.log(`[generate] Scaffolded ${result.scaffolds.length} new query files`);
       console.log(`[generate] Total tables: ${result.tablesFound}`);
-
-      if (result.changes > 0) {
-        console.log(`[generate] Schema changes: ${result.changes}`);
-      }
 
       if (result.scaffolds.length > 0) {
         console.log("[generate] Scaffolded files (edit these in src/db/queries/):");

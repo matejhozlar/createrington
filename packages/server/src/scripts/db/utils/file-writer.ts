@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -137,4 +138,19 @@ export function copyFile(source: string, destination: string): void {
  */
 export function getRelativePath(from: string, to: string): string {
   return path.relative(from, to);
+}
+
+/**
+ * Deletes a directory and all its contents, then recreates it empty
+ *
+ * Used for clean regeneration — ensures no stale files from previous
+ * generation runs remain in the output directory.
+ *
+ * @param dirPath - Absolute path to the directory to clean
+ */
+export async function cleanDirectory(dirPath: string): Promise<void> {
+  if (fs.existsSync(dirPath)) {
+    await fsp.rm(dirPath, { recursive: true, force: true });
+  }
+  fs.mkdirSync(dirPath, { recursive: true });
 }

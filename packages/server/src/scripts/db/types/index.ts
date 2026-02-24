@@ -84,61 +84,6 @@ export interface TableStructure {
 }
 
 /**
- * Cached schema metadata for incremental generation
- *
- * Persists the database schema state to disk, enabling detection of schema
- * changes between generator runs and avoiding unnecessary regeneration.
- */
-export interface SchemaCache {
-  /** Cache format version for compatibility checking */
-  version: string;
-
-  /** ISO timestamp of when this cache was generated */
-  generatedAt: string;
-
-  /** Map of table names to their column metadata */
-  tables: {
-    [tableName: string]: {
-      /** Column metadata for this table */
-      columns: ColumnInfo[];
-    };
-  };
-}
-
-/**
- * Types of schema changes that can be detected
- *
- * Used for categorizing differences between the current database schema
- * and the cached schema from the previous generation.
- */
-export type SchemaChangeType =
-  | "table_added" // New table detected in the database
-  | "table_removed" // Previously known table no longer exists
-  | "column_added" // New column added to an existing table
-  | "column_removed" // Previously known column no longer exists
-  | "column_modified"; // Column metadata has changed (type, nullability, etc.)
-
-/**
- * Represents a single detected schema change
- *
- * Documents a specific difference between the cached schema and the current
- * database schema, used for logging and changelog generation.
- */
-export interface SchemaChange {
-  /** The category of change that occurred */
-  type: SchemaChangeType;
-
-  /** The table affected by this change */
-  table: string;
-
-  /** The specific column affected (undefined for table-level changes) */
-  column?: string;
-
-  /** Human-readable description of the change with additional context */
-  detail?: string;
-}
-
-/**
  * Summary of a completed type generation run
  *
  * Provides metrics and outcomes from the generation process, useful for
@@ -153,9 +98,6 @@ export interface GenerationResult {
 
   /** Total number of database tables processed */
   tablesFound: number;
-
-  /** Number of schema changes detected since last generation */
-  changes: number;
 }
 
 /**
@@ -182,12 +124,6 @@ export interface GenerationContext {
 
   /** Directory containing hand-written query implementations */
   actualQueriesDir: string;
-
-  /** Path to the schema cache file for incremental generation */
-  cacheFile: string;
-
-  /** Path to the changelog file documenting schema changes */
-  changelogFile: string;
 }
 
 /**
