@@ -27,7 +27,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   leaderboard: "both",
   ticket: "both",
   cooldown: "both",
-  delete: "both",
+  purge: "both",
   message: "both",
   "ticket-panel": "both",
   "server-panel": "both",
