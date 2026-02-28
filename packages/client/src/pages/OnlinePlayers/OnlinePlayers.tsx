@@ -61,7 +61,6 @@ const SessionTimer: React.FC<{ player: PlayerData }> = ({ player }) => {
   const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
 
   useEffect(() => {
-    setSeconds(getSessionSeconds(player));
     const interval = setInterval(() => {
       setSeconds(getSessionSeconds(player));
     }, 1000);
@@ -184,7 +183,6 @@ export const OnlinePlayers: React.FC = () => {
   );
 
   // Live-updating average session time
-  const [avgSession, setAvgSession] = useState(0);
   const computeAvg = useCallback(() => {
     if (serverPlayers.length === 0) return 0;
     const total = serverPlayers.reduce(
@@ -194,8 +192,9 @@ export const OnlinePlayers: React.FC = () => {
     return total / serverPlayers.length;
   }, [serverPlayers]);
 
+  const [avgSession, setAvgSession] = useState(computeAvg);
+
   useEffect(() => {
-    setAvgSession(computeAvg());
     const interval = setInterval(() => setAvgSession(computeAvg()), 5000);
     return () => clearInterval(interval);
   }, [computeAvg]);
