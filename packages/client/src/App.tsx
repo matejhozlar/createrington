@@ -54,6 +54,7 @@ import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
+import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -116,7 +117,7 @@ function AppContent() {
         />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
-        <Route path="/online-players" element={<div>Players Page</div>} />
+        <Route path="/online-players" element={<OnlinePlayers />} />
         <Route path="/crypto" element={<div>Crypto Page</div>} />
 
         {/* Market Routes */}
