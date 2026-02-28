@@ -93,6 +93,13 @@
     @apply cursor-pointer;
   }
 
+  [data-slot="sidebar"] img,
+  [data-slot="sidebar"] a,
+  [data-slot="sidebar"] svg {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
   /* Global scrollbar styles */
   *::-webkit-scrollbar {
     @apply w-1.5;
