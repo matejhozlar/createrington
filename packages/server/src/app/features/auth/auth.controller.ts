@@ -2,18 +2,22 @@ import { AuthRole, discordOAuth } from "@/services/discord/oauth/oauth.service";
 import type { Request, Response } from "express";
 import { BadRequestError, UnauthorizedError } from "@/app/middleware";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
+import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
+import { sessionService } from "@/services/auth/session/session.service";
+import { Q } from "@/db";
+import type { JWTPayload } from "@createrington/shared/auth";
 
 /**
  * Authentication controller
  *
- * Handles Discord OAuth flow and JWT token management
+ * Handles Discord OAuth flow, dual-token management (access + refresh),
+ * and session lifecycle.
  */
 export class AuthController {
   /**
    * GET /api/auth/discord
    *
    * Returns Discord OAuth authorization URL
-   * Client should redirect user to this URL to begin OAuth flow
    */
   static async getAuthUrl(req: Request, res: Response): Promise<void> {
     const state = Math.random().toString(36).substring(7);
@@ -32,8 +36,8 @@ export class AuthController {
    * POST /api/auth/discord/callback
    * Body: { code: string, state?: string }
    *
-   * Handles Discord OAuth callback
-   * Exchanges code for user data and returns JWT token
+   * Handles Discord OAuth callback.
+   * Returns short-lived access token in body + sets refresh token as httpOnly cookie.
    */
   static async handleDiscordCallback(
     req: Request,
@@ -57,7 +61,20 @@ export class AuthController {
         );
       }
 
-      const token = jwtService.generate(user);
+      // Generate short-lived access token
+      const accessToken = jwtService.generate(user);
+
+      // Create server-side session and get raw refresh token
+      const rawRefreshToken = await sessionService.createSession({
+        discordId: user.discordId,
+        username: user.username,
+        avatar: user.avatar,
+        ip: req.clientIp || req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      // Set refresh token as httpOnly cookie
+      refreshTokenService.setCookie(res, rawRefreshToken);
 
       logger.info(
         `User ${user.username} (${user.discordId}) logged in successfully`,
@@ -66,7 +83,7 @@ export class AuthController {
       res.json({
         success: true,
         data: {
-          token,
+          accessToken,
           user: {
             discordId: user.discordId,
             username: user.username,
@@ -74,7 +91,7 @@ export class AuthController {
             role: user.role,
             isAdmin: user.isAdmin,
             minecraftUuid: user.minecraftUuid,
-            minecraftName: user.minecraftUsername,
+            minecraftUsername: user.minecraftUsername,
           },
         },
         message: "Authentication successful",
@@ -92,42 +109,68 @@ export class AuthController {
 
   /**
    * POST /api/auth/refresh
-   * Headers: { Authorization: Bearer <token> }
    *
-   * Refreshes an existing JWT token
-   * Returns a new token with extended expiration
+   * Rotate refresh token (cookie-based, no Bearer needed).
+   * Returns new access token + sets new refresh cookie.
+   * Re-fetches user data from DB for fresh role info.
    */
   static async refreshToken(req: Request, res: Response): Promise<void> {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : authHeader;
+    const rawToken = refreshTokenService.extractFromRequest(req);
 
-    if (!token) {
-      throw new BadRequestError("Token is required");
+    if (!rawToken) {
+      throw new UnauthorizedError("No refresh token");
     }
 
-    try {
-      const newToken = jwtService.refresh(token);
+    const result = await sessionService.rotateToken(
+      rawToken,
+      req.clientIp || req.ip,
+      req.headers["user-agent"],
+    );
 
-      res.json({
-        success: true,
-        data: {
-          token: newToken,
+    if (!result) {
+      refreshTokenService.clearCookie(res);
+      throw new UnauthorizedError("Invalid or expired refresh token");
+    }
+
+    // Re-fetch fresh user data from DB
+    const player = await Q.player.get({ discordId: result.discordId });
+    const isAdmin = await Q.admin.exists({ discordId: result.discordId });
+    const role = isAdmin ? AuthRole.ADMIN : AuthRole.USER;
+
+    const payload: JWTPayload = {
+      discordId: result.discordId,
+      username: result.discordUsername ?? player.minecraftUsername,
+      avatar: result.discordAvatar ?? undefined,
+      role,
+      isAdmin,
+      minecraftUuid: player.minecraftUuid,
+      minecraftUsername: player.minecraftUsername,
+    };
+
+    const accessToken = jwtService.generateFromPayload(payload);
+    refreshTokenService.setCookie(res, result.rawToken);
+
+    res.json({
+      success: true,
+      data: {
+        accessToken,
+        user: {
+          discordId: payload.discordId,
+          username: payload.username,
+          avatar: payload.avatar,
+          role: payload.role,
+          isAdmin: payload.isAdmin,
+          minecraftUuid: payload.minecraftUuid,
+          minecraftUsername: payload.minecraftUsername,
         },
-        message: "Token refreshed successfully",
-      });
-    } catch (error) {
-      throw new UnauthorizedError("Failed to refresh token");
-    }
+      },
+    });
   }
 
   /**
    * GET /api/auth/me
-   * Headers: { Authorization: Bearer <token> }
    *
    * Returns current user information from JWT
-   * Required authentication
    */
   static async getCurrentUser(req: Request, res: Response): Promise<void> {
     if (!req.user) {
@@ -145,10 +188,18 @@ export class AuthController {
   /**
    * POST /api/auth/logout
    *
-   * Logout endpoint (client should delete token)
-   * Could be extended to maintain token blacklist
+   * Revoke session via cookie + clear cookie.
+   * Public route — works even without a valid Bearer token.
    */
   static async logout(req: Request, res: Response): Promise<void> {
+    const rawToken = refreshTokenService.extractFromRequest(req);
+
+    if (rawToken) {
+      await sessionService.revokeByToken(rawToken);
+    }
+
+    refreshTokenService.clearCookie(res);
+
     logger.info(`User ${req.user?.username || "Unknown"} logged out`);
 
     res.json({
@@ -158,10 +209,33 @@ export class AuthController {
   }
 
   /**
+   * POST /api/auth/logout-all
+   *
+   * Revoke all sessions for the authenticated user.
+   * Requires valid Bearer token (user auth).
+   */
+  static async logoutAll(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    await sessionService.revokeAllForUser(req.user.discordId);
+    refreshTokenService.clearCookie(res);
+
+    logger.info(
+      `User ${req.user.username} (${req.user.discordId}) logged out of all sessions`,
+    );
+
+    res.json({
+      success: true,
+      message: "All sessions revoked",
+    });
+  }
+
+  /**
    * GET /api/auth/status
    *
    * Check authentication status
-   * Optional authentication - returns user if authenticated
    */
   static async checkStatus(req: Request, res: Response): Promise<void> {
     res.json({

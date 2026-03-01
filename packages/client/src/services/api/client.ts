@@ -1,4 +1,8 @@
 import ky, { type KyInstance, type Options } from "ky";
+import {
+  getAccessToken,
+  refreshAccessToken,
+} from "@/services/auth/token-manager";
 
 /**
  * Standard API error response structure
@@ -15,22 +19,21 @@ interface ApiErrorResponse {
  * Features:
  * - Automatic JSON parsing
  * - Request/response interceptors
- * - Authentication header injection
- * - Global error handling
+ * - Authentication header injection (in-memory token)
+ * - Automatic 401 → silent refresh → retry
  * - Request timeout (30s default)
  * - Retry on network failures (3 attempts)
- * - Environment-based URL configuration
  */
 class ApiClient {
   private client: KyInstance;
 
   constructor() {
-    // Auto-detect API URL based on environment
     const apiUrl = this.getApiUrl();
 
     this.client = ky.create({
       prefixUrl: apiUrl,
-      timeout: 30000, // 30 seconds
+      timeout: 30000,
+      credentials: "include",
       retry: {
         limit: 3,
         methods: ["get", "head", "options", "put", "delete"],
@@ -39,8 +42,8 @@ class ApiClient {
       hooks: {
         beforeRequest: [
           (request) => {
-            // Add auth token if available
-            const token = localStorage.getItem("auth_token");
+            // Add auth token from in-memory storage
+            const token = getAccessToken();
             if (token) {
               request.headers.set("Authorization", `Bearer ${token}`);
             }
@@ -86,11 +89,33 @@ class ApiClient {
           },
         ],
         afterResponse: [
-          (_request, _options, response) => {
+          async (request, options, response) => {
             // Log successful responses in development
-            if (import.meta.env.DEV) {
+            if (import.meta.env.DEV && response.ok) {
               console.log(`[API] ✓ ${response.status} ${response.url}`);
             }
+
+            // On 401 → attempt silent refresh → retry original request
+            if (response.status === 401) {
+              // Don't retry refresh endpoint itself
+              if (request.url.includes("/api/auth/refresh")) {
+                return response;
+              }
+
+              const result = await refreshAccessToken();
+              if (result) {
+                // Retry the original request with the new token
+                request.headers.set(
+                  "Authorization",
+                  `Bearer ${result.accessToken}`,
+                );
+                return ky(request, { ...options, hooks: {} });
+              }
+
+              // Refresh failed — dispatch session expired event
+              window.dispatchEvent(new CustomEvent("auth:session-expired"));
+            }
+
             return response;
           },
         ],
@@ -102,8 +127,6 @@ class ApiClient {
    * Automatically determine API URL based on environment
    */
   private getApiUrl(): string {
-    // In development, use empty string (Vite proxy handles /api routes)
-    // In production, use environment variable
     const envApiUrl = import.meta.env.VITE_API_URL;
 
     if (import.meta.env.DEV) {
@@ -273,17 +296,6 @@ class ApiClient {
       },
       {} as Record<string, string>,
     );
-  }
-
-  /**
-   * Update auth token
-   */
-  setAuthToken(token: string | null): void {
-    if (token) {
-      localStorage.setItem("auth_token", token);
-    } else {
-      localStorage.removeItem("auth_token");
-    }
   }
 
   /**

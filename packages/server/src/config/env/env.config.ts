@@ -93,14 +93,18 @@ const envSchema = z.object({
     .url("Production redirect URI must be a valid URL"),
 
   // Auth
-  JWT_SECRET: z.string().min(1, "JWT secret is required"),
-  JWT_EXPIRES_IN: z
+  JWT_ACCESS_SECRET: z
+    .string()
+    .min(32, "JWT access secret must be at least 32 characters"),
+  JWT_ACCESS_EXPIRES_IN: z
     .string()
     .regex(
       /^\d+[smhd]$/,
-      "JWT_EXPIRES_IN must be in format: number + unit (s/m/h/d). Examples: 60s, 15m, 24h, 7d",
+      "JWT_ACCESS_EXPIRES_IN must be in format: number + unit (s/m/h/d). Examples: 60s, 15m, 24h, 7d",
     )
-    .default("7d"),
+    .default("15m"),
+  REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).default(30),
+  REFRESH_COOKIE_NAME: z.string().default("crt_refresh"),
 
   // Minecraft Servers
   COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),

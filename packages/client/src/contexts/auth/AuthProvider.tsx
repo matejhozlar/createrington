@@ -1,6 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
+import {
+  setAccessToken,
+  refreshAccessToken,
+} from "@/services/auth/token-manager";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -46,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Handle OAuth callback
-   * Exchange code for JWT token
+   * Exchange code for access token + refresh cookie
    */
   const handleCallback = useCallback(async (code: string, state?: string) => {
     try {
@@ -64,20 +68,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({ code, state }),
       });
 
       const data = await response.json();
 
-      if (data.success && data.data?.token) {
-        // Store JWT token
-        localStorage.setItem("auth_token", data.data.token);
+      if (data.success && data.data?.accessToken) {
+        // Store access token in memory (not localStorage)
+        setAccessToken(data.data.accessToken);
 
-        // Set user data
+        // Set user data (map server response shape to User type)
         setUser(data.data.user);
 
         // Clear OAuth state
         sessionStorage.removeItem("oauth_state");
+
+        // Clean up old localStorage token if present (migration)
+        localStorage.removeItem("auth_token");
 
         // Redirect to home
         window.location.href = "/";
@@ -99,24 +107,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Logout user
-   * Clears token and user state
+   * Revokes session via cookie and clears in-memory token
    */
   const logout = useCallback(async () => {
     try {
-      const token = localStorage.getItem("auth_token");
-
-      if (token) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-      }
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("auth_token");
+      setAccessToken(null);
+      localStorage.removeItem("auth_token"); // clean up legacy
       setUser(null);
       setError(null);
     }
@@ -125,68 +128,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   logoutRef.current = logout;
 
   /**
-   * Refresh JWT token
-   * Extends session without re-authentication
+   * Logout from all sessions
    */
-  const refreshToken = useCallback(async () => {
+  const logoutAll = useCallback(async () => {
     try {
-      const token = localStorage.getItem("auth_token");
+      const { getAccessToken } = await import("@/services/auth/token-manager");
+      const token = getAccessToken();
 
-      if (!token) {
-        throw new Error("No token to refresh");
-      }
-
-      const response = await fetch("/api/auth/token", {
+      await fetch("/api/auth/logout-all", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
-      const data = await response.json();
-
-      if (data.success && data.data?.token) {
-        localStorage.setItem("auth_token", data.data.token);
-      } else {
-        throw new Error("Token refresh failed");
-      }
     } catch (error) {
-      console.error("Token refresh error:", error);
-      logoutRef.current?.();
+      console.error("Logout-all error:", error);
+    } finally {
+      setAccessToken(null);
+      setUser(null);
+      setError(null);
     }
   }, []);
 
   /**
-   * Get current user from token
-   * Validates existing session on mount
+   * Silently refresh the access token using the httpOnly refresh cookie.
+   * On mount, this replaces the old getCurrentUser() + localStorage approach.
    */
-  const getCurrentUser = useCallback(async () => {
+  const silentRefresh = useCallback(async () => {
     try {
-      const token = localStorage.getItem("auth_token");
+      const result = await refreshAccessToken();
 
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data?.user) {
-        setUser(data.data.user);
+      if (result) {
+        setUser({
+          ...result.user,
+          minecraftUsername: result.user.minecraftUsername,
+        } as User);
       } else {
-        localStorage.removeItem("auth_token");
+        // No valid refresh cookie — user is logged out
+        setAccessToken(null);
+        setUser(null);
       }
     } catch (error) {
-      console.error("Get user error:", error);
-      localStorage.removeItem("auth_token");
-    } finally {
-      setLoading(false);
+      console.error("Silent refresh error:", error);
+      setAccessToken(null);
+      setUser(null);
     }
   }, []);
 
@@ -196,7 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Initialize authentication state on mount
-   * Handle OAuth callback if present in URL
+   * Handle OAuth callback if present in URL, otherwise silent refresh
    */
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -213,26 +197,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (code) {
       handleCallback(code, state || undefined);
     } else {
-      getCurrentUser();
+      // Silent refresh: use httpOnly cookie to get a new access token
+      silentRefresh().finally(() => setLoading(false));
     }
-  }, [handleCallback, getCurrentUser]);
+  }, [handleCallback, silentRefresh]);
 
   /**
-   * Set up token refresh interval
-   * Refresh token every 6 days (before 7 day expiration)
+   * Set up access token refresh interval
+   * Refresh every ~13 minutes (before 15-min access token expiry)
    */
   useEffect(() => {
     if (!user) return;
 
     const refreshInterval = setInterval(
       () => {
-        refreshToken();
+        silentRefresh();
       },
-      6 * 24 * 60 * 60 * 1000, // 6 days
+      13 * 60 * 1000, // 13 minutes
     );
 
     return () => clearInterval(refreshInterval);
-  }, [user, refreshToken]);
+  }, [user, silentRefresh]);
+
+  /**
+   * Listen for session-expired events (from API client / tRPC)
+   */
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      logoutRef.current?.();
+    };
+
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+    return () =>
+      window.removeEventListener("auth:session-expired", handleSessionExpired);
+  }, []);
 
   // ============================================================================
   // Context Value
@@ -244,7 +242,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     error,
     login,
     logout,
-    refreshToken,
+    logoutAll,
+    refreshToken: silentRefresh,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

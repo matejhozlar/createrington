@@ -7,7 +7,7 @@ import { rewardService } from "@/services/reward/reward.service";
 import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = config.app.auth.jwt.secret;
+const JWT_SECRET = config.app.auth.accessToken.secret;
 
 /**
  * Currency Controller
