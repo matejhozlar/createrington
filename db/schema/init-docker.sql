@@ -320,6 +320,46 @@ CREATE VIEW public.admin_log_action_readable AS
 
 
 --
+-- Name: auth_session; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_session (
+    id integer NOT NULL,
+    discord_id text NOT NULL,
+    discord_username text,
+    discord_avatar text,
+    token_hash text NOT NULL,
+    family_id uuid DEFAULT gen_random_uuid() NOT NULL,
+    ip_address inet,
+    user_agent text,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    last_used_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: auth_session_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.auth_session_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: auth_session_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.auth_session_id_seq OWNED BY public.auth_session.id;
+
+
+--
 -- Name: discord_embed_preset; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1279,6 +1319,13 @@ ALTER TABLE ONLY public.admin_log_action ALTER COLUMN id SET DEFAULT nextval('pu
 
 
 --
+-- Name: auth_session id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_session ALTER COLUMN id SET DEFAULT nextval('public.auth_session_id_seq'::regclass);
+
+
+--
 -- Name: discord_embed_preset id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -1397,6 +1444,22 @@ ALTER TABLE ONLY public.admin_log_action
 
 ALTER TABLE ONLY public.admin
     ADD CONSTRAINT admin_pkey PRIMARY KEY (discord_id);
+
+
+--
+-- Name: auth_session auth_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_session
+    ADD CONSTRAINT auth_session_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_session auth_session_token_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_session
+    ADD CONSTRAINT auth_session_token_hash_key UNIQUE (token_hash);
 
 
 --
@@ -1701,6 +1764,34 @@ ALTER TABLE ONLY public.waitlist_entry
 
 ALTER TABLE ONLY public.waitlist_entry
     ADD CONSTRAINT waitlist_entry_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_auth_session_discord_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auth_session_discord_id ON public.auth_session USING btree (discord_id);
+
+
+--
+-- Name: idx_auth_session_expires_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auth_session_expires_at ON public.auth_session USING btree (expires_at) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: idx_auth_session_family_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auth_session_family_id ON public.auth_session USING btree (family_id);
+
+
+--
+-- Name: idx_auth_session_token_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_auth_session_token_hash ON public.auth_session USING btree (token_hash) WHERE (revoked_at IS NULL);
 
 
 --
@@ -2206,6 +2297,14 @@ CREATE TRIGGER update_player_updated_at BEFORE UPDATE ON public.player FOR EACH 
 
 ALTER TABLE ONLY public.admin
     ADD CONSTRAINT admin_discord_id_fkey FOREIGN KEY (discord_id) REFERENCES public.player(discord_id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- Name: auth_session fk_auth_session_player; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_session
+    ADD CONSTRAINT fk_auth_session_player FOREIGN KEY (discord_id) REFERENCES public.player(discord_id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --

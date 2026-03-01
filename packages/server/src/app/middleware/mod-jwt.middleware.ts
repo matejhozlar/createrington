@@ -6,7 +6,7 @@ import jwt from "jsonwebtoken";
 /**
  * JWT secret shared with PresenceAPI and Createrington Currency
  */
-const JWT_SECRET = config.app.auth.jwt.secret;
+const JWT_SECRET = config.app.auth.accessToken.secret;
 
 /**
  * Verify JWT token from mods

@@ -56,9 +56,15 @@ const config = {
   app: {
     port: env.PORT,
     auth: {
-      jwt: {
-        secret: env.JWT_SECRET,
-        expiresIn: env.JWT_EXPIRES_IN,
+      accessToken: {
+        secret: env.JWT_ACCESS_SECRET,
+        expiresIn: env.JWT_ACCESS_EXPIRES_IN,
+      },
+      refreshToken: {
+        expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
+      },
+      cookie: {
+        name: env.REFRESH_COOKIE_NAME,
       },
       allowedServerIps: {
         local: env.LOCAL_SERVER_IP_ADDRESS,
