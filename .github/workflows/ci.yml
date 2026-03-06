@@ -43,10 +43,6 @@ jobs:
           rm -rf node_modules package-lock.json
           npm install
 
-      - name: Setup database schema
-        run: |
-          PGPASSWORD=test_password psql -h localhost -U postgres -d test_db -f db/schema/init-docker.sql
-
       - name: Create placeholder Discord entities
         run: |
           mkdir -p packages/server/generated/discord
@@ -58,10 +54,22 @@ jobs:
           export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
           EOF
 
-      - name: Generate code (with DB access)
+      - name: Generate code
         run: npm run generate
 
-      # --- Tests ---
+      # --- Type check & build (runs after generated types are available) ---
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Build server
+        run: npm run build:server
+
+      # --- Tests (require Postgres) ---
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=test_password psql -h localhost -U postgres -d test_db -f db/schema/init-docker.sql
 
       - name: Run unit tests
         working-directory: ./packages/server
@@ -78,11 +86,3 @@ jobs:
           name: test-coverage
           path: packages/server/coverage/
           retention-days: 7
-
-      # --- Type check & build (runs after generated types are available) ---
-
-      - name: Type check
-        run: npm run typecheck
-
-      - name: Build server
-        run: npm run build:server
