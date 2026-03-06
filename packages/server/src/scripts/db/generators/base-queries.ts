@@ -87,7 +87,7 @@ ${generateChildImports(children)}
  * Provides type-safe CRUD operations and child query accessors.
  * Child query instances are singletons per database pool for optimal performance.
  * 
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class ${className}BaseQueries extends BaseQueries<{
   DbEntity: ${className}Row;

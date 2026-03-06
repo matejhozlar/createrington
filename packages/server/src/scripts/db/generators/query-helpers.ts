@@ -178,7 +178,7 @@ function generateQueryInstancesInterface(rootTables: TableStructure[]): string {
  * normal and transaction-based query factories.
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export interface QueryInstances {
 ${properties}

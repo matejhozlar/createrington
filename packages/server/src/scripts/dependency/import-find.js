@@ -23,7 +23,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 if (!targetFilename) {
   console.error(
-    "❌ Please provide a file name with extension, e.g.: npm run find-import index.js"
+    "❌ Please provide a file name with extension, e.g.: pnpm find-import index.js"
   );
   process.exit(1);
 }

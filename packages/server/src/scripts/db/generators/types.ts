@@ -78,7 +78,7 @@ ${enumImports}
  * transformation to application entities.
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 ${generateRowInterface(table, className, enums)}
 

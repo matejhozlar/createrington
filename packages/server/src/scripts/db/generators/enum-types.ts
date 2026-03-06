@@ -33,7 +33,7 @@ export function generateEnumTypes(enums: EnumTypeInfo[]): string {
  * Database enum types
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  * 
  * No enum types found in database.
  */
@@ -49,7 +49,7 @@ export function generateEnumTypes(enums: EnumTypeInfo[]): string {
  * Database enum types
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  * Generated: ${timestamp}
  */
 

@@ -447,7 +447,7 @@ export default generate;
  * @example
  * ```bash
  * # Run directly
- * npm run generate
+ * pnpm generate
  *
  * # Output:
  * # 📡 Connecting to database...

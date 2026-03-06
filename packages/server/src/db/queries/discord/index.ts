@@ -15,7 +15,7 @@ import { DiscordGuildQueries } from "@/db/queries/discord/guild";
  * - Shared across all DiscordQueries instances using same connection
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class DiscordQueries {
   /**
