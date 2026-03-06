@@ -76,7 +76,7 @@ export class ${className}Queries extends ${className}BaseQueries {
     super(db);
   }
 
-  // Add your custom query methods here
+  // Add custom query methods here
   // Example:
   // async findByCustomCriteria(criteria: CustomType): Promise<${className}[]> {
   //   const result = await this.db.query<${className}>(

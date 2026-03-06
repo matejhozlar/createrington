@@ -1,0 +1,159 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Lint
+        run: npm run lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Create placeholder Discord entities
+        run: |
+          mkdir -p packages/server/generated/discord
+          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
+          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
+          interface MemberRolesConfig {}
+          interface ChannelConfig {}
+          interface CategoriesConfig {}
+          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
+          EOF
+
+      - name: Generate code
+        run: npm run generate
+
+      - name: Type check
+        run: npm run typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Create placeholder Discord entities
+        run: |
+          mkdir -p packages/server/generated/discord
+          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
+          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
+          interface MemberRolesConfig {}
+          interface ChannelConfig {}
+          interface CategoriesConfig {}
+          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
+          EOF
+
+      - name: Generate code
+        run: npm run generate
+
+      - name: Build server
+        run: npm run build:server
+
+      - name: Build client
+        run: npm run build:client
+
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: test_password
+      DB_DATABASE: test_db
+      DB_SSL: "false"
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_db
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Install PostgreSQL client
+        run: |
+          apt-get update && apt-get install -y postgresql-client
+
+      - name: Create placeholder Discord entities
+        run: |
+          mkdir -p packages/server/generated/discord
+          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
+          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
+          interface MemberRolesConfig {}
+          interface ChannelConfig {}
+          interface CategoriesConfig {}
+          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
+          EOF
+
+      - name: Generate code
+        run: npm run generate
+
+      - name: Setup database schema
+        run: |
+          PGPASSWORD=test_password psql -h postgres -U postgres -d test_db -f db/schema/init-docker.sql
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests
+        run: npm run test:integration

@@ -1,13 +1,12 @@
 import "@/logger.global";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import config from "@/config";
-
 /**
  * Database type generation orchestrator
  *
  * This is the main entry point for the database type generation system. It
- * coordinates the complete process of introspecting a PostgreSQL database,
+ * coordinates the complete process of reading SQL files from the db/ directory,
  * building hierarchical structures, and generating comprehensive TypeScript
  * types and query classes across multiple packages in a monorepo structure.
  *
@@ -24,7 +23,7 @@ import type {
 } from "./types";
 
 // Schema operations
-import { readSchemaFromDatabase } from "./schema/introspection";
+import { readSchemaFromSqlFiles } from "./schema/sql-parser";
 
 // Hierarchy
 import { buildTableHierarchy, collectAllStructures } from "./hierarchy/builder";
@@ -161,6 +160,14 @@ function setupContext(): GenerationContext {
  * // - src/db/queries/admin/log/index.ts (namespace, copied)
  * ```
  */
+const NAMESPACE_MARKER = "This is a pure organizational namespace";
+
+function canOverwriteWithNamespace(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return true;
+  const content = fs.readFileSync(filePath, "utf-8");
+  return content.includes(NAMESPACE_MARKER);
+}
+
 function generateTableFiles(
   structure: TableStructure,
   tableMap: Map<string, any>,
@@ -215,10 +222,14 @@ function generateTableFiles(
     writeFile(namespaceFile, namespaceContent);
     generatedFiles.push(getRelativePath(projectRoot, namespaceFile));
 
-    // Copy to actual directory (overwrites namespace files intentionally)
-    // This is safe because namespaces are purely organizational
+    // Copy to actual directory, but only if the existing file is also a
+    // generated namespace file (or doesn't exist). Never overwrite user-
+    // scaffolded query files — when a table is temporarily deleted, its
+    // node becomes namespace-only and would otherwise destroy the scaffold.
     const actualNamespaceFile = path.join(actualDir, "index.ts");
-    copyFile(namespaceFile, actualNamespaceFile);
+    if (canOverwriteWithNamespace(actualNamespaceFile)) {
+      copyFile(namespaceFile, actualNamespaceFile);
+    }
   }
 
   // Recursively process all children to build complete hierarchy
@@ -243,7 +254,7 @@ function generateTableFiles(
  * @returns Generation result with statistics and file lists
  */
 export async function generate(): Promise<GenerationResult> {
-  console.log("[generate] Connecting to database...");
+  console.log("[generate] Reading schema from SQL files...");
 
   // Setup all directory paths for monorepo structure
   const context = setupContext();
@@ -253,8 +264,9 @@ export async function generate(): Promise<GenerationResult> {
   await cleanDirectory(context.sharedTypesDir);
   await cleanDirectory(context.generatedDir);
 
-  // Read complete schema from PostgreSQL database
-  const schema = await readSchemaFromDatabase(config.database);
+  // Read complete schema from SQL files in db/
+  const dbDir = path.resolve(context.monorepoRoot, "..", "db");
+  const schema = readSchemaFromSqlFiles(dbDir);
   const { tables, enums } = schema;
 
   console.log(
