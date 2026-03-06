@@ -660,7 +660,7 @@ async function generateDockerInitFile(): Promise<void> {
  * @example
  * ```bash
  * # Run the schema dump
- * npm run db:dump
+ * pnpm db:dump
  *
  * # Output:
  * # 🔍 Scanning database...

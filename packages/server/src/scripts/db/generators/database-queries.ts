@@ -94,7 +94,7 @@ ${generateImports(rootTables)}
  * connection (pool or transaction client).
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  * 
  * @example
  * // Normal usage (auto-commit after each operation)

@@ -14,7 +14,7 @@ import { AdminLogActionQueries } from "@/db/queries/admin/log/action";
  * - Shared across all AdminLogQueries instances using same connection
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class AdminLogQueries {
   /**

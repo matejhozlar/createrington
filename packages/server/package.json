@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:types": "tsc --emitDeclarationOnly --watch & tsc-alias --watch",
-    "build": "tsc && tsc-alias && npm run post-build && npm run build:copy-assets",
+    "build": "tsc && tsc-alias && pnpm post-build && pnpm build:copy-assets",
     "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" dist/server/src",
     "post-build": "tsx src/scripts/tools/post-build.ts",
     "start": "node dist/server/src/server.js",
@@ -72,7 +72,7 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "@createrington/shared": "*",
+    "@createrington/shared": "workspace:*",
     "@trpc/server": "^11.1.0",
     "axios": "^1.13.2",
     "canvas": "^3.2.0",

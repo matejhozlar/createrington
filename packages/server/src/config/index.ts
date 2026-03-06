@@ -23,7 +23,7 @@ try {
   discordEntities = JSON.parse(fs.readFileSync(discordEntitiesPath, "utf-8"));
 } catch (error) {
   console.warn(
-    "Warning: discord-entities.json not found. Run 'npm run scrape-discord' to generate it.",
+    "Warning: discord-entities.json not found. Run 'pnpm scrape-discord' to generate it.",
   );
   discordEntities = {
     roles: {} as MemberRolesConfig,

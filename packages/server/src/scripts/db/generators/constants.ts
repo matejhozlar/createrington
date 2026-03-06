@@ -71,7 +71,7 @@ export function generateConstants(tables: TableInfo[]): string {
  * Provides type-safe access to table and field names in both snake_case
  * (for database operations) and camelCase (for application logic).
  * 
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  * Generated: ${timestamp}
  * 
  * @example

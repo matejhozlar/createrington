@@ -6,4 +6,4 @@ This folder contains **auto-generated database types**.
 - **Do not edit manually**
 - To regenerate, run:
 
-  npm run generate
+  pnpm generate

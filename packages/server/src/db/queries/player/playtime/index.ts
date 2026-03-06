@@ -16,7 +16,7 @@ import { PlayerPlaytimeSummaryQueries } from "@/db/queries/player/playtime/summa
  * - Shared across all PlayerPlaytimeQueries instances using same connection
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class PlayerPlaytimeQueries {
   /**

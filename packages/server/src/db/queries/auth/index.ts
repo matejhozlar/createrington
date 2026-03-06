@@ -14,7 +14,7 @@ import { AuthSessionQueries } from "@/db/queries/auth/session";
  * - Shared across all AuthQueries instances using same connection
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class AuthQueries {
   /**
