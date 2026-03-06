@@ -88,7 +88,7 @@ jobs:
 
     env:
       DB_HOST: localhost
-      DB_PORT: 5432
+      DB_PORT: 5434
       DB_USER: postgres
       DB_PASSWORD: test_password
       DB_DATABASE: test_db
@@ -107,7 +107,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
         ports:
-          - 5432:5432
+          - 5434:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -136,7 +136,7 @@ jobs:
 
       - name: Setup database schema
         run: |
-          PGPASSWORD=test_password psql -h localhost -U postgres -d test_db -f db/schema/init-docker.sql
+          PGPASSWORD=test_password psql -h localhost -p 5434 -U postgres -d test_db -f db/schema/init-docker.sql
 
       - name: Run unit tests
         run: npm run test:unit
