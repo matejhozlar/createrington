@@ -23,6 +23,7 @@
   },
   "scripts": {
     "generate": "pnpm --filter @createrington/server generate && pnpm build:shared && pnpm typecheck",
+    "generate:ci": "pnpm --filter @createrington/server generate && pnpm build:shared",
     "typecheck": "pnpm --filter @createrington/server build:types && pnpm -r typecheck",
     "typecheck:shared": "pnpm --filter @createrington/shared typecheck",
     "typecheck:server": "pnpm --filter @createrington/server typecheck",

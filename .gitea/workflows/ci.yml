@@ -57,7 +57,7 @@ jobs:
           EOF
 
       - name: Generate code
-        run: pnpm generate
+        run: pnpm generate:ci
 
       - name: Type check
         run: pnpm typecheck
@@ -90,7 +90,7 @@ jobs:
           EOF
 
       - name: Generate code
-        run: pnpm generate
+        run: pnpm generate:ci
 
       - name: Build server
         run: pnpm build:server
@@ -153,7 +153,7 @@ jobs:
           EOF
 
       - name: Generate code
-        run: pnpm generate
+        run: pnpm generate:ci
 
       - name: Setup database schema
         run: |
