@@ -15,7 +15,9 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Lint
         run: npm run lint
@@ -31,7 +33,9 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Create placeholder Discord entities
         run: |
@@ -61,7 +65,9 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
 
       - name: Create placeholder Discord entities
         run: |
@@ -87,8 +93,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DB_HOST: localhost
-      DB_PORT: 5434
+      DB_HOST: postgres
+      DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: test_password
       DB_DATABASE: test_db
@@ -106,8 +112,6 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          - 5434:5432
 
     steps:
       - uses: actions/checkout@v4
@@ -118,7 +122,13 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install
+
+      - name: Install PostgreSQL client
+        run: |
+          apt-get update && apt-get install -y postgresql-client
 
       - name: Create placeholder Discord entities
         run: |
@@ -136,7 +146,7 @@ jobs:
 
       - name: Setup database schema
         run: |
-          PGPASSWORD=test_password psql -h localhost -p 5434 -U postgres -d test_db -f db/schema/init-docker.sql
+          PGPASSWORD=test_password psql -h postgres -U postgres -d test_db -f db/schema/init-docker.sql
 
       - name: Run unit tests
         run: npm run test:unit
