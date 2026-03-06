@@ -4,7 +4,7 @@ on:
   push:
 
 jobs:
-  setup:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,27 +15,13 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm install
 
-      - name: Create placeholder Discord entities
-        run: |
-          mkdir -p packages/server/generated/discord
-          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
-          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
-          interface MemberRolesConfig {}
-          interface ChannelConfig {}
-          interface CategoriesConfig {}
-          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
-          EOF
-
-      - name: Generate code
-        run: npm run generate
+      - name: Lint
+        run: npm run lint
 
   typecheck:
     runs-on: ubuntu-latest
-    needs: setup
     steps:
       - uses: actions/checkout@v4
 
@@ -45,9 +31,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm install
 
       - name: Create placeholder Discord entities
         run: |
@@ -66,28 +50,8 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-  lint:
-    runs-on: ubuntu-latest
-    needs: setup
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
-
-      - name: Lint
-        run: npm run lint
-
   build:
     runs-on: ubuntu-latest
-    needs: setup
     steps:
       - uses: actions/checkout@v4
 
@@ -97,9 +61,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm install
 
       - name: Create placeholder Discord entities
         run: |
@@ -123,7 +85,6 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: build
 
     env:
       DB_HOST: localhost
@@ -157,9 +118,7 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install
+        run: npm install
 
       - name: Create placeholder Discord entities
         run: |
