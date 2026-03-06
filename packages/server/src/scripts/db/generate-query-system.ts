@@ -1,4 +1,5 @@
 import "@/logger.global";
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 /**
@@ -159,6 +160,14 @@ function setupContext(): GenerationContext {
  * // - src/db/queries/admin/log/index.ts (namespace, copied)
  * ```
  */
+const NAMESPACE_MARKER = "This is a pure organizational namespace";
+
+function canOverwriteWithNamespace(filePath: string): boolean {
+  if (!fs.existsSync(filePath)) return true;
+  const content = fs.readFileSync(filePath, "utf-8");
+  return content.includes(NAMESPACE_MARKER);
+}
+
 function generateTableFiles(
   structure: TableStructure,
   tableMap: Map<string, any>,
@@ -213,10 +222,14 @@ function generateTableFiles(
     writeFile(namespaceFile, namespaceContent);
     generatedFiles.push(getRelativePath(projectRoot, namespaceFile));
 
-    // Copy to actual directory (overwrites namespace files intentionally)
-    // This is safe because namespaces are purely organizational
+    // Copy to actual directory, but only if the existing file is also a
+    // generated namespace file (or doesn't exist). Never overwrite user-
+    // scaffolded query files — when a table is temporarily deleted, its
+    // node becomes namespace-only and would otherwise destroy the scaffold.
     const actualNamespaceFile = path.join(actualDir, "index.ts");
-    copyFile(namespaceFile, actualNamespaceFile);
+    if (canOverwriteWithNamespace(actualNamespaceFile)) {
+      copyFile(namespaceFile, actualNamespaceFile);
+    }
   }
 
   // Recursively process all children to build complete hierarchy
