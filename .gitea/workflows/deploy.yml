@@ -54,6 +54,6 @@ jobs:
 
       - name: Fix permissions and trigger restart
         run: |
-          chown -R matej:docker /opt/createrington
-          chown -R matej:docker /var/www/createrington
+          chown -R 1000:988 /opt/createrington
+          chown -R 1000:988 /var/www/createrington
           touch /opt/createrington/.restart-trigger
