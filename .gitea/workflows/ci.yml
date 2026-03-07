@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+      - dev
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Create placeholder Discord entities
+        run: |
+          mkdir -p packages/server/generated/discord
+          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
+          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
+          interface MemberRolesConfig {}
+          interface ChannelConfig {}
+          interface CategoriesConfig {}
+          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
+          EOF
+
+      - name: Generate code
+        run: pnpm generate:ci
+
+      - name: Type check
+        run: pnpm typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Create placeholder Discord entities
+        run: |
+          mkdir -p packages/server/generated/discord
+          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
+          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
+          interface MemberRolesConfig {}
+          interface ChannelConfig {}
+          interface CategoriesConfig {}
+          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
+          EOF
+
+      - name: Generate code
+        run: pnpm generate:ci
+
+      - name: Build server
+        run: pnpm build:server
+
+      - name: Build client
+        run: pnpm build:client

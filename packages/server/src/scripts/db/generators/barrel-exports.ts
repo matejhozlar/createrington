@@ -60,7 +60,7 @@ export function generateSharedBarrelExport(tables: TableInfo[]): string {
  * Barrel export for all shared database types
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 
 // Database enum types
@@ -127,7 +127,7 @@ export function generateBarrelExport(tables: TableInfo[]): string {
  * Barrel export for all generated database queries
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 
 // ============================================================================
@@ -233,7 +233,7 @@ export function generateActualQueriesBarrel(
  * Barrel export for all actual query classes
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  * 
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";

@@ -1,0 +1,59 @@
+name: Deploy
+
+on:
+  push:
+    branches: [dev]
+
+jobs:
+  deploy:
+    runs-on: hetzner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Load environment for Discord scrape
+        run: cp /opt/createrington/.env .env
+
+      - name: Scrape Discord entities
+        run: pnpm scrape-discord
+
+      - name: Build
+        run: pnpm build
+
+      - name: Deploy frontend
+        run: |
+          rm -rf /var/www/createrington/*
+          cp -r dist/public/* /var/www/createrington/
+
+      - name: Deploy backend
+        run: |
+          rm -rf /opt/createrington/dist
+          cp -r dist /opt/createrington/dist
+          cp package.json /opt/createrington/package.json
+          rm -rf /opt/createrington/node_modules
+          cp -r node_modules /opt/createrington/node_modules
+          mkdir -p /opt/createrington/packages/server
+          rm -rf /opt/createrington/packages/server/node_modules
+          cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
+
+      - name: Reset database
+        run: |
+          apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
+          export PGPASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
+          DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
+          DB_NAME=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
+          psql -h postgres -U "$DB_USER" -c "DROP DATABASE IF EXISTS $DB_NAME;"
+          psql -h postgres -U "$DB_USER" -c "CREATE DATABASE $DB_NAME;"
+          psql -h postgres -U "$DB_USER" -d "$DB_NAME" -f db/schema/init-docker.sql
+          psql -h postgres -U "$DB_USER" -d "$DB_NAME" -f db/data/test-data.sql
+
+      - name: Fix permissions and trigger restart
+        run: |
+          chown -R 1000:988 /opt/createrington
+          chown -R 1000:988 /var/www/createrington
+          touch /opt/createrington/.restart-trigger

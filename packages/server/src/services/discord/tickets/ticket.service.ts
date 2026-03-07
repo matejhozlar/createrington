@@ -27,7 +27,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import { createTranscript, ExportReturnType } from "discord-html-transcripts";
+// Lazy-imported to avoid React 19/18 conflict at startup
+// discord-html-transcripts requires react-dom/static (React 19) but the workspace pins React 18
+const loadTranscripts = () => import("discord-html-transcripts");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -495,6 +497,7 @@ export class TicketService {
         throw new Error("Channel not found or is not text-based");
       }
 
+      const { createTranscript, ExportReturnType } = await loadTranscripts();
       const transcript = await createTranscript(channel as TextBasedChannel, {
         limit: -1,
         returnType: ExportReturnType.Buffer,

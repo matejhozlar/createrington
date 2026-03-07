@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "tsc -b && vite build",
-    "typecheck": "tsc -b --noEmit && eslint .",
+    "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -32,13 +32,11 @@
     "ky": "^1.14.3",
     "lucide-react": "^0.563.0",
     "radix-ui": "^1.4.3",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-icons": "^5.5.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
-    "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "skinview3d": "^3.4.1",
     "socket.io-client": "^4.8.3",
@@ -46,8 +44,8 @@
     "tailwindcss": "^4.1.18"
   },
   "devDependencies": {
-    "@createrington/server": "*",
-    "@createrington/shared": "*",
+    "@createrington/server": "workspace:*",
+    "@createrington/shared": "workspace:*",
     "@eslint/js": "^9.39.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",

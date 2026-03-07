@@ -77,7 +77,7 @@ export function generateBaseTypes(): string {
  * Base types for database query filters and operators
  * 
  * Auto-generated from database schema
- * DO NOT EDIT MANUALLY - regenerate with: npm run generate
+ * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 
 /**
