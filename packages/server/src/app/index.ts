@@ -21,6 +21,9 @@ import { container, Services, getServiceSync } from "@/services";
 /** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
   const app = express();
+  if (config.envMode.isProd) {
+    app.set("trust proxy", 1);
+  }
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());

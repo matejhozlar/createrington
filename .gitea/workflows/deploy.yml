@@ -52,5 +52,8 @@ jobs:
           psql -h postgres -U "$DB_USER" -d "$DB_NAME" -f db/schema/init-docker.sql
           psql -h postgres -U "$DB_USER" -d "$DB_NAME" -f db/data/test-data.sql
 
-      - name: Trigger backend restart
-        run: touch /opt/createrington/.restart-trigger
+      - name: Fix permissions and trigger restart
+        run: |
+          chown -R matej:docker /opt/createrington
+          chown -R matej:docker /var/www/createrington
+          touch /opt/createrington/.restart-trigger
