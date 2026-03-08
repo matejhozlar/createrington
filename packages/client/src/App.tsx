@@ -43,7 +43,7 @@ import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
-import { LoadingScreen } from "./components/loading-spinner";
+import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
 import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
 import { TermsOfService } from "./features/legal/TermsOfService";
@@ -110,7 +110,7 @@ function AppContent() {
         <Route
           path="/team"
           element={
-            <Suspense fallback={<LoadingScreen />}>
+            <Suspense fallback={<Loading mode="inline" size="large" text="Loading..." className="flex items-center justify-center py-32" />}>
               <Team />
             </Suspense>
           }
