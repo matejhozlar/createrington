@@ -39,6 +39,9 @@ export class PlaytimeRepository {
    * Start a new session for a player
    * Called when PlaytimeService emits 'sessionStart' event
    *
+   * Closes any existing active sessions for this player on this server
+   * before creating a new one to prevent duplicates.
+   *
    * @param event - Session start event
    * @returns Session ID for tracking
    */
@@ -63,6 +66,22 @@ export class PlaytimeRepository {
         return null;
       }
 
+      // Close any orphaned active sessions for this player on this server
+      const closedCount = await Q.player.session.updateAll(
+        { sessionEnd: event.sessionStart },
+        {
+          playerMinecraftUuid: event.uuid,
+          serverId: event.serverId,
+          sessionEnd: null,
+        },
+      );
+
+      if (closedCount > 0) {
+        logger.warn(
+          `Closed ${closedCount} orphaned active session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
+        );
+      }
+
       const session = await Q.player.session.createAndReturn({
         playerMinecraftUuid: event.uuid,
         serverId: event.serverId,
@@ -82,13 +101,35 @@ export class PlaytimeRepository {
 
   /**
    * End a session
-   * Called then PlaytimeService emits 'sessionEnd' event
+   * Called when PlaytimeService emits 'sessionEnd' event
    * Database triggers will handle aggregations automatically
+   *
+   * When sessionId is 0, closes all active DB sessions for the player
+   * on the given server (handles orphaned sessions after backend restart).
    *
    * @param event - Session end event data
    */
   async endSession(event: SessionEndEvent): Promise<void> {
     try {
+      if (event.sessionId === 0) {
+        // Orphaned session — close all active DB sessions for this player/server
+        const count = await Q.player.session.updateAll(
+          { sessionEnd: event.sessionEnd },
+          {
+            playerMinecraftUuid: event.uuid,
+            serverId: event.serverId,
+            sessionEnd: null,
+          },
+        );
+
+        if (count > 0) {
+          logger.info(
+            `Closed ${count} orphaned session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
+          );
+        }
+        return;
+      }
+
       await Q.player.session.update(
         { id: event.sessionId },
         { sessionEnd: event.sessionEnd },
