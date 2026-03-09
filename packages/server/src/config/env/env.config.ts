@@ -138,6 +138,10 @@ const envSchema = z.object({
     .string()
     .min(1)
     .optional(),
+  PUPPETEER_BASE_URL: z
+    .string()
+    .url()
+    .optional(),
 
   // Email
   EMAIL_HOST: z
