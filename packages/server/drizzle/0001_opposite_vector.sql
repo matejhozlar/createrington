@@ -1,0 +1,2 @@
+DROP INDEX "idx_discord_guild_member_leave_deleted_at";--> statement-breakpoint
+CREATE INDEX "idx_discord_guild_member_leave_deleted_at" ON "discord_guild_member_leave" USING btree ("deleted_at") WHERE deleted_at IS NULL;

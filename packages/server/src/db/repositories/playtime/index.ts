@@ -22,8 +22,9 @@ import type { SessionEndEvent, SessionStartEvent } from "@/services/playtime";
  *
  * Handles:
  * - Session lifecycle (start/end)
- * - Player state synchronization
- * - Playtime statistics and aggregations
+ * - Player state synchronization (online status, last seen)
+ * - Playtime aggregation (daily/hourly/summary)
+ * - Playtime statistics retrieval
  * - Coordinates multiple query classes
  *
  * This is the layer that listens to PlaytimeService events
@@ -88,6 +89,16 @@ export class PlaytimeRepository {
         sessionStart: event.sessionStart,
       });
 
+      // Sync player online status
+      await Q.player.update(
+        { minecraftUuid: event.uuid },
+        {
+          online: true,
+          lastSeen: new Date(),
+          currentServerId: event.serverId,
+        },
+      );
+
       logger.info(
         `Session started: ${event.username} (${event.uuid}) - ID: ${session.id}`,
       );
@@ -102,7 +113,9 @@ export class PlaytimeRepository {
   /**
    * End a session
    * Called when PlaytimeService emits 'sessionEnd' event
-   * Database triggers will handle aggregations automatically
+   *
+   * Handles: closing the session, aggregating playtime stats,
+   * and syncing the player's online status.
    *
    * When sessionId is 0, closes all active DB sessions for the player
    * on the given server (handles orphaned sessions after backend restart).
@@ -112,32 +125,58 @@ export class PlaytimeRepository {
   async endSession(event: SessionEndEvent): Promise<void> {
     try {
       if (event.sessionId === 0) {
-        // Orphaned session — close all active DB sessions for this player/server
-        const count = await Q.player.session.updateAll(
-          { sessionEnd: event.sessionEnd },
-          {
-            playerMinecraftUuid: event.uuid,
-            serverId: event.serverId,
-            sessionEnd: null,
-          },
-        );
+        // Orphaned session — find then close all active DB sessions
+        const activeSessions = await Q.player.session.findAll({
+          playerMinecraftUuid: event.uuid,
+          serverId: event.serverId,
+          sessionEnd: null,
+        });
 
-        if (count > 0) {
+        if (activeSessions.length > 0) {
+          await Q.player.session.updateAll(
+            { sessionEnd: event.sessionEnd },
+            {
+              playerMinecraftUuid: event.uuid,
+              serverId: event.serverId,
+              sessionEnd: null,
+            },
+          );
+
+          // Aggregate each orphaned session
+          for (const session of activeSessions) {
+            await this.aggregateSessionPlaytime(
+              event.uuid,
+              event.serverId,
+              session.sessionStart,
+              event.sessionEnd,
+            );
+          }
+
           logger.info(
-            `Closed ${count} orphaned session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
+            `Closed ${activeSessions.length} orphaned session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
           );
         }
-        return;
+      } else {
+        await Q.player.session.update(
+          { id: event.sessionId },
+          { sessionEnd: event.sessionEnd },
+        );
+
+        // Aggregate playtime stats
+        await this.aggregateSessionPlaytime(
+          event.uuid,
+          event.serverId,
+          event.sessionStart,
+          event.sessionEnd,
+        );
+
+        logger.info(
+          `Session ended: ${event.username} (${event.uuid}) - ${event.secondsPlayed}s`,
+        );
       }
 
-      await Q.player.session.update(
-        { id: event.sessionId },
-        { sessionEnd: event.sessionEnd },
-      );
-
-      logger.info(
-        `Session ended: ${event.username} (${event.uuid}) - ${event.secondsPlayed}s`,
-      );
+      // Sync player online status
+      await this.syncPlayerOfflineStatus(event.uuid, event.sessionEnd);
     } catch (error) {
       logger.error("Failed to end session:", error);
       throw error;
@@ -192,16 +231,43 @@ export class PlaytimeRepository {
    */
   async endAllActiveSessions(serverId?: number): Promise<number> {
     try {
-      const count = await Q.player.session.updateAll(
-        { sessionEnd: new Date() },
+      const now = new Date();
+
+      // Fetch active sessions before closing so we can aggregate them
+      const activeSessions = await Q.player.session.findAll({
+        ...(serverId && { serverId }),
+        sessionEnd: null,
+      });
+
+      if (activeSessions.length === 0) return 0;
+
+      await Q.player.session.updateAll(
+        { sessionEnd: now },
         {
           ...(serverId && { serverId }),
           sessionEnd: null,
         },
       );
 
-      logger.info(`Ended ${count} active session(s)`);
-      return count;
+      // Aggregate each session and collect affected player UUIDs
+      const affectedUuids = new Set<string>();
+      for (const session of activeSessions) {
+        affectedUuids.add(session.playerMinecraftUuid);
+        await this.aggregateSessionPlaytime(
+          session.playerMinecraftUuid,
+          session.serverId,
+          session.sessionStart,
+          now,
+        );
+      }
+
+      // Sync online status for all affected players
+      for (const uuid of affectedUuids) {
+        await this.syncPlayerOfflineStatus(uuid, now);
+      }
+
+      logger.info(`Ended ${activeSessions.length} active session(s)`);
+      return activeSessions.length;
     } catch (error) {
       logger.error("Failed to end all active sessions:", error);
       throw error;
@@ -496,6 +562,69 @@ export class PlaytimeRepository {
     } catch (error) {
       logger.error("Failed to get top players by date range:", error);
       throw error;
+    }
+  }
+
+  // ============================================================================
+  // INTERNAL HELPERS
+  // ============================================================================
+
+  /**
+   * Aggregates a completed session into daily, hourly, and summary tables.
+   * Replaces the old update_playtime_aggregates database trigger.
+   */
+  private async aggregateSessionPlaytime(
+    playerMinecraftUuid: string,
+    serverId: number,
+    sessionStart: Date,
+    sessionEnd: Date,
+  ): Promise<void> {
+    const secondsPlayed = Math.floor(
+      (sessionEnd.getTime() - sessionStart.getTime()) / 1000,
+    );
+    if (secondsPlayed <= 0) return;
+
+    await Promise.all([
+      Q.player.playtime.daily.aggregateSession(
+        playerMinecraftUuid,
+        serverId,
+        sessionStart,
+        sessionEnd,
+      ),
+      Q.player.playtime.hourly.aggregateSession(
+        playerMinecraftUuid,
+        serverId,
+        sessionStart,
+        sessionEnd,
+      ),
+      Q.player.playtime.summary.aggregateSession(
+        playerMinecraftUuid,
+        serverId,
+        secondsPlayed,
+        sessionStart,
+        sessionEnd,
+      ),
+    ]);
+  }
+
+  /**
+   * Checks if a player still has active sessions; if not, marks them offline.
+   * Replaces the old sync_player_online_status database trigger.
+   */
+  private async syncPlayerOfflineStatus(
+    playerMinecraftUuid: string,
+    lastSeen: Date,
+  ): Promise<void> {
+    const remaining = await Q.player.session.findAll({
+      playerMinecraftUuid,
+      sessionEnd: null,
+    });
+
+    if (remaining.length === 0) {
+      await Q.player.update(
+        { minecraftUuid: playerMinecraftUuid },
+        { online: false, lastSeen, currentServerId: null },
+      );
     }
   }
 

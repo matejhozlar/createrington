@@ -44,13 +44,17 @@ jobs:
       - name: Reset database
         run: |
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
-          export PGPASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
-          DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
-          DB_NAME=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
-          psql -h infra-postgres -U "$DB_USER" -c "DROP DATABASE IF EXISTS $DB_NAME WITH (FORCE);"
-          psql -h infra-postgres -U "$DB_USER" -c "CREATE DATABASE $DB_NAME;"
-          psql -h infra-postgres -U "$DB_USER" -d "$DB_NAME" -f db/schema/init-docker.sql
-          psql -h infra-postgres -U "$DB_USER" -d "$DB_NAME" -f db/data/test-data.sql
+          export DB_HOST=infra-postgres
+          export DB_PORT=5432
+          export DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
+          export PGPASSWORD=$DB_PASSWORD
+
+          psql -h $DB_HOST -U "$DB_USER" -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
+          psql -h $DB_HOST -U "$DB_USER" -c "CREATE DATABASE $DB_DATABASE;"
+          pnpm db:migrate
+          psql -h $DB_HOST -U "$DB_USER" -d "$DB_DATABASE" -f db/data/test-data.sql
 
       - name: Fix permissions and trigger restart
         run: |
