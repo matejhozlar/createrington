@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import "./compare-render.css";
 
 interface PlayerData {
   username: string;
@@ -44,16 +43,24 @@ function StatRow({
   win: 0 | 1 | 2;
 }) {
   return (
-    <div className="stat-row">
-      <div className={`stat-value left ${win === 1 ? "winning" : ""}`}>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2 rounded-md bg-card/60 border border-border">
+      <span
+        className={`text-left text-[15px] font-semibold ${
+          win === 1 ? "text-primary" : "text-muted-foreground"
+        }`}
+      >
         {value1}
-        {win === 1 && <span className="crown">&#9670;</span>}
-      </div>
-      <div className="stat-label">{label}</div>
-      <div className={`stat-value right ${win === 2 ? "winning" : ""}`}>
-        {win === 2 && <span className="crown">&#9670;</span>}
+      </span>
+      <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-muted-foreground/50 whitespace-nowrap">
+        {label}
+      </span>
+      <span
+        className={`text-right text-[15px] font-semibold ${
+          win === 2 ? "text-primary" : "text-muted-foreground"
+        }`}
+      >
         {value2}
-      </div>
+      </span>
     </div>
   );
 }
@@ -89,16 +96,18 @@ export function CompareRender() {
 
   if (error) {
     return (
-      <div className="compare-root">
-        <div className="compare-error">{error}</div>
+      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
+        <span className="text-base tracking-wide text-destructive">{error}</span>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="compare-root">
-        <div className="compare-loading">Loading...</div>
+      <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
+        <span className="text-base tracking-wide text-muted-foreground">
+          Loading...
+        </span>
       </div>
     );
   }
@@ -119,39 +128,56 @@ export function CompareRender() {
   );
 
   return (
-    <div className="compare-root" id="compare-container">
-      {/* Decorative grid background */}
-      <div className="bg-grid" />
-      <div className="bg-glow left" />
-      <div className="bg-glow right" />
+    <div
+      id="compare-container"
+      className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
+    >
+      {/* Background grid */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage:
+            "linear-gradient(oklch(1 0 0 / 0.03) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.03) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+      {/* Background glows */}
+      <div className="absolute -left-20 top-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-1" />
+      <div className="absolute -right-20 bottom-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-5" />
 
       {/* Header */}
-      <div className="compare-header">
-        <div className="header-line" />
-        <h1 className="header-title">PLAYER COMPARISON</h1>
-        <div className="header-line" />
+      <div className="flex items-center gap-4 px-8 pt-5 z-10">
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+        <h1 className="text-[12px] font-semibold tracking-[0.35em] uppercase text-muted-foreground/40">
+          Player Comparison
+        </h1>
+        <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
-      {/* Player cards + stats center */}
-      <div className="compare-body">
+      {/* Body */}
+      <div className="flex-1 flex items-center justify-center px-6 pt-2 z-10">
         {/* Player 1 */}
-        <div className="player-card left">
-          <div className="skin-wrapper">
-            <div className="skin-glow left" />
+        <div className="flex flex-col items-center w-[200px] shrink-0">
+          <div className="relative h-[300px] flex items-end justify-center">
+            <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-1" />
             <img
               src={`https://mc-heads.net/body/${left.uuid}`}
               alt={left.username}
-              className="player-skin"
+              className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
             />
           </div>
-          <div className="player-name left">{left.username}</div>
+          <span className="mt-2 text-xl font-bold tracking-wide text-chart-1">
+            {left.username}
+          </span>
         </div>
 
-        {/* VS + Stats */}
-        <div className="stats-center">
-          <div className="vs-badge">VS</div>
-          <div className="stats-list">
+        {/* Stats center */}
+        <div className="flex-1 flex flex-col items-center gap-3 px-2">
+          <span className="text-2xl font-bold tracking-[0.15em] text-foreground/10">
+            VS
+          </span>
+          <div className="flex flex-col gap-2.5 w-full">
             <StatRow
               label="BALANCE"
               value1={`$${left.balance}`}
@@ -180,23 +206,27 @@ export function CompareRender() {
         </div>
 
         {/* Player 2 */}
-        <div className="player-card right">
-          <div className="skin-wrapper">
-            <div className="skin-glow right" />
+        <div className="flex flex-col items-center w-[200px] shrink-0">
+          <div className="relative h-[300px] flex items-end justify-center">
+            <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-5" />
             <img
               src={`https://mc-heads.net/body/${right.uuid}`}
               alt={right.username}
-              className="player-skin"
+              className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
             />
           </div>
-          <div className="player-name right">{right.username}</div>
+          <span className="mt-2 text-xl font-bold tracking-wide text-chart-5">
+            {right.username}
+          </span>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="compare-footer">
-        <span>create-rington.com</span>
+      <div className="pb-3.5 text-center z-10">
+        <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
+          create-rington.com
+        </span>
       </div>
     </div>
   );
