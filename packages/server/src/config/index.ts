@@ -215,6 +215,10 @@ const config = {
     },
   },
 
+  puppeteer: {
+    secret: env.PUPPETEER_SECRET,
+  },
+
   economy: {
     reward: {
       daily: 50,

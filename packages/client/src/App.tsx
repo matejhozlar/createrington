@@ -55,6 +55,7 @@ import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
+import { CompareRender } from "./pages/Render/CompareRender";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -101,6 +102,9 @@ function AppContent() {
     <Routes>
       {/* Standalone full-screen route (no sidebar/footer) — temporary */}
       <Route path="/ad" element={<Advertisement />} />
+
+      {/* Puppeteer render routes (no layout, screenshot targets) */}
+      <Route path="/render/compare" element={<CompareRender />} />
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
