@@ -83,9 +83,8 @@ export async function execute(
     let screenshotBuffer: Buffer | null = null;
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-      const baseUrl = config.envMode.isDev
-        ? "http://localhost:3000"
-        : config.meta.links.website;
+      const baseUrl = config.puppeteer.baseUrl
+        ?? (config.envMode.isDev ? "http://localhost:3000" : config.meta.links.website);
 
       const renderUrl = new URL("/render/compare", baseUrl);
       renderUrl.searchParams.set("secret", config.puppeteer.secret);
