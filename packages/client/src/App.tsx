@@ -43,7 +43,7 @@ import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
 import { Footer } from "./components/footer";
-import { LoadingScreen } from "./components/loading-spinner";
+import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
 import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
 import { TermsOfService } from "./features/legal/TermsOfService";
@@ -55,6 +55,7 @@ import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
+import { CompareRender } from "./pages/Render/CompareRender";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -102,6 +103,9 @@ function AppContent() {
       {/* Standalone full-screen route (no sidebar/footer) — temporary */}
       <Route path="/ad" element={<Advertisement />} />
 
+      {/* Puppeteer render routes (no layout, screenshot targets) */}
+      <Route path="/render/compare" element={<CompareRender />} />
+
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
         <Route path="/rules" element={<Rules />} />
@@ -110,7 +114,7 @@ function AppContent() {
         <Route
           path="/team"
           element={
-            <Suspense fallback={<LoadingScreen />}>
+            <Suspense fallback={<Loading mode="inline" size="large" text="Loading..." className="flex items-center justify-center py-32" />}>
               <Team />
             </Suspense>
           }

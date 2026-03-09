@@ -17,7 +17,48 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Upserts daily playtime records for a session, splitting across day boundaries.
+   * Adds seconds to existing records via ON CONFLICT.
+   */
+  async aggregateSession(
+    playerMinecraftUuid: string,
+    serverId: number,
+    sessionStart: Date,
+    sessionEnd: Date,
+  ): Promise<void> {
+    const startDay = new Date(sessionStart);
+    startDay.setHours(0, 0, 0, 0);
+
+    const endDay = new Date(sessionEnd);
+    endDay.setHours(0, 0, 0, 0);
+
+    let currentDay = new Date(startDay);
+
+    while (currentDay <= endDay) {
+      const nextDay = new Date(currentDay);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const periodStart =
+        currentDay <= sessionStart ? sessionStart : currentDay;
+      const periodEnd = nextDay <= sessionEnd ? nextDay : sessionEnd;
+      const seconds = Math.floor(
+        (periodEnd.getTime() - periodStart.getTime()) / 1000,
+      );
+
+      if (seconds > 0) {
+        await this.db.query(
+          `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_date, seconds_played)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (player_minecraft_uuid, server_id, play_date)
+           DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
+          [playerMinecraftUuid, serverId, currentDay, seconds],
+        );
+      }
+
+      currentDay = nextDay;
+    }
+  }
 
   /**
    * Retrieves aggregated daily activity metrics for a specific server

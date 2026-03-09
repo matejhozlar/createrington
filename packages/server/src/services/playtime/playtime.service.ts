@@ -365,25 +365,51 @@ export class PlaytimeService extends EventEmitter {
     data: ModPlayerLeaveData,
   ): Promise<void> {
     const session = this.activeSessions.get(data.uuid);
+    const sessionEnd = data.timestamp || new Date();
 
     if (!session) {
       logger.warn(
-        `Recieved leave notification for ${data.username} (${data.uuid}) but no active session found. Ignoring`,
+        `Received leave notification for ${data.username} (${data.uuid}) but no active in-memory session found. ` +
+          `Emitting orphaned sessionEnd to close any DB sessions.`,
       );
+
+      // Emit a special sessionEnd with sessionId 0 to signal the repository
+      // to close any orphaned DB sessions for this player on this server
+      const event: SessionEndEvent = {
+        sessionId: 0,
+        uuid: data.uuid,
+        username: data.username,
+        serverId: this.config.serverId,
+        sessionStart: sessionEnd,
+        sessionEnd,
+        secondsPlayed: 0,
+      };
+
+      this.emit("sessionEnd", event);
       return;
     }
 
-    const sessionEnd = data.timestamp || new Date();
     const secondsPlayed = Math.floor(
       (sessionEnd.getTime() - session.sessionStart.getTime()) / 1000,
     );
 
     if (!session.sessionId) {
       logger.warn(
-        `Cannot emit sessionEnd for ${session.username} (${session.uuid}) - no sessionId set.` +
-          `Repository may not have processed sessionStart yet`,
+        `Cannot emit sessionEnd for ${session.username} (${session.uuid}) - no sessionId set. ` +
+          `Repository may not have processed sessionStart yet. Emitting orphaned sessionEnd.`,
       );
 
+      const event: SessionEndEvent = {
+        sessionId: 0,
+        uuid: session.uuid,
+        username: session.username,
+        serverId: session.serverId,
+        sessionStart: session.sessionStart,
+        sessionEnd,
+        secondsPlayed,
+      };
+
+      this.emit("sessionEnd", event);
       this.activeSessions.delete(data.uuid);
       return;
     }
@@ -545,15 +571,8 @@ export class PlaytimeService extends EventEmitter {
       (now.getTime() - session.sessionStart.getTime()) / 1000,
     );
 
-    if (!session.sessionId) {
-      logger.warn(
-        `Cannot emit sessionEnd for ${session.username} - no sessionId set`,
-      );
-      return;
-    }
-
     const event: SessionEndEvent = {
-      sessionId: session.sessionId,
+      sessionId: session.sessionId ?? 0,
       uuid: session.uuid,
       username: session.username,
       serverId: session.serverId,
@@ -682,6 +701,9 @@ export class PlaytimeService extends EventEmitter {
   public stop(): void {
     logger.info("Stopping PlaytimeService...");
     this.endAllSessions();
+    // Emit serverShutdown so repository closes any orphaned DB sessions
+    // not tracked in memory (e.g. from before a backend restart)
+    this.emit("serverShutdown", this.config.serverId);
     this.isInitialized = false;
     logger.info("PlaytimeService stopped");
   }

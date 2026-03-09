@@ -169,19 +169,59 @@ export class PlaytimeManagerService {
     for (const [serverId, service] of this.playtimeServices) {
       service
         .detectServerState(messageCacheService)
-        .then(() => {
+        .then(async () => {
           logger.info(
             `Server ${serverId} state detected: ${service.getServerState()}`,
           );
 
-          // If server is online, perform recovery sync
           if (service.getServerState() === ServerState.ONLINE) {
-            service.performRecoverySync().catch((error) => {
+            // Server is online — perform recovery sync, then close DB sessions
+            // for players that aren't actually online
+            try {
+              await service.performRecoverySync();
+
+              const onlineUuids = new Set(
+                service.getActiveSessions().map((s) => s.uuid),
+              );
+              const orphanedSessions =
+                await playtimeRepo.getActiveSessions(serverId);
+
+              let closedCount = 0;
+              for (const session of orphanedSessions) {
+                if (!onlineUuids.has(session.playerMinecraftUuid)) {
+                  await playtimeRepo.endSession({
+                    sessionId: session.id,
+                    uuid: session.playerMinecraftUuid,
+                    username: "",
+                    serverId,
+                    sessionStart: session.sessionStart,
+                    sessionEnd: new Date(),
+                    secondsPlayed: 0,
+                  });
+                  closedCount++;
+                }
+              }
+
+              if (closedCount > 0) {
+                logger.warn(
+                  `Startup: Closed ${closedCount} orphaned DB session(s) for server ${serverId}`,
+                );
+              }
+            } catch (error) {
               logger.error(
                 `Recovery sync failed for server ${serverId}:`,
                 error,
               );
-            });
+            }
+          } else {
+            // Server is offline — close all active DB sessions
+            const count =
+              await playtimeRepo.endAllActiveSessions(serverId);
+            if (count > 0) {
+              logger.warn(
+                `Startup: Server ${serverId} offline — closed ${count} orphaned DB session(s)`,
+              );
+            }
           }
         })
         .catch((error) => {

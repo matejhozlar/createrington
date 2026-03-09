@@ -3,7 +3,10 @@ import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@/utils/format";
+import { getService, Services } from "@/services";
+import config from "@/config";
 import {
+  AttachmentBuilder,
   ChatInputCommandInteraction,
   SlashCommandBuilder,
 } from "discord.js";
@@ -47,8 +50,8 @@ export const cooldown = {
  * Process:
  * 1. Get both target users (player2 defaults to command initiator)
  * 2. Validate they are not the same user
- * 3. Fetch detailed stats for both players
- * 4. Reply with an embed comparing balance, playtime, sessions, and join date
+ * 3. Screenshot the comparison render page via PuppeteerService
+ * 4. Reply with the screenshot embedded in an embed, with text fallback
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,
@@ -65,6 +68,8 @@ export async function execute(
     return;
   }
 
+  await interaction.deferReply();
+
   try {
     const [details1, details2] = await Promise.all([
       playerRepo.getDetailed({ discordId: user1.id }),
@@ -74,43 +79,85 @@ export async function execute(
     const name1 = details1.player.minecraftUsername;
     const name2 = details2.player.minecraftUsername;
 
-    const bal1 = details1.balance
-      ? BalanceUtils.formatTrimmed(details1.balance.balance)
-      : "0";
-    const bal2 = details2.balance
-      ? BalanceUtils.formatTrimmed(details2.balance.balance)
-      : "0";
+    // Try to generate a visual comparison via Puppeteer
+    let screenshotBuffer: Buffer | null = null;
+    try {
+      const puppeteer = await getService(Services.PUPPETEER_SERVICE);
+      const baseUrl = config.puppeteer.baseUrl
+        ?? (config.envMode.isDev ? "http://localhost:3000" : config.meta.links.website);
 
-    const pt1 = formatPlaytime(details1.playtime.totalSeconds);
-    const pt2 = formatPlaytime(details2.playtime.totalSeconds);
+      const renderUrl = new URL("/render/compare", baseUrl);
+      renderUrl.searchParams.set("secret", config.puppeteer.secret);
+      renderUrl.searchParams.set("player1", user1.id);
+      renderUrl.searchParams.set("player2", user2.id);
 
-    const sessions1 = details1.playtime.totalSessions.toLocaleString();
-    const sessions2 = details2.playtime.totalSessions.toLocaleString();
+      const result = await puppeteer.screenshot({
+        url: renderUrl.toString(),
+        waitForSelector: "#compare-container",
+        elementSelector: "#compare-container",
+        settleDelay: 1500,
+        timeout: 15_000,
+        viewportWidth: 900,
+        viewportHeight: 500,
+      });
 
-    const joined1 = Math.floor(details1.player.createdAt.getTime() / 1000);
-    const joined2 = Math.floor(details2.player.createdAt.getTime() / 1000);
+      screenshotBuffer = result.buffer;
+    } catch (err) {
+      logger.warn("Puppeteer screenshot failed for /compare, falling back to text embed:", err);
+    }
 
-    const embed = EmbedPresets.info(`${name1} vs ${name2}`)
-      .field("Balance", `${name1}: $${bal1}\n${name2}: $${bal2}`, true)
-      .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
-      .field("\u200b", "\u200b") // line break
-      .field(
-        "Sessions",
-        `${name1}: ${sessions1}\n${name2}: ${sessions2}`,
-        true,
-      )
-      .field(
-        "Member Since",
-        `${name1}: <t:${joined1}:D>\n${name2}: <t:${joined2}:D>`,
-        true,
-      );
+    if (screenshotBuffer) {
+      const attachment = new AttachmentBuilder(screenshotBuffer, {
+        name: `compare_${name1}_vs_${name2}.png`,
+      });
 
-    await interaction.reply({ embeds: [embed.build()] });
+      const embed = EmbedPresets.info(`${name1} vs ${name2}`)
+        .image(`attachment://compare_${name1}_vs_${name2}.png`);
+
+      await interaction.editReply({
+        embeds: [embed.build()],
+        files: [attachment],
+      });
+    } else {
+      // Text fallback if Puppeteer is unavailable
+      const bal1 = details1.balance
+        ? BalanceUtils.formatTrimmed(details1.balance.balance)
+        : "0";
+      const bal2 = details2.balance
+        ? BalanceUtils.formatTrimmed(details2.balance.balance)
+        : "0";
+
+      const pt1 = formatPlaytime(details1.playtime.totalSeconds);
+      const pt2 = formatPlaytime(details2.playtime.totalSeconds);
+
+      const sessions1 = details1.playtime.totalSessions.toLocaleString();
+      const sessions2 = details2.playtime.totalSessions.toLocaleString();
+
+      const joined1 = Math.floor(details1.player.createdAt.getTime() / 1000);
+      const joined2 = Math.floor(details2.player.createdAt.getTime() / 1000);
+
+      const embed = EmbedPresets.info(`${name1} vs ${name2}`)
+        .field("Balance", `${name1}: $${bal1}\n${name2}: $${bal2}`, true)
+        .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
+        .field("\u200b", "\u200b") // line break
+        .field(
+          "Sessions",
+          `${name1}: ${sessions1}\n${name2}: ${sessions2}`,
+          true,
+        )
+        .field(
+          "Member Since",
+          `${name1}: <t:${joined1}:D>\n${name2}: <t:${joined2}:D>`,
+          true,
+        );
+
+      await interaction.editReply({ embeds: [embed.build()] });
+    }
   } catch {
     const embed = EmbedPresets.error(
       "Comparison Error",
       "Could not fetch data for one or both players. They may not be registered.",
     );
-    await interaction.reply({ embeds: [embed.build()] });
+    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

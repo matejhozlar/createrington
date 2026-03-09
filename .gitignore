@@ -45,9 +45,6 @@ IDEAS.md
 .mcp.json
 storage/transcripts
 
-# Database migration data
-db/migrations
-
 # Auto-generated files
 generated
 packages/shared/src/db

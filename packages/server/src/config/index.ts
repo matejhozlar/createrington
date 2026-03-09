@@ -215,6 +215,12 @@ const config = {
     },
   },
 
+  puppeteer: {
+    secret: env.PUPPETEER_SECRET,
+    executablePath: env.PUPPETEER_EXECUTABLE_PATH,
+    baseUrl: env.PUPPETEER_BASE_URL,
+  },
+
   economy: {
     reward: {
       daily: 50,

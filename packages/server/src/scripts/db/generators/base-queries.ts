@@ -69,6 +69,9 @@ export function generateBaseQueries(
   const identifierFieldsSet = `new Set([${identifierFields
     .map((f) => `'${f}'`)
     .join(", ")}])`;
+  const hasUpdatedAt = table.columns.some(
+    (col) => col.columnName === "updated_at",
+  );
 
   return `import type { Pool, PoolClient } from "pg";
 import { BaseQueries } from "@/db/queries/base.queries";
@@ -107,7 +110,7 @@ export class ${className}BaseQueries extends BaseQueries<{
    * skipping non-identifier fields when passed complete entities.
    * Includes primary key columns and columns with unique constraints.
    */
-  protected readonly VALID_IDENTIFIER_FIELDS = ${identifierFieldsSet};
+  protected readonly VALID_IDENTIFIER_FIELDS = ${identifierFieldsSet};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}
 
   constructor(db: Pool | PoolClient) {
     super(db);

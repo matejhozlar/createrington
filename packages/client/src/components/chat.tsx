@@ -1226,10 +1226,10 @@ export function ServerChat() {
       if (cancelled) return;
       if (data && "messages" in data) {
         setMessages(data.messages as CachedMessage[]);
-        setTimeout(() => scrollToBottom("instant"), 100);
       }
       await subscribe("messages" as SubscriptionType, serverId ?? 0);
       setLoading(false);
+      setTimeout(() => scrollToBottom("instant"), 50);
     }
 
     init();

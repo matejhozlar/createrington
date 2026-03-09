@@ -23,7 +23,42 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Upserts hourly playtime records for a session, splitting across hour boundaries.
+   * Adds seconds to existing records via ON CONFLICT.
+   */
+  async aggregateSession(
+    playerMinecraftUuid: string,
+    serverId: number,
+    sessionStart: Date,
+    sessionEnd: Date,
+  ): Promise<void> {
+    let currentHour = new Date(sessionStart);
+    currentHour.setMinutes(0, 0, 0);
+
+    while (currentHour < sessionEnd) {
+      const nextHour = new Date(currentHour.getTime() + 60 * 60 * 1000);
+
+      const periodStart =
+        currentHour <= sessionStart ? sessionStart : currentHour;
+      const periodEnd = nextHour <= sessionEnd ? nextHour : sessionEnd;
+      const seconds = Math.floor(
+        (periodEnd.getTime() - periodStart.getTime()) / 1000,
+      );
+
+      if (seconds > 0) {
+        await this.db.query(
+          `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, play_hour, seconds_played)
+           VALUES ($1, $2, $3, $4)
+           ON CONFLICT (player_minecraft_uuid, server_id, play_hour)
+           DO UPDATE SET seconds_played = ${this.table}.seconds_played + EXCLUDED.seconds_played`,
+          [playerMinecraftUuid, serverId, currentHour, seconds],
+        );
+      }
+
+      currentHour = nextHour;
+    }
+  }
 
   /**
    * Retrieves a player's activity pattern aggregated by hour of the day
