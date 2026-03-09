@@ -962,10 +962,81 @@ INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, amount
 
 
 -- ============================================================================
+-- AGGREGATE PLAYTIME FROM SESSIONS
+-- ============================================================================
+
+-- Populate daily aggregates from completed sessions (pre-aggregated to avoid ON CONFLICT dupes)
+INSERT INTO player_playtime_daily (player_minecraft_uuid, server_id, play_date, seconds_played)
+SELECT
+    player_minecraft_uuid,
+    server_id,
+    play_date,
+    SUM(seconds_played)
+FROM (
+    SELECT
+        player_minecraft_uuid,
+        server_id,
+        d::date AS play_date,
+        EXTRACT(EPOCH FROM (
+            LEAST(session_end, (d + INTERVAL '1 day')::timestamptz) -
+            GREATEST(session_start, d::timestamptz)
+        ))::bigint AS seconds_played
+    FROM player_session,
+         generate_series(session_start::date, session_end::date, '1 day'::interval) AS d
+    WHERE session_end IS NOT NULL
+) sub
+GROUP BY player_minecraft_uuid, server_id, play_date;
+
+-- Populate hourly aggregates from completed sessions (pre-aggregated)
+INSERT INTO player_playtime_hourly (player_minecraft_uuid, server_id, play_hour, seconds_played)
+SELECT
+    player_minecraft_uuid,
+    server_id,
+    play_hour,
+    SUM(seconds_played)
+FROM (
+    SELECT
+        player_minecraft_uuid,
+        server_id,
+        h AS play_hour,
+        EXTRACT(EPOCH FROM (
+            LEAST(session_end, h + INTERVAL '1 hour') -
+            GREATEST(session_start, h)
+        ))::bigint AS seconds_played
+    FROM player_session,
+         generate_series(
+             date_trunc('hour', session_start),
+             session_end - INTERVAL '1 second',
+             '1 hour'::interval
+         ) AS h
+    WHERE session_end IS NOT NULL
+) sub
+GROUP BY player_minecraft_uuid, server_id, play_hour;
+
+-- Populate summary aggregates from completed sessions
+INSERT INTO player_playtime_summary (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
+SELECT
+    player_minecraft_uuid,
+    server_id,
+    SUM(EXTRACT(EPOCH FROM (session_end - session_start))::bigint),
+    COUNT(*),
+    MIN(session_start),
+    MAX(session_end)
+FROM player_session
+WHERE session_end IS NOT NULL
+GROUP BY player_minecraft_uuid, server_id
+ON CONFLICT (player_minecraft_uuid, server_id)
+DO UPDATE SET
+    total_seconds = EXCLUDED.total_seconds,
+    total_sessions = EXCLUDED.total_sessions,
+    first_seen = EXCLUDED.first_seen,
+    last_seen = EXCLUDED.last_seen;
+
+-- ============================================================================
 -- VERIFY DATA INTEGRITY
 -- ============================================================================
 
--- Check that triggers worked correctly for playtime aggregates
+-- Check playtime aggregates
 DO $$
 DECLARE
     summary_count INT;

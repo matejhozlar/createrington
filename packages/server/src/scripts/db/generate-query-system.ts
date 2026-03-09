@@ -23,7 +23,7 @@ import type {
 } from "./types";
 
 // Schema operations
-import { readSchemaFromSqlFiles } from "./schema/sql-parser";
+import { readSchemaFromDrizzle } from "./schema/drizzle-reader";
 
 // Hierarchy
 import { buildTableHierarchy, collectAllStructures } from "./hierarchy/builder";
@@ -254,7 +254,7 @@ function generateTableFiles(
  * @returns Generation result with statistics and file lists
  */
 export async function generate(): Promise<GenerationResult> {
-  console.log("[generate] Reading schema from SQL files...");
+  console.log("[generate] Reading schema from Drizzle schema...");
 
   // Setup all directory paths for monorepo structure
   const context = setupContext();
@@ -264,9 +264,8 @@ export async function generate(): Promise<GenerationResult> {
   await cleanDirectory(context.sharedTypesDir);
   await cleanDirectory(context.generatedDir);
 
-  // Read complete schema from SQL files in db/
-  const dbDir = path.resolve(context.monorepoRoot, "..", "db");
-  const schema = readSchemaFromSqlFiles(dbDir);
+  // Read schema from Drizzle TypeScript schema
+  const schema = readSchemaFromDrizzle();
   const { tables, enums } = schema;
 
   console.log(

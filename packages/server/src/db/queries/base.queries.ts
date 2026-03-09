@@ -210,6 +210,7 @@ export abstract class BaseQueries<
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly VALID_IDENTIFIER_FIELDS?: Set<string>;
+  protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
   // ============================================================================
   // SINGLETON REGISTRY FOR CHILD QUERIES
@@ -794,6 +795,10 @@ export abstract class BaseQueries<
         `${mapping.column} = $${identifierValues.length + index + 1}`,
     );
 
+    if (this.AUTO_SET_UPDATED_AT && !("updatedAt" in updates)) {
+      setClauses.push("updated_at = NOW()");
+    }
+
     const query = `
       UPDATE ${this.table}
       SET ${setClauses.join(", ")}
@@ -841,6 +846,10 @@ export abstract class BaseQueries<
       (mapping, index) =>
         `${mapping.column} = $${identifierValues.length + index + 1}`,
     );
+
+    if (this.AUTO_SET_UPDATED_AT && !("updatedAt" in updates)) {
+      setClauses.push("updated_at = NOW()");
+    }
 
     const query = `
       UPDATE ${this.table}
@@ -1237,6 +1246,10 @@ export abstract class BaseQueries<
     const setClauses = updateMappings.map(
       (mapping, index) => `${mapping.column} = $${params.length + index + 1}`,
     );
+
+    if (this.AUTO_SET_UPDATED_AT && !("updatedAt" in updates)) {
+      setClauses.push("updated_at = NOW()");
+    }
 
     const query = `
         UPDATE ${this.table}

@@ -60,7 +60,30 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Upserts a playtime summary record for a completed session.
+   * Increments total seconds/sessions and updates first/last seen.
+   */
+  async aggregateSession(
+    playerMinecraftUuid: string,
+    serverId: number,
+    secondsPlayed: number,
+    sessionStart: Date,
+    sessionEnd: Date,
+  ): Promise<void> {
+    await this.db.query(
+      `INSERT INTO ${this.table} (player_minecraft_uuid, server_id, total_seconds, total_sessions, first_seen, last_seen)
+       VALUES ($1, $2, $3, 1, $4, $5)
+       ON CONFLICT (player_minecraft_uuid, server_id)
+       DO UPDATE SET
+         total_seconds = ${this.table}.total_seconds + EXCLUDED.total_seconds,
+         total_sessions = ${this.table}.total_sessions + 1,
+         first_seen = LEAST(${this.table}.first_seen, EXCLUDED.first_seen),
+         last_seen = GREATEST(${this.table}.last_seen, EXCLUDED.last_seen),
+         updated_at = NOW()`,
+      [playerMinecraftUuid, serverId, secondsPlayed, sessionStart, sessionEnd],
+    );
+  }
 
   /**
    * Retrieves server playtime leaderboard with player usernames
