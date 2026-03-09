@@ -1,4 +1,4 @@
-import puppeteer, { type Browser, type Page } from "puppeteer";
+import puppeteer, { type Browser, type Page } from "puppeteer-core";
 import config from "@/config";
 
 export interface ScreenshotOptions {
@@ -167,13 +167,19 @@ export class PuppeteerService {
   private async launchBrowser(): Promise<Browser> {
     logger.info("Launching Puppeteer browser...");
 
+    const executablePath = config.puppeteer.executablePath
+      ?? (config.envMode.isProd ? "/usr/bin/chromium-browser" : undefined);
+
+    if (!executablePath) {
+      throw new Error(
+        "puppeteer-core requires an executablePath. Set PUPPETEER_EXECUTABLE_PATH in .env",
+      );
+    }
+
     const browser = await puppeteer.launch({
       headless: true,
       args: LAUNCH_ARGS,
-      // In production (Docker/Linux), use the system chromium
-      ...(config.envMode.isProd
-        ? { executablePath: "/usr/bin/chromium-browser" }
-        : {}),
+      executablePath,
     });
 
     browser.on("disconnected", () => {

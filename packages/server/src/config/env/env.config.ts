@@ -134,6 +134,10 @@ const envSchema = z.object({
   PUPPETEER_SECRET: z
     .string()
     .min(32, "Puppeteer secret must be at least 32 characters"),
+  PUPPETEER_EXECUTABLE_PATH: z
+    .string()
+    .min(1)
+    .optional(),
 
   // Email
   EMAIL_HOST: z

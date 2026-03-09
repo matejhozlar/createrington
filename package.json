@@ -16,7 +16,6 @@
       "cpu-features",
       "esbuild",
       "protobufjs",
-      "puppeteer",
       "ssh2"
     ]
   },

@@ -217,6 +217,7 @@ const config = {
 
   puppeteer: {
     secret: env.PUPPETEER_SECRET,
+    executablePath: env.PUPPETEER_EXECUTABLE_PATH,
   },
 
   economy: {
