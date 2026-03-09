@@ -9,7 +9,10 @@ import { webBot } from "@/discord/bots/web/client";
 import { setupWebBotHandlers } from "@/discord/bots/web/setup";
 import { createDiscordMessageService } from "./discord/message";
 import { Discord } from "@/discord/constants";
-import { MESSAGE_CACHE_CONFIG, MessageCacheService } from "./discord/message/cache";
+import {
+  MESSAGE_CACHE_CONFIG,
+  MessageCacheService,
+} from "./discord/message/cache";
 import { TicketService } from "./discord/tickets";
 import { LeaderboardService } from "./discord/leaderboard";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
@@ -22,6 +25,7 @@ import { PlayerBanService } from "./player/ban";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
+import { PuppeteerService } from "./puppeteer";
 import { lotteryService } from "./lottery";
 
 /**
@@ -46,6 +50,12 @@ export function registerServices(): void {
     logger.debug("Creating HTTP server...");
     const app = createApp();
     return http.createServer(app);
+  });
+
+  container.register(Services.PUPPETEER_SERVICE, async () => {
+    const service = new PuppeteerService();
+    await service.initialize();
+    return service;
   });
 
   // =========================================================================
@@ -271,9 +281,7 @@ export function registerServices(): void {
     Services.WEBSOCKET_SERVICE,
     async (c) => {
       const httpServer = await c.get(Services.HTTP_SERVER);
-      const messageCacheService = await c.get(
-        Services.MESSAGE_CACHE,
-      );
+      const messageCacheService = await c.get(Services.MESSAGE_CACHE);
       const playtimeManagerService = await c.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
@@ -309,29 +317,32 @@ export function registerServices(): void {
 
   container.on("serviceReady", async (serviceName) => {
     if (serviceName === Services.DATABASE) {
-      lotteryService.initialize().catch((err) =>
-        logger.error("LotteryService initialization failed:", err),
-      );
+      lotteryService
+        .initialize()
+        .catch((err) =>
+          logger.error("LotteryService initialization failed:", err),
+        );
     }
     if (serviceName === Services.MESSAGE_CACHE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
-      const messageCache = await container.get(
-        Services.MESSAGE_CACHE,
-      );
+      const messageCache = await container.get(Services.MESSAGE_CACHE);
 
       playtimeManager.setupMessageCacheIntegration(messageCache);
     }
 
-    if (serviceName === Services.STATS_IMPORT_SERVICE && !config.envMode.isDev) {
+    if (
+      serviceName === Services.STATS_IMPORT_SERVICE &&
+      !config.envMode.isDev
+    ) {
       const statsImport = await container.get(Services.STATS_IMPORT_SERVICE);
       const achievement = await container.get(Services.ACHIEVEMENT_SERVICE);
 
       statsImport.onImportComplete((serverId, uuids) => {
-        achievement.evaluateServer(serverId, uuids).catch((err) =>
-          logger.error("Achievement evaluation failed:", err),
-        );
+        achievement
+          .evaluateServer(serverId, uuids)
+          .catch((err) => logger.error("Achievement evaluation failed:", err));
       });
     }
 
@@ -339,9 +350,7 @@ export function registerServices(): void {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
       );
-      const roleService = await container.get(
-        Services.ROLE_MANAGEMENT_SERVICE,
-      );
+      const roleService = await container.get(Services.ROLE_MANAGEMENT_SERVICE);
 
       for (const [
         serverId,

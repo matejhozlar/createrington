@@ -6,7 +6,7 @@ import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { EmbedBuilder } from "discord.js";
 import config from "@/config";
-import { embedDataSchema } from "@createrington/shared/api/embed";
+import { embedDataSchema, type EmbedData } from "@createrington/shared/api/embed";
 
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
@@ -62,7 +62,8 @@ export const embedsRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
-      const { channelId, embed: data } = input;
+      const { channelId } = input;
+      const data = input.embed as EmbedData;
 
       if (!data.title && !data.description && data.fields.length === 0) {
         throw trpcError.badRequest(
@@ -178,7 +179,7 @@ export const embedsRouter = router({
 
         await Q.discord.embed.preset.create({
           name: input.name,
-          data: input.data,
+          data: input.data as EmbedData as Record<string, unknown>,
           createdBy: ctx.user.minecraftUsername,
         });
 
