@@ -27,13 +27,6 @@ const ORDER_MODE_LABELS: Record<OrderMode, string> = {
   take_profit: "Take-Profit",
 };
 
-/**
- * Trade panel for a single token — supports market, limit, stop-loss, and take-profit orders.
- *
- * When the token is in its IPO phase (`ipoEndsAt` is set and in the future) the panel switches
- * to IPO mode: only buy orders are allowed at the fixed `ipoPrice`, and a per-user allocation
- * cap is enforced. Normal order modes become available once the IPO ends.
- */
 export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: TradePanelProps) {
   const { user } = useAuth();
   const toast = useToastActions();
@@ -45,13 +38,11 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
 
   const isIpo = !!ipoEndsAt && new Date(ipoEndsAt) > new Date();
 
-  // IPO allocation query
   const { data: allocation } = trpc.user.crypto.ipoAllocation.useQuery(
     { symbol },
     { enabled: isIpo && !!user, refetchInterval: 10_000 },
   );
 
-  // IPO countdown timer
   useEffect(() => {
     if (!isIpo || !ipoEndsAt) return;
 
@@ -163,7 +154,6 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
     isIpo || orderMode === "market" ? numPrice : Number(targetPrice) || 0;
   const estimatedCost = effectivePrice * amountNum;
 
-  // For non-market orders, hide the buy/sell tabs for stop_loss and take_profit (always sell)
   const showBuySellTabs = orderMode === "market" || orderMode === "limit";
 
   if (!user) {
@@ -181,41 +171,43 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
     const remainingAllocation = allocation ? Number(allocation.remaining) : null;
 
     return (
-      <Card className="border-primary/20">
+      <Card className="border-primary/20 overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-primary to-emerald-400" />
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Rocket className="h-4 w-4 text-primary" />
+              <Rocket className="size-4 text-primary" />
               IPO: Buy {symbol}
             </CardTitle>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
-              <span className="font-mono">{ipoCountdown}</span>
+              <Clock className="size-3.5" />
+              <span className="font-mono tabular-nums">{ipoCountdown}</span>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Fixed price display */}
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">IPO Price (fixed)</span>
-              <span className="font-mono font-medium text-primary">
+              <span className="font-mono font-semibold text-primary tabular-nums">
                 ${numPrice.toFixed(numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2)}
               </span>
             </div>
             {remainingAllocation !== null && (
               <div className="flex justify-between text-sm mt-2">
                 <span className="text-muted-foreground">Your remaining allocation</span>
-                <span className="font-mono font-medium">
+                <span className="font-mono font-medium tabular-nums">
                   {remainingAllocation.toLocaleString()} tokens
                 </span>
               </div>
             )}
           </div>
 
-          {/* Amount input */}
           <div>
-            <label className="text-sm text-muted-foreground">Amount</label>
+            <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Amount
+            </label>
             <Input
               type="number"
               placeholder={remainingAllocation !== null ? `Max ${remainingAllocation.toLocaleString()}` : "0"}
@@ -223,14 +215,13 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
               onChange={(e) => setAmount(e.target.value)}
               min={1}
               max={remainingAllocation ?? undefined}
-              className="font-mono"
+              className="font-mono mt-1.5"
             />
           </div>
 
-          {/* Estimated cost */}
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2">
             <span className="text-muted-foreground">Estimated Cost</span>
-            <span className="font-mono">
+            <span className="font-mono font-medium tabular-nums">
               ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
             </span>
           </div>
@@ -258,25 +249,24 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Trade {symbol}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Order mode selector */}
-        <div className="grid grid-cols-4 gap-1 rounded-lg border p-1">
+        <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
           {(Object.keys(ORDER_MODE_LABELS) as OrderMode[]).map((mode) => (
             <button
               key={mode}
               className={cn(
-                "rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                "rounded-lg px-2 py-1.5 text-xs font-medium transition-all",
                 orderMode === mode
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
               )}
               onClick={() => {
                 setOrderMode(mode);
-                // Stop-loss and take-profit are always sell orders
                 if (mode === "stop_loss" || mode === "take_profit") {
                   setTab("sell");
                 }
@@ -287,14 +277,14 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
           ))}
         </div>
 
-        {/* Buy/Sell toggle (only for market and limit) */}
+        {/* Buy/Sell toggle */}
         {showBuySellTabs && (
-          <div className="flex rounded-lg border p-1">
+          <div className="flex rounded-xl border p-1">
             <button
               className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
                 tab === "buy"
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-emerald-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setTab("buy")}
@@ -303,9 +293,9 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             </button>
             <button
               className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
                 tab === "sell"
-                  ? "bg-red-500 text-white"
+                  ? "bg-red-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setTab("sell")}
@@ -317,21 +307,23 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
 
         {/* Amount input */}
         <div>
-          <label className="text-sm text-muted-foreground">Amount</label>
+          <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Amount
+          </label>
           <Input
             type="number"
             placeholder="0"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             min={1}
-            className="font-mono"
+            className="font-mono mt-1.5"
           />
         </div>
 
-        {/* Target price input (for non-market orders) */}
+        {/* Target price input */}
         {orderMode !== "market" && (
           <div>
-            <label className="text-sm text-muted-foreground">
+            <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {orderMode === "limit"
                 ? tab === "buy"
                   ? "Buy at or below"
@@ -340,7 +332,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
                   ? "Sell if price drops to"
                   : "Sell if price rises to"}
             </label>
-            <div className="relative">
+            <div className="relative mt-1.5">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
@@ -353,18 +345,18 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
                 className="pl-7 font-mono"
               />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground font-mono tabular-nums">
               Current: ${numPrice.toFixed(4)}
             </p>
           </div>
         )}
 
         {/* Estimated cost/revenue */}
-        <div className="flex justify-between text-sm">
+        <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2">
           <span className="text-muted-foreground">
             {tab === "buy" ? "Estimated Cost" : "Estimated Revenue"}
           </span>
-          <span className="font-mono">
+          <span className="font-mono font-medium tabular-nums">
             ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
           </span>
         </div>

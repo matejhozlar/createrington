@@ -12,7 +12,6 @@ import {
   AreaSeries,
 } from "lightweight-charts";
 
-/** Displays portfolio total value over time as an area chart. */
 export function PortfolioChart() {
   const { user } = useAuth();
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -24,41 +23,40 @@ export function PortfolioChart() {
     { enabled: !!user },
   );
 
-  // Create chart on mount
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: "#0a0a0f" },
-        textColor: "#888",
+        background: { type: ColorType.Solid, color: "transparent" },
+        textColor: "#a1a1aa",
         fontFamily: "ui-monospace, monospace",
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "rgba(255, 255, 255, 0.05)" },
-        horzLines: { color: "rgba(255, 255, 255, 0.05)" },
+        vertLines: { color: "rgba(255, 255, 255, 0.03)" },
+        horzLines: { color: "rgba(255, 255, 255, 0.03)" },
       },
       rightPriceScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "rgba(255, 255, 255, 0.06)",
       },
       timeScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: false,
       },
       crosshair: {
-        vertLine: { color: "rgba(255, 255, 255, 0.2)" },
-        horzLine: { color: "rgba(255, 255, 255, 0.2)" },
+        vertLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
+        horzLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
       },
       handleScroll: { vertTouchDrag: false },
       width: chartContainerRef.current.clientWidth,
-      height: 250,
+      height: 280,
     });
 
     const series = chart.addSeries(AreaSeries, {
-      lineColor: "#10b981",
-      topColor: "rgba(16, 185, 129, 0.3)",
-      bottomColor: "rgba(16, 185, 129, 0.02)",
+      lineColor: "#34d399",
+      topColor: "rgba(52, 211, 153, 0.25)",
+      bottomColor: "rgba(52, 211, 153, 0.01)",
       lineWidth: 2,
     });
 
@@ -82,11 +80,9 @@ export function PortfolioChart() {
     };
   }, []);
 
-  // Update data when it changes
   useEffect(() => {
     if (!seriesRef.current || !data || data.length === 0) return;
 
-    // lightweight-charts expects Unix seconds as the Time type; the double cast satisfies TypeScript
     const areaData: AreaData<Time>[] = data.map((d) => ({
       time: (Math.floor(new Date(d.recordedAt).getTime() / 1000) as unknown) as Time,
       value: Number(d.totalValue),
@@ -97,21 +93,21 @@ export function PortfolioChart() {
   }, [data]);
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Portfolio Value</CardTitle>
       </CardHeader>
       <CardContent>
         {!user ? (
-          <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
             Sign in to view your portfolio history
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex h-[250px] items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
             No portfolio data available yet
           </div>
         ) : (
-          <div ref={chartContainerRef} className="h-[250px] w-full" />
+          <div ref={chartContainerRef} className="h-[280px] w-full" />
         )}
       </CardContent>
     </Card>

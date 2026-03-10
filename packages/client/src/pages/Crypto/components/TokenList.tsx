@@ -13,7 +13,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skull, TrendingUp, TrendingDown, Zap, Rocket } from "lucide-react";
 import {
   useActiveEventTokenIds,
@@ -37,6 +36,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 type CategoryFilter = "all" | "stable" | "blue_chip" | "memecoin" | "seasonal";
 
+const FILTERS: { key: CategoryFilter; label: string; dot?: string }[] = [
+  { key: "all", label: "All Tokens" },
+  { key: "stable", label: "Stable", dot: "bg-emerald-400" },
+  { key: "blue_chip", label: "Blue Chip", dot: "bg-blue-400" },
+  { key: "memecoin", label: "Memecoin", dot: "bg-orange-400" },
+  { key: "seasonal", label: "Seasonal", dot: "bg-purple-400" },
+];
+
 export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("all");
@@ -57,37 +64,47 @@ export function TokenList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        {(
-          [
-            ["all", "All"],
-            ["stable", "Stable"],
-            ["blue_chip", "Blue Chip"],
-            ["memecoin", "Memecoin"],
-            ["seasonal", "Seasonal"],
-          ] as const
-        ).map(([key, label]) => (
-          <Button
+      {/* Filter pills */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-xl border bg-card/50 p-1.5">
+        {FILTERS.map(({ key, label, dot }) => (
+          <button
             key={key}
-            variant={filter === key ? "default" : "outline"}
-            size="sm"
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
+              filter === key
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+            )}
             onClick={() => setFilter(key)}
           >
+            {dot && <span className={cn("size-1.5 rounded-full", dot)} />}
             {label}
-          </Button>
+          </button>
         ))}
       </div>
 
-      <div className="rounded-lg border">
+      <div className="overflow-hidden rounded-xl border bg-card/30">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Token</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Price</TableHead>
-              <TableHead className="text-right">24h Change</TableHead>
-              <TableHead className="text-right">Supply</TableHead>
-              <TableHead className="text-right">Status</TableHead>
+            <TableRow className="hover:bg-transparent border-b border-border/50">
+              <TableHead className="w-[200px] text-[11px] font-medium uppercase tracking-wider">
+                Token
+              </TableHead>
+              <TableHead className="text-[11px] font-medium uppercase tracking-wider">
+                Category
+              </TableHead>
+              <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                Price
+              </TableHead>
+              <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                24h
+              </TableHead>
+              <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                Supply
+              </TableHead>
+              <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                Status
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -106,24 +123,24 @@ export function TokenList() {
                 <TableRow
                   key={token.id}
                   className={cn(
-                    "cursor-pointer transition-colors hover:bg-muted/50",
-                    isCrashed && "opacity-50",
+                    "cursor-pointer transition-colors hover:bg-muted/30 border-b border-border/30 last:border-0",
+                    isCrashed && "opacity-40",
                   )}
                   onClick={() => navigate(`/crypto/${token.symbol}`)}
                 >
                   <TableCell>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       {isCrashed && (
-                        <Skull className="h-4 w-4 text-red-500" />
+                        <Skull className="size-4 text-red-500 shrink-0" />
                       )}
                       {!isCrashed && isIpo && (
-                        <Rocket className="h-4 w-4 text-primary animate-pulse" />
+                        <Rocket className="size-4 text-primary animate-pulse shrink-0" />
                       )}
                       {!isCrashed && !isIpo && hasEvent && (
-                        <Zap className="h-4 w-4 text-yellow-400 animate-pulse" />
+                        <Zap className="size-4 text-yellow-400 animate-pulse shrink-0" />
                       )}
                       <div>
-                        <p className="font-medium">{token.name}</p>
+                        <p className="font-medium leading-tight">{token.name}</p>
                         <p className="text-xs text-muted-foreground font-mono">
                           {token.symbol}
                         </p>
@@ -141,32 +158,34 @@ export function TokenList() {
                       {CATEGORY_LABELS[token.category]}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right font-mono tabular-nums font-medium">
                     ${formatPrice(displayPrice)}
                   </TableCell>
-                  <TableCell className="text-right font-mono">
+                  <TableCell className="text-right">
                     {isCrashed ? (
                       <span className="text-muted-foreground">—</span>
                     ) : change24h !== 0 ? (
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1 text-sm",
+                          "inline-flex items-center gap-1 text-sm font-mono tabular-nums font-medium",
                           change24h > 0 ? "text-emerald-400" : "text-red-400",
                         )}
                       >
                         {change24h > 0 ? (
-                          <TrendingUp className="h-3.5 w-3.5" />
+                          <TrendingUp className="size-3.5" />
                         ) : (
-                          <TrendingDown className="h-3.5 w-3.5" />
+                          <TrendingDown className="size-3.5" />
                         )}
                         {change24h > 0 ? "+" : ""}
                         {change24h.toFixed(2)}%
                       </span>
                     ) : (
-                      <span className="text-muted-foreground text-sm">0.00%</span>
+                      <span className="text-muted-foreground text-sm font-mono">
+                        0.00%
+                      </span>
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-sm text-muted-foreground font-mono">
+                  <TableCell className="text-right text-sm text-muted-foreground font-mono tabular-nums">
                     {formatSupply(availableSupply, token.totalSupply)}
                   </TableCell>
                   <TableCell className="text-right">
@@ -184,7 +203,7 @@ export function TokenList() {
                     ) : (
                       <Badge
                         variant="outline"
-                        className="text-xs text-emerald-400 border-emerald-500/20"
+                        className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/5"
                       >
                         Active
                       </Badge>
@@ -195,7 +214,7 @@ export function TokenList() {
             })}
             {(!tokens || tokens.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   No tokens found
                 </TableCell>
               </TableRow>

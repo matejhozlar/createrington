@@ -5,7 +5,7 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Skull, Rocket } from "lucide-react";
+import { ArrowLeft, Skull, Rocket, TrendingUp, TrendingDown } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
@@ -54,6 +54,7 @@ export function TokenDetail() {
   const livePrice = getPrice(token.symbol);
   const displayPrice = livePrice?.price ?? token.price;
   const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
+  const change24h = livePrice?.change24h ?? 0;
   const availableSupply = livePrice
     ? Number(livePrice.availableSupply)
     : Number(token.availableSupply);
@@ -66,92 +67,128 @@ export function TokenDetail() {
 
   return (
     <div className="flex flex-1 flex-col pb-16">
-      <div className="px-5 md:px-8 pt-6 pb-6">
-        <div className="max-w-7xl mx-auto space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1 -ml-2"
-            onClick={() => navigate("/crypto")}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Market
-          </Button>
+      {/* Header */}
+      <div className="relative overflow-hidden border-b border-border/50">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
+        <div className="relative px-5 md:px-8 pt-6 pb-6">
+          <div className="max-w-7xl mx-auto space-y-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 -ml-2 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate("/crypto")}
+            >
+              <ArrowLeft className="size-4" />
+              Back to Market
+            </Button>
 
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl md:text-4xl font-semibold">{token.name}</h1>
-                <Badge
-                  variant="outline"
-                  className={cn("text-xs", CATEGORY_COLORS[token.category])}
-                >
-                  {CATEGORY_LABELS[token.category]}
-                </Badge>
-                {isCrashed && (
-                  <Badge variant="destructive" className="gap-1">
-                    <Skull className="h-3 w-3" />
-                    Crashed
-                  </Badge>
-                )}
-                {isIpo && (
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                    {token.name}
+                  </h1>
                   <Badge
                     variant="outline"
-                    className="gap-1 text-primary border-primary/30 bg-primary/10"
+                    className={cn("text-xs", CATEGORY_COLORS[token.category])}
                   >
-                    <Rocket className="h-3 w-3" />
-                    IPO
+                    {CATEGORY_LABELS[token.category]}
                   </Badge>
+                  {isCrashed && (
+                    <Badge variant="destructive" className="gap-1">
+                      <Skull className="size-3" />
+                      Crashed
+                    </Badge>
+                  )}
+                  {isIpo && (
+                    <Badge
+                      variant="outline"
+                      className="gap-1 text-primary border-primary/30 bg-primary/10"
+                    >
+                      <Rocket className="size-3" />
+                      IPO
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground font-mono">
+                  {token.symbol}
+                </p>
+                {token.description && (
+                  <p className="text-sm text-muted-foreground max-w-lg">
+                    {token.description}
+                  </p>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground font-mono">
-                {token.symbol}
-              </p>
-              {token.description && (
-                <p className="text-sm text-muted-foreground max-w-lg">
-                  {token.description}
+
+              {/* Price display */}
+              <div className="text-left sm:text-right shrink-0">
+                <p className="text-4xl font-bold font-mono tabular-nums tracking-tight">
+                  ${formatPrice(displayPrice)}
                 </p>
-              )}
-            </div>
-
-            <p className="text-3xl font-semibold font-mono shrink-0">
-              ${formatPrice(displayPrice)}
-            </p>
-          </div>
-
-          {/* Stats strip */}
-          <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
-            <div>
-              <span className="text-muted-foreground">Market Cap </span>
-              <span className="font-mono font-medium">
-                ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Circulating </span>
-              <span className="font-mono font-medium">
-                {circulatingSupply.toLocaleString()} / {totalSupply >= 999999999 ? "∞" : totalSupply.toLocaleString()}
-              </span>
-            </div>
-            {token.floorPrice && (
-              <div>
-                <span className="text-muted-foreground">Floor </span>
-                <span className="font-mono font-medium">
-                  ${Number(token.floorPrice).toFixed(2)}
-                </span>
+                {!isCrashed && change24h !== 0 && (
+                  <div
+                    className={cn(
+                      "inline-flex items-center gap-1 mt-1 text-sm font-mono tabular-nums font-medium",
+                      change24h > 0 ? "text-emerald-400" : "text-red-400",
+                    )}
+                  >
+                    {change24h > 0 ? (
+                      <TrendingUp className="size-3.5" />
+                    ) : (
+                      <TrendingDown className="size-3.5" />
+                    )}
+                    {change24h > 0 ? "+" : ""}
+                    {change24h.toFixed(2)}%
+                  </div>
+                )}
               </div>
-            )}
-            <div>
-              <span className="text-muted-foreground">Listed </span>
-              <span className="font-medium">
-                {new Date(token.createdAt).toLocaleDateString()}
-              </span>
+            </div>
+
+            {/* Stats cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border bg-card/50 px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Market Cap
+                </p>
+                <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                  ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card/50 px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Circulating
+                </p>
+                <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                  {circulatingSupply.toLocaleString()}
+                  <span className="text-sm text-muted-foreground font-normal">
+                    {" "}/ {totalSupply >= 999999999 ? "∞" : totalSupply.toLocaleString()}
+                  </span>
+                </p>
+              </div>
+              {token.floorPrice && (
+                <div className="rounded-xl border bg-card/50 px-4 py-3">
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Floor
+                  </p>
+                  <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                    ${Number(token.floorPrice).toFixed(2)}
+                  </p>
+                </div>
+              )}
+              <div className="rounded-xl border bg-card/50 px-4 py-3">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Listed
+                </p>
+                <p className="mt-1 text-lg font-semibold">
+                  {new Date(token.createdAt).toLocaleDateString()}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-8">
+      <div className="px-5 md:px-8 pt-6">
         <div className="max-w-7xl mx-auto">
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">

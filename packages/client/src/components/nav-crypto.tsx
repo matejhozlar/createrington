@@ -49,7 +49,7 @@ const cryptoItems: {
     isActive: (pathname) => pathname.startsWith("/crypto/portfolio"),
   },
   {
-    title: "Trade History",
+    title: "History",
     url: "/crypto/history",
     icon: History,
     isActive: (pathname) => pathname.startsWith("/crypto/history"),
@@ -121,7 +121,7 @@ export function NavCrypto() {
             side="right"
             className={state === "collapsed" ? "" : "hidden"}
           >
-            <p className="font-semibold">Crypto Market</p>
+            <p className="font-semibold">Crypto</p>
           </TooltipContent>
         </Tooltip>
 

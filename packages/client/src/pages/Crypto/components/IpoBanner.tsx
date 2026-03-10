@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Rocket } from "lucide-react";
 import { formatPrice, formatCountdown } from "./format";
 
@@ -34,64 +33,78 @@ export function IpoBanner() {
     (Number(ipo.totalSold) / Number(ipo.totalSupply)) * 100;
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-primary/20 bg-primary/[0.03]">
-      <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-primary/5 blur-3xl" />
-      <div className="absolute -left-8 -bottom-8 h-24 w-24 rounded-full bg-primary/5 blur-2xl" />
+    <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/[0.08] via-primary/[0.04] to-emerald-500/[0.06]">
+      {/* Glow effects */}
+      <div className="absolute -right-20 -top-20 size-48 rounded-full bg-primary/10 blur-3xl animate-pulse" />
+      <div className="absolute -left-12 -bottom-12 size-32 rounded-full bg-emerald-500/10 blur-3xl" />
 
-      <div className="relative flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <Rocket className="h-5 w-5 text-primary shrink-0" />
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-lg">{ipo.name}</span>
-              <Badge
-                variant="outline"
-                className="text-xs text-primary border-primary/30 bg-primary/10"
-              >
-                IPO LIVE
-              </Badge>
+      <div className="relative px-6 py-5">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          {/* Left: Token info */}
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/30">
+              <Rocket className="size-6 text-primary" />
             </div>
-            <span className="text-xs text-muted-foreground font-mono">
-              {ipo.symbol}
-            </span>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl font-bold">{ipo.name}</span>
+                <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-primary ring-1 ring-primary/30">
+                  IPO Live
+                </span>
+              </div>
+              <span className="text-sm text-muted-foreground font-mono">
+                {ipo.symbol}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Stats and CTA */}
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Price
+              </p>
+              <p className="text-lg font-bold font-mono text-primary">
+                ${formatPrice(ipo.ipoPrice)}
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Buyers
+              </p>
+              <p className="text-lg font-bold">{ipo.participants}</p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Sold
+              </p>
+              <p className="text-lg font-bold">{soldPercent.toFixed(1)}%</p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Remaining
+              </p>
+              <p className="text-lg font-bold font-mono">{countdown}</p>
+            </div>
+
+            <Button
+              onClick={() => navigate(`/crypto/${ipo.symbol}`)}
+              className="shrink-0"
+            >
+              Buy Now
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 ml-auto text-sm">
-          <div className="text-muted-foreground">
-            <span className="text-foreground font-medium font-mono">
-              ${formatPrice(ipo.ipoPrice)}
-            </span>{" "}
-            fixed
-          </div>
-
-          <div className="text-muted-foreground">
-            <span className="text-foreground font-medium">
-              {ipo.participants}
-            </span>{" "}
-            buyers
-          </div>
-
-          <div className="text-muted-foreground">
-            <span className="text-foreground font-medium">
-              {soldPercent.toFixed(1)}%
-            </span>{" "}
-            sold
-          </div>
-
-          <div className="text-muted-foreground">
-            <span className="text-foreground font-mono font-medium">
-              {countdown}
-            </span>{" "}
-            left
-          </div>
-
-          <Button
-            size="sm"
-            onClick={() => navigate(`/crypto/${ipo.symbol}`)}
-          >
-            Buy Now
-          </Button>
+        {/* Progress bar */}
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-primary to-emerald-400 transition-all duration-500"
+            style={{ width: `${Math.min(soldPercent, 100)}%` }}
+          />
         </div>
       </div>
     </div>

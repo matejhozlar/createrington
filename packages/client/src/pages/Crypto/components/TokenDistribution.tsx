@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PieChart } from "lucide-react";
 
-/** Tailwind background colours cycled across holder segments in the distribution bar and legend. */
 const COLORS = [
   "bg-emerald-500",
   "bg-blue-500",
@@ -21,11 +20,6 @@ interface TokenDistributionProps {
   symbol: string;
 }
 
-/**
- * Shows how a token's total supply is distributed across holders.
- *
- * @param symbol - The token ticker symbol used to fetch distribution data.
- */
 export function TokenDistribution({ symbol }: TokenDistributionProps) {
   const { data, isLoading } = trpc.public.crypto.tokenDistribution.useQuery(
     { symbol },
@@ -37,18 +31,17 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <PieChart className="h-4 w-4" />
+            <PieChart className="size-4" />
             Ownership Distribution
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-40 animate-pulse rounded bg-muted" />
+          <div className="h-40 animate-pulse rounded-lg bg-muted" />
         </CardContent>
       </Card>
     );
   }
 
-  // availableSupply = tokens not yet held by any player (still in the pool)
   const circulatingSupply =
     Number(data.totalSupply) - Number(data.availableSupply);
   const unclaimed = Number(data.availableSupply);
@@ -61,28 +54,28 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <PieChart className="h-4 w-4" />
+          <PieChart className="size-4" />
           Ownership Distribution
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Holders</span>
-          <span className="font-mono">{data.holderCount}</span>
+          <span className="font-mono tabular-nums font-medium">{data.holderCount}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Circulating</span>
-          <span className="font-mono">
+          <span className="font-mono tabular-nums font-medium">
             {circulatingSupply.toLocaleString()}
           </span>
         </div>
 
         {/* Distribution bar */}
-        <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex">
+        <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted flex">
           {data.holders.map((h, i) => (
             <div
               key={h.playerName}
-              className={cn(COLORS[i % COLORS.length], "h-full")}
+              className={cn(COLORS[i % COLORS.length], "h-full transition-all duration-300")}
               style={{ width: `${h.percentage}%` }}
               title={`${h.playerName}: ${h.percentage}%`}
             />
@@ -103,13 +96,15 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
-                    "h-2.5 w-2.5 rounded-full",
+                    "size-2.5 rounded-full shrink-0",
                     COLORS[i % COLORS.length],
                   )}
                 />
-                <span className="text-muted-foreground">{h.playerName}</span>
+                <span className="text-muted-foreground truncate">
+                  {h.playerName}
+                </span>
               </div>
-              <div className="flex gap-3 font-mono">
+              <div className="flex gap-3 font-mono tabular-nums shrink-0">
                 <span>{Number(h.amount).toLocaleString()}</span>
                 <span className="text-muted-foreground w-12 text-right">
                   {h.percentage.toFixed(1)}%

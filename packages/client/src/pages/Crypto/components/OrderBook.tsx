@@ -55,12 +55,12 @@ export function OrderBook() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base">Pending Orders</CardTitle>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs tabular-nums">
             {orders.length}
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-2">
         {orders.map((order) => {
           const expiresAt = new Date(order.expiresAt);
           const hoursLeft = Math.max(
@@ -71,7 +71,7 @@ export function OrderBook() {
           return (
             <div
               key={order.id}
-              className="flex items-center justify-between rounded-lg border p-3"
+              className="flex items-center justify-between rounded-xl border bg-card/50 p-3"
             >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -88,12 +88,12 @@ export function OrderBook() {
                   </span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="font-mono">
+                  <span className="font-mono tabular-nums">
                     {Number(order.amount).toLocaleString()} @ $
                     {Number(order.targetPrice).toFixed(4)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
+                    <Clock className="size-3" />
                     {hoursLeft < 1
                       ? `${Math.round(hoursLeft * 60)}m`
                       : `${Math.round(hoursLeft)}h`}
@@ -103,11 +103,11 @@ export function OrderBook() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                className="size-7 text-muted-foreground hover:text-red-400"
                 onClick={() => cancelMutation.mutate({ orderId: order.id })}
                 disabled={cancelMutation.isPending}
               >
-                <X className="h-4 w-4" />
+                <X className="size-4" />
               </Button>
             </div>
           );

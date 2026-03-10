@@ -27,17 +27,28 @@ const EVENT_ICONS: Record<string, typeof TrendingUp> = {
   new_listing_frenzy: Sparkles,
 };
 
-const EVENT_COLORS: Record<string, string> = {
-  bull_run: "border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
-  bear_market: "border-red-500/50 bg-red-500/10 text-red-400",
-  flash_crash: "border-red-500/50 bg-red-500/10 text-red-400",
-  pump_and_dump: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
-  liquidity_drought: "border-orange-500/50 bg-orange-500/10 text-orange-400",
-  gold_rush: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
-  supply_shock: "border-orange-500/50 bg-orange-500/10 text-orange-400",
-  tax_holiday: "border-emerald-500/50 bg-emerald-500/10 text-emerald-400",
-  whale_dump: "border-red-500/50 bg-red-500/10 text-red-400",
-  new_listing_frenzy: "border-blue-500/50 bg-blue-500/10 text-blue-400",
+const EVENT_STYLES: Record<
+  string,
+  { border: string; bg: string; text: string; iconBg: string; dot: string }
+> = {
+  bull_run: { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.06]", text: "text-emerald-400", iconBg: "bg-emerald-500/15", dot: "bg-emerald-400" },
+  bear_market: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
+  flash_crash: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
+  pump_and_dump: { border: "border-yellow-500/30", bg: "bg-yellow-500/[0.06]", text: "text-yellow-400", iconBg: "bg-yellow-500/15", dot: "bg-yellow-400" },
+  liquidity_drought: { border: "border-orange-500/30", bg: "bg-orange-500/[0.06]", text: "text-orange-400", iconBg: "bg-orange-500/15", dot: "bg-orange-400" },
+  gold_rush: { border: "border-yellow-500/30", bg: "bg-yellow-500/[0.06]", text: "text-yellow-400", iconBg: "bg-yellow-500/15", dot: "bg-yellow-400" },
+  supply_shock: { border: "border-orange-500/30", bg: "bg-orange-500/[0.06]", text: "text-orange-400", iconBg: "bg-orange-500/15", dot: "bg-orange-400" },
+  tax_holiday: { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.06]", text: "text-emerald-400", iconBg: "bg-emerald-500/15", dot: "bg-emerald-400" },
+  whale_dump: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
+  new_listing_frenzy: { border: "border-blue-500/30", bg: "bg-blue-500/[0.06]", text: "text-blue-400", iconBg: "bg-blue-500/15", dot: "bg-blue-400" },
+};
+
+const DEFAULT_STYLE = {
+  border: "border-blue-500/30",
+  bg: "bg-blue-500/[0.06]",
+  text: "text-blue-400",
+  iconBg: "bg-blue-500/15",
+  dot: "bg-blue-400",
 };
 
 function formatRemaining(activeUntil: string): string {
@@ -45,7 +56,6 @@ function formatRemaining(activeUntil: string): string {
   return formatCountdown(remaining);
 }
 
-/** Displays a single active event banner. */
 function EventBanner({
   event,
 }: {
@@ -59,9 +69,7 @@ function EventBanner({
   };
 }) {
   const Icon = EVENT_ICONS[event.type] ?? Zap;
-  const colorClass =
-    EVENT_COLORS[event.type] ??
-    "border-blue-500/50 bg-blue-500/10 text-blue-400";
+  const style = EVENT_STYLES[event.type] ?? DEFAULT_STYLE;
 
   let description = event.description ?? "";
   if (event.tokenSymbol) {
@@ -71,22 +79,39 @@ function EventBanner({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg border px-4 py-3 animate-in fade-in slide-in-from-top-2 duration-300",
-        colorClass,
+        "flex items-center gap-3.5 rounded-xl border px-4 py-3.5 animate-in fade-in slide-in-from-top-2 duration-300",
+        style.border,
+        style.bg,
       )}
     >
-      <Icon className="h-5 w-5 shrink-0" />
+      <div
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+          style.iconBg,
+        )}
+      >
+        <Icon className={cn("size-4", style.text)} />
+      </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{event.name}</span>
+          <span className={cn("size-1.5 rounded-full animate-pulse", style.dot)} />
+          <span className={cn("font-semibold text-sm", style.text)}>
+            {event.name}
+          </span>
           {event.tokenSymbol && (
-            <span className="text-xs opacity-75">[{event.tokenSymbol}]</span>
+            <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-xs font-mono text-muted-foreground">
+              {event.tokenSymbol}
+            </span>
           )}
         </div>
-        <p className="text-xs opacity-75 truncate">{description}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            {description}
+          </p>
+        )}
       </div>
       {event.activeUntil && (
-        <span className="text-xs font-mono shrink-0 opacity-75">
+        <span className="text-xs font-mono shrink-0 text-muted-foreground tabular-nums">
           {formatRemaining(event.activeUntil)}
         </span>
       )}
@@ -94,7 +119,6 @@ function EventBanner({
   );
 }
 
-/** Displays a banner for each currently active market event. */
 export function ActiveEvents() {
   const { data: events } = trpc.public.crypto.activeEvents.useQuery(
     undefined,

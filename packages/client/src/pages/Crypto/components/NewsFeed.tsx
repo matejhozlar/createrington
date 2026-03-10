@@ -5,26 +5,30 @@ import { Newspaper, AlertTriangle, Info, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "./format";
 
-/** Maps each severity level to its icon, badge variant, and optional className overrides. */
 const severityConfig = {
   info: {
     icon: Info,
     variant: "secondary" as const,
     className: "",
+    iconColor: "text-blue-400",
+    dotColor: "bg-blue-400",
   },
   warning: {
     icon: AlertTriangle,
     variant: "outline" as const,
-    className: "text-yellow-500 border-yellow-500/50",
+    className: "text-yellow-500 border-yellow-500/30 bg-yellow-500/5",
+    iconColor: "text-yellow-400",
+    dotColor: "bg-yellow-400",
   },
   critical: {
     icon: AlertCircle,
     variant: "destructive" as const,
     className: "",
+    iconColor: "text-red-400",
+    dotColor: "bg-red-400",
   },
 };
 
-/** Displays a live-updating feed of market news events, colour-coded by severity. */
 export function NewsFeed() {
   const { data, isLoading } = trpc.public.crypto.newsFeed.useQuery(
     { limit: 15 },
@@ -33,9 +37,9 @@ export function NewsFeed() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Newspaper className="h-4 w-4" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Newspaper className="size-4" />
           Market News
         </CardTitle>
       </CardHeader>
@@ -43,7 +47,7 @@ export function NewsFeed() {
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded bg-muted" />
+              <div key={i} className="h-16 animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
         ) : !data?.length ? (
@@ -51,25 +55,20 @@ export function NewsFeed() {
             No recent market activity
           </p>
         ) : (
-          <div className="max-h-[500px] overflow-y-auto space-y-3 pr-1">
+          <div className="max-h-[500px] overflow-y-auto space-y-2 pr-1">
             {data.map((event) => {
-              // Fall back to "info" style for any unrecognised severity values
-              const config = severityConfig[event.severity as keyof typeof severityConfig] ?? severityConfig.info;
+              const config =
+                severityConfig[event.severity as keyof typeof severityConfig] ??
+                severityConfig.info;
               const Icon = config.icon;
 
               return (
                 <div
                   key={event.id}
-                  className="flex gap-3 rounded-lg border p-3"
+                  className="flex gap-3 rounded-xl border bg-card/50 p-3"
                 >
                   <div className="mt-0.5 shrink-0">
-                    <Icon
-                      className={cn("h-4 w-4", {
-                        "text-blue-500": event.severity === "info",
-                        "text-yellow-500": event.severity === "warning",
-                        "text-destructive": event.severity === "critical",
-                      })}
-                    />
+                    <Icon className={cn("size-4", config.iconColor)} />
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
@@ -79,7 +78,7 @@ export function NewsFeed() {
                       >
                         {event.severity}
                       </Badge>
-                      <span className="shrink-0 text-xs text-muted-foreground">
+                      <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
                         {timeAgo(event.createdAt)}
                       </span>
                     </div>
@@ -87,7 +86,7 @@ export function NewsFeed() {
                       {event.title}
                     </p>
                     {event.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                         {event.description}
                       </p>
                     )}

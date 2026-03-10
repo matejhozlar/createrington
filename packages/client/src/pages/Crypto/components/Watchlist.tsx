@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Star, X, TrendingUp, TrendingDown } from "lucide-react";
 import { formatPrice } from "./format";
 
-/** User's crypto watchlist with live price updates. */
 export function Watchlist() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -32,7 +31,7 @@ export function Watchlist() {
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Star className="h-4 w-4 text-yellow-500" />
+            <Star className="size-4 text-yellow-500" />
             Watchlist
           </CardTitle>
         </CardHeader>
@@ -49,15 +48,15 @@ export function Watchlist() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Star className="h-4 w-4 text-yellow-500" />
+          <Star className="size-4 text-yellow-500" />
           Watchlist
         </CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-muted" />
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
         ) : !watchlist || watchlist.length === 0 ? (
@@ -74,7 +73,7 @@ export function Watchlist() {
               return (
                 <div
                   key={entry.tokenId}
-                  className="flex items-center justify-between rounded-md px-2 py-2 cursor-pointer transition-colors hover:bg-muted/50"
+                  className="flex items-center justify-between rounded-lg px-2.5 py-2.5 cursor-pointer transition-colors hover:bg-muted/30"
                   onClick={() => navigate(`/crypto/${entry.symbol}`)}
                 >
                   <div className="flex flex-col gap-0.5">
@@ -86,22 +85,22 @@ export function Watchlist() {
 
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-sm font-mono">
+                      <span className="text-sm font-mono tabular-nums font-medium">
                         ${formatPrice(displayPrice)}
                       </span>
                       {change24h !== 0 ? (
                         <span
                           className={cn(
-                            "inline-flex items-center gap-0.5 text-xs font-mono",
+                            "inline-flex items-center gap-0.5 text-xs font-mono tabular-nums",
                             change24h > 0
                               ? "text-emerald-400"
                               : "text-red-400",
                           )}
                         >
                           {change24h > 0 ? (
-                            <TrendingUp className="h-3 w-3" />
+                            <TrendingUp className="size-3" />
                           ) : (
-                            <TrendingDown className="h-3 w-3" />
+                            <TrendingDown className="size-3" />
                           )}
                           {change24h > 0 ? "+" : ""}
                           {change24h.toFixed(2)}%
@@ -116,15 +115,14 @@ export function Watchlist() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-red-400"
+                      className="size-7 text-muted-foreground hover:text-red-400"
                       disabled={removeMutation.isPending}
                       onClick={(e) => {
-                        // Prevent the parent row's navigate handler from triggering
                         e.stopPropagation();
                         removeMutation.mutate({ symbol: entry.symbol });
                       }}
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="size-3.5" />
                     </Button>
                   </div>
                 </div>

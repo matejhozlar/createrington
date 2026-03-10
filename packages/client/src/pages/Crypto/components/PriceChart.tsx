@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/loading-spinner";
 import {
   createChart,
@@ -28,7 +28,6 @@ const INTERVALS: { key: Interval; label: string }[] = [
   { key: "daily", label: "1d" },
 ];
 
-/** Displays an OHLCV price chart with interval selection for a given crypto symbol. */
 export function PriceChart({ symbol }: PriceChartProps) {
   const [interval, setInterval] = useState<Interval>("minute");
 
@@ -38,30 +37,33 @@ export function PriceChart({ symbol }: PriceChartProps) {
   );
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-base">Price History</CardTitle>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5 rounded-lg border bg-card p-0.5">
           {INTERVALS.map((i) => (
-            <Button
+            <button
               key={i.key}
-              variant={interval === i.key ? "default" : "ghost"}
-              size="sm"
-              className="h-7 px-2 text-xs"
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-all",
+                interval === i.key
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
               onClick={() => setInterval(i.key)}
             >
               {i.label}
-            </Button>
+            </button>
           ))}
         </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="flex h-[300px] items-center justify-center">
+          <div className="flex h-[350px] items-center justify-center">
             <Loading mode="inline" size="small" />
           </div>
         ) : !data || data.length === 0 ? (
-          <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+          <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
             No price data available yet
           </div>
         ) : (
@@ -81,14 +83,12 @@ interface ChartDataPoint {
   volume: number;
 }
 
-/** Renders a lightweight-charts candlestick + volume overlay, auto-resizing to its container. */
 function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
 
-  // Create chart on mount
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -100,18 +100,18 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: "rgba(255, 255, 255, 0.04)" },
-        horzLines: { color: "rgba(255, 255, 255, 0.04)" },
+        vertLines: { color: "rgba(255, 255, 255, 0.03)" },
+        horzLines: { color: "rgba(255, 255, 255, 0.03)" },
       },
       crosshair: {
-        vertLine: { color: "rgba(255, 255, 255, 0.2)" },
-        horzLine: { color: "rgba(255, 255, 255, 0.2)" },
+        vertLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
+        horzLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
       },
       rightPriceScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "rgba(255, 255, 255, 0.06)",
       },
       timeScale: {
-        borderColor: "rgba(255, 255, 255, 0.1)",
+        borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: true,
         secondsVisible: false,
       },
@@ -119,12 +119,12 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: "#22c55e",
-      downColor: "#ef4444",
-      borderUpColor: "#22c55e",
-      borderDownColor: "#ef4444",
-      wickUpColor: "#22c55e",
-      wickDownColor: "#ef4444",
+      upColor: "#34d399",
+      downColor: "#f87171",
+      borderUpColor: "#34d399",
+      borderDownColor: "#f87171",
+      wickUpColor: "#34d399",
+      wickDownColor: "#f87171",
     });
 
     const volumeSeries = chart.addSeries(HistogramSeries, {
@@ -132,7 +132,6 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
       priceScaleId: "volume",
     });
 
-    // Confine volume bars to the bottom 20% of the chart so they don't obscure candles
     chart.priceScale("volume").applyOptions({
       scaleMargins: {
         top: 0.8,
@@ -162,7 +161,6 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     };
   }, []);
 
-  // Update data when it changes
   useEffect(() => {
     if (!candleSeriesRef.current || !volumeSeriesRef.current || data.length < 2)
       return;
@@ -180,8 +178,8 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
       value: d.volume,
       color:
         d.close >= d.open
-          ? "rgba(34, 197, 94, 0.3)"
-          : "rgba(239, 68, 68, 0.3)",
+          ? "rgba(52, 211, 153, 0.25)"
+          : "rgba(248, 113, 113, 0.25)",
     }));
 
     candleSeriesRef.current.setData(candleData);
@@ -191,11 +189,11 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
 
   if (data.length < 2) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
         Not enough data points
       </div>
     );
   }
 
-  return <div ref={containerRef} className="h-[300px] w-full" />;
+  return <div ref={containerRef} className="h-[350px] w-full" />;
 }
