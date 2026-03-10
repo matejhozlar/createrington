@@ -1,6 +1,7 @@
 import type { AdminWaitlistNotificationData } from "../types";
 import { BaseEmailTemplate } from "./base.template";
 
+/** Email template for notifying the admin about a new waitlist submission */
 export class AdminWaitlistNotificationTemplate extends BaseEmailTemplate<AdminWaitlistNotificationData> {
   protected getSubject(data: AdminWaitlistNotificationData): string {
     return `New Waitlist Submission: ${data.discordName}`;

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { EmailAttachment, WaitlistConfirmationData } from "../types";
 import { BaseEmailTemplate } from "./base.template";
 
+/** Email template for confirming a user has been added to the waitlist */
 export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConfirmationData> {
   protected getSubject(_data: WaitlistConfirmationData): string {
     return "You're on the waitlist!";

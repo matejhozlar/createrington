@@ -41,6 +41,8 @@ export const cooldown = {
  * 2. Fetch player record from the database
  * 3. If online, show current server; if offline, show last seen time
  * 4. Reply with status embed including avatar thumbnail
+ *
+ * @param interaction - The chat input command interaction
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,

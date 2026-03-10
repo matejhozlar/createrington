@@ -19,7 +19,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
   [LeaderboardType.PLAYTIME]: {
     type: LeaderboardType.PLAYTIME,
     title: "Top Players by Playtime",
-    description: "Players wil the most time on the server",
+    description: "Players with the most time on the server",
     emoji: "",
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.cogs.id,

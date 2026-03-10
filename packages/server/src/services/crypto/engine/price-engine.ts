@@ -1,3 +1,9 @@
+/**
+ * Price engine for the crypto market.
+ * Pure functions for computing price ticks and helpers
+ * for persisting updates and snapshots.
+ */
+
 import { Q } from "@/db";
 import { CRYPTO_CONFIG, type VolatilityTier } from "../crypto.config";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
@@ -10,6 +16,7 @@ export interface PriceUpdate {
   isCrashed: boolean;
 }
 
+/** Determines which volatility tier a price falls into */
 function getVolatilityTier(price: number): VolatilityTier {
   const tiers = CRYPTO_CONFIG.VOLATILITY;
   if (price < tiers.PENNY.maxPrice) return "PENNY";
@@ -23,6 +30,7 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
+/** Calculates a random percentage price change scaled to the token's volatility tier */
 function calculateMemecoinPriceChange(currentPrice: number): number {
   const tier = getVolatilityTier(currentPrice);
   const { minChange, maxChange } = CRYPTO_CONFIG.VOLATILITY[tier];
@@ -34,6 +42,11 @@ function calculateMemecoinPriceChange(currentPrice: number): number {
   return direction * volatility;
 }
 
+/**
+ * Computes the next price for a memecoin token.
+ * Applies volatility-based random walk with slight upward bias.
+ * Marks token as crashed if price drops below the crash threshold.
+ */
 export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   const currentPrice = Number(token.price);
   const change = calculateMemecoinPriceChange(currentPrice);
@@ -56,6 +69,11 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   };
 }
 
+/**
+ * Computes the next price for a stablecoin token.
+ * Price inflates proportionally to active player count and decays when no players are online.
+ * Never drops below the configured floor price.
+ */
 export function tickStablecoinPrice(
   token: CryptoToken,
   activePlayerCount: number,
@@ -84,6 +102,7 @@ export function tickStablecoinPrice(
   };
 }
 
+/** Persists a price update to the crypto_token table, marking as crashed if applicable */
 export async function applyPriceUpdate(update: PriceUpdate): Promise<void> {
   if (update.isCrashed) {
     await Q.crypto.token.update(
@@ -102,6 +121,7 @@ export async function applyPriceUpdate(update: PriceUpdate): Promise<void> {
   }
 }
 
+/** Records a tick-level OHLCV snapshot, rounded to the nearest 30-second boundary */
 export async function recordTickSnapshot(
   update: PriceUpdate,
   volume: bigint = 0n,

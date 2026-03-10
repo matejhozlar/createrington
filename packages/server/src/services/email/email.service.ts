@@ -61,7 +61,7 @@ export class EmailService {
   /**
    * Normalizes one or more email addresses into an array of formatted strings
    *
-   * Handles single emails, email objects, or arrays or either. Useful for processing
+   * Handles single emails, email objects, or arrays of either. Useful for processing
    * the "to", "cc", and "bcc" fields
    *
    * @param emails - Single email, email object, or array of either
@@ -119,7 +119,7 @@ export class EmailService {
       });
 
       logger.info(
-        `Email send successfully: ${info.messageId} to ${this.normalizeEmails(
+        `Email sent successfully: ${info.messageId} to ${this.normalizeEmails(
           options.to,
         ).join(", ")}`,
       );

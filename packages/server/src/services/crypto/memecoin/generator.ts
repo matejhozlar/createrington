@@ -1,3 +1,9 @@
+/**
+ * Memecoin generation and lifecycle cleanup.
+ * Picks unused definitions from the catalog, assigns random pricing
+ * and supply, and handles delisting of crashed tokens.
+ */
+
 import { Q } from "@/db";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import { MEMECOIN_CATALOG } from "./catalog";
@@ -11,11 +17,16 @@ function randomInt(min: number, max: number): number {
   return Math.floor(randomBetween(min, max + 1));
 }
 
+/** Returns the set of token symbols already in use (active or crashed) */
 async function getUsedSymbols(): Promise<Set<string>> {
   const tokens = await Q.crypto.token.where({}).all();
   return new Set(tokens.map((t) => t.symbol));
 }
 
+/**
+ * Generates a new memecoin from an unused catalog entry with random price and supply.
+ * @returns The newly created token, or null if all catalog entries are in use
+ */
 export async function generateMemecoin(): Promise<CryptoToken | null> {
   const usedSymbols = await getUsedSymbols();
 
@@ -60,6 +71,11 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
   return token;
 }
 
+/**
+ * Deletes crashed memecoins older than the cleanup threshold,
+ * along with their holdings and price snapshots.
+ * @returns Number of tokens cleaned up
+ */
 export async function cleanupCrashedTokens(): Promise<number> {
   const cutoff = new Date(
     Date.now() - CRYPTO_CONFIG.MEMECOIN_CRASH_CLEANUP_HOURS * 60 * 60 * 1000,

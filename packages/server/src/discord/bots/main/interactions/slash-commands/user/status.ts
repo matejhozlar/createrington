@@ -35,6 +35,8 @@ export const cooldown = {
  * 1. Fetch all configured servers from the playtime manager
  * 2. For each server, get online/offline state and player count
  * 3. Reply with an embed listing all servers and total online players
+ *
+ * @param interaction - The chat input command interaction
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,

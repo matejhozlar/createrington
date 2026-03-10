@@ -326,7 +326,12 @@ export function registerServices(): void {
     },
   );
 
+  // =========================================================================
+  // CROSS-SERVICE WIRING (triggered when individual services become ready)
+  // =========================================================================
+
   container.on("serviceReady", async (serviceName) => {
+    // Initialize lottery once the database pool is verified
     if (serviceName === Services.DATABASE) {
       lotteryService
         .initialize()
@@ -334,6 +339,8 @@ export function registerServices(): void {
           logger.error("LotteryService initialization failed:", err),
         );
     }
+
+    // Wire message cache into playtime manager for server shutdown detection
     if (serviceName === Services.MESSAGE_CACHE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
@@ -343,6 +350,7 @@ export function registerServices(): void {
       playtimeManager.setupMessageCacheIntegration(messageCache);
     }
 
+    // Hook achievement evaluation into stats import completion
     if (
       serviceName === Services.STATS_IMPORT_SERVICE &&
       !config.envMode.isDev
@@ -357,6 +365,7 @@ export function registerServices(): void {
       });
     }
 
+    // Wire real-time role checks to playtime events on each server
     if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,

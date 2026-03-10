@@ -9,8 +9,12 @@ import { loadEventHandlers } from "../common/loaders/event-loader";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Load command/button handlers for main bot
- * This should happen AFTER bot login but BEFORE other services
+ * Loads command, button, and event handlers for the main bot
+ *
+ * Must be called after bot login but before other services that
+ * depend on interaction handling.
+ *
+ * @param bot - The Discord client instance for the main bot
  */
 export async function setupMainBotHandlers(bot: Client): Promise<void> {
   logger.info("Loading main bot handlers...");

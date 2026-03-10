@@ -570,8 +570,16 @@ export class PlaytimeRepository {
   // ============================================================================
 
   /**
-   * Aggregates a completed session into daily, hourly, and summary tables.
+   * Aggregates a completed session into daily, hourly, and summary tables
+   *
+   * Runs all three aggregation queries in parallel.
    * Replaces the old update_playtime_aggregates database trigger.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server ID the session occurred on
+   * @param sessionStart - Session start timestamp
+   * @param sessionEnd - Session end timestamp
+   * @private
    */
   private async aggregateSessionPlaytime(
     playerMinecraftUuid: string,
@@ -608,8 +616,13 @@ export class PlaytimeRepository {
   }
 
   /**
-   * Checks if a player still has active sessions; if not, marks them offline.
+   * Checks if a player still has active sessions; if not, marks them offline
+   *
    * Replaces the old sync_player_online_status database trigger.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param lastSeen - Timestamp to set as last_seen if going offline
+   * @private
    */
   private async syncPlayerOfflineStatus(
     playerMinecraftUuid: string,

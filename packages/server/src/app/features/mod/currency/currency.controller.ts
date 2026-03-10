@@ -202,6 +202,12 @@ export class CurrencyController {
   // PLACEHOLDER STUBS
   // ============================================================================
 
+  /**
+   * POST /api/currency/lottery/start
+   * Body: { amount: number }
+   *
+   * Starts a new lottery round with the given buy-in amount.
+   */
   static async startLottery(req: Request, res: Response): Promise<void> {
     const { uuid, name } = req.modAuth!;
     const { amount } = req.body;
@@ -219,6 +225,12 @@ export class CurrencyController {
     res.json(result);
   }
 
+  /**
+   * POST /api/currency/lottery/join
+   * Body: { amount: number }
+   *
+   * Joins an active lottery round with the given buy-in amount.
+   */
   static async joinLottery(req: Request, res: Response): Promise<void> {
     const { uuid, name } = req.modAuth!;
     const { amount } = req.body;
@@ -236,6 +248,7 @@ export class CurrencyController {
     res.json(result);
   }
 
+  /** POST /api/currency/vote/start — not yet implemented */
   static async startVote(_req: Request, _res: Response): Promise<void> {
     throw new BadRequestError("Not implemented");
   }

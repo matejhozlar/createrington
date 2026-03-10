@@ -137,7 +137,7 @@ export class DailyRoleScheduler {
   }
 
   /**
-   * Manually trigger a daily check (for testin or admin commands)
+   * Manually trigger a daily check (for testing or admin commands)
    */
   async triggerManualCheck(): Promise<void> {
     await this.runDailyCheck();

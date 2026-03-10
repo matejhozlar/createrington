@@ -3,6 +3,7 @@ import { router, publicProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
 
+/** Public crypto router — token listings, price history, and market overview. */
 export const cryptoRouter = router({
   list: publicProcedure
     .meta({ description: "List all active crypto tokens" })

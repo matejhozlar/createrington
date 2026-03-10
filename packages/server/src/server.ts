@@ -1,3 +1,10 @@
+/**
+ * Application entry point
+ *
+ * Initializes the global logger, bootstraps all services via the DI
+ * container, starts the HTTP server, and wires up graceful shutdown.
+ */
+
 import "./logger.global";
 import { env } from "@/config/env/env.config";
 import { initializeServices, shutdownServices } from "@/services/bootstrap";
@@ -6,6 +13,7 @@ import { container, Services } from "@/services";
 
 const PORT = env.PORT;
 
+/** Bootstraps services and starts listening for HTTP requests */
 async function start() {
   try {
     // Initialize everything
@@ -23,6 +31,7 @@ async function start() {
   }
 }
 
+/** Gracefully tears down all services and exits */
 async function shutdown() {
   logger.info("Shutting down...");
   await shutdownServices();

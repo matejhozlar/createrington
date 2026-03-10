@@ -1,6 +1,7 @@
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors } from "@/discord/embeds";
 
+/** Formats a price string with appropriate decimal precision based on magnitude */
 function formatPrice(price: string): string {
   const num = Number(price);
   if (num === 0) return "$0.00";

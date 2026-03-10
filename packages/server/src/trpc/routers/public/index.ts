@@ -5,6 +5,7 @@ import { waitlistsRouter } from "./waitlists";
 import { metricsRouter } from "./metrics";
 import { cryptoRouter } from "./crypto";
 
+/** Public router — servers, players, waitlists, metrics, and crypto market data (no auth required). */
 export const publicRouter = router({
   servers: serversRouter,
   players: playersRouter,

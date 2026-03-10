@@ -46,6 +46,10 @@ export interface CommandModule {
 
 /**
  * Checks if a command should be loaded in the current environment
+ *
+ * @param commandName - The name of the command to check
+ * @returns True if the command should be loaded
+ * @private
  */
 function shouldLoadCommand(commandName: string): boolean {
   const env: CommandEnv | undefined = commandRegistry[commandName];
@@ -65,7 +69,11 @@ function shouldLoadCommand(commandName: string): boolean {
 }
 
 /**
- * Collects all command files from a directory and its subdirectories
+ * Recursively collects all command files from a directory tree
+ *
+ * @param dir - The directory path to scan
+ * @returns Array of absolute file paths to command files
+ * @private
  */
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
@@ -86,9 +94,13 @@ function collectCommandFiles(dir: string): string[] {
 }
 
 /**
- * Loads Discord command handlers
+ * Loads Discord command handlers from a directory tree
  *
- * @returns Promise resolving to the commandHandlers
+ * Scans all subdirectories for command files, validates each module,
+ * and returns a collection filtered by the command registry environment.
+ *
+ * @param commandsPath - Absolute path to the slash-commands directory
+ * @returns Promise resolving to a Collection of command handlers keyed by command name
  */
 export async function loadCommandHandlers(
   commandsPath: string,

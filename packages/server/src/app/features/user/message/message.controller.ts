@@ -8,6 +8,7 @@ import {
   type SendMessageResponse,
 } from "@createrington/shared/api";
 
+/** 10 MB hard cap for uploaded images (must match multer config in routes) */
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 /** MIME types we accept for image uploads */

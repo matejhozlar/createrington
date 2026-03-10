@@ -10,9 +10,7 @@ export interface StatsUpsertEntry {
 /**
  * Custom queries for player_minecraft_stats table
  *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
+ * - Batch upsert for efficient multi-player stats ingestion from game servers
  */
 export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries {
   constructor(db: Pool | PoolClient) {

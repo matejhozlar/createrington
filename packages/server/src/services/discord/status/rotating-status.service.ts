@@ -129,7 +129,7 @@ export class RotatingStatusService {
   /**
    * Manually triggers a status rotation
    *
-   * Useful for rtesting or forcing an immediate rotation
+   * Useful for testing or forcing an immediate rotation
    */
   async forceRotation(): Promise<void> {
     await this.rotateStatus();

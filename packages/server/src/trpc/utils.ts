@@ -1,7 +1,11 @@
+/**
+ * Shared tRPC utilities — error factories, player ID parsing, and pagination helpers.
+ */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/app/utils/helpers";
 
+/** Shorthand factories for common TRPCError codes. */
 export const trpcError = {
   badRequest: (message: string) =>
     new TRPCError({ code: "BAD_REQUEST", message }),
@@ -17,6 +21,11 @@ export const trpcError = {
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };
 
+/**
+ * Parses a player ID string into a typed identifier object.
+ * @param id - Discord ID, Minecraft UUID, or Minecraft username
+ * @returns Typed identifier object for use with player queries
+ */
 export function parsePlayerId(id: string) {
   const identifier = idToObject(id);
   if (!identifier) {
@@ -27,6 +36,11 @@ export function parsePlayerId(id: string) {
   return identifier;
 }
 
+/**
+ * Returns Zod schemas for `page` and `limit` input fields.
+ * @param opts.maxLimit - Upper bound for limit (default 100)
+ * @param opts.defaultLimit - Default page size (default 20)
+ */
 export function paginationInput(opts?: {
   maxLimit?: number;
   defaultLimit?: number;
@@ -42,6 +56,10 @@ export function paginationInput(opts?: {
   };
 }
 
+/**
+ * Builds a pagination metadata object from query results.
+ * @returns Object with page, limit, total, and totalPages
+ */
 export function buildPagination(page: number, limit: number, total: number) {
   return {
     page,

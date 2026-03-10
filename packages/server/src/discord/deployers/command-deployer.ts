@@ -26,6 +26,10 @@ const rest = new REST({ version: "10" }).setToken(BOT_TOKEN);
 
 /**
  * Checks if a command should be deployed in the current environment
+ *
+ * @param commandName - The name of the command to check
+ * @returns True if the command should be deployed
+ * @private
  */
 function shouldDeployCommand(commandName: string): boolean {
   const env: CommandEnv | undefined = commandRegistry[commandName];
@@ -45,7 +49,11 @@ function shouldDeployCommand(commandName: string): boolean {
 }
 
 /**
- * Collects all command files from a directory and its subdirectories
+ * Recursively collects all command files from a directory tree
+ *
+ * @param dir - The directory path to scan
+ * @returns Array of absolute file paths to command files
+ * @private
  */
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];

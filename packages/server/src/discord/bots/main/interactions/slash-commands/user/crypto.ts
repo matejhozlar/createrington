@@ -10,6 +10,10 @@ import {
   SlashCommandBuilder,
 } from "discord.js";
 
+/**
+ * Slash command definition for the crypto command
+ * Allows users to buy and sell crypto tokens using their balance
+ */
 export const data = new SlashCommandBuilder()
   .setName("crypto")
   .setDescription("Trade crypto tokens")
@@ -50,12 +54,30 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
+/**
+ * Cooldown configuration for the crypto command
+ *
+ * - duration: 5 seconds
+ * - type: "user" - Each user has their own cooldown
+ * - message: Custom message shown when the user is on cooldown
+ */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before trading again!",
 };
 
+/**
+ * Executes the crypto command to buy or sell tokens
+ *
+ * Process:
+ * 1. Verify the player is registered
+ * 2. Validate the token symbol exists
+ * 3. Execute the buy or sell trade via the trade executor
+ * 4. Reply with trade confirmation including price, fee, and total
+ *
+ * @param interaction - The chat input command interaction
+ */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {

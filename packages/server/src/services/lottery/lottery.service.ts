@@ -12,13 +12,26 @@ import type {
   LotteryInfo,
 } from "./types";
 
+/**
+ * In-memory lottery service for real-time gambling events
+ *
+ * - Manages lottery lifecycle: start, join, resolve
+ * - Deducts/refunds player balances via BalanceRepository
+ * - Persists participant entries to DB for crash recovery
+ * - Picks a weighted random winner (higher bet = higher chance)
+ * - Announces lottery events to Discord
+ *
+ * NOTE: Only one lottery can be active at a time (in-memory singleton state)
+ */
 export class LotteryService {
   private activeLottery: ActiveLottery | null = null;
   private resolving = false;
 
   /**
-   * Crash recovery: refund any orphaned lottery participants from a previous
-   * server instance that died mid-lottery, then clear the table.
+   * Recovers from a previous server crash by refunding orphaned participants
+   *
+   * If the server died mid-lottery, participant entries remain in the DB.
+   * This method refunds each one and clears the table.
    */
   async initialize(): Promise<void> {
     const orphaned = await db.lottery.participant.findAll();
@@ -54,7 +67,17 @@ export class LotteryService {
   }
 
   /**
-   * Start a new lottery with the given entry amount.
+   * Starts a new lottery round
+   *
+   * Creates the in-memory lottery state, deducts the host's balance,
+   * persists the entry to DB, and schedules automatic resolution.
+   *
+   * @param uuid - Minecraft UUID of the host player
+   * @param username - Minecraft username of the host player
+   * @param amount - Entry amount to bet
+   * @returns Promise resolving to the start result with end time
+   * @throws ConflictError if a lottery is already in progress
+   * @throws BadRequestError if the amount is below minimum
    */
   async start(
     uuid: string,
@@ -128,7 +151,17 @@ export class LotteryService {
   }
 
   /**
-   * Join an active lottery with the given entry amount.
+   * Joins the currently active lottery
+   *
+   * Adds the player to the participant list, deducts their balance,
+   * and persists the entry to DB. Rolls back in-memory state on failure.
+   *
+   * @param uuid - Minecraft UUID of the joining player
+   * @param username - Minecraft username of the joining player
+   * @param amount - Entry amount to bet
+   * @returns Promise resolving to join result with pot and participant count
+   * @throws BadRequestError if no lottery is active or amount is invalid
+   * @throws ConflictError if the player has already joined
    */
   async join(
     uuid: string,
@@ -195,16 +228,12 @@ export class LotteryService {
     };
   }
 
-  /**
-   * Returns whether a lottery is currently active.
-   */
+  /** Returns whether a lottery is currently active */
   isActive(): boolean {
     return this.activeLottery !== null;
   }
 
-  /**
-   * Returns info about the current lottery, or null if none active.
-   */
+  /** Returns info about the current lottery, or null if none is active */
   getInfo(): LotteryInfo | null {
     if (!this.activeLottery) return null;
 
@@ -221,7 +250,12 @@ export class LotteryService {
   }
 
   /**
-   * Resolves the lottery: picks a winner or refunds if < 2 participants.
+   * Resolves the lottery by picking a winner or refunding if under 2 participants
+   *
+   * Called automatically by the timer when the lottery duration expires.
+   * Uses a guard flag to prevent concurrent resolution.
+   *
+   * @private
    */
   private async resolve(): Promise<void> {
     if (this.resolving || !this.activeLottery) return;
@@ -284,7 +318,12 @@ export class LotteryService {
   }
 
   /**
-   * Weighted random selection — players who bet more have proportionally higher chance.
+   * Picks a winner using weighted random selection (higher bet = higher chance)
+   *
+   * @param participants - Array of lottery participants
+   * @returns The winning participant
+   *
+   * @private
    */
   private pickWeightedWinner(
     participants: LotteryParticipant[],
@@ -303,6 +342,13 @@ export class LotteryService {
     return participants[participants.length - 1];
   }
 
+  /**
+   * Sends a lottery announcement to the Minecraft chat Discord channel
+   *
+   * @param message - Formatted message string to send
+   *
+   * @private
+   */
   private announceToDiscord(message: string): void {
     Discord.Messages.send({
       channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,

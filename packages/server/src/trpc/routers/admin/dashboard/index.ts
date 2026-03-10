@@ -2,6 +2,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
+/** Admin dashboard router — profile data and recent action statistics. */
 export const dashboardRouter = router({
   profile: adminProcedure
     .meta({ description: "Get admin profile data for the dashboard." })

@@ -40,6 +40,13 @@ export interface ConfirmationFlowOptions {
   isDeferred?: boolean;
 }
 
+/**
+ * Manages ephemeral confirmation dialogs with button interactions
+ *
+ * - Displays an embed with configurable action buttons
+ * - Supports author-only interaction filtering and auto-timeout
+ * - Tracks active flows for graceful shutdown cleanup
+ */
 export class ConfirmationFlow {
   private static activeFlows = new Map<string, NodeJS.Timeout>();
 

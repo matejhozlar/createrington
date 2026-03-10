@@ -3,12 +3,10 @@ import { router, userProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
 import { trpcError } from "@/trpc/utils";
 
+/** User achievements router — progress tracking, single/bulk reward claims. */
 export const achievementsRouter = router({
-  /**
-   * Get achievement progress for the authenticated player on a server.
-   * Returns all achievement groups with current values and completed tiers.
-   */
   getProgress: userProcedure
+    .meta({ description: "Get achievement progress for the authenticated player on a server." })
     .input(
       z.object({
         serverId: z.number().int().positive(),
@@ -19,10 +17,8 @@ export const achievementsRouter = router({
       return service.getProgress(ctx.user.minecraftUuid, input.serverId);
     }),
 
-  /**
-   * Claim reward for a single completed achievement tier.
-   */
   claim: userProcedure
+    .meta({ description: "Claim reward for a single completed achievement tier." })
     .input(
       z.object({
         serverId: z.number().int().positive(),
@@ -57,10 +53,8 @@ export const achievementsRouter = router({
       }
     }),
 
-  /**
-   * Claim all unclaimed completed achievements for the authenticated player.
-   */
   claimAll: userProcedure
+    .meta({ description: "Claim all unclaimed completed achievements for the authenticated player." })
     .input(
       z.object({
         serverId: z.number().int().positive(),

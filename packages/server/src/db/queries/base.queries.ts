@@ -202,7 +202,15 @@ class QueryBuilder<
 
 /**
  * Base class for database query operations
- * Provides common CRUD functionality that can be extended by specific entity data
+ *
+ * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
+ * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
+ * - Fluent query builder via .where().orderBy().limit().all() chain
+ * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
+ * - Transaction support via useClient() and inTransaction()
+ * - Auto-sets updated_at when AUTO_SET_UPDATED_AT is enabled (per-table, code-generated)
+ *
+ * NOTE: Subclasses are auto-generated -- extend via the custom query files in db/queries/
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- generic constraint requires any for structural compatibility with concrete types */
 export abstract class BaseQueries<
@@ -305,7 +313,7 @@ export abstract class BaseQueries<
    * Converts multiple database rows from snake_case to camelCase
    *
    * @param rows - Array of database row objects with snake_case keys
-   * @returns Array of entitiy objects with camelCase keys
+   * @returns Array of entity objects with camelCase keys
    */
   protected mapRowsToEntities(rows: TConfig["DbEntity"][]): TConfig["Entity"][];
   protected mapRowsToEntities<TDbRow extends Record<string, unknown>, TEntity>(
@@ -317,7 +325,7 @@ export abstract class BaseQueries<
 
   /**
    * Gets the database column name for a given key
-   * Uses COLUMN_MAP if provided, otherwise convers camelCase to snake_case
+   * Uses COLUMN_MAP if provided, otherwise converts camelCase to snake_case
    *
    * @param key - Value to convert
    * @returns Database column name
@@ -460,7 +468,7 @@ export abstract class BaseQueries<
   /**
    * Builds WHERE clause from filter criteria
    *
-   * @param filters - Object containing filer data
+   * @param filters - Object containing filter data
    * @returns Object containing the WHERE clause and all parameter values
    */
   protected buildFilterClause(
@@ -510,10 +518,11 @@ export abstract class BaseQueries<
   }
 
   /**
-   * Checks if value is an operator object (has kes starting with $)
+   * Checks if value is an operator object (has keys starting with $)
    *
    * @param value - The value to check
    * @returns True if the value is an operator object, false otherwise
+   * @private
    */
   private isOperatorObject(value: unknown): value is Record<string, unknown> {
     if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -523,12 +532,13 @@ export abstract class BaseQueries<
   }
 
   /**
-   * Build conditions for operator objects
+   * Translates filter operator objects ($eq, $gt, $in, etc.) into SQL conditions
    *
-   * @param column - The column to build
-   * @param operators - The operators to add to the query
-   * @param conditions - The conditions of the columns
-   * @returns Promise resolving once the operation is completed
+   * @param column - Database column name
+   * @param operators - Operator-keyed object (e.g. \{ $gt: 5, $lt: 10 \})
+   * @param conditions - Mutable array to append SQL fragments to
+   * @param params - Mutable array to append parameterized values to
+   * @private
    */
   private buildOperatorConditions(
     column: string,
@@ -1235,10 +1245,10 @@ export abstract class BaseQueries<
 
   /**
    * Updates all entities matching the filter criteria
-   * If no filers provided, updates ALL records in the table
+   * If no filters provided, updates ALL records in the table
    *
    * @param updates - Object containing fields to update
-   * @param filtters - Optional filter criteria to match specific entries
+   * @param filters - Optional filter criteria to match specific entries
    * @returns Promise resolving to the number of rows affected
    */
   async updateAll(
@@ -1391,7 +1401,7 @@ export abstract class BaseQueries<
   }
 
   /**
-   * Creates and return the new entity with generated fields
+   * Creates and returns the new entity with generated fields
    *
    * @param data - Object containing creation data
    * @returns Promise resolving to the created entity
@@ -1530,15 +1540,15 @@ export abstract class BaseQueries<
   // ============================================================================
 
   /**
-   * Create a new instance of this qeury class using a transaction client
-   * Allows using the same query API with the transaction helper
+   * Create a new instance of this query class using a transaction client
+   * Allows using the same query API within a transaction
    *
    * @param client - Transaction client
    * @returns New instance using the transaction client
    *
    * @example
    * import { transaction } from "@/db/utils/transactions";
-   * import { PlayerQueries } fron "@/db/queries/player";
+   * import { PlayerQueries } from "@/db/queries/player";
    *
    * await transaction(db, async (client) => {
    *    const queries = new PlayerQueries(db).useClient(client);
@@ -1563,7 +1573,7 @@ export abstract class BaseQueries<
    * Execute a callback within a transaction using this query class
    * Convenience wrapper around the transaction helper
    *
-   * @param callback - Function to execute with transaction enables queries
+   * @param callback - Function to execute with transaction-enabled queries
    * @returns Result from callback
    */
   async inTransaction<T>(callback: (queries: this) => Promise<T>): Promise<T> {

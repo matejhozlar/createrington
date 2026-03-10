@@ -6,10 +6,10 @@ export * from "./query-helpers";
 export * from "./transactions";
 
 /**
- * Checks if a user is a registered Admin in the Database
+ * Checks if a user is a registered admin in the database
  *
- * @param discordId - Discord ID of the user
- * @returns Promise resolving to True if user is an admin, false otherwise
+ * @param user - Discord ID string or Player object
+ * @returns Promise resolving to true if the user is an admin, false otherwise
  */
 export async function isAdminDb(user: string | Player): Promise<boolean> {
   const discordId = typeof user === "string" ? user : user.discordId;

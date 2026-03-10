@@ -6,6 +6,7 @@ import config from "@/config";
 
 const links = config.meta.links;
 
+/** Email template for inviting a waitlisted user to join the server */
 export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvitationData> {
   protected getSubject(_data: WaitlistInvitationData): string {
     return "Your Invitation to Createrington is Ready!";

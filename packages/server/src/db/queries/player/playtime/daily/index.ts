@@ -16,7 +16,8 @@ export type ServerActivity = {
 /**
  * Custom queries for player_playtime_daily table
  *
- * Extends the auto-generated base class with custom methods
+ * - Session aggregation: splits sessions across day boundaries via upsert
+ * - Server activity analytics: daily unique players and total playtime
  */
 export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -24,8 +25,15 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
   }
 
   /**
-   * Upserts daily playtime records for a session, splitting across day boundaries.
-   * Adds seconds to existing records via ON CONFLICT.
+   * Upserts daily playtime records for a session, splitting across day boundaries
+   *
+   * Iterates day-by-day from sessionStart to sessionEnd, computing per-day seconds
+   * and upserting via ON CONFLICT to increment existing records.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server ID the session occurred on
+   * @param sessionStart - Session start timestamp
+   * @param sessionEnd - Session end timestamp
    */
   async aggregateSession(
     playerMinecraftUuid: string,

@@ -86,7 +86,10 @@ export class DiscordOAuthService {
 
   /**
    * Validates that all required OAuth configuration is present
+   *
    * @throws Error if any required environment variables are missing
+   *
+   * @private
    */
   private validate(): void {
     const missing: string[] = [];
@@ -177,7 +180,7 @@ export class DiscordOAuthService {
   }
 
   /**
-   * Determine the user's role based on their Discord ID
+   * Determines the user's role based on their Discord ID
    *
    * Checks the database to see if the user is a player and/or admin:
    * - UNVERIFIED: User is not in the player database
@@ -186,6 +189,8 @@ export class DiscordOAuthService {
    *
    * @param discordId - The Discord user ID to check
    * @returns Promise resolving to the user's role
+   *
+   * @private
    */
   private async getAuthRole(discordId: string): Promise<AuthRole> {
     const playerExists = await Q.player.exists({ discordId });

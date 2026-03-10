@@ -37,11 +37,6 @@ export const cooldown = {
 };
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development mode
- */
-
-/**
  * Executes the verify command to verify a user invitation token
  *
  * Process:

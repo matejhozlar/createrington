@@ -122,7 +122,7 @@ export class TicketRepository {
   }
 
   /**
-   * Reopens a closed ticked in the database
+   * Reopens a closed ticket in the database
    *
    * @param ticketId - Ticket ID to reopen
    * @param reopenedBy - Discord ID of user reopening the ticket
@@ -316,10 +316,10 @@ export class TicketRepository {
   }
 
   /**
-   * Counts open tikets for a user
+   * Counts open tickets for a user
    *
    * @param discordId - Discord user ID
-   * @returns Promise resolving to a number of open tickets
+   * @returns Promise resolving to the number of open tickets
    */
   async countUserOpen(discordId: string): Promise<number> {
     return await Q.ticket.count({
@@ -415,7 +415,7 @@ export class TicketRepository {
    *
    * @param limit - Number of tickets to return
    * @param offset - Number of tickets to skip
-   * @returns Promise resolving to an array of tickets to skip
+   * @returns Promise resolving to an array of recent tickets
    */
   async getRecent(limit: number = 10, offset: number = 0): Promise<Ticket[]> {
     return await Q.ticket.getAll({

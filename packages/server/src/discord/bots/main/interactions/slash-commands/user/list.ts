@@ -23,11 +23,6 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
-
-/**
  * Executes the list command
  *
  * Process:

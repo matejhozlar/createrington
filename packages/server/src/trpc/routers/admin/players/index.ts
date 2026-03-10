@@ -8,6 +8,7 @@ import { playtimeRouter } from "./playtime";
 import { ticketsRouter } from "./tickets";
 import { auditRouter } from "./audit";
 
+/** Composite admin players router — CRUD, balance, strikes, bans, sessions, playtime, tickets, audit. */
 export const adminPlayersRouter = router({
   players: playersRouter,
   balance: balanceRouter,

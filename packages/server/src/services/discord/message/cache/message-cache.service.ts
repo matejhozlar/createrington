@@ -96,7 +96,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     this.botUserId = this.bot.user?.id || null;
     if (!this.botUserId) {
       logger.warn(
-        "MessageCacheService couldnt initialize bot ID, continuing without it",
+        "MessageCacheService couldn't initialize bot ID, continuing without it",
       );
     }
 
@@ -601,7 +601,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   // ==========================================================================
 
   /**
-   * Adds a message to the cached message for a server
+   * Retrieves cached messages for a server with optional filtering
    *
    * @param serverId - Server ID
    * @param options - Optional query filters
@@ -723,6 +723,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     if (cache) {
       cache.length = 0;
     }
-    logger.info(`Cleared cached for server ${serverId}`);
+    logger.info(`Cleared cache for server ${serverId}`);
   }
 }

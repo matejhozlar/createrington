@@ -18,7 +18,11 @@ export const pattern = "registration:*";
 export const prodOnly = false;
 
 /**
- * Parses the button customId
+ * Parses the registration button customId (format: registration:action)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed action, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): { action: string } | null {
   const [, action] = customId.split(":");
@@ -26,6 +30,14 @@ function parseCustomId(customId: string): { action: string } | null {
   return { action };
 }
 
+/**
+ * Handles registration channel close button
+ *
+ * Deletes the verification channel after a 5-second delay
+ * to allow the user to see the closing confirmation.
+ *
+ * @param interaction - The button interaction from Discord
+ */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 

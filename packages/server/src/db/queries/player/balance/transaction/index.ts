@@ -4,7 +4,8 @@ import { PlayerBalanceTransactionBaseQueries } from "@/generated/db/player_balan
 /**
  * Custom queries for player_balance_transaction table
  *
- * Extends the auto-generated base class with custom methods
+ * - Time-series volume analytics (credits vs debits per period)
+ * - Per-player lifetime earnings aggregation
  */
 export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -59,8 +60,12 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
   }
 
   /**
-   * Get the total amount earned (sum of positive transactions) for a player.
+   * Get the total amount earned (sum of positive transactions) for a player
+   *
    * Returns 0 if no positive transactions exist.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @returns Total earned amount in storage format (bigint cast to number)
    */
   async getTotalEarned(playerUuid: string): Promise<number> {
     const query = `

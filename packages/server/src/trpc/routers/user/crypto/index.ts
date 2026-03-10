@@ -4,6 +4,7 @@ import { trpcError, buildPagination } from "@/trpc/utils";
 import { Q } from "@/db";
 import { executeBuy, executeSell } from "@/services/crypto/trading/trade-executor";
 
+/** User crypto router — buy/sell tokens, view portfolio and trade history. */
 export const cryptoRouter = router({
   buy: userProcedure
     .meta({ description: "Market buy tokens" })

@@ -1,3 +1,9 @@
+/**
+ * Trade execution engine for the crypto market.
+ * Handles buy and sell order processing including balance changes,
+ * supply tracking, holding management, fee collection, and treasury updates.
+ */
+
 import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
@@ -21,6 +27,10 @@ interface TradeRateLimiter {
 
 const rateLimiter: TradeRateLimiter = { counts: new Map() };
 
+/**
+ * Enforces per-player trade rate limiting using an in-memory sliding window.
+ * @throws Error if the player exceeds MAX_TRADES_PER_MINUTE
+ */
 function checkRateLimit(playerUuid: string): void {
   const now = Date.now();
   const entry = rateLimiter.counts.get(playerUuid);
@@ -42,6 +52,7 @@ function checkRateLimit(playerUuid: string): void {
   entry.count++;
 }
 
+/** Queries the total number of trades a player has ever executed (for volume discounts) */
 async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
   const result = await Q.crypto.transaction
     .where({ playerMinecraftUuid: playerUuid })
@@ -49,6 +60,17 @@ async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
   return result;
 }
 
+/**
+ * Executes a buy order: deducts player balance, updates token supply,
+ * upserts the player's holding with cost basis tracking, records the
+ * transaction, and collects fees into the treasury.
+ *
+ * @param playerUuid - Minecraft UUID of the buyer
+ * @param token - Token being purchased (must not be crashed or delisted)
+ * @param amount - Number of tokens to buy
+ * @returns Trade result with transaction details
+ * @throws Error on crashed/delisted tokens, insufficient supply, or rate limit
+ */
 export async function executeBuy(
   playerUuid: string,
   token: CryptoToken,
@@ -159,6 +181,17 @@ export async function executeBuy(
   };
 }
 
+/**
+ * Executes a sell order: credits player balance (minus fees), returns tokens
+ * to available supply, adjusts cost basis proportionally, calculates realized
+ * P&L, records the transaction, and collects fees into the treasury.
+ *
+ * @param playerUuid - Minecraft UUID of the seller
+ * @param token - Token being sold
+ * @param amount - Number of tokens to sell
+ * @returns Trade result with transaction details including realized P&L
+ * @throws Error on insufficient holdings or rate limit
+ */
 export async function executeSell(
   playerUuid: string,
   token: CryptoToken,
@@ -268,6 +301,10 @@ export async function executeSell(
   };
 }
 
+/**
+ * Updates the fee treasury. For memecoins, a portion of the fee is burned
+ * (removed from circulation) based on FEES.BURN_RATIO.
+ */
 async function updateTreasury(
   feeAmount: number,
   category: string,

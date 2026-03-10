@@ -16,6 +16,18 @@ import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { sendNewListingNotification, sendCrashNotification } from "./notifications";
 
+/**
+ * Crypto Market Service
+ *
+ * Orchestrates the in-game cryptocurrency market:
+ * - Runs periodic price tickers for memecoins and stablecoins
+ * - Aggregates tick-level snapshots into minute OHLCV candles
+ * - Broadcasts real-time price updates to WebSocket subscribers
+ * - Cleans up crashed tokens after a configurable grace period
+ * - Spawns new memecoins from the catalog with Discord notifications
+ *
+ * NOTE: Requires DATABASE and WEBSOCKET_SERVICE to be ready before initialization
+ */
 export class CryptoMarketService {
   private memecoinInterval: ReturnType<typeof setInterval> | null = null;
   private stablecoinInterval: ReturnType<typeof setInterval> | null = null;
@@ -24,6 +36,11 @@ export class CryptoMarketService {
     null;
   private wsService: WebSocketService | null = null;
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
+  /** Initializes treasury, loads active tokens, and starts all ticker intervals */
   async initialize(): Promise<void> {
     logger.info("CryptoMarketService initializing...");
 
@@ -58,6 +75,7 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService initialized");
   }
 
+  /** Clears all ticker intervals */
   async shutdown(): Promise<void> {
     if (this.memecoinInterval) clearInterval(this.memecoinInterval);
     if (this.stablecoinInterval) clearInterval(this.stablecoinInterval);
@@ -68,6 +86,11 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService shutdown complete");
   }
 
+  // ==========================================================================
+  // TICKER INTERVALS
+  // ==========================================================================
+
+  /** @private Starts the memecoin price ticker with an immediate first tick */
   private startMemecoinTicker(): void {
     this.memecoinInterval = setInterval(async () => {
       try {
@@ -83,6 +106,7 @@ export class CryptoMarketService {
     );
   }
 
+  /** @private Starts the stablecoin price ticker */
   private startStablecoinTicker(): void {
     this.stablecoinInterval = setInterval(async () => {
       try {
@@ -93,8 +117,8 @@ export class CryptoMarketService {
     }, CRYPTO_CONFIG.STABLECOIN_TICK_INTERVAL_MS);
   }
 
+  /** @private Removes crashed tokens and their holdings/snapshots every 30 minutes */
   private startCleanupJob(): void {
-    // Run cleanup every 30 minutes
     this.cleanupInterval = setInterval(
       async () => {
         try {
@@ -110,8 +134,8 @@ export class CryptoMarketService {
     );
   }
 
+  /** @private Aggregates tick snapshots into minute OHLCV candles every 5 minutes */
   private startMinuteAggregation(): void {
-    // Aggregate tick snapshots into minute OHLCV every 5 minutes
     this.minuteAggregationInterval = setInterval(
       async () => {
         try {
@@ -124,6 +148,11 @@ export class CryptoMarketService {
     );
   }
 
+  // ==========================================================================
+  // PRICE TICKING
+  // ==========================================================================
+
+  /** @private Calculates new prices for all active memecoins and broadcasts updates */
   private async tickMemecoins(): Promise<void> {
     const memecoins = await Q.crypto.token
       .where({ category: "memecoin", isCrashed: false })
@@ -151,6 +180,7 @@ export class CryptoMarketService {
     await this.broadcastPriceUpdates(updates);
   }
 
+  /** @private Recalculates stablecoin prices based on active player count */
   private async tickStablecoins(): Promise<void> {
     const stablecoins = await Q.crypto.token
       .where({ category: "stable" })
@@ -175,6 +205,11 @@ export class CryptoMarketService {
     await this.broadcastPriceUpdates(updates);
   }
 
+  // ==========================================================================
+  // BROADCASTING
+  // ==========================================================================
+
+  /** @private Sends price update payloads to all WebSocket crypto market subscribers */
   private async broadcastPriceUpdates(updates: PriceUpdate[]): Promise<void> {
     if (updates.length === 0) return;
 
@@ -209,6 +244,14 @@ export class CryptoMarketService {
     );
   }
 
+  // ==========================================================================
+  // AGGREGATION
+  // ==========================================================================
+
+  /**
+   * Rolls up tick-level snapshots into minute OHLCV candles and prunes old ticks
+   * @private
+   */
   private async aggregateMinuteSnapshots(): Promise<void> {
     const tokens = await Q.crypto.token.where({}).all();
     const now = new Date();

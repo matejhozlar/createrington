@@ -16,7 +16,7 @@ export interface ServerCacheConfig {
   serverId: number;
   /** Discord channel ID to monitor */
   channelId: string;
-  /** Maximum message to cache (default: 100) */
+  /** Maximum messages to cache (default: 100) */
   maxMessages?: number;
 }
 

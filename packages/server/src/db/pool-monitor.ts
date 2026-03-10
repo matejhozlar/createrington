@@ -1,14 +1,22 @@
 import type pg from "pg";
 import config from "@/config";
 
+/** Snapshot of connection pool utilization metrics */
 export interface PoolStats {
   totalCount: number;
   idleCount: number;
   waitingCount: number;
   maxSize: number;
+  /** Pool utilization as a percentage (0-100) */
   utilization: number;
 }
 
+/**
+ * PostgreSQL connection pool health monitor
+ *
+ * - Periodically checks pool utilization and warns when thresholds are exceeded
+ * - Logs pool lifecycle events (connect, error, remove)
+ */
 export class PoolMonitor {
   private interval: ReturnType<typeof setInterval> | null = null;
   private readonly pool: pg.Pool;
@@ -23,6 +31,7 @@ export class PoolMonitor {
     this.intervalMs = config.database.monitoring.intervalMs;
   }
 
+  /** Registers pool event listeners and starts the periodic health check */
   start(): void {
     this.pool.on("connect", () => {
       logger.debug("[Pool] New client connected", this.getStats());
@@ -44,6 +53,7 @@ export class PoolMonitor {
     );
   }
 
+  /** Stops the periodic health check */
   stop(): void {
     if (this.interval) {
       clearInterval(this.interval);
@@ -51,6 +61,7 @@ export class PoolMonitor {
     }
   }
 
+  /** Returns a snapshot of current pool metrics */
   getStats(): PoolStats {
     const utilization =
       this.maxSize > 0
@@ -66,6 +77,7 @@ export class PoolMonitor {
     };
   }
 
+  /** @private Logs warnings when utilization or wait queue thresholds are exceeded */
   private checkHealth(): void {
     const stats = this.getStats();
 

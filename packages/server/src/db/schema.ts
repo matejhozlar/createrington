@@ -1,3 +1,16 @@
+/**
+ * Drizzle ORM schema definitions for the entire database
+ *
+ * This is the single source of truth for all tables, enums, indexes,
+ * and check constraints. After editing this file, run:
+ *   1. `pnpm db:generate` -- create a migration SQL file
+ *   2. `pnpm db:migrate`  -- apply the migration to the running database
+ *   3. `pnpm generate`    -- regenerate TypeScript types and query classes
+ *
+ * NOTE: Do not add PL/pgSQL functions or triggers here -- all business
+ * logic lives in application code (see CLAUDE.md for details).
+ */
+
 import {
 	pgTable,
 	pgEnum,

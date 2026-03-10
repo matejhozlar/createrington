@@ -23,11 +23,6 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development mode
- */
-
-/**
  * Executes the username command to retrieve and display user's Minecraft username
  *
  * Process:

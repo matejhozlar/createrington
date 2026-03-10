@@ -1,3 +1,13 @@
+/**
+ * Centralized application configuration
+ *
+ * Aggregates all environment-validated settings, Discord entities,
+ * and static configuration into a single frozen config object.
+ *
+ * NOTE: Discord entity data (roles, channels, categories) is loaded from
+ * a generated JSON file. Run `pnpm scrape-discord` to regenerate it.
+ */
+
 import { env, envMode } from "./env/env.config";
 import type {
   MemberRolesConfig,

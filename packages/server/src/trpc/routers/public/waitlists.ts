@@ -3,6 +3,7 @@ import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
 
+/** Public waitlists router — check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
     .meta({

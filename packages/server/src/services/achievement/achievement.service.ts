@@ -36,9 +36,9 @@ export class AchievementService {
     );
   }
 
-  async shutdown(): Promise<void> {
-    // No timers or connections to clean up
-  }
+  /** No-op shutdown — service has no timers or connections to clean up */
+  async shutdown(): Promise<void> {}
+
 
   // ==========================================================================
   // EVALUATION

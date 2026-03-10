@@ -189,7 +189,7 @@ export class ServerStatsService {
         `Server stats updated - Members: ${stats.members}, Bots: ${stats.bots}, Total: ${stats.total}`,
       );
     } catch (error) {
-      logger.error("Failed to udpate server stats:", error);
+      logger.error("Failed to update server stats:", error);
     }
   }
 

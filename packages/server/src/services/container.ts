@@ -61,6 +61,12 @@ interface TypedEventEmitter<T> {
 
 /**
  * Centralized service container with dependency injection
+ *
+ * - Manages the full lifecycle of all application services (register, init, shutdown)
+ * - Resolves dependencies in parallel where possible
+ * - Detects circular dependencies at init time
+ * - Supports lazy services that initialize only on first access
+ * - Emits events for service readiness and cross-service wiring
  */
 export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> & EventEmitter) {
   private services: Map<string, ServiceDefinition> = new Map();
@@ -277,7 +283,8 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Shutdown all services gracefully
+   * Shuts down all services in reverse registration order.
+   * Calls `shutdown()` on any service that implements it.
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");

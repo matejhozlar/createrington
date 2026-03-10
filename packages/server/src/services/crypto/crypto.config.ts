@@ -1,3 +1,7 @@
+/**
+ * Central configuration for the in-game crypto market system.
+ * All tunable constants (tick rates, fees, volatility, retention) live here.
+ */
 export const CRYPTO_CONFIG = {
   // Price Engine
   MEMECOIN_TICK_INTERVAL_MS: 30_000, // 30 seconds

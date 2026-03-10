@@ -4,7 +4,8 @@ import { PlayerBaseQueries } from "@/generated/db/player.queries";
 /**
  * Custom queries for player table
  *
- * Extends the auto-generated base class with custom methods
+ * - Inherits standard CRUD from PlayerBaseQueries
+ * - Adds registration analytics (getRegistrationsByPeriod)
  */
 export class PlayerQueries extends PlayerBaseQueries {
   constructor(db: Pool | PoolClient) {

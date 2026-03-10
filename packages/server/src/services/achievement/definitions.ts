@@ -174,10 +174,12 @@ for (const group of ACHIEVEMENT_GROUPS) {
   groupsByCategoryMap.set(group.category, existing);
 }
 
+/** Looks up an achievement group by its unique ID */
 export function getGroupById(id: string): AchievementGroup | undefined {
   return groupByIdMap.get(id);
 }
 
+/** Returns all achievement groups belonging to a category */
 export function getGroupsByCategory(
   category: string,
 ): AchievementGroup[] {
