@@ -28,7 +28,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     newValue: string;
     reason: string;
     serverId?: number;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<void> {
     await this.create({
       adminDiscordId: data.adminDiscordId,

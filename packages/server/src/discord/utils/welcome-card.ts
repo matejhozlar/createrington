@@ -1,5 +1,5 @@
 import { AttachmentBuilder, GuildMember } from "discord.js";
-import { createCanvas, loadImage } from "canvas";
+import { type CanvasRenderingContext2D, createCanvas, loadImage } from "canvas";
 
 /** Configuration for welcome card colors */
 interface WelcomeCardConfig {
@@ -134,7 +134,7 @@ function adjustBrightness(color: string, amount: number): string {
 
 /** Draws text with a stroke outline for better readability over background images */
 function drawTextWithStroke(
-  ctx: any,
+  ctx: CanvasRenderingContext2D,
   text: string,
   x: number,
   y: number,

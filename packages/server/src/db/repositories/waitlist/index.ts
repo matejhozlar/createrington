@@ -89,7 +89,7 @@ export class WaitlistRepository {
             id: entry.id,
             email: entry.email,
             discordName: entry.discordName,
-            botMention: `<@${config.discord.bots.main.id}>` || "bot",
+            botMention: `<@${config.discord.bots.main.id}>`,
           });
 
         const result = await Discord.Messages.send({
@@ -385,7 +385,10 @@ export class WaitlistRepository {
         try {
           player = await Q.player.find({ discordId: entry.discordId });
         } catch (error) {
-          logger.debug(`No player found for Discord ID ${entry.discordId}`);
+          logger.debug(
+            `No player found for Discord ID ${entry.discordId}:`,
+            error,
+          );
         }
       }
 

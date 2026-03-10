@@ -27,14 +27,11 @@ export interface PlaytimeServiceEvents {
   syncComplete: () => void;
 }
 
-export declare interface PlaytimeService {
-  on<K extends keyof PlaytimeServiceEvents>(
+interface TypedEventEmitter<T> {
+  on<K extends keyof T>(event: K, listener: T[K]): this;
+  emit<K extends keyof T>(
     event: K,
-    listener: PlaytimeServiceEvents[K],
-  ): this;
-  emit<K extends keyof PlaytimeServiceEvents>(
-    event: K,
-    ...args: Parameters<PlaytimeServiceEvents[K]>
+    ...args: T[K] extends (...args: infer A) => unknown ? A : never
   ): boolean;
 }
 
@@ -62,7 +59,7 @@ export declare interface PlaytimeService {
  * - Lower server load
  * - More accurate session timestamps
  */
-export class PlaytimeService extends EventEmitter {
+export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> & EventEmitter) {
   private config: Required<PlaytimeServiceConfig>;
   private activeSessions: Map<string, ActiveSession> = new Map();
   private isInitialized = false;

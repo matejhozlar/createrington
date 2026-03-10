@@ -19,6 +19,7 @@ import type {
   EnumTypeInfo,
   GenerationContext,
   GenerationResult,
+  TableInfo,
   TableStructure,
 } from "./types";
 
@@ -170,7 +171,7 @@ function canOverwriteWithNamespace(filePath: string): boolean {
 
 function generateTableFiles(
   structure: TableStructure,
-  tableMap: Map<string, any>,
+  tableMap: Map<string, TableInfo>,
   context: GenerationContext,
   generatedFiles: string[],
   scaffoldedFiles: string[],

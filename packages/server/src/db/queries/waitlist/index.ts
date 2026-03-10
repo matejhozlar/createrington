@@ -28,7 +28,7 @@ export class WaitlistQueries {
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
-    Map<string, any>
+    Map<string, unknown>
   >();
 
   /**

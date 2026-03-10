@@ -11,7 +11,7 @@ export class AppError extends Error {
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
-    public details?: any,
+    public details?: unknown,
   ) {
     super(message);
     this.name = "AppError";
@@ -23,7 +23,7 @@ export class AppError extends Error {
  * Common HTTP error constructors
  */
 export class BadRequestError extends AppError {
-  constructor(message: string = "Bad Request", details?: any) {
+  constructor(message: string = "Bad Request", details?: unknown) {
     super(message, 400, true, details);
     this.name = "BadRequestError";
   }
@@ -86,7 +86,7 @@ interface ErrorResponse {
   error: {
     message: string;
     statusCode: number;
-    details?: any;
+    details?: unknown;
     stack?: string;
   };
 }
@@ -130,12 +130,12 @@ export function errorHandler(
   err: Error | AppError | DatabaseError | ZodError,
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): void {
   let statusCode = 500;
   let message = "Internal Server Error";
   let isOperational = false;
-  let details: any = undefined;
+  let details: unknown = undefined;
 
   if (err instanceof ZodError) {
     const { message: ZodMessage, fieldErrors } = formatZodError(err);
@@ -197,7 +197,7 @@ export function errorHandler(
     error: {
       message,
       statusCode,
-      ...(details && { details }),
+      ...(details !== undefined ? { details } : {}),
       ...(config.envMode.isDev && { stack: err.stack }),
     },
   };

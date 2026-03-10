@@ -41,7 +41,7 @@ export class CurrencyController {
    * Returns the player's current balance.
    */
   static async getBalance(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth;
+    const { uuid } = req.modAuth!;
 
     const balance = await R.balanceRepo.getAmount(uuid);
 
@@ -65,7 +65,7 @@ export class CurrencyController {
       throw new BadRequestError("amount must be a positive number");
     }
 
-    const senderUuid = fromUuid || req.modAuth.uuid;
+    const senderUuid = fromUuid || req.modAuth!.uuid;
 
     try {
       const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
@@ -94,7 +94,7 @@ export class CurrencyController {
    * Adds currency to the authenticated player's balance.
    */
   static async deposit(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth;
+    const { uuid } = req.modAuth!;
     const { amount, reason } = req.body;
 
     if (amount == null) {
@@ -132,7 +132,7 @@ export class CurrencyController {
    * Total withdrawn = denomination * count.
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth;
+    const { uuid } = req.modAuth!;
     const { denomination, count } = req.body;
 
     if (denomination == null || count == null) {
@@ -191,9 +191,9 @@ export class CurrencyController {
    * Claims the daily reward for the authenticated player.
    */
   static async claimDaily(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth;
+    const { uuid } = req.modAuth!;
 
-    const result = await rewardService.daily.claim(uuid);
+    const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
     res.json(result);
   }
@@ -203,7 +203,7 @@ export class CurrencyController {
   // ============================================================================
 
   static async startLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth;
+    const { uuid, name } = req.modAuth!;
     const { amount } = req.body;
 
     if (amount == null) {
@@ -220,7 +220,7 @@ export class CurrencyController {
   }
 
   static async joinLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth;
+    const { uuid, name } = req.modAuth!;
     const { amount } = req.body;
 
     if (amount == null) {

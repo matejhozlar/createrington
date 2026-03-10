@@ -30,9 +30,9 @@ function isEventModule(module: unknown): module is EventModule {
     typeof module === "object" &&
     module !== null &&
     "eventName" in module &&
-    typeof (module as any).eventName === "string" &&
+    typeof (module as EventModule).eventName === "string" &&
     "execute" in module &&
-    typeof (module as any).execute === "function"
+    typeof (module as EventModule).execute === "function"
   );
 }
 

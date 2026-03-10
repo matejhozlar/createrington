@@ -66,7 +66,7 @@ export class BalanceRepository {
     transactionType: string;
     description?: string;
     relatedPlayerUuid?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<void> {
     await db.player.balance.transaction.create({
       playerMinecraftUuid: data.playerMinecraftUuid,
@@ -237,7 +237,7 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -294,7 +294,7 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -349,7 +349,7 @@ export class BalanceRepository {
     amount: number,
     reason: string,
     type: BalanceTransactionType,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<number> {
     if (amount < 0) {
       throw new Error("Balance cannot be negative");
@@ -687,7 +687,7 @@ export class BalanceRepository {
       transactionType: string;
       description: string | null;
       createdAt: Date;
-      metadata: Record<string, any>;
+      metadata: Record<string, unknown>;
     }>
   > {
     const history = await this.getHistory(identifier, limit);

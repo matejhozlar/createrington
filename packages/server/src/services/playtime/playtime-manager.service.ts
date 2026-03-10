@@ -148,8 +148,8 @@ export class PlaytimeManagerService {
   /**
    * Get status of all services
    */
-  getStatus(): Record<number, any> {
-    const status: Record<number, any> = {};
+  getStatus(): Record<number, ReturnType<PlaytimeService["getStatus"]>> {
+    const status: ReturnType<PlaytimeManagerService["getStatus"]> = {};
     for (const [serverId, service] of this.playtimeServices) {
       status[serverId] = service.getStatus();
     }

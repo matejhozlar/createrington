@@ -12,6 +12,7 @@ import type {
   AchievementTier,
   ClaimResult,
 } from "./types";
+import type { PlayerMinecraftStats } from "@createrington/shared/db";
 
 /**
  * Achievement Service
@@ -106,7 +107,7 @@ export class AchievementService {
       Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
     ]);
 
-    const statsJson = (stats as any)?.stats ?? {};
+    const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
     const totalSeconds = playtimeSummary
       ? Number(playtimeSummary.totalSeconds)
       : 0;
@@ -218,7 +219,7 @@ export class AchievementService {
       Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
     ]);
 
-    const statsJson = (stats as any)?.stats ?? {};
+    const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
     const totalSeconds = playtimeSummary
       ? Number(playtimeSummary.totalSeconds)
       : 0;
@@ -354,7 +355,7 @@ export class AchievementService {
    */
   private getCurrentValue(
     criteria: AchievementCriteria,
-    stats: Record<string, any>,
+    stats: Record<string, Record<string, number>>,
     totalSeconds: number,
     totalEarned: number,
   ): number {

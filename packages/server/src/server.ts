@@ -32,7 +32,7 @@ async function shutdown() {
 /**
  * Sets up process event handlers for graceful shutdown and error handling
  */
-function setupProcessHandlers(httpServer: Server): void {
+function setupProcessHandlers(_httpServer: Server): void {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 

@@ -114,6 +114,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           ? error.message
           : "Amount must have at most 3 decimals!",
       );
+      await interaction.reply({
+        embeds: [embed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 

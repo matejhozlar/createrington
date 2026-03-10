@@ -9,6 +9,7 @@ import {
 import {
   parseTicketButtonId,
   TicketStatus,
+  type TicketType,
 } from "@/services/discord/tickets";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { Discord } from "@/discord/constants";
@@ -190,7 +191,7 @@ async function handleTranscript(
  */
 async function handleCreate(
   interaction: ButtonInteraction,
-  type: any,
+  type: TicketType,
 ): Promise<void> {
   const ticketService = await getService(
     Services.TICKET_SERVICE,
@@ -217,7 +218,7 @@ async function handleCreate(
     return;
   }
 
-  const { ticket, channel } = await ticketService.createTicket({
+  const { channel } = await ticketService.createTicket({
     type,
     creatorId: interaction.user.id,
   });
@@ -308,7 +309,7 @@ async function handleConfirmClose(
  */
 async function handleCancelClose(
   interaction: ButtonInteraction,
-  ticketId: number,
+  _ticketId: number,
 ): Promise<void> {
   try {
     await interaction.message.delete().catch(console.error);

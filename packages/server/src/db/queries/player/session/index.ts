@@ -1,6 +1,16 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerSessionBaseQueries } from "@/generated/db/player_session.queries";
 
+interface ServerSessionRow {
+  id: number;
+  player_minecraft_uuid: string;
+  server_id: number;
+  session_start: Date;
+  session_end: Date | null;
+  seconds_played: string | null;
+  minecraft_username: string;
+}
+
 export type ServerSessionEntry = {
   id: number;
   playerMinecraftUuid: string;
@@ -46,10 +56,10 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       ORDER BY 1`;
 
     try {
-      const result = await this.db.query<{ period: string; unique_players: number }>(
-        query,
-        [start, end, granularity],
-      );
+      const result = await this.db.query<{
+        period: string;
+        unique_players: number;
+      }>(query, [start, end, granularity]);
       return result.rows.map((row) => ({
         period: row.period,
         uniquePlayers: row.unique_players,
@@ -72,7 +82,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
    */
   async getAverageSessionLength(start?: Date, end?: Date): Promise<number> {
     const conditions = ["seconds_played IS NOT NULL"];
-    const params: any[] = [];
+    const params: unknown[] = [];
 
     if (start) {
       params.push(start);
@@ -89,7 +99,10 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       WHERE ${conditions.join(" AND ")}`;
 
     try {
-      const result = await this.db.query<{ avg_seconds: number }>(query, params);
+      const result = await this.db.query<{ avg_seconds: number }>(
+        query,
+        params,
+      );
       return result.rows[0].avg_seconds;
     } catch (error) {
       logger.error("Failed to get average session length:", error);
@@ -127,10 +140,10 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       LIMIT 1`;
 
     try {
-      const result = await this.db.query<{ peak_time: string; peak_count: number }>(
-        query,
-        [start, end],
-      );
+      const result = await this.db.query<{
+        peak_time: string;
+        peak_count: number;
+      }>(query, [start, end]);
       const row = result.rows[0];
       return {
         peakCount: row?.peak_count ?? 0,
@@ -156,7 +169,9 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   async getNewVsReturning(
     start: Date,
     end: Date,
-  ): Promise<Array<{ date: string; newPlayers: number; returningPlayers: number }>> {
+  ): Promise<
+    Array<{ date: string; newPlayers: number; returningPlayers: number }>
+  > {
     const query = `
       WITH first_sessions AS (
         SELECT player_minecraft_uuid, MIN(session_start) AS first_session
@@ -226,7 +241,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       ]);
 
       const sessions: ServerSessionEntry[] = dataResult.rows.map(
-        (row: any) => ({
+        (row: ServerSessionRow) => ({
           id: row.id,
           playerMinecraftUuid: row.player_minecraft_uuid,
           serverId: row.server_id,

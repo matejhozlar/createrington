@@ -106,7 +106,7 @@ export class JWTService {
   decode(token: string): JWTPayload | null {
     try {
       return jwt.decode(token) as JWTPayload;
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

@@ -42,7 +42,7 @@ export class RealtimeRoleHandler {
 
         const rules = getRealtimeRoleRules();
 
-        const result = await this.roleService.processRoleHierarchy(
+        await this.roleService.processRoleHierarchy(
           player.discordId,
           rules,
         );

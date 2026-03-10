@@ -175,6 +175,9 @@ export async function execute(
       }
     }
   } catch (error) {
-    logger.error(`Failed to process guild member join for ${member.user.tag}`);
+    logger.error(
+      `Failed to process guild member join for ${member.user.tag}:`,
+      error,
+    );
   }
 }

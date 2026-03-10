@@ -46,7 +46,7 @@ export interface RateLimitedRequestOptions {
   /** Route identifier for bucket management */
   route: string;
   /** Optional request metadata for logging */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -62,7 +62,7 @@ export interface QueuedRequest<T> {
   retries: number;
   maxRetries: number;
   timeout: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   queuedAt: number;
   executedAt?: number;
 }

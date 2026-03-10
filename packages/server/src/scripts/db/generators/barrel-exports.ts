@@ -1,6 +1,6 @@
 import type { TableInfo, TableStructure } from "../types";
 import { snakeToPascal } from "../utils/naming";
-import { collectAllStructures, getActualTables } from "../hierarchy/builder";
+import { getActualTables } from "../hierarchy/builder";
 
 /**
  * Barrel export file generators for type and query re-exports

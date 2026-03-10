@@ -37,7 +37,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
       description: string;
       severity: 1 | 2 | 3 | 4 | 5;
       serverId?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     },
     adminDiscordId: string,
     adminUsername: string,

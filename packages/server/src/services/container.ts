@@ -31,7 +31,7 @@ enum ServiceState {
 /**
  * Service definition with dependencies
  */
-interface ServiceDefinition<T = any> {
+interface ServiceDefinition<T = unknown> {
   name: string;
   factory: (container: ServiceContainer) => T | Promise<T>;
   dependencies?: string[];
@@ -50,23 +50,20 @@ interface ContainerEvents {
   allReady: () => void;
 }
 
-export declare interface ServiceContainer {
-  on<K extends keyof ContainerEvents>(
+interface TypedEventEmitter<T> {
+  on<K extends keyof T>(event: K, listener: T[K]): this;
+  emit<K extends keyof T>(
     event: K,
-    listener: ContainerEvents[K],
-  ): this;
-  emit<K extends keyof ContainerEvents>(
-    event: K,
-    ...args: Parameters<ContainerEvents[K]>
+    ...args: T[K] extends (...args: infer A) => unknown ? A : never
   ): boolean;
 }
 
 /**
  * Centralized service container with dependency injection
  */
-export class ServiceContainer extends EventEmitter {
+export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> & EventEmitter) {
   private services: Map<string, ServiceDefinition> = new Map();
-  private initializationPromises: Map<string, Promise<any>> = new Map();
+  private initializationPromises: Map<string, Promise<unknown>> = new Map();
 
   /**
    * Register a service with its factory and dependencies
@@ -284,16 +281,24 @@ export class ServiceContainer extends EventEmitter {
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");
 
+    const isShutdownable = (
+      instance: unknown,
+    ): instance is { shutdown: () => Promise<void> | void } =>
+      typeof instance === "object" &&
+      instance !== null &&
+      "shutdown" in instance &&
+      typeof (instance as Record<string, unknown>).shutdown === "function";
+
     const shutdownableServices = Array.from(this.services.values())
-      .filter(
-        (s) => s.instance && typeof (s.instance as any).shutdown === "function",
-      )
+      .filter((s) => isShutdownable(s.instance))
       .reverse();
 
     for (const service of shutdownableServices) {
       try {
         logger.debug(`Shutting down: ${service.name}`);
-        await (service.instance as any).shutdown();
+        if (isShutdownable(service.instance)) {
+          await service.instance.shutdown();
+        }
       } catch (error) {
         logger.error(`Failed to shutdown ${service.name}:`, error);
       }

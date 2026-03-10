@@ -41,7 +41,7 @@ const discordToken = (label = "Token") =>
   z
     .string()
     .min(1, `${label} is required`)
-    .regex(/^[\w\-\.]+$/, `${label} format is invalid`);
+    .regex(/^[\w\-.]+$/, `${label} format is invalid`);
 
 const envSchema = z.object({
   // Server
@@ -195,7 +195,7 @@ function validateEnv(): Env {
 
   if (process.env.VALIDATION_MODE === "generation") {
     console.log("Generation mode: Skipping full validation (DB vars only)");
-    return process.env as any as Env;
+    return process.env as unknown as Env;
   }
 
   try {
