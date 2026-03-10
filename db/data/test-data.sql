@@ -1055,8 +1055,53 @@ BEGIN
     RAISE NOTICE 'Completed sessions: %', (SELECT COUNT(*) FROM player_session WHERE session_end IS NOT NULL);
 END $$;
 
+-- ============================================================================
+-- CRYPTO MARKET
+-- ============================================================================
+
+-- Clean up crypto tables (in dependency order)
+TRUNCATE TABLE crypto_cost_basis CASCADE;
+TRUNCATE TABLE crypto_transaction CASCADE;
+TRUNCATE TABLE crypto_order CASCADE;
+TRUNCATE TABLE crypto_holding CASCADE;
+TRUNCATE TABLE crypto_price_snapshot CASCADE;
+TRUNCATE TABLE crypto_market_event CASCADE;
+TRUNCATE TABLE crypto_price_alert CASCADE;
+TRUNCATE TABLE crypto_watchlist CASCADE;
+TRUNCATE TABLE crypto_portfolio_snapshot CASCADE;
+TRUNCATE TABLE crypto_token CASCADE;
+TRUNCATE TABLE crypto_treasury CASCADE;
+
+ALTER SEQUENCE crypto_token_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_holding_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_order_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_transaction_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_price_snapshot_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_cost_basis_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_treasury_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_market_event_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_price_alert_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_watchlist_id_seq RESTART WITH 1;
+ALTER SEQUENCE crypto_portfolio_snapshot_id_seq RESTART WITH 1;
+
+-- Treasury (single row)
+INSERT INTO crypto_treasury (total_collected, total_burned) VALUES (0, 0);
+
+-- Stablecoins
+INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
+VALUES
+  ('Ringcoin', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000),
+  ('Pulsecoin', 'PLC', 'Earned through dedication. Cannot be purchased — only earned and sold.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000);
+
+-- Blue-Chips
+INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
+VALUES
+  ('BlockStock', 'BLK', 'Value driven by total building activity across the server.', 'blue_chip', 1000000, 1000000, 10.00000000, 0.50000000),
+  ('MobCoin', 'MOB', 'Rises with every mob slain. The warrior''s investment.', 'blue_chip', 5000000, 5000000, 2.00000000, 0.10000000),
+  ('QuestMark', 'QST', 'Powered by achievement completions. Knowledge is profit.', 'blue_chip', 500000, 500000, 25.00000000, 1.00000000);
+
 -- Show some sample stats
-SELECT 
+SELECT
     p.minecraft_username,
     pps.total_sessions,
     ROUND(pps.total_seconds / 3600.0, 2) AS total_hours,
@@ -1067,30 +1112,3 @@ WHERE pps.server_id = 1
 ORDER BY pps.total_seconds DESC
 LIMIT 10;
 
--- ============================================================
--- Crypto Market - Seed Data
--- ============================================================
-
-TRUNCATE TABLE crypto_transaction CASCADE;
-TRUNCATE TABLE crypto_holding CASCADE;
-TRUNCATE TABLE crypto_price_snapshot CASCADE;
-TRUNCATE TABLE crypto_treasury CASCADE;
-TRUNCATE TABLE crypto_token CASCADE;
-
--- Stablecoins
-INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
-VALUES
-  ('Createrington Gold', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, '1.00000000', '1.00000000'),
-  ('Playtime Coin', 'PLC', 'Earned through dedication. Cannot be purchased — only earned and sold.', 'stable', 999999999, 999999999, '1.00000000', '1.00000000');
-
--- Initial memecoins
-INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
-VALUES
-  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 1000000, 1000000, '0.50000000'),
-  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 500000, 500000, '2.50000000'),
-  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 100000, 100000, '15.00000000'),
-  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 2000000, 2000000, '0.01000000'),
-  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 750000, 750000, '5.00000000');
-
--- Treasury
-INSERT INTO crypto_treasury (total_collected, total_burned) VALUES ('0', '0');

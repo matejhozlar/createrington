@@ -3,6 +3,10 @@ import { CRYPTO_CONFIG } from "./crypto.config";
 import {
   tickMemecoinPrice,
   tickStablecoinPrice,
+  tickBluechipPrice,
+  aggregateBluechipMetric,
+  seedBluechipState,
+  getBluechipState,
   applyPriceUpdate,
   recordTickSnapshot,
   refresh24hAverages,
@@ -41,6 +45,7 @@ import { sendNewListingNotification, sendCrashNotification } from "./notificatio
 export class CryptoMarketService {
   private memecoinInterval: ReturnType<typeof setInterval> | null = null;
   private stablecoinInterval: ReturnType<typeof setInterval> | null = null;
+  private bluechipInterval: ReturnType<typeof setInterval> | null = null;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private minuteAggregationInterval: ReturnType<typeof setInterval> | null =
     null;
@@ -95,9 +100,23 @@ export class CryptoMarketService {
     await this.refresh24hVolumeCache();
     await refresh24hAverages();
 
+    // Restore blue-chip metric state from token metadata (restart resilience)
+    const bluechips = tokens.filter((t) => t.category === "blue_chip");
+    for (const token of bluechips) {
+      const meta = token.metadata as Record<string, unknown> | null;
+      if (meta) {
+        seedBluechipState(
+          token.symbol,
+          meta.previousMetric as number | undefined,
+          meta.baseline as number | undefined,
+        );
+      }
+    }
+
     // Start price engine intervals
     this.startMemecoinTicker();
     this.startStablecoinTicker();
+    this.startBluechipTicker();
     this.startCleanupJob();
     this.startMinuteAggregation();
     this.startOrderExpiryJob();
@@ -109,6 +128,7 @@ export class CryptoMarketService {
   async shutdown(): Promise<void> {
     if (this.memecoinInterval) clearInterval(this.memecoinInterval);
     if (this.stablecoinInterval) clearInterval(this.stablecoinInterval);
+    if (this.bluechipInterval) clearInterval(this.bluechipInterval);
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     if (this.minuteAggregationInterval)
       clearInterval(this.minuteAggregationInterval);
@@ -146,6 +166,17 @@ export class CryptoMarketService {
         logger.error("Stablecoin tick failed:", err);
       }
     }, CRYPTO_CONFIG.STABLECOIN_TICK_INTERVAL_MS);
+  }
+
+  /** @private Starts the blue-chip price ticker (hourly, metric-driven) */
+  private startBluechipTicker(): void {
+    this.bluechipInterval = setInterval(async () => {
+      try {
+        await this.tickBluechips();
+      } catch (err) {
+        logger.error("Blue-chip tick failed:", err);
+      }
+    }, CRYPTO_CONFIG.BLUECHIP_TICK_INTERVAL_MS);
   }
 
   /** @private Removes crashed tokens and their holdings/snapshots every 30 minutes */
@@ -257,6 +288,61 @@ export class CryptoMarketService {
     }
 
     await this.broadcastPriceUpdates(updates);
+  }
+
+  /**
+   * Recalculates blue-chip prices based on aggregated server metrics (blocks, kills,
+   * achievements), persists metric state in token metadata, and broadcasts updates.
+   * @private
+   */
+  private async tickBluechips(): Promise<void> {
+    const bluechips = await Q.crypto.token
+      .where({ category: "blue_chip" })
+      .all();
+
+    if (bluechips.length === 0) return;
+
+    const updates: PriceUpdate[] = [];
+
+    for (const token of bluechips) {
+      const metricConfig = CRYPTO_CONFIG.BLUECHIP_METRICS[token.symbol];
+      if (!metricConfig) {
+        logger.warn(
+          `No metric config for blue-chip token ${token.symbol}, skipping`,
+        );
+        continue;
+      }
+
+      const currentMetric = await aggregateBluechipMetric(metricConfig);
+      const update = tickBluechipPrice(token, currentMetric);
+      await applyPriceUpdate(update);
+      await recordTickSnapshot(update);
+      updates.push(update);
+
+      // Persist metric state in token metadata for restart resilience
+      const state = getBluechipState(token.symbol);
+      await Q.crypto.token.update(
+        { id: token.id },
+        {
+          metadata: {
+            ...((token.metadata as Record<string, unknown>) ?? {}),
+            previousMetric: state.previousMetric,
+            baseline: state.baseline,
+          },
+        },
+      );
+    }
+
+    await this.broadcastPriceUpdates(updates);
+
+    // Check and fill pending orders against new blue-chip prices
+    if (updates.length > 0) {
+      const updatedTokens = await Promise.all(
+        updates.map((u) => Q.crypto.token.get({ id: u.tokenId })),
+      );
+      const fillResults = await checkAndFillOrders(updatedTokens);
+      this.notifyOrderFills(fillResults);
+    }
   }
 
   // ==========================================================================
@@ -417,7 +503,6 @@ export class CryptoMarketService {
         `Order ${result.orderId} filled: ${result.type} ${result.amount} ${result.symbol} @ $${result.filledPrice}`,
       );
 
-      // Broadcast to crypto market room — clients filter by their own playerUuid
       this.wsService.broadcastToRoom(
         RoomManager.getCryptoMarketRoom(),
         SocketEvent.UPDATE_CRYPTO_ORDER,

@@ -12,7 +12,11 @@
  */
 
 import { Q } from "@/db";
-import { CRYPTO_CONFIG, type VolatilityTier } from "../crypto.config";
+import {
+  CRYPTO_CONFIG,
+  type VolatilityTier,
+  type BluechipMetricConfig,
+} from "../crypto.config";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 
 /** Result of a single price tick, consumed by persistence and broadcast layers */
@@ -42,6 +46,12 @@ const tickVolumeMap = new Map<number, { netVolume: number }>();
 /** Stores 24h average price per token for mean reversion */
 const avgPrice24hMap = new Map<number, number>();
 
+/** Stores previous metric values for blue-chip delta calculation (symbol → value) */
+const bluechipPreviousMetrics = new Map<string, number>();
+
+/** Stores the baseline daily average metric for normalization (symbol → avg) */
+const bluechipBaselineMetrics = new Map<string, number>();
+
 // ---------------------------------------------------------------------------
 // PUBLIC API: volume tracking (called from trade executor)
 // ---------------------------------------------------------------------------
@@ -67,6 +77,10 @@ export function recordTradeVolume(
 /**
  * Gets and resets the accumulated net volume for a token.
  * Called once per tick when computing demand pressure.
+ *
+ * @private
+ * @param tokenId - Token whose volume accumulator to drain
+ * @returns Net volume since the last tick (positive = net buys, negative = net sells)
  */
 function consumeNetVolume(tokenId: number): number {
   const entry = tickVolumeMap.get(tokenId);
@@ -110,7 +124,13 @@ export async function refresh24hAverages(): Promise<void> {
 // PURE HELPERS
 // ---------------------------------------------------------------------------
 
-/** Determines which volatility tier a price falls into */
+/**
+ * Determines which volatility tier a price falls into.
+ *
+ * @private
+ * @param price - Current token price
+ * @returns The matching volatility tier key
+ */
 function getVolatilityTier(price: number): VolatilityTier {
   const tiers = CRYPTO_CONFIG.VOLATILITY;
   if (price < tiers.PENNY.maxPrice) return "PENNY";
@@ -120,7 +140,14 @@ function getVolatilityTier(price: number): VolatilityTier {
   return "MEGA";
 }
 
-/** Returns a random float in the range [min, max) */
+/**
+ * Returns a random float in the range [min, max).
+ *
+ * @private
+ * @param min - Lower bound (inclusive)
+ * @param max - Upper bound (exclusive)
+ * @returns Random float within the given range
+ */
 function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
@@ -132,11 +159,14 @@ function randomBetween(min: number, max: number): number {
 /**
  * Computes the next price for a memecoin token using the multi-factor model:
  *
- *   1. BASE_CHANGE    = random(-volatility, +volatility)
- *   2. MOMENTUM       = streak_direction × strength × min(streak, cap)
+ *   1. BASE_CHANGE     = random(-volatility, +volatility)
+ *   2. MOMENTUM        = streak_direction × strength × min(streak, cap)
  *   3. DEMAND_PRESSURE = (netVolume / availableSupply) × sensitivity
- *   4. MEAN_REVERSION = ±strength when price is far from 24h average
- *   5. FINAL          = (BASE + MOMENTUM + DEMAND + REVERSION) applied to price
+ *   4. MEAN_REVERSION  = ±strength when price is far from 24h average
+ *   5. FINAL           = (BASE + MOMENTUM + DEMAND + REVERSION) applied to price
+ *
+ * @param token - The memecoin token to price
+ * @returns A PriceUpdate describing the old and new price, plus crash flag
  */
 export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   const currentPrice = Number(token.price);
@@ -219,6 +249,10 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
  * Computes the next price for a stablecoin token.
  * Price inflates proportionally to active player count and decays when no players are online.
  * Never drops below the configured floor price.
+ *
+ * @param token - The stablecoin token to price
+ * @param activePlayerCount - Number of players currently online
+ * @returns A PriceUpdate describing the old and new price (isCrashed is always false)
  */
 export function tickStablecoinPrice(
   token: CryptoToken,
@@ -249,10 +283,165 @@ export function tickStablecoinPrice(
 }
 
 // ---------------------------------------------------------------------------
+// BLUE-CHIP PRICE TICK
+// ---------------------------------------------------------------------------
+
+/**
+ * Aggregates a metric from player_minecraft_stats for blue-chip pricing.
+ * For "minecraft_stat" type: sums all values under the given stat category
+ * across all players and servers.
+ * For "achievement_count" type: counts total completed achievements.
+ *
+ * @param config - Blue-chip metric configuration describing type and stat category
+ * @returns The aggregated numeric metric value
+ */
+export async function aggregateBluechipMetric(
+  config: BluechipMetricConfig,
+): Promise<number> {
+  if (config.type === "achievement_count") {
+    return Q.player.achievement.where({}).count();
+  }
+
+  // minecraft_stat: sum all values under the stat category across all players
+  const allStats = await Q.player.minecraft.stats.where({}).all();
+  let total = 0;
+
+  for (const row of allStats) {
+    const stats = row.stats as Record<string, Record<string, number>> | null;
+    if (!stats) continue;
+
+    const category = stats[config.statCategory];
+    if (!category || typeof category !== "object") continue;
+
+    for (const value of Object.values(category)) {
+      if (typeof value === "number") {
+        total += value;
+      }
+    }
+  }
+
+  return total;
+}
+
+/**
+ * Computes the next price for a blue-chip token based on server metrics.
+ *
+ * Formula:
+ *   1. metric_delta     = current_metric - previous_metric
+ *   2. normalized_delta = metric_delta / baseline_daily_average
+ *   3. price_change     = normalized_delta × sensitivity × (1 + random_noise)
+ *   4. new_price        = max(floor_price, price × (1 + price_change))
+ *
+ * On the first tick (no previous metric), only random noise is applied.
+ * The baseline daily average is a rolling exponential moving average of deltas.
+ *
+ * @param token - The blue-chip token to price
+ * @param currentMetric - Latest aggregated metric value (e.g. total stat count)
+ * @returns A PriceUpdate describing the old and new price (isCrashed is always false)
+ */
+export function tickBluechipPrice(
+  token: CryptoToken,
+  currentMetric: number,
+): PriceUpdate {
+  const currentPrice = Number(token.price);
+  const floorPrice = token.floorPrice ? Number(token.floorPrice) : 0.01;
+  const symbol = token.symbol;
+
+  const previousMetric = bluechipPreviousMetrics.get(symbol);
+  bluechipPreviousMetrics.set(symbol, currentMetric);
+
+  let priceChange: number;
+
+  if (previousMetric === undefined) {
+    // First tick: no delta available, apply minimal noise only
+    priceChange = randomBetween(
+      -CRYPTO_CONFIG.BLUECHIP_NOISE_RANGE,
+      CRYPTO_CONFIG.BLUECHIP_NOISE_RANGE,
+    );
+  } else {
+    const metricDelta = currentMetric - previousMetric;
+
+    // Update baseline (exponential moving average of absolute deltas)
+    const prevBaseline =
+      bluechipBaselineMetrics.get(symbol) ??
+      Math.max(Math.abs(metricDelta), CRYPTO_CONFIG.BLUECHIP_MIN_DAILY_BASELINE);
+    const newBaseline = prevBaseline * 0.95 + Math.abs(metricDelta) * 0.05;
+    bluechipBaselineMetrics.set(
+      symbol,
+      Math.max(newBaseline, CRYPTO_CONFIG.BLUECHIP_MIN_DAILY_BASELINE),
+    );
+
+    const baseline = bluechipBaselineMetrics.get(symbol)!;
+    const normalizedDelta = metricDelta / baseline;
+
+    const noise = randomBetween(
+      -CRYPTO_CONFIG.BLUECHIP_NOISE_RANGE,
+      CRYPTO_CONFIG.BLUECHIP_NOISE_RANGE,
+    );
+    priceChange =
+      normalizedDelta * CRYPTO_CONFIG.BLUECHIP_SENSITIVITY * (1 + noise);
+  }
+
+  const newPrice = Math.max(floorPrice, currentPrice * (1 + priceChange));
+
+  return {
+    tokenId: token.id,
+    symbol: token.symbol,
+    oldPrice: token.price,
+    newPrice: newPrice.toFixed(8),
+    isCrashed: false, // blue-chips never crash
+  };
+}
+
+/**
+ * Seeds the blue-chip metric baseline from the token's metadata.
+ * Call this on startup to restore state from the last run.
+ *
+ * @param symbol - Token symbol used as the in-memory state key
+ * @param previousMetric - Last known metric value to seed the delta calculation
+ * @param baseline - Last known EMA baseline to seed normalization
+ */
+export function seedBluechipState(
+  symbol: string,
+  previousMetric?: number,
+  baseline?: number,
+): void {
+  if (previousMetric !== undefined) {
+    bluechipPreviousMetrics.set(symbol, previousMetric);
+  }
+  if (baseline !== undefined) {
+    bluechipBaselineMetrics.set(
+      symbol,
+      Math.max(baseline, CRYPTO_CONFIG.BLUECHIP_MIN_DAILY_BASELINE),
+    );
+  }
+}
+
+/**
+ * Returns the current in-memory state for a blue-chip token's metric tracking.
+ * Used to persist state in the token's metadata field for restart resilience.
+ *
+ * @param symbol - Token symbol used as the in-memory state key
+ * @returns Object containing the last recorded metric value and EMA baseline, if seeded
+ */
+export function getBluechipState(
+  symbol: string,
+): { previousMetric?: number; baseline?: number } {
+  return {
+    previousMetric: bluechipPreviousMetrics.get(symbol),
+    baseline: bluechipBaselineMetrics.get(symbol),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // PERSISTENCE
 // ---------------------------------------------------------------------------
 
-/** Persists a price update to the crypto_token table, marking as crashed if applicable */
+/**
+ * Persists a price update to the crypto_token table, marking as crashed if applicable.
+ *
+ * @param update - The computed price update to write to the database
+ */
 export async function applyPriceUpdate(update: PriceUpdate): Promise<void> {
   if (update.isCrashed) {
     await Q.crypto.token.update(
@@ -271,7 +460,12 @@ export async function applyPriceUpdate(update: PriceUpdate): Promise<void> {
   }
 }
 
-/** Records a tick-level OHLCV snapshot, rounded to the nearest 30-second boundary */
+/**
+ * Records a tick-level OHLCV snapshot, rounded to the nearest 30-second boundary.
+ *
+ * @param update - The price update to snapshot (old/new price used for open/close/high/low)
+ * @param volume - Total trade volume for this tick window (defaults to 0)
+ */
 export async function recordTickSnapshot(
   update: PriceUpdate,
   volume: bigint = 0n,

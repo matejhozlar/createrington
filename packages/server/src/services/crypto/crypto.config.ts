@@ -37,7 +37,13 @@ export const CRYPTO_CONFIG = {
   STABLECOIN_INFLATION_PER_PLAYER: 0.0003,
   STABLECOIN_DECAY_RATE: 0.00005,
 
+  // Blue-Chip Pricing
+  BLUECHIP_SENSITIVITY: 0.01, // metric delta multiplier
+  BLUECHIP_NOISE_RANGE: 0.01, // random noise ±1%
+  BLUECHIP_MIN_DAILY_BASELINE: 100, // minimum baseline to avoid division by tiny numbers
+
   // Volatility Tiers (memecoin)
+  // Tiers are matched by current price (≤ maxPrice); minChange/maxChange are fractional multipliers on the current price per tick
   VOLATILITY: {
     PENNY: { maxPrice: 0.1, minChange: 0.05, maxChange: 0.15 },
     LOW: { maxPrice: 5, minChange: 0.02, maxChange: 0.05 },
@@ -75,6 +81,17 @@ export const CRYPTO_CONFIG = {
     HOURLY: 30 * 24 * 60 * 60, // 30 days
     DAILY: 365 * 24 * 60 * 60, // 1 year
   },
+  // Blue-Chip Metric Mapping (symbol → how to extract the metric)
+  // statCategory follows Minecraft's namespaced stat key (e.g. "minecraft:mined")
+  BLUECHIP_METRICS: {
+    BLK: { type: "minecraft_stat", statCategory: "minecraft:mined" },
+    MOB: { type: "minecraft_stat", statCategory: "minecraft:killed" },
+    QST: { type: "achievement_count" },
+  } as Record<string, BluechipMetricConfig>,
 } as const;
 
 export type VolatilityTier = keyof typeof CRYPTO_CONFIG.VOLATILITY;
+
+export type BluechipMetricConfig =
+  | { type: "minecraft_stat"; statCategory: string }
+  | { type: "achievement_count" };
