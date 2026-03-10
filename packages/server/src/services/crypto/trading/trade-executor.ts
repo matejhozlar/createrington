@@ -7,6 +7,8 @@ import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import { recordWhaleEvent } from "../events/news-feed";
 import { sendWhaleAlertNotification } from "../notifications";
+import { triggerTradeAchievements } from "./achievement-triggers";
+import { getService, Services } from "@/services";
 
 // ==========================================================================
 // TYPES
@@ -120,6 +122,24 @@ async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
   return result;
 }
 
+/**
+ * Checks if a player holds the Market Veteran achievement, which grants a fee discount.
+ *
+ * Swallows all errors so that achievement service unavailability never blocks a trade.
+ *
+ * @private
+ * @param playerUuid - Minecraft UUID of the player
+ * @returns `true` if the achievement is held, `false` on missing achievement or any error
+ */
+async function hasMarketVeteranAchievement(playerUuid: string): Promise<boolean> {
+  try {
+    const svc = await getService(Services.ACHIEVEMENT_SERVICE);
+    return await svc.hasAchievement(playerUuid, "crypto_market_veteran");
+  } catch {
+    return false;
+  }
+}
+
 // ==========================================================================
 // BUY
 // ==========================================================================
@@ -163,8 +183,11 @@ export async function executeBuy(
   const price = Number(token.price);
   const amountNum = Number(amount);
   const rawCost = price * amountNum;
-  const lifetimeCount = await getLifetimeTradeCount(playerUuid);
-  const feeAmount = calculateFee(rawCost, token.category, lifetimeCount);
+  const [lifetimeCount, hasVeteran] = await Promise.all([
+    getLifetimeTradeCount(playerUuid),
+    hasMarketVeteranAchievement(playerUuid),
+  ]);
+  const feeAmount = calculateFee(rawCost, token.category, lifetimeCount, hasVeteran);
   const totalCost = rawCost + feeAmount;
 
   await R.balanceRepo.deduct(
@@ -236,7 +259,7 @@ export async function executeBuy(
 
   checkWhaleAlert(playerUuid, token, amount, totalCost, "buy").catch(() => {});
 
-  return {
+  const tradeResult: TradeResult = {
     transactionId: txResult.id,
     tokenId: token.id,
     symbol: token.symbol,
@@ -246,6 +269,10 @@ export async function executeBuy(
     feeAmount,
     totalCost,
   };
+
+  triggerTradeAchievements(playerUuid, token, tradeResult);
+
+  return tradeResult;
 }
 
 // ==========================================================================
@@ -290,8 +317,11 @@ export async function executeSell(
   const price = Number(token.price);
   const amountNum = Number(amount);
   const rawRevenue = price * amountNum;
-  const lifetimeCount = await getLifetimeTradeCount(playerUuid);
-  const feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount);
+  const [lifetimeCount, hasVeteran] = await Promise.all([
+    getLifetimeTradeCount(playerUuid),
+    hasMarketVeteranAchievement(playerUuid),
+  ]);
+  const feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount, hasVeteran);
   const netRevenue = rawRevenue - feeAmount;
 
   await R.balanceRepo.add(
@@ -355,7 +385,7 @@ export async function executeSell(
 
   checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(() => {});
 
-  return {
+  const tradeResult: TradeResult = {
     transactionId: txResult.id,
     tokenId: token.id,
     symbol: token.symbol,
@@ -365,6 +395,10 @@ export async function executeSell(
     feeAmount,
     totalCost: netRevenue,
   };
+
+  triggerTradeAchievements(playerUuid, token, tradeResult);
+
+  return tradeResult;
 }
 
 // ==========================================================================

@@ -270,11 +270,14 @@ export class CryptoMarketService {
       await recordTickSnapshot(update);
       updates.push(update);
 
-      // Send Discord crash notification
       if (update.isCrashed) {
+        // Notify Discord and evaluate any crash-related achievements for holders
         sendCrashNotification(token.name, token.symbol, update.oldPrice).catch(
           (err) => logger.error("Failed to send crash notification:", err),
         );
+        getService(Services.ACHIEVEMENT_SERVICE)
+          .then((svc) => svc.evaluateCrashAchievements(token.id))
+          .catch((err) => logger.error("Failed to evaluate crash achievements:", err));
       }
     }
 
@@ -582,6 +585,18 @@ export class CryptoMarketService {
       } catch (err) {
         logger.error("Portfolio snapshot failed:", err);
       }
+
+      // Daily snapshot is the trigger for Diamond Hands — holdings must have
+      // existed for 30+ days, so this check is only meaningful once per day
+      try {
+        const achievementSvc = await getService(
+          Services.ACHIEVEMENT_SERVICE,
+        );
+        await achievementSvc.evaluateDiamondHands();
+      } catch (err) {
+        logger.error("Diamond Hands evaluation failed:", err);
+      }
+
       // Reschedule for tomorrow
       this.schedulePortfolioSnapshot();
     }, delayMs);

@@ -40,11 +40,20 @@ export function TradePanel({ symbol, price, isCrashed }: TradePanelProps) {
     utils.public.crypto.get.invalidate({ symbol });
   };
 
+  const showAchievementToasts = (newAchievements?: string[]) => {
+    if (newAchievements && newAchievements.length > 0) {
+      for (const name of newAchievements) {
+        toast.success(`Achievement Unlocked: ${name}`);
+      }
+    }
+  };
+
   const buyMutation = trpc.user.crypto.buy.useMutation({
     onSuccess: (data) => {
       toast.success(
         `Bought ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
+      showAchievementToasts(data.newAchievements);
       setAmount("");
       invalidateAll();
     },
@@ -56,6 +65,7 @@ export function TradePanel({ symbol, price, isCrashed }: TradePanelProps) {
       toast.success(
         `Sold ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
+      showAchievementToasts(data.newAchievements);
       setAmount("");
       invalidateAll();
     },

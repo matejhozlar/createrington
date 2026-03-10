@@ -1,51 +1,62 @@
+/** Top-level grouping for achievement definitions, used for filtering and display */
 export enum AchievementCategory {
   MINING = "mining",
   COMBAT = "combat",
   EXPLORATION = "exploration",
   ECONOMY = "economy",
   PLAYTIME = "playtime",
+  TRADING = "trading",
 }
 
-/** Discriminated union — what to measure */
+/** Discriminated union describing what data source and key to measure progress against */
 export type AchievementCriteria =
   | { source: "minecraft_stat"; statCategory: string; statKey: string }
   | { source: "balance_earned" }
-  | { source: "playtime" };
+  | { source: "playtime" }
+  | { source: "crypto_trade_count" }
+  | { source: "crypto_unique_holdings" }
+  | { source: "crypto_portfolio_value" }
+  | { source: "crypto_event"; eventType: string };
 
+/** A single milestone within an achievement group, unlocked when the player reaches the threshold */
 export interface AchievementTier {
   tier: number;
   threshold: number;
-  /** Currency display amount */
+  /** Currency reward amount paid out on claim */
   reward: number;
 }
 
+/** A named achievement definition containing all tiers that share the same criteria and category */
 export interface AchievementGroup {
-  /** e.g. "mine_stone" */
+  /** Stable unique identifier, e.g. "mine_stone" */
   id: string;
-  /** e.g. "Stone Miner" */
+  /** Human-readable display name, e.g. "Stone Miner" */
   name: string;
-  /** e.g. "Mine stone blocks" */
+  /** Short description shown to players, e.g. "Mine stone blocks" */
   description: string;
   category: AchievementCategory;
   criteria: AchievementCriteria;
-  /** Ordered by tier number */
+  /** Tiers ordered ascending by tier number */
   tiers: AchievementTier[];
 }
 
-/** Returned to clients */
+/** Progress snapshot for a single achievement group, returned to clients */
 export interface AchievementGroupProgress {
   group: AchievementGroup;
   currentValue: number;
-  /** 0 = none completed */
+  /** Highest tier the player has completed; 0 means none completed yet */
   highestCompletedTier: number;
   completedTiers: {
     tier: number;
     completedAt: Date;
+    /** Null if the reward has not been claimed yet */
     claimedAt: Date | null;
   }[];
+  /** The next uncompleted tier, or null if all tiers are done */
   nextTier: AchievementTier | null;
 }
 
+/** Result returned after a player successfully claims an achievement tier reward */
 export interface ClaimResult {
   groupId: string;
   tier: number;

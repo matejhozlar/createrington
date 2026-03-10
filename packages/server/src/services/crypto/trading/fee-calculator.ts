@@ -43,26 +43,34 @@ export function getVolumeDiscount(lifetimeTradeCount: number): number {
   return discount;
 }
 
+/** Fee discount granted by the Market Veteran achievement (10% additional reduction) */
+export const MARKET_VETERAN_FEE_DISCOUNT = 0.1;
+
 /**
  * Calculates the trading fee for a transaction.
- * Applies the category base rate, reduced by the player's volume discount,
- * then multiplied by any active event fee modifier (e.g. tax holiday = 0, liquidity drought = 2x).
+ * Applies the category base rate, reduced by the player's volume discount
+ * and Market Veteran achievement bonus, then multiplied by any active event
+ * fee modifier (e.g. tax holiday = 0, liquidity drought = 2x).
  *
  * @param totalCost - Raw cost of the trade before fees
  * @param category - Token category determining the base fee rate
  * @param lifetimeTradeCount - Player's total historical trade count for discount lookup
+ * @param hasMarketVeteran - Whether the player has the Market Veteran achievement
  * @returns Fee amount in currency units
  */
 export function calculateFee(
   totalCost: number,
   category: CryptoTokenCategory,
   lifetimeTradeCount: number,
+  hasMarketVeteran = false,
 ): number {
   const baseFeeRate = getBaseFeeRate(category);
   if (baseFeeRate === 0) return 0;
 
-  const discount = getVolumeDiscount(lifetimeTradeCount);
-  const effectiveRate = baseFeeRate * (1 - discount);
+  const volumeDiscount = getVolumeDiscount(lifetimeTradeCount);
+  const achievementDiscount = hasMarketVeteran ? MARKET_VETERAN_FEE_DISCOUNT : 0;
+  const totalDiscount = Math.min(volumeDiscount + achievementDiscount, 1);
+  const effectiveRate = baseFeeRate * (1 - totalDiscount);
   const eventMultiplier = getEventFeeMultiplier();
   return totalCost * effectiveRate * eventMultiplier;
 }

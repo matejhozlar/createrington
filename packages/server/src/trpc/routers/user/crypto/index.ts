@@ -19,6 +19,7 @@ import {
   deleteAlert,
 } from "@/services/crypto/alerts/alert-manager";
 import { getPortfolioHistory } from "@/services/crypto/analytics/portfolio-tracker";
+import { evaluateTradeAchievements } from "@/services/crypto/trading/achievement-triggers";
 
 /** User crypto router — market trades, limit/stop/take-profit orders, portfolio, and trade history. */
 export const cryptoRouter = router({
@@ -46,6 +47,13 @@ export const cryptoRouter = router({
           BigInt(input.amount),
         );
 
+        // Swallow achievement errors — a failed evaluation must not roll back a completed trade
+        const newAchievements = await evaluateTradeAchievements(
+          ctx.user.minecraftUuid,
+          token,
+          result,
+        ).catch(() => [] as string[]);
+
         return {
           transactionId: result.transactionId,
           symbol: result.symbol,
@@ -54,6 +62,7 @@ export const cryptoRouter = router({
           priceAtExecution: result.priceAtExecution,
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
+          newAchievements,
         };
       } catch (err) {
         throw trpcError.badRequest(
@@ -86,6 +95,13 @@ export const cryptoRouter = router({
           BigInt(input.amount),
         );
 
+        // Swallow achievement errors — a failed evaluation must not roll back a completed trade
+        const newAchievements = await evaluateTradeAchievements(
+          ctx.user.minecraftUuid,
+          token,
+          result,
+        ).catch(() => [] as string[]);
+
         return {
           transactionId: result.transactionId,
           symbol: result.symbol,
@@ -94,6 +110,7 @@ export const cryptoRouter = router({
           priceAtExecution: result.priceAtExecution,
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
+          newAchievements,
         };
       } catch (err) {
         throw trpcError.badRequest(
