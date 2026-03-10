@@ -3,7 +3,6 @@
 import * as React from "react";
 import {
   AlertCircle,
-  Coins,
   FileText,
   Home,
   LayoutDashboard,
@@ -37,6 +36,7 @@ import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
+import { NavCrypto } from "./nav-crypto";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -88,12 +88,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Market",
         url: "/market",
         icon: Store,
-        requiresAuth: true,
-      },
-      {
-        title: "Crypto",
-        url: "/crypto",
-        icon: Coins,
         requiresAuth: true,
       },
       {
@@ -163,7 +157,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* Admin Section - only show if user is admin */}
         {user?.isAdmin && <NavAdmin items={data.adminNav} />}
 
-        <NavMain items={filteredNavMain} />
+        <NavMain
+          items={filteredNavMain}
+          insertions={user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined}
+        />
       </SidebarContent>
 
       <SidebarFooter>
