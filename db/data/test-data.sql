@@ -1066,3 +1066,31 @@ JOIN player p ON p.minecraft_uuid = pps.player_minecraft_uuid
 WHERE pps.server_id = 1
 ORDER BY pps.total_seconds DESC
 LIMIT 10;
+
+-- ============================================================
+-- Crypto Market - Seed Data
+-- ============================================================
+
+TRUNCATE TABLE crypto_transaction CASCADE;
+TRUNCATE TABLE crypto_holding CASCADE;
+TRUNCATE TABLE crypto_price_snapshot CASCADE;
+TRUNCATE TABLE crypto_treasury CASCADE;
+TRUNCATE TABLE crypto_token CASCADE;
+
+-- Stablecoins
+INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
+VALUES
+  ('Createrington Gold', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, '1.00000000', '1.00000000'),
+  ('Playtime Coin', 'PLC', 'Earned through dedication. Cannot be purchased — only earned and sold.', 'stable', 999999999, 999999999, '1.00000000', '1.00000000');
+
+-- Initial memecoins
+INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
+VALUES
+  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 1000000, 1000000, '0.50000000'),
+  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 500000, 500000, '2.50000000'),
+  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 100000, 100000, '15.00000000'),
+  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 2000000, 2000000, '0.01000000'),
+  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 750000, 750000, '5.00000000');
+
+-- Treasury
+INSERT INTO crypto_treasury (total_collected, total_burned) VALUES ('0', '0');

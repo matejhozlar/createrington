@@ -56,6 +56,7 @@ import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
+import { CryptoPage, TokenDetail, Portfolio as CryptoPortfolio, TradeHistory as CryptoTradeHistory } from "./pages/Crypto";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -122,7 +123,24 @@ function AppContent() {
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<div>Crypto Page</div>} />
+        <Route path="/crypto" element={<CryptoPage />} />
+        <Route
+          path="/crypto/portfolio"
+          element={
+            <ProtectedRoute>
+              <CryptoPortfolio />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/crypto/history"
+          element={
+            <ProtectedRoute>
+              <CryptoTradeHistory />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/crypto/:symbol" element={<TokenDetail />} />
 
         {/* Market Routes */}
         <Route path="/market" element={<div>Market Dashboard</div>} />

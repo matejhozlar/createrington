@@ -16,6 +16,7 @@ import {
 	uniqueIndex,
 	check,
 	primaryKey,
+	numeric,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -844,3 +845,202 @@ export const waitlistEntry = pgTable(
 		index("idx_waitlist_token").on(table.token),
 	],
 );
+
+// ============================================================================
+// Crypto Market Enums
+// ============================================================================
+
+export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [
+	"stable",
+	"blue_chip",
+	"memecoin",
+	"seasonal",
+]);
+
+export const cryptoTradeTypeEnum = pgEnum("crypto_trade_type", [
+	"buy",
+	"sell",
+]);
+
+export const cryptoTradeTriggerEnum = pgEnum("crypto_trade_trigger", [
+	"market",
+	"limit",
+	"stop_loss",
+	"take_profit",
+	"auto_delist",
+]);
+
+export const cryptoOrderTypeEnum = pgEnum("crypto_order_type", [
+	"limit_buy",
+	"limit_sell",
+	"stop_loss",
+	"take_profit",
+]);
+
+export const cryptoOrderStatusEnum = pgEnum("crypto_order_status", [
+	"pending",
+	"filled",
+	"cancelled",
+	"expired",
+]);
+
+export const cryptoPriceIntervalEnum = pgEnum("crypto_price_interval", [
+	"tick",
+	"minute",
+	"hourly",
+	"daily",
+	"weekly",
+]);
+
+export const cryptoAlertDirectionEnum = pgEnum("crypto_alert_direction", [
+	"above",
+	"below",
+]);
+
+export const cryptoEventSeverityEnum = pgEnum("crypto_event_severity", [
+	"info",
+	"warning",
+	"critical",
+]);
+
+// ============================================================================
+// Crypto Market Tables
+// ============================================================================
+
+// --- crypto_token (core token definition) ---
+
+export const cryptoToken = pgTable("crypto_token", {
+	id: serial("id").primaryKey(),
+	name: text("name").notNull(),
+	symbol: text("symbol").notNull().unique(),
+	description: text("description"),
+	category: cryptoTokenCategoryEnum("category").notNull(),
+	totalSupply: bigint("total_supply", { mode: "bigint" }).notNull(),
+	availableSupply: bigint("available_supply", { mode: "bigint" }).notNull(),
+	price: numeric("price", { precision: 20, scale: 8 }).notNull(),
+	floorPrice: numeric("floor_price", { precision: 20, scale: 8 }),
+	isCrashed: boolean("is_crashed").notNull().default(false),
+	crashedAt: timestamp("crashed_at", { withTimezone: true }),
+	createdAt: timestamp("created_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+	delistedAt: timestamp("delisted_at", { withTimezone: true }),
+	metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+});
+
+// --- crypto_holding (player token holdings) ---
+
+export const cryptoHolding = pgTable(
+	"crypto_holding",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		amount: bigint("amount", { mode: "bigint" }).notNull(),
+		totalCostBasis: numeric("total_cost_basis", { precision: 20, scale: 8 })
+			.notNull()
+			.default(sql`0`),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+		updatedAt: timestamp("updated_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("idx_crypto_holding_player_token").on(
+			table.playerMinecraftUuid,
+			table.tokenId,
+		),
+		index("idx_crypto_holding_player").on(table.playerMinecraftUuid),
+		index("idx_crypto_holding_token").on(table.tokenId),
+		check("chk_crypto_holding_amount", sql`${table.amount} >= 0`),
+	],
+);
+
+// --- crypto_transaction (every executed trade) ---
+
+export const cryptoTransaction = pgTable(
+	"crypto_transaction",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		type: cryptoTradeTypeEnum("type").notNull(),
+		trigger: cryptoTradeTriggerEnum("trigger").notNull().default("market"),
+		amount: bigint("amount", { mode: "bigint" }).notNull(),
+		priceAtExecution: numeric("price_at_execution", {
+			precision: 20,
+			scale: 8,
+		}).notNull(),
+		feeAmount: numeric("fee_amount", { precision: 20, scale: 8 })
+			.notNull()
+			.default(sql`0`),
+		totalCost: numeric("total_cost", { precision: 20, scale: 8 }).notNull(),
+		realizedPnl: numeric("realized_pnl", { precision: 20, scale: 8 }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_transaction_player").on(table.playerMinecraftUuid),
+		index("idx_crypto_transaction_token_time").on(
+			table.tokenId,
+			table.createdAt.desc(),
+		),
+	],
+);
+
+// --- crypto_price_snapshot (OHLCV data, unified with interval discriminator) ---
+
+export const cryptoPriceSnapshot = pgTable(
+	"crypto_price_snapshot",
+	{
+		id: serial("id").primaryKey(),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		interval: cryptoPriceIntervalEnum("interval").notNull(),
+		openPrice: numeric("open_price", { precision: 20, scale: 8 }).notNull(),
+		highPrice: numeric("high_price", { precision: 20, scale: 8 }).notNull(),
+		lowPrice: numeric("low_price", { precision: 20, scale: 8 }).notNull(),
+		closePrice: numeric("close_price", { precision: 20, scale: 8 }).notNull(),
+		volume: bigint("volume", { mode: "bigint" }).notNull().default(sql`0`),
+		recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
+	},
+	(table) => [
+		uniqueIndex("idx_crypto_price_snapshot_unique").on(
+			table.tokenId,
+			table.interval,
+			table.recordedAt,
+		),
+		index("idx_crypto_price_snapshot_lookup").on(
+			table.tokenId,
+			table.interval,
+			table.recordedAt.desc(),
+		),
+	],
+);
+
+// --- crypto_treasury (collects fees) ---
+
+export const cryptoTreasury = pgTable("crypto_treasury", {
+	id: serial("id").primaryKey(),
+	totalCollected: numeric("total_collected", { precision: 20, scale: 8 })
+		.notNull()
+		.default(sql`0`),
+	totalBurned: numeric("total_burned", { precision: 20, scale: 8 })
+		.notNull()
+		.default(sql`0`),
+	updatedAt: timestamp("updated_at", { withTimezone: true })
+		.notNull()
+		.defaultNow(),
+});

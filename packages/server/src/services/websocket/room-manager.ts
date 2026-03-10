@@ -61,6 +61,13 @@ export class RoomManager {
   }
 
   /**
+   * Get room name for crypto market subscription
+   */
+  static getCryptoMarketRoom(): string {
+    return SubscriptionType.CRYPTO_MARKET;
+  }
+
+  /**
    * Get appropriate room based on subscription type and server ID
    *
    * @param type - Subscription type
@@ -81,6 +88,8 @@ export class RoomManager {
         return this.getPlayersRoom(serverId);
       case SubscriptionType.MESSAGES:
         return this.getMessagesRoom(serverId);
+      case SubscriptionType.CRYPTO_MARKET:
+        return this.getCryptoMarketRoom();
       default:
         throw new Error(`Unknown subscription type: ${type}`);
     }

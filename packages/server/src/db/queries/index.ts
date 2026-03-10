@@ -11,6 +11,11 @@
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
 export { AuthSessionQueries } from "./auth/session";
+export { CryptoHoldingQueries } from "./crypto/holding";
+export { CryptoPriceSnapshotQueries } from "./crypto/price/snapshot";
+export { CryptoTokenQueries } from "./crypto/token";
+export { CryptoTransactionQueries } from "./crypto/transaction";
+export { CryptoTreasuryQueries } from "./crypto/treasury";
 export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";

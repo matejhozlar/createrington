@@ -26,6 +26,7 @@ import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
+import { CryptoMarketService } from "./crypto";
 import { lotteryService } from "./lottery";
 
 /**
@@ -271,6 +272,16 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
+  );
+
+  container.register(
+    Services.CRYPTO_MARKET_SERVICE,
+    async () => {
+      const service = new CryptoMarketService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
   );
 
   // =========================================================================

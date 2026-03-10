@@ -20,6 +20,7 @@ export enum SocketEvent {
   UPDATE_SERVER_STATUS = "update:server:status",
   UPDATE_PLAYERS = "update:players",
   UPDATE_MESSAGE = "update:message",
+  UPDATE_CRYPTO_PRICES = "update:crypto:prices",
 
   // Acknowledgments
   SUBSCRIBED = "subscribed",
@@ -33,6 +34,7 @@ export enum SubscriptionType {
   SERVER_STATUS = "server:status",
   PLAYERS = "players",
   MESSAGES = "messages",
+  CRYPTO_MARKET = "crypto:market",
   ALL = "all",
 }
 
