@@ -13,6 +13,19 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_CRASH_THRESHOLD: 0.001, // auto-crash below $0.001
   MEMECOIN_CRASH_CLEANUP_HOURS: 48, // delete crashed tokens after 48h
 
+  // Momentum (consecutive direction streaks bias continued movement)
+  MEMECOIN_MOMENTUM_STREAK_THRESHOLD: 3, // streaks of 3+ trigger momentum
+  MEMECOIN_MOMENTUM_MAX_STREAK: 8, // cap momentum effect
+  MEMECOIN_MOMENTUM_STRENGTH: 0.002, // bias per streak unit
+
+  // Demand Pressure (net buy/sell volume within a tick window shifts price)
+  MEMECOIN_DEMAND_SENSITIVITY: 0.05, // multiplier: (netVolume / supply) * this
+
+  // Mean Reversion (pull price toward 24h average when far off)
+  MEMECOIN_MEAN_REVERSION_HIGH_THRESHOLD: 2.0, // trigger when price > 2x avg
+  MEMECOIN_MEAN_REVERSION_LOW_THRESHOLD: 0.5, // trigger when price < 0.5x avg
+  MEMECOIN_MEAN_REVERSION_STRENGTH: 0.003, // pull strength per tick
+
   // Memecoin Generation
   MEMECOIN_INITIAL_PRICE_MIN: 0.0001,
   MEMECOIN_INITIAL_PRICE_MAX: 1000,

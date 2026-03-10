@@ -8,6 +8,7 @@ import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
+import { recordTradeVolume } from "../engine/price-engine";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { CRYPTO_CONFIG } from "../crypto.config";
 
@@ -173,6 +174,9 @@ export async function executeBuy(
     await updateTreasury(feeAmount, token.category);
   }
 
+  // Track volume for demand pressure calculation
+  recordTradeVolume(token.id, amountNum, true);
+
   return {
     transactionId: txResult.id,
     tokenId: token.id,
@@ -288,6 +292,9 @@ export async function executeSell(
   if (feeAmount > 0) {
     await updateTreasury(feeAmount, token.category);
   }
+
+  // Track volume for demand pressure calculation
+  recordTradeVolume(token.id, amountNum, false);
 
   return {
     transactionId: txResult.id,

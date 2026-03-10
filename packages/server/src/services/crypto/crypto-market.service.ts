@@ -5,6 +5,7 @@ import {
   tickStablecoinPrice,
   applyPriceUpdate,
   recordTickSnapshot,
+  refresh24hAverages,
   type PriceUpdate,
 } from "./engine/price-engine";
 import { generateMemecoin, cleanupCrashedTokens } from "./memecoin/generator";
@@ -28,6 +29,10 @@ import { sendNewListingNotification, sendCrashNotification } from "./notificatio
  * - Runs periodic price tickers for memecoins and stablecoins
  * - Aggregates tick-level snapshots into minute OHLCV candles
  * - Broadcasts real-time price updates to WebSocket subscribers
+ * - Maintains in-memory caches for 24h price change% and trade volume
+ * - Periodically refreshes demand-pressure and mean-reversion state in the price engine
+ * - Checks and fills pending limit/stop-loss/take-profit orders after each tick
+ * - Expires stale pending orders on a 5-minute cycle
  * - Cleans up crashed tokens after a configurable grace period
  * - Spawns new memecoins from the catalog with Discord notifications
  *
@@ -42,11 +47,24 @@ export class CryptoMarketService {
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
   private wsService: WebSocketService | null = null;
 
+  /** In-memory cache of 24h-ago prices for change% calculation */
+  private prices24hAgo = new Map<number, number>();
+
+  /** In-memory cache of 24h trade volume per token */
+  private volume24h = new Map<number, bigint>();
+
   // ==========================================================================
   // LIFECYCLE
   // ==========================================================================
 
-  /** Initializes treasury, loads active tokens, and starts all ticker intervals */
+  /**
+   * Initializes the crypto market service.
+   *
+   * Ensures the treasury row exists, loads active tokens, seeds the 24h
+   * price/volume caches and engine averages, then starts all ticker intervals.
+   *
+   * @returns Promise that resolves when initialization is complete
+   */
   async initialize(): Promise<void> {
     logger.info("CryptoMarketService initializing...");
 
@@ -72,6 +90,11 @@ export class CryptoMarketService {
       );
     }
 
+    // Seed initial caches
+    await this.refresh24hPriceCache();
+    await this.refresh24hVolumeCache();
+    await refresh24hAverages();
+
     // Start price engine intervals
     this.startMemecoinTicker();
     this.startStablecoinTicker();
@@ -82,7 +105,7 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService initialized");
   }
 
-  /** Clears all ticker intervals */
+  /** Clears all ticker intervals and releases resources */
   async shutdown(): Promise<void> {
     if (this.memecoinInterval) clearInterval(this.memecoinInterval);
     if (this.stablecoinInterval) clearInterval(this.stablecoinInterval);
@@ -142,12 +165,20 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Aggregates tick snapshots into minute OHLCV candles every 5 minutes */
+  /**
+   * Aggregates tick snapshots into minute OHLCV candles every 5 minutes.
+   * Also refreshes the 24h price/volume caches and engine mean-reversion averages.
+   * @private
+   */
   private startMinuteAggregation(): void {
     this.minuteAggregationInterval = setInterval(
       async () => {
         try {
           await this.aggregateMinuteSnapshots();
+          // Also refresh caches alongside aggregation
+          await this.refresh24hPriceCache();
+          await this.refresh24hVolumeCache();
+          await refresh24hAverages();
         } catch (err) {
           logger.error("Minute aggregation failed:", err);
         }
@@ -160,7 +191,11 @@ export class CryptoMarketService {
   // PRICE TICKING
   // ==========================================================================
 
-  /** @private Calculates new prices for all active memecoins and broadcasts updates */
+  /**
+   * Calculates new prices for all active memecoins, broadcasts updates,
+   * sends crash notifications, and checks pending orders for fills.
+   * @private
+   */
   private async tickMemecoins(): Promise<void> {
     const memecoins = await Q.crypto.token
       .where({ category: "memecoin", isCrashed: false })
@@ -195,7 +230,11 @@ export class CryptoMarketService {
     this.notifyOrderFills(fillResults);
   }
 
-  /** @private Recalculates stablecoin prices based on active player count */
+  /**
+   * Recalculates stablecoin prices based on the current active player count
+   * and broadcasts updates.
+   * @private
+   */
   private async tickStablecoins(): Promise<void> {
     const stablecoins = await Q.crypto.token
       .where({ category: "stable" })
@@ -221,10 +260,95 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
+  // 24H CACHES
+  // ==========================================================================
+
+  /**
+   * Loads the price each token had ~24 hours ago from minute snapshots.
+   * Falls back to the oldest available snapshot when no data exists in the
+   * 24h window. Used to compute change24h in broadcast payloads.
+   * @private
+   */
+  private async refresh24hPriceCache(): Promise<void> {
+    const tokens = await Q.crypto.token.where({}).all();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // A window: between 24h ago and 23h ago to find the closest snapshot
+    const windowEnd = new Date(cutoff.getTime() + 60 * 60 * 1000);
+
+    for (const token of tokens) {
+      const snapshots = await Q.crypto.price.snapshot
+        .where({ tokenId: token.id, interval: "minute" })
+        .all();
+
+      // Find the snapshot closest to 24h ago
+      const candidates = snapshots.filter(
+        (s) => s.recordedAt >= cutoff && s.recordedAt <= windowEnd,
+      );
+
+      if (candidates.length > 0) {
+        // Pick the one closest to the cutoff
+        candidates.sort(
+          (a, b) =>
+            Math.abs(a.recordedAt.getTime() - cutoff.getTime()) -
+            Math.abs(b.recordedAt.getTime() - cutoff.getTime()),
+        );
+        this.prices24hAgo.set(token.id, Number(candidates[0].closePrice));
+      } else if (snapshots.length > 0) {
+        // Use the oldest available snapshot
+        snapshots.sort(
+          (a, b) => a.recordedAt.getTime() - b.recordedAt.getTime(),
+        );
+        this.prices24hAgo.set(token.id, Number(snapshots[0].closePrice));
+      }
+    }
+  }
+
+  /**
+   * Calculates the total trade volume per token over the last 24 hours.
+   * Sums absolute transaction amounts to capture both buys and sells.
+   * @private
+   */
+  private async refresh24hVolumeCache(): Promise<void> {
+    const tokens = await Q.crypto.token.where({}).all();
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    for (const token of tokens) {
+      const transactions = await Q.crypto.transaction
+        .where({ tokenId: token.id })
+        .all();
+
+      const recentTxs = transactions.filter((t) => t.createdAt >= cutoff);
+      let totalVolume = 0n;
+      for (const tx of recentTxs) {
+        totalVolume += tx.amount < 0n ? -tx.amount : tx.amount;
+      }
+      this.volume24h.set(token.id, totalVolume);
+    }
+  }
+
+  /**
+   * Computes the 24h price change percentage for a token.
+   * @private
+   * @param tokenId - Token to look up in the 24h price cache
+   * @param currentPrice - Current price as a decimal string
+   * @returns Percentage change (e.g. 12.5 for +12.5%), or 0 if no baseline exists
+   */
+  private get24hChange(tokenId: number, currentPrice: string): number {
+    const oldPrice = this.prices24hAgo.get(tokenId);
+    if (!oldPrice || oldPrice === 0) return 0;
+    return ((Number(currentPrice) - oldPrice) / oldPrice) * 100;
+  }
+
+  // ==========================================================================
   // BROADCASTING
   // ==========================================================================
 
-  /** @private Sends price update payloads to all WebSocket crypto market subscribers */
+  /**
+   * Sends price update payloads to all WebSocket crypto market subscribers.
+   * Lazily resolves the WebSocket service if it wasn't available at init time.
+   * @private
+   * @param updates - Price updates from the latest tick to broadcast
+   */
   private async broadcastPriceUpdates(updates: PriceUpdate[]): Promise<void> {
     if (updates.length === 0) return;
 
@@ -236,7 +360,6 @@ export class CryptoMarketService {
       }
     }
 
-    // Fetch 24h-ago prices for change calculation
     const pricePayloads = await Promise.all(
       updates.map(async (u) => {
         const token = await Q.crypto.token.get({ id: u.tokenId });
@@ -244,8 +367,8 @@ export class CryptoMarketService {
           tokenId: u.tokenId,
           symbol: u.symbol,
           price: u.newPrice,
-          change24h: 0, // Will be calculated properly once we have history
-          volume24h: "0",
+          change24h: this.get24hChange(u.tokenId, u.newPrice),
+          volume24h: String(this.volume24h.get(u.tokenId) ?? 0n),
           availableSupply: String(token.availableSupply),
           isCrashed: u.isCrashed,
         };
@@ -280,7 +403,12 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Broadcasts order fill notifications to the crypto market room */
+  /**
+   * Broadcasts order fill notifications to the crypto market room.
+   * Clients filter incoming events by their own playerUuid.
+   * @private
+   * @param results - Order fill results from the latest tick
+   */
   private notifyOrderFills(results: OrderFillResult[]): void {
     if (results.length === 0 || !this.wsService) return;
 
@@ -309,7 +437,12 @@ export class CryptoMarketService {
   // ==========================================================================
 
   /**
-   * Rolls up tick-level snapshots into minute OHLCV candles and prunes old ticks
+   * Rolls up tick-level snapshots into minute OHLCV candles and prunes old ticks.
+   *
+   * For each active token, gathers ticks from the last completed minute, computes
+   * open/high/low/close/volume, and inserts a minute-interval snapshot. Duplicate
+   * inserts are silently ignored (unique constraint). Old tick snapshots beyond the
+   * configured retention window are deleted.
    * @private
    */
   private async aggregateMinuteSnapshots(): Promise<void> {
@@ -383,7 +516,11 @@ export class CryptoMarketService {
     }
   }
 
-  /** Generate a new random memecoin and send listing notification */
+  /**
+   * Generates a new random memecoin from the catalog and sends a Discord
+   * listing notification on success.
+   * @returns The newly created token, or null if the catalog is exhausted
+   */
   async spawnMemecoin(): Promise<CryptoToken | null> {
     const token = await generateMemecoin();
 
@@ -401,7 +538,10 @@ export class CryptoMarketService {
     return token;
   }
 
-  /** Get all active (non-crashed, non-delisted) tokens */
+  /**
+   * Returns all active (non-crashed) tokens.
+   * @returns Array of active crypto tokens
+   */
   async getActiveTokens(): Promise<CryptoToken[]> {
     return Q.crypto.token.where({ isCrashed: false }).all();
   }

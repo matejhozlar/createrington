@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skull } from "lucide-react";
+import { Skull, TrendingUp, TrendingDown } from "lucide-react";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -32,6 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 type CategoryFilter = "all" | "stable" | "blue_chip" | "memecoin" | "seasonal";
 
+/** Filterable table of all crypto tokens with live price updates. */
 export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("all");
@@ -77,6 +78,7 @@ export function TokenList() {
               <TableHead className="w-[200px]">Token</TableHead>
               <TableHead>Category</TableHead>
               <TableHead className="text-right">Price</TableHead>
+              <TableHead className="text-right">24h Change</TableHead>
               <TableHead className="text-right">Supply</TableHead>
               <TableHead className="text-right">Status</TableHead>
             </TableRow>
@@ -87,6 +89,7 @@ export function TokenList() {
               const displayPrice = livePrice?.price ?? token.price;
               const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
               const availableSupply = livePrice?.availableSupply ?? token.availableSupply;
+              const change24h = livePrice?.change24h ?? 0;
 
               return (
                 <TableRow
@@ -124,6 +127,28 @@ export function TokenList() {
                   <TableCell className="text-right font-mono">
                     ${formatPrice(displayPrice)}
                   </TableCell>
+                  <TableCell className="text-right font-mono">
+                    {isCrashed ? (
+                      <span className="text-muted-foreground">—</span>
+                    ) : change24h !== 0 ? (
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-sm",
+                          change24h > 0 ? "text-emerald-400" : "text-red-400",
+                        )}
+                      >
+                        {change24h > 0 ? (
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <TrendingDown className="h-3.5 w-3.5" />
+                        )}
+                        {change24h > 0 ? "+" : ""}
+                        {change24h.toFixed(2)}%
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">0.00%</span>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right text-sm text-muted-foreground font-mono">
                     {formatSupply(availableSupply, token.totalSupply)}
                   </TableCell>
@@ -146,7 +171,7 @@ export function TokenList() {
             })}
             {(!tokens || tokens.length === 0) && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No tokens found
                 </TableCell>
               </TableRow>
@@ -158,6 +183,7 @@ export function TokenList() {
   );
 }
 
+/** Formats a price string with adaptive decimal precision based on magnitude. */
 function formatPrice(price: string): string {
   const num = Number(price);
   if (num === 0) return "0.00";
@@ -167,6 +193,7 @@ function formatPrice(price: string): string {
   return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
+/** Returns the percentage of total supply currently held by players. */
 function formatSupply(available: string, total: string): string {
   const avail = Number(available);
   const tot = Number(total);
