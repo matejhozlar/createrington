@@ -90,7 +90,7 @@ export const requireAdmin = (
 
 /**
  * Requires user to have at least USER role
- * Must be used aftter authenticate middleware
+ * Must be used after authenticate middleware
  *
  * @throws ForbiddenError if user is unverified
  */

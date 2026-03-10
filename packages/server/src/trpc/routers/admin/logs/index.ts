@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
+/** Admin audit logs router — filterable, paginated admin action history. */
 export const logsRouter = router({
   list: adminProcedure
     .meta({

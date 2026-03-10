@@ -19,7 +19,11 @@ export const pattern = "server-select:*";
 export const prodOnly = false;
 
 /**
- * Parses the button customId
+ * Parses the server selection button customId (format: server-select:serverId)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed server ID, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): { serverId: string } | null {
   const [, serverId] = customId.split(":");

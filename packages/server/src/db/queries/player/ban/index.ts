@@ -15,7 +15,10 @@ export interface BanStatistics {
 /**
  * Custom queries for player_ban table
  *
- * Extends the auto-generated base class with custom methods
+ * - Active ban detection (considers both expiry and unbanned flag)
+ * - Ban history, statistics, and moderator activity reports
+ * - Bulk active ban counts for list views
+ * - Expired ban discovery for cleanup jobs
  */
 export class PlayerBanQueries extends PlayerBanBaseQueries {
   constructor(db: Pool | PoolClient) {

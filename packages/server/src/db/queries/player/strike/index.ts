@@ -18,9 +18,10 @@ export interface StrikeStatistics {
 /**
  * Custom queries for player_strike table
  *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
+ * - Active vs removed strike tracking
+ * - Statistics by classification, severity, and time period
+ * - Bulk active strike counts for list views
+ * - Moderator-scoped queries
  */
 export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   constructor(db: Pool | PoolClient) {

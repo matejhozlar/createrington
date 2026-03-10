@@ -4,7 +4,8 @@ import { DiscordGuildMemberLeaveBaseQueries } from "@/generated/db/discord_guild
 /**
  * Custom queries for discord_guild_member_leave table
  *
- * Extends the auto-generated base class with custom methods
+ * - Time-series leave analytics per period (excludes soft-deleted records)
+ * - Expired member discovery (departed 30+ days ago, not yet cleaned up)
  */
 export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQueries {
   constructor(db: Pool | PoolClient) {

@@ -41,17 +41,12 @@ export const cooldown = {
 };
 
 /**
- * Permission configuration for the admin-edit command
+ * Permission configuration for the ticket command
  * Requires administrator privileges to execute
  */
 export const permissions = {
   requireAdmin: true,
 };
-
-/**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
 
 /**
  * Executes the ticket command to manually manage tickets

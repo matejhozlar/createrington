@@ -26,17 +26,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development mode
- */
-
-/**
- * Executes the message command to retrieve and display user's balance
+ * Executes the message command to send a bot message to the channel
  *
  * Process:
- * 1. Extract the Discord user ID from the interaction
- * 2. Checks if the interaction member has Owner role
- * 3. Sends the message to the channel
+ * 1. Verify the interaction member has the Owner role
+ * 2. Send the provided content as a bot message in the current channel
+ * 3. Reply with an ephemeral confirmation
+ *
+ * @param interaction - The chat input command interaction
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,

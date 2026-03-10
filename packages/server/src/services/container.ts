@@ -17,6 +17,7 @@ import type { StatsImportService } from "./stats-import";
 import type { AchievementService } from "./achievement";
 import type { FaqService } from "./discord/faq";
 import type { PuppeteerService } from "./puppeteer";
+import type { CryptoMarketService } from "./crypto";
 
 /**
  * Service lifecycle states
@@ -60,6 +61,12 @@ interface TypedEventEmitter<T> {
 
 /**
  * Centralized service container with dependency injection
+ *
+ * - Manages the full lifecycle of all application services (register, init, shutdown)
+ * - Resolves dependencies in parallel where possible
+ * - Detects circular dependencies at init time
+ * - Supports lazy services that initialize only on first access
+ * - Emits events for service readiness and cross-service wiring
  */
 export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> & EventEmitter) {
   private services: Map<string, ServiceDefinition> = new Map();
@@ -276,7 +283,8 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Shutdown all services gracefully
+   * Shuts down all services in reverse registration order.
+   * Calls `shutdown()` on any service that implements it.
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");
@@ -337,6 +345,7 @@ export const Services = {
   ACHIEVEMENT_SERVICE: "achievement.achievementService",
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
+  CRYPTO_MARKET_SERVICE: "crypto.marketService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -365,4 +374,5 @@ export interface ServiceTypeMap {
   [Services.ACHIEVEMENT_SERVICE]: AchievementService;
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;
+  [Services.CRYPTO_MARKET_SERVICE]: CryptoMarketService;
 }

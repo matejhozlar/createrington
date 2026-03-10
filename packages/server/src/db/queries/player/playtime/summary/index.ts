@@ -53,7 +53,11 @@ export interface PlaytimeHoursBreakdown {
 /**
  * Custom queries for player_playtime_summary table
  *
- * Extends the auto-generated base class with custom methods
+ * - Session aggregation: increments total seconds/sessions and updates first/last seen
+ * - Leaderboard: top players by total playtime with usernames
+ * - Server-wide statistics (total players, playtime, avg session)
+ * - Per-player breakdown across all servers
+ * - Total hours (single-server or global) with optional server breakdown
  */
 export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -61,8 +65,16 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
   }
 
   /**
-   * Upserts a playtime summary record for a completed session.
-   * Increments total seconds/sessions and updates first/last seen.
+   * Upserts a playtime summary record for a completed session
+   *
+   * Increments total seconds/sessions and adjusts first_seen/last_seen
+   * boundaries via LEAST/GREATEST. Uses ON CONFLICT for idempotent upsert.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server the session occurred on
+   * @param secondsPlayed - Duration of the completed session
+   * @param sessionStart - Session start timestamp (used for first_seen)
+   * @param sessionEnd - Session end timestamp (used for last_seen)
    */
   async aggregateSession(
     playerMinecraftUuid: string,
@@ -127,7 +139,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
    * Retrieves aggregated statistics for a server
    *
    * Calculates server-wide metrics including total unique players,
-   * cumulative playtime, total sessions, and avarage session duration
+   * cumulative playtime, total sessions, and average session duration
    * Useful for server analytics dashboards
    *
    * @param serverId - The ID of the server to analyze

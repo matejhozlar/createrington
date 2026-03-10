@@ -22,6 +22,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
   history: "both",
   list: "both",
   username: "both",
+  crypto: "both",
 
   // Admin
   leaderboard: "both",

@@ -4,10 +4,11 @@ import { BalanceTransactionType } from "../../balance";
 import { BasePlayerRepository } from "../base";
 
 /**
- * Repository for player balance operations specific to player context
+ * Repository for player-scoped bulk balance operations
  *
- * Delegates to BalanceRepository but adds player-specific bulk operations
- * and admin operations with proper player data resolution
+ * - Bulk balance adjustment across multiple players with per-player error isolation
+ *
+ * NOTE: For single-player balance operations, use BalanceRepository directly
  */
 export class PlayerBalanceRepository extends BasePlayerRepository {
   constructor() {

@@ -7,6 +7,7 @@ import { FaqService } from "@/services/discord/faq";
 
 const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
 
+/** Validates a FAQ match pattern based on its mode (keywords or regex). */
 function validatePattern(matchMode: string, pattern: string): void {
   if (matchMode === "regex") {
     try {
@@ -23,6 +24,7 @@ function validatePattern(matchMode: string, pattern: string): void {
   }
 }
 
+/** Admin FAQ router — CRUD for FAQ entries and welcome message management. */
 export const faqRouter = router({
   list: adminProcedure
     .meta({ description: "List FAQ entries with filtering and pagination." })

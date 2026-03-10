@@ -24,6 +24,10 @@ export interface EventModule<
 
 /**
  * Type guard to check if a module is a valid EventModule
+ *
+ * @param module - The imported module to validate
+ * @returns True if the module has the required eventName and execute exports
+ * @private
  */
 function isEventModule(module: unknown): module is EventModule {
   return (
@@ -37,12 +41,13 @@ function isEventModule(module: unknown): module is EventModule {
 }
 
 /**
- * Loads Discord event handlers from a folder
+ * Loads Discord event handlers from a directory
  *
- * Recursively scans the events directory and registers all event handlers
- * Supports both one-time (once) and recurring (on) event listeners
+ * Recursively scans the events directory and registers all event handlers.
+ * Supports both one-time (once) and recurring (on) event listeners.
  *
  * @param client - The Discord client instance
+ * @param eventsPath - Absolute path to the events directory
  * @returns Promise resolving to the number of loaded events
  */
 export async function loadEventHandlers(

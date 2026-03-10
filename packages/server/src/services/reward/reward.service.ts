@@ -7,11 +7,10 @@ import { RewardType } from "./types";
  * Main reward service
  *
  * Provides a unified interface for accessing different reward types through
- * a clean, type-safe API. Each reward type is lazily intialized and cached
- * for optimal performance
+ * a clean, type-safe API. Each reward type is initialized once and cached.
  *
  * Architecture:
- * - Singleton pattern ensures singleton instance accross the app
+ * - Singleton pattern ensures a single instance across the app
  * - Each reward type extends BaseReward with custom claim logic
  * - Only enabled rewards are initialized
  */
@@ -82,7 +81,5 @@ export class RewardService {
   }
 }
 
-/**
- * Singleton instance fo the reward service
- */
+/** Singleton instance of the reward service */
 export const rewardService = new RewardService();

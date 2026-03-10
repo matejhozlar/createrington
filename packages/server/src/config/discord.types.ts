@@ -1,3 +1,4 @@
+/** Discord guild role ID mappings, keyed by role purpose */
 interface MemberRolesConfig {
   readonly owner: string;
   readonly bot: string;
@@ -24,6 +25,7 @@ interface MemberRolesConfig {
   readonly unverified: string;
 }
 
+/** Discord channel ID mappings, grouped by category */
 interface ChannelConfig {
   readonly createringtonOfficial: {
     readonly welcome: string;
@@ -77,6 +79,7 @@ interface ChannelConfig {
 
 }
 
+/** Discord category ID mappings */
 interface CategoriesConfig {
   readonly createringtonOfficial: string;
   readonly general: string;

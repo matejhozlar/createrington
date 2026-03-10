@@ -41,15 +41,31 @@ const LAUNCH_ARGS = [
   "--no-first-run",
 ];
 
+/**
+ * Headless browser service for server-side rendering tasks
+ *
+ * - Provides screenshot capture of URLs or specific DOM elements
+ * - Supports arbitrary page scripting via withPage()
+ * - Lazily launches the Chromium browser on first use
+ * - Auto-reconnects if the browser process disconnects
+ *
+ * NOTE: Uses puppeteer-core (no bundled Chromium);
+ * requires PUPPETEER_EXECUTABLE_PATH in production
+ */
 export class PuppeteerService {
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
 
+  /**
+   * Initializes the service (browser launches lazily on first use)
+   */
   async initialize(): Promise<void> {
-    // Browser launches lazily on first use — no eager startup cost
     logger.info("PuppeteerService initialized (browser will launch on first use)");
   }
 
+  /**
+   * Shuts down the browser process if running
+   */
   async shutdown(): Promise<void> {
     if (this.browser) {
       await this.browser.close().catch(() => {});
@@ -60,7 +76,10 @@ export class PuppeteerService {
   }
 
   /**
-   * Take a screenshot of a URL or a specific element on the page.
+   * Takes a screenshot of a URL or a specific element on the page
+   *
+   * @param options - Screenshot configuration (URL, selectors, viewport, format)
+   * @returns Promise resolving to the image buffer and format
    */
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
     const {
@@ -124,8 +143,12 @@ export class PuppeteerService {
   }
 
   /**
-   * Execute an arbitrary async callback with a fresh page.
-   * The page is automatically closed when the callback completes.
+   * Executes an arbitrary async callback with a fresh page
+   *
+   * The page is automatically closed when the callback completes or throws.
+   *
+   * @param fn - Async callback receiving the page and browser instances
+   * @returns Promise resolving to the callback's return value
    */
   async withPage<T>(
     fn: (page: Page, browser: Browser) => Promise<T>,
@@ -140,10 +163,19 @@ export class PuppeteerService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal
-  // ---------------------------------------------------------------------------
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
+  /**
+   * Returns the active browser or launches a new one
+   *
+   * Guards against concurrent launch attempts by sharing a single promise.
+   *
+   * @returns Promise resolving to the browser instance
+   *
+   * @private
+   */
   private async getBrowser(): Promise<Browser> {
     if (this.browser?.connected) {
       return this.browser;
@@ -164,6 +196,15 @@ export class PuppeteerService {
     }
   }
 
+  /**
+   * Launches a new Chromium browser process
+   *
+   * Registers a disconnect handler for automatic re-launch on next use.
+   *
+   * @returns Promise resolving to the launched browser instance
+   *
+   * @private
+   */
   private async launchBrowser(): Promise<Browser> {
     logger.info("Launching Puppeteer browser...");
 

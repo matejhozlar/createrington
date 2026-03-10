@@ -24,7 +24,10 @@ export type ServerSessionEntry = {
 /**
  * Custom queries for player_session table
  *
- * Extends the auto-generated base class with custom methods
+ * - Active/unique player count analytics per time period
+ * - Average session length and peak concurrent player detection
+ * - New vs returning player classification
+ * - Server-scoped paginated session listing with player usernames
  */
 export class PlayerSessionQueries extends PlayerSessionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -214,6 +217,14 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
 
   /**
    * Get paginated sessions for a specific server with player usernames
+   *
+   * Joins with the player table to include minecraft_username.
+   * Returns both the page of sessions and the total count for pagination.
+   *
+   * @param serverId - Server ID to query
+   * @param limit - Page size
+   * @param offset - Number of rows to skip
+   * @returns Sessions for the page and total row count
    */
   async getServerSessions(
     serverId: number,

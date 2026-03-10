@@ -6,6 +6,15 @@ import config from "@/config";
 
 const logDir = config.utils.logger.logDir;
 
+/**
+ * Winston-based logger that organizes output into daily folders
+ *
+ * - Creates a `logs/YYYY-MM-DD/` directory per day with separate files
+ *   for server, errors, debug (dev only), and uncaught exceptions
+ * - Automatically rotates to a new folder at midnight
+ * - Cleans up folders older than `config.utils.logger.keepDays`
+ * - Attaches the calling filename to every log entry via stack trace inspection
+ */
 class DailyFolderLogger {
   private currentDate: string;
   private logger: winston.Logger;
@@ -17,11 +26,13 @@ class DailyFolderLogger {
     this.monitorDateChange();
   }
 
+  /** @private Returns today's date in YYYY-MM-DD format (used for folder names) */
   private getDateString(): string {
     const now = new Date();
     return now.toLocaleDateString("sv-SE");
   }
 
+  /** @private Resolves the full path for a log file, creating the date folder if needed */
   private getLogPathForDate(date: string, filename: string): string {
     const datedDir = path.join(logDir, date);
     if (!fs.existsSync(datedDir)) {
@@ -67,6 +78,7 @@ class DailyFolderLogger {
     }
   }
 
+  /** @private Creates a Winston logger configured with file and console transports for the given date */
   private createLoggerForDate(date: string): winston.Logger {
     const isDev = process.env.NODE_ENV !== "production";
 
@@ -133,6 +145,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** @private Deletes log folders older than the specified retention period */
   private cleanOldLogFolders(daysToKeep: number): void {
     const cutoff = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
 
@@ -161,6 +174,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** @private Polls every 60s and rotates to a new date folder at midnight */
   private monitorDateChange(): void {
     this.timer = setInterval(() => {
       const newDate = this.getDateString();
@@ -213,6 +227,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** Stops the date-change monitor and closes all Winston transports */
   public close(): void {
     if (this.timer) {
       clearInterval(this.timer);

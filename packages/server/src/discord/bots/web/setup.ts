@@ -6,7 +6,9 @@ import { loadEventHandlers } from "../common/loaders/event-loader";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
- * Load event handlers for web bot
+ * Loads event handlers for the web bot
+ *
+ * @param bot - The Discord client instance for the web bot
  */
 export async function setupWebBotHandlers(bot: Client): Promise<void> {
   logger.info("Loading web bot handlers...");

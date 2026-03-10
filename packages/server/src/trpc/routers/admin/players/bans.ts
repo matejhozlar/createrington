@@ -8,6 +8,7 @@ import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { parsePlayerId } from "@/trpc/utils";
 
+/** Admin bans router — issue temporary/permanent bans, unban, and list recent bans. */
 export const bansRouter = router({
   list: adminProcedure
     .meta({

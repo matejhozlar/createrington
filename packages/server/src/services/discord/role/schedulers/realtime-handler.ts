@@ -58,7 +58,7 @@ export class RealtimeRoleHandler {
   /**
    * Manually trigger a role check for a specific player
    *
-   * @param discord - Discord user ID of the player
+   * @param discordId - Discord user ID of the player
    */
   async checkPlayer(discordId: string): Promise<void> {
     const rules = getRealtimeRoleRules();

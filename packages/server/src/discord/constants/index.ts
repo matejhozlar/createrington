@@ -1,8 +1,8 @@
 /**
- * Re-export everything under a namespace
+ * Unified Discord namespace
  *
- * This acts as a convenient wrapper around config values,
- * providing better autocomplete organization
+ * Wraps roles, channels, categories, users, and the message service
+ * under a single `Discord.*` import for consistent autocomplete.
  */
 
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
@@ -13,14 +13,13 @@ import { DiscordCategoriesNamespace } from "./categories";
 
 let messageService: DiscordMessageService | null = null;
 
-// Unified namespace for better autocomplete
 export const Discord = {
   Roles: DiscordRolesNamespace,
   Channels: DiscordChannelsNamespace,
   Categories: DiscordCategoriesNamespace,
   Users: DiscordUsers,
 
-  // Getter for message service
+  /** Lazily-resolved message service; throws if accessed before initialization */
   get Messages(): DiscordMessageService {
     if (!messageService) {
       throw new Error("Discord message service not initialized");
@@ -28,7 +27,7 @@ export const Discord = {
     return messageService;
   },
 
-  // Internal setter
+  /** @private Called once during bootstrap to wire the message service */
   _setMessageService(service: DiscordMessageService) {
     messageService = service;
   },

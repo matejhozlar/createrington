@@ -60,6 +60,7 @@ export const RegistrationEmbedPresets = {
     ).footer("Please wait for admin assistance");
   },
 
+  /** Creates an admin-facing notification embed when a registration fails */
   adminError(
     username: string,
     discordTag: string,

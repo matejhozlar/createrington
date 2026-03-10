@@ -10,7 +10,10 @@ export type BalanceLeaderboardEntry = {
 /**
  * Custom queries for player_balance table
  *
- * Extends the auto-generated base class with custom methods
+ * - Aggregate statistics (total in circulation, distribution, median)
+ * - Leaderboard (top N by balance, joined with player usernames)
+ *
+ * NOTE: All balance values are stored as bigint with 3-decimal precision (see BalanceUtils)
  */
 export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -107,6 +110,9 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
 
   /**
    * Gets top N players by balance, joined with player table for usernames
+   *
+   * @param limit - Maximum entries to return (default: 10)
+   * @returns Leaderboard entries with player name and user-facing decimal balance
    */
   async getTop(limit: number = 10): Promise<BalanceLeaderboardEntry[]> {
     const query = `

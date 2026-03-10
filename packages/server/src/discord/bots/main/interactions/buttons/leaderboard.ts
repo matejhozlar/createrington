@@ -16,7 +16,11 @@ export const pattern = "leaderboard:*";
 export const prodOnly = false;
 
 /**
- * Parses the button customId
+ * Parses the leaderboard button customId (format: leaderboard:action:type)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed action and leaderboard type, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): {
   action: string;

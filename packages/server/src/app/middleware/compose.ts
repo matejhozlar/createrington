@@ -8,7 +8,7 @@ import { asyncHandler } from "./async-handler";
 export type AuthLevel = "public" | "user" | "admin";
 
 /**
- * MIddleware chains for each auth level
+ * Middleware chains for each auth level
  */
 export const authMiddleware: Record<AuthLevel, RequestHandler[]> = {
   ["public"]: [],

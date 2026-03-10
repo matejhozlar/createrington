@@ -59,8 +59,13 @@ export class RoleManagementService {
   // ==========================================================================
 
   /**
-   * Setup realtime role checking for a playtime service
-   * This should be called after playtime services are initialized
+   * Sets up realtime role checking for a playtime service
+   *
+   * Subscribes to sessionEnd events and triggers role hierarchy checks.
+   * Should be called after playtime services are initialized.
+   *
+   * @param serverId - Server ID to set up checking for
+   * @param playtimeService - PlaytimeService instance to listen for events on
    */
   setupRealtimeRoleChecking(
     serverId: number,
@@ -212,7 +217,9 @@ export class RoleManagementService {
   // ==========================================================================
 
   /**
-   * Manually trigger a role check for a specific player
+   * Manually triggers a role check for a specific player
+   *
+   * @param discordId - Discord user ID of the player
    */
   async checkPlayer(discordId: string): Promise<void> {
     const rules = getRealtimeRoleRules();
@@ -220,7 +227,7 @@ export class RoleManagementService {
   }
 
   /**
-   * Manually trigger a daily check (for testing and admin commands)
+   * Manually triggers a daily check (for testing and admin commands)
    */
   async triggerManualDailyCheck(): Promise<void> {
     await this.runDailyCheck();

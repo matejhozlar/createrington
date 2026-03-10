@@ -96,7 +96,7 @@ export const verifyServerIP = (
 };
 
 /**
- * Helper to check if an IP is allowed (for texting/debugging)
+ * Helper to check if an IP is allowed (for testing/debugging)
  */
 export function isIpAllowed(
   ip: string,

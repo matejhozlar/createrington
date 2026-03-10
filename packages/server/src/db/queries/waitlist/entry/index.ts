@@ -4,7 +4,7 @@ import { WaitlistEntryBaseQueries } from "@/generated/db/waitlist_entry.queries"
 /**
  * Custom queries for waitlist_entry table
  *
- * Extends the auto-generated base class with custom methods
+ * - Onboarding funnel statistics: status breakdown and milestone progress counts
  */
 export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
   constructor(db: Pool | PoolClient) {

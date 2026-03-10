@@ -51,7 +51,7 @@ export class LeaderboardService {
    * Shutdown the service and cleanup timers
    * Called by the service container during graceful shutdown
    *
-   * @returns Promise resolving when the service if shut down
+   * @returns Promise resolving when the service is shut down
    */
   async shutdown(): Promise<void> {
     if (this.refreshInterval) {
@@ -141,7 +141,7 @@ export class LeaderboardService {
    *
    * Fetches new leaderboard data and updates the existing message
    * If this is a manual refresh, it updates the manual refresh timestamp
-   * which is used for cooldown tracking. Automatic refreshes only upate
+   * which is used for cooldown tracking. Automatic refreshes only update
    * the display timestamp
    *
    * @param type - The type of leaderboard to refresh

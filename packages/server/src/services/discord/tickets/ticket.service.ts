@@ -34,9 +34,17 @@ interface CreateTicketResult {
 }
 
 /**
- * Service for managing Discord support tickets
- * Handles ticket lifecycle including creation, closure, reopening, and deletion
- * Integrates with Discord channels and permissions manager
+ * Discord Support Ticket Service
+ *
+ * Manages the full ticket lifecycle:
+ * - Creating ticket channels with role-based permissions
+ * - Closing tickets (lock channel, post closure embed)
+ * - Reopening closed tickets (restore permissions)
+ * - Deleting tickets and their channels
+ * - Generating and sending HTML transcripts via discord-html-transcripts
+ *
+ * NOTE: Requires a Discord client (main bot) and is initialized
+ * by the service container during startup
  */
 export class TicketService {
   private readonly transcriptDir: string;
@@ -459,8 +467,9 @@ export class TicketService {
   }
 
   /**
-   * Deletes a ticket and its assiciated Discord channel
-   * This action cannot be undone
+   * Deletes a ticket and its associated Discord channel
+   *
+   * This action cannot be undone.
    *
    * @param ticketId - Database ID of the ticket to delete
    * @param deletedBy - Discord user ID of user deleting the ticket

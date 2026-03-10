@@ -40,6 +40,8 @@ export class PresenceController {
       throw new BadRequestError("Invalid UUID format");
     }
 
+    // Resolve the target server: explicit serverId in body takes priority,
+    // otherwise fall back to the IP that was verified by the middleware
     let targetServerId: number | undefined;
 
     if (serverId) {

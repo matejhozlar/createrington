@@ -129,6 +129,7 @@ export function createApp(): Express {
 
   registerRoutes(app);
 
+  // Mount tRPC adapter — logs internal errors at error level, client errors at warn
   app.use(
     "/trpc",
     createExpressMiddleware({
@@ -148,6 +149,7 @@ export function createApp(): Express {
     }),
   );
 
+  // Dev-only tRPC UI panel for interactive procedure testing
   if (config.envMode.isDev) {
     app.use("/panel", async (_req, res) => {
       const { renderTrpcPanel } = await import("trpc-ui");

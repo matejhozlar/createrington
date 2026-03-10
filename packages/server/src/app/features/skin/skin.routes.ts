@@ -4,6 +4,7 @@ import type { Request, Response } from "express";
 
 const router = Router();
 
+/** External skin APIs tried in order until one succeeds */
 const SKIN_SOURCES = [
   (uuid: string) => `https://crafatar.com/skins/${uuid}`,
   (uuid: string) => `https://mc-heads.net/skin/${uuid}`,

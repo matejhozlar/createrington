@@ -12,6 +12,7 @@ const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
 const colors = config.discord.embeds.colors;
 
+/** Admin embeds router — send Discord embeds, manage embed presets (CRUD). */
 export const embedsRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category." })

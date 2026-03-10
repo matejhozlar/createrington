@@ -40,6 +40,8 @@ export const cooldown = {
  * 1. Get the target user (from option or command initiator)
  * 2. Fetch player record for MC UUID
  * 3. Reply with full-body skin render from mc-heads.net
+ *
+ * @param interaction - The chat input command interaction
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,

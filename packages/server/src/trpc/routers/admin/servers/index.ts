@@ -9,6 +9,7 @@ import {
   type ServerStatus,
 } from "@/trpc/routers/public/servers";
 
+/** Admin servers router — server list with stats, detail view, activity, heatmap, and sessions. */
 export const adminServersRouter = router({
   list: adminProcedure
     .meta({ description: "List all servers with aggregate stats" })

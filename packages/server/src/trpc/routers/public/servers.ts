@@ -5,9 +5,7 @@ import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
 
-/**
- * Basic player information for server status
- */
+/** Basic player information included in server status responses. */
 export interface PlayerInfo {
   uuid: string;
   username: string;
@@ -28,9 +26,7 @@ export interface PlayerInfo {
   };
 }
 
-/**
- * Server status information
- */
+/** Server status with connection info, online state, and current player list. */
 export interface ServerStatus {
   serverId: number;
   serverName: string;
@@ -43,6 +39,7 @@ export interface ServerStatus {
   lastChecked: Date;
 }
 
+/** @private Maps an active playtime session to the public PlayerInfo shape. */
 function mapSessionToPlayerInfo(
   session: ActiveSession,
   service: PlaytimeService,
@@ -68,6 +65,7 @@ function mapSessionToPlayerInfo(
   };
 }
 
+/** Builds a ServerStatus object from config and an optional PlaytimeService instance. */
 export function buildServerStatus(
   id: number,
   serverConfig: { name: string; ip: string; port: number; maxPlayers: number },
@@ -107,6 +105,7 @@ export function buildServerStatus(
   };
 }
 
+/** Public servers router — server list with status and individual server lookup. */
 export const serversRouter = router({
   list: publicProcedure
     .meta({

@@ -10,7 +10,16 @@ import { UnauthorizedError } from "@/app/middleware";
 const router = Router();
 
 /**
- * Middleware that validates the puppeteer secret query param.
+ * Render routes
+ * Base path: /api/render
+ *
+ * Internal endpoints consumed by PuppeteerService to generate
+ * server-rendered HTML snapshots (e.g. player comparison images).
+ * Protected by a shared secret — not accessible to regular users.
+ */
+
+/**
+ * Validates the puppeteer secret query param.
  * Only the internal PuppeteerService should know this secret.
  */
 function requirePuppeteerSecret(req: Request, _res: Response, next: () => void) {

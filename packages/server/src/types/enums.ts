@@ -1,3 +1,4 @@
+/** Action types recorded in admin audit logs */
 export enum AdminEdit {
   UPDATE_PLAYER = "update_player",
   DELETE_PLAYER = "delete_player",

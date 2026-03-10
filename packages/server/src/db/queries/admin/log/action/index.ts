@@ -4,7 +4,8 @@ import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queri
 /**
  * Custom queries for admin_log_action table
  *
- * Extends the auto-generated base class with custom methods
+ * - Provides structured admin action logging with full audit context
+ * - All admin mutations (balance, bans, strikes, player edits) route through logAction()
  */
 export class AdminLogActionQueries extends AdminLogActionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -15,6 +16,8 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
 
   /**
    * Log an admin action with all required context
+   *
+   * @param data - Action details including admin info, target player, table/field changed, and old/new values
    */
   async logAction(data: {
     adminDiscordId: string;

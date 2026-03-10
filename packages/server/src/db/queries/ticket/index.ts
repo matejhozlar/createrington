@@ -4,7 +4,9 @@ import { TicketBaseQueries } from "@/generated/db/ticket.queries";
 /**
  * Custom queries for ticket table
  *
- * Extends the auto-generated base class with custom methods
+ * - Overview statistics (open/closed counts, avg resolution time)
+ * - Volume analytics grouped by time period
+ * - Ticket number sequence management (getNext/getCurrent)
  */
 export class TicketQueries extends TicketBaseQueries {
   constructor(db: Pool | PoolClient) {

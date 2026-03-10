@@ -110,6 +110,11 @@ export async function withLoadingEmbed<T>(
 
 /**
  * Sends an embed with action row components (buttons, select menus)
+ *
+ * @param channel - The text channel to send to
+ * @param embed - The embed builder containing embed content
+ * @param components - Action rows containing buttons or select menus
+ * @returns Promise resolving to the sent message, or null if failed
  */
 export async function sendEmbedWithComponents(
   channel: TextChannel,
@@ -128,7 +133,12 @@ export async function sendEmbedWithComponents(
 }
 
 /**
- * Edits a message's embed and components
+ * Replaces a message's embed and action row components
+ *
+ * @param message - The message to edit
+ * @param embed - The embed builder containing the new embed content
+ * @param components - Action rows containing buttons or select menus
+ * @returns Promise resolving to the edited message, or null if failed
  */
 export async function editEmbedWithComponents(
   message: Message,

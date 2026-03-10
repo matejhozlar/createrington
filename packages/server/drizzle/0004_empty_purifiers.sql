@@ -1,0 +1,2 @@
+ALTER TABLE "crypto_transaction" ADD COLUMN "order_id" integer;--> statement-breakpoint
+ALTER TABLE "crypto_transaction" ADD CONSTRAINT "crypto_transaction_order_id_crypto_order_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."crypto_order"("id") ON DELETE no action ON UPDATE no action;

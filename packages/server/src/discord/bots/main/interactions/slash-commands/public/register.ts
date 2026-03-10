@@ -27,7 +27,7 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Cooldown configuration for the ping command
+ * Cooldown configuration for the register command
  *
  * - duration: 60 seconds
  * - type: "user" - Each user has their own cooldown
@@ -40,22 +40,19 @@ export const cooldown = {
 };
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development
- */
-
-/**
- * Random delay helper for realistic progress updates
- * Mainly used to minimize API blocking
+ * Introduces a random delay for paced progress updates
+ *
+ * @param min - Minimum delay in milliseconds
+ * @param max - Maximum delay in milliseconds
+ * @returns Promise that resolves after the random delay
+ * @private
  */
 function randomDelay(min = 1000, max = 3000): Promise<void> {
   const ms = Math.floor(Math.random() * (max - min + 1)) + min;
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Registration steps
- */
+/** Single step in the multi-step registration flow */
 interface RegistrationStep {
   name: string;
   completed: boolean;

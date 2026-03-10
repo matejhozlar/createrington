@@ -26,6 +26,7 @@ import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
+import { CryptoMarketService } from "./crypto";
 import { lotteryService } from "./lottery";
 
 /**
@@ -273,6 +274,16 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
 
+  container.register(
+    Services.CRYPTO_MARKET_SERVICE,
+    async () => {
+      const service = new CryptoMarketService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
+  );
+
   // =========================================================================
   // COMMUNICATION SERVICES
   // =========================================================================
@@ -291,7 +302,7 @@ export function registerServices(): void {
       const websocketService = new WebSocketService(httpServer, {
         cors: {
           origin: config.envMode.isDev
-            ? "http://localhost:5173"
+            ? "http://localhost:3000"
             : config.meta.links.website,
           credentials: true,
         },
@@ -315,7 +326,12 @@ export function registerServices(): void {
     },
   );
 
+  // =========================================================================
+  // CROSS-SERVICE WIRING (triggered when individual services become ready)
+  // =========================================================================
+
   container.on("serviceReady", async (serviceName) => {
+    // Initialize lottery once the database pool is verified
     if (serviceName === Services.DATABASE) {
       lotteryService
         .initialize()
@@ -323,6 +339,8 @@ export function registerServices(): void {
           logger.error("LotteryService initialization failed:", err),
         );
     }
+
+    // Wire message cache into playtime manager for server shutdown detection
     if (serviceName === Services.MESSAGE_CACHE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,
@@ -332,6 +350,7 @@ export function registerServices(): void {
       playtimeManager.setupMessageCacheIntegration(messageCache);
     }
 
+    // Hook achievement evaluation into stats import completion
     if (
       serviceName === Services.STATS_IMPORT_SERVICE &&
       !config.envMode.isDev
@@ -346,6 +365,7 @@ export function registerServices(): void {
       });
     }
 
+    // Wire real-time role checks to playtime events on each server
     if (serviceName === Services.PLAYTIME_MANAGER_SERVICE) {
       const playtimeManager = await container.get(
         Services.PLAYTIME_MANAGER_SERVICE,

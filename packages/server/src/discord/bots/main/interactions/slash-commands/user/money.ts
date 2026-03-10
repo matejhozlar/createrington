@@ -17,7 +17,7 @@ export const data = new SlashCommandBuilder()
   .setDescription("Check your current balance");
 
 /**
- * Cooldown configuration for the verify command
+ * Cooldown configuration for the money command
  *
  * - duration: 5 seconds
  * - type: "user" - Each user has their own cooldown
@@ -28,11 +28,6 @@ export const cooldown = {
   type: CooldownType.USER,
   message: "Please wait before checking your balance again!",
 };
-
-/**
- * Whether this command should only be available in production
- * Set to false to allow usage in development mode
- */
 
 /**
  * Executes the money command to retrieve and display user's balance

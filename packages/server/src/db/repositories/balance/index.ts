@@ -28,6 +28,8 @@ export enum BalanceTransactionType {
   LOTTERY_ENTRY = "lottery_entry",
   LOTTERY_WIN = "lottery_win",
   LOTTERY_REFUND = "lottery_refund",
+  CRYPTO_BUY = "crypto_buy",
+  CRYPTO_SELL = "crypto_sell",
   OTHER = "other",
 }
 
@@ -47,6 +49,13 @@ export class BalanceRepository {
   // PRIVATE HELPERS
   // ============================================================================
 
+  /**
+   * Resolves various player identifier formats to a Minecraft UUID
+   *
+   * @param identifier - Player identifier (UUID string, typed object, or full Player)
+   * @returns Promise resolving to Minecraft UUID
+   * @private
+   */
   private async resolvePlayerUuid(
     identifier: PlayerIdentifier,
   ): Promise<string> {
@@ -58,6 +67,12 @@ export class BalanceRepository {
     return player.minecraftUuid;
   }
 
+  /**
+   * Records a balance transaction to the audit trail
+   *
+   * @param data - Transaction details including amounts, type, and optional metadata
+   * @private
+   */
   private async logTransaction(data: {
     playerMinecraftUuid: string;
     amount: bigint;
@@ -90,6 +105,9 @@ export class BalanceRepository {
 
   /**
    * Gets player balance record
+   *
+   * @param identifier - Player identifier
+   * @returns Full balance entity (includes raw bigint balance)
    */
   async get(identifier: PlayerIdentifier): Promise<PlayerBalance> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -142,7 +160,10 @@ export class BalanceRepository {
   }
 
   /**
-   * Gets raw balance as bigint
+   * Gets raw balance as bigint (storage format, not user-facing)
+   *
+   * @param identifier - Player identifier
+   * @returns Raw balance in storage format (e.g. 1500n for $1.500)
    */
   async getRaw(identifier: PlayerIdentifier): Promise<bigint> {
     const uuid = await this.resolvePlayerUuid(identifier);
@@ -185,6 +206,10 @@ export class BalanceRepository {
 
   /**
    * Creates initial balance record for a new player
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param initialBalance - Starting balance (default: 0)
+   * @returns Created balance record
    */
   async create(
     playerMinecraftUuid: string,
@@ -654,6 +679,10 @@ export class BalanceRepository {
 
   /**
    * Gets transaction history for a player
+   *
+   * @param identifier - Player identifier
+   * @param limit - Maximum transactions to return (default: 50)
+   * @returns Transactions ordered by most recent first
    */
   async getHistory(
     identifier: PlayerIdentifier,
@@ -673,7 +702,11 @@ export class BalanceRepository {
   }
 
   /**
-   * Gets formatted transaction history
+   * Gets formatted transaction history with human-readable balance amounts
+   *
+   * @param identifier - Player identifier
+   * @param limit - Maximum transactions to return (default: 50)
+   * @returns Transactions with comma-formatted amount strings
    */
   async getFormattedHistory(
     identifier: PlayerIdentifier,

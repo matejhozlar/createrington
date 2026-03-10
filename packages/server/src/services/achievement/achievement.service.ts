@@ -14,21 +14,30 @@ import type {
 } from "./types";
 import type { PlayerMinecraftStats } from "@createrington/shared/db";
 
+/** Pre-loaded crypto data for achievement evaluation */
+interface CryptoData {
+  tradeCount: number;
+  uniqueHoldings: number;
+  portfolioValue: number;
+}
+
 /**
  * Achievement Service
  *
  * Evaluates player progress against defined achievement tiers,
- * records completions, and handles reward claiming.
+ * records completions, and handles reward claiming:
+ * - Evaluates all achievement groups after stats imports (per server)
+ * - Hooks into crypto trade events to award trade-based and event-based achievements
+ * - Runs daily cron checks for time-gated achievements (Diamond Hands)
+ * - Responds to token crash events to award crash-related achievements
+ * - Exposes progress queries for client display
+ * - Handles reward claiming and credits player balance on claim
  *
- * Triggered automatically after stats imports and can also be
- * queried for progress display on the client.
+ * NOTE: Crypto achievements are treated as global — they are awarded and checked
+ * across every server the player has playtime on
  */
 export class AchievementService {
-  /**
-   * Initializes the service
-   *
-   * @returns Promise resolving when the service is initialized
-   */
+  /** Validates achievement definitions and logs the count of registered groups */
   async initialize(): Promise<void> {
     validateDefinitions();
     logger.info(
@@ -36,9 +45,8 @@ export class AchievementService {
     );
   }
 
-  async shutdown(): Promise<void> {
-    // No timers or connections to clean up
-  }
+  /** No-op shutdown — service has no timers or connections to clean up */
+  async shutdown(): Promise<void> {}
 
   // ==========================================================================
   // EVALUATION
@@ -48,9 +56,8 @@ export class AchievementService {
    * Evaluate achievements for all players on a server.
    * Called after stats import completes.
    *
-   * @param serverId - Server to evaluate for
-   * @param playerUuids - Minecraft UUIDs of the players
-   * @returns Promise resolving when the server is evaluated
+   * @param serverId - The server to evaluate achievements for
+   * @param playerUuids - Minecraft UUIDs of players to evaluate
    */
   async evaluateServer(serverId: number, playerUuids: string[]): Promise<void> {
     let totalNew = 0;
@@ -77,27 +84,30 @@ export class AchievementService {
   /**
    * Evaluate all achievement groups for a single player on a server.
    *
-   * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - Server ID to evaluate on
-   * @returns Promise resolving to an object with evaluated achievements
+   * Loads Minecraft stats, playtime, balance history, and crypto data in parallel,
+   * then checks every unearned tier against the player's current value. Newly
+   * completed tiers are batch-inserted in a single query.
+   *
+   * @param playerUuid - Minecraft UUID of the player to evaluate
+   * @param serverId - The server context for stats and playtime lookups
+   * @returns Names of newly completed achievements (formatted as "Group Name tier-roman")
    */
   async evaluatePlayer(
     playerUuid: string,
     serverId: number,
   ): Promise<string[]> {
-    // Load completed achievements from DB
     const completedRows = await Q.player.achievement.getCompletedForPlayer(
       playerUuid,
       serverId,
     );
 
-    // Build set of completed (groupId, tier) for fast lookup
+    // Build set of completed (groupId, tier) pairs for fast O(1) lookup during tier iteration
     const completedSet = new Set(
       completedRows.map((r) => `${r.achievementGroupId}:${r.tier}`),
     );
 
-    // Load player data for evaluation
-    const [stats, playtimeSummary, totalEarned] = await Promise.all([
+    // Load player data for evaluation (Minecraft + crypto in parallel)
+    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all([
       Q.player.minecraft.stats
         .find({ minecraftUuid: playerUuid, serverId })
         .catch(() => null),
@@ -105,6 +115,7 @@ export class AchievementService {
         .find({ playerMinecraftUuid: playerUuid, serverId })
         .catch(() => null),
       Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
+      this.loadCryptoData(playerUuid),
     ]);
 
     const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
@@ -112,7 +123,6 @@ export class AchievementService {
       ? Number(playtimeSummary.totalSeconds)
       : 0;
 
-    // Evaluate each group
     const newCompletions: {
       achievementGroupId: string;
       tier: number;
@@ -126,15 +136,13 @@ export class AchievementService {
         statsJson,
         totalSeconds,
         totalEarned,
+        cryptoData,
       );
 
       for (const tierDef of group.tiers) {
         const key = `${group.id}:${tierDef.tier}`;
-
-        // Skip already completed tiers
         if (completedSet.has(key)) continue;
 
-        // Check if threshold is met
         if (currentValue >= tierDef.threshold) {
           newCompletions.push({
             achievementGroupId: group.id,
@@ -143,13 +151,12 @@ export class AchievementService {
             description: `${group.name} ${toRoman(tierDef.tier)}`,
           });
         } else {
-          // Tiers are ordered — if this one isn't met, later ones won't be either
+          // Tiers are ordered — if this threshold isn't met, higher ones won't be either
           break;
         }
       }
     }
 
-    // Batch insert new completions
     if (newCompletions.length > 0) {
       await Q.player.achievement.batchComplete(
         playerUuid,
@@ -170,6 +177,158 @@ export class AchievementService {
   }
 
   // ==========================================================================
+  // CRYPTO ACHIEVEMENT HOOKS
+  // ==========================================================================
+
+  /**
+   * Evaluate crypto-related achievements after a trade.
+   * Awards on all servers the player has data on.
+   *
+   * @returns Names of newly completed achievements across all servers
+   */
+  async evaluateCryptoAchievements(playerUuid: string): Promise<string[]> {
+    const serverIds = await this.getPlayerServerIds(playerUuid);
+    if (serverIds.length === 0) return [];
+
+    const allNew: string[] = [];
+    for (const serverId of serverIds) {
+      const newAchievements = await this.evaluatePlayer(playerUuid, serverId);
+      // Deduplicate — same achievement name may be awarded on multiple servers
+      for (const name of newAchievements) {
+        if (!allNew.includes(name)) allNew.push(name);
+      }
+    }
+    return allNew;
+  }
+
+  /**
+   * Directly award an event-based crypto achievement (e.g. Paper Hands, 10x Return).
+   * Records on all servers the player has data on. Idempotent via ON CONFLICT DO NOTHING.
+   *
+   * @returns true if the achievement was newly awarded (on at least one server)
+   */
+  async awardCryptoEvent(
+    playerUuid: string,
+    groupId: string,
+  ): Promise<boolean> {
+    const group = getGroupById(groupId);
+    if (!group) {
+      logger.warn(`Unknown achievement group for crypto event: ${groupId}`);
+      return false;
+    }
+
+    const serverIds = await this.getPlayerServerIds(playerUuid);
+    if (serverIds.length === 0) return false;
+
+    let awarded = false;
+    for (const serverId of serverIds) {
+      const completedRows = await Q.player.achievement.getCompletedForPlayer(
+        playerUuid,
+        serverId,
+      );
+      const alreadyCompleted = completedRows.some(
+        (r) => r.achievementGroupId === groupId && r.tier === 1,
+      );
+
+      if (!alreadyCompleted) {
+        await Q.player.achievement.batchComplete(playerUuid, serverId, [
+          { achievementGroupId: groupId, tier: 1, rewardAmount: group.tiers[0].reward },
+        ]);
+        awarded = true;
+      }
+    }
+
+    if (awarded) {
+      logger.debug(
+        `Awarded crypto achievement "${group.name}" to player ${playerUuid}`,
+      );
+    }
+
+    return awarded;
+  }
+
+  /**
+   * Check and award Diamond Hands achievement for all players.
+   * Called from a daily cron job.
+   */
+  async evaluateDiamondHands(): Promise<void> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Find holdings created 30+ days ago
+    const oldHoldings = await Q.crypto.holding
+      .where({ createdAt: { $lte: thirtyDaysAgo } })
+      .all();
+
+    // Deduplicate by player UUID
+    const playerUuids = [...new Set(oldHoldings.map((h) => h.playerMinecraftUuid))];
+
+    let awarded = 0;
+    for (const uuid of playerUuids) {
+      const result = await this.awardCryptoEvent(uuid, "crypto_diamond_hands");
+      if (result) awarded++;
+    }
+
+    if (awarded > 0) {
+      logger.info(`Diamond Hands: awarded to ${awarded} player(s)`);
+    }
+  }
+
+  /**
+   * Award Crash Survivor to holders who held through a crash,
+   * and Bag Holder to holders of crashed tokens.
+   * Called when a token crashes.
+   */
+  async evaluateCrashAchievements(tokenId: number): Promise<void> {
+    const holdings = await Q.crypto.holding
+      .where({ tokenId })
+      .all();
+
+    let crashSurvivorCount = 0;
+    let bagHolderCount = 0;
+
+    for (const holding of holdings) {
+      // Anyone still holding when it crashes is a Crash Survivor
+      const survivorResult = await this.awardCryptoEvent(
+        holding.playerMinecraftUuid,
+        "crypto_crash_survivor",
+      );
+      if (survivorResult) crashSurvivorCount++;
+
+      // Bag Holder — they're holding a worthless token
+      const bagResult = await this.awardCryptoEvent(
+        holding.playerMinecraftUuid,
+        "crypto_bag_holder",
+      );
+      if (bagResult) bagHolderCount++;
+    }
+
+    if (crashSurvivorCount > 0 || bagHolderCount > 0) {
+      logger.info(
+        `Crash achievements for token ${tokenId}: ${crashSurvivorCount} Crash Survivor(s), ${bagHolderCount} Bag Holder(s)`,
+      );
+    }
+  }
+
+  /**
+   * Check if a player has completed a specific achievement.
+   * Used by the fee calculator for Market Veteran discount.
+   */
+  async hasAchievement(playerUuid: string, groupId: string): Promise<boolean> {
+    const serverIds = await this.getPlayerServerIds(playerUuid);
+    if (serverIds.length === 0) return false;
+
+    // Check on the first server — crypto achievements are global
+    const completed = await Q.player.achievement.getCompletedForPlayer(
+      playerUuid,
+      serverIds[0],
+    );
+    return completed.some(
+      (r) => r.achievementGroupId === groupId && r.tier >= 1,
+    );
+  }
+
+  // ==========================================================================
   // PROGRESS
   // ==========================================================================
 
@@ -178,14 +337,13 @@ export class AchievementService {
    * Runs evaluation first to ensure newly earned tiers are captured.
    *
    * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - Server to get progress on
-   * @returns Promise resolving to an object achievement group progress
+   * @param serverId - The server context for stats and playtime lookups
+   * @returns Progress snapshot for every defined achievement group
    */
   async getProgress(
     playerUuid: string,
     serverId: number,
   ): Promise<AchievementGroupProgress[]> {
-    // Evaluate first so progress is always up to date
     await this.evaluatePlayer(playerUuid, serverId);
 
     const completedRows = await Q.player.achievement.getCompletedForPlayer(
@@ -193,7 +351,6 @@ export class AchievementService {
       serverId,
     );
 
-    // Group completed rows by achievement group ID
     const completedByGroup = new Map<
       string,
       { tier: number; completedAt: Date; claimedAt: Date | null }[]
@@ -208,8 +365,7 @@ export class AchievementService {
       completedByGroup.set(row.achievementGroupId, list);
     }
 
-    // Load player data
-    const [stats, playtimeSummary, totalEarned] = await Promise.all([
+    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all([
       Q.player.minecraft.stats
         .find({ minecraftUuid: playerUuid, serverId })
         .catch(() => null),
@@ -217,6 +373,7 @@ export class AchievementService {
         .find({ playerMinecraftUuid: playerUuid, serverId })
         .catch(() => null),
       Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
+      this.loadCryptoData(playerUuid),
     ]);
 
     const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
@@ -236,6 +393,7 @@ export class AchievementService {
         statsJson,
         totalSeconds,
         totalEarned,
+        cryptoData,
       );
 
       const nextTier: AchievementTier | null =
@@ -258,11 +416,14 @@ export class AchievementService {
   /**
    * Claim reward for a single completed achievement tier.
    *
-   * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - Server ID of the claim action
-   * @param groupId - Group ID of the achievement
-   * @param tier - Tier of the achievement
-   * @returns Promise resolving to the claim result
+   * Marks the tier as claimed in the database and credits the reward
+   * amount to the player's balance as a `REWARD` transaction.
+   *
+   * @param playerUuid - Minecraft UUID of the player claiming the reward
+   * @param serverId - The server context the achievement was completed on
+   * @param groupId - Achievement group identifier
+   * @param tier - Tier number within the group to claim
+   * @returns Claim result including the reward amount and updated balance
    */
   async claim(
     playerUuid: string,
@@ -306,9 +467,12 @@ export class AchievementService {
   /**
    * Claim all unclaimed completed achievements for a player on a server.
    *
+   * Errors on individual claims are logged and skipped so a single failure
+   * does not prevent the remaining claims from being processed.
+   *
    * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - Server ID to claim on
-   * @returns Promise resolving to claim result
+   * @param serverId - The server context to claim achievements for
+   * @returns Array of successful claim results (may be empty if nothing is unclaimed)
    */
   async claimAll(playerUuid: string, serverId: number): Promise<ClaimResult[]> {
     const unclaimed = await Q.player.achievement.getUnclaimedForPlayer(
@@ -345,19 +509,90 @@ export class AchievementService {
   // ==========================================================================
 
   /**
-   * Resolve the current value for an achievement criteria.
+   * Load crypto market data for a player in parallel (trade count, holdings, portfolio value).
    *
-   * @param criteria - Achievement criteria
-   * @param stats - Record of stats
-   * @param totalSeconds - Number of seconds (playtime)
-   * @param totalEarned - Total earned
-   * @returns Current value of the achievement
+   * All three queries are best-effort — any failure falls back to a safe zero/empty value
+   * so a crypto data outage does not block the broader achievement evaluation.
+   *
+   * @private
+   * @param playerUuid - Minecraft UUID of the player
+   * @returns Aggregated crypto data used by criteria resolution
+   */
+  private async loadCryptoData(playerUuid: string): Promise<CryptoData> {
+    const [tradeCount, holdings, tokens] = await Promise.all([
+      Q.crypto.transaction
+        .where({ playerMinecraftUuid: playerUuid })
+        .count()
+        .catch(() => 0),
+      Q.crypto.holding
+        .where({ playerMinecraftUuid: playerUuid })
+        .all()
+        .catch(() => []),
+      Q.crypto.token
+        .where({})
+        .all()
+        .catch(() => []),
+    ]);
+
+    const tokenPrices = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+    let portfolioValue = 0;
+    for (const h of holdings) {
+      const price = tokenPrices.get(h.tokenId) ?? 0;
+      portfolioValue += Number(h.amount) * price;
+    }
+
+    return {
+      tradeCount,
+      uniqueHoldings: holdings.length,
+      portfolioValue,
+    };
+  }
+
+  /**
+   * Get all server IDs the player has playtime on.
+   *
+   * Falls back to every known server if the player has no playtime records yet,
+   * ensuring newly joined players can still receive crypto achievements.
+   *
+   * @private
+   * @param playerUuid - Minecraft UUID of the player
+   * @returns Deduplicated list of server IDs
+   */
+  private async getPlayerServerIds(playerUuid: string): Promise<number[]> {
+    const summaries = await Q.player.playtime.summary
+      .where({ playerMinecraftUuid: playerUuid })
+      .all()
+      .catch(() => []);
+
+    if (summaries.length > 0) {
+      return [...new Set(summaries.map((s) => s.serverId))];
+    }
+
+    // Fallback: use all servers if no playtime data yet
+    const servers = await Q.server.where({}).all().catch(() => []);
+    return servers.map((s) => s.id);
+  }
+
+  /**
+   * Resolve the current numeric value for an achievement criteria source.
+   *
+   * Returns 0 for `crypto_event` criteria — those achievements are awarded
+   * directly via `awardCryptoEvent` and never pass through threshold evaluation.
+   *
+   * @private
+   * @param criteria - The criteria definition specifying the data source
+   * @param stats - Raw Minecraft stats keyed by category then stat key
+   * @param totalSeconds - Cumulative playtime in seconds on the server
+   * @param totalEarned - Total balance earned across all time
+   * @param cryptoData - Pre-loaded crypto market data for the player
+   * @returns Current value to compare against tier thresholds
    */
   private getCurrentValue(
     criteria: AchievementCriteria,
     stats: Record<string, Record<string, number>>,
     totalSeconds: number,
     totalEarned: number,
+    cryptoData: CryptoData,
   ): number {
     switch (criteria.source) {
       case "minecraft_stat":
@@ -368,6 +603,19 @@ export class AchievementService {
 
       case "balance_earned":
         return totalEarned;
+
+      case "crypto_trade_count":
+        return cryptoData.tradeCount;
+
+      case "crypto_unique_holdings":
+        return cryptoData.uniqueHoldings;
+
+      case "crypto_portfolio_value":
+        return cryptoData.portfolioValue;
+
+      case "crypto_event":
+        // Event-based achievements are awarded directly, not via threshold evaluation
+        return 0;
 
       default:
         return 0;
