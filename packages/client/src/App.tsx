@@ -56,6 +56,7 @@ import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
+import { CryptoDataProvider } from "./contexts/crypto-data";
 import { CryptoPage, TokenDetail, Portfolio as CryptoPortfolio, TradeHistory as CryptoTradeHistory } from "./pages/Crypto";
 
 function ScrollToTop() {
@@ -239,14 +240,16 @@ function App() {
           >
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
-                <ToastProvider>
-                  <BrowserRouter>
-                    <ScrollToTop />
-                    <SidebarProvider>
-                      <AppContent />
-                    </SidebarProvider>
-                  </BrowserRouter>
-                </ToastProvider>
+                <CryptoDataProvider autoSubscribe>
+                  <ToastProvider>
+                    <BrowserRouter>
+                      <ScrollToTop />
+                      <SidebarProvider>
+                        <AppContent />
+                      </SidebarProvider>
+                    </BrowserRouter>
+                  </ToastProvider>
+                </CryptoDataProvider>
               </PlayerDataProvider>
             </ServerDataProvider>
           </WebSocketProvider>

@@ -173,7 +173,8 @@ export class WebSocketService {
         request.serverId === undefined &&
         request.type !== SubscriptionType.SERVER_STATUS &&
         request.type !== SubscriptionType.PLAYERS &&
-        request.type !== SubscriptionType.MESSAGES
+        request.type !== SubscriptionType.MESSAGES &&
+        request.type !== SubscriptionType.CRYPTO_MARKET
       ) {
         throw new Error(`Server ID required for ${request.type} subscription`);
       }

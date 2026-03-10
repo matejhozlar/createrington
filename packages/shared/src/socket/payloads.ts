@@ -105,3 +105,16 @@ export interface InitialDataRequest {
   includeMessages?: boolean;
   messageLimit?: number;
 }
+
+/**
+ * Crypto price update payload (server -> client)
+ */
+export interface CryptoPriceUpdatePayload {
+  tokenId: number;
+  symbol: string;
+  price: string;
+  change24h: number;
+  volume24h: string;
+  availableSupply: string;
+  isCrashed: boolean;
+}

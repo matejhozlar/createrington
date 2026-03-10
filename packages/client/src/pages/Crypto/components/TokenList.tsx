@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import {
   Table,
@@ -34,12 +35,12 @@ type CategoryFilter = "all" | "stable" | "blue_chip" | "memecoin" | "seasonal";
 export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("all");
+  const { getPrice } = useCryptoData();
 
   const { data: tokens, isLoading } = trpc.public.crypto.list.useQuery(
     filter === "all"
       ? { includesCrashed: true }
       : { category: filter, includesCrashed: true },
-    { refetchInterval: 30_000 },
   );
 
   if (isLoading) {
@@ -81,61 +82,68 @@ export function TokenList() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {tokens?.map((token) => (
-              <TableRow
-                key={token.id}
-                className={cn(
-                  "cursor-pointer transition-colors hover:bg-muted/50",
-                  token.isCrashed && "opacity-50",
-                )}
-                onClick={() => navigate(`/crypto/${token.symbol}`)}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {token.isCrashed && (
-                      <Skull className="h-4 w-4 text-red-500" />
-                    )}
-                    <div>
-                      <p className="font-medium">{token.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        {token.symbol}
-                      </p>
+            {tokens?.map((token) => {
+              const livePrice = getPrice(token.symbol);
+              const displayPrice = livePrice?.price ?? token.price;
+              const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
+              const availableSupply = livePrice?.availableSupply ?? token.availableSupply;
+
+              return (
+                <TableRow
+                  key={token.id}
+                  className={cn(
+                    "cursor-pointer transition-colors hover:bg-muted/50",
+                    isCrashed && "opacity-50",
+                  )}
+                  onClick={() => navigate(`/crypto/${token.symbol}`)}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      {isCrashed && (
+                        <Skull className="h-4 w-4 text-red-500" />
+                      )}
+                      <div>
+                        <p className="font-medium">{token.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {token.symbol}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs",
-                      CATEGORY_COLORS[token.category],
-                    )}
-                  >
-                    {CATEGORY_LABELS[token.category]}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  ${formatPrice(token.price)}
-                </TableCell>
-                <TableCell className="text-right text-sm text-muted-foreground font-mono">
-                  {formatSupply(token.availableSupply, token.totalSupply)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {token.isCrashed ? (
-                    <Badge variant="destructive" className="text-xs">
-                      Crashed
-                    </Badge>
-                  ) : (
+                  </TableCell>
+                  <TableCell>
                     <Badge
                       variant="outline"
-                      className="text-xs text-emerald-400 border-emerald-500/20"
+                      className={cn(
+                        "text-xs",
+                        CATEGORY_COLORS[token.category],
+                      )}
                     >
-                      Active
+                      {CATEGORY_LABELS[token.category]}
                     </Badge>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                  </TableCell>
+                  <TableCell className="text-right font-mono">
+                    ${formatPrice(displayPrice)}
+                  </TableCell>
+                  <TableCell className="text-right text-sm text-muted-foreground font-mono">
+                    {formatSupply(availableSupply, token.totalSupply)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isCrashed ? (
+                      <Badge variant="destructive" className="text-xs">
+                        Crashed
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-emerald-400 border-emerald-500/20"
+                      >
+                        Active
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
             {(!tokens || tokens.length === 0) && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">

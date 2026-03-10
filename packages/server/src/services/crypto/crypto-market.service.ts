@@ -14,6 +14,7 @@ import type { WebSocketService } from "../websocket";
 import { SocketEvent } from "@createrington/shared/socket";
 import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
+import { sendNewListingNotification, sendCrashNotification } from "./notifications";
 
 export class CryptoMarketService {
   private memecoinInterval: ReturnType<typeof setInterval> | null = null;
@@ -137,6 +138,13 @@ export class CryptoMarketService {
       await applyPriceUpdate(update);
       await recordTickSnapshot(update);
       updates.push(update);
+
+      // Send Discord crash notification
+      if (update.isCrashed) {
+        sendCrashNotification(token.name, token.symbol, update.oldPrice).catch(
+          (err) => logger.error("Failed to send crash notification:", err),
+        );
+      }
     }
 
     // Broadcast price updates via WebSocket
@@ -272,9 +280,22 @@ export class CryptoMarketService {
     }
   }
 
-  /** Generate a new random memecoin */
+  /** Generate a new random memecoin and send listing notification */
   async spawnMemecoin(): Promise<CryptoToken | null> {
-    return generateMemecoin();
+    const token = await generateMemecoin();
+
+    if (token) {
+      sendNewListingNotification(
+        token.name,
+        token.symbol,
+        token.price,
+        String(token.totalSupply),
+      ).catch((err) =>
+        logger.error("Failed to send new listing notification:", err),
+      );
+    }
+
+    return token;
   }
 
   /** Get all active (non-crashed, non-delisted) tokens */

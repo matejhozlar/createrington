@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,10 +27,11 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function TokenDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const { getPrice } = useCryptoData();
 
   const { data: token, isLoading } = trpc.public.crypto.get.useQuery(
     { symbol: symbol ?? "" },
-    { enabled: !!symbol, refetchInterval: 30_000 },
+    { enabled: !!symbol },
   );
 
   if (isLoading) {
@@ -47,9 +49,15 @@ export function TokenDetail() {
     );
   }
 
-  const price = Number(token.price);
+  const livePrice = getPrice(token.symbol);
+  const displayPrice = livePrice?.price ?? token.price;
+  const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
+  const availableSupply = livePrice
+    ? Number(livePrice.availableSupply)
+    : Number(token.availableSupply);
+
+  const price = Number(displayPrice);
   const totalSupply = Number(token.totalSupply);
-  const availableSupply = Number(token.availableSupply);
   const circulatingSupply = totalSupply - availableSupply;
   const marketCap = price * circulatingSupply;
 
@@ -75,7 +83,7 @@ export function TokenDetail() {
             >
               {CATEGORY_LABELS[token.category]}
             </Badge>
-            {token.isCrashed && (
+            {isCrashed && (
               <Badge variant="destructive" className="gap-1">
                 <Skull className="h-3 w-3" />
                 Crashed
@@ -94,7 +102,7 @@ export function TokenDetail() {
 
         <div className="text-right">
           <p className="text-3xl font-bold font-mono">
-            ${formatPrice(token.price)}
+            ${formatPrice(displayPrice)}
           </p>
         </div>
       </div>
@@ -143,8 +151,8 @@ export function TokenDetail() {
         <div>
           <TradePanel
             symbol={token.symbol}
-            price={token.price}
-            isCrashed={token.isCrashed}
+            price={displayPrice}
+            isCrashed={isCrashed}
           />
         </div>
       </div>
