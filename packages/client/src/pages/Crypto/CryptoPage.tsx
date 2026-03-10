@@ -1,6 +1,9 @@
 import { MarketOverview } from "./components/MarketOverview";
 import { TokenList } from "./components/TokenList";
+import { NewsFeed } from "./components/NewsFeed";
+import { Watchlist } from "./components/Watchlist";
 
+/** Main crypto market page — shows market overview, token list, watchlist, and news feed. */
 export function CryptoPage() {
   return (
     <div className="space-y-6">
@@ -12,7 +15,14 @@ export function CryptoPage() {
       </div>
 
       <MarketOverview />
-      <TokenList />
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <TokenList />
+        <div className="space-y-6">
+          <Watchlist />
+          <NewsFeed />
+        </div>
+      </div>
     </div>
   );
 }

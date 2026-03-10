@@ -1100,6 +1100,15 @@ VALUES
   ('MobCoin', 'MOB', 'Rises with every mob slain. The warrior''s investment.', 'blue_chip', 5000000, 5000000, 2.00000000, 0.10000000),
   ('QuestMark', 'QST', 'Powered by achievement completions. Knowledge is profit.', 'blue_chip', 500000, 500000, 25.00000000, 1.00000000);
 
+-- Initial Memecoins
+INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
+VALUES
+  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 1000000, 1000000, 0.50000000),
+  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 500000, 500000, 2.50000000),
+  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 100000, 100000, 15.00000000),
+  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 2000000, 2000000, 0.01000000),
+  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 750000, 750000, 5.00000000);
+
 -- Show some sample stats
 SELECT
     p.minecraft_username,

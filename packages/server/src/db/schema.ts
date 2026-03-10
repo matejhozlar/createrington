@@ -863,6 +863,7 @@ export const waitlistEntry = pgTable(
 // Crypto Market Enums
 // ============================================================================
 
+// Token categories drive price engine behaviour (volatility, floor, demand curve)
 export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [
 	"stable",
 	"blue_chip",
@@ -870,11 +871,13 @@ export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [
 	"seasonal",
 ]);
 
+// Direction of an executed trade
 export const cryptoTradeTypeEnum = pgEnum("crypto_trade_type", [
 	"buy",
 	"sell",
 ]);
 
+// What caused a trade to execute — market order, a pending order type, or automatic delisting
 export const cryptoTradeTriggerEnum = pgEnum("crypto_trade_trigger", [
 	"market",
 	"limit",
@@ -883,6 +886,7 @@ export const cryptoTradeTriggerEnum = pgEnum("crypto_trade_trigger", [
 	"auto_delist",
 ]);
 
+// Types of pending (non-market) orders a player can place
 export const cryptoOrderTypeEnum = pgEnum("crypto_order_type", [
 	"limit_buy",
 	"limit_sell",
@@ -890,6 +894,7 @@ export const cryptoOrderTypeEnum = pgEnum("crypto_order_type", [
 	"take_profit",
 ]);
 
+// Lifecycle states for a pending order
 export const cryptoOrderStatusEnum = pgEnum("crypto_order_status", [
 	"pending",
 	"filled",
@@ -897,6 +902,7 @@ export const cryptoOrderStatusEnum = pgEnum("crypto_order_status", [
 	"expired",
 ]);
 
+// Time-frame granularity for OHLCV price snapshots
 export const cryptoPriceIntervalEnum = pgEnum("crypto_price_interval", [
 	"tick",
 	"minute",
@@ -905,11 +911,13 @@ export const cryptoPriceIntervalEnum = pgEnum("crypto_price_interval", [
 	"weekly",
 ]);
 
+// Whether a price alert fires when the token crosses above or below the target price
 export const cryptoAlertDirectionEnum = pgEnum("crypto_alert_direction", [
 	"above",
 	"below",
 ]);
 
+// Importance level attached to market events shown in the news feed
 export const cryptoEventSeverityEnum = pgEnum("crypto_event_severity", [
 	"info",
 	"warning",
@@ -920,7 +928,8 @@ export const cryptoEventSeverityEnum = pgEnum("crypto_event_severity", [
 // Crypto Market Tables
 // ============================================================================
 
-// --- crypto_token (core token definition) ---
+// --- crypto_token ---
+// Master record for each tradable token: symbol, supply, current price, and crash/delist state.
 
 export const cryptoToken = pgTable("crypto_token", {
 	id: serial("id").primaryKey(),
@@ -941,7 +950,8 @@ export const cryptoToken = pgTable("crypto_token", {
 	metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
 });
 
-// --- crypto_holding (player token holdings) ---
+// --- crypto_holding ---
+// Current token balance and aggregate cost basis per player, updated on every buy/sell.
 
 export const cryptoHolding = pgTable(
 	"crypto_holding",
@@ -975,7 +985,8 @@ export const cryptoHolding = pgTable(
 	],
 );
 
-// --- crypto_transaction (every executed trade) ---
+// --- crypto_transaction ---
+// Immutable record of every executed trade, including fees, execution price, and realized P&L.
 
 export const cryptoTransaction = pgTable(
 	"crypto_transaction",
@@ -1013,7 +1024,8 @@ export const cryptoTransaction = pgTable(
 	],
 );
 
-// --- crypto_price_snapshot (OHLCV data, unified with interval discriminator) ---
+// --- crypto_price_snapshot ---
+// OHLCV candlestick data at multiple intervals; interval column acts as the discriminator.
 
 export const cryptoPriceSnapshot = pgTable(
 	"crypto_price_snapshot",
@@ -1044,7 +1056,8 @@ export const cryptoPriceSnapshot = pgTable(
 	],
 );
 
-// --- crypto_order (pending orders: limit, stop-loss, take-profit) ---
+// --- crypto_order ---
+// Pending limit, stop-loss, and take-profit orders; executed by the price engine when the target is hit.
 
 export const cryptoOrder = pgTable(
 	"crypto_order",
@@ -1084,7 +1097,8 @@ export const cryptoOrder = pgTable(
 	],
 );
 
-// --- crypto_cost_basis (FIFO lots for P&L calculation) ---
+// --- crypto_cost_basis ---
+// Individual buy lots consumed in FIFO order when calculating realized P&L on sells.
 
 export const cryptoCostBasis = pgTable(
 	"crypto_cost_basis",
@@ -1111,7 +1125,8 @@ export const cryptoCostBasis = pgTable(
 	],
 );
 
-// --- crypto_treasury (collects fees) ---
+// --- crypto_treasury ---
+// Singleton row tracking cumulative trading fees collected and burned by the market.
 
 export const cryptoTreasury = pgTable("crypto_treasury", {
 	id: serial("id").primaryKey(),
@@ -1125,3 +1140,110 @@ export const cryptoTreasury = pgTable("crypto_treasury", {
 		.notNull()
 		.defaultNow(),
 });
+
+// --- crypto_price_alert ---
+// Player-defined price alerts that fire once when a token crosses the target threshold.
+
+export const cryptoPriceAlert = pgTable(
+	"crypto_price_alert",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		targetPrice: numeric("target_price", { precision: 20, scale: 8 }).notNull(),
+		direction: cryptoAlertDirectionEnum("direction").notNull(),
+		triggered: boolean("triggered").notNull().default(false),
+		triggeredAt: timestamp("triggered_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_alert_pending")
+			.on(table.tokenId, table.triggered)
+			.where(sql`${table.triggered} = false`),
+	],
+);
+
+// --- crypto_watchlist ---
+// Tokens a player has bookmarked for quick access; unique per player-token pair.
+
+export const cryptoWatchlist = pgTable(
+	"crypto_watchlist",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("idx_crypto_watchlist_unique").on(
+			table.playerMinecraftUuid,
+			table.tokenId,
+		),
+	],
+);
+
+// --- crypto_portfolio_snapshot ---
+// Daily snapshots of a player's total portfolio value and P&L, used for the history chart.
+
+export const cryptoPortfolioSnapshot = pgTable(
+	"crypto_portfolio_snapshot",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		totalValue: numeric("total_value", { precision: 20, scale: 8 }).notNull(),
+		totalInvested: numeric("total_invested", {
+			precision: 20,
+			scale: 8,
+		}).notNull(),
+		realizedPnl: numeric("realized_pnl", { precision: 20, scale: 8 })
+			.notNull()
+			.default(sql`0`),
+		tokenCount: integer("token_count").notNull().default(0),
+		recordedAt: timestamp("recorded_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_portfolio_snapshot_player").on(
+			table.playerMinecraftUuid,
+			table.recordedAt.desc(),
+		),
+	],
+);
+
+// --- crypto_market_event ---
+// Market-wide or token-specific events surfaced in the news feed (e.g. crashes, listings, milestones).
+
+export const cryptoMarketEvent = pgTable(
+	"crypto_market_event",
+	{
+		id: serial("id").primaryKey(),
+		type: text("type").notNull(),
+		title: text("title").notNull(),
+		description: text("description"),
+		tokenId: integer("token_id").references(() => cryptoToken.id),
+		severity: cryptoEventSeverityEnum("severity").notNull().default("info"),
+		metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+		activeUntil: timestamp("active_until", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_market_event_recent").on(table.createdAt.desc()),
+	],
+);

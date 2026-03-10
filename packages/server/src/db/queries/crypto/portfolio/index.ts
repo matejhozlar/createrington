@@ -1,23 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { CryptoPriceAlertQueries } from "@/db/queries/crypto/price/alert";
-import { CryptoPriceSnapshotQueries } from "@/db/queries/crypto/price/snapshot";
+import { CryptoPortfolioSnapshotQueries } from "@/db/queries/crypto/portfolio/snapshot";
 
 /**
- * Namespace queries for crypto_price
+ * Namespace queries for crypto_portfolio
  * 
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'crypto_price_' prefix.
+ * access to child tables that share the 'crypto_portfolio_' prefix.
  * 
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all CryptoPriceQueries instances using same connection
+ * - Shared across all CryptoPortfolioQueries instances using same connection
  * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class CryptoPriceQueries {
+export class CryptoPortfolioQueries {
   /**
    * Static singleton registry for child query instances
    * 
@@ -25,7 +24,7 @@ export class CryptoPriceQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "crypto_price.actions")
+   * - Keys are fully qualified (e.g., "crypto_portfolio.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -44,7 +43,7 @@ export class CryptoPriceQueries {
    * @returns Cached or newly created child query instance
    * 
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "crypto_price.actions")
+   * - Cache key is prefixed with namespace (e.g., "crypto_portfolio.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -53,12 +52,12 @@ export class CryptoPriceQueries {
     QueryClass: new (db: Pool | PoolClient) => T
   ): T {
     // Initialize cache for this connection if not exists
-    if (!CryptoPriceQueries.queryInstances.has(this.db)) {
-      CryptoPriceQueries.queryInstances.set(this.db, new Map());
+    if (!CryptoPortfolioQueries.queryInstances.has(this.db)) {
+      CryptoPortfolioQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = CryptoPriceQueries.queryInstances.get(this.db)!;
-    const fullKey = `crypto_price.${key}`;
+    const cache = CryptoPortfolioQueries.queryInstances.get(this.db)!;
+    const fullKey = `crypto_portfolio.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -73,40 +72,21 @@ export class CryptoPriceQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded crypto_price_alert queries */
-  private _alert?: CryptoPriceAlertQueries;
+  /** Private backing field for lazy-loaded crypto_portfolio_snapshot queries */
+  private _snapshot?: CryptoPortfolioSnapshotQueries;
 
   /**
-   * Lazy-loaded singleton accessor for crypto_price_alert
+   * Lazy-loaded singleton accessor for crypto_portfolio_snapshot
    * 
-   * Returns a CryptoPriceAlertQueries instance that shares this namespace's
+   * Returns a CryptoPortfolioSnapshotQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    * 
-   * @returns Singleton CryptoPriceAlertQueries instance
+   * @returns Singleton CryptoPortfolioSnapshotQueries instance
    */
-  get alert(): CryptoPriceAlertQueries {
-    if (!this._alert) {
-      this._alert = this.getOrCreateChild<CryptoPriceAlertQueries>('alert', CryptoPriceAlertQueries);
-    }
-    return this._alert;
-  }
-
-  /** Private backing field for lazy-loaded crypto_price_snapshot queries */
-  private _snapshot?: CryptoPriceSnapshotQueries;
-
-  /**
-   * Lazy-loaded singleton accessor for crypto_price_snapshot
-   * 
-   * Returns a CryptoPriceSnapshotQueries instance that shares this namespace's
-   * database connection. The instance is created once on first access and
-   * cached for all subsequent calls.
-   * 
-   * @returns Singleton CryptoPriceSnapshotQueries instance
-   */
-  get snapshot(): CryptoPriceSnapshotQueries {
+  get snapshot(): CryptoPortfolioSnapshotQueries {
     if (!this._snapshot) {
-      this._snapshot = this.getOrCreateChild<CryptoPriceSnapshotQueries>('snapshot', CryptoPriceSnapshotQueries);
+      this._snapshot = this.getOrCreateChild<CryptoPortfolioSnapshotQueries>('snapshot', CryptoPortfolioSnapshotQueries);
     }
     return this._snapshot;
   }

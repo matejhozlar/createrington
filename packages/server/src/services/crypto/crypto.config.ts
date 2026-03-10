@@ -74,6 +74,12 @@ export const CRYPTO_CONFIG = {
   ORDER_DEFAULT_EXPIRY_HOURS: 24,
   ORDER_MAX_EXPIRY_HOURS: 168, // 7 days
 
+  // Social & Engagement Limits
+  MAX_WATCHLIST_SIZE: 20,
+  MAX_ACTIVE_ALERTS: 20,
+  WHALE_TRADE_THRESHOLD: 0.05, // 5% of token supply
+  PORTFOLIO_SNAPSHOT_HOUR: 4, // 04:00 daily
+
   // Snapshot Retention (seconds)
   RETENTION: {
     TICK: 2 * 60 * 60, // 2 hours

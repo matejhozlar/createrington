@@ -57,8 +57,13 @@ import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
-import { CryptoPage, TokenDetail, Portfolio as CryptoPortfolio, TradeHistory as CryptoTradeHistory } from "./pages/Crypto";
+import { CryptoPage, TokenDetail, Portfolio as CryptoPortfolio, TradeHistory as CryptoTradeHistory, Leaderboard as CryptoLeaderboard } from "./pages/Crypto";
 
+// ==========================================================================
+// LAYOUT HELPERS
+// ==========================================================================
+
+/** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -69,6 +74,7 @@ function ScrollToTop() {
   return null;
 }
 
+/** Shared shell rendered for all standard routes — sidebar, inset content area, and conditional footer. */
 function AppLayout() {
   const { loading } = useAuth();
   const location = useLocation();
@@ -77,6 +83,7 @@ function AppLayout() {
     return <LoadingScreen text="Logging in..." />;
   }
 
+  // Footer is hidden on full-screen routes that manage their own layout
   const hideFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/chat") ||
@@ -99,6 +106,11 @@ function AppLayout() {
   );
 }
 
+// ==========================================================================
+// ROUTES
+// ==========================================================================
+
+/** Declares the full client-side route tree, including public, protected, and admin routes. */
 function AppContent() {
   return (
     <Routes>
@@ -141,6 +153,7 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route path="/crypto/leaderboard" element={<CryptoLeaderboard />} />
         <Route path="/crypto/:symbol" element={<TokenDetail />} />
 
         {/* Market Routes */}
@@ -225,6 +238,16 @@ function AppContent() {
   );
 }
 
+// ==========================================================================
+// ROOT
+// ==========================================================================
+
+/**
+ * Root application component.
+ *
+ * Establishes the full provider hierarchy required across the app:
+ * tRPC → QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → CryptoData → Router
+ */
 function App() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>

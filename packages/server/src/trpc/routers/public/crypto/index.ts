@@ -2,6 +2,8 @@ import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
+import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
+import { getRecentEvents } from "@/services/crypto/events/news-feed";
 
 /** Public crypto router — token listings, price history, and market overview. */
 export const cryptoRouter = router({
@@ -143,6 +145,86 @@ export const cryptoRouter = router({
           seasonal: activeTokens.filter((t) => t.category === "seasonal")
             .length,
         },
+      };
+    }),
+
+  leaderboard: publicProcedure
+    .meta({ description: "Get crypto trading leaderboard" })
+    .input(
+      z.object({
+        type: z.enum(["networth", "pnl", "volume"]).default("networth"),
+        limit: z.number().int().min(1).max(50).default(10),
+      }),
+    )
+    .query(async ({ input }) => {
+      return getLeaderboard(input.type, input.limit);
+    }),
+
+  newsFeed: publicProcedure
+    .meta({ description: "Get recent market events" })
+    .input(
+      z
+        .object({ limit: z.number().int().min(1).max(50).default(20) })
+        .optional()
+        .default({ limit: 20 }),
+    )
+    .query(async ({ input }) => {
+      const events = await getRecentEvents(input.limit);
+      return events.map((e) => ({
+        id: e.id,
+        type: e.type,
+        title: e.title,
+        description: e.description,
+        tokenId: e.tokenId,
+        severity: e.severity,
+        metadata: e.metadata,
+        activeUntil: e.activeUntil?.toISOString() ?? null,
+        createdAt: e.createdAt.toISOString(),
+      }));
+    }),
+
+  tokenDistribution: publicProcedure
+    .meta({ description: "Get token ownership distribution" })
+    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .query(async ({ input }) => {
+      const token = await Q.crypto.token
+        .where({ symbol: input.symbol.toUpperCase() })
+        .first();
+
+      if (!token) {
+        throw trpcError.notFound(`Token ${input.symbol} not found`);
+      }
+
+      const holdings = await Q.crypto.holding
+        .where({ tokenId: token.id })
+        .all();
+
+      const players = await Q.player.where({}).all();
+      const nameMap = new Map(
+        players.map((p) => [p.minecraftUuid, p.minecraftUsername ?? "Unknown"]),
+      );
+
+      const totalHeld = holdings.reduce((sum, h) => sum + h.amount, 0n);
+
+      const holders = holdings
+        .map((h) => ({
+          playerName: nameMap.get(h.playerMinecraftUuid) ?? "Unknown",
+          amount: String(h.amount),
+          percentage:
+            totalHeld > 0n
+              ? Number((h.amount * 10000n) / totalHeld) / 100
+              : 0,
+        }))
+        .sort((a, b) => Number(b.amount) - Number(a.amount))
+        .slice(0, 20);
+
+      return {
+        symbol: token.symbol,
+        totalSupply: String(token.totalSupply),
+        availableSupply: String(token.availableSupply),
+        totalHeld: String(totalHeld),
+        holderCount: holdings.length,
+        holders,
       };
     }),
 });

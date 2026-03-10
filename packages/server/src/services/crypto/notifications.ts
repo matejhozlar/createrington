@@ -1,7 +1,13 @@
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors } from "@/discord/embeds";
+import { createMarketEvent } from "./events/news-feed";
 
-/** Formats a price string with appropriate decimal precision based on magnitude */
+/**
+ * Formats a price string with appropriate decimal precision based on magnitude.
+ *
+ * @param price - Decimal price string to format
+ * @returns Human-readable price string with a leading "$" sign
+ */
 function formatPrice(price: string): string {
   const num = Number(price);
   if (num === 0) return "$0.00";
@@ -12,7 +18,13 @@ function formatPrice(price: string): string {
 }
 
 /**
- * Send a Discord notification when a new token is listed
+ * Sends a Discord embed to the bot-spam channel announcing a newly listed token,
+ * and records a "new_listing" event in the market news feed.
+ *
+ * @param name - Display name of the token (e.g. "DogeMoon")
+ * @param symbol - Ticker symbol of the token (e.g. "DGMN")
+ * @param price - Starting price as a decimal string
+ * @param totalSupply - Total supply as a numeric string
  */
 export async function sendNewListingNotification(
   name: string,
@@ -37,10 +49,23 @@ export async function sendNewListingNotification(
   } catch (err) {
     logger.error("Failed to send new listing notification to Discord:", err);
   }
+
+  // Record as news feed event
+  createMarketEvent({
+    type: "new_listing",
+    title: `New Token: ${name} (${symbol})`,
+    description: `Starting at ${formatPrice(price)} with ${Number(totalSupply).toLocaleString()} total supply`,
+    severity: "info",
+  }).catch((err) => logger.error("Failed to record listing event:", err));
 }
 
 /**
- * Send a Discord notification when a token crashes
+ * Sends a Discord embed to the bot-spam channel announcing a token crash,
+ * and records a "crash" event in the market news feed.
+ *
+ * @param name - Display name of the crashed token
+ * @param symbol - Ticker symbol of the crashed token
+ * @param lastPrice - The price at the time of crash as a decimal string
  */
 export async function sendCrashNotification(
   name: string,
@@ -65,4 +90,12 @@ export async function sendCrashNotification(
   } catch (err) {
     logger.error("Failed to send crash notification to Discord:", err);
   }
+
+  // Record as news feed event
+  createMarketEvent({
+    type: "crash",
+    title: `${name} (${symbol}) Crashed!`,
+    description: `Last price was ${formatPrice(lastPrice)}. The token will be delisted in 48 hours.`,
+    severity: "critical",
+  }).catch((err) => logger.error("Failed to record crash event:", err));
 }

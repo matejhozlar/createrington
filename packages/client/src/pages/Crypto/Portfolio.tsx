@@ -14,7 +14,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ArrowLeft, TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react";
+import { PortfolioChart } from "./components/PortfolioChart";
+import { PriceAlerts } from "./components/PriceAlerts";
 
+/**
+ * Portfolio page for the authenticated user.
+ *
+ * Displays total portfolio value, invested amount, unrealized and realized P&L,
+ * a historical value chart, price alerts, and a per-holding breakdown table.
+ * Data refreshes every 30 seconds.
+ */
 export function Portfolio() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -144,6 +153,11 @@ export function Portfolio() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <PortfolioChart />
+        <PriceAlerts />
       </div>
 
       {data.holdings.length > 0 ? (

@@ -20,8 +20,14 @@ export enum SocketEvent {
   UPDATE_SERVER_STATUS = "update:server:status",
   UPDATE_PLAYERS = "update:players",
   UPDATE_MESSAGE = "update:message",
+  // Broadcast to all subscribers when token prices tick
   UPDATE_CRYPTO_PRICES = "update:crypto:prices",
+  // Sent to the owning player when one of their pending orders is filled or cancelled
   UPDATE_CRYPTO_ORDER = "update:crypto:order",
+  // Broadcast when a significant market event occurs (crash, listing, etc.)
+  CRYPTO_MARKET_EVENT = "crypto:market:event",
+  // Broadcast when a new news-feed entry is published
+  CRYPTO_NEWS = "crypto:news",
 
   // Acknowledgments
   SUBSCRIBED = "subscribed",
@@ -35,6 +41,7 @@ export enum SubscriptionType {
   SERVER_STATUS = "server:status",
   PLAYERS = "players",
   MESSAGES = "messages",
+  // Subscribes to price ticks, order updates, market events, and news
   CRYPTO_MARKET = "crypto:market",
   ALL = "all",
 }

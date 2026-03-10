@@ -10,6 +10,7 @@ import { ArrowLeft, Skull } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
+import { TokenDistribution } from "./components/TokenDistribution";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -25,6 +26,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   seasonal: "Seasonal",
 };
 
+/**
+ * Token detail page for a single crypto asset.
+ *
+ * Loads static token data via tRPC and overlays live price/supply data from
+ * the CryptoData context. Renders a price chart, trade panel, order book,
+ * token distribution, and a stats card with market cap and circulating supply.
+ */
 export function TokenDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
@@ -50,6 +58,7 @@ export function TokenDetail() {
     );
   }
 
+  // Prefer live WebSocket price over the stale tRPC snapshot
   const livePrice = getPrice(token.symbol);
   const displayPrice = livePrice?.price ?? token.price;
   const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
@@ -156,12 +165,19 @@ export function TokenDetail() {
             isCrashed={isCrashed}
           />
           <OrderBook />
+          <TokenDistribution symbol={token.symbol} />
         </div>
       </div>
     </div>
   );
 }
 
+/**
+ * Formats a price string for display, scaling decimal precision to the magnitude.
+ *
+ * @param price - Numeric price as a string
+ * @returns Formatted price string (e.g. "0.000123", "0.4500", "12.34", "1,234.56")
+ */
 function formatPrice(price: string): string {
   const num = Number(price);
   if (num === 0) return "0.00";

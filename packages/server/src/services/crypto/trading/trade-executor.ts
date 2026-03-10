@@ -1,7 +1,15 @@
 /**
  * Trade execution engine for the crypto market.
- * Handles buy and sell order processing including balance changes,
- * supply tracking, holding management, fee collection, and treasury updates.
+ *
+ * Handles buy and sell order processing:
+ * - Validates token state, holdings, and rate limits before execution
+ * - Deducts or credits player balance via the balance repository
+ * - Updates token available supply on every trade
+ * - Maintains player holdings and FIFO cost-basis lots
+ * - Records each trade as a transaction with fee and P&L data
+ * - Routes collected fees to the treasury and applies the memecoin burn ratio
+ * - Emits demand-pressure volume signals to the price engine
+ * - Fires whale-alert news events for large trades
  */
 
 import { Q, R } from "@/db";
@@ -11,6 +19,7 @@ import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
 import { recordTradeVolume } from "../engine/price-engine";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { CRYPTO_CONFIG } from "../crypto.config";
+import { recordWhaleEvent } from "../events/news-feed";
 
 export interface TradeResult {
   transactionId: number;
@@ -52,6 +61,29 @@ function checkRateLimit(playerUuid: string): void {
   }
 
   entry.count++;
+}
+
+/** Checks if a trade qualifies as a whale trade and records a news event if so */
+async function checkWhaleAlert(
+  playerUuid: string,
+  token: CryptoToken,
+  amount: bigint,
+  totalCost: number,
+  tradeType: "buy" | "sell",
+): Promise<void> {
+  const supplyRatio = Number(amount) / Number(token.totalSupply);
+  if (supplyRatio >= CRYPTO_CONFIG.WHALE_TRADE_THRESHOLD) {
+    const player = await Q.player.find({ minecraftUuid: playerUuid });
+    const playerName = player?.minecraftUsername ?? "Unknown";
+    recordWhaleEvent(
+      playerName,
+      token.symbol,
+      token.id,
+      tradeType,
+      String(amount),
+      totalCost.toFixed(2),
+    ).catch((err) => logger.error("Failed to record whale event:", err));
+  }
 }
 
 /** Queries the total number of trades a player has ever executed (for volume discounts) */
@@ -177,6 +209,9 @@ export async function executeBuy(
   // Track volume for demand pressure calculation
   recordTradeVolume(token.id, amountNum, true);
 
+  // Check for whale trade
+  checkWhaleAlert(playerUuid, token, amount, totalCost, "buy").catch(() => {});
+
   return {
     transactionId: txResult.id,
     tokenId: token.id,
@@ -296,6 +331,9 @@ export async function executeSell(
   // Track volume for demand pressure calculation
   recordTradeVolume(token.id, amountNum, false);
 
+  // Check for whale trade
+  checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(() => {});
+
   return {
     transactionId: txResult.id,
     tokenId: token.id,
@@ -309,8 +347,12 @@ export async function executeSell(
 }
 
 /**
- * Updates the fee treasury. For memecoins, a portion of the fee is burned
- * (removed from circulation) based on FEES.BURN_RATIO.
+ * Updates the fee treasury with the fee collected from a trade.
+ * For memecoins, a portion of the fee is burned (removed from circulation)
+ * based on FEES.BURN_RATIO; the remainder is credited as collected.
+ *
+ * @param feeAmount - Total fee amount in in-game currency
+ * @param category - Token category ("memecoin", "stable", "blue_chip") used to determine burn ratio
  */
 async function updateTreasury(
   feeAmount: number,

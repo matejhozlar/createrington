@@ -18,6 +18,8 @@ import {
   expireOrders,
   type OrderFillResult,
 } from "./trading/order-manager";
+import { checkAlerts, type TriggeredAlert } from "./alerts/alert-manager";
+import { takeDailySnapshots } from "./analytics/portfolio-tracker";
 import { getService } from "@/services";
 import { Services } from "../container";
 import type { WebSocketService } from "../websocket";
@@ -50,6 +52,7 @@ export class CryptoMarketService {
   private minuteAggregationInterval: ReturnType<typeof setInterval> | null =
     null;
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
+  private portfolioSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private wsService: WebSocketService | null = null;
 
   /** In-memory cache of 24h-ago prices for change% calculation */
@@ -120,6 +123,7 @@ export class CryptoMarketService {
     this.startCleanupJob();
     this.startMinuteAggregation();
     this.startOrderExpiryJob();
+    this.schedulePortfolioSnapshot();
 
     logger.info("CryptoMarketService initialized");
   }
@@ -133,6 +137,7 @@ export class CryptoMarketService {
     if (this.minuteAggregationInterval)
       clearInterval(this.minuteAggregationInterval);
     if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
+    if (this.portfolioSnapshotTimeout) clearTimeout(this.portfolioSnapshotTimeout);
 
     logger.info("CryptoMarketService shutdown complete");
   }
@@ -259,6 +264,13 @@ export class CryptoMarketService {
     );
     const fillResults = await checkAndFillOrders(updatedTokens);
     this.notifyOrderFills(fillResults);
+
+    // Check price alerts
+    const tokenPrices = new Map(
+      updates.map((u) => [u.tokenId, { price: u.newPrice, symbol: u.symbol }]),
+    );
+    const triggered = await checkAlerts(tokenPrices);
+    this.notifyTriggeredAlerts(triggered);
   }
 
   /**
@@ -518,6 +530,75 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
+  // PORTFOLIO SNAPSHOTS
+  // ==========================================================================
+
+  /**
+   * Schedules the daily portfolio snapshot at the configured hour.
+   * Reschedules itself for the next day after completing.
+   * @private
+   */
+  private schedulePortfolioSnapshot(): void {
+    const now = new Date();
+    const target = new Date(now);
+    target.setHours(CRYPTO_CONFIG.PORTFOLIO_SNAPSHOT_HOUR, 0, 0, 0);
+
+    if (target <= now) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    const delayMs = target.getTime() - now.getTime();
+    logger.info(
+      `Next portfolio snapshot scheduled in ${Math.round(delayMs / 60_000)} minutes`,
+    );
+
+    this.portfolioSnapshotTimeout = setTimeout(async () => {
+      try {
+        const count = await takeDailySnapshots();
+        logger.info(`Took ${count} portfolio snapshots`);
+      } catch (err) {
+        logger.error("Portfolio snapshot failed:", err);
+      }
+      // Reschedule for tomorrow
+      this.schedulePortfolioSnapshot();
+    }, delayMs);
+  }
+
+  // ==========================================================================
+  // ALERT NOTIFICATIONS
+  // ==========================================================================
+
+  /**
+   * Sends Discord DM notifications for triggered price alerts.
+   * @private
+   */
+  private notifyTriggeredAlerts(alerts: TriggeredAlert[]): void {
+    if (alerts.length === 0) return;
+
+    for (const alert of alerts) {
+      logger.info(
+        `Price alert triggered: ${alert.tokenSymbol} ${alert.direction} $${alert.targetPrice} (now $${alert.currentPrice})`,
+      );
+
+      // Broadcast alert trigger via WebSocket to the specific user
+      if (this.wsService) {
+        this.wsService.broadcastToRoom(
+          RoomManager.getCryptoMarketRoom(),
+          SocketEvent.CRYPTO_NEWS,
+          {
+            type: "price_alert",
+            playerUuid: alert.playerUuid,
+            tokenSymbol: alert.tokenSymbol,
+            direction: alert.direction,
+            targetPrice: alert.targetPrice,
+            currentPrice: alert.currentPrice,
+          },
+        );
+      }
+    }
+  }
+
+  // ==========================================================================
   // AGGREGATION
   // ==========================================================================
 
@@ -600,6 +681,10 @@ export class CryptoMarketService {
       }
     }
   }
+
+  // ==========================================================================
+  // PUBLIC API
+  // ==========================================================================
 
   /**
    * Generates a new random memecoin from the catalog and sends a Discord

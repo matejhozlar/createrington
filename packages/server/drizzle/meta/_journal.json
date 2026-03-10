@@ -36,6 +36,13 @@
       "when": 1773106928889,
       "tag": "0004_empty_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1773136723221,
+      "tag": "0005_lumpy_arclight",
+      "breakpoints": true
     }
   ]
 }
