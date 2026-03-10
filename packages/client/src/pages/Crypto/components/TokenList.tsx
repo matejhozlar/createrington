@@ -58,10 +58,6 @@ export function TokenList() {
       : { category: filter, includesCrashed: true },
   );
 
-  if (isLoading) {
-    return <Loading mode="inline" size="large" text="Loading tokens..." className="py-12" />;
-  }
-
   return (
     <div className="space-y-4">
       {/* Filter pills */}
@@ -83,6 +79,11 @@ export function TokenList() {
         ))}
       </div>
 
+      {isLoading ? (
+        <div className="flex items-center justify-center rounded-xl border bg-card/30 py-16">
+          <Loading mode="inline" size="large" text="Loading tokens..." />
+        </div>
+      ) : (
       <div className="overflow-hidden rounded-xl border bg-card/30">
         <Table>
           <TableHeader>
@@ -222,6 +223,7 @@ export function TokenList() {
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 }
