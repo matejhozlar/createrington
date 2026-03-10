@@ -1,6 +1,7 @@
 import { Q } from "@/db";
 import type { CryptoMarketEvent } from "@createrington/shared/db/crypto_market_event.types";
 
+/** All recognised market event type identifiers used when creating news-feed entries */
 export type MarketEventType =
 	| "new_listing"
 	| "crash"
@@ -17,7 +18,9 @@ export type MarketEventType =
 	| "tax_holiday"
 	| "whale_dump"
 	| "new_listing_frenzy"
-	| "token_delisted";
+	| "token_delisted"
+	| "ipo_launch"
+	| "ipo_complete";
 
 /**
  * Persists a market event to the news feed.

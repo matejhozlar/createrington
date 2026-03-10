@@ -205,6 +205,8 @@ export async function execute(
  * Validates that the invoking player is registered and that the requested token
  * symbol exists, then delegates to `executeBuy` or `executeSell` and replies
  * with an embed summarising the executed price, fee, and total cost/revenue.
+ * For buy orders during an active IPO window, the response embed uses an
+ * IPO-specific title and includes a countdown field showing when trading opens.
  *
  * @param interaction - The incoming slash command interaction
  * @param subcommand - Either `"buy"` or `"sell"`
@@ -247,6 +249,8 @@ async function handleTrade(
   }
 
   if (subcommand === "buy") {
+    const isIpo = !!token.ipoEndsAt && token.ipoEndsAt > new Date();
+
     const result = await executeBuy(
       playerEntry.minecraftUuid,
       token,
@@ -254,15 +258,20 @@ async function handleTrade(
     );
 
     const embed = createEmbed()
-      .title("Crypto Buy")
+      .title(isIpo ? "IPO Buy" : "Crypto Buy")
       .color(EmbedColors.Success)
       .description(
-        `Bought **${Number(result.amount).toLocaleString()} ${result.symbol}**`,
+        `Bought **${Number(result.amount).toLocaleString()} ${result.symbol}**${isIpo ? " (IPO)" : ""}`,
       )
       .field("Price", `$${Number(result.priceAtExecution).toFixed(4)}`, true)
       .field("Fee", `$${result.feeAmount.toFixed(4)}`, true)
-      .field("Total Cost", `$${result.totalCost.toFixed(2)}`, true)
-      .timestamp();
+      .field("Total Cost", `$${result.totalCost.toFixed(2)}`, true);
+
+    if (isIpo) {
+      embed.field("IPO Ends", `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`, true);
+    }
+
+    embed.timestamp();
 
     await interaction.reply({ embeds: [embed.build()] });
   } else {

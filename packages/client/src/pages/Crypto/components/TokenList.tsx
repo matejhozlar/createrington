@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skull, TrendingUp, TrendingDown, Zap } from "lucide-react";
+import { Skull, TrendingUp, TrendingDown, Zap, Rocket } from "lucide-react";
 import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
@@ -98,6 +98,7 @@ export function TokenList() {
               const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
               const availableSupply = livePrice?.availableSupply ?? token.availableSupply;
               const change24h = livePrice?.change24h ?? 0;
+              const isIpo = !!token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date();
               // Highlight tokens affected by a market-wide event or a token-specific event
               const hasEvent =
                 hasMarketWideEvent ||
@@ -117,7 +118,10 @@ export function TokenList() {
                       {isCrashed && (
                         <Skull className="h-4 w-4 text-red-500" />
                       )}
-                      {!isCrashed && hasEvent && (
+                      {!isCrashed && isIpo && (
+                        <Rocket className="h-4 w-4 text-amber-400 animate-pulse" />
+                      )}
+                      {!isCrashed && !isIpo && hasEvent && (
                         <Zap className="h-4 w-4 text-yellow-400 animate-pulse" />
                       )}
                       <div>
@@ -171,6 +175,13 @@ export function TokenList() {
                     {isCrashed ? (
                       <Badge variant="destructive" className="text-xs">
                         Crashed
+                      </Badge>
+                    ) : isIpo ? (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-amber-400 border-amber-500/20 bg-amber-500/10"
+                      >
+                        IPO
                       </Badge>
                     ) : (
                       <Badge

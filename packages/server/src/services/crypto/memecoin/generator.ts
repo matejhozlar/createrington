@@ -9,10 +9,12 @@ import { CRYPTO_CONFIG } from "../crypto.config";
 import { MEMECOIN_CATALOG } from "./catalog";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 
+/** Returns a random float in [min, max) */
 function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
+/** Returns a random integer in [min, max] (inclusive) */
 function randomInt(min: number, max: number): number {
   return Math.floor(randomBetween(min, max + 1));
 }
@@ -24,13 +26,14 @@ async function getUsedSymbols(): Promise<Set<string>> {
 }
 
 /**
- * Generates a new memecoin from an unused catalog entry with random price and supply.
- * @returns The newly created token, or null if all catalog entries are in use
+ * Picks an unused catalog definition, randomizes price and supply.
+ *
+ * @private
+ * @returns Token creation params or null if the catalog is exhausted
  */
-export async function generateMemecoin(): Promise<CryptoToken | null> {
+async function pickRandomMemecoin() {
   const usedSymbols = await getUsedSymbols();
 
-  // Find an unused memecoin from the catalog
   const available = MEMECOIN_CATALOG.filter(
     (m) => !usedSymbols.has(m.symbol),
   );
@@ -54,6 +57,20 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
     ),
   );
 
+  return { definition, price, totalSupply };
+}
+
+/**
+ * Generates a new memecoin from an unused catalog entry with random price and supply.
+ * The token starts trading immediately (no IPO).
+ * @returns The newly created token, or null if all catalog entries are in use
+ */
+export async function generateMemecoin(): Promise<CryptoToken | null> {
+  const pick = await pickRandomMemecoin();
+  if (!pick) return null;
+
+  const { definition, price, totalSupply } = pick;
+
   const token = await Q.crypto.token.createAndReturn({
     name: definition.name,
     symbol: definition.symbol,
@@ -66,6 +83,38 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
 
   logger.info(
     `New memecoin listed: ${definition.name} (${definition.symbol}) at $${price.toFixed(8)}`,
+  );
+
+  return token;
+}
+
+/**
+ * Generates a new memecoin with an IPO phase: a fixed-price buying window
+ * during which each player can buy at most IPO_MAX_ALLOCATION_PERCENT of supply.
+ * @returns The newly created IPO token, or null if the catalog is exhausted
+ */
+export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
+  const pick = await pickRandomMemecoin();
+  if (!pick) return null;
+
+  const { definition, price, totalSupply } = pick;
+
+  const ipoEndsAt = new Date(Date.now() + CRYPTO_CONFIG.IPO_DURATION_MS);
+
+  const token = await Q.crypto.token.createAndReturn({
+    name: definition.name,
+    symbol: definition.symbol,
+    description: definition.description,
+    category: "memecoin",
+    totalSupply,
+    availableSupply: totalSupply,
+    price: price.toFixed(8),
+    ipoEndsAt,
+    ipoPrice: price.toFixed(8),
+  });
+
+  logger.info(
+    `IPO launched: ${definition.name} (${definition.symbol}) at $${price.toFixed(8)}, ends ${ipoEndsAt.toISOString()}`,
   );
 
   return token;
@@ -91,7 +140,6 @@ export async function cleanupCrashedTokens(): Promise<number> {
   let cleaned = 0;
   for (const token of crashed) {
     if (token.crashedAt && token.crashedAt <= cutoff) {
-      // Delete holdings for this token
       const holdings = await Q.crypto.holding
         .where({ tokenId: token.id })
         .all();
@@ -100,7 +148,6 @@ export async function cleanupCrashedTokens(): Promise<number> {
         await Q.crypto.holding.delete({ id: holding.id });
       }
 
-      // Delete price snapshots
       const snapshots = await Q.crypto.price.snapshot
         .where({ tokenId: token.id })
         .all();
@@ -109,7 +156,6 @@ export async function cleanupCrashedTokens(): Promise<number> {
         await Q.crypto.price.snapshot.delete({ id: snapshot.id });
       }
 
-      // Delete the token
       await Q.crypto.token.delete({ id: token.id });
       cleaned++;
 

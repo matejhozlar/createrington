@@ -12,7 +12,7 @@ import {
   refresh24hAverages,
   type PriceUpdate,
 } from "./engine/price-engine";
-import { generateMemecoin, cleanupCrashedTokens } from "./memecoin/generator";
+import { generateMemecoin, generateIpoMemecoin, cleanupCrashedTokens } from "./memecoin/generator";
 import {
   checkAndFillOrders,
   expireOrders,
@@ -26,7 +26,14 @@ import type { WebSocketService } from "../websocket";
 import { SocketEvent } from "@createrington/shared/socket";
 import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
-import { sendNewListingNotification, sendCrashNotification, sendWeeklyMarketReport, sendMarketEventNotification } from "./notifications";
+import {
+  sendNewListingNotification,
+  sendCrashNotification,
+  sendWeeklyMarketReport,
+  sendMarketEventNotification,
+  sendIpoAnnouncementNotification,
+  sendIpoResultNotification,
+} from "./notifications";
 import {
   rollForEvents,
   restoreActiveEvents,
@@ -43,7 +50,7 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
  * Crypto Market Service
  *
  * Orchestrates the in-game cryptocurrency market:
- * - Runs periodic price tickers for memecoins and stablecoins
+ * - Runs periodic price tickers for memecoins, stablecoins, and blue-chips
  * - Aggregates tick-level snapshots into minute OHLCV candles
  * - Broadcasts real-time price updates to WebSocket subscribers
  * - Maintains in-memory caches for 24h price change% and trade volume
@@ -52,6 +59,8 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
  * - Expires stale pending orders on a 5-minute cycle
  * - Cleans up crashed tokens after a configurable grace period
  * - Spawns new memecoins from the catalog with Discord notifications
+ * - Manages IPO lifecycle: schedules IPO spawns, skips IPO tokens from price ticking,
+ *   and transitions ended IPOs into normal trading with result notifications
  *
  * NOTE: Requires DATABASE and WEBSOCKET_SERVICE to be ready before initialization
  */
@@ -65,6 +74,8 @@ export class CryptoMarketService {
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
   private eventRollInterval: ReturnType<typeof setInterval> | null = null;
   private seasonalCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private ipoCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private ipoSpawnInterval: ReturnType<typeof setInterval> | null = null;
   private portfolioSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private weeklyReportTimeout: ReturnType<typeof setTimeout> | null = null;
   private wsService: WebSocketService | null = null;
@@ -142,6 +153,8 @@ export class CryptoMarketService {
     this.startOrderExpiryJob();
     this.startEventRoller();
     this.startSeasonalTokenCheck();
+    this.startIpoTransitionCheck();
+    this.startIpoSpawnScheduler();
     this.schedulePortfolioSnapshot();
     this.scheduleWeeklyReport();
 
@@ -159,6 +172,8 @@ export class CryptoMarketService {
     if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
     if (this.eventRollInterval) clearInterval(this.eventRollInterval);
     if (this.seasonalCheckInterval) clearInterval(this.seasonalCheckInterval);
+    if (this.ipoCheckInterval) clearInterval(this.ipoCheckInterval);
+    if (this.ipoSpawnInterval) clearInterval(this.ipoSpawnInterval);
     if (this.portfolioSnapshotTimeout) clearTimeout(this.portfolioSnapshotTimeout);
     if (this.weeklyReportTimeout) clearTimeout(this.weeklyReportTimeout);
 
@@ -263,8 +278,12 @@ export class CryptoMarketService {
     if (memecoins.length === 0) return;
 
     const updates: PriceUpdate[] = [];
+    const now = new Date();
 
     for (const token of memecoins) {
+      // Skip tokens currently in their IPO window — price is fixed
+      if (token.ipoEndsAt && token.ipoEndsAt > now) continue;
+
       const update = tickMemecoinPrice(token);
       await applyPriceUpdate(update);
       await recordTickSnapshot(update);
@@ -924,6 +943,89 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
+  // IPO LIFECYCLE
+  // ==========================================================================
+
+  /** @private Checks for ended IPOs every 30 seconds and transitions them to normal trading */
+  private startIpoTransitionCheck(): void {
+    this.ipoCheckInterval = setInterval(
+      async () => {
+        try {
+          await this.transitionEndedIpos();
+        } catch (err) {
+          logger.error("IPO transition check failed:", err);
+        }
+      },
+      CRYPTO_CONFIG.IPO_CHECK_INTERVAL_MS,
+    );
+  }
+
+  /** @private Automatically spawns a new IPO memecoin on a recurring schedule */
+  private startIpoSpawnScheduler(): void {
+    this.ipoSpawnInterval = setInterval(
+      async () => {
+        try {
+          // Only spawn if there isn't already an active IPO
+          const activeIpo = await this.getActiveIpo();
+          if (!activeIpo) {
+            await this.spawnIpoMemecoin();
+          }
+        } catch (err) {
+          logger.error("IPO spawn scheduler failed:", err);
+        }
+      },
+      CRYPTO_CONFIG.IPO_SPAWN_INTERVAL_MS,
+    );
+  }
+
+  /**
+   * Finds tokens whose IPO has ended and transitions them to normal trading.
+   * Sends result notifications and clears IPO fields so the price engine picks them up.
+   * @private
+   */
+  private async transitionEndedIpos(): Promise<void> {
+    const allMemecoins = await Q.crypto.token
+      .where({ category: "memecoin", isCrashed: false })
+      .all();
+
+    const now = new Date();
+
+    for (const token of allMemecoins) {
+      if (!token.ipoEndsAt || token.ipoEndsAt > now) continue;
+
+      // IPO has ended — gather results before clearing
+      const holdings = await Q.crypto.holding
+        .where({ tokenId: token.id })
+        .all();
+
+      const totalSold = token.totalSupply - token.availableSupply;
+      const participants = holdings.length;
+
+      // Clear IPO fields — token enters normal trading
+      await Q.crypto.token.update(
+        { id: token.id },
+        { ipoEndsAt: null },
+      );
+
+      // Send IPO result notification
+      sendIpoResultNotification(
+        token.name,
+        token.symbol,
+        token.ipoPrice!,
+        totalSold,
+        token.totalSupply,
+        participants,
+      ).catch((err) =>
+        logger.error("Failed to send IPO result notification:", err),
+      );
+
+      logger.info(
+        `IPO ended for ${token.symbol}: ${totalSold} sold to ${participants} participants`,
+      );
+    }
+  }
+
+  // ==========================================================================
   // PUBLIC API
   // ==========================================================================
 
@@ -947,6 +1049,41 @@ export class CryptoMarketService {
     }
 
     return token;
+  }
+
+  /**
+   * Generates a new memecoin with an IPO phase and sends announcement notification.
+   * @returns The newly created IPO token, or null if the catalog is exhausted
+   */
+  async spawnIpoMemecoin(): Promise<CryptoToken | null> {
+    const token = await generateIpoMemecoin();
+
+    if (token) {
+      sendIpoAnnouncementNotification(
+        token.name,
+        token.symbol,
+        token.ipoPrice!,
+        String(token.totalSupply),
+        token.ipoEndsAt!,
+      ).catch((err) =>
+        logger.error("Failed to send IPO announcement notification:", err),
+      );
+    }
+
+    return token;
+  }
+
+  /**
+   * Returns the currently active IPO token, if any.
+   * @returns The token in IPO phase, or null if no IPO is active
+   */
+  async getActiveIpo(): Promise<CryptoToken | null> {
+    const memecoins = await Q.crypto.token
+      .where({ category: "memecoin", isCrashed: false })
+      .all();
+
+    const now = new Date();
+    return memecoins.find((t) => t.ipoEndsAt && t.ipoEndsAt > now) ?? null;
   }
 
   /**

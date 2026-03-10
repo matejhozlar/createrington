@@ -6,7 +6,7 @@ import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Skull } from "lucide-react";
+import { ArrowLeft, Skull, Rocket } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
@@ -32,6 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
  * Loads static token data via tRPC and overlays live price/supply data from
  * the CryptoData context. Renders a price chart, trade panel, order book,
  * token distribution, and a stats card with market cap and circulating supply.
+ * Displays an IPO badge in the header when the token is in its IPO phase.
  */
 export function TokenDetail() {
   const { symbol } = useParams<{ symbol: string }>();
@@ -66,6 +67,7 @@ export function TokenDetail() {
     ? Number(livePrice.availableSupply)
     : Number(token.availableSupply);
 
+  const isIpo = !!token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date();
   const price = Number(displayPrice);
   const totalSupply = Number(token.totalSupply);
   const circulatingSupply = totalSupply - availableSupply;
@@ -97,6 +99,15 @@ export function TokenDetail() {
               <Badge variant="destructive" className="gap-1">
                 <Skull className="h-3 w-3" />
                 Crashed
+              </Badge>
+            )}
+            {isIpo && (
+              <Badge
+                variant="outline"
+                className="gap-1 text-amber-400 border-amber-500/20 bg-amber-500/10"
+              >
+                <Rocket className="h-3 w-3" />
+                IPO
               </Badge>
             )}
           </div>
@@ -163,6 +174,8 @@ export function TokenDetail() {
             symbol={token.symbol}
             price={displayPrice}
             isCrashed={isCrashed}
+            ipoEndsAt={token.ipoEndsAt}
+            ipoPrice={token.ipoPrice}
           />
           <OrderBook />
           <TokenDistribution symbol={token.symbol} />

@@ -3,8 +3,9 @@ import { TokenList } from "./components/TokenList";
 import { NewsFeed } from "./components/NewsFeed";
 import { Watchlist } from "./components/Watchlist";
 import { ActiveEvents } from "./components/ActiveEvents";
+import { IpoBanner } from "./components/IpoBanner";
 
-/** Main crypto market page — shows market overview, active events, token list, watchlist, and news feed. */
+/** Main crypto market page — shows the IPO banner, market overview, active events, token list, watchlist, and news feed. */
 export function CryptoPage() {
   return (
     <div className="space-y-6">
@@ -14,6 +15,8 @@ export function CryptoPage() {
           Trade fictional tokens using your in-game balance
         </p>
       </div>
+
+      <IpoBanner />
 
       <ActiveEvents />
 

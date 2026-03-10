@@ -947,6 +947,8 @@ export const cryptoToken = pgTable("crypto_token", {
 		.notNull()
 		.defaultNow(),
 	delistedAt: timestamp("delisted_at", { withTimezone: true }),
+	ipoEndsAt: timestamp("ipo_ends_at", { withTimezone: true }), // null after IPO closes; orders and limit trades are blocked while this is in the future
+	ipoPrice: numeric("ipo_price", { precision: 20, scale: 8 }), // fixed price at which the token is sold during its IPO window
 	metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
 });
 

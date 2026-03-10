@@ -20,8 +20,21 @@ import {
 } from "@/services/crypto/alerts/alert-manager";
 import { getPortfolioHistory } from "@/services/crypto/analytics/portfolio-tracker";
 import { evaluateTradeAchievements } from "@/services/crypto/trading/achievement-triggers";
+import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
 
-/** User crypto router — market trades, limit/stop/take-profit orders, portfolio, and trade history. */
+/**
+ * User Crypto Router
+ *
+ * Authenticated procedures for trading and account management:
+ * - buy / sell: immediate market-price trade execution
+ * - placeOrder / cancelOrder / listOrders: limit, stop-loss, and take-profit orders
+ * - portfolio: current holdings with unrealized and realized P&L
+ * - tradeHistory: paginated transaction log with symbol and type filters
+ * - ipoAllocation: remaining per-player allocation cap for an active IPO token
+ * - watchlistList / watchlistAdd / watchlistRemove: personal token watchlist
+ * - alertList / alertCreate / alertDelete: price-threshold notifications
+ * - portfolioHistory: daily portfolio value snapshots
+ */
 export const cryptoRouter = router({
   buy: userProcedure
     .meta({ description: "Market buy tokens" })
@@ -342,6 +355,47 @@ export const cryptoRouter = router({
       return {
         items,
         pagination: buildPagination(input.page, input.limit, total),
+      };
+    }),
+
+  // ==========================================================================
+  // IPO
+  // ==========================================================================
+
+  ipoAllocation: userProcedure
+    .meta({ description: "Get remaining IPO allocation for a token" })
+    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .query(async ({ ctx, input }) => {
+      const token = await Q.crypto.token
+        .where({ symbol: input.symbol.toUpperCase() })
+        .first();
+
+      if (!token) {
+        throw trpcError.notFound(`Token ${input.symbol} not found`);
+      }
+
+      if (!token.ipoEndsAt || token.ipoEndsAt <= new Date()) {
+        return null; // Not in IPO
+      }
+
+      const maxAllocation = BigInt(
+        Math.floor(Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT),
+      );
+
+      const holding = await Q.crypto.holding
+        .where({
+          playerMinecraftUuid: ctx.user.minecraftUuid,
+          tokenId: token.id,
+        })
+        .first();
+
+      const currentHeld = holding?.amount ?? 0n;
+      const remaining = maxAllocation - currentHeld;
+
+      return {
+        maxAllocation: String(maxAllocation),
+        currentHeld: String(currentHeld),
+        remaining: String(remaining < 0n ? 0n : remaining),
       };
     }),
 

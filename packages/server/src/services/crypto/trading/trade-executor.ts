@@ -145,9 +145,22 @@ async function hasMarketVeteranAchievement(playerUuid: string): Promise<boolean>
 // ==========================================================================
 
 /**
+ * Returns true if the token is currently in its IPO window.
+ *
+ * @param token - Token to check
+ * @returns `true` if `ipoEndsAt` is set and has not yet passed
+ */
+export function isInIpo(token: CryptoToken): boolean {
+  return !!token.ipoEndsAt && token.ipoEndsAt > new Date();
+}
+
+/**
  * Executes a buy order: deducts player balance, updates token supply,
  * upserts the player's holding with cost basis tracking, records the
  * transaction, and collects fees into the treasury.
+ *
+ * During an IPO, the buy executes at the fixed IPO price and enforces
+ * a per-player allocation limit (IPO_MAX_ALLOCATION_PERCENT of total supply).
  *
  * @param playerUuid - Minecraft UUID of the buyer
  * @param token - Token being purchased (must not be crashed or delisted)
@@ -178,9 +191,29 @@ export async function executeBuy(
     );
   }
 
+  // IPO allocation enforcement
+  if (isInIpo(token)) {
+    const maxAllocation = BigInt(
+      Math.floor(Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT),
+    );
+
+    const existingHolding = await Q.crypto.holding
+      .where({ playerMinecraftUuid: playerUuid, tokenId: token.id })
+      .first();
+
+    const currentHeld = existingHolding?.amount ?? 0n;
+    if (currentHeld + amount > maxAllocation) {
+      const remaining = maxAllocation - currentHeld;
+      throw new Error(
+        `IPO allocation limit: you can buy at most ${remaining} more ${token.symbol} (max ${maxAllocation} per player)`,
+      );
+    }
+  }
+
   checkRateLimit(playerUuid);
 
-  const price = Number(token.price);
+  // During IPO, use the fixed IPO price instead of the current market price
+  const price = isInIpo(token) ? Number(token.ipoPrice) : Number(token.price);
   const amountNum = Number(amount);
   const rawCost = price * amountNum;
   const [lifetimeCount, hasVeteran] = await Promise.all([
@@ -209,21 +242,23 @@ export async function executeBuy(
     { availableSupply: token.availableSupply - amount },
   );
 
+  const priceStr = price.toFixed(8);
+
   // Upsert holding — accumulate amount and cost basis if one already exists
-  const existingHolding = await Q.crypto.holding
+  const holding = await Q.crypto.holding
     .where({
       playerMinecraftUuid: playerUuid,
       tokenId: token.id,
     })
     .first();
 
-  if (existingHolding) {
+  if (holding) {
     await Q.crypto.holding.update(
-      { id: existingHolding.id },
+      { id: holding.id },
       {
-        amount: existingHolding.amount + amount,
+        amount: holding.amount + amount,
         totalCostBasis: (
-          Number(existingHolding.totalCostBasis) + rawCost
+          Number(holding.totalCostBasis) + rawCost
         ).toFixed(8),
         updatedAt: new Date(),
       },
@@ -238,7 +273,7 @@ export async function executeBuy(
   }
 
   // Record cost basis lot for FIFO P&L tracking on future sells
-  await recordCostBasisLot(playerUuid, token.id, amount, token.price);
+  await recordCostBasisLot(playerUuid, token.id, amount, priceStr);
 
   const txResult = await Q.crypto.transaction.createAndReturn({
     playerMinecraftUuid: playerUuid,
@@ -246,7 +281,7 @@ export async function executeBuy(
     type: "buy",
     trigger: "market",
     amount,
-    priceAtExecution: token.price,
+    priceAtExecution: priceStr,
     feeAmount: feeAmount.toFixed(8),
     totalCost: totalCost.toFixed(8),
   });
@@ -265,7 +300,7 @@ export async function executeBuy(
     symbol: token.symbol,
     type: "buy",
     amount,
-    priceAtExecution: token.price,
+    priceAtExecution: priceStr,
     feeAmount,
     totalCost,
   };
@@ -288,13 +323,19 @@ export async function executeBuy(
  * @param token - Token being sold
  * @param amount - Number of tokens to sell
  * @returns Trade result with transaction details including realized P&L
- * @throws Error on insufficient holdings or rate limit
+ * @throws Error if the token is still in its IPO phase, holdings are insufficient, or rate limit is exceeded
  */
 export async function executeSell(
   playerUuid: string,
   token: CryptoToken,
   amount: bigint,
 ): Promise<TradeResult> {
+  if (isInIpo(token)) {
+    throw new Error(
+      `${token.symbol} is in its IPO phase — selling is not allowed until trading opens`,
+    );
+  }
+
   if (amount <= 0n) {
     throw new Error("Amount must be positive");
   }

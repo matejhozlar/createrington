@@ -92,6 +92,12 @@ export const CRYPTO_CONFIG = {
   EVENT_ROLL_INTERVAL_MS: 3_600_000, // check every hour
   MAX_CONCURRENT_EVENTS: 2, // max simultaneous active events
 
+  // IPO (Initial Public Offering)
+  IPO_DURATION_MS: 3_600_000, // 1 hour
+  IPO_MAX_ALLOCATION_PERCENT: 0.05, // max 5% of supply per player during the subscription window
+  IPO_CHECK_INTERVAL_MS: 30_000, // check for ended IPOs every 30s
+  IPO_SPAWN_INTERVAL_MS: 6 * 3_600_000, // auto-spawn a new IPO memecoin every 6 hours
+
   // Snapshot Retention (seconds)
   RETENTION: {
     TICK: 2 * 60 * 60, // 2 hours

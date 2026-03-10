@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToastActions } from "@/hooks/use-toast";
+import { Clock, Rocket } from "lucide-react";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
 type TradeTab = "buy" | "sell";
@@ -14,6 +15,8 @@ interface TradePanelProps {
   symbol: string;
   price: string;
   isCrashed: boolean;
+  ipoEndsAt?: string | null;
+  ipoPrice?: string | null;
 }
 
 const ORDER_MODE_LABELS: Record<OrderMode, string> = {
@@ -23,13 +26,53 @@ const ORDER_MODE_LABELS: Record<OrderMode, string> = {
   take_profit: "Take-Profit",
 };
 
-export function TradePanel({ symbol, price, isCrashed }: TradePanelProps) {
+/**
+ * Trade panel for a single token — supports market, limit, stop-loss, and take-profit orders.
+ *
+ * When the token is in its IPO phase (`ipoEndsAt` is set and in the future) the panel switches
+ * to IPO mode: only buy orders are allowed at the fixed `ipoPrice`, and a per-user allocation
+ * cap is enforced. Normal order modes become available once the IPO ends.
+ */
+export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: TradePanelProps) {
   const { user } = useAuth();
   const toast = useToastActions();
   const [tab, setTab] = useState<TradeTab>("buy");
   const [orderMode, setOrderMode] = useState<OrderMode>("market");
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
+  const [ipoCountdown, setIpoCountdown] = useState("");
+
+  const isIpo = !!ipoEndsAt && new Date(ipoEndsAt) > new Date();
+
+  // IPO allocation query
+  const { data: allocation } = trpc.user.crypto.ipoAllocation.useQuery(
+    { symbol },
+    { enabled: isIpo && !!user, refetchInterval: 10_000 },
+  );
+
+  // IPO countdown timer
+  useEffect(() => {
+    if (!isIpo || !ipoEndsAt) return;
+
+    const update = () => {
+      const remaining = new Date(ipoEndsAt).getTime() - Date.now();
+      if (remaining <= 0) {
+        setIpoCountdown("Ended");
+        return;
+      }
+      const totalSec = Math.floor(remaining / 1000);
+      const hours = Math.floor(totalSec / 3600);
+      const minutes = Math.floor((totalSec % 3600) / 60);
+      const seconds = totalSec % 60;
+      if (hours > 0) setIpoCountdown(`${hours}h ${minutes}m ${seconds}s`);
+      else if (minutes > 0) setIpoCountdown(`${minutes}m ${seconds}s`);
+      else setIpoCountdown(`${seconds}s`);
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [isIpo, ipoEndsAt]);
 
   const utils = trpc.useUtils();
 
@@ -123,10 +166,10 @@ export function TradePanel({ symbol, price, isCrashed }: TradePanelProps) {
     buyMutation.isPending ||
     sellMutation.isPending ||
     placeOrderMutation.isPending;
-  const numPrice = Number(price);
+  const numPrice = isIpo ? Number(ipoPrice) : Number(price);
   const amountNum = parseInt(amount) || 0;
   const effectivePrice =
-    orderMode === "market" ? numPrice : Number(targetPrice) || 0;
+    isIpo || orderMode === "market" ? numPrice : Number(targetPrice) || 0;
   const estimatedCost = effectivePrice * amountNum;
 
   // For non-market orders, hide the buy/sell tabs for stop_loss and take_profit (always sell)
@@ -137,6 +180,87 @@ export function TradePanel({ symbol, price, isCrashed }: TradePanelProps) {
       <Card>
         <CardContent className="p-6 text-center text-muted-foreground">
           Sign in to trade
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // IPO-specific trade panel
+  if (isIpo) {
+    const remainingAllocation = allocation ? Number(allocation.remaining) : null;
+
+    return (
+      <Card className="border-amber-500/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Rocket className="h-4 w-4 text-amber-400" />
+              IPO: Buy {symbol}
+            </CardTitle>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" />
+              <span className="font-mono">{ipoCountdown}</span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Fixed price display */}
+          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">IPO Price (fixed)</span>
+              <span className="font-mono font-medium text-amber-400">
+                ${numPrice.toFixed(numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2)}
+              </span>
+            </div>
+            {remainingAllocation !== null && (
+              <div className="flex justify-between text-sm mt-2">
+                <span className="text-muted-foreground">Your remaining allocation</span>
+                <span className="font-mono font-medium">
+                  {remainingAllocation.toLocaleString()} tokens
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Amount input */}
+          <div>
+            <label className="text-sm text-muted-foreground">Amount</label>
+            <Input
+              type="number"
+              placeholder={remainingAllocation !== null ? `Max ${remainingAllocation.toLocaleString()}` : "0"}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min={1}
+              max={remainingAllocation ?? undefined}
+              className="font-mono"
+            />
+          </div>
+
+          {/* Estimated cost */}
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Estimated Cost</span>
+            <span className="font-mono">
+              ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+            </span>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Selling is disabled during the IPO phase. Normal trading begins when the IPO ends.
+          </p>
+
+          <Button
+            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-medium"
+            onClick={() => {
+              if (amountNum <= 0) {
+                toast.error("Enter a valid amount");
+                return;
+              }
+              buyMutation.mutate({ symbol, amount: amountNum });
+            }}
+            disabled={isPending || amountNum <= 0 || (remainingAllocation !== null && amountNum > remainingAllocation)}
+          >
+            {isPending ? "Processing..." : `Buy ${symbol} (IPO)`}
+          </Button>
         </CardContent>
       </Card>
     );

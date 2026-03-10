@@ -41,9 +41,10 @@ export interface OrderFillResult {
  * For limit buys, reserves the full cost (amount × targetPrice + fee) from the
  * player's balance. For sell-type orders, validates unreserved token holdings.
  * Enforces price direction constraints (e.g., limit buy must be below current price).
+ * Orders of any type are blocked while the token is in its IPO phase.
  *
  * @param playerUuid - Minecraft UUID of the order placer
- * @param token - Token to trade (must not be crashed or delisted)
+ * @param token - Token to trade (must not be crashed, delisted, or in IPO phase)
  * @param type - Order type (limit_buy, limit_sell, stop_loss, take_profit)
  * @param amount - Number of tokens
  * @param targetPrice - Trigger price for the order
@@ -63,6 +64,9 @@ export async function placeOrder(
   }
   if (token.delistedAt) {
     throw new Error(`Token ${token.symbol} has been delisted`);
+  }
+  if (token.ipoEndsAt && token.ipoEndsAt > new Date()) {
+    throw new Error(`${token.symbol} is in its IPO phase — limit/stop orders are not available until trading opens`);
   }
   if (amount <= 0n) {
     throw new Error("Amount must be positive");

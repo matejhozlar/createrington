@@ -6,6 +6,7 @@ import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { getRecentEvents } from "@/services/crypto/events/news-feed";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
+import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
 
 /**
  * Public Crypto Router
@@ -18,6 +19,7 @@ import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
  * - leaderboard: top traders ranked by net worth, P&L, or volume
  * - newsFeed: recent persisted market events from the database
  * - activeEvents: live in-memory events currently affecting prices
+ * - activeIpo: currently active IPO token with sale progress and per-player cap
  * - tokenDistribution: top-20 holder breakdown for a given token
  */
 export const cryptoRouter = router({
@@ -62,6 +64,8 @@ export const cryptoRouter = router({
         crashedAt: t.crashedAt?.toISOString() ?? null,
         createdAt: t.createdAt.toISOString(),
         delistedAt: t.delistedAt?.toISOString() ?? null,
+        ipoEndsAt: t.ipoEndsAt?.toISOString() ?? null,
+        ipoPrice: t.ipoPrice,
         metadata: t.metadata,
       }));
     }),
@@ -92,6 +96,8 @@ export const cryptoRouter = router({
         crashedAt: token.crashedAt?.toISOString() ?? null,
         createdAt: token.createdAt.toISOString(),
         delistedAt: token.delistedAt?.toISOString() ?? null,
+        ipoEndsAt: token.ipoEndsAt?.toISOString() ?? null,
+        ipoPrice: token.ipoPrice,
         metadata: token.metadata,
       };
     }),
@@ -216,6 +222,43 @@ export const cryptoRouter = router({
           activeUntil: e.activeUntil?.toISOString() ?? null,
         };
       });
+    }),
+
+  activeIpo: publicProcedure
+    .meta({ description: "Get the currently active IPO token, if any" })
+    .query(async () => {
+      const memecoins = await Q.crypto.token
+        .where({ category: "memecoin", isCrashed: false })
+        .all();
+
+      const now = new Date();
+      const ipoToken = memecoins.find((t) => t.ipoEndsAt && t.ipoEndsAt > now);
+
+      if (!ipoToken) return null;
+
+      const totalSold = ipoToken.totalSupply - ipoToken.availableSupply;
+      const holders = await Q.crypto.holding
+        .where({ tokenId: ipoToken.id })
+        .count();
+      const maxPerPlayer = Math.floor(
+        Number(ipoToken.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+      );
+
+      return {
+        id: ipoToken.id,
+        name: ipoToken.name,
+        symbol: ipoToken.symbol,
+        description: ipoToken.description,
+        category: ipoToken.category,
+        price: ipoToken.ipoPrice!,
+        totalSupply: String(ipoToken.totalSupply),
+        availableSupply: String(ipoToken.availableSupply),
+        ipoEndsAt: ipoToken.ipoEndsAt!.toISOString(),
+        ipoPrice: ipoToken.ipoPrice!,
+        totalSold: String(totalSold),
+        participants: holders,
+        maxPerPlayer,
+      };
     }),
 
   tokenDistribution: publicProcedure

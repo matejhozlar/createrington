@@ -72,6 +72,110 @@ export async function sendNewListingNotification(
 }
 
 /**
+ * Sends a Discord embed announcing an IPO launch with a countdown timer.
+ *
+ * @param name - Display name of the token
+ * @param symbol - Ticker symbol
+ * @param ipoPrice - Fixed price during the IPO
+ * @param totalSupply - Total supply as a numeric string
+ * @param ipoEndsAt - When the IPO window closes
+ * @returns Promise that resolves when the notification has been sent
+ */
+export async function sendIpoAnnouncementNotification(
+  name: string,
+  symbol: string,
+  ipoPrice: string,
+  totalSupply: string,
+  ipoEndsAt: Date,
+): Promise<void> {
+  const durationMs = ipoEndsAt.getTime() - Date.now();
+  const durationMin = Math.round(durationMs / 60_000);
+  const maxPerPlayer = Math.floor(Number(totalSupply) * 0.05);
+
+  const embed = createEmbed()
+    .title("IPO Launch!")
+    .color(EmbedColors.Premium)
+    .description(
+      `**${name}** (\`${symbol}\`) is launching via IPO!\nGet in at the fixed price before open trading begins.`,
+    )
+    .field("IPO Price", formatPrice(ipoPrice), true)
+    .field("Total Supply", Number(totalSupply).toLocaleString(), true)
+    .field("Max Per Player", maxPerPlayer.toLocaleString(), true)
+    .field("IPO Ends", `<t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>`, true)
+    .field("Duration", `${durationMin} minutes`, true)
+    .footer("Use /crypto buy to participate in the IPO")
+    .timestamp();
+
+  try {
+    await Discord.Messages.send({
+      channelId: Discord.Channels.general.BOT_SPAM,
+      embeds: embed.build(),
+    });
+  } catch (err) {
+    logger.error("Failed to send IPO announcement notification to Discord:", err);
+  }
+
+  createMarketEvent({
+    type: "ipo_launch",
+    title: `IPO: ${name} (${symbol})`,
+    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends <t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>.`,
+    severity: "info",
+  }).catch((err) => logger.error("Failed to record IPO launch event:", err));
+}
+
+/**
+ * Sends a Discord embed summarizing IPO results after the window closes.
+ *
+ * @param name - Display name of the token
+ * @param symbol - Ticker symbol
+ * @param ipoPrice - The fixed IPO price
+ * @param totalSold - Number of tokens sold during IPO
+ * @param totalSupply - Total supply
+ * @param participants - Number of unique players who bought
+ * @returns Promise that resolves when the notification has been sent
+ */
+export async function sendIpoResultNotification(
+  name: string,
+  symbol: string,
+  ipoPrice: string,
+  totalSold: bigint,
+  totalSupply: bigint,
+  participants: number,
+): Promise<void> {
+  const soldPercent = Number(totalSold) / Number(totalSupply) * 100;
+  const totalRaised = Number(totalSold) * Number(ipoPrice);
+
+  const embed = createEmbed()
+    .title("IPO Complete!")
+    .color(EmbedColors.Success)
+    .description(
+      `**${name}** (\`${symbol}\`) IPO has ended. The token is now open for trading!`,
+    )
+    .field("IPO Price", formatPrice(ipoPrice), true)
+    .field("Tokens Sold", `${Number(totalSold).toLocaleString()} (${soldPercent.toFixed(1)}%)`, true)
+    .field("Total Raised", formatPrice(totalRaised), true)
+    .field("Participants", `${participants}`, true)
+    .footer("Normal trading has begun — price will now fluctuate")
+    .timestamp();
+
+  try {
+    await Discord.Messages.send({
+      channelId: Discord.Channels.general.BOT_SPAM,
+      embeds: embed.build(),
+    });
+  } catch (err) {
+    logger.error("Failed to send IPO result notification to Discord:", err);
+  }
+
+  createMarketEvent({
+    type: "ipo_complete",
+    title: `IPO Complete: ${name} (${symbol})`,
+    description: `${Number(totalSold).toLocaleString()} tokens sold to ${participants} players, raising ${formatPrice(totalRaised)}. Trading is now open.`,
+    severity: "info",
+  }).catch((err) => logger.error("Failed to record IPO result event:", err));
+}
+
+/**
  * Sends a Discord embed announcing a token crash and records a news feed event.
  *
  * @param name - Display name of the crashed token
