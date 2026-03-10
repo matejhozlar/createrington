@@ -20,9 +20,14 @@ interface CryptoDataProviderProps {
 /**
  * Crypto Data Provider
  *
- * Manages real-time crypto price data from WebSocket.
- * Subscribes to CRYPTO_MARKET room and stores live prices in state.
- * Components use the `getPrice` method to overlay live prices on top of tRPC data.
+ * Manages real-time crypto market data delivered over WebSocket:
+ * - Subscribes to the `crypto:market` room on connect (when autoSubscribe is enabled)
+ * - Maintains a live price map keyed by token symbol
+ * - Listens for order fill events and shows toasts + invalidates relevant queries
+ * - Listens for market event broadcasts and reflects them in active-events / news-feed queries
+ * - Unsubscribes from the WebSocket room on unmount
+ *
+ * NOTE: Must be rendered inside WebSocketProvider — throws if the context is missing
  */
 export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   children,
@@ -46,7 +51,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   >(new Map());
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Handle price updates from WebSocket
+  /** Merges an incoming batch of price updates into the live price map */
   const handlePriceUpdate = useCallback(
     (payload: CryptoPriceUpdatePayload[]) => {
       setPrices((prev) => {
@@ -60,7 +65,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     [],
   );
 
-  // Subscribe to crypto market updates
+  /** Subscribes to the `crypto:market` WebSocket room and marks the provider as subscribed */
   const subscribeToUpdates = useCallback(async () => {
     try {
       await subscribe("crypto:market" as SubscriptionType);
@@ -70,7 +75,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     }
   }, [subscribe]);
 
-  // Unsubscribe from crypto market updates
+  /** Unsubscribes from the `crypto:market` WebSocket room and clears the subscribed flag */
   const unsubscribeFromUpdates = useCallback(async () => {
     try {
       await unsubscribe("crypto:market" as SubscriptionType);
@@ -80,7 +85,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     }
   }, [unsubscribe]);
 
-  // Get price for a symbol
+  /** Returns the latest live price payload for a given token symbol, or undefined if not yet received */
   const getPrice = useCallback(
     (symbol: string): CryptoPriceUpdatePayload | undefined => {
       return prices.get(symbol);
@@ -88,7 +93,6 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     [prices],
   );
 
-  // Auto-subscribe on connect
   useEffect(() => {
     if (isConnected && autoSubscribe) {
       subscribe("crypto:market" as SubscriptionType).then(
@@ -98,7 +102,6 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     }
   }, [isConnected, autoSubscribe, subscribe]);
 
-  // Listen for price update events
   useEffect(() => {
     if (!isConnected) return;
 
@@ -109,7 +112,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     return unsub;
   }, [isConnected, on, handlePriceUpdate]);
 
-  // Listen for order fill events (broadcast to all, filter to own)
+  // Order fill events are broadcast to the whole room — filter down to the authenticated player's UUID
   useEffect(() => {
     if (!isConnected || !user) return;
 
@@ -130,7 +133,39 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     return unsub;
   }, [isConnected, on, user, toast, utils]);
 
-  // Cleanup on unmount
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const unsub = on("crypto:market:event", (data) => {
+      const payload = data as {
+        id: number;
+        type: string;
+        title: string;
+        severity: string;
+        tokenSymbol?: string;
+        activeUntil?: string;
+      };
+
+      // Invalidate active events query to refresh the banner
+      utils.public.crypto.activeEvents.invalidate();
+      utils.public.crypto.newsFeed.invalidate();
+
+      const message = payload.tokenSymbol
+        ? `${payload.title} [${payload.tokenSymbol}]`
+        : payload.title;
+
+      if (payload.severity === "critical") {
+        toast.error(message);
+      } else if (payload.severity === "warning") {
+        toast.warning(message);
+      } else {
+        toast.info(message);
+      }
+    });
+
+    return unsub;
+  }, [isConnected, on, toast, utils]);
+
   useEffect(() => {
     return () => {
       if (isSubscribed) {

@@ -4,8 +4,22 @@ import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { getRecentEvents } from "@/services/crypto/events/news-feed";
+import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
+import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 
-/** Public crypto router — token listings, price history, and market overview. */
+/**
+ * Public Crypto Router
+ *
+ * Exposes read-only market data accessible without authentication:
+ * - list: paginated token catalogue with optional category/crash filters
+ * - get: single token lookup by symbol
+ * - priceHistory: OHLCV candlestick snapshots at configurable intervals
+ * - marketOverview: aggregate market cap and per-category token counts
+ * - leaderboard: top traders ranked by net worth, P&L, or volume
+ * - newsFeed: recent persisted market events from the database
+ * - activeEvents: live in-memory events currently affecting prices
+ * - tokenDistribution: top-20 holder breakdown for a given token
+ */
 export const cryptoRouter = router({
   list: publicProcedure
     .meta({ description: "List all active crypto tokens" })
@@ -183,6 +197,27 @@ export const cryptoRouter = router({
       }));
     }),
 
+  activeEvents: publicProcedure
+    .meta({ description: "Get currently active market events" })
+    .query(() => {
+      const events = getActiveEventsInMemory();
+      return events.map((e) => {
+        // Resolve display metadata from the static definition registry; fall back gracefully if the type is unknown
+        const def =
+          EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
+        return {
+          id: e.eventId,
+          type: e.type,
+          name: def?.name ?? e.type,
+          description: def?.description ?? null,
+          tokenId: e.tokenId,
+          tokenSymbol: e.tokenSymbol,
+          severity: def?.severity ?? "info",
+          activeUntil: e.activeUntil?.toISOString() ?? null,
+        };
+      });
+    }),
+
   tokenDistribution: publicProcedure
     .meta({ description: "Get token ownership distribution" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
@@ -210,6 +245,7 @@ export const cryptoRouter = router({
         .map((h) => ({
           playerName: nameMap.get(h.playerMinecraftUuid) ?? "Unknown",
           amount: String(h.amount),
+          // Scale by 10 000 in BigInt arithmetic before dividing to preserve two decimal places of precision
           percentage:
             totalHeld > 0n
               ? Number((h.amount * 10000n) / totalHeld) / 100

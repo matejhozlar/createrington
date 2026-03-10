@@ -3,6 +3,8 @@ import { createEmbed, EmbedColors } from "@/discord/embeds";
 import { createMarketEvent } from "./events/news-feed";
 import { Q } from "@/db";
 import { getLeaderboard } from "./analytics/leaderboard";
+import { EVENT_DEFINITIONS } from "./events/event-definitions";
+import type { ActiveEvent } from "./events/event-engine";
 
 // ==========================================================================
 // HELPERS
@@ -145,6 +147,139 @@ export async function sendWhaleAlertNotification(
   } catch (err) {
     logger.error("Failed to send whale alert notification to Discord:", err);
   }
+}
+
+// ==========================================================================
+// MARKET EVENT NOTIFICATIONS
+// ==========================================================================
+
+/**
+ * Sends a Discord embed announcing a market event (bull run, bear market, etc.).
+ *
+ * Resolves the event definition by type, maps its severity to an embed color,
+ * and substitutes the `{token}` placeholder in the description when the event
+ * targets a specific token. Duration is shown in hours for events longer than
+ * 60 minutes, otherwise in minutes. Instant events (no `activeUntil`) are
+ * labelled as "Instant".
+ *
+ * @param event - The active event to announce
+ * @returns Promise that resolves when the notification has been sent
+ */
+export async function sendMarketEventNotification(
+  event: ActiveEvent,
+): Promise<void> {
+  const def = EVENT_DEFINITIONS[event.type as keyof typeof EVENT_DEFINITIONS];
+  if (!def) return;
+
+  // Maps event severity levels to their corresponding embed accent colors
+  const colorMap: Record<string, number> = {
+    info: EmbedColors.Info,
+    warning: EmbedColors.Warning,
+    critical: EmbedColors.Error,
+  };
+
+  let description = def.description;
+  if (event.tokenSymbol) {
+    // Replace the {token} template placeholder with the bolded token symbol
+    description = description.replace(
+      "{token}",
+      `**${event.tokenSymbol}**`,
+    );
+  }
+
+  const embed = createEmbed()
+    .title(`Market Event: ${def.name}`)
+    .color(colorMap[def.severity] ?? EmbedColors.Info)
+    .description(description);
+
+  if (event.activeUntil) {
+    const durationMs = event.activeUntil.getTime() - Date.now();
+    const durationMin = Math.round(durationMs / 60_000);
+    if (durationMin > 60) {
+      embed.field(
+        "Duration",
+        `${(durationMin / 60).toFixed(1)} hours`,
+        true,
+      );
+    } else {
+      embed.field("Duration", `${durationMin} minutes`, true);
+    }
+  } else {
+    embed.field("Type", "Instant", true);
+  }
+
+  if (event.tokenSymbol) {
+    embed.field("Affected Token", event.tokenSymbol, true);
+  }
+
+  embed.timestamp();
+
+  try {
+    await Discord.Messages.send({
+      channelId: Discord.Channels.general.BOT_SPAM,
+      embeds: embed.build(),
+    });
+  } catch (err) {
+    logger.error("Failed to send market event notification to Discord:", err);
+  }
+}
+
+// ==========================================================================
+// MARKET SUMMARY
+// ==========================================================================
+
+/**
+ * Queries the database and returns a live market summary snapshot.
+ *
+ * Used to power the `/crypto market` Discord command and any surface that
+ * needs an at-a-glance view of the current market state.
+ *
+ * @returns An object containing total market cap, active token counts by
+ *   category (stable, blue-chip, memecoin, seasonal), and 24-hour trading
+ *   statistics (volume, trade count, unique trader count)
+ */
+export async function getMarketSummary() {
+  const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
+  const activeTokens = tokens.filter((t) => !t.delistedAt);
+
+  const totalMarketCap = activeTokens.reduce((sum, t) => {
+    return sum + Number(t.price) * Number(t.totalSupply - t.availableSupply);
+  }, 0);
+
+  const stableCount = activeTokens.filter(
+    (t) => t.category === "stable",
+  ).length;
+  const bluechipCount = activeTokens.filter(
+    (t) => t.category === "blue_chip",
+  ).length;
+  const memecoinCount = activeTokens.filter(
+    (t) => t.category === "memecoin",
+  ).length;
+  const seasonalCount = activeTokens.filter(
+    (t) => t.category === "seasonal",
+  ).length;
+
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const allTxs = await Q.crypto.transaction.where({}).all();
+  const dailyTxs = allTxs.filter((tx) => tx.createdAt >= dayAgo);
+  const dailyVolume = dailyTxs.reduce(
+    (sum, tx) => sum + Math.abs(Number(tx.totalCost)),
+    0,
+  );
+  const uniqueTraders = new Set(dailyTxs.map((tx) => tx.playerMinecraftUuid))
+    .size;
+
+  return {
+    totalMarketCap,
+    activeTokenCount: activeTokens.length,
+    stableCount,
+    bluechipCount,
+    memecoinCount,
+    seasonalCount,
+    dailyVolume,
+    dailyTrades: dailyTxs.length,
+    uniqueTraders,
+  };
 }
 
 // ==========================================================================

@@ -18,6 +18,7 @@ import {
   type BluechipMetricConfig,
 } from "../crypto.config";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
+import { resolveEffects } from "../events/event-engine";
 
 /** Result of a single price tick, consumed by persistence and broadcast layers */
 export interface PriceUpdate {
@@ -127,8 +128,11 @@ export async function refresh24hAverages(): Promise<void> {
 /**
  * Determines which volatility tier a price falls into.
  *
+ * Tiers are checked in ascending order — the first threshold that the price
+ * falls below determines the tier; prices above all thresholds land in MEGA.
+ *
  * @private
- * @param price - Current token price
+ * @param price - Current token price in coin units
  * @returns The matching volatility tier key
  */
 function getVolatilityTier(price: number): VolatilityTier {
@@ -141,7 +145,7 @@ function getVolatilityTier(price: number): VolatilityTier {
 }
 
 /**
- * Returns a random float in the range [min, max).
+ * Returns a random float in [min, max).
  *
  * @private
  * @param min - Lower bound (inclusive)
@@ -159,11 +163,12 @@ function randomBetween(min: number, max: number): number {
 /**
  * Computes the next price for a memecoin token using the multi-factor model:
  *
- *   1. BASE_CHANGE     = random(-volatility, +volatility)
+ *   1. BASE_CHANGE     = random(-volatility, +volatility) × event volatility multiplier
  *   2. MOMENTUM        = streak_direction × strength × min(streak, cap)
  *   3. DEMAND_PRESSURE = (netVolume / availableSupply) × sensitivity
  *   4. MEAN_REVERSION  = ±strength when price is far from 24h average
- *   5. FINAL           = (BASE + MOMENTUM + DEMAND + REVERSION) applied to price
+ *   5. EVENT_BIAS      = additive direction bias from active market events
+ *   6. FINAL           = (BASE + MOMENTUM + DEMAND + REVERSION + EVENT_BIAS) applied to price
  *
  * @param token - The memecoin token to price
  * @returns A PriceUpdate describing the old and new price, plus crash flag
@@ -171,10 +176,14 @@ function randomBetween(min: number, max: number): number {
 export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   const currentPrice = Number(token.price);
 
-  // --- 1. Random walk component ---
+  // Resolve active event effects for this token
+  const eventEffects = resolveEffects(token.id);
+
+  // --- 1. Random walk component (with event volatility multiplier) ---
   const tier = getVolatilityTier(currentPrice);
   const { minChange, maxChange } = CRYPTO_CONFIG.VOLATILITY[tier];
-  const volatility = randomBetween(minChange, maxChange);
+  const volatility =
+    randomBetween(minChange, maxChange) * eventEffects.volatilityMultiplier;
   const direction =
     Math.random() < CRYPTO_CONFIG.MEMECOIN_UPWARD_BIAS ? 1 : -1;
   const baseChange = direction * volatility;
@@ -223,14 +232,17 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
     }
   }
 
-  // --- 5. Final price ---
-  const totalChange = baseChange + momentumBias + demandPressure + meanReversion;
+  // --- 5. Event direction bias ---
+  const eventBias = eventEffects.directionBias;
+
+  // --- 6. Final price ---
+  const totalChange =
+    baseChange + momentumBias + demandPressure + meanReversion + eventBias;
   let newPrice = currentPrice * (1 + totalChange);
 
   const isCrashed = newPrice < CRYPTO_CONFIG.MEMECOIN_CRASH_THRESHOLD;
   if (isCrashed) {
     newPrice = 0;
-    // Reset momentum on crash
     momentumMap.delete(token.id);
   }
 
@@ -245,9 +257,14 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   };
 }
 
+// ---------------------------------------------------------------------------
+// STABLECOIN PRICE TICK
+// ---------------------------------------------------------------------------
+
 /**
  * Computes the next price for a stablecoin token.
  * Price inflates proportionally to active player count and decays when no players are online.
+ * Inflation rate is modified by active market events (e.g. Gold Rush).
  * Never drops below the configured floor price.
  *
  * @param token - The stablecoin token to price
@@ -263,10 +280,14 @@ export function tickStablecoinPrice(
     ? Number(token.floorPrice)
     : CRYPTO_CONFIG.STABLECOIN_FLOOR_PRICE;
 
+  const eventEffects = resolveEffects(token.id);
+
   let priceChange: number;
   if (activePlayerCount > 0) {
     priceChange =
-      CRYPTO_CONFIG.STABLECOIN_INFLATION_PER_PLAYER * activePlayerCount;
+      CRYPTO_CONFIG.STABLECOIN_INFLATION_PER_PLAYER *
+      activePlayerCount *
+      eventEffects.stablecoinInflationMultiplier;
   } else {
     priceChange = -CRYPTO_CONFIG.STABLECOIN_DECAY_RATE;
   }

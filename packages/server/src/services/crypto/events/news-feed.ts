@@ -6,7 +6,18 @@ export type MarketEventType =
 	| "crash"
 	| "whale_trade"
 	| "price_milestone"
-	| "high_volume";
+	| "high_volume"
+	| "bull_run"
+	| "bear_market"
+	| "flash_crash"
+	| "pump_and_dump"
+	| "liquidity_drought"
+	| "gold_rush"
+	| "supply_shock"
+	| "tax_holiday"
+	| "whale_dump"
+	| "new_listing_frenzy"
+	| "token_delisted";
 
 /**
  * Persists a market event to the news feed.

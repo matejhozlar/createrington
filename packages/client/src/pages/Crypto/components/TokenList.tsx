@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skull, TrendingUp, TrendingDown } from "lucide-react";
+import { Skull, TrendingUp, TrendingDown, Zap } from "lucide-react";
+import {
+  useActiveEventTokenIds,
+  useHasMarketWideEvent,
+} from "./useActiveEvents";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -37,6 +41,9 @@ export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const { getPrice } = useCryptoData();
+
+  const eventTokenIds = useActiveEventTokenIds();
+  const hasMarketWideEvent = useHasMarketWideEvent();
 
   const { data: tokens, isLoading } = trpc.public.crypto.list.useQuery(
     filter === "all"
@@ -86,10 +93,15 @@ export function TokenList() {
           <TableBody>
             {tokens?.map((token) => {
               const livePrice = getPrice(token.symbol);
+              // Prefer live WebSocket price over the tRPC query snapshot
               const displayPrice = livePrice?.price ?? token.price;
               const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
               const availableSupply = livePrice?.availableSupply ?? token.availableSupply;
               const change24h = livePrice?.change24h ?? 0;
+              // Highlight tokens affected by a market-wide event or a token-specific event
+              const hasEvent =
+                hasMarketWideEvent ||
+                eventTokenIds.has(token.id);
 
               return (
                 <TableRow
@@ -104,6 +116,9 @@ export function TokenList() {
                     <div className="flex items-center gap-2">
                       {isCrashed && (
                         <Skull className="h-4 w-4 text-red-500" />
+                      )}
+                      {!isCrashed && hasEvent && (
+                        <Zap className="h-4 w-4 text-yellow-400 animate-pulse" />
                       )}
                       <div>
                         <p className="font-medium">{token.name}</p>

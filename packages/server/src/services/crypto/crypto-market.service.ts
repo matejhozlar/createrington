@@ -26,7 +26,18 @@ import type { WebSocketService } from "../websocket";
 import { SocketEvent } from "@createrington/shared/socket";
 import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
-import { sendNewListingNotification, sendCrashNotification, sendWeeklyMarketReport } from "./notifications";
+import { sendNewListingNotification, sendCrashNotification, sendWeeklyMarketReport, sendMarketEventNotification } from "./notifications";
+import {
+  rollForEvents,
+  restoreActiveEvents,
+  getActiveEventsInMemory,
+  triggerEvent as triggerMarketEvent,
+  type ActiveEvent,
+} from "./events/event-engine";
+import { EVENT_DEFINITIONS, type MarketEventType } from "./events/event-definitions";
+import { createMarketEvent } from "./events/news-feed";
+import { R } from "@/db";
+import { BalanceTransactionType } from "@/db/repositories/balance";
 
 /**
  * Crypto Market Service
@@ -52,6 +63,8 @@ export class CryptoMarketService {
   private minuteAggregationInterval: ReturnType<typeof setInterval> | null =
     null;
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
+  private eventRollInterval: ReturnType<typeof setInterval> | null = null;
+  private seasonalCheckInterval: ReturnType<typeof setInterval> | null = null;
   private portfolioSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
   private weeklyReportTimeout: ReturnType<typeof setTimeout> | null = null;
   private wsService: WebSocketService | null = null;
@@ -117,6 +130,9 @@ export class CryptoMarketService {
       }
     }
 
+    // Restore active market events from DB
+    await restoreActiveEvents();
+
     // Start price engine intervals
     this.startMemecoinTicker();
     this.startStablecoinTicker();
@@ -124,6 +140,8 @@ export class CryptoMarketService {
     this.startCleanupJob();
     this.startMinuteAggregation();
     this.startOrderExpiryJob();
+    this.startEventRoller();
+    this.startSeasonalTokenCheck();
     this.schedulePortfolioSnapshot();
     this.scheduleWeeklyReport();
 
@@ -139,6 +157,8 @@ export class CryptoMarketService {
     if (this.minuteAggregationInterval)
       clearInterval(this.minuteAggregationInterval);
     if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
+    if (this.eventRollInterval) clearInterval(this.eventRollInterval);
+    if (this.seasonalCheckInterval) clearInterval(this.seasonalCheckInterval);
     if (this.portfolioSnapshotTimeout) clearTimeout(this.portfolioSnapshotTimeout);
     if (this.weeklyReportTimeout) clearTimeout(this.weeklyReportTimeout);
 
@@ -726,6 +746,169 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
+  // EVENT ENGINE
+  // ==========================================================================
+
+  /** @private Rolls for random market events every hour */
+  private startEventRoller(): void {
+    this.eventRollInterval = setInterval(
+      async () => {
+        try {
+          const newEvents = await rollForEvents();
+          for (const event of newEvents) {
+            this.broadcastMarketEvent(event);
+            sendMarketEventNotification(event).catch((err) =>
+              logger.error("Failed to send event notification:", err),
+            );
+          }
+        } catch (err) {
+          logger.error("Event roll failed:", err);
+        }
+      },
+      CRYPTO_CONFIG.EVENT_ROLL_INTERVAL_MS,
+    );
+  }
+
+  /** @private Broadcasts a market event to WebSocket subscribers */
+  private broadcastMarketEvent(event: ActiveEvent): void {
+    if (!this.wsService) return;
+
+    this.wsService.broadcastToRoom(
+      RoomManager.getCryptoMarketRoom(),
+      SocketEvent.CRYPTO_MARKET_EVENT,
+      {
+        id: event.eventId,
+        type: event.type,
+        title:
+          EVENT_DEFINITIONS[event.type as keyof typeof EVENT_DEFINITIONS]
+            ?.name ?? event.type,
+        tokenId: event.tokenId,
+        tokenSymbol: event.tokenSymbol,
+        severity:
+          EVENT_DEFINITIONS[event.type as keyof typeof EVENT_DEFINITIONS]
+            ?.severity ?? "info",
+        activeUntil: event.activeUntil?.toISOString() ?? null,
+      },
+    );
+  }
+
+  // ==========================================================================
+  // SEASONAL TOKEN MANAGEMENT
+  // ==========================================================================
+
+  /** @private Checks for expired seasonal tokens every 10 minutes */
+  private startSeasonalTokenCheck(): void {
+    this.seasonalCheckInterval = setInterval(
+      async () => {
+        try {
+          await this.checkExpiredSeasonalTokens();
+        } catch (err) {
+          logger.error("Seasonal token check failed:", err);
+        }
+      },
+      10 * 60 * 1000,
+    );
+  }
+
+  /**
+   * Checks for seasonal tokens past their delist date and auto-sells all holdings.
+   * @private
+   */
+  private async checkExpiredSeasonalTokens(): Promise<void> {
+    const seasonalTokens = await Q.crypto.token
+      .where({ category: "seasonal" })
+      .all();
+
+    const now = new Date();
+
+    for (const token of seasonalTokens) {
+      if (!token.delistedAt || token.delistedAt > now) continue;
+      if (token.isCrashed) continue; // already processed
+
+      await this.delistToken(token.id);
+    }
+  }
+
+  /**
+   * Delists a token: auto-sells all player holdings at current price
+   * and marks the token as delisted.
+   *
+   * @param tokenId - ID of the token to delist
+   */
+  async delistToken(tokenId: number): Promise<void> {
+    const token = await Q.crypto.token.get({ id: tokenId });
+    if (token.isCrashed) return;
+
+    const finalPrice = Number(token.price);
+
+    // Find all holders
+    const holdings = await Q.crypto.holding
+      .where({ tokenId: token.id })
+      .all();
+
+    // Auto-sell each holder's position at the final price
+    for (const holding of holdings) {
+      const amount = Number(holding.amount);
+      const revenue = amount * finalPrice;
+
+      if (revenue > 0) {
+        await R.balanceRepo.add(
+          { minecraftUuid: holding.playerMinecraftUuid },
+          revenue,
+          `Auto-delist: ${amount} ${token.symbol} @ $${finalPrice.toFixed(4)}`,
+          BalanceTransactionType.CRYPTO_SELL,
+          {
+            tokenId: token.id,
+            tokenSymbol: token.symbol,
+            amount,
+            price: finalPrice,
+            fee: 0,
+            trigger: "auto_delist",
+          },
+        );
+      }
+
+      // Record the transaction
+      await Q.crypto.transaction.create({
+        playerMinecraftUuid: holding.playerMinecraftUuid,
+        tokenId: token.id,
+        type: "sell",
+        trigger: "auto_delist",
+        amount: holding.amount,
+        priceAtExecution: token.price,
+        feeAmount: "0",
+        totalCost: revenue.toFixed(8),
+      });
+
+      // Delete the holding
+      await Q.crypto.holding.delete({ id: holding.id });
+    }
+
+    // Mark token as delisted
+    await Q.crypto.token.update(
+      { id: token.id },
+      {
+        delistedAt: new Date(),
+        isCrashed: true, // prevents further trading
+        crashedAt: new Date(),
+      },
+    );
+
+    // Record news event
+    await createMarketEvent({
+      type: "token_delisted",
+      title: `${token.name} (${token.symbol}) Delisted`,
+      description: `All holdings were auto-sold at $${finalPrice.toFixed(4)}. ${holdings.length} holders received payouts.`,
+      tokenId: token.id,
+      severity: "warning",
+    });
+
+    logger.info(
+      `Delisted token ${token.symbol}: ${holdings.length} holdings auto-sold at $${finalPrice.toFixed(4)}`,
+    );
+  }
+
+  // ==========================================================================
   // PUBLIC API
   // ==========================================================================
 
@@ -757,5 +940,87 @@ export class CryptoMarketService {
    */
   async getActiveTokens(): Promise<CryptoToken[]> {
     return Q.crypto.token.where({ isCrashed: false }).all();
+  }
+
+  /** Returns the currently active market events */
+  getActiveEvents(): ActiveEvent[] {
+    return getActiveEventsInMemory();
+  }
+
+  /**
+   * Manually triggers a market event (admin action).
+   *
+   * @param eventType - The type of market event to trigger
+   * @param tokenId - Optional token to scope the event to a specific asset
+   * @returns The activated event, or null if the event type could not be triggered
+   */
+  async triggerEvent(
+    eventType: MarketEventType,
+    tokenId?: number,
+  ): Promise<ActiveEvent | null> {
+    const event = await triggerMarketEvent(eventType, tokenId);
+    if (event) {
+      this.broadcastMarketEvent(event);
+      sendMarketEventNotification(event).catch((err) =>
+        logger.error("Failed to send event notification:", err),
+      );
+    }
+    return event;
+  }
+
+  /**
+   * Creates a new token (used by admin for seasonal/event tokens).
+   * Sends a Discord new-listing notification on success.
+   *
+   * @param params - Token creation parameters
+   * @param params.name - Display name of the token
+   * @param params.symbol - Unique ticker symbol (e.g. "DOGE")
+   * @param params.description - Optional description shown in the market UI
+   * @param params.category - Token category controlling price engine behavior
+   * @param params.totalSupply - Total number of units to mint
+   * @param params.price - Initial price as a decimal string
+   * @param params.floorPrice - Optional minimum price floor
+   * @param params.delistedAt - Optional date after which the token is auto-delisted
+   * @returns The newly created token record
+   */
+  async createToken(params: {
+    name: string;
+    symbol: string;
+    description?: string;
+    category: "stable" | "blue_chip" | "memecoin" | "seasonal";
+    totalSupply: bigint;
+    price: string;
+    floorPrice?: string;
+    delistedAt?: Date;
+  }): Promise<CryptoToken> {
+    // Check for duplicate symbol
+    const existing = await Q.crypto.token.find({ symbol: params.symbol });
+    if (existing) {
+      throw new Error(`Token with symbol ${params.symbol} already exists`);
+    }
+
+    const token = await Q.crypto.token.createAndReturn({
+      name: params.name,
+      symbol: params.symbol,
+      description: params.description ?? null,
+      category: params.category,
+      totalSupply: params.totalSupply,
+      availableSupply: params.totalSupply,
+      price: params.price,
+      floorPrice: params.floorPrice ?? null,
+      delistedAt: params.delistedAt ?? null,
+      metadata: {},
+    });
+
+    sendNewListingNotification(
+      token.name,
+      token.symbol,
+      token.price,
+      String(token.totalSupply),
+    ).catch((err) =>
+      logger.error("Failed to send new listing notification:", err),
+    );
+
+    return token;
   }
 }

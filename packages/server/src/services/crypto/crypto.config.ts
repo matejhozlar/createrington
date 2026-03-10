@@ -1,6 +1,14 @@
 /**
  * Central configuration for the in-game crypto market system.
- * All tunable constants (tick rates, fees, volatility, retention) live here.
+ *
+ * All tunable constants live here, grouped by concern:
+ * - Tick intervals per token category (memecoin, stablecoin, blue-chip)
+ * - Memecoin price dynamics (volatility tiers, momentum, demand pressure, mean reversion)
+ * - Stablecoin and blue-chip pricing parameters
+ * - Trading limits, fees, and volume discounts
+ * - Social features (watchlist, alerts, whale threshold)
+ * - Market events and snapshot retention windows
+ * - Blue-chip metric mappings (Minecraft stat categories per symbol)
  */
 export const CRYPTO_CONFIG = {
   // Price Engine
@@ -80,6 +88,10 @@ export const CRYPTO_CONFIG = {
   WHALE_TRADE_THRESHOLD: 0.05, // 5% of token supply
   PORTFOLIO_SNAPSHOT_HOUR: 4, // 04:00 daily
 
+  // Market Events
+  EVENT_ROLL_INTERVAL_MS: 3_600_000, // check every hour
+  MAX_CONCURRENT_EVENTS: 2, // max simultaneous active events
+
   // Snapshot Retention (seconds)
   RETENTION: {
     TICK: 2 * 60 * 60, // 2 hours
@@ -87,6 +99,7 @@ export const CRYPTO_CONFIG = {
     HOURLY: 30 * 24 * 60 * 60, // 30 days
     DAILY: 365 * 24 * 60 * 60, // 1 year
   },
+
   // Blue-Chip Metric Mapping (symbol → how to extract the metric)
   // statCategory follows Minecraft's namespaced stat key (e.g. "minecraft:mined")
   BLUECHIP_METRICS: {

@@ -6,6 +6,9 @@ import {
   createAlert,
   deleteAlert,
 } from "@/services/crypto/alerts/alert-manager";
+import { getMarketSummary } from "@/services/crypto/notifications";
+import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
+import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { EmbedPresets } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds";
 import { createEmbed } from "@/discord/embeds";
@@ -88,6 +91,9 @@ export const data = new SlashCommandBuilder()
             { name: "Trade Volume", value: "volume" },
           ),
       ),
+  )
+  .addSubcommand((sub) =>
+    sub.setName("market").setDescription("View market summary and stats"),
   )
   .addSubcommandGroup((group) =>
     group
@@ -176,6 +182,9 @@ export async function execute(
       case "leaderboard":
         await handleLeaderboard(interaction);
         break;
+      case "market":
+        await handleMarket(interaction);
+        break;
     }
   } catch (error) {
     logger.error(`/crypto ${subcommandGroup ?? subcommand} failed:`, error);
@@ -192,6 +201,10 @@ export async function execute(
 
 /**
  * Handles the `buy` and `sell` subcommands
+ *
+ * Validates that the invoking player is registered and that the requested token
+ * symbol exists, then delegates to `executeBuy` or `executeSell` and replies
+ * with an embed summarising the executed price, fee, and total cost/revenue.
  *
  * @param interaction - The incoming slash command interaction
  * @param subcommand - Either `"buy"` or `"sell"`
@@ -433,7 +446,66 @@ async function handleLeaderboard(
 }
 
 /**
+ * Handles the `market` subcommand
+ *
+ * Displays a market summary with total market cap, 24h volume, active tokens,
+ * active traders, and any ongoing market events.
+ *
+ * @param interaction - The incoming slash command interaction
+ */
+async function handleMarket(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
+  const summary = await getMarketSummary();
+
+  const tokenBreakdown = [
+    summary.stableCount > 0 ? `${summary.stableCount} stable` : null,
+    summary.bluechipCount > 0 ? `${summary.bluechipCount} blue-chip` : null,
+    summary.memecoinCount > 0 ? `${summary.memecoinCount} meme` : null,
+    summary.seasonalCount > 0 ? `${summary.seasonalCount} seasonal` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const embed = createEmbed()
+    .title("Crypto Market Summary")
+    .color(EmbedColors.Premium)
+    .field("Total Market Cap", formatPrice(summary.totalMarketCap), true)
+    .field("24h Volume", formatPrice(summary.dailyVolume), true)
+    .field("24h Trades", `${summary.dailyTrades}`, true)
+    .field(
+      "Active Tokens",
+      `${summary.activeTokenCount} (${tokenBreakdown})`,
+      false,
+    )
+    .field("Active Traders (24h)", `${summary.uniqueTraders}`, true);
+
+  const activeEvents = getActiveEventsInMemory();
+  if (activeEvents.length > 0) {
+    const eventLines = activeEvents.map((e) => {
+      const def =
+        EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
+      const name = def?.name ?? e.type;
+      const remaining = e.activeUntil
+        ? ` (${Math.round((e.activeUntil.getTime() - Date.now()) / 60_000)}m remaining)`
+        : "";
+      return `**${name}**${e.tokenSymbol ? ` [${e.tokenSymbol}]` : ""}${remaining}`;
+    });
+    embed.field("Active Events", eventLines.join("\n"), false);
+  }
+
+  embed.footer("Use /crypto buy or /crypto sell to trade").timestamp();
+
+  await interaction.reply({ embeds: [embed.build()] });
+}
+
+/**
  * Handles the `alert` subcommand group (`add`, `remove`, `list`)
+ *
+ * Validates that the invoking player is registered, then branches on the
+ * subcommand: `add` creates a new price alert for a token/direction pair,
+ * `remove` deletes an alert by ID, and `list` renders all active alerts with
+ * their current token prices. All replies are ephemeral.
  *
  * @param interaction - The incoming slash command interaction
  * @param subcommand - The selected alert subcommand
