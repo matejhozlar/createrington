@@ -240,16 +240,16 @@ function App() {
           >
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
-                <CryptoDataProvider autoSubscribe>
-                  <ToastProvider>
+                <ToastProvider>
+                  <CryptoDataProvider autoSubscribe>
                     <BrowserRouter>
                       <ScrollToTop />
                       <SidebarProvider>
                         <AppContent />
                       </SidebarProvider>
                     </BrowserRouter>
-                  </ToastProvider>
-                </CryptoDataProvider>
+                  </CryptoDataProvider>
+                </ToastProvider>
               </PlayerDataProvider>
             </ServerDataProvider>
           </WebSocketProvider>
