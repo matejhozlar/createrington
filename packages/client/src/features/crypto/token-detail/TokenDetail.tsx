@@ -64,6 +64,8 @@ export function TokenDetail() {
   const totalSupply = Number(token.totalSupply);
   const circulatingSupply = totalSupply - availableSupply;
   const marketCap = price * circulatingSupply;
+  const volume24h = livePrice ? Number(livePrice.volume24h) : 0;
+  const heldPercent = totalSupply > 0 ? (circulatingSupply / totalSupply) * 100 : 0;
 
   return (
     <div className="flex flex-1 flex-col pb-16">
@@ -147,14 +149,24 @@ export function TokenDetail() {
               </div>
             </div>
 
-            {/* Stats strip — unified bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
+            {/* Stats strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px rounded-xl border bg-border/50 overflow-hidden">
               <div className="bg-card/70 px-4 py-2.5">
                 <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                   Market Cap
                 </p>
                 <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
                   ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="bg-card/70 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                  24h Volume
+                </p>
+                <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
+                  {volume24h > 0
+                    ? volume24h.toLocaleString()
+                    : <span className="text-muted-foreground">—</span>}
                 </p>
               </div>
               <div className="bg-card/70 px-4 py-2.5">
@@ -168,13 +180,21 @@ export function TokenDetail() {
                   </span>
                 </p>
               </div>
+              <div className="bg-card/70 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                  % Held
+                </p>
+                <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
+                  {heldPercent.toFixed(1)}%
+                </p>
+              </div>
               {token.floorPrice && (
                 <div className="bg-card/70 px-4 py-2.5">
                   <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                     Floor
                   </p>
                   <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
-                    ${Number(token.floorPrice).toFixed(2)}
+                    ${formatPrice(token.floorPrice)}
                   </p>
                 </div>
               )}
@@ -192,14 +212,12 @@ export function TokenDetail() {
       </div>
 
       <div className="px-5 md:px-8 pt-5">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-5">
           <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
             <div className="space-y-5">
               <PriceChart symbol={token.symbol} />
-              <div className="grid gap-5 sm:grid-cols-2">
-                <OrderBook />
-                <TokenDistribution symbol={token.symbol} />
-              </div>
+              <TokenDistribution symbol={token.symbol} />
+              <OrderBook />
             </div>
 
             <div>

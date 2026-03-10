@@ -1,9 +1,7 @@
-import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -13,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Trophy, Crown, Medal } from "lucide-react";
+import { Trophy, Crown, Medal } from "lucide-react";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
@@ -169,7 +167,6 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
 }
 
 export function Leaderboard() {
-  const navigate = useNavigate();
 
   return (
     <div className="flex flex-1 flex-col pb-16">
@@ -179,16 +176,6 @@ export function Leaderboard() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/20 to-transparent" />
         <div className="relative px-5 md:px-8 pt-5 pb-5">
           <div className="max-w-7xl mx-auto space-y-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 -ml-2 text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/crypto")}
-            >
-              <ArrowLeft className="size-4" />
-              Back to Market
-            </Button>
-
             <div className="flex items-center gap-3.5">
               <div className="flex size-11 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
                 <Trophy className="size-5 text-yellow-400" />
@@ -202,7 +189,7 @@ export function Leaderboard() {
       </div>
 
       <div className="px-5 md:px-8 pt-5">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-5">
           <Tabs defaultValue="networth">
             <TabsList>
               <TabsTrigger value="networth">Net Worth</TabsTrigger>

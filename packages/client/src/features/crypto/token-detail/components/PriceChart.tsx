@@ -29,7 +29,7 @@ const INTERVALS: { key: Interval; label: string }[] = [
 ];
 
 export function PriceChart({ symbol }: PriceChartProps) {
-  const [interval, setInterval] = useState<Interval>("minute");
+  const [interval, setInterval] = useState<Interval>("tick");
 
   const { data, isLoading } = trpc.public.crypto.priceHistory.useQuery(
     { symbol, interval, limit: 200 },
@@ -115,7 +115,8 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
         timeVisible: true,
         secondsVisible: false,
       },
-      handleScroll: { vertTouchDrag: false },
+      handleScroll: false,
+      handleScale: false,
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -130,6 +131,7 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
       priceScaleId: "volume",
+      lastValueVisible: false,
     });
 
     chart.priceScale("volume").applyOptions({
@@ -137,6 +139,7 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
         top: 0.8,
         bottom: 0,
       },
+      visible: false,
     });
 
     chartRef.current = chart;
@@ -195,5 +198,5 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     );
   }
 
-  return <div ref={containerRef} className="h-[350px] w-full" />;
+  return <div ref={containerRef} className="h-[350px] w-full [&_a[href]]:!hidden" />;
 }

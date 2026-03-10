@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, ChevronLeft, ChevronRight, History } from "lucide-react";
+import { ChevronLeft, ChevronRight, History } from "lucide-react";
 
 export function TradeHistory() {
   const { user } = useAuth();
@@ -49,16 +49,6 @@ export function TradeHistory() {
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         <div className="relative px-5 md:px-8 pt-5 pb-5">
           <div className="max-w-7xl mx-auto space-y-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 -ml-2 text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/crypto")}
-            >
-              <ArrowLeft className="size-4" />
-              Back to Market
-            </Button>
-
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3.5">
                 <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">

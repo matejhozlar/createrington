@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { PortfolioChart } from "./components/PortfolioChart";
 import { PriceAlerts } from "./components/PriceAlerts";
 
@@ -124,17 +124,7 @@ export function Portfolio() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
         <div className="relative px-5 md:px-8 pt-5 pb-5">
-          <div className="max-w-7xl mx-auto space-y-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1 -ml-2 text-muted-foreground hover:text-foreground"
-              onClick={() => navigate("/crypto")}
-            >
-              <ArrowLeft className="size-4" />
-              Back to Market
-            </Button>
-
+          <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-3.5">
               <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
                 <Wallet className="size-5 text-primary" />
@@ -143,49 +133,48 @@ export function Portfolio() {
                 Portfolio
               </h1>
             </div>
-
-            {/* Stat cards — unified bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div key={stat.label} className="bg-card/70 px-4 py-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div
-                        className={cn(
-                          "flex size-7 items-center justify-center rounded-lg",
-                          stat.iconBg,
-                        )}
-                      >
-                        <Icon className={cn("size-3.5", stat.iconColor)} />
-                      </div>
-                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                        {stat.label}
-                      </p>
-                    </div>
-                    <p
-                      className={cn(
-                        "text-lg font-bold font-mono tabular-nums",
-                        stat.valueColor,
-                      )}
-                    >
-                      {stat.value}
-                      {stat.sub && (
-                        <span className="text-sm ml-1.5 font-medium">
-                          ({stat.sub})
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
           </div>
         </div>
       </div>
 
       <div className="px-5 md:px-8 pt-5">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-5">
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <div key={stat.label} className="bg-card/70 px-4 py-2.5">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div
+                      className={cn(
+                        "flex size-7 items-center justify-center rounded-lg",
+                        stat.iconBg,
+                      )}
+                    >
+                      <Icon className={cn("size-3.5", stat.iconColor)} />
+                    </div>
+                    <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                      {stat.label}
+                    </p>
+                  </div>
+                  <p
+                    className={cn(
+                      "text-lg font-bold font-mono tabular-nums",
+                      stat.valueColor,
+                    )}
+                  >
+                    {stat.value}
+                    {stat.sub && (
+                      <span className="text-sm ml-1.5 font-medium">
+                        ({stat.sub})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
           <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
             <PortfolioChart />
             <PriceAlerts />

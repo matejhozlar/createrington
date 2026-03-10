@@ -290,8 +290,8 @@ export const cryptoRouter = router({
           amount: String(h.amount),
           // Scale by 10 000 in BigInt arithmetic before dividing to preserve two decimal places of precision
           percentage:
-            totalHeld > 0n
-              ? Number((h.amount * 10000n) / totalHeld) / 100
+            token.totalSupply > 0n
+              ? Number((h.amount * 10000n) / token.totalSupply) / 100
               : 0,
         }))
         .sort((a, b) => Number(b.amount) - Number(a.amount))
