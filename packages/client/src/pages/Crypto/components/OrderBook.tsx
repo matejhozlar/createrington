@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,12 @@ export function OrderBook() {
     onError: (err) => toast.error(err.message),
   });
 
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
+
   if (!user || isLoading) return null;
   if (!orders || orders.length === 0) return null;
 
@@ -58,7 +65,7 @@ export function OrderBook() {
           const expiresAt = new Date(order.expiresAt);
           const hoursLeft = Math.max(
             0,
-            (expiresAt.getTime() - Date.now()) / (1000 * 60 * 60),
+            (expiresAt.getTime() - now) / (1000 * 60 * 60),
           );
 
           return (

@@ -91,9 +91,12 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   // Auto-subscribe on connect
   useEffect(() => {
     if (isConnected && autoSubscribe) {
-      subscribeToUpdates();
+      subscribe("crypto:market" as SubscriptionType).then(
+        () => setIsSubscribed(true),
+        (err) => console.error("Failed to subscribe to crypto updates:", err),
+      );
     }
-  }, [isConnected, autoSubscribe, subscribeToUpdates]);
+  }, [isConnected, autoSubscribe, subscribe]);
 
   // Listen for price update events
   useEffect(() => {
