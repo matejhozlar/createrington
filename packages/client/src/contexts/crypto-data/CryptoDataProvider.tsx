@@ -1,9 +1,13 @@
 import React, { useCallback, useEffect, useState, useContext } from "react";
 import type {
   CryptoPriceUpdatePayload,
+  CryptoOrderUpdatePayload,
   SubscriptionType,
 } from "@createrington/shared/socket";
 import { WebSocketContext } from "@/contexts/websocket";
+import { useAuth } from "@/contexts/auth";
+import { trpc } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
 import type { CryptoDataContextType } from "./types";
 import { CryptoDataContext } from "./context";
 
@@ -33,6 +37,9 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   }
 
   const { isConnected, on, subscribe, unsubscribe } = websocketContext;
+  const { user } = useAuth();
+  const toast = useToastActions();
+  const utils = trpc.useUtils();
 
   const [prices, setPrices] = useState<
     Map<string, CryptoPriceUpdatePayload>
@@ -98,6 +105,27 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
 
     return unsub;
   }, [isConnected, on, handlePriceUpdate]);
+
+  // Listen for order fill events (broadcast to all, filter to own)
+  useEffect(() => {
+    if (!isConnected || !user) return;
+
+    const unsub = on("update:crypto:order", (data) => {
+      const payload = data as CryptoOrderUpdatePayload & {
+        playerUuid?: string;
+      };
+      if (payload.playerUuid !== user.minecraftUuid) return;
+
+      toast.success(
+        `Order #${payload.orderId} ${payload.status}${payload.filledPrice ? ` at $${Number(payload.filledPrice).toFixed(4)}` : ""}`,
+      );
+      utils.user.crypto.listOrders.invalidate();
+      utils.user.crypto.portfolio.invalidate();
+      utils.user.crypto.tradeHistory.invalidate();
+    });
+
+    return unsub;
+  }, [isConnected, on, user, toast, utils]);
 
   // Cleanup on unmount
   useEffect(() => {

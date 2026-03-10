@@ -51,6 +51,9 @@ export const CRYPTO_CONFIG = {
 
   // Trading Limits
   MAX_TRADES_PER_MINUTE: 10,
+  MAX_PENDING_ORDERS: 10,
+  ORDER_DEFAULT_EXPIRY_HOURS: 24,
+  ORDER_MAX_EXPIRY_HOURS: 168, // 7 days
 
   // Snapshot Retention (seconds)
   RETENTION: {

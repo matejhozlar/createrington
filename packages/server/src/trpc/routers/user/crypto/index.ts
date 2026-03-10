@@ -3,8 +3,13 @@ import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError, buildPagination } from "@/trpc/utils";
 import { Q } from "@/db";
 import { executeBuy, executeSell } from "@/services/crypto/trading/trade-executor";
+import {
+  placeOrder,
+  cancelOrder,
+  getPlayerOrders,
+} from "@/services/crypto/trading/order-manager";
 
-/** User crypto router — buy/sell tokens, view portfolio and trade history. */
+/** User crypto router — market trades, limit/stop/take-profit orders, portfolio, and trade history. */
 export const cryptoRouter = router({
   buy: userProcedure
     .meta({ description: "Market buy tokens" })
@@ -93,6 +98,18 @@ export const cryptoRouter = router({
         .where({ playerMinecraftUuid: ctx.user.minecraftUuid })
         .all();
 
+      // Calculate cumulative realized P&L from all sells
+      const allSells = await Q.crypto.transaction
+        .where({
+          playerMinecraftUuid: ctx.user.minecraftUuid,
+          type: "sell",
+        })
+        .all();
+      const totalRealizedPnl = allSells.reduce(
+        (sum, tx) => sum + (tx.realizedPnl ? Number(tx.realizedPnl) : 0),
+        0,
+      );
+
       if (holdings.length === 0) {
         return {
           holdings: [],
@@ -100,6 +117,7 @@ export const cryptoRouter = router({
           totalInvested: "0",
           unrealizedPnl: "0",
           unrealizedPnlPercent: 0,
+          realizedPnl: totalRealizedPnl.toFixed(8),
           tokenCount: 0,
         };
       }
@@ -143,7 +161,7 @@ export const cryptoRouter = router({
             isCrashed: token.isCrashed,
           };
         })
-        .filter(Boolean);
+        .filter((h): h is NonNullable<typeof h> => h !== null);
 
       const portfolioPnl = totalValue - totalInvested;
       const portfolioPnlPercent =
@@ -155,8 +173,84 @@ export const cryptoRouter = router({
         totalInvested: totalInvested.toFixed(8),
         unrealizedPnl: portfolioPnl.toFixed(8),
         unrealizedPnlPercent: Number(portfolioPnlPercent.toFixed(2)),
+        realizedPnl: totalRealizedPnl.toFixed(8),
         tokenCount: holdingDetails.length,
       };
+    }),
+
+  placeOrder: userProcedure
+    .meta({ description: "Place a limit, stop-loss, or take-profit order" })
+    .input(
+      z.object({
+        symbol: z.string().min(1).max(10),
+        type: z.enum(["limit_buy", "limit_sell", "stop_loss", "take_profit"]),
+        amount: z.number().int().positive(),
+        targetPrice: z.string().refine((v) => Number(v) > 0, "Price must be positive"),
+        expiryHours: z.number().int().min(1).max(168).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const token = await Q.crypto.token
+        .where({ symbol: input.symbol.toUpperCase() })
+        .first();
+
+      if (!token) {
+        throw trpcError.notFound(`Token ${input.symbol} not found`);
+      }
+
+      try {
+        return await placeOrder(
+          ctx.user.minecraftUuid,
+          token,
+          input.type,
+          BigInt(input.amount),
+          input.targetPrice,
+          input.expiryHours,
+        );
+      } catch (err) {
+        throw trpcError.badRequest(
+          err instanceof Error ? err.message : "Order placement failed",
+        );
+      }
+    }),
+
+  cancelOrder: userProcedure
+    .meta({ description: "Cancel a pending order" })
+    .input(z.object({ orderId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await cancelOrder(ctx.user.minecraftUuid, input.orderId);
+        return { success: true };
+      } catch (err) {
+        throw trpcError.badRequest(
+          err instanceof Error ? err.message : "Order cancellation failed",
+        );
+      }
+    }),
+
+  listOrders: userProcedure
+    .meta({ description: "List user's pending orders" })
+    .query(async ({ ctx }) => {
+      const orders = await getPlayerOrders(ctx.user.minecraftUuid);
+
+      const tokens = await Q.crypto.token.where({}).all();
+      const tokenMap = new Map(tokens.map((t) => [t.id, t]));
+
+      return orders.map((o) => {
+        const token = tokenMap.get(o.tokenId);
+        return {
+          id: o.id,
+          tokenId: o.tokenId,
+          tokenSymbol: token?.symbol ?? "???",
+          tokenName: token?.name ?? "Unknown",
+          type: o.type,
+          amount: String(o.amount),
+          targetPrice: o.targetPrice,
+          status: o.status,
+          expiresAt: o.expiresAt.toISOString(),
+          createdAt: o.createdAt.toISOString(),
+        };
+      });
     }),
 
   tradeHistory: userProcedure

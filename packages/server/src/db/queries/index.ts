@@ -11,7 +11,9 @@
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
 export { AuthSessionQueries } from "./auth/session";
+export { CryptoCostBasisQueries } from "./crypto/cost/basis";
 export { CryptoHoldingQueries } from "./crypto/holding";
+export { CryptoOrderQueries } from "./crypto/order";
 export { CryptoPriceSnapshotQueries } from "./crypto/price/snapshot";
 export { CryptoTokenQueries } from "./crypto/token";
 export { CryptoTransactionQueries } from "./crypto/transaction";

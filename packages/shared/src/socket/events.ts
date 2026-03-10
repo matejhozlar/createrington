@@ -21,6 +21,7 @@ export enum SocketEvent {
   UPDATE_PLAYERS = "update:players",
   UPDATE_MESSAGE = "update:message",
   UPDATE_CRYPTO_PRICES = "update:crypto:prices",
+  UPDATE_CRYPTO_ORDER = "update:crypto:order",
 
   // Acknowledgments
   SUBSCRIBED = "subscribed",

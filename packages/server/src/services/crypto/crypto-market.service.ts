@@ -8,6 +8,11 @@ import {
   type PriceUpdate,
 } from "./engine/price-engine";
 import { generateMemecoin, cleanupCrashedTokens } from "./memecoin/generator";
+import {
+  checkAndFillOrders,
+  expireOrders,
+  type OrderFillResult,
+} from "./trading/order-manager";
 import { getService } from "@/services";
 import { Services } from "../container";
 import type { WebSocketService } from "../websocket";
@@ -34,6 +39,7 @@ export class CryptoMarketService {
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private minuteAggregationInterval: ReturnType<typeof setInterval> | null =
     null;
+  private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
   private wsService: WebSocketService | null = null;
 
   // ==========================================================================
@@ -71,6 +77,7 @@ export class CryptoMarketService {
     this.startStablecoinTicker();
     this.startCleanupJob();
     this.startMinuteAggregation();
+    this.startOrderExpiryJob();
 
     logger.info("CryptoMarketService initialized");
   }
@@ -82,6 +89,7 @@ export class CryptoMarketService {
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     if (this.minuteAggregationInterval)
       clearInterval(this.minuteAggregationInterval);
+    if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
 
     logger.info("CryptoMarketService shutdown complete");
   }
@@ -178,6 +186,13 @@ export class CryptoMarketService {
 
     // Broadcast price updates via WebSocket
     await this.broadcastPriceUpdates(updates);
+
+    // Check and fill pending orders against new prices
+    const updatedTokens = await Promise.all(
+      updates.map((u) => Q.crypto.token.get({ id: u.tokenId })),
+    );
+    const fillResults = await checkAndFillOrders(updatedTokens);
+    this.notifyOrderFills(fillResults);
   }
 
   /** @private Recalculates stablecoin prices based on active player count */
@@ -242,6 +257,51 @@ export class CryptoMarketService {
       SocketEvent.UPDATE_CRYPTO_PRICES,
       pricePayloads,
     );
+  }
+
+  // ==========================================================================
+  // ORDER MANAGEMENT
+  // ==========================================================================
+
+  /** @private Expires stale pending orders every 5 minutes */
+  private startOrderExpiryJob(): void {
+    this.orderExpiryInterval = setInterval(
+      async () => {
+        try {
+          const expired = await expireOrders();
+          if (expired > 0) {
+            logger.info(`Expired ${expired} crypto orders`);
+          }
+        } catch (err) {
+          logger.error("Order expiry job failed:", err);
+        }
+      },
+      5 * 60 * 1000,
+    );
+  }
+
+  /** @private Broadcasts order fill notifications to the crypto market room */
+  private notifyOrderFills(results: OrderFillResult[]): void {
+    if (results.length === 0 || !this.wsService) return;
+
+    for (const result of results) {
+      logger.info(
+        `Order ${result.orderId} filled: ${result.type} ${result.amount} ${result.symbol} @ $${result.filledPrice}`,
+      );
+
+      // Broadcast to crypto market room — clients filter by their own playerUuid
+      this.wsService.broadcastToRoom(
+        RoomManager.getCryptoMarketRoom(),
+        SocketEvent.UPDATE_CRYPTO_ORDER,
+        {
+          orderId: result.orderId,
+          playerUuid: result.playerUuid,
+          status: "filled" as const,
+          filledPrice: result.filledPrice,
+          filledAt: new Date().toISOString(),
+        },
+      );
+    }
   }
 
   // ==========================================================================

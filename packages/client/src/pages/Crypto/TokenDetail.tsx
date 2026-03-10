@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Skull } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
+import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -148,12 +149,13 @@ export function TokenDetail() {
           </Card>
         </div>
 
-        <div>
+        <div className="space-y-6">
           <TradePanel
             symbol={token.symbol}
             price={displayPrice}
             isCrashed={isCrashed}
           />
+          <OrderBook />
         </div>
       </div>
     </div>

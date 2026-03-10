@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet, DollarSign } from "lucide-react";
 
 export function Portfolio() {
   const { user } = useAuth();
@@ -39,6 +39,8 @@ export function Portfolio() {
   if (!data) return null;
 
   const pnlIsPositive = Number(data.unrealizedPnl) >= 0;
+  const realizedPnl = Number(data.realizedPnl ?? 0);
+  const realizedPnlPositive = realizedPnl >= 0;
 
   return (
     <div className="space-y-6">
@@ -55,7 +57,7 @@ export function Portfolio() {
         <h1 className="text-2xl font-bold">Portfolio</h1>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="rounded-lg bg-blue-500/10 p-2">
@@ -108,6 +110,36 @@ export function Portfolio() {
               >
                 {pnlIsPositive ? "+" : ""}
                 ${Number(data.unrealizedPnl).toFixed(2)} ({data.unrealizedPnlPercent}%)
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div
+              className={cn(
+                "rounded-lg p-2",
+                realizedPnlPositive ? "bg-emerald-500/10" : "bg-red-500/10",
+              )}
+            >
+              <DollarSign
+                className={cn(
+                  "h-5 w-5",
+                  realizedPnlPositive ? "text-emerald-500" : "text-red-500",
+                )}
+              />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Realized P&L</p>
+              <p
+                className={cn(
+                  "text-lg font-bold font-mono",
+                  realizedPnlPositive ? "text-emerald-400" : "text-red-400",
+                )}
+              >
+                {realizedPnlPositive ? "+" : ""}
+                ${realizedPnl.toFixed(2)}
               </p>
             </div>
           </CardContent>

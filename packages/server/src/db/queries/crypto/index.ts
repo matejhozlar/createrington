@@ -1,5 +1,7 @@
 import type { Pool, PoolClient } from "pg";
+import { CryptoCostQueries } from "@/db/queries/crypto/cost";
 import { CryptoHoldingQueries } from "@/db/queries/crypto/holding";
+import { CryptoOrderQueries } from "@/db/queries/crypto/order";
 import { CryptoPriceQueries } from "@/db/queries/crypto/price";
 import { CryptoTokenQueries } from "@/db/queries/crypto/token";
 import { CryptoTransactionQueries } from "@/db/queries/crypto/transaction";
@@ -76,6 +78,25 @@ export class CryptoQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
+  /** Private backing field for lazy-loaded crypto_cost queries */
+  private _cost?: CryptoCostQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for crypto_cost
+   * 
+   * Returns a CryptoCostQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   * 
+   * @returns Singleton CryptoCostQueries instance
+   */
+  get cost(): CryptoCostQueries {
+    if (!this._cost) {
+      this._cost = this.getOrCreateChild<CryptoCostQueries>('cost', CryptoCostQueries);
+    }
+    return this._cost;
+  }
+
   /** Private backing field for lazy-loaded crypto_holding queries */
   private _holding?: CryptoHoldingQueries;
 
@@ -93,6 +114,25 @@ export class CryptoQueries {
       this._holding = this.getOrCreateChild<CryptoHoldingQueries>('holding', CryptoHoldingQueries);
     }
     return this._holding;
+  }
+
+  /** Private backing field for lazy-loaded crypto_order queries */
+  private _order?: CryptoOrderQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for crypto_order
+   * 
+   * Returns a CryptoOrderQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   * 
+   * @returns Singleton CryptoOrderQueries instance
+   */
+  get order(): CryptoOrderQueries {
+    if (!this._order) {
+      this._order = this.getOrCreateChild<CryptoOrderQueries>('order', CryptoOrderQueries);
+    }
+    return this._order;
   }
 
   /** Private backing field for lazy-loaded crypto_price queries */

@@ -999,6 +999,7 @@ export const cryptoTransaction = pgTable(
 			.default(sql`0`),
 		totalCost: numeric("total_cost", { precision: 20, scale: 8 }).notNull(),
 		realizedPnl: numeric("realized_pnl", { precision: 20, scale: 8 }),
+		orderId: integer("order_id").references(() => cryptoOrder.id),
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
@@ -1039,6 +1040,73 @@ export const cryptoPriceSnapshot = pgTable(
 			table.tokenId,
 			table.interval,
 			table.recordedAt.desc(),
+		),
+	],
+);
+
+// --- crypto_order (pending orders: limit, stop-loss, take-profit) ---
+
+export const cryptoOrder = pgTable(
+	"crypto_order",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		type: cryptoOrderTypeEnum("type").notNull(),
+		amount: bigint("amount", { mode: "bigint" }).notNull(),
+		targetPrice: numeric("target_price", { precision: 20, scale: 8 }).notNull(),
+		reservedBalance: numeric("reserved_balance", { precision: 20, scale: 8 })
+			.notNull()
+			.default(sql`0`),
+		reservedTokens: bigint("reserved_tokens", { mode: "bigint" })
+			.notNull()
+			.default(sql`0`),
+		status: cryptoOrderStatusEnum("status").notNull().default("pending"),
+		expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+		filledAt: timestamp("filled_at", { withTimezone: true }),
+		cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+		createdAt: timestamp("created_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_order_player_status").on(
+			table.playerMinecraftUuid,
+			table.status,
+		),
+		index("idx_crypto_order_token_pending")
+			.on(table.tokenId, table.status)
+			.where(sql`${table.status} = 'pending'`),
+	],
+);
+
+// --- crypto_cost_basis (FIFO lots for P&L calculation) ---
+
+export const cryptoCostBasis = pgTable(
+	"crypto_cost_basis",
+	{
+		id: serial("id").primaryKey(),
+		playerMinecraftUuid: uuid("player_minecraft_uuid")
+			.notNull()
+			.references(() => player.minecraftUuid),
+		tokenId: integer("token_id")
+			.notNull()
+			.references(() => cryptoToken.id),
+		amountRemaining: bigint("amount_remaining", { mode: "bigint" }).notNull(),
+		pricePerUnit: numeric("price_per_unit", { precision: 20, scale: 8 }).notNull(),
+		acquiredAt: timestamp("acquired_at", { withTimezone: true })
+			.notNull()
+			.defaultNow(),
+	},
+	(table) => [
+		index("idx_crypto_cost_basis_player_token").on(
+			table.playerMinecraftUuid,
+			table.tokenId,
+			table.acquiredAt,
 		),
 	],
 );

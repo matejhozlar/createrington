@@ -7,6 +7,7 @@
 import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
+import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { CRYPTO_CONFIG } from "../crypto.config";
 
@@ -152,6 +153,9 @@ export async function executeBuy(
     });
   }
 
+  // Record cost basis lot for FIFO P&L tracking
+  await recordCostBasisLot(playerUuid, token.id, amount, token.price);
+
   // Record transaction
   const txResult = await Q.crypto.transaction.createAndReturn({
     playerMinecraftUuid: playerUuid,
@@ -245,31 +249,27 @@ export async function executeSell(
     { availableSupply: token.availableSupply + amount },
   );
 
+  // Consume cost basis lots FIFO and calculate realized P&L
+  const costBasisConsumed = await consumeCostBasis(playerUuid, token.id, amount);
+  const realizedPnl = rawRevenue - costBasisConsumed;
+
   // Update holding
   const newAmount = holding.amount - amount;
   if (newAmount === 0n) {
     await Q.crypto.holding.delete({ id: holding.id });
   } else {
-    // Proportionally reduce cost basis
-    const proportion = Number(amount) / Number(holding.amount);
-    const costBasisReduction =
-      Number(holding.totalCostBasis) * proportion;
+    // Reduce cost basis by the consumed amount
     await Q.crypto.holding.update(
       { id: holding.id },
       {
         amount: newAmount,
         totalCostBasis: (
-          Number(holding.totalCostBasis) - costBasisReduction
+          Number(holding.totalCostBasis) - costBasisConsumed
         ).toFixed(8),
         updatedAt: new Date(),
       },
     );
   }
-
-  // Calculate realized P&L
-  const costBasisPortion =
-    (Number(holding.totalCostBasis) / Number(holding.amount)) * amountNum;
-  const realizedPnl = rawRevenue - costBasisPortion;
 
   // Record transaction
   const txResult = await Q.crypto.transaction.createAndReturn({

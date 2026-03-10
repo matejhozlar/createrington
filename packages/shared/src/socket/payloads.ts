@@ -118,3 +118,13 @@ export interface CryptoPriceUpdatePayload {
   availableSupply: string;
   isCrashed: boolean;
 }
+
+/**
+ * Crypto order update payload (server -> specific user)
+ */
+export interface CryptoOrderUpdatePayload {
+  orderId: number;
+  status: "filled" | "cancelled" | "expired";
+  filledPrice?: string;
+  filledAt?: string;
+}
