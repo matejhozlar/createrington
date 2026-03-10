@@ -57,7 +57,11 @@ import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
-import { CryptoPage, TokenDetail, Portfolio as CryptoPortfolio, TradeHistory as CryptoTradeHistory, Leaderboard as CryptoLeaderboard } from "./pages/Crypto";
+import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
+import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
+import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
+import { TradeHistory as CryptoTradeHistory } from "./features/crypto/TradeHistory";
+import { Leaderboard as CryptoLeaderboard } from "./features/crypto/Leaderboard";
 
 // ==========================================================================
 // LAYOUT HELPERS
@@ -136,7 +140,7 @@ function AppContent() {
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<CryptoPage />} />
+        <Route path="/crypto" element={<CryptoMarket />} />
         <Route
           path="/crypto/portfolio"
           element={

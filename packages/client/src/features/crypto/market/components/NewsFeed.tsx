@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Newspaper, AlertTriangle, Info, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { timeAgo } from "./format";
+import { timeAgo } from "../../format";
 
 const severityConfig = {
   info: {

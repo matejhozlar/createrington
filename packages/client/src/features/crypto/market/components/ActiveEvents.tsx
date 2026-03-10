@@ -12,7 +12,7 @@ import {
   Anchor,
   Sparkles,
 } from "lucide-react";
-import { formatCountdown } from "./format";
+import { formatCountdown } from "../../format";
 
 const EVENT_ICONS: Record<string, typeof TrendingUp> = {
   bull_run: TrendingUp,

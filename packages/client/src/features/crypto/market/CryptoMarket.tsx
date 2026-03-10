@@ -6,7 +6,7 @@ import { ActiveEvents } from "./components/ActiveEvents";
 import { IpoBanner } from "./components/IpoBanner";
 import { Coins } from "lucide-react";
 
-export function CryptoPage() {
+export function CryptoMarket() {
   return (
     <div className="flex flex-1 flex-col pb-16">
       {/* Header */}

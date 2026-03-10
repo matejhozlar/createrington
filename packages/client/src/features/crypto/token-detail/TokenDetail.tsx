@@ -10,7 +10,7 @@ import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
 import { TokenDistribution } from "./components/TokenDistribution";
-import { formatPrice } from "./components/format";
+import { formatPrice } from "../format";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",

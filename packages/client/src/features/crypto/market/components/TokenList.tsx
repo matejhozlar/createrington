@@ -8,8 +8,8 @@ import { Skull, TrendingUp, TrendingDown, Zap, Rocket } from "lucide-react";
 import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
-} from "./useActiveEvents";
-import { formatPrice, formatSupply, getHeldPercent } from "./format";
+} from "../hooks/use-active-events";
+import { formatPrice, formatSupply, getHeldPercent } from "../../format";
 
 const CATEGORY_ACCENT: Record<string, string> = {
   stable: "bg-emerald-400",

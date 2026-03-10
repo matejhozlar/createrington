@@ -6,7 +6,7 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, X, TrendingUp, TrendingDown } from "lucide-react";
-import { formatPrice } from "./format";
+import { formatPrice } from "../../format";
 
 export function Watchlist() {
   const navigate = useNavigate();

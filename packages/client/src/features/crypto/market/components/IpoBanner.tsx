@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Rocket } from "lucide-react";
-import { formatPrice, formatCountdown } from "./format";
+import { formatPrice, formatCountdown } from "../../format";
 
 export function IpoBanner() {
   const navigate = useNavigate();

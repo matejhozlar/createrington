@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToastActions } from "@/hooks/use-toast";
 import { Clock, Rocket, ArrowUpRight, ArrowDownRight } from "lucide-react";
-import { formatCountdown } from "./format";
+import { formatCountdown } from "../../format";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
 type TradeTab = "buy" | "sell";
