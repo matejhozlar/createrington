@@ -1,17 +1,3 @@
-/**
- * Trade execution engine for the crypto market.
- *
- * Handles buy and sell order processing:
- * - Validates token state, holdings, and rate limits before execution
- * - Deducts or credits player balance via the balance repository
- * - Updates token available supply on every trade
- * - Maintains player holdings and FIFO cost-basis lots
- * - Records each trade as a transaction with fee and P&L data
- * - Routes collected fees to the treasury and applies the memecoin burn ratio
- * - Emits demand-pressure volume signals to the price engine
- * - Fires whale-alert news events for large trades
- */
-
 import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
@@ -20,6 +6,11 @@ import { recordTradeVolume } from "../engine/price-engine";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import { recordWhaleEvent } from "../events/news-feed";
+import { sendWhaleAlertNotification } from "../notifications";
+
+// ==========================================================================
+// TYPES
+// ==========================================================================
 
 export interface TradeResult {
   transactionId: number;
@@ -38,8 +29,15 @@ interface TradeRateLimiter {
 
 const rateLimiter: TradeRateLimiter = { counts: new Map() };
 
+// ==========================================================================
+// HELPERS
+// ==========================================================================
+
 /**
  * Enforces per-player trade rate limiting using an in-memory sliding window.
+ *
+ * @private
+ * @param playerUuid - Minecraft UUID of the player to check
  * @throws Error if the player exceeds MAX_TRADES_PER_MINUTE
  */
 function checkRateLimit(playerUuid: string): void {
@@ -63,7 +61,20 @@ function checkRateLimit(playerUuid: string): void {
   entry.count++;
 }
 
-/** Checks if a trade qualifies as a whale trade and records a news event if so */
+/**
+ * Checks if a trade qualifies as a whale trade and fires news and notification events if so.
+ *
+ * A trade is considered a whale trade when its amount exceeds WHALE_TRADE_THRESHOLD
+ * as a fraction of the token's total supply. Both the news feed and Discord
+ * notifications are dispatched fire-and-forget — failures are only logged.
+ *
+ * @private
+ * @param playerUuid - Minecraft UUID of the trading player
+ * @param token - Token being traded
+ * @param amount - Number of tokens in the trade
+ * @param totalCost - Total cost or revenue in in-game currency
+ * @param tradeType - Direction of the trade
+ */
 async function checkWhaleAlert(
   playerUuid: string,
   token: CryptoToken,
@@ -83,16 +94,35 @@ async function checkWhaleAlert(
       String(amount),
       totalCost.toFixed(2),
     ).catch((err) => logger.error("Failed to record whale event:", err));
+    sendWhaleAlertNotification(
+      playerName,
+      token.symbol,
+      tradeType,
+      String(amount),
+      totalCost.toFixed(2),
+    ).catch((err) => logger.error("Failed to send whale alert notification:", err));
   }
 }
 
-/** Queries the total number of trades a player has ever executed (for volume discounts) */
+/**
+ * Returns the total number of trades a player has ever executed.
+ *
+ * Used by the fee calculator to apply volume-based discounts.
+ *
+ * @private
+ * @param playerUuid - Minecraft UUID of the player
+ * @returns Total lifetime trade count
+ */
 async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
   const result = await Q.crypto.transaction
     .where({ playerMinecraftUuid: playerUuid })
     .count();
   return result;
 }
+
+// ==========================================================================
+// BUY
+// ==========================================================================
 
 /**
  * Executes a buy order: deducts player balance, updates token supply,
@@ -137,7 +167,6 @@ export async function executeBuy(
   const feeAmount = calculateFee(rawCost, token.category, lifetimeCount);
   const totalCost = rawCost + feeAmount;
 
-  // Deduct player balance
   await R.balanceRepo.deduct(
     { minecraftUuid: playerUuid },
     totalCost,
@@ -152,13 +181,12 @@ export async function executeBuy(
     },
   );
 
-  // Update token supply
   await Q.crypto.token.update(
     { id: token.id },
     { availableSupply: token.availableSupply - amount },
   );
 
-  // Upsert holding
+  // Upsert holding — accumulate amount and cost basis if one already exists
   const existingHolding = await Q.crypto.holding
     .where({
       playerMinecraftUuid: playerUuid,
@@ -186,10 +214,9 @@ export async function executeBuy(
     });
   }
 
-  // Record cost basis lot for FIFO P&L tracking
+  // Record cost basis lot for FIFO P&L tracking on future sells
   await recordCostBasisLot(playerUuid, token.id, amount, token.price);
 
-  // Record transaction
   const txResult = await Q.crypto.transaction.createAndReturn({
     playerMinecraftUuid: playerUuid,
     tokenId: token.id,
@@ -201,15 +228,12 @@ export async function executeBuy(
     totalCost: totalCost.toFixed(8),
   });
 
-  // Update treasury with collected fee
   if (feeAmount > 0) {
     await updateTreasury(feeAmount, token.category);
   }
 
-  // Track volume for demand pressure calculation
   recordTradeVolume(token.id, amountNum, true);
 
-  // Check for whale trade
   checkWhaleAlert(playerUuid, token, amount, totalCost, "buy").catch(() => {});
 
   return {
@@ -223,6 +247,10 @@ export async function executeBuy(
     totalCost,
   };
 }
+
+// ==========================================================================
+// SELL
+// ==========================================================================
 
 /**
  * Executes a sell order: credits player balance (minus fees), returns tokens
@@ -246,7 +274,6 @@ export async function executeSell(
 
   checkRateLimit(playerUuid);
 
-  // Check holdings
   const holding = await Q.crypto.holding
     .where({
       playerMinecraftUuid: playerUuid,
@@ -267,7 +294,6 @@ export async function executeSell(
   const feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount);
   const netRevenue = rawRevenue - feeAmount;
 
-  // Add player balance
   await R.balanceRepo.add(
     { minecraftUuid: playerUuid },
     netRevenue,
@@ -282,7 +308,6 @@ export async function executeSell(
     },
   );
 
-  // Update token supply
   await Q.crypto.token.update(
     { id: token.id },
     { availableSupply: token.availableSupply + amount },
@@ -292,12 +317,12 @@ export async function executeSell(
   const costBasisConsumed = await consumeCostBasis(playerUuid, token.id, amount);
   const realizedPnl = rawRevenue - costBasisConsumed;
 
-  // Update holding
   const newAmount = holding.amount - amount;
   if (newAmount === 0n) {
+    // Holding fully liquidated — delete the row rather than leaving a zero-amount record
     await Q.crypto.holding.delete({ id: holding.id });
   } else {
-    // Reduce cost basis by the consumed amount
+    // Reduce cost basis by the FIFO-consumed amount
     await Q.crypto.holding.update(
       { id: holding.id },
       {
@@ -310,7 +335,6 @@ export async function executeSell(
     );
   }
 
-  // Record transaction
   const txResult = await Q.crypto.transaction.createAndReturn({
     playerMinecraftUuid: playerUuid,
     tokenId: token.id,
@@ -323,15 +347,12 @@ export async function executeSell(
     realizedPnl: realizedPnl.toFixed(8),
   });
 
-  // Update treasury with collected fee
   if (feeAmount > 0) {
     await updateTreasury(feeAmount, token.category);
   }
 
-  // Track volume for demand pressure calculation
   recordTradeVolume(token.id, amountNum, false);
 
-  // Check for whale trade
   checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(() => {});
 
   return {
@@ -346,11 +367,16 @@ export async function executeSell(
   };
 }
 
+// ==========================================================================
+// TREASURY
+// ==========================================================================
+
 /**
  * Updates the fee treasury with the fee collected from a trade.
  * For memecoins, a portion of the fee is burned (removed from circulation)
  * based on FEES.BURN_RATIO; the remainder is credited as collected.
  *
+ * @private
  * @param feeAmount - Total fee amount in in-game currency
  * @param category - Token category ("memecoin", "stable", "blue_chip") used to determine burn ratio
  */
@@ -364,7 +390,7 @@ async function updateTreasury(
       : 0;
   const collectedAmount = feeAmount - burnAmount;
 
-  // Get or create treasury row
+  // Treasury is a singleton row — create it on first fee collection if absent
   const treasury = await Q.crypto.treasury.where({}).first();
   if (treasury) {
     await Q.crypto.treasury.update(

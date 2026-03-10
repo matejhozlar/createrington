@@ -26,7 +26,7 @@ import type { WebSocketService } from "../websocket";
 import { SocketEvent } from "@createrington/shared/socket";
 import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
-import { sendNewListingNotification, sendCrashNotification } from "./notifications";
+import { sendNewListingNotification, sendCrashNotification, sendWeeklyMarketReport } from "./notifications";
 
 /**
  * Crypto Market Service
@@ -53,6 +53,7 @@ export class CryptoMarketService {
     null;
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
   private portfolioSnapshotTimeout: ReturnType<typeof setTimeout> | null = null;
+  private weeklyReportTimeout: ReturnType<typeof setTimeout> | null = null;
   private wsService: WebSocketService | null = null;
 
   /** In-memory cache of 24h-ago prices for change% calculation */
@@ -124,6 +125,7 @@ export class CryptoMarketService {
     this.startMinuteAggregation();
     this.startOrderExpiryJob();
     this.schedulePortfolioSnapshot();
+    this.scheduleWeeklyReport();
 
     logger.info("CryptoMarketService initialized");
   }
@@ -138,6 +140,7 @@ export class CryptoMarketService {
       clearInterval(this.minuteAggregationInterval);
     if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
     if (this.portfolioSnapshotTimeout) clearTimeout(this.portfolioSnapshotTimeout);
+    if (this.weeklyReportTimeout) clearTimeout(this.weeklyReportTimeout);
 
     logger.info("CryptoMarketService shutdown complete");
   }
@@ -565,12 +568,52 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
+  // WEEKLY REPORT
+  // ==========================================================================
+
+  /**
+   * Schedules the weekly market report for Sunday at 18:00.
+   * Reschedules itself for the next week after completing.
+   * @private
+   */
+  private scheduleWeeklyReport(): void {
+    const now = new Date();
+    const target = new Date(now);
+    // Sunday = 0
+    const daysUntilSunday = (7 - now.getDay()) % 7 || 7;
+    target.setDate(now.getDate() + daysUntilSunday);
+    target.setHours(18, 0, 0, 0);
+
+    // If the computed target is in the past (e.g. it's already past 18:00 on Sunday), skip to next week
+    if (target <= now) {
+      target.setDate(target.getDate() + 7);
+    }
+
+    const delayMs = target.getTime() - now.getTime();
+    logger.info(
+      `Next weekly market report scheduled in ${Math.round(delayMs / 3_600_000)} hours`,
+    );
+
+    this.weeklyReportTimeout = setTimeout(async () => {
+      try {
+        await sendWeeklyMarketReport();
+      } catch (err) {
+        logger.error("Weekly market report failed:", err);
+      }
+      // Reschedule for next week
+      this.scheduleWeeklyReport();
+    }, delayMs);
+  }
+
+  // ==========================================================================
   // ALERT NOTIFICATIONS
   // ==========================================================================
 
   /**
-   * Sends Discord DM notifications for triggered price alerts.
+   * Sends WebSocket notifications to the crypto market room for triggered price alerts.
+   * Clients filter incoming events by their own playerUuid.
    * @private
+   * @param alerts - Price alerts that crossed their target threshold in the latest tick
    */
   private notifyTriggeredAlerts(alerts: TriggeredAlert[]): void {
     if (alerts.length === 0) return;
