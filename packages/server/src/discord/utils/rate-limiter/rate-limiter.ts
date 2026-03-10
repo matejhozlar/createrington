@@ -9,6 +9,23 @@ import type {
 import { RequestTimeoutError, RequestPriority } from "./types";
 import { RateLimitError } from "discord.js";
 
+interface DiscordHttpError {
+  message?: string;
+  status?: number;
+  code?: number;
+  httpStatus?: number;
+  global?: boolean;
+  retry_after?: number;
+  retryAfter?: number;
+  headers?: Record<string, string>;
+}
+
+function toDiscordError(error: unknown): DiscordHttpError {
+  if (error instanceof RateLimitError) return error;
+  if (typeof error === "object" && error !== null) return error as DiscordHttpError;
+  return { message: String(error) };
+}
+
 /**
  * Advanced Discord rate limiter with bucket management, priority queuing,
  * automatic retries, and comprehensive observability
@@ -64,7 +81,7 @@ export class DiscordRateLimiter extends EventEmitter {
     } = options;
 
     return new Promise<T>((resolve, reject) => {
-      const requestId = this.queueManager.enqueue({
+      this.queueManager.enqueue({
         route,
         priority,
         operation,
@@ -178,9 +195,10 @@ export class DiscordRateLimiter extends EventEmitter {
    */
   private async handleRequestError<T>(
     request: QueuedRequest<T>,
-    error: any,
+    rawError: unknown,
     startTime: number,
   ): Promise<void> {
+    const error = toDiscordError(rawError);
     const executionTime = Date.now() - startTime;
 
     if (this.isRateLimitError(error)) {
@@ -238,13 +256,13 @@ export class DiscordRateLimiter extends EventEmitter {
       executionTime,
     });
 
-    request.reject(error);
+    request.reject(rawError instanceof Error ? rawError : new Error(error.message ?? "Request failed"));
   }
 
   /**
    * Check if error is a rate limit error
    */
-  private isRateLimitError(error: any): boolean {
+  private isRateLimitError(error: DiscordHttpError): boolean {
     return (
       error?.status === 429 ||
       error?.code === 429 ||
@@ -256,7 +274,7 @@ export class DiscordRateLimiter extends EventEmitter {
   /**
    * Extract retry-after time from error
    */
-  private extractRetryAfter(error: any): number {
+  private extractRetryAfter(error: DiscordHttpError): number {
     if (error instanceof RateLimitError) {
       return error.retryAfter;
     }
@@ -264,7 +282,7 @@ export class DiscordRateLimiter extends EventEmitter {
     return (
       error?.retry_after ||
       error?.retryAfter ||
-      parseFloat(error?.headers?.["retry-after"]) ||
+      parseFloat(error?.headers?.["retry-after"] ?? "") ||
       1
     );
   }
@@ -272,7 +290,7 @@ export class DiscordRateLimiter extends EventEmitter {
   /**
    * Check if rate limit is global
    */
-  private isGlobalRateLimit(error: any): boolean {
+  private isGlobalRateLimit(error: DiscordHttpError): boolean {
     if (error instanceof RateLimitError) {
       return error.global;
     }

@@ -13,7 +13,11 @@ export interface RouteValidation {
 /**
  * Validated request data stored in res.locals
  */
-export interface ValidatedData<TParams = any, TQuery = any, TBody = any> {
+export interface ValidatedData<
+  TParams = unknown,
+  TQuery = unknown,
+  TBody = unknown,
+> {
   params: TParams;
   query: TQuery;
   body: TBody;
@@ -70,9 +74,9 @@ export function validate(schemas: RouteValidation) {
  * when specific types are provided
  */
 type MergeValidated<T> = {
-  params: T extends { params: infer P } ? P : any;
-  query: T extends { query: infer Q } ? Q : any;
-  body: T extends { body: infer B } ? B : any;
+  params: T extends { params: infer P } ? P : unknown;
+  query: T extends { query: infer Q } ? Q : unknown;
+  body: T extends { body: infer B } ? B : unknown;
 };
 
 /**

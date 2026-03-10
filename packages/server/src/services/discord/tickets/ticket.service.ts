@@ -12,12 +12,7 @@ import {
 } from "discord.js";
 import { TicketRepository } from "@/db/repositories/ticket";
 import type { Ticket, TicketIdentifier } from "@/generated/db";
-import {
-  type TicketType,
-  TicketStatus,
-  type CreateTicketOptions,
-  TicketUserAction,
-} from "./";
+import { TicketStatus, type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
@@ -194,8 +189,6 @@ export class TicketService {
     ticket: Ticket,
     creatorId: string,
   ): Promise<void> {
-    const config = getTicketTypeConfig(ticket.type as TicketType);
-
     const minecraftUsername = await Q.player.select.minecraftUsername({
       discordId: creatorId,
     });
@@ -217,7 +210,7 @@ export class TicketService {
    *
    * @private
    */
-  private getTicketActionButtons(ticketId: number): any[] {
+  private getTicketActionButtons(ticketId: number): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -295,7 +288,7 @@ export class TicketService {
         return;
       }
 
-      const guild = await this.bot.guilds.fetch(config.discord.guild.id);
+      await this.bot.guilds.fetch(config.discord.guild.id);
       const textChannel = channel as TextChannel;
 
       await textChannel.permissionOverwrites.edit(creatorId, {
@@ -345,7 +338,7 @@ export class TicketService {
    *
    * @private
    */
-  private getClosedTicketButtons(ticketId: number): any[] {
+  private getClosedTicketButtons(ticketId: number): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -546,7 +539,7 @@ export class TicketService {
 
     try {
       await fs.access(transcriptPath);
-    } catch (error) {
+    } catch {
       throw new Error("Transcript file not found");
     }
 

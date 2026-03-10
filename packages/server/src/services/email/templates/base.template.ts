@@ -9,7 +9,7 @@ import type { EmailAttachment } from "../types";
  *
  * @template TData - The type of data required to render the email template
  */
-export abstract class BaseEmailTemplate<TData = any> {
+export abstract class BaseEmailTemplate<TData = unknown> {
   /**
    * Generates the email subjest line
    *
@@ -46,7 +46,7 @@ export abstract class BaseEmailTemplate<TData = any> {
    * @param data - Template data used to generate attachments
    * @returns Array of email attachments
    */
-  protected getAttachments(data: TData): EmailAttachment[] {
+  protected getAttachments(_data: TData): EmailAttachment[] {
     return [];
   }
   /**

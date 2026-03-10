@@ -27,7 +27,7 @@ export class WebSocketDataProvider {
   async getAllServerStatuses(): Promise<ServerStatus[]> {
     const statuses: ServerStatus[] = [];
 
-    for (const [serverId, config] of Object.entries(MINECRAFT_SERVERS)) {
+    for (const [serverId, _config] of Object.entries(MINECRAFT_SERVERS)) {
       const id = parseInt(serverId);
       const status = await this.getServerStatus(id);
       statuses.push(status);

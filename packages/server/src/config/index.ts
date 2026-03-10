@@ -21,7 +21,7 @@ interface DiscordEntities {
 let discordEntities: DiscordEntities;
 try {
   discordEntities = JSON.parse(fs.readFileSync(discordEntitiesPath, "utf-8"));
-} catch (error) {
+} catch {
   console.warn(
     "Warning: discord-entities.json not found. Run 'pnpm scrape-discord' to generate it.",
   );

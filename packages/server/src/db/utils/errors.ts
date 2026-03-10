@@ -2,7 +2,10 @@
  * Base error class for database-related errors
  */
 export class DatabaseError extends Error {
-  constructor(message: string, public cause?: unknown) {
+  constructor(
+    message: string,
+    public cause?: unknown,
+  ) {
     super(message);
     this.name = "DatabaseError";
 
@@ -18,7 +21,7 @@ export class DatabaseError extends Error {
 export class NotFoundError extends DatabaseError {
   constructor(
     public readonly entityName: string,
-    public readonly criteria: Record<string, any>
+    public readonly criteria: Record<string, unknown>,
   ) {
     const criteriaStr = formatCriteria(criteria);
     super(`${entityName} not found with ${criteriaStr}`);
@@ -33,7 +36,7 @@ export class ConstraintViolationError extends DatabaseError {
   constructor(
     message: string,
     public readonly constraint?: string,
-    cause?: unknown
+    cause?: unknown,
   ) {
     super(message, cause);
     this.name = "ConstraintViolationError";
@@ -47,7 +50,7 @@ export class QueryError extends DatabaseError {
   constructor(
     message: string,
     public readonly query?: string,
-    cause?: unknown
+    cause?: unknown,
   ) {
     super(message, cause);
     this.name = "QueryError";
@@ -57,7 +60,7 @@ export class QueryError extends DatabaseError {
 /**
  * Formats criteria object into readable string for error messages
  */
-function formatCriteria(criteria: Record<string, any>): string {
+function formatCriteria(criteria: Record<string, unknown>): string {
   return Object.entries(criteria)
     .map(([k, v]) => `${k}: ${v}`)
     .join(", ");

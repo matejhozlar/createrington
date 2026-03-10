@@ -43,7 +43,7 @@ export class AuthController {
     req: Request,
     res: Response,
   ): Promise<void> {
-    const { code, state } = req.body;
+    const { code, _state } = req.body;
 
     if (!code) {
       throw new BadRequestError("Authorization code is required");

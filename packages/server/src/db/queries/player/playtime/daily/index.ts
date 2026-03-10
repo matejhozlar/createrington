@@ -1,6 +1,12 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeDailyBaseQueries } from "@/generated/db/player_playtime_daily.queries";
 
+type ServerActivityRow = {
+  play_date: Date;
+  unique_players: string;
+  total_seconds: string;
+};
+
 export type ServerActivity = {
   playDate: Date;
   uniquePlayers: number;
@@ -91,7 +97,7 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     try {
       const result = await this.db.query(query, [serverId, startDate, endDate]);
 
-      return this.mapRowsToEntities<any, ServerActivity>(result.rows);
+      return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(result.rows);
     } catch (error) {
       logger.error("Failed to get server daily activity:", error);
       throw error;

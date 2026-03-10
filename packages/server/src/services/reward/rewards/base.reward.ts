@@ -154,7 +154,7 @@ export abstract class BaseReward {
   protected async recordClaim(
     playerUuid: string,
     amount: number,
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<void> {
     await Q.reward.claim.create({
       playerMinecraftUuid: playerUuid,

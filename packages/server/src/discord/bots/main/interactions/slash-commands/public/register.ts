@@ -155,15 +155,18 @@ export async function execute(
     const response = await fetch(
       `https://playerdb.co/api/player/minecraft/${mcName}`,
     );
-    const result = (await response.json()) as any;
+    const result = (await response.json()) as {
+      success: boolean;
+      data: { player?: { id: string; username: string } };
+    };
 
     if (!response.ok || !result.success || !result.data.player?.id) {
       steps[currentStep].error = "Minecraft account not found";
       throw new Error(`No Minecraft account found with the name \`${mcName}\``);
     }
 
-    const uuid = result.data.player.id as string;
-    const correctName = result.data.player.username as string;
+    const uuid = result.data.player.id;
+    const correctName = result.data.player.username;
 
     steps[currentStep].completed = true;
     currentStep++;

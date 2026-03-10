@@ -146,7 +146,7 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
     try {
       const result = await this.db.query(query, [serverId]);
 
-      return this.mapRowToEntity<any, ServerStats>(result.rows[0]);
+      return this.mapRowToEntity<ServerStats, ServerStats>(result.rows[0]);
     } catch (error) {
       logger.error("Failed to get server stats:", error);
       throw error;

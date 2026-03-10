@@ -4,6 +4,7 @@ import type {
   Client,
   Collection,
   Interaction,
+  Role,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
@@ -73,7 +74,7 @@ function canBypassCooldown(
   if (interaction.guild && command.cooldown.bypassRoles) {
     const member = interaction.member;
     if (member && "roles" in member) {
-      const memberRoles = member.roles as { cache: Collection<string, any> };
+      const memberRoles = member.roles as { cache: Collection<string, Role> };
       const hasRole = command.cooldown.bypassRoles.some((roleId) =>
         memberRoles.cache.has(roleId),
       );
@@ -336,7 +337,7 @@ async function handleButtonInteractions(
         flags: MessageFlags.Ephemeral,
       });
     } catch (replyError) {
-      logger.error("Failed to send error response:", error);
+      logger.error("Failed to send error response:", error, replyError);
     }
   }
 }

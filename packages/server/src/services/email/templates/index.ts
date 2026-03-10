@@ -14,7 +14,9 @@ export class EmailTemplateRegistry {
     ],
   ]);
 
-  static get<TData = any>(template: EmailTemplate): BaseEmailTemplate<TData> {
+  static get<TData = unknown>(
+    template: EmailTemplate,
+  ): BaseEmailTemplate<TData> {
     const templateInstance = this.templates.get(template);
     if (!templateInstance) {
       throw new Error(`Template ${template} not found`);

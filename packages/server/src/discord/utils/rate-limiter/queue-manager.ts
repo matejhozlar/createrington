@@ -5,7 +5,9 @@ import { type QueuedRequest, RequestPriority } from "./types";
  * Manages request queues with priority-based ordering
  */
 export class QueueManager extends EventEmitter {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- type-erased container for heterogeneous requests
   private queues = new Map<string, QueuedRequest<any>[]>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private globalQueue: QueuedRequest<any>[] = [];
   private requestIdCounter = 0;
 
@@ -43,6 +45,7 @@ export class QueueManager extends EventEmitter {
   /**
    * Get next request for a route
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   dequeue(route: string): QueuedRequest<any> | null {
     const queue = this.queues.get(route);
     if (!queue || queue.length === 0) {
@@ -63,6 +66,7 @@ export class QueueManager extends EventEmitter {
   /**
    * Peek at the next request without removing it
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   peek(route: string): QueuedRequest<any> | null {
     const queue = this.queues.get(route);
     if (!queue || queue.length === 0) {
@@ -140,7 +144,7 @@ export class QueueManager extends EventEmitter {
 
     this.queues.forEach((queue) => {
       queue.forEach((request) => {
-        counts[request.priority];
+        counts[request.priority]++;
       });
     });
 

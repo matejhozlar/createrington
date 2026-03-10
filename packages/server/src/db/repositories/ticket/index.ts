@@ -8,6 +8,7 @@ import type {
   TicketAction,
   TicketActionCreate,
   TicketCreate,
+  TicketFilters,
 } from "@/generated/db";
 import { DatabaseTable } from "@/generated/db";
 import { Q } from "@/db";
@@ -205,7 +206,7 @@ export class TicketRepository {
    */
   async updateMetadata(
     ticketId: number,
-    metadata: Record<string, any>,
+    metadata: Record<string, unknown>,
   ): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
@@ -280,7 +281,7 @@ export class TicketRepository {
       orderDirection?: "asc" | "desc";
     },
   ): Promise<Ticket[]> {
-    const filters: any = {
+    const filters: Partial<TicketFilters> = {
       creatorDiscordId: discordId,
     };
 

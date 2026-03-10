@@ -1,9 +1,21 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
 
+type PlayerHourlyPatternRow = {
+  hour_of_day: string;
+  total_seconds: string;
+};
+
 export type PlayerHourlyPattern = {
   hourOfDay: number;
   totalSeconds: number;
+};
+
+type ServerHeatMapRow = {
+  day: Date;
+  hour: string;
+  unique_players: string;
+  total_seconds: string;
 };
 
 export type ServerHeatMap = {
@@ -91,7 +103,7 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
         serverId,
       ]);
 
-      return this.mapRowsToEntities<any, PlayerHourlyPattern>(result.rows);
+      return this.mapRowsToEntities<PlayerHourlyPatternRow, PlayerHourlyPattern>(result.rows);
     } catch (error) {
       logger.error("Failed to get player hourly pattern:", error);
       throw error;
@@ -132,7 +144,7 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     try {
       const result = await this.db.query(query, [serverId, days]);
 
-      return this.mapRowsToEntities<any, ServerHeatMap>(result.rows);
+      return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(result.rows);
     } catch (error) {
       logger.error("Failed to get server heatmap:", error);
       throw error;

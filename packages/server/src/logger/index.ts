@@ -5,7 +5,6 @@ import winston from "winston";
 import config from "@/config";
 
 const logDir = config.utils.logger.logDir;
-const SPLAT = Symbol.for("splat");
 
 class DailyFolderLogger {
   private currentDate: string;
@@ -78,9 +77,9 @@ class DailyFolderLogger {
         const { timestamp, level, message, filename } = info;
         const fileTag = filename ? `[${filename}]` : "";
         return `[${timestamp}]${fileTag}[${String(
-          level
+          level,
         ).toUpperCase()}] ${message}`;
-      })
+      }),
     );
 
     const consoleFormat = winston.format.combine(
@@ -95,7 +94,7 @@ class DailyFolderLogger {
         const { timestamp, level, message, filename } = info;
         const fileTag = filename ? `[${filename}]` : "";
         return `[${timestamp}]${fileTag}[${level}] ${message}`;
-      })
+      }),
     );
 
     return winston.createLogger({
@@ -176,27 +175,39 @@ class DailyFolderLogger {
 
   public debug(...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).debug({ message: util.format(...args), filename });
+    (this.logger as winston.Logger).debug({
+      message: util.format(...args),
+      filename,
+    });
   }
 
   public error(...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).error({ message: util.format(...args), filename });
+    (this.logger as winston.Logger).error({
+      message: util.format(...args),
+      filename,
+    });
   }
 
   public warn(...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).warn({ message: util.format(...args), filename });
+    (this.logger as winston.Logger).warn({
+      message: util.format(...args),
+      filename,
+    });
   }
 
   public info(...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).info({ message: util.format(...args), filename });
+    (this.logger as winston.Logger).info({
+      message: util.format(...args),
+      filename,
+    });
   }
 
   public log(level: string, ...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).log(level, {
+    (this.logger as winston.Logger).log(level, {
       message: util.format(...args),
       filename,
     });

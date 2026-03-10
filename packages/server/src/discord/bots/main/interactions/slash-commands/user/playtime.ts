@@ -95,6 +95,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       `Failed to fetch playtime for ${targetUser.displayName}. They may not have any recorded playtime yet.`,
     );
 
+    logger.error(
+      `Failed to fetch playtime for ${targetUser.displayName}:`,
+      error,
+    );
+
     await interaction.reply({
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,

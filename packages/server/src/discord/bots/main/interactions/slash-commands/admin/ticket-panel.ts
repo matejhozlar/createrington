@@ -69,7 +69,7 @@ export async function execute(
 
       try {
         button.setEmoji(config.emoji);
-      } catch (error) {
+      } catch {
         logger.warn(
           `Invalid emoji for ticket type ${config.type}: ${config.emoji}`,
         );
