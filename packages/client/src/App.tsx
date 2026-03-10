@@ -54,7 +54,7 @@ import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
-import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
+import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
