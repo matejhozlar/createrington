@@ -55,7 +55,8 @@
     "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",
-    "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin"
+    "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin",
+    "kill-ports": "bash scripts/kill-ports.sh"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
