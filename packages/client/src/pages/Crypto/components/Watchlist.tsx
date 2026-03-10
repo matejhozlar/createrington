@@ -6,16 +6,7 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, X, TrendingUp, TrendingDown } from "lucide-react";
-
-/** Formats a price string with adaptive decimal precision based on magnitude. */
-function formatPrice(price: string): string {
-  const num = Number(price);
-  if (num === 0) return "0.00";
-  if (num < 0.01) return num.toFixed(6);
-  if (num < 1) return num.toFixed(4);
-  if (num < 1000) return num.toFixed(2);
-  return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
+import { formatPrice } from "./format";
 
 /** User's crypto watchlist with live price updates. */
 export function Watchlist() {

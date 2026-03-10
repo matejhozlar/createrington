@@ -13,15 +13,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trophy, ArrowLeft, Medal } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
-/**
- * Fetches and renders a ranked table for a specific leaderboard category.
- *
- * @param type - The ranking metric to display ("networth", "pnl", or "volume")
- */
+const RANK_COLORS: Record<number, string> = {
+  1: "text-yellow-400",
+  2: "text-zinc-300",
+  3: "text-amber-600",
+};
+
 function LeaderboardTable({ type }: { type: LeaderboardType }) {
   const { data, isLoading } = trpc.public.crypto.leaderboard.useQuery(
     { type },
@@ -54,50 +55,22 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
           <TableBody>
             {data.map((entry, index) => {
               const rank = index + 1;
-              const isTop3 = rank <= 3;
+              const color = RANK_COLORS[rank];
 
               return (
                 <TableRow
                   key={entry.playerUuid}
-                  className={cn(isTop3 && "font-semibold")}
+                  className={cn(rank <= 3 && "font-semibold")}
                 >
                   <TableCell>
-                    <div className="flex items-center gap-1.5">
-                      {rank === 1 && (
-                        <Medal className="h-5 w-5 text-yellow-400" />
-                      )}
-                      {rank === 2 && (
-                        <Medal className="h-5 w-5 text-gray-300" />
-                      )}
-                      {rank === 3 && (
-                        <Medal className="h-5 w-5 text-amber-600" />
-                      )}
-                      {rank > 3 && (
-                        <span className="pl-1 text-sm text-muted-foreground">
-                          {rank}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        rank === 1 && "text-yellow-400",
-                        rank === 2 && "text-gray-300",
-                        rank === 3 && "text-amber-600",
-                      )}
-                    >
-                      {entry.playerName}
+                    <span className={cn("text-sm tabular-nums", color ?? "text-muted-foreground pl-1")}>
+                      {rank}
                     </span>
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      "text-right font-mono",
-                      rank === 1 && "text-yellow-400",
-                      rank === 2 && "text-gray-300",
-                      rank === 3 && "text-amber-600",
-                    )}
-                  >
+                  <TableCell>
+                    <span className={color}>{entry.playerName}</span>
+                  </TableCell>
+                  <TableCell className={cn("text-right font-mono", color)}>
                     ${Number(entry.value).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -113,47 +86,50 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
   );
 }
 
-/** Crypto leaderboard page — ranks players by net worth, P&L, or trading volume via switchable tabs. */
 export function Leaderboard() {
   const navigate = useNavigate();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1"
-          onClick={() => navigate("/crypto")}
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Market
-        </Button>
-        <div className="flex items-center gap-2">
-          <Trophy className="h-6 w-6 text-yellow-400" />
-          <h1 className="text-2xl font-bold">Leaderboard</h1>
+    <div className="flex flex-1 flex-col pb-16">
+      <div className="px-5 md:px-8 pt-6 pb-6">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1 -ml-2"
+            onClick={() => navigate("/crypto")}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Market
+          </Button>
+
+          <h1 className="text-3xl md:text-4xl font-semibold">Leaderboard</h1>
         </div>
       </div>
 
-      <Tabs defaultValue="networth">
-        <TabsList>
-          <TabsTrigger value="networth">Net Worth</TabsTrigger>
-          <TabsTrigger value="pnl">P&L</TabsTrigger>
-          <TabsTrigger value="volume">Volume</TabsTrigger>
-        </TabsList>
+      <div className="px-5 md:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Tabs defaultValue="networth">
+            <TabsList>
+              <TabsTrigger value="networth">Net Worth</TabsTrigger>
+              <TabsTrigger value="pnl">P&L</TabsTrigger>
+              <TabsTrigger value="volume">Volume</TabsTrigger>
+            </TabsList>
 
-        <TabsContent value="networth">
-          <LeaderboardTable type="networth" />
-        </TabsContent>
+            <TabsContent value="networth">
+              <LeaderboardTable type="networth" />
+            </TabsContent>
 
-        <TabsContent value="pnl">
-          <LeaderboardTable type="pnl" />
-        </TabsContent>
+            <TabsContent value="pnl">
+              <LeaderboardTable type="pnl" />
+            </TabsContent>
 
-        <TabsContent value="volume">
-          <LeaderboardTable type="volume" />
-        </TabsContent>
-      </Tabs>
+            <TabsContent value="volume">
+              <LeaderboardTable type="volume" />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

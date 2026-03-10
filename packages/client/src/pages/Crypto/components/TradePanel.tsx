@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToastActions } from "@/hooks/use-toast";
 import { Clock, Rocket } from "lucide-react";
+import { formatCountdown } from "./format";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
 type TradeTab = "buy" | "sell";
@@ -56,17 +57,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
 
     const update = () => {
       const remaining = new Date(ipoEndsAt).getTime() - Date.now();
-      if (remaining <= 0) {
-        setIpoCountdown("Ended");
-        return;
-      }
-      const totalSec = Math.floor(remaining / 1000);
-      const hours = Math.floor(totalSec / 3600);
-      const minutes = Math.floor((totalSec % 3600) / 60);
-      const seconds = totalSec % 60;
-      if (hours > 0) setIpoCountdown(`${hours}h ${minutes}m ${seconds}s`);
-      else if (minutes > 0) setIpoCountdown(`${minutes}m ${seconds}s`);
-      else setIpoCountdown(`${seconds}s`);
+      setIpoCountdown(formatCountdown(remaining));
     };
 
     update();
@@ -190,11 +181,11 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
     const remainingAllocation = allocation ? Number(allocation.remaining) : null;
 
     return (
-      <Card className="border-amber-500/30">
+      <Card className="border-primary/20">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Rocket className="h-4 w-4 text-amber-400" />
+              <Rocket className="h-4 w-4 text-primary" />
               IPO: Buy {symbol}
             </CardTitle>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -205,10 +196,10 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Fixed price display */}
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">IPO Price (fixed)</span>
-              <span className="font-mono font-medium text-amber-400">
+              <span className="font-mono font-medium text-primary">
                 ${numPrice.toFixed(numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2)}
               </span>
             </div>
@@ -249,7 +240,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
           </p>
 
           <Button
-            className="w-full bg-amber-500 hover:bg-amber-600 text-black font-medium"
+            className="w-full"
             onClick={() => {
               if (amountNum <= 0) {
                 toast.error("Enter a valid amount");

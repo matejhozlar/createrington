@@ -19,6 +19,7 @@ import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
 } from "./useActiveEvents";
+import { formatPrice, formatSupply } from "./format";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -36,7 +37,6 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 type CategoryFilter = "all" | "stable" | "blue_chip" | "memecoin" | "seasonal";
 
-/** Filterable table of all crypto tokens with live price updates. */
 export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("all");
@@ -93,13 +93,11 @@ export function TokenList() {
           <TableBody>
             {tokens?.map((token) => {
               const livePrice = getPrice(token.symbol);
-              // Prefer live WebSocket price over the tRPC query snapshot
               const displayPrice = livePrice?.price ?? token.price;
               const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
               const availableSupply = livePrice?.availableSupply ?? token.availableSupply;
               const change24h = livePrice?.change24h ?? 0;
               const isIpo = !!token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date();
-              // Highlight tokens affected by a market-wide event or a token-specific event
               const hasEvent =
                 hasMarketWideEvent ||
                 eventTokenIds.has(token.id);
@@ -119,7 +117,7 @@ export function TokenList() {
                         <Skull className="h-4 w-4 text-red-500" />
                       )}
                       {!isCrashed && isIpo && (
-                        <Rocket className="h-4 w-4 text-amber-400 animate-pulse" />
+                        <Rocket className="h-4 w-4 text-primary animate-pulse" />
                       )}
                       {!isCrashed && !isIpo && hasEvent && (
                         <Zap className="h-4 w-4 text-yellow-400 animate-pulse" />
@@ -179,7 +177,7 @@ export function TokenList() {
                     ) : isIpo ? (
                       <Badge
                         variant="outline"
-                        className="text-xs text-amber-400 border-amber-500/20 bg-amber-500/10"
+                        className="text-xs text-primary border-primary/30 bg-primary/10"
                       >
                         IPO
                       </Badge>
@@ -207,23 +205,4 @@ export function TokenList() {
       </div>
     </div>
   );
-}
-
-/** Formats a price string with adaptive decimal precision based on magnitude. */
-function formatPrice(price: string): string {
-  const num = Number(price);
-  if (num === 0) return "0.00";
-  if (num < 0.01) return num.toFixed(6);
-  if (num < 1) return num.toFixed(4);
-  if (num < 1000) return num.toFixed(2);
-  return num.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
-
-/** Returns the percentage of total supply currently held by players. */
-function formatSupply(available: string, total: string): string {
-  const avail = Number(available);
-  const tot = Number(total);
-  if (tot >= 999999999) return "∞";
-  const percent = ((1 - avail / tot) * 100).toFixed(1);
-  return `${percent}% held`;
 }

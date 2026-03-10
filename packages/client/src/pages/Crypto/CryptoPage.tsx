@@ -5,28 +5,31 @@ import { Watchlist } from "./components/Watchlist";
 import { ActiveEvents } from "./components/ActiveEvents";
 import { IpoBanner } from "./components/IpoBanner";
 
-/** Main crypto market page — shows the IPO banner, market overview, active events, token list, watchlist, and news feed. */
 export function CryptoPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Crypto Market</h1>
-        <p className="text-muted-foreground">
-          Trade fictional tokens using your in-game balance
-        </p>
+    <div className="flex flex-1 flex-col pb-16">
+      <div className="px-5 md:px-8 pt-8 pb-6">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl md:text-4xl font-semibold">Crypto Market</h1>
+          <p className="mt-2 text-muted-foreground">
+            Trade fictional tokens using your in-game balance
+          </p>
+        </div>
       </div>
 
-      <IpoBanner />
+      <div className="px-5 md:px-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <IpoBanner />
+          <ActiveEvents />
+          <MarketOverview />
 
-      <ActiveEvents />
-
-      <MarketOverview />
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <TokenList />
-        <div className="space-y-6">
-          <Watchlist />
-          <NewsFeed />
+          <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+            <TokenList />
+            <div className="space-y-6">
+              <Watchlist />
+              <NewsFeed />
+            </div>
+          </div>
         </div>
       </div>
     </div>

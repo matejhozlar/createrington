@@ -221,7 +221,8 @@ export async function executeBuy(
     hasMarketVeteranAchievement(playerUuid),
   ]);
   const feeAmount = calculateFee(rawCost, token.category, lifetimeCount, hasVeteran);
-  const totalCost = rawCost + feeAmount;
+  // Round to 3 decimal places to match the balance system's precision
+  const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
 
   await R.balanceRepo.deduct(
     { minecraftUuid: playerUuid },
@@ -363,7 +364,8 @@ export async function executeSell(
     hasMarketVeteranAchievement(playerUuid),
   ]);
   const feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount, hasVeteran);
-  const netRevenue = rawRevenue - feeAmount;
+  // Round to 3 decimal places to match the balance system's precision
+  const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
 
   await R.balanceRepo.add(
     { minecraftUuid: playerUuid },

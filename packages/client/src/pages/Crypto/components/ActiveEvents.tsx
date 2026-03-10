@@ -12,6 +12,7 @@ import {
   Anchor,
   Sparkles,
 } from "lucide-react";
+import { formatCountdown } from "./format";
 
 const EVENT_ICONS: Record<string, typeof TrendingUp> = {
   bull_run: TrendingUp,
@@ -39,14 +40,9 @@ const EVENT_COLORS: Record<string, string> = {
   new_listing_frenzy: "border-blue-500/50 bg-blue-500/10 text-blue-400",
 };
 
-/** Formats the time remaining until an event expires as a human-readable string (e.g. "45m left" or "1.5h left"). */
 function formatRemaining(activeUntil: string): string {
-  const remaining = Math.max(
-    0,
-    Math.round((new Date(activeUntil).getTime() - Date.now()) / 60_000),
-  );
-  if (remaining > 60) return `${(remaining / 60).toFixed(1)}h left`;
-  return `${remaining}m left`;
+  const remaining = new Date(activeUntil).getTime() - Date.now();
+  return formatCountdown(remaining);
 }
 
 /** Displays a single active event banner. */
