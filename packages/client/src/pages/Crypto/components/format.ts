@@ -29,6 +29,14 @@ export function timeAgo(dateStr: string): string {
   return `${days}d ago`;
 }
 
+/** Returns the percentage of total supply held by players as a number. */
+export function getHeldPercent(available: string | number, total: string | number): number {
+  const tot = Number(total);
+  if (tot >= 999999999) return 0;
+  const avail = Number(available);
+  return Math.max(0, Math.min(100, (1 - avail / tot) * 100));
+}
+
 /** Formats remaining milliseconds as "Xh Ym" or "Ym Zs". */
 export function formatCountdown(ms: number): string {
   if (ms <= 0) return "Ended";

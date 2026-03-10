@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToastActions } from "@/hooks/use-toast";
-import { Clock, Rocket } from "lucide-react";
+import { Clock, Rocket, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { formatCountdown } from "./format";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
@@ -219,7 +219,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             />
           </div>
 
-          <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2">
+          <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2.5">
             <span className="text-muted-foreground">Estimated Cost</span>
             <span className="font-mono font-medium tabular-nums">
               ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
@@ -231,7 +231,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
           </p>
 
           <Button
-            className="w-full"
+            className="w-full h-11"
             onClick={() => {
               if (amountNum <= 0) {
                 toast.error("Enter a valid amount");
@@ -249,7 +249,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
   }
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden lg:sticky lg:top-5">
       <CardHeader className="pb-3">
         <CardTitle className="text-base">Trade {symbol}</CardTitle>
       </CardHeader>
@@ -260,7 +260,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             <button
               key={mode}
               className={cn(
-                "rounded-lg px-2 py-1.5 text-xs font-medium transition-all",
+                "rounded-lg px-2 py-2 text-xs font-medium transition-all",
                 orderMode === mode
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
@@ -279,27 +279,29 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
 
         {/* Buy/Sell toggle */}
         {showBuySellTabs && (
-          <div className="flex rounded-xl border p-1">
+          <div className="grid grid-cols-2 gap-1.5 rounded-xl border p-1">
             <button
               className={cn(
-                "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
                 tab === "buy"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setTab("buy")}
             >
+              <ArrowUpRight className="size-4" />
               Buy
             </button>
             <button
               className={cn(
-                "flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-all",
+                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
                 tab === "sell"
                   ? "bg-red-500 text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setTab("sell")}
             >
+              <ArrowDownRight className="size-4" />
               Sell
             </button>
           </div>
@@ -316,7 +318,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             min={1}
-            className="font-mono mt-1.5"
+            className="font-mono mt-1.5 h-11"
           />
         </div>
 
@@ -342,7 +344,7 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
                 placeholder={numPrice.toFixed(4)}
                 value={targetPrice}
                 onChange={(e) => setTargetPrice(e.target.value)}
-                className="pl-7 font-mono"
+                className="pl-7 font-mono h-11"
               />
             </div>
             <p className="mt-1.5 text-xs text-muted-foreground font-mono tabular-nums">
@@ -352,19 +354,25 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
         )}
 
         {/* Estimated cost/revenue */}
-        <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2">
-          <span className="text-muted-foreground">
-            {tab === "buy" ? "Estimated Cost" : "Estimated Revenue"}
-          </span>
-          <span className="font-mono font-medium tabular-nums">
-            ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-          </span>
+        <div className="rounded-xl border bg-muted/20 px-4 py-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              {tab === "buy" ? "Estimated Cost" : "Estimated Revenue"}
+            </span>
+            <span className="font-mono font-semibold tabular-nums">
+              ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+            </span>
+          </div>
         </div>
 
         {/* Submit button */}
         <Button
-          className="w-full"
-          variant={tab === "buy" ? "default" : "destructive"}
+          className={cn(
+            "w-full h-11 font-semibold",
+            tab === "buy"
+              ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+              : "bg-red-500 hover:bg-red-600 text-white",
+          )}
           onClick={handleTrade}
           disabled={isPending || isCrashed || amountNum <= 0}
         >

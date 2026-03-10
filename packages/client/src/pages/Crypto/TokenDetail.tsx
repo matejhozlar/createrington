@@ -70,8 +70,9 @@ export function TokenDetail() {
       {/* Header */}
       <div className="relative overflow-hidden border-b border-border/50">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
-        <div className="relative px-5 md:px-8 pt-6 pb-6">
-          <div className="max-w-7xl mx-auto space-y-4">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        <div className="relative px-5 md:px-8 pt-5 pb-5">
+          <div className="max-w-7xl mx-auto space-y-3">
             <Button
               variant="ghost"
               size="sm"
@@ -83,9 +84,9 @@ export function TokenDetail() {
             </Button>
 
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                  <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                     {token.name}
                   </h1>
                   <Badge
@@ -122,14 +123,16 @@ export function TokenDetail() {
 
               {/* Price display */}
               <div className="text-left sm:text-right shrink-0">
-                <p className="text-4xl font-bold font-mono tabular-nums tracking-tight">
+                <p className="text-3xl md:text-4xl font-bold font-mono tabular-nums tracking-tight">
                   ${formatPrice(displayPrice)}
                 </p>
                 {!isCrashed && change24h !== 0 && (
                   <div
                     className={cn(
-                      "inline-flex items-center gap-1 mt-1 text-sm font-mono tabular-nums font-medium",
-                      change24h > 0 ? "text-emerald-400" : "text-red-400",
+                      "inline-flex items-center gap-1 mt-1 rounded-full px-2.5 py-0.5 text-sm font-mono tabular-nums font-medium",
+                      change24h > 0
+                        ? "text-emerald-400 bg-emerald-500/10"
+                        : "text-red-400 bg-red-500/10",
                     )}
                   >
                     {change24h > 0 ? (
@@ -144,42 +147,42 @@ export function TokenDetail() {
               </div>
             </div>
 
-            {/* Stats cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-xl border bg-card/50 px-4 py-3">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {/* Stats strip — unified bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
+              <div className="bg-card/70 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                   Market Cap
                 </p>
-                <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
                   ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </p>
               </div>
-              <div className="rounded-xl border bg-card/50 px-4 py-3">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="bg-card/70 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                   Circulating
                 </p>
-                <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
                   {circulatingSupply.toLocaleString()}
-                  <span className="text-sm text-muted-foreground font-normal">
+                  <span className="text-xs text-muted-foreground font-normal">
                     {" "}/ {totalSupply >= 999999999 ? "∞" : totalSupply.toLocaleString()}
                   </span>
                 </p>
               </div>
               {token.floorPrice && (
-                <div className="rounded-xl border bg-card/50 px-4 py-3">
-                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="bg-card/70 px-4 py-2.5">
+                  <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                     Floor
                   </p>
-                  <p className="mt-1 text-lg font-semibold font-mono tabular-nums">
+                  <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
                     ${Number(token.floorPrice).toFixed(2)}
                   </p>
                 </div>
               )}
-              <div className="rounded-xl border bg-card/50 px-4 py-3">
-                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="bg-card/70 px-4 py-2.5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                   Listed
                 </p>
-                <p className="mt-1 text-lg font-semibold">
+                <p className="mt-0.5 text-base font-semibold">
                   {new Date(token.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -188,14 +191,18 @@ export function TokenDetail() {
         </div>
       </div>
 
-      <div className="px-5 md:px-8 pt-6">
+      <div className="px-5 md:px-8 pt-5">
         <div className="max-w-7xl mx-auto">
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+          <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+            <div className="space-y-5">
               <PriceChart symbol={token.symbol} />
+              <div className="grid gap-5 sm:grid-cols-2">
+                <OrderBook />
+                <TokenDistribution symbol={token.symbol} />
+              </div>
             </div>
 
-            <div className="space-y-6">
+            <div>
               <TradePanel
                 symbol={token.symbol}
                 price={displayPrice}
@@ -203,8 +210,6 @@ export function TokenDetail() {
                 ipoEndsAt={token.ipoEndsAt}
                 ipoPrice={token.ipoPrice}
               />
-              <OrderBook />
-              <TokenDistribution symbol={token.symbol} />
             </div>
           </div>
         </div>

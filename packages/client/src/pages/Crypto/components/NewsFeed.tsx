@@ -37,9 +37,9 @@ export function NewsFeed() {
 
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Newspaper className="size-4" />
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <Newspaper className="size-3.5" />
           Market News
         </CardTitle>
       </CardHeader>

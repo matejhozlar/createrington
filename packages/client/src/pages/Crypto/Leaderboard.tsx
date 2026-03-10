@@ -13,15 +13,46 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Trophy, Medal, Crown } from "lucide-react";
+import { ArrowLeft, Trophy, Crown, Medal } from "lucide-react";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
-const RANK_STYLES: Record<number, { color: string; icon: typeof Crown; iconColor: string; bg: string }> = {
-  1: { color: "text-yellow-400", icon: Crown, iconColor: "text-yellow-400", bg: "bg-yellow-400/[0.06]" },
-  2: { color: "text-zinc-300", icon: Medal, iconColor: "text-zinc-300", bg: "bg-zinc-300/[0.04]" },
-  3: { color: "text-amber-600", icon: Medal, iconColor: "text-amber-600", bg: "bg-amber-600/[0.04]" },
-};
+const PODIUM_STYLES = [
+  {
+    border: "border-yellow-400/30",
+    bg: "bg-yellow-400/[0.06]",
+    accent: "text-yellow-400",
+    ring: "ring-yellow-400/20",
+    icon: Crown,
+    label: "1st",
+    glow: "shadow-yellow-400/5",
+  },
+  {
+    border: "border-zinc-300/20",
+    bg: "bg-zinc-300/[0.04]",
+    accent: "text-zinc-300",
+    ring: "ring-zinc-300/15",
+    icon: Medal,
+    label: "2nd",
+    glow: "",
+  },
+  {
+    border: "border-amber-600/20",
+    bg: "bg-amber-600/[0.04]",
+    accent: "text-amber-600",
+    ring: "ring-amber-600/15",
+    icon: Medal,
+    label: "3rd",
+    glow: "",
+  },
+];
+
+function formatValue(value: string | number) {
+  return `$${Number(value).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
 
 function LeaderboardTable({ type }: { type: LeaderboardType }) {
   const { data, isLoading } = trpc.public.crypto.leaderboard.useQuery(
@@ -41,69 +72,99 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
     );
   }
 
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="w-16 text-[11px] font-medium uppercase tracking-wider">
-                Rank
-              </TableHead>
-              <TableHead className="text-[11px] font-medium uppercase tracking-wider">
-                Player
-              </TableHead>
-              <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
-                Value
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((entry, index) => {
-              const rank = index + 1;
-              const rankStyle = RANK_STYLES[rank];
+  const podium = data.slice(0, 3);
+  const rest = data.slice(3);
 
-              return (
-                <TableRow
-                  key={entry.playerUuid}
-                  className={cn(
-                    "border-b border-border/30 last:border-0",
-                    rank <= 3 && "font-semibold",
-                    rankStyle?.bg,
-                  )}
-                >
-                  <TableCell>
-                    {rankStyle ? (
-                      <div className="flex items-center gap-1.5">
-                        <rankStyle.icon className={cn("size-4", rankStyle.iconColor)} />
-                        <span className={cn("text-sm tabular-nums", rankStyle.color)}>
+  return (
+    <div className="space-y-5">
+      {/* Podium cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {podium.map((entry, index) => {
+          const style = PODIUM_STYLES[index];
+          const Icon = style.icon;
+
+          return (
+            <div
+              key={entry.playerUuid}
+              className={cn(
+                "relative overflow-hidden rounded-xl border p-4 ring-1 transition-colors",
+                style.border,
+                style.bg,
+                style.ring,
+                style.glow && `shadow-lg ${style.glow}`,
+              )}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Icon className={cn("size-5", style.accent)} />
+                  <span className={cn("text-sm font-bold", style.accent)}>
+                    {style.label}
+                  </span>
+                </div>
+                <span className={cn(
+                  "text-[10px] font-medium uppercase tracking-widest",
+                  style.accent,
+                )}>
+                  Rank #{index + 1}
+                </span>
+              </div>
+              <p className="text-base font-semibold truncate mb-1">
+                {entry.playerName}
+              </p>
+              <p className={cn("text-xl font-bold font-mono tabular-nums", style.accent)}>
+                {formatValue(entry.value)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Rest of the leaderboard */}
+      {rest.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-16 text-[11px] font-medium uppercase tracking-wider">
+                    Rank
+                  </TableHead>
+                  <TableHead className="text-[11px] font-medium uppercase tracking-wider">
+                    Player
+                  </TableHead>
+                  <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">
+                    Value
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rest.map((entry, index) => {
+                  const rank = index + 4;
+                  return (
+                    <TableRow
+                      key={entry.playerUuid}
+                      className="border-b border-border/30 last:border-0"
+                    >
+                      <TableCell>
+                        <span className="text-sm tabular-nums text-muted-foreground pl-1">
                           {rank}
                         </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm tabular-nums text-muted-foreground pl-1">
-                        {rank}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={rankStyle?.color}>
-                      {entry.playerName}
-                    </span>
-                  </TableCell>
-                  <TableCell className={cn("text-right font-mono tabular-nums", rankStyle?.color)}>
-                    ${Number(entry.value).toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+                      </TableCell>
+                      <TableCell>
+                        <span>{entry.playerName}</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono tabular-nums">
+                        {formatValue(entry.value)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -115,8 +176,9 @@ export function Leaderboard() {
       {/* Header */}
       <div className="relative overflow-hidden border-b border-border/50">
         <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/[0.03] via-transparent to-transparent" />
-        <div className="relative px-5 md:px-8 pt-6 pb-6">
-          <div className="max-w-7xl mx-auto space-y-4">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/20 to-transparent" />
+        <div className="relative px-5 md:px-8 pt-5 pb-5">
+          <div className="max-w-7xl mx-auto space-y-3">
             <Button
               variant="ghost"
               size="sm"
@@ -131,7 +193,7 @@ export function Leaderboard() {
               <div className="flex size-11 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
                 <Trophy className="size-5 text-yellow-400" />
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 Leaderboard
               </h1>
             </div>
@@ -139,7 +201,7 @@ export function Leaderboard() {
         </div>
       </div>
 
-      <div className="px-5 md:px-8 pt-6">
+      <div className="px-5 md:px-8 pt-5">
         <div className="max-w-7xl mx-auto">
           <Tabs defaultValue="networth">
             <TabsList>

@@ -17,6 +17,32 @@ import { ArrowLeft, Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-r
 import { PortfolioChart } from "./components/PortfolioChart";
 import { PriceAlerts } from "./components/PriceAlerts";
 
+const ALLOCATION_COLORS = [
+  "bg-emerald-400",
+  "bg-blue-400",
+  "bg-purple-400",
+  "bg-amber-400",
+  "bg-rose-400",
+  "bg-cyan-400",
+  "bg-orange-400",
+  "bg-pink-400",
+  "bg-teal-400",
+  "bg-indigo-400",
+];
+
+const ALLOCATION_TEXT_COLORS = [
+  "text-emerald-400",
+  "text-blue-400",
+  "text-purple-400",
+  "text-amber-400",
+  "text-rose-400",
+  "text-cyan-400",
+  "text-orange-400",
+  "text-pink-400",
+  "text-teal-400",
+  "text-indigo-400",
+];
+
 export function Portfolio() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -43,12 +69,25 @@ export function Portfolio() {
   const pnlIsPositive = Number(data.unrealizedPnl) >= 0;
   const realizedPnl = Number(data.realizedPnl ?? 0);
   const realizedPnlPositive = realizedPnl >= 0;
+  const totalValue = Number(data.totalValue);
+
+  // Compute allocation percentages for the bar
+  const allocations = data.holdings
+    .map((h, i) => ({
+      name: h.name,
+      symbol: h.symbol,
+      value: Number(h.currentValue),
+      percent: totalValue > 0 ? (Number(h.currentValue) / totalValue) * 100 : 0,
+      color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
+      textColor: ALLOCATION_TEXT_COLORS[i % ALLOCATION_TEXT_COLORS.length],
+    }))
+    .sort((a, b) => b.value - a.value);
 
   const stats = [
     {
       icon: Wallet,
       label: "Total Value",
-      value: `$${Number(data.totalValue).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      value: `$${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
       iconBg: "bg-primary/10",
       iconColor: "text-primary",
     },
@@ -83,8 +122,9 @@ export function Portfolio() {
       {/* Header */}
       <div className="relative overflow-hidden border-b border-border/50">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
-        <div className="relative px-5 md:px-8 pt-6 pb-6">
-          <div className="max-w-7xl mx-auto space-y-4">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        <div className="relative px-5 md:px-8 pt-5 pb-5">
+          <div className="max-w-7xl mx-auto space-y-3">
             <Button
               variant="ghost"
               size="sm"
@@ -99,18 +139,18 @@ export function Portfolio() {
               <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
                 <Wallet className="size-5 text-primary" />
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                 Portfolio
               </h1>
             </div>
 
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Stat cards — unified bar */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
               {stats.map((stat) => {
                 const Icon = stat.icon;
                 return (
-                  <div key={stat.label} className="rounded-xl border bg-card/50 px-4 py-3">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div key={stat.label} className="bg-card/70 px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1.5">
                       <div
                         className={cn(
                           "flex size-7 items-center justify-center rounded-lg",
@@ -119,13 +159,13 @@ export function Portfolio() {
                       >
                         <Icon className={cn("size-3.5", stat.iconColor)} />
                       </div>
-                      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
                         {stat.label}
                       </p>
                     </div>
                     <p
                       className={cn(
-                        "text-xl font-bold font-mono tabular-nums",
+                        "text-lg font-bold font-mono tabular-nums",
                         stat.valueColor,
                       )}
                     >
@@ -144,12 +184,51 @@ export function Portfolio() {
         </div>
       </div>
 
-      <div className="px-5 md:px-8 pt-6">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <div className="px-5 md:px-8 pt-5">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
             <PortfolioChart />
             <PriceAlerts />
           </div>
+
+          {/* Allocation bar */}
+          {allocations.length > 0 && totalValue > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Allocation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Stacked bar */}
+                <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted/20">
+                  {allocations.map((a) => (
+                    <div
+                      key={a.symbol}
+                      className={cn("h-full transition-all duration-500", a.color)}
+                      style={{ width: `${Math.max(a.percent, 0.5)}%` }}
+                      title={`${a.name}: ${a.percent.toFixed(1)}%`}
+                    />
+                  ))}
+                </div>
+                {/* Legend */}
+                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                  {allocations.slice(0, 8).map((a) => (
+                    <div key={a.symbol} className="flex items-center gap-1.5">
+                      <span className={cn("size-2 rounded-full", a.color)} />
+                      <span className="text-xs text-muted-foreground">{a.symbol}</span>
+                      <span className={cn("text-xs font-mono font-medium tabular-nums", a.textColor)}>
+                        {a.percent.toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                  {allocations.length > 8 && (
+                    <span className="text-xs text-muted-foreground">
+                      +{allocations.length - 8} more
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {data.holdings.length > 0 ? (
             <Card className="overflow-hidden">
@@ -173,6 +252,10 @@ export function Portfolio() {
                   <TableBody>
                     {data.holdings.map((h) => {
                       const pnlPositive = Number(h.unrealizedPnl) >= 0;
+                      const allocIdx = allocations.findIndex((a) => a.symbol === h.symbol);
+                      const dotColor = allocIdx >= 0
+                        ? allocations[allocIdx].color
+                        : ALLOCATION_COLORS[0];
                       return (
                         <TableRow
                           key={h.tokenId}
@@ -180,11 +263,19 @@ export function Portfolio() {
                           onClick={() => navigate(`/crypto/${h.symbol}`)}
                         >
                           <TableCell>
-                            <div>
-                              <p className="font-medium">{h.name}</p>
-                              <p className="text-xs text-muted-foreground font-mono">
-                                {h.symbol}
-                              </p>
+                            <div className="flex items-center gap-2.5">
+                              <span
+                                className={cn(
+                                  "size-2 rounded-full shrink-0",
+                                  dotColor,
+                                )}
+                              />
+                              <div>
+                                <p className="font-medium">{h.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {h.symbol}
+                                </p>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-mono tabular-nums">

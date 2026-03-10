@@ -46,8 +46,9 @@ export function TradeHistory() {
       {/* Header */}
       <div className="relative overflow-hidden border-b border-border/50">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
-        <div className="relative px-5 md:px-8 pt-6 pb-6">
-          <div className="max-w-7xl mx-auto space-y-4">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        <div className="relative px-5 md:px-8 pt-5 pb-5">
+          <div className="max-w-7xl mx-auto space-y-3">
             <Button
               variant="ghost"
               size="sm"
@@ -58,20 +59,27 @@ export function TradeHistory() {
               Back to Market
             </Button>
 
-            <div className="flex items-center gap-3.5">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                <History className="size-5 text-primary" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                  <History className="size-5 text-primary" />
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  Trade History
+                </h1>
               </div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-                Trade History
-              </h1>
+              {data.pagination.totalPages > 0 && (
+                <span className="text-sm text-muted-foreground font-mono tabular-nums">
+                  {data.pagination.totalPages * 20}+ trades
+                </span>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-5 md:px-8 pt-6">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <div className="px-5 md:px-8 pt-5">
+        <div className="max-w-7xl mx-auto space-y-5">
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               <Table>
@@ -109,7 +117,10 @@ export function TradeHistory() {
                     return (
                       <TableRow
                         key={tx.id}
-                        className="border-b border-border/30 last:border-0"
+                        className={cn(
+                          "border-b border-border/30 last:border-0 relative",
+                          isBuy ? "bg-emerald-500/[0.02]" : "bg-red-500/[0.02]",
+                        )}
                       >
                         <TableCell className="text-sm text-muted-foreground">
                           {new Date(tx.createdAt).toLocaleString()}
