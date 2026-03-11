@@ -21,6 +21,7 @@ import React from "react";
 export function NavMain({
   items,
   insertions,
+  prepend,
 }: {
   items: {
     title: string;
@@ -29,12 +30,14 @@ export function NavMain({
     badge?: number;
   }[];
   insertions?: { afterIndex: number; element: React.ReactNode }[];
+  prepend?: React.ReactNode;
 }) {
   const { state } = useSidebar();
 
   return (
     <SidebarGroup>
       <SidebarMenu>
+        {prepend}
         {items.map((item, i) => (
           <React.Fragment key={item.title}>
             <SidebarMenuItem>
