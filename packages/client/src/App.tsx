@@ -42,6 +42,7 @@ import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
+import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -243,6 +244,7 @@ function AppContent() {
                     path="tools/embed-builder"
                     element={<EmbedBuilder />}
                   />
+                  <Route path="crypto" element={<AdminCrypto />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>

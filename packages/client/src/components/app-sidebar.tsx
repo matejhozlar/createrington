@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   AlertCircle,
+  Coins,
   FileText,
   Home,
   LayoutDashboard,
@@ -66,6 +67,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Servers",
         url: "/admin/servers",
         icon: Server,
+      },
+      {
+        title: "Crypto",
+        url: "/admin/crypto",
+        icon: Coins,
       },
       {
         title: "Tools",
