@@ -19,6 +19,7 @@ import { Q } from "@/db";
 import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 // Lazy-imported to avoid React 19/18 conflict at startup
@@ -49,7 +50,11 @@ export class TicketService {
     private readonly bot: Client,
     private readonly repository: TicketRepository = new TicketRepository(),
   ) {
-    this.transcriptDir = path.join(process.cwd(), "storage", "transcripts");
+    // Resolve from file location to monorepo root (works in both dev and prod
+    // since packages/server/src and dist/server/src have the same depth)
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const monorepoRoot = path.resolve(__dirname, "../../../../../..");
+    this.transcriptDir = path.join(monorepoRoot, "storage", "transcripts");
     this.ensureTranscriptDir();
   }
 
