@@ -501,8 +501,8 @@ export async function recordTickSnapshot(
   now.setMilliseconds(0);
   now.setSeconds(now.getSeconds() - (now.getSeconds() % 30));
 
-  try {
-    await Q.crypto.price.snapshot.create({
+  await Q.crypto.price.snapshot.upsert(
+    {
       tokenId: update.tokenId,
       interval: "tick",
       openPrice: update.oldPrice,
@@ -517,8 +517,8 @@ export async function recordTickSnapshot(
       closePrice: price,
       volume,
       recordedAt: now,
-    });
-  } catch {
-    // Ignore duplicate (unique constraint on token+interval+recordedAt)
-  }
+    },
+    ["tokenId", "interval", "recordedAt"],
+    ["closePrice"],
+  );
 }

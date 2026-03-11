@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PieChart as PieChartIcon, Users } from "lucide-react";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import {
   PieChart,
   Pie,
@@ -205,6 +206,11 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
                 <div
                   className="size-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                />
+                <MinecraftAvatar
+                  username={h.playerName}
+                  uuid={h.playerUuid}
+                  size={18}
                 />
                 <span className="text-muted-foreground truncate">
                   {h.playerName}

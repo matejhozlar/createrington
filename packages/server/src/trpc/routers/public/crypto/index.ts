@@ -286,6 +286,7 @@ export const cryptoRouter = router({
 
       const holders = holdings
         .map((h) => ({
+          playerUuid: h.playerMinecraftUuid,
           playerName: nameMap.get(h.playerMinecraftUuid) ?? "Unknown",
           amount: String(h.amount),
           // Scale by 10 000 in BigInt arithmetic before dividing to preserve two decimal places of precision

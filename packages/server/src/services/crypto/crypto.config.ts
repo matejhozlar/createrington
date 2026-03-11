@@ -34,6 +34,7 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_MEAN_REVERSION_STRENGTH: 0.005, // pull strength per tick (stronger correction)
 
   // Memecoin Generation
+  MEMECOIN_MAX_ACTIVE: 10, // max active (non-crashed, non-delisted) memecoins at a time
   MEMECOIN_INITIAL_PRICE_MIN: 0.001,
   MEMECOIN_INITIAL_PRICE_MAX: 100,
   MEMECOIN_TOTAL_SUPPLY_MIN: 1_000,

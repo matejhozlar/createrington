@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Crown, Medal } from "lucide-react";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
@@ -115,9 +116,16 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
                   Rank #{index + 1}
                 </span>
               </div>
-              <p className="text-base font-semibold truncate mb-1">
-                {entry.playerName}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <MinecraftAvatar
+                  username={entry.playerName}
+                  uuid={entry.playerUuid}
+                  size={28}
+                />
+                <p className="text-base font-semibold truncate">
+                  {entry.playerName}
+                </p>
+              </div>
               <p
                 className={cn(
                   "text-xl font-bold font-mono tabular-nums",
@@ -163,7 +171,14 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span>{entry.playerName}</span>
+                        <div className="flex items-center gap-2">
+                          <MinecraftAvatar
+                            username={entry.playerName}
+                            uuid={entry.playerUuid}
+                            size={24}
+                          />
+                          <span>{entry.playerName}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {formatValue(entry.value)}

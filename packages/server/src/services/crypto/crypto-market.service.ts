@@ -1177,6 +1177,18 @@ export class CryptoMarketService {
       throw new Error(`Token with symbol ${params.symbol} already exists`);
     }
 
+    // Enforce memecoin cap
+    if (params.category === "memecoin") {
+      const activeMemecoins = await Q.crypto.token
+        .where({ category: "memecoin", isCrashed: false, delistedAt: { $exists: false } })
+        .all();
+      if (activeMemecoins.length >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+        throw new Error(
+          `Maximum active memecoins (${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}) reached`,
+        );
+      }
+    }
+
     const token = await Q.crypto.token.createAndReturn({
       name: params.name,
       symbol: params.symbol,
