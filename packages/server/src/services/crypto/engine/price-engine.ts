@@ -181,10 +181,10 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
 
   // --- 1. Random walk component (with event volatility multiplier) ---
   const tier = getVolatilityTier(currentPrice);
-  const { minChange, maxChange } = CRYPTO_CONFIG.VOLATILITY[tier];
+  const { minChange, maxChange, upwardBias } = CRYPTO_CONFIG.VOLATILITY[tier];
   const volatility =
     randomBetween(minChange, maxChange) * eventEffects.volatilityMultiplier;
-  const direction = Math.random() < CRYPTO_CONFIG.MEMECOIN_UPWARD_BIAS ? 1 : -1;
+  const direction = Math.random() < upwardBias ? 1 : -1;
   const baseChange = direction * volatility;
 
   // --- 2. Momentum component ---

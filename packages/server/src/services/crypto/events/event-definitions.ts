@@ -71,11 +71,11 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Market sentiment is overwhelmingly positive! Memecoin volatility increased with upward bias.",
     scope: "market",
-    probability: 0.03,
-    durationMs: [1 * 60 * 60 * 1000, 4 * 60 * 60 * 1000], // 1-4 hours
+    probability: 0.02, // was 0.03 — less frequent
+    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
-      volatilityMultiplier: 1.5,
-      directionBias: 0.05,
+      volatilityMultiplier: 1.2, // was 1.5 — milder boost
+      directionBias: 0.015, // was 0.05 — much weaker upward pressure
     },
     severity: "info",
   },
@@ -86,11 +86,11 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Fear is spreading across the market. Memecoin volatility increased with downward pressure.",
     scope: "market",
-    probability: 0.03,
-    durationMs: [1 * 60 * 60 * 1000, 4 * 60 * 60 * 1000], // 1-4 hours
+    probability: 0.02, // was 0.03
+    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
-      volatilityMultiplier: 1.5,
-      directionBias: -0.05,
+      volatilityMultiplier: 1.2, // was 1.5
+      directionBias: -0.015, // was -0.05
     },
     severity: "warning",
   },
@@ -99,13 +99,13 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "flash_crash",
     name: "Flash Crash",
     description:
-      "{token} just flash-crashed, losing 20-50% of its value instantly!",
+      "{token} just flash-crashed, losing 10-25% of its value instantly!",
     scope: "token",
     targetCategories: ["memecoin"],
     probability: 0.01,
     durationMs: null, // instant
     effects: {
-      instantPriceChange: -0.35, // avg -35%, randomized between -20% and -50% at runtime
+      instantPriceChange: -0.18, // avg -18%, randomized ~-10% to -25% (was -35%)
     },
     severity: "critical",
   },
@@ -114,17 +114,17 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "pump_and_dump",
     name: "Pump & Dump",
     description:
-      "{token} is experiencing suspicious price action! A massive spike followed by a gradual decline.",
+      "{token} is experiencing suspicious price action! A spike followed by a decline.",
     scope: "token",
     targetCategories: ["memecoin"],
-    probability: 0.02,
+    probability: 0.01, // was 0.02
     durationMs: [2 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // exactly 2 hours
     effects: {
-      // Phase 1 (first half): strong upward bias
-      // Phase 2 (second half): strong downward bias
+      // Phase 1 (first half): upward bias
+      // Phase 2 (second half): downward bias
       // Handled specially in the event engine
-      volatilityMultiplier: 1.3,
-      directionBias: 0.08, // starts positive, flips halfway
+      volatilityMultiplier: 1.15, // was 1.3
+      directionBias: 0.03, // was 0.08 — much weaker pump/dump swing
     },
     severity: "warning",
   },
@@ -146,10 +146,10 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "gold_rush",
     name: "Gold Rush",
     description:
-      "Server activity is booming! Stablecoin inflation rate tripled.",
+      "Server activity is booming! Stablecoin inflation rate boosted.",
     scope: "market",
-    probability: 0.02,
-    durationMs: [1 * 60 * 60 * 1000, 3 * 60 * 60 * 1000], // 1-3 hours
+    probability: 0.01, // was 0.02
+    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-3)
     effects: {
       stablecoinInflationMultiplier: 3.0,
     },
@@ -160,13 +160,13 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "supply_shock",
     name: "Supply Shock",
     description:
-      "{token} just lost 20-40% of its available supply! Remaining tokens are now scarcer.",
+      "{token} just lost 10-20% of its available supply! Remaining tokens are now scarcer.",
     scope: "token",
     targetCategories: ["memecoin"],
     probability: 0.01,
     durationMs: null, // instant
     effects: {
-      instantSupplyChange: -0.3, // avg -30%, randomized at runtime
+      instantSupplyChange: -0.15, // was -0.3 — halved
     },
     severity: "warning",
   },
@@ -174,12 +174,12 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
   tax_holiday: {
     type: "tax_holiday",
     name: "Tax Holiday",
-    description: "All trading fees reduced to 0% for a limited time!",
+    description: "Trading fees halved for a limited time!",
     scope: "market",
-    probability: 0.01,
-    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours
+    probability: 0.005, // was 0.01 — rarer
+    durationMs: [30 * 60 * 1000, 1 * 60 * 60 * 1000], // 30min-1h (was 1-2h)
     effects: {
-      feeMultiplier: 0,
+      feeMultiplier: 0.5, // was 0 (free) — now just 50% off
     },
     severity: "info",
   },
@@ -188,13 +188,13 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "whale_dump",
     name: "Whale Dump",
     description:
-      "A massive sell-off hit {token}! The price has been pushed down significantly.",
+      "A massive sell-off hit {token}! The price has been pushed down.",
     scope: "token",
     targetCategories: ["memecoin"],
     probability: 0.02,
     durationMs: null, // instant
     effects: {
-      instantPriceChange: -0.15, // -15% instant drop
+      instantPriceChange: -0.1, // was -0.15 — slightly milder
     },
     severity: "warning",
   },
@@ -203,12 +203,12 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     type: "new_listing_frenzy",
     name: "New Listing Frenzy",
     description:
-      "A new token just listed! All memecoin volatility boosted by 20% for 1 hour.",
+      "A new token just listed! All memecoin volatility boosted by 10% for 1 hour.",
     scope: "market",
     probability: 0, // triggered manually on IPO, not rolled randomly
     durationMs: [1 * 60 * 60 * 1000, 1 * 60 * 60 * 1000], // exactly 1 hour
     effects: {
-      volatilityMultiplier: 1.2,
+      volatilityMultiplier: 1.1, // was 1.2
     },
     severity: "info",
   },
