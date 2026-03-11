@@ -17,8 +17,8 @@ export function NewsFeed() {
   );
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="py-4 gap-3">
+      <CardHeader className="pb-0">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Newspaper className="size-3.5 text-muted-foreground" />
           Market Activity

@@ -14,8 +14,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
+import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { PortfolioChart } from "./components/PortfolioChart";
 import { PriceAlerts } from "./components/PriceAlerts";
+
+const ALLOCATION_FILLS = [
+  "#34d399", // emerald-400
+  "#60a5fa", // blue-400
+  "#c084fc", // purple-400
+  "#fbbf24", // amber-400
+  "#fb7185", // rose-400
+  "#22d3ee", // cyan-400
+  "#fb923c", // orange-400
+  "#f472b6", // pink-400
+  "#2dd4bf", // teal-400
+  "#818cf8", // indigo-400
+];
 
 const ALLOCATION_COLORS = [
   "bg-emerald-400",
@@ -78,13 +92,14 @@ export function Portfolio() {
   const realizedPnlPositive = realizedPnl >= 0;
   const totalValue = Number(data.totalValue);
 
-  // Compute allocation percentages for the bar
+  // Compute allocation percentages for the donut
   const allocations = data.holdings
     .map((h, i) => ({
       name: h.name,
       symbol: h.symbol,
       value: Number(h.currentValue),
       percent: totalValue > 0 ? (Number(h.currentValue) / totalValue) * 100 : 0,
+      fill: ALLOCATION_FILLS[i % ALLOCATION_FILLS.length],
       color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
       textColor: ALLOCATION_TEXT_COLORS[i % ALLOCATION_TEXT_COLORS.length],
     }))
@@ -168,50 +183,72 @@ export function Portfolio() {
             <PriceAlerts />
           </div>
 
-          {/* Allocation bar */}
+          {/* Allocation donut */}
           {allocations.length > 0 && totalValue > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Allocation</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Stacked bar */}
-                <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted/20">
-                  {allocations.map((a) => (
-                    <div
-                      key={a.symbol}
-                      className={cn(
-                        "h-full transition-all duration-500",
-                        a.color,
-                      )}
-                      style={{ width: `${Math.max(a.percent, 0.5)}%` }}
-                      title={`${a.name}: ${a.percent.toFixed(1)}%`}
-                    />
-                  ))}
-                </div>
-                {/* Legend */}
-                <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                  {allocations.slice(0, 8).map((a) => (
-                    <div key={a.symbol} className="flex items-center gap-1.5">
-                      <span className={cn("size-2 rounded-full", a.color)} />
+              <CardContent>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                  {/* Legend */}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 sm:flex-col sm:gap-y-2">
+                    {allocations.slice(0, 8).map((a) => (
+                      <div key={a.symbol} className="flex items-center gap-1.5">
+                        <span className={cn("size-2 rounded-full", a.color)} />
+                        <span className="text-xs text-muted-foreground">
+                          {a.symbol}
+                        </span>
+                        <span
+                          className={cn(
+                            "text-xs font-mono font-medium tabular-nums",
+                            a.textColor,
+                          )}
+                        >
+                          {a.percent.toFixed(1)}%
+                        </span>
+                      </div>
+                    ))}
+                    {allocations.length > 8 && (
                       <span className="text-xs text-muted-foreground">
-                        {a.symbol}
+                        +{allocations.length - 8} more
                       </span>
-                      <span
-                        className={cn(
-                          "text-xs font-mono font-medium tabular-nums",
-                          a.textColor,
-                        )}
+                    )}
+                  </div>
+                  {/* Donut chart */}
+                  <div className="size-52 shrink-0">
+                    <PieChart width={208} height={208}>
+                      <Pie
+                        data={allocations}
+                        dataKey="value"
+                        nameKey="symbol"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius="60%"
+                        outerRadius="90%"
+                        paddingAngle={2}
+                        strokeWidth={0}
                       >
-                        {a.percent.toFixed(1)}%
-                      </span>
-                    </div>
-                  ))}
-                  {allocations.length > 8 && (
-                    <span className="text-xs text-muted-foreground">
-                      +{allocations.length - 8} more
-                    </span>
-                  )}
+                        {allocations.map((a) => (
+                          <Cell key={a.symbol} fill={a.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.[0]) return null;
+                          const d = payload[0].payload;
+                          return (
+                            <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
+                              <p className="font-medium">{d.name}</p>
+                              <p className="text-muted-foreground font-mono tabular-nums">
+                                {d.percent.toFixed(1)}% &middot; ${d.value.toFixed(2)}
+                              </p>
+                            </div>
+                          );
+                        }}
+                      />
+                    </PieChart>
+                  </div>
                 </div>
               </CardContent>
             </Card>

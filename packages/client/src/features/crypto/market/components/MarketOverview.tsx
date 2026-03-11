@@ -37,12 +37,12 @@ export function MarketOverview() {
 
   if (isLoading || !data) {
     return (
-      <div className="h-10 animate-pulse rounded-lg bg-card/30 border" />
+      <div className="h-5 w-64 animate-pulse rounded bg-muted/30" />
     );
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-card/30 px-4 py-2.5">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <Stat
         label="Market Cap"
         value={`$${Number(data.totalMarketCap).toLocaleString()}`}

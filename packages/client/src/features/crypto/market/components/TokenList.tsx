@@ -35,7 +35,7 @@ export function TokenList() {
   return (
     <div className="space-y-3">
       {/* Filters */}
-      <div className="flex items-center gap-1 rounded-lg border bg-card/30 p-1">
+      <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
         {FILTERS.map(({ key, label, dot }) => (
           <button
             key={key}

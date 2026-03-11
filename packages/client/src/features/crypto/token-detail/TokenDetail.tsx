@@ -1,11 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth";
 import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skull, Rocket, TrendingUp, TrendingDown } from "lucide-react";
+import { Skull, Rocket, TrendingUp, TrendingDown, Star } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
@@ -29,12 +30,27 @@ const CATEGORY_LABELS: Record<string, string> = {
 export function TokenDetail() {
   const { symbol } = useParams<{ symbol: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { getPrice } = useCryptoData();
+  const utils = trpc.useUtils();
 
   const { data: token, isLoading } = trpc.public.crypto.get.useQuery(
     { symbol: symbol ?? "" },
     { enabled: !!symbol },
   );
+
+  const { data: watchlist } = trpc.user.crypto.watchlistList.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+  const isWatchlisted = watchlist?.some((w) => w.symbol === symbol) ?? false;
+
+  const addToWatchlist = trpc.user.crypto.watchlistAdd.useMutation({
+    onSuccess: () => utils.user.crypto.watchlistList.invalidate(),
+  });
+  const removeFromWatchlist = trpc.user.crypto.watchlistRemove.useMutation({
+    onSuccess: () => utils.user.crypto.watchlistList.invalidate(),
+  });
 
   if (isLoading) {
     return (
@@ -90,6 +106,28 @@ export function TokenDetail() {
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
                   {token.name}
                 </h1>
+                {user && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={cn(
+                      "size-8",
+                      isWatchlisted
+                        ? "text-amber-400 hover:text-amber-300"
+                        : "text-muted-foreground/50 hover:text-amber-400",
+                    )}
+                    disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
+                    onClick={() =>
+                      isWatchlisted
+                        ? removeFromWatchlist.mutate({ symbol: token.symbol })
+                        : addToWatchlist.mutate({ symbol: token.symbol })
+                    }
+                  >
+                    <Star
+                      className={cn("size-4", isWatchlisted && "fill-current")}
+                    />
+                  </Button>
+                )}
                 <Badge
                   variant="outline"
                   className={cn("text-xs", CATEGORY_COLORS[token.category])}

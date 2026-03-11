@@ -114,6 +114,7 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
         borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: true,
         secondsVisible: false,
+        rightOffset: 0,
       },
       handleScroll: false,
       handleScale: false,

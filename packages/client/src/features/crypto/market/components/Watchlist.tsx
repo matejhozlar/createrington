@@ -29,8 +29,8 @@ export function Watchlist() {
 
   if (!user) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="py-4 gap-3">
+        <CardHeader className="pb-0">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Star className="size-3.5 text-muted-foreground" />
             Watchlist
@@ -46,8 +46,8 @@ export function Watchlist() {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="py-4 gap-3">
+      <CardHeader className="pb-0">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Star className="size-3.5 text-muted-foreground" />
           Watchlist

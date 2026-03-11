@@ -17,18 +17,9 @@ export function AnimatedNumber({
   const prevRef = useRef(value);
   const rafRef = useRef<number>(undefined);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const initialRef = useRef(true);
 
   useEffect(() => {
-    if (initialRef.current) {
-      initialRef.current = false;
-      prevRef.current = value;
-      setDisplay(value);
-      return;
-    }
-
     const prev = prevRef.current;
-    prevRef.current = value;
 
     if (prev === value) return;
 
@@ -37,15 +28,19 @@ export function AnimatedNumber({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     if (timerRef.current) clearTimeout(timerRef.current);
 
-    const start = performance.now();
-    const duration = 350;
+    const startTime = performance.now();
+    const duration = 600;
     const diff = value - prev;
 
     const tick = (now: number) => {
-      const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - (1 - t) ** 3;
-      setDisplay(prev + diff * eased);
-      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+      const progress = Math.min((now - startTime) / duration, 1);
+      setDisplay(prev + diff * progress);
+
+      if (progress < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        prevRef.current = value;
+      }
     };
 
     rafRef.current = requestAnimationFrame(tick);
