@@ -39,10 +39,10 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_TOTAL_SUPPLY_MIN: 1_000,
   MEMECOIN_TOTAL_SUPPLY_MAX: 10_000_000,
 
-  // Stablecoin Pricing
+  // Stablecoin Pricing (flat amounts, not percentages)
   STABLECOIN_FLOOR_PRICE: 1.0,
-  STABLECOIN_INFLATION_PER_PLAYER: 0.0003,
-  STABLECOIN_DECAY_RATE: 0.00005,
+  STABLECOIN_INFLATION_PER_PLAYER: 0.0007, // flat $ per player per tick (old: ~$0.0005 equivalent)
+  STABLECOIN_DECAY_RATE: 0.0001, // flat $ decay when no players online
 
   // Blue-Chip Pricing
   BLUECHIP_SENSITIVITY: 0.01, // metric delta multiplier
@@ -70,14 +70,11 @@ export const CRYPTO_CONFIG = {
     BURN_RATIO: 0.5, // 50% of memecoin fees burned
   },
 
-  // Volume Discounts (drastically reduced — old system had none)
-  VOLUME_DISCOUNTS: [
-    { minTrades: 500, discount: 0.05 }, // 5% off fees
-    { minTrades: 2000, discount: 0.1 }, // 10% off fees
-  ],
+  // Volume Discounts (none — matches old system)
+  VOLUME_DISCOUNTS: [] as { minTrades: number; discount: number }[],
 
   // Trading Limits
-  MAX_TRADES_PER_MINUTE: 3, // much stricter (old system had 3-min cooldown per token)
+  TRADE_COOLDOWN_PER_TOKEN_MS: 180_000, // 3-minute cooldown per token per player (matches old system)
   MAX_PENDING_ORDERS: 5,
   ORDER_DEFAULT_EXPIRY_HOURS: 24,
   ORDER_MAX_EXPIRY_HOURS: 168, // 7 days

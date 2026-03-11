@@ -281,6 +281,7 @@ export function tickStablecoinPrice(
 
   const eventEffects = resolveEffects(token.id);
 
+  // Flat amount model (not percentage-based) — linear growth like old system
   let priceChange: number;
   if (activePlayerCount > 0) {
     priceChange =
@@ -291,7 +292,7 @@ export function tickStablecoinPrice(
     priceChange = -CRYPTO_CONFIG.STABLECOIN_DECAY_RATE;
   }
 
-  const newPrice = Math.max(floorPrice, currentPrice * (1 + priceChange));
+  const newPrice = Math.max(floorPrice, currentPrice + priceChange);
 
   return {
     tokenId: token.id,
