@@ -57,6 +57,7 @@ import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
+import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
 import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
 import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
@@ -149,25 +150,27 @@ function AppContent() {
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<CryptoMarket />} />
-        <Route
-          path="/crypto/portfolio"
-          element={
-            <ProtectedRoute>
-              <CryptoPortfolio />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/crypto/history"
-          element={
-            <ProtectedRoute>
-              <CryptoTradeHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/crypto/leaderboard" element={<CryptoLeaderboard />} />
-        <Route path="/crypto/:symbol" element={<TokenDetail />} />
+        <Route path="/crypto" element={<CryptoLayout />}>
+          <Route index element={<CryptoMarket />} />
+          <Route
+            path="portfolio"
+            element={
+              <ProtectedRoute>
+                <CryptoPortfolio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="history"
+            element={
+              <ProtectedRoute>
+                <CryptoTradeHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="leaderboard" element={<CryptoLeaderboard />} />
+          <Route path=":symbol" element={<TokenDetail />} />
+        </Route>
 
         {/* Market Routes */}
         <Route path="/market" element={<div>Market Dashboard</div>} />

@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ChevronLeft, ChevronRight, History } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function TradeHistory() {
   const { user } = useAuth();
@@ -49,34 +49,8 @@ export function TradeHistory() {
   if (!data) return null;
 
   return (
-    <div className="flex flex-1 flex-col pb-16">
-      {/* Header */}
-      <div className="relative overflow-hidden border-b border-border/50">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
-        <div className="relative px-5 md:px-8 pt-5 pb-5">
-          <div className="max-w-7xl mx-auto space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3.5">
-                <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20">
-                  <History className="size-5 text-primary" />
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  Trade History
-                </h1>
-              </div>
-              {data.pagination.totalPages > 0 && (
-                <span className="text-sm text-muted-foreground font-mono tabular-nums">
-                  {data.pagination.totalPages * 20}+ trades
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-5 md:px-8 pt-5">
-        <div className="max-w-7xl mx-auto space-y-5">
+    <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
+      <div className="max-w-7xl mx-auto w-full space-y-5">
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               <Table>
@@ -216,7 +190,6 @@ export function TradeHistory() {
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

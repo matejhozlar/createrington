@@ -39,6 +39,15 @@ import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
  * - portfolioHistory: daily portfolio value snapshots
  */
 export const cryptoRouter = router({
+  balance: userProcedure
+    .meta({ description: "Get player's current in-game balance" })
+    .query(async ({ ctx }) => {
+      const balance = await Q.player.balance.find({
+        minecraftUuid: ctx.user.minecraftUuid,
+      });
+      return { balance: String(balance?.balance ?? 0) };
+    }),
+
   buy: userProcedure
     .meta({ description: "Market buy tokens" })
     .input(
