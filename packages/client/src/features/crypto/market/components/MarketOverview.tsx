@@ -1,73 +1,91 @@
+import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
-import { BarChart3, Activity, Layers } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+function Stat({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+        {label}
+      </span>
+      <span
+        className={cn(
+          "text-sm font-bold font-mono tabular-nums",
+          className,
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export function MarketOverview() {
-  const { data, isLoading } = trpc.public.crypto.marketOverview.useQuery();
+  const navigate = useNavigate();
+  const { data, isLoading } = trpc.public.crypto.marketOverview.useQuery(
+    undefined,
+    { refetchInterval: 30_000 },
+  );
 
   if (isLoading || !data) {
-    return <div className="h-[72px] animate-pulse rounded-xl bg-card border" />;
+    return (
+      <div className="h-10 animate-pulse rounded-lg bg-card/30 border" />
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-px rounded-xl border bg-border/50 overflow-hidden">
-      <div className="flex items-center gap-3 bg-card p-4 transition-colors hover:bg-card/80">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
-          <BarChart3 className="size-4 text-primary" />
-        </div>
-        <div>
-          <span className="block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            Market Cap
-          </span>
-          <span className="text-lg font-bold font-mono tabular-nums tracking-tight">
-            ${Number(data.totalMarketCap).toLocaleString()}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 bg-card p-4 transition-colors hover:bg-card/80">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10">
-          <Activity className="size-4 text-emerald-400" />
-        </div>
-        <div>
-          <span className="block text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-            Active Tokens
-          </span>
-          <span className="text-lg font-bold tabular-nums tracking-tight">
-            {data.activeTokens}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 bg-card p-4 transition-colors hover:bg-card/80">
-        <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10">
-          <Layers className="size-4 text-blue-400" />
-        </div>
-        <div>
-          <span className="block text-[10px] font-medium uppercase tracking-widest text-muted-foreground mb-1">
-            By Category
-          </span>
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5 text-sm">
-              <span className="size-2 rounded-full bg-emerald-400" />
-              <span className="font-mono tabular-nums font-semibold">
-                {data.tokensByCategory.stable}
-              </span>
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                Stable
-              </span>
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border bg-card/30 px-4 py-2.5">
+      <Stat
+        label="Market Cap"
+        value={`$${Number(data.totalMarketCap).toLocaleString()}`}
+      />
+      <div className="h-3.5 w-px bg-border/60" />
+      <Stat
+        label="24h Vol"
+        value={`$${Number(data.totalVolume24h).toLocaleString()}`}
+      />
+      {data.topGainer && (
+        <>
+          <div className="h-3.5 w-px bg-border/60" />
+          <button
+            className="flex items-center gap-2 transition-colors hover:opacity-80"
+            onClick={() => navigate(`/crypto/${data.topGainer!.symbol}`)}
+          >
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              Top Gainer
             </span>
-            <span className="flex items-center gap-1.5 text-sm">
-              <span className="size-2 rounded-full bg-orange-400" />
-              <span className="font-mono tabular-nums font-semibold">
-                {data.tokensByCategory.memecoin}
-              </span>
-              <span className="text-muted-foreground text-[10px] uppercase tracking-wider">
-                Meme
-              </span>
+            <span className="text-sm font-bold font-mono tabular-nums text-emerald-400">
+              {data.topGainer.symbol}{" "}
+              +{data.topGainer.change24h.toFixed(1)}%
             </span>
-          </div>
-        </div>
-      </div>
+          </button>
+        </>
+      )}
+      {data.topLoser && (
+        <>
+          <div className="h-3.5 w-px bg-border/60" />
+          <button
+            className="flex items-center gap-2 transition-colors hover:opacity-80"
+            onClick={() => navigate(`/crypto/${data.topLoser!.symbol}`)}
+          >
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              Top Loser
+            </span>
+            <span className="text-sm font-bold font-mono tabular-nums text-red-400">
+              {data.topLoser.symbol}{" "}
+              {data.topLoser.change24h.toFixed(1)}%
+            </span>
+          </button>
+        </>
+      )}
     </div>
   );
 }

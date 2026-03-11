@@ -1085,6 +1085,47 @@ export class CryptoMarketService {
     return getActiveEventsInMemory();
   }
 
+  /** Returns the total 24h trading volume across all tokens */
+  getTotalVolume24h(): bigint {
+    let total = 0n;
+    for (const vol of this.volume24h.values()) {
+      total += vol;
+    }
+    return total;
+  }
+
+  /**
+   * Returns the top gainer and top loser by 24h price change.
+   * Only considers active, non-crashed, non-IPO tokens.
+   */
+  async getTopMovers(): Promise<{
+    topGainer: { symbol: string; change24h: number } | null;
+    topLoser: { symbol: string; change24h: number } | null;
+  }> {
+    const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
+    const now = new Date();
+
+    let topGainer: { symbol: string; change24h: number } | null = null;
+    let topLoser: { symbol: string; change24h: number } | null = null;
+
+    for (const token of tokens) {
+      if (token.delistedAt) continue;
+      if (token.ipoEndsAt && token.ipoEndsAt > now) continue;
+
+      const change = this.get24hChange(token.id, token.price);
+      if (change === 0) continue;
+
+      if (!topGainer || change > topGainer.change24h) {
+        topGainer = { symbol: token.symbol, change24h: change };
+      }
+      if (!topLoser || change < topLoser.change24h) {
+        topLoser = { symbol: token.symbol, change24h: change };
+      }
+    }
+
+    return { topGainer, topLoser };
+  }
+
   /**
    * Manually triggers a market event (admin action).
    *

@@ -7,6 +7,8 @@ import { getRecentEvents } from "@/services/crypto/events/news-feed";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { getService } from "@/services";
+import { Services } from "@/services/container";
 
 /**
  * Public Crypto Router
@@ -144,7 +146,6 @@ export const cryptoRouter = router({
     .meta({ description: "Get global market overview stats" })
     .query(async () => {
       const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
-
       const activeTokens = tokens.filter((t) => !t.delistedAt);
 
       const totalMarketCap = activeTokens.reduce((sum, t) => {
@@ -153,18 +154,15 @@ export const cryptoRouter = router({
         );
       }, 0);
 
+      const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+      const totalVolume24h = cryptoService.getTotalVolume24h();
+      const { topGainer, topLoser } = await cryptoService.getTopMovers();
+
       return {
         totalMarketCap: totalMarketCap.toFixed(2),
-        activeTokens: activeTokens.length,
-        tokensByCategory: {
-          stable: activeTokens.filter((t) => t.category === "stable").length,
-          blue_chip: activeTokens.filter((t) => t.category === "blue_chip")
-            .length,
-          memecoin: activeTokens.filter((t) => t.category === "memecoin")
-            .length,
-          seasonal: activeTokens.filter((t) => t.category === "seasonal")
-            .length,
-        },
+        totalVolume24h: String(totalVolume24h),
+        topGainer,
+        topLoser,
       };
     }),
 
