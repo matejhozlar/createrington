@@ -6,6 +6,7 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, X } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { formatPrice } from "../../format";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
@@ -55,14 +56,7 @@ export function Watchlist() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-1">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-10 animate-pulse rounded-lg bg-muted/30"
-              />
-            ))}
-          </div>
+          <LoadingSpinner size="small" className="py-8" />
         ) : !watchlist || watchlist.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No tokens in your watchlist

@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCryptoData } from "@/contexts/crypto-data";
 import { Skull, Zap, Rocket } from "lucide-react";
+import { Loading } from "@/components/loading-spinner";
 import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
@@ -62,17 +63,7 @@ export function TokenList() {
 
       {/* Token rows */}
       {isLoading ? (
-        <div className="rounded-xl border bg-card/20 overflow-hidden">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className={cn(
-                "h-[52px] animate-pulse bg-card/30",
-                i < 6 && "border-b border-border/30",
-              )}
-            />
-          ))}
-        </div>
+        <Loading mode="inline" size="large" text="Loading tokens..." className="py-12" />
       ) : (
         <div className="divide-y divide-border/30 rounded-xl border bg-card/20 overflow-hidden">
           {tokens?.map((token) => {

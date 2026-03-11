@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Newspaper } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { timeAgo } from "../../format";
 
 const SEVERITY_DOT: Record<string, string> = {
@@ -26,14 +27,7 @@ export function NewsFeed() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-12 animate-pulse rounded-lg bg-muted/30"
-              />
-            ))}
-          </div>
+          <LoadingSpinner size="small" className="py-8" />
         ) : !data?.length ? (
           <p className="text-sm text-muted-foreground text-center py-4">
             No recent activity
