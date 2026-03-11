@@ -29,8 +29,7 @@ export function IpoBanner() {
 
   if (isLoading || !ipo) return null;
 
-  const soldPercent =
-    (Number(ipo.totalSold) / Number(ipo.totalSupply)) * 100;
+  const soldPercent = (Number(ipo.totalSold) / Number(ipo.totalSupply)) * 100;
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/[0.08] via-primary/[0.04] to-emerald-500/[0.06]">

@@ -19,12 +19,7 @@ export const logsRouter = router({
         tableName: z.string().optional(),
         adminUsername: z.string().optional(),
         orderBy: z
-          .enum([
-            "performedAt",
-            "actionType",
-            "tableName",
-            "adminUsername",
-          ])
+          .enum(["performedAt", "actionType", "tableName", "adminUsername"])
           .default("performedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),

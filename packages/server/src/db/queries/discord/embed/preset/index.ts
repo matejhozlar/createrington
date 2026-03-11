@@ -3,7 +3,7 @@ import { DiscordEmbedPresetBaseQueries } from "@/generated/db/discord_embed_pres
 
 /**
  * Custom queries for discord_embed_preset table
- * 
+ *
  * Extends the auto-generated base class with custom methods.
  * This file is scaffolded once and never overwritten - add your custom
  * query methods here while inheriting all generated CRUD operations.

@@ -112,7 +112,10 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
         serverId,
       ]);
 
-      return this.mapRowsToEntities<PlayerHourlyPatternRow, PlayerHourlyPattern>(result.rows);
+      return this.mapRowsToEntities<
+        PlayerHourlyPatternRow,
+        PlayerHourlyPattern
+      >(result.rows);
     } catch (error) {
       logger.error("Failed to get player hourly pattern:", error);
       throw error;
@@ -153,7 +156,9 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     try {
       const result = await this.db.query(query, [serverId, days]);
 
-      return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(result.rows);
+      return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(
+        result.rows,
+      );
     } catch (error) {
       logger.error("Failed to get server heatmap:", error);
       throw error;

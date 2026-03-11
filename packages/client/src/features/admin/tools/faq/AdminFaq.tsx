@@ -394,13 +394,8 @@ export function AdminFaq() {
                           <p className="font-medium">{entry.title}</p>
                         </td>
                         <td className="px-4 py-3">
-                          <Badge
-                            variant="outline"
-                            className="text-xs"
-                          >
-                            {entry.matchMode === "regex"
-                              ? "Regex"
-                              : "Keywords"}
+                          <Badge variant="outline" className="text-xs">
+                            {entry.matchMode === "regex" ? "Regex" : "Keywords"}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">
@@ -512,8 +507,7 @@ export function AdminFaq() {
                         href="#"
                         onClick={(e) => {
                           e.preventDefault();
-                          if (page < totalPages - 1)
-                            handlePageChange(page + 1);
+                          if (page < totalPages - 1) handlePageChange(page + 1);
                         }}
                         className={cn(
                           page >= totalPages - 1 &&

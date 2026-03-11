@@ -96,9 +96,7 @@ async function handleRefresh(
   interaction: ButtonInteraction,
   type: LeaderboardType,
 ): Promise<void> {
-  const leaderboardService = await getService(
-    Services.LEADERBOARD_SERVICE,
-  );
+  const leaderboardService = await getService(Services.LEADERBOARD_SERVICE);
   const cooldownCheck = await leaderboardService.canRefresh(type);
 
   if (!cooldownCheck.canRefresh) {

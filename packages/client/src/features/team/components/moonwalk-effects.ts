@@ -1,7 +1,6 @@
 import type { PlayerObject, SkinViewer as SkinViewerLib } from "skinview3d";
 import { PlayerAnimation } from "skinview3d";
 
-
 type MoonwalkPhase = "turn" | "head-snap" | "hold" | "moonwalk" | "gone";
 
 const TURN_DURATION = 1.2;
@@ -19,7 +18,7 @@ function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t);
 }
 
-// Moonwalk animation 
+// Moonwalk animation
 
 export class MoonwalkAnimation extends PlayerAnimation {
   private viewer: SkinViewerLib;

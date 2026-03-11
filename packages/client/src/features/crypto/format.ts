@@ -30,7 +30,10 @@ export function timeAgo(dateStr: string): string {
 }
 
 /** Returns the percentage of total supply held by players as a number. */
-export function getHeldPercent(available: string | number, total: string | number): number {
+export function getHeldPercent(
+  available: string | number,
+  total: string | number,
+): number {
   const tot = Number(total);
   if (tot >= 999999999) return 0;
   const avail = Number(available);

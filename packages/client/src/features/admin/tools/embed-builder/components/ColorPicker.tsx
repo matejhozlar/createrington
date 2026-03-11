@@ -15,9 +15,7 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const colors = colorsQuery.data ?? [];
 
   const selectedHex =
-    value !== undefined
-      ? `#${value.toString(16).padStart(6, "0")}`
-      : undefined;
+    value !== undefined ? `#${value.toString(16).padStart(6, "0")}` : undefined;
 
   function handleCustomHex(hex: string) {
     setCustomHex(hex);

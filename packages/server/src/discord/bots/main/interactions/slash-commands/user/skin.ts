@@ -1,10 +1,7 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
-import {
-  ChatInputCommandInteraction,
-  SlashCommandBuilder,
-} from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
  * Slash command definition for the skin command
@@ -14,10 +11,7 @@ export const data = new SlashCommandBuilder()
   .setName("skin")
   .setDescription("Display a player's Minecraft skin")
   .addUserOption((opt) =>
-    opt
-      .setName("user")
-      .setDescription("User to check")
-      .setRequired(false),
+    opt.setName("user").setDescription("User to check").setRequired(false),
   );
 
 /**
@@ -53,9 +47,7 @@ export async function execute(
     const player = await Q.player.get({ discordId: targetUser.id });
 
     const embed = EmbedPresets.info(`${player.minecraftUsername}'s Skin`)
-      .image(
-        `https://mc-heads.net/body/${player.minecraftUuid}`,
-      )
+      .image(`https://mc-heads.net/body/${player.minecraftUuid}`)
       .build();
 
     await interaction.reply({ embeds: [embed] });

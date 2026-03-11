@@ -100,15 +100,15 @@ export class DiscordOAuthService {
       missing.push(
         this.isDev
           ? "DISCORD_OAUTH_REDIRECT_URI_DEV"
-          : "DISCORD_OAUTH_REDIRECT_URI_PROD"
+          : "DISCORD_OAUTH_REDIRECT_URI_PROD",
       );
     }
 
     if (missing.length > 0) {
       throw new Error(
         `Missing required Discord OAuth environment variables: ${missing.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
   }
@@ -138,7 +138,7 @@ export class DiscordOAuthService {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
 
       logger.info("Successfully exchanged OAuth code for token");
@@ -166,11 +166,11 @@ export class DiscordOAuthService {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
-        }
+        },
       );
 
       logger.info(
-        `Fetched Discord user: ${response.data.username} (${response.data.id})`
+        `Fetched Discord user: ${response.data.username} (${response.data.id})`,
       );
       return response.data;
     } catch (error) {
@@ -239,7 +239,7 @@ export class DiscordOAuthService {
     };
 
     logger.info(
-      `Authenticated ${player.minecraftUsername} (${discordUser.username}) as ${role}`
+      `Authenticated ${player.minecraftUsername} (${discordUser.username}) as ${role}`,
     );
 
     return authenticatedUser;
@@ -294,7 +294,7 @@ export class DiscordOAuthService {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
 
       logger.info("Successfully refreshed OAuth token");
@@ -327,7 +327,7 @@ export class DiscordOAuthService {
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
           },
-        }
+        },
       );
 
       logger.info("Successfully revoked OAuth token");

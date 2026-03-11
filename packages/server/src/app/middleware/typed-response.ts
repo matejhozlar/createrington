@@ -54,7 +54,10 @@ export class TypedResponse {
   /**
    * Send 201 Created response with typed data
    */
-  static created<T extends ApiResponse<unknown>>(res: Response, response: T): void {
+  static created<T extends ApiResponse<unknown>>(
+    res: Response,
+    response: T,
+  ): void {
     const serialized = this.serialize(response);
     res.status(201).json(serialized);
   }

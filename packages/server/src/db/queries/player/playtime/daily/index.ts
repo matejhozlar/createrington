@@ -105,7 +105,9 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     try {
       const result = await this.db.query(query, [serverId, startDate, endDate]);
 
-      return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(result.rows);
+      return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
+        result.rows,
+      );
     } catch (error) {
       logger.error("Failed to get server daily activity:", error);
       throw error;

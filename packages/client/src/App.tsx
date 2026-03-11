@@ -132,7 +132,16 @@ function AppContent() {
         <Route
           path="/team"
           element={
-            <Suspense fallback={<Loading mode="inline" size="large" text="Loading..." className="flex items-center justify-center py-32" />}>
+            <Suspense
+              fallback={
+                <Loading
+                  mode="inline"
+                  size="large"
+                  text="Loading..."
+                  className="flex items-center justify-center py-32"
+                />
+              }
+            >
               <Team />
             </Suspense>
           }
@@ -227,7 +236,10 @@ function AppContent() {
                   <Route path="servers/:id" element={<AdminServerDetail />} />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
-                  <Route path="tools/embed-builder" element={<EmbedBuilder />} />
+                  <Route
+                    path="tools/embed-builder"
+                    element={<EmbedBuilder />}
+                  />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>

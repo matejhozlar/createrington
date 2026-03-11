@@ -19,7 +19,9 @@ function validatePattern(matchMode: string, pattern: string): void {
     try {
       FaqService.keywordsToRegex(pattern);
     } catch {
-      throw trpcError.badRequest("Keywords must contain at least one keyword (comma-separated)");
+      throw trpcError.badRequest(
+        "Keywords must contain at least one keyword (comma-separated)",
+      );
     }
   }
 }
@@ -33,9 +35,7 @@ export const faqRouter = router({
         enabled: z.boolean().optional(),
         search: z.string().optional(),
         ...paginationInput(),
-        orderBy: z
-          .enum(["priority", "title", "createdAt"])
-          .default("priority"),
+        orderBy: z.enum(["priority", "title", "createdAt"]).default("priority"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),
     )

@@ -35,12 +35,8 @@
           "name": "admin_discord_id_player_discord_id_fk",
           "tableFrom": "admin",
           "tableTo": "player",
-          "columnsFrom": [
-            "discord_id"
-          ],
-          "columnsTo": [
-            "discord_id"
-          ],
+          "columnsFrom": ["discord_id"],
+          "columnsTo": ["discord_id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -374,12 +370,8 @@
           "name": "auth_session_discord_id_player_discord_id_fk",
           "tableFrom": "auth_session",
           "tableTo": "player",
-          "columnsFrom": [
-            "discord_id"
-          ],
-          "columnsTo": [
-            "discord_id"
-          ],
+          "columnsFrom": ["discord_id"],
+          "columnsTo": ["discord_id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -389,9 +381,7 @@
         "auth_session_token_hash_unique": {
           "name": "auth_session_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -474,12 +464,8 @@
           "name": "crypto_cost_basis_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_cost_basis",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -487,12 +473,8 @@
           "name": "crypto_cost_basis_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_cost_basis",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -611,12 +593,8 @@
           "name": "crypto_holding_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_holding",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -624,12 +602,8 @@
           "name": "crypto_holding_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_holding",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -730,12 +704,8 @@
           "name": "crypto_market_event_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_market_event",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -885,12 +855,8 @@
           "name": "crypto_order_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_order",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -898,12 +864,8 @@
           "name": "crypto_order_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_order",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -992,12 +954,8 @@
           "name": "crypto_portfolio_snapshot_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_portfolio_snapshot",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1093,12 +1051,8 @@
           "name": "crypto_price_alert_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_price_alert",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1106,12 +1060,8 @@
           "name": "crypto_price_alert_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_price_alert",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1244,12 +1194,8 @@
           "name": "crypto_price_snapshot_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_price_snapshot",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1372,9 +1318,7 @@
         "crypto_token_symbol_unique": {
           "name": "crypto_token_symbol_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "symbol"
-          ]
+          "columns": ["symbol"]
         }
       },
       "policies": {},
@@ -1506,12 +1450,8 @@
           "name": "crypto_transaction_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_transaction",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1519,12 +1459,8 @@
           "name": "crypto_transaction_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_transaction",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1532,12 +1468,8 @@
           "name": "crypto_transaction_order_id_crypto_order_id_fk",
           "tableFrom": "crypto_transaction",
           "tableTo": "crypto_order",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1646,12 +1578,8 @@
           "name": "crypto_watchlist_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "crypto_watchlist",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1659,12 +1587,8 @@
           "name": "crypto_watchlist_token_id_crypto_token_id_fk",
           "tableFrom": "crypto_watchlist",
           "tableTo": "crypto_token",
-          "columnsFrom": [
-            "token_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["token_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1725,9 +1649,7 @@
         "discord_embed_preset_name_unique": {
           "name": "discord_embed_preset_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -1787,9 +1709,7 @@
         "discord_guild_member_join_user_id_unique": {
           "name": "discord_guild_member_join_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
+          "columns": ["user_id"]
         }
       },
       "policies": {},
@@ -1913,9 +1833,7 @@
         "discord_guild_member_leave_discord_id_unique": {
           "name": "discord_guild_member_leave_discord_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "discord_id"
-          ]
+          "columns": ["discord_id"]
         }
       },
       "policies": {},
@@ -2069,9 +1987,7 @@
         "faq_welcome_message_channel_id_unique": {
           "name": "faq_welcome_message_channel_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "channel_id"
-          ]
+          "columns": ["channel_id"]
         }
       },
       "policies": {},
@@ -2150,9 +2066,7 @@
         "leaderboard_message_leaderboard_type_unique": {
           "name": "leaderboard_message_leaderboard_type_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "leaderboard_type"
-          ]
+          "columns": ["leaderboard_type"]
         }
       },
       "policies": {},
@@ -2212,12 +2126,8 @@
           "name": "lottery_participant_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "lottery_participant",
           "tableTo": "player",
-          "columnsFrom": [
-            "minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2358,12 +2268,8 @@
           "name": "player_current_server_id_server_id_fk",
           "tableFrom": "player",
           "tableTo": "server",
-          "columnsFrom": [
-            "current_server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["current_server_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -2373,23 +2279,17 @@
         "player_minecraft_uuid_unique": {
           "name": "player_minecraft_uuid_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "minecraft_uuid"
-          ]
+          "columns": ["minecraft_uuid"]
         },
         "player_minecraft_username_unique": {
           "name": "player_minecraft_username_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "minecraft_username"
-          ]
+          "columns": ["minecraft_username"]
         },
         "player_discord_id_unique": {
           "name": "player_discord_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "discord_id"
-          ]
+          "columns": ["discord_id"]
         }
       },
       "policies": {},
@@ -2494,12 +2394,8 @@
           "name": "player_achievement_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_achievement",
           "tableTo": "player",
-          "columnsFrom": [
-            "minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2507,12 +2403,8 @@
           "name": "player_achievement_server_id_server_id_fk",
           "tableFrom": "player_achievement",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2604,12 +2496,8 @@
           "name": "player_balance_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_balance",
           "tableTo": "player",
-          "columnsFrom": [
-            "minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2760,12 +2648,8 @@
           "name": "player_balance_transaction_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_balance_transaction",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2773,12 +2657,8 @@
           "name": "player_balance_transaction_related_player_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_balance_transaction",
           "tableTo": "player",
-          "columnsFrom": [
-            "related_player_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["related_player_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -2998,12 +2878,8 @@
           "name": "player_ban_server_id_server_id_fk",
           "tableFrom": "player_ban",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -3088,12 +2964,8 @@
           "name": "player_minecraft_stats_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_minecraft_stats",
           "tableTo": "player",
-          "columnsFrom": [
-            "minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3101,12 +2973,8 @@
           "name": "player_minecraft_stats_server_id_server_id_fk",
           "tableFrom": "player_minecraft_stats",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3114,10 +2982,7 @@
       "compositePrimaryKeys": {
         "player_minecraft_stats_minecraft_uuid_server_id_pk": {
           "name": "player_minecraft_stats_minecraft_uuid_server_id_pk",
-          "columns": [
-            "minecraft_uuid",
-            "server_id"
-          ]
+          "columns": ["minecraft_uuid", "server_id"]
         }
       },
       "uniqueConstraints": {},
@@ -3177,12 +3042,8 @@
           "name": "player_playtime_daily_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_playtime_daily",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3190,12 +3051,8 @@
           "name": "player_playtime_daily_server_id_server_id_fk",
           "tableFrom": "player_playtime_daily",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3203,11 +3060,7 @@
       "compositePrimaryKeys": {
         "player_playtime_daily_player_minecraft_uuid_server_id_play_date_pk": {
           "name": "player_playtime_daily_player_minecraft_uuid_server_id_play_date_pk",
-          "columns": [
-            "player_minecraft_uuid",
-            "server_id",
-            "play_date"
-          ]
+          "columns": ["player_minecraft_uuid", "server_id", "play_date"]
         }
       },
       "uniqueConstraints": {},
@@ -3288,12 +3141,8 @@
           "name": "player_playtime_hourly_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_playtime_hourly",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3301,12 +3150,8 @@
           "name": "player_playtime_hourly_server_id_server_id_fk",
           "tableFrom": "player_playtime_hourly",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3314,11 +3159,7 @@
       "compositePrimaryKeys": {
         "player_playtime_hourly_player_minecraft_uuid_server_id_play_hour_pk": {
           "name": "player_playtime_hourly_player_minecraft_uuid_server_id_play_hour_pk",
-          "columns": [
-            "player_minecraft_uuid",
-            "server_id",
-            "play_hour"
-          ]
+          "columns": ["player_minecraft_uuid", "server_id", "play_hour"]
         }
       },
       "uniqueConstraints": {},
@@ -3408,12 +3249,8 @@
           "name": "player_playtime_summary_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_playtime_summary",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3421,12 +3258,8 @@
           "name": "player_playtime_summary_server_id_server_id_fk",
           "tableFrom": "player_playtime_summary",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3434,10 +3267,7 @@
       "compositePrimaryKeys": {
         "player_playtime_summary_player_minecraft_uuid_server_id_pk": {
           "name": "player_playtime_summary_player_minecraft_uuid_server_id_pk",
-          "columns": [
-            "player_minecraft_uuid",
-            "server_id"
-          ]
+          "columns": ["player_minecraft_uuid", "server_id"]
         }
       },
       "uniqueConstraints": {},
@@ -3591,12 +3421,8 @@
           "name": "player_session_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_session",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3604,12 +3430,8 @@
           "name": "player_session_server_id_server_id_fk",
           "tableFrom": "player_session",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3824,12 +3646,8 @@
           "name": "player_strike_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "player_strike",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3837,12 +3655,8 @@
           "name": "player_strike_server_id_server_id_fk",
           "tableFrom": "player_strike",
           "tableTo": "server",
-          "columnsFrom": [
-            "server_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["server_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -4005,12 +3819,8 @@
           "name": "reward_claim_player_minecraft_uuid_player_minecraft_uuid_fk",
           "tableFrom": "reward_claim",
           "tableTo": "player",
-          "columnsFrom": [
-            "player_minecraft_uuid"
-          ],
-          "columnsTo": [
-            "minecraft_uuid"
-          ],
+          "columnsFrom": ["player_minecraft_uuid"],
+          "columnsTo": ["minecraft_uuid"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4058,16 +3868,12 @@
         "server_name_unique": {
           "name": "server_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         },
         "server_identifier_unique": {
           "name": "server_identifier_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "identifier"
-          ]
+          "columns": ["identifier"]
         }
       },
       "policies": {},
@@ -4218,9 +4024,7 @@
         "ticket_channel_id_unique": {
           "name": "ticket_channel_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "channel_id"
-          ]
+          "columns": ["channel_id"]
         }
       },
       "policies": {},
@@ -4307,12 +4111,8 @@
           "name": "ticket_action_ticket_id_ticket_id_fk",
           "tableFrom": "ticket_action",
           "tableTo": "ticket",
-          "columnsFrom": [
-            "ticket_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ticket_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -4493,23 +4293,17 @@
         "waitlist_entry_discord_name_unique": {
           "name": "waitlist_entry_discord_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "discord_name"
-          ]
+          "columns": ["discord_name"]
         },
         "waitlist_entry_discord_id_unique": {
           "name": "waitlist_entry_discord_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "discord_id"
-          ]
+          "columns": ["discord_id"]
         },
         "waitlist_entry_token_unique": {
           "name": "waitlist_entry_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       },
       "policies": {},
@@ -4521,87 +4315,47 @@
     "public.ban_type": {
       "name": "ban_type",
       "schema": "public",
-      "values": [
-        "temporary",
-        "permanent"
-      ]
+      "values": ["temporary", "permanent"]
     },
     "public.crypto_alert_direction": {
       "name": "crypto_alert_direction",
       "schema": "public",
-      "values": [
-        "above",
-        "below"
-      ]
+      "values": ["above", "below"]
     },
     "public.crypto_event_severity": {
       "name": "crypto_event_severity",
       "schema": "public",
-      "values": [
-        "info",
-        "warning",
-        "critical"
-      ]
+      "values": ["info", "warning", "critical"]
     },
     "public.crypto_order_status": {
       "name": "crypto_order_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "filled",
-        "cancelled",
-        "expired"
-      ]
+      "values": ["pending", "filled", "cancelled", "expired"]
     },
     "public.crypto_order_type": {
       "name": "crypto_order_type",
       "schema": "public",
-      "values": [
-        "limit_buy",
-        "limit_sell",
-        "stop_loss",
-        "take_profit"
-      ]
+      "values": ["limit_buy", "limit_sell", "stop_loss", "take_profit"]
     },
     "public.crypto_price_interval": {
       "name": "crypto_price_interval",
       "schema": "public",
-      "values": [
-        "tick",
-        "minute",
-        "hourly",
-        "daily",
-        "weekly"
-      ]
+      "values": ["tick", "minute", "hourly", "daily", "weekly"]
     },
     "public.crypto_token_category": {
       "name": "crypto_token_category",
       "schema": "public",
-      "values": [
-        "stable",
-        "blue_chip",
-        "memecoin",
-        "seasonal"
-      ]
+      "values": ["stable", "blue_chip", "memecoin", "seasonal"]
     },
     "public.crypto_trade_trigger": {
       "name": "crypto_trade_trigger",
       "schema": "public",
-      "values": [
-        "market",
-        "limit",
-        "stop_loss",
-        "take_profit",
-        "auto_delist"
-      ]
+      "values": ["market", "limit", "stop_loss", "take_profit", "auto_delist"]
     },
     "public.crypto_trade_type": {
       "name": "crypto_trade_type",
       "schema": "public",
-      "values": [
-        "buy",
-        "sell"
-      ]
+      "values": ["buy", "sell"]
     },
     "public.strike_classification": {
       "name": "strike_classification",
@@ -4621,19 +4375,12 @@
     "public.ticket_status": {
       "name": "ticket_status",
       "schema": "public",
-      "values": [
-        "open",
-        "closed",
-        "deleted"
-      ]
+      "values": ["open", "closed", "deleted"]
     },
     "public.ticket_type": {
       "name": "ticket_type",
       "schema": "public",
-      "values": [
-        "general",
-        "report"
-      ]
+      "values": ["general", "report"]
     },
     "public.waitlist_status": {
       "name": "waitlist_status",

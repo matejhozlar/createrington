@@ -3,24 +3,24 @@ import type { CryptoMarketEvent } from "@createrington/shared/db/crypto_market_e
 
 /** All recognised market event type identifiers used when creating news-feed entries */
 export type MarketEventType =
-	| "new_listing"
-	| "crash"
-	| "whale_trade"
-	| "price_milestone"
-	| "high_volume"
-	| "bull_run"
-	| "bear_market"
-	| "flash_crash"
-	| "pump_and_dump"
-	| "liquidity_drought"
-	| "gold_rush"
-	| "supply_shock"
-	| "tax_holiday"
-	| "whale_dump"
-	| "new_listing_frenzy"
-	| "token_delisted"
-	| "ipo_launch"
-	| "ipo_complete";
+  | "new_listing"
+  | "crash"
+  | "whale_trade"
+  | "price_milestone"
+  | "high_volume"
+  | "bull_run"
+  | "bear_market"
+  | "flash_crash"
+  | "pump_and_dump"
+  | "liquidity_drought"
+  | "gold_rush"
+  | "supply_shock"
+  | "tax_holiday"
+  | "whale_dump"
+  | "new_listing_frenzy"
+  | "token_delisted"
+  | "ipo_launch"
+  | "ipo_complete";
 
 /**
  * Persists a market event to the news feed.
@@ -31,23 +31,23 @@ export type MarketEventType =
  * @returns The newly created market event record
  */
 export async function createMarketEvent(params: {
-	type: MarketEventType;
-	title: string;
-	description?: string;
-	tokenId?: number;
-	severity?: "info" | "warning" | "critical";
-	metadata?: Record<string, unknown>;
-	activeUntil?: Date;
+  type: MarketEventType;
+  title: string;
+  description?: string;
+  tokenId?: number;
+  severity?: "info" | "warning" | "critical";
+  metadata?: Record<string, unknown>;
+  activeUntil?: Date;
 }): Promise<CryptoMarketEvent> {
-	return Q.crypto.market.event.createAndReturn({
-		type: params.type,
-		title: params.title,
-		description: params.description ?? null,
-		tokenId: params.tokenId ?? null,
-		severity: params.severity ?? "info",
-		metadata: params.metadata ?? {},
-		activeUntil: params.activeUntil ?? null,
-	});
+  return Q.crypto.market.event.createAndReturn({
+    type: params.type,
+    title: params.title,
+    description: params.description ?? null,
+    tokenId: params.tokenId ?? null,
+    severity: params.severity ?? "info",
+    metadata: params.metadata ?? {},
+    activeUntil: params.activeUntil ?? null,
+  });
 }
 
 /**
@@ -57,13 +57,13 @@ export async function createMarketEvent(params: {
  * @returns Events ordered by creation time descending
  */
 export async function getRecentEvents(
-	limit = 20,
+  limit = 20,
 ): Promise<CryptoMarketEvent[]> {
-	return Q.crypto.market.event
-		.where({})
-		.orderBy("createdAt", "desc")
-		.limit(limit)
-		.all();
+  return Q.crypto.market.event
+    .where({})
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .all();
 }
 
 /**
@@ -75,11 +75,9 @@ export async function getRecentEvents(
  * @returns Currently active market events
  */
 export async function getActiveEvents(): Promise<CryptoMarketEvent[]> {
-	const all = await Q.crypto.market.event.where({}).all();
-	const now = new Date();
-	return all.filter(
-		(e) => e.activeUntil && e.activeUntil > now,
-	);
+  const all = await Q.crypto.market.event.where({}).all();
+  const now = new Date();
+  return all.filter((e) => e.activeUntil && e.activeUntil > now);
 }
 
 /**
@@ -94,20 +92,20 @@ export async function getActiveEvents(): Promise<CryptoMarketEvent[]> {
  * @returns The created whale-alert market event record
  */
 export async function recordWhaleEvent(
-	playerName: string,
-	tokenSymbol: string,
-	tokenId: number,
-	tradeType: "buy" | "sell",
-	amount: string,
-	totalCost: string,
+  playerName: string,
+  tokenSymbol: string,
+  tokenId: number,
+  tradeType: "buy" | "sell",
+  amount: string,
+  totalCost: string,
 ): Promise<CryptoMarketEvent> {
-	const action = tradeType === "buy" ? "bought" : "sold";
-	return createMarketEvent({
-		type: "whale_trade",
-		title: `Whale Alert: ${playerName} ${action} ${amount} ${tokenSymbol}`,
-		description: `A large trade of $${Number(totalCost).toFixed(2)} was executed`,
-		tokenId,
-		severity: "warning",
-		metadata: { playerName, tradeType, amount, totalCost },
-	});
+  const action = tradeType === "buy" ? "bought" : "sold";
+  return createMarketEvent({
+    type: "whale_trade",
+    title: `Whale Alert: ${playerName} ${action} ${amount} ${tokenSymbol}`,
+    description: `A large trade of $${Number(totalCost).toFixed(2)} was executed`,
+    tokenId,
+    severity: "warning",
+    metadata: { playerName, tradeType, amount, totalCost },
+  });
 }

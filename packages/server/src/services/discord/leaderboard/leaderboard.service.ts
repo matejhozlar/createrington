@@ -162,7 +162,9 @@ export class LeaderboardService {
       });
 
       if (!existing) {
-        logger.warn(`No leaderboard message found for type: ${type}, skipping refresh`);
+        logger.warn(
+          `No leaderboard message found for type: ${type}, skipping refresh`,
+        );
         return {
           success: false,
           type,

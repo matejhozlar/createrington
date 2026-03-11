@@ -126,9 +126,7 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
                     type="button"
                     className="font-medium hover:underline cursor-pointer"
                     onClick={() =>
-                      navigate(
-                        `/admin/players/${session.playerMinecraftUuid}`,
-                      )
+                      navigate(`/admin/players/${session.playerMinecraftUuid}`)
                     }
                   >
                     {session.minecraftUsername}
@@ -155,8 +153,8 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
       {totalPages > 1 && (
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
           <p className="text-sm text-muted-foreground">
-            Showing {page * limit + 1}-
-            {Math.min((page + 1) * limit, total)} of {total} sessions
+            Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)} of{" "}
+            {total} sessions
           </p>
 
           <PaginationContent>
@@ -167,9 +165,7 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
                   e.preventDefault();
                   if (page > 0) handlePageChange(page - 1);
                 }}
-                className={cn(
-                  page === 0 && "pointer-events-none opacity-50",
-                )}
+                className={cn(page === 0 && "pointer-events-none opacity-50")}
               />
             </PaginationItem>
 
@@ -200,8 +196,7 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
                   if (page < totalPages - 1) handlePageChange(page + 1);
                 }}
                 className={cn(
-                  page >= totalPages - 1 &&
-                    "pointer-events-none opacity-50",
+                  page >= totalPages - 1 && "pointer-events-none opacity-50",
                 )}
               />
             </PaginationItem>

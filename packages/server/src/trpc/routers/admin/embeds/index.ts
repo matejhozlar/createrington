@@ -6,7 +6,10 @@ import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { EmbedBuilder } from "discord.js";
 import config from "@/config";
-import { embedDataSchema, type EmbedData } from "@createrington/shared/api/embed";
+import {
+  embedDataSchema,
+  type EmbedData,
+} from "@createrington/shared/api/embed";
 
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;

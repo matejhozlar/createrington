@@ -77,7 +77,11 @@ export async function checkPermission(
 ): Promise<boolean> {
   const member = interaction.member as GuildMember | null;
 
-  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+  if (
+    !member ||
+    typeof member.roles === "string" ||
+    Array.isArray(member.roles)
+  ) {
     return false;
   }
 

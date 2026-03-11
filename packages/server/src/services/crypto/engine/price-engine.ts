@@ -184,8 +184,7 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   const { minChange, maxChange } = CRYPTO_CONFIG.VOLATILITY[tier];
   const volatility =
     randomBetween(minChange, maxChange) * eventEffects.volatilityMultiplier;
-  const direction =
-    Math.random() < CRYPTO_CONFIG.MEMECOIN_UPWARD_BIAS ? 1 : -1;
+  const direction = Math.random() < CRYPTO_CONFIG.MEMECOIN_UPWARD_BIAS ? 1 : -1;
   const baseChange = direction * volatility;
 
   // --- 2. Momentum component ---
@@ -385,7 +384,10 @@ export function tickBluechipPrice(
     // Update baseline (exponential moving average of absolute deltas)
     const prevBaseline =
       bluechipBaselineMetrics.get(symbol) ??
-      Math.max(Math.abs(metricDelta), CRYPTO_CONFIG.BLUECHIP_MIN_DAILY_BASELINE);
+      Math.max(
+        Math.abs(metricDelta),
+        CRYPTO_CONFIG.BLUECHIP_MIN_DAILY_BASELINE,
+      );
     const newBaseline = prevBaseline * 0.95 + Math.abs(metricDelta) * 0.05;
     bluechipBaselineMetrics.set(
       symbol,
@@ -445,9 +447,10 @@ export function seedBluechipState(
  * @param symbol - Token symbol used as the in-memory state key
  * @returns Object containing the last recorded metric value and EMA baseline, if seeded
  */
-export function getBluechipState(
-  symbol: string,
-): { previousMetric?: number; baseline?: number } {
+export function getBluechipState(symbol: string): {
+  previousMetric?: number;
+  baseline?: number;
+} {
   return {
     previousMetric: bluechipPreviousMetrics.get(symbol),
     baseline: bluechipBaselineMetrics.get(symbol),

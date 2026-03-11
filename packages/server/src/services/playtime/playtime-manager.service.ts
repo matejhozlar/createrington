@@ -215,8 +215,7 @@ export class PlaytimeManagerService {
             }
           } else {
             // Server is offline — close all active DB sessions
-            const count =
-              await playtimeRepo.endAllActiveSessions(serverId);
+            const count = await playtimeRepo.endAllActiveSessions(serverId);
             if (count > 0) {
               logger.warn(
                 `Startup: Server ${serverId} offline — closed ${count} orphaned DB session(s)`,

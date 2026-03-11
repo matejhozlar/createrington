@@ -10,7 +10,7 @@ export default defineConfig({
       VALIDATION_MODE: "generation",
     },
     cache: {
-      dir: path.resolve(__dirname, "../../node_modules/.vitest"), 
+      dir: path.resolve(__dirname, "../../node_modules/.vitest"),
     },
     coverage: {
       provider: "v8",

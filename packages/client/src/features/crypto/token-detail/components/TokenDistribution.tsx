@@ -123,9 +123,15 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
                 paddingAngle={2}
                 dataKey="value"
                 strokeWidth={0}
-                shape={(props: PieSectorDataItem & { isActive: boolean; index?: number }) => {
+                shape={(
+                  props: PieSectorDataItem & {
+                    isActive: boolean;
+                    index?: number;
+                  },
+                ) => {
                   const { isActive, index: idx, ...rest } = props;
-                  const dimmed = activeIndex !== null && activeIndex !== (idx ?? 0);
+                  const dimmed =
+                    activeIndex !== null && activeIndex !== (idx ?? 0);
 
                   if (isActive) {
                     return (
@@ -150,10 +156,7 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
                 onMouseLeave={onPieLeave}
               >
                 {chartData.map((entry) => (
-                  <Cell
-                    key={entry.name}
-                    fill={entry.fill}
-                  />
+                  <Cell key={entry.name} fill={entry.fill} />
                 ))}
               </Pie>
               <Tooltip content={<ChartTooltip />} />
@@ -193,9 +196,7 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
               key={h.playerName}
               className={cn(
                 "flex items-center justify-between rounded-md px-2 py-1 text-xs transition-colors cursor-default",
-                activeIndex === i
-                  ? "bg-muted/60"
-                  : "hover:bg-muted/30",
+                activeIndex === i ? "bg-muted/60" : "hover:bg-muted/30",
               )}
               onMouseEnter={() => setActiveIndex(i)}
               onMouseLeave={() => setActiveIndex(null)}

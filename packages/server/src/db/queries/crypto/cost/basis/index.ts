@@ -3,7 +3,7 @@ import { CryptoCostBasisBaseQueries } from "@/generated/db/crypto_cost_basis.que
 
 /**
  * Custom queries for crypto_cost_basis table
- * 
+ *
  * Extends the auto-generated base class with custom methods.
  * This file is scaffolded once and never overwritten - add your custom
  * query methods here while inheriting all generated CRUD operations.

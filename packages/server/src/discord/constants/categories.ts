@@ -51,7 +51,7 @@ export const DiscordCategories = Object.fromEntries(
   Object.entries(categories).map(([key, value]) => [
     toScreamingSnakeCase(key),
     value,
-  ])
+  ]),
 ) as {
   [K in keyof typeof categories as ToScreamingSnakeCase<
     K & string
@@ -103,7 +103,7 @@ export const DiscordCategoriesNamespace = {
    */
   getCategoryName(id: DiscordCategoryId): string {
     const entry = Object.entries(DiscordCategories).find(
-      ([_, categoryId]) => categoryId === id
+      ([_, categoryId]) => categoryId === id,
     );
     return entry ? entry[0] : "Unknown category";
   },

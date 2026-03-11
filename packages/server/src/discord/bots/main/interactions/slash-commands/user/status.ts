@@ -1,10 +1,7 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
-import {
-  getAllServerIds,
-  getServerById,
-} from "@/services/playtime/config";
+import { getAllServerIds, getServerById } from "@/services/playtime/config";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
@@ -42,9 +39,7 @@ export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   try {
-    const playtimeManager = await getService(
-      Services.PLAYTIME_MANAGER_SERVICE,
-    );
+    const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
     const serverIds = getAllServerIds();
     let totalOnline = 0;
@@ -66,7 +61,9 @@ export async function execute(
           ? `${onlineCount}/${serverConfig.maxPlayers} players`
           : "Offline";
 
-      serverLines.push(`${statusIcon} **${serverConfig.name}** — ${playerText}`);
+      serverLines.push(
+        `${statusIcon} **${serverConfig.name}** — ${playerText}`,
+      );
     }
 
     const description =
@@ -75,7 +72,10 @@ export async function execute(
         : "No servers configured.";
 
     const embed = EmbedPresets.info("Server Status", description)
-      .field("Total Online", `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`)
+      .field(
+        "Total Online",
+        `${totalOnline} player${totalOnline !== 1 ? "s" : ""}`,
+      )
       .timestamp();
 
     await interaction.reply({ embeds: [embed.build()] });

@@ -3,22 +3,22 @@ import { CRYPTO_CONFIG } from "../crypto.config";
 import type { CryptoPriceAlert } from "@createrington/shared/db/crypto_price_alert.types";
 
 export interface TriggeredAlert {
-	alertId: number;
-	playerUuid: string;
-	tokenId: number;
-	tokenSymbol: string;
-	targetPrice: string;
-	direction: "above" | "below";
-	currentPrice: string;
+  alertId: number;
+  playerUuid: string;
+  tokenId: number;
+  tokenSymbol: string;
+  targetPrice: string;
+  direction: "above" | "below";
+  currentPrice: string;
 }
 
 /** Returns all untriggered price alerts for a given player. */
 export async function getPlayerAlerts(
-	playerUuid: string,
+  playerUuid: string,
 ): Promise<CryptoPriceAlert[]> {
-	return Q.crypto.price.alert
-		.where({ playerMinecraftUuid: playerUuid, triggered: false })
-		.all();
+  return Q.crypto.price.alert
+    .where({ playerMinecraftUuid: playerUuid, triggered: false })
+    .all();
 }
 
 /**
@@ -34,27 +34,27 @@ export async function getPlayerAlerts(
  * @returns The newly created price alert record
  */
 export async function createAlert(
-	playerUuid: string,
-	tokenId: number,
-	targetPrice: string,
-	direction: "above" | "below",
+  playerUuid: string,
+  tokenId: number,
+  targetPrice: string,
+  direction: "above" | "below",
 ): Promise<CryptoPriceAlert> {
-	const count = await Q.crypto.price.alert
-		.where({ playerMinecraftUuid: playerUuid, triggered: false })
-		.count();
+  const count = await Q.crypto.price.alert
+    .where({ playerMinecraftUuid: playerUuid, triggered: false })
+    .count();
 
-	if (count >= CRYPTO_CONFIG.MAX_ACTIVE_ALERTS) {
-		throw new Error(
-			`Max ${CRYPTO_CONFIG.MAX_ACTIVE_ALERTS} active alerts allowed`,
-		);
-	}
+  if (count >= CRYPTO_CONFIG.MAX_ACTIVE_ALERTS) {
+    throw new Error(
+      `Max ${CRYPTO_CONFIG.MAX_ACTIVE_ALERTS} active alerts allowed`,
+    );
+  }
 
-	return Q.crypto.price.alert.createAndReturn({
-		playerMinecraftUuid: playerUuid,
-		tokenId,
-		targetPrice,
-		direction,
-	});
+  return Q.crypto.price.alert.createAndReturn({
+    playerMinecraftUuid: playerUuid,
+    tokenId,
+    targetPrice,
+    direction,
+  });
 }
 
 /**
@@ -66,16 +66,16 @@ export async function createAlert(
  * @param alertId - ID of the alert to delete
  */
 export async function deleteAlert(
-	playerUuid: string,
-	alertId: number,
+  playerUuid: string,
+  alertId: number,
 ): Promise<void> {
-	const alert = await Q.crypto.price.alert.get({ id: alertId });
+  const alert = await Q.crypto.price.alert.get({ id: alertId });
 
-	if (!alert || alert.playerMinecraftUuid !== playerUuid) {
-		throw new Error("Alert not found");
-	}
+  if (!alert || alert.playerMinecraftUuid !== playerUuid) {
+    throw new Error("Alert not found");
+  }
 
-	await Q.crypto.price.alert.delete({ id: alertId });
+  await Q.crypto.price.alert.delete({ id: alertId });
 }
 
 /**
@@ -89,42 +89,42 @@ export async function deleteAlert(
  * @returns Array of alerts that fired during this check
  */
 export async function checkAlerts(
-	tokenPrices: Map<number, { price: string; symbol: string }>,
+  tokenPrices: Map<number, { price: string; symbol: string }>,
 ): Promise<TriggeredAlert[]> {
-	const pendingAlerts = await Q.crypto.price.alert
-		.where({ triggered: false })
-		.all();
+  const pendingAlerts = await Q.crypto.price.alert
+    .where({ triggered: false })
+    .all();
 
-	const triggered: TriggeredAlert[] = [];
+  const triggered: TriggeredAlert[] = [];
 
-	for (const alert of pendingAlerts) {
-		const tokenData = tokenPrices.get(alert.tokenId);
-		if (!tokenData) continue;
+  for (const alert of pendingAlerts) {
+    const tokenData = tokenPrices.get(alert.tokenId);
+    if (!tokenData) continue;
 
-		const currentPrice = Number(tokenData.price);
-		const target = Number(alert.targetPrice);
+    const currentPrice = Number(tokenData.price);
+    const target = Number(alert.targetPrice);
 
-		const shouldTrigger =
-			(alert.direction === "above" && currentPrice >= target) ||
-			(alert.direction === "below" && currentPrice <= target);
+    const shouldTrigger =
+      (alert.direction === "above" && currentPrice >= target) ||
+      (alert.direction === "below" && currentPrice <= target);
 
-		if (shouldTrigger) {
-			await Q.crypto.price.alert.update(
-				{ id: alert.id },
-				{ triggered: true, triggeredAt: new Date() },
-			);
+    if (shouldTrigger) {
+      await Q.crypto.price.alert.update(
+        { id: alert.id },
+        { triggered: true, triggeredAt: new Date() },
+      );
 
-			triggered.push({
-				alertId: alert.id,
-				playerUuid: alert.playerMinecraftUuid,
-				tokenId: alert.tokenId,
-				tokenSymbol: tokenData.symbol,
-				targetPrice: alert.targetPrice,
-				direction: alert.direction,
-				currentPrice: tokenData.price,
-			});
-		}
-	}
+      triggered.push({
+        alertId: alert.id,
+        playerUuid: alert.playerMinecraftUuid,
+        tokenId: alert.tokenId,
+        tokenSymbol: tokenData.symbol,
+        targetPrice: alert.targetPrice,
+        direction: alert.direction,
+        currentPrice: tokenData.price,
+      });
+    }
+  }
 
-	return triggered;
+  return triggered;
 }

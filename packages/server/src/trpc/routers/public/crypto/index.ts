@@ -143,14 +143,14 @@ export const cryptoRouter = router({
   marketOverview: publicProcedure
     .meta({ description: "Get global market overview stats" })
     .query(async () => {
-      const tokens = await Q.crypto.token
-        .where({ isCrashed: false })
-        .all();
+      const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
 
       const activeTokens = tokens.filter((t) => !t.delistedAt);
 
       const totalMarketCap = activeTokens.reduce((sum, t) => {
-        return sum + Number(t.price) * Number(t.totalSupply - t.availableSupply);
+        return (
+          sum + Number(t.price) * Number(t.totalSupply - t.availableSupply)
+        );
       }, 0);
 
       return {
@@ -209,8 +209,7 @@ export const cryptoRouter = router({
       const events = getActiveEventsInMemory();
       return events.map((e) => {
         // Resolve display metadata from the static definition registry; fall back gracefully if the type is unknown
-        const def =
-          EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
+        const def = EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
         return {
           id: e.eventId,
           type: e.type,

@@ -34,9 +34,7 @@ async function getUsedSymbols(): Promise<Set<string>> {
 async function pickRandomMemecoin() {
   const usedSymbols = await getUsedSymbols();
 
-  const available = MEMECOIN_CATALOG.filter(
-    (m) => !usedSymbols.has(m.symbol),
-  );
+  const available = MEMECOIN_CATALOG.filter((m) => !usedSymbols.has(m.symbol));
 
   if (available.length === 0) {
     logger.warn("No unused memecoin definitions available in catalog");

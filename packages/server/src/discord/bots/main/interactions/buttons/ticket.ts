@@ -113,9 +113,7 @@ async function handleTranscript(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
   try {
@@ -193,9 +191,7 @@ async function handleCreate(
   interaction: ButtonInteraction,
   type: TicketType,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const hasOpen = await ticketService.hasOpenTicket(interaction.user.id);
@@ -285,9 +281,7 @@ async function handleConfirmClose(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
   await ticketService.closeTicket(ticketId, interaction.user.id, false);
@@ -331,9 +325,7 @@ async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await ticketService.reopenTicket(ticketId, interaction.user.id);
 }
 
@@ -353,9 +345,7 @@ async function handleDelete(
   ticketId: number,
 ): Promise<void> {
   try {
-    const ticketService = await getService(
-      Services.TICKET_SERVICE,
-    );
+    const ticketService = await getService(Services.TICKET_SERVICE);
     const channel = interaction.channel;
 
     if (!channel || !isSendableChannel(channel)) {

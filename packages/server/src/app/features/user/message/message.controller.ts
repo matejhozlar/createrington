@@ -104,9 +104,7 @@ export class MessageController {
       }
     }
 
-    const messageService = await getService(
-      Services.WEB_MESSAGE_SERVICE,
-    );
+    const messageService = await getService(Services.WEB_MESSAGE_SERVICE);
 
     const result = await messageService.send({
       channelId,

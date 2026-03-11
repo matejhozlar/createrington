@@ -102,7 +102,9 @@ async function checkWhaleAlert(
       tradeType,
       String(amount),
       totalCost.toFixed(2),
-    ).catch((err) => logger.error("Failed to send whale alert notification:", err));
+    ).catch((err) =>
+      logger.error("Failed to send whale alert notification:", err),
+    );
   }
 }
 
@@ -131,7 +133,9 @@ async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
  * @param playerUuid - Minecraft UUID of the player
  * @returns `true` if the achievement is held, `false` on missing achievement or any error
  */
-async function hasMarketVeteranAchievement(playerUuid: string): Promise<boolean> {
+async function hasMarketVeteranAchievement(
+  playerUuid: string,
+): Promise<boolean> {
   try {
     const svc = await getService(Services.ACHIEVEMENT_SERVICE);
     return await svc.hasAchievement(playerUuid, "crypto_market_veteran");
@@ -174,7 +178,9 @@ export async function executeBuy(
   amount: bigint,
 ): Promise<TradeResult> {
   if (token.isCrashed) {
-    throw new Error(`Token ${token.symbol} has crashed and cannot be purchased`);
+    throw new Error(
+      `Token ${token.symbol} has crashed and cannot be purchased`,
+    );
   }
 
   if (token.delistedAt) {
@@ -194,7 +200,9 @@ export async function executeBuy(
   // IPO allocation enforcement
   if (isInIpo(token)) {
     const maxAllocation = BigInt(
-      Math.floor(Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT),
+      Math.floor(
+        Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+      ),
     );
 
     const existingHolding = await Q.crypto.holding
@@ -220,7 +228,12 @@ export async function executeBuy(
     getLifetimeTradeCount(playerUuid),
     hasMarketVeteranAchievement(playerUuid),
   ]);
-  const feeAmount = calculateFee(rawCost, token.category, lifetimeCount, hasVeteran);
+  const feeAmount = calculateFee(
+    rawCost,
+    token.category,
+    lifetimeCount,
+    hasVeteran,
+  );
   // Round to 3 decimal places to match the balance system's precision
   const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
 
@@ -258,9 +271,7 @@ export async function executeBuy(
       { id: holding.id },
       {
         amount: holding.amount + amount,
-        totalCostBasis: (
-          Number(holding.totalCostBasis) + rawCost
-        ).toFixed(8),
+        totalCostBasis: (Number(holding.totalCostBasis) + rawCost).toFixed(8),
         updatedAt: new Date(),
       },
     );
@@ -363,7 +374,12 @@ export async function executeSell(
     getLifetimeTradeCount(playerUuid),
     hasMarketVeteranAchievement(playerUuid),
   ]);
-  const feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount, hasVeteran);
+  const feeAmount = calculateFee(
+    rawRevenue,
+    token.category,
+    lifetimeCount,
+    hasVeteran,
+  );
   // Round to 3 decimal places to match the balance system's precision
   const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
 
@@ -387,7 +403,11 @@ export async function executeSell(
   );
 
   // Consume cost basis lots FIFO and calculate realized P&L
-  const costBasisConsumed = await consumeCostBasis(playerUuid, token.id, amount);
+  const costBasisConsumed = await consumeCostBasis(
+    playerUuid,
+    token.id,
+    amount,
+  );
   const realizedPnl = rawRevenue - costBasisConsumed;
 
   const newAmount = holding.amount - amount;
@@ -426,7 +446,9 @@ export async function executeSell(
 
   recordTradeVolume(token.id, amountNum, false);
 
-  checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(() => {});
+  checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(
+    () => {},
+  );
 
   const tradeResult: TradeResult = {
     transactionId: txResult.id,
@@ -462,9 +484,7 @@ async function updateTreasury(
   category: string,
 ): Promise<void> {
   const burnAmount =
-    category === "memecoin"
-      ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO
-      : 0;
+    category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
   const collectedAmount = feeAmount - burnAmount;
 
   // Treasury is a singleton row — create it on first fee collection if absent
@@ -476,9 +496,7 @@ async function updateTreasury(
         totalCollected: (
           Number(treasury.totalCollected) + collectedAmount
         ).toFixed(8),
-        totalBurned: (
-          Number(treasury.totalBurned) + burnAmount
-        ).toFixed(8),
+        totalBurned: (Number(treasury.totalBurned) + burnAmount).toFixed(8),
         updatedAt: new Date(),
       },
     );

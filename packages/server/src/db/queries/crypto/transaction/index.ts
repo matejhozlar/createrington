@@ -3,7 +3,7 @@ import { CryptoTransactionBaseQueries } from "@/generated/db/crypto_transaction.
 
 /**
  * Custom queries for crypto_transaction table
- * 
+ *
  * Extends the auto-generated base class with custom methods.
  * This file is scaffolded once and never overwritten - add your custom
  * query methods here while inheriting all generated CRUD operations.

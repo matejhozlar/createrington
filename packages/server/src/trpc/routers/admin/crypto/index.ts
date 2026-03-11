@@ -11,7 +11,11 @@ export const adminCryptoRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(50),
-        symbol: z.string().min(1).max(10).transform((s) => s.toUpperCase()),
+        symbol: z
+          .string()
+          .min(1)
+          .max(10)
+          .transform((s) => s.toUpperCase()),
         description: z.string().max(500).optional(),
         category: z.enum(["stable", "blue_chip", "memecoin", "seasonal"]),
         totalSupply: z.number().int().positive(),

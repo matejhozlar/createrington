@@ -27,7 +27,13 @@ const ORDER_MODE_LABELS: Record<OrderMode, string> = {
   take_profit: "Take-Profit",
 };
 
-export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: TradePanelProps) {
+export function TradePanel({
+  symbol,
+  price,
+  isCrashed,
+  ipoEndsAt,
+  ipoPrice,
+}: TradePanelProps) {
   const { user } = useAuth();
   const toast = useToastActions();
   const [tab, setTab] = useState<TradeTab>("buy");
@@ -168,7 +174,9 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
 
   // IPO-specific trade panel
   if (isIpo) {
-    const remainingAllocation = allocation ? Number(allocation.remaining) : null;
+    const remainingAllocation = allocation
+      ? Number(allocation.remaining)
+      : null;
 
     return (
       <Card className="border-primary/20 overflow-hidden">
@@ -196,7 +204,9 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             </div>
             {remainingAllocation !== null && (
               <div className="flex justify-between text-sm mt-2">
-                <span className="text-muted-foreground">Your remaining allocation</span>
+                <span className="text-muted-foreground">
+                  Your remaining allocation
+                </span>
                 <span className="font-mono font-medium tabular-nums">
                   {remainingAllocation.toLocaleString()} tokens
                 </span>
@@ -210,7 +220,11 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
             </label>
             <Input
               type="number"
-              placeholder={remainingAllocation !== null ? `Max ${remainingAllocation.toLocaleString()}` : "0"}
+              placeholder={
+                remainingAllocation !== null
+                  ? `Max ${remainingAllocation.toLocaleString()}`
+                  : "0"
+              }
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               min={1}
@@ -222,12 +236,16 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
           <div className="flex justify-between text-sm rounded-lg bg-muted/30 px-3 py-2.5">
             <span className="text-muted-foreground">Estimated Cost</span>
             <span className="font-mono font-medium tabular-nums">
-              ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+              $
+              {estimatedCost.toLocaleString(undefined, {
+                maximumFractionDigits: 4,
+              })}
             </span>
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Selling is disabled during the IPO phase. Normal trading begins when the IPO ends.
+            Selling is disabled during the IPO phase. Normal trading begins when
+            the IPO ends.
           </p>
 
           <Button
@@ -239,7 +257,11 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
               }
               buyMutation.mutate({ symbol, amount: amountNum });
             }}
-            disabled={isPending || amountNum <= 0 || (remainingAllocation !== null && amountNum > remainingAllocation)}
+            disabled={
+              isPending ||
+              amountNum <= 0 ||
+              (remainingAllocation !== null && amountNum > remainingAllocation)
+            }
           >
             {isPending ? "Processing..." : `Buy ${symbol} (IPO)`}
           </Button>
@@ -360,7 +382,10 @@ export function TradePanel({ symbol, price, isCrashed, ipoEndsAt, ipoPrice }: Tr
               {tab === "buy" ? "Estimated Cost" : "Estimated Revenue"}
             </span>
             <span className="font-mono font-semibold tabular-nums">
-              ${estimatedCost.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+              $
+              {estimatedCost.toLocaleString(undefined, {
+                maximumFractionDigits: 4,
+              })}
             </span>
           </div>
         </div>

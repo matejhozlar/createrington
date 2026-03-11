@@ -3,10 +3,10 @@ import { CRYPTO_CONFIG } from "../crypto.config";
 import type { CryptoWatchlist } from "@createrington/shared/db/crypto_watchlist.types";
 
 /** Returns all watchlist entries for a given player. */
-export async function getWatchlist(playerUuid: string): Promise<CryptoWatchlist[]> {
-	return Q.crypto.watchlist
-		.where({ playerMinecraftUuid: playerUuid })
-		.all();
+export async function getWatchlist(
+  playerUuid: string,
+): Promise<CryptoWatchlist[]> {
+  return Q.crypto.watchlist.where({ playerMinecraftUuid: playerUuid }).all();
 }
 
 /**
@@ -20,31 +20,31 @@ export async function getWatchlist(playerUuid: string): Promise<CryptoWatchlist[
  * @returns The newly created watchlist entry
  */
 export async function addToWatchlist(
-	playerUuid: string,
-	tokenId: number,
+  playerUuid: string,
+  tokenId: number,
 ): Promise<CryptoWatchlist> {
-	const existing = await Q.crypto.watchlist
-		.where({ playerMinecraftUuid: playerUuid, tokenId })
-		.first();
+  const existing = await Q.crypto.watchlist
+    .where({ playerMinecraftUuid: playerUuid, tokenId })
+    .first();
 
-	if (existing) {
-		throw new Error("Token is already in your watchlist");
-	}
+  if (existing) {
+    throw new Error("Token is already in your watchlist");
+  }
 
-	const count = await Q.crypto.watchlist
-		.where({ playerMinecraftUuid: playerUuid })
-		.count();
+  const count = await Q.crypto.watchlist
+    .where({ playerMinecraftUuid: playerUuid })
+    .count();
 
-	if (count >= CRYPTO_CONFIG.MAX_WATCHLIST_SIZE) {
-		throw new Error(
-			`Watchlist is full (max ${CRYPTO_CONFIG.MAX_WATCHLIST_SIZE} tokens)`,
-		);
-	}
+  if (count >= CRYPTO_CONFIG.MAX_WATCHLIST_SIZE) {
+    throw new Error(
+      `Watchlist is full (max ${CRYPTO_CONFIG.MAX_WATCHLIST_SIZE} tokens)`,
+    );
+  }
 
-	return Q.crypto.watchlist.createAndReturn({
-		playerMinecraftUuid: playerUuid,
-		tokenId,
-	});
+  return Q.crypto.watchlist.createAndReturn({
+    playerMinecraftUuid: playerUuid,
+    tokenId,
+  });
 }
 
 /**
@@ -56,16 +56,16 @@ export async function addToWatchlist(
  * @param tokenId - ID of the crypto token to remove
  */
 export async function removeFromWatchlist(
-	playerUuid: string,
-	tokenId: number,
+  playerUuid: string,
+  tokenId: number,
 ): Promise<void> {
-	const entry = await Q.crypto.watchlist
-		.where({ playerMinecraftUuid: playerUuid, tokenId })
-		.first();
+  const entry = await Q.crypto.watchlist
+    .where({ playerMinecraftUuid: playerUuid, tokenId })
+    .first();
 
-	if (!entry) {
-		throw new Error("Token is not in your watchlist");
-	}
+  if (!entry) {
+    throw new Error("Token is not in your watchlist");
+  }
 
-	await Q.crypto.watchlist.delete({ id: entry.id });
+  await Q.crypto.watchlist.delete({ id: entry.id });
 }

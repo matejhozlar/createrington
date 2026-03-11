@@ -12,7 +12,11 @@ import {
   refresh24hAverages,
   type PriceUpdate,
 } from "./engine/price-engine";
-import { generateMemecoin, generateIpoMemecoin, cleanupCrashedTokens } from "./memecoin/generator";
+import {
+  generateMemecoin,
+  generateIpoMemecoin,
+  cleanupCrashedTokens,
+} from "./memecoin/generator";
 import {
   checkAndFillOrders,
   expireOrders,
@@ -41,7 +45,10 @@ import {
   triggerEvent as triggerMarketEvent,
   type ActiveEvent,
 } from "./events/event-engine";
-import { EVENT_DEFINITIONS, type MarketEventType } from "./events/event-definitions";
+import {
+  EVENT_DEFINITIONS,
+  type MarketEventType,
+} from "./events/event-definitions";
 import { createMarketEvent } from "./events/news-feed";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
@@ -174,7 +181,8 @@ export class CryptoMarketService {
     if (this.seasonalCheckInterval) clearInterval(this.seasonalCheckInterval);
     if (this.ipoCheckInterval) clearInterval(this.ipoCheckInterval);
     if (this.ipoSpawnInterval) clearInterval(this.ipoSpawnInterval);
-    if (this.portfolioSnapshotTimeout) clearTimeout(this.portfolioSnapshotTimeout);
+    if (this.portfolioSnapshotTimeout)
+      clearTimeout(this.portfolioSnapshotTimeout);
     if (this.weeklyReportTimeout) clearTimeout(this.weeklyReportTimeout);
 
     logger.info("CryptoMarketService shutdown complete");
@@ -296,7 +304,9 @@ export class CryptoMarketService {
         );
         getService(Services.ACHIEVEMENT_SERVICE)
           .then((svc) => svc.evaluateCrashAchievements(token.id))
-          .catch((err) => logger.error("Failed to evaluate crash achievements:", err));
+          .catch((err) =>
+            logger.error("Failed to evaluate crash achievements:", err),
+          );
       }
     }
 
@@ -331,9 +341,7 @@ export class CryptoMarketService {
     if (stablecoins.length === 0) return;
 
     // Get active player count for stablecoin pricing
-    const activePlayers = await Q.player
-      .where({ online: true })
-      .count();
+    const activePlayers = await Q.player.where({ online: true }).count();
 
     const updates: PriceUpdate[] = [];
 
@@ -608,9 +616,7 @@ export class CryptoMarketService {
       // Daily snapshot is the trigger for Diamond Hands — holdings must have
       // existed for 30+ days, so this check is only meaningful once per day
       try {
-        const achievementSvc = await getService(
-          Services.ACHIEVEMENT_SERVICE,
-        );
+        const achievementSvc = await getService(Services.ACHIEVEMENT_SERVICE);
         await achievementSvc.evaluateDiamondHands();
       } catch (err) {
         logger.error("Diamond Hands evaluation failed:", err);
@@ -725,8 +731,7 @@ export class CryptoMarketService {
 
       // Filter ticks within the last minute window
       const relevantTicks = ticks.filter(
-        (t) =>
-          t.recordedAt >= minuteStart && t.recordedAt < now,
+        (t) => t.recordedAt >= minuteStart && t.recordedAt < now,
       );
 
       if (relevantTicks.length === 0) continue;
@@ -734,19 +739,14 @@ export class CryptoMarketService {
       const open = relevantTicks[0].openPrice;
       const close = relevantTicks[relevantTicks.length - 1].closePrice;
       const high = relevantTicks.reduce(
-        (max, t) =>
-          Number(t.highPrice) > Number(max) ? t.highPrice : max,
+        (max, t) => (Number(t.highPrice) > Number(max) ? t.highPrice : max),
         relevantTicks[0].highPrice,
       );
       const low = relevantTicks.reduce(
-        (min, t) =>
-          Number(t.lowPrice) < Number(min) ? t.lowPrice : min,
+        (min, t) => (Number(t.lowPrice) < Number(min) ? t.lowPrice : min),
         relevantTicks[0].lowPrice,
       );
-      const volume = relevantTicks.reduce(
-        (sum, t) => sum + t.volume,
-        0n,
-      );
+      const volume = relevantTicks.reduce((sum, t) => sum + t.volume, 0n);
 
       try {
         await Q.crypto.price.snapshot.create({
@@ -785,22 +785,19 @@ export class CryptoMarketService {
 
   /** @private Rolls for random market events every hour */
   private startEventRoller(): void {
-    this.eventRollInterval = setInterval(
-      async () => {
-        try {
-          const newEvents = await rollForEvents();
-          for (const event of newEvents) {
-            this.broadcastMarketEvent(event);
-            sendMarketEventNotification(event).catch((err) =>
-              logger.error("Failed to send event notification:", err),
-            );
-          }
-        } catch (err) {
-          logger.error("Event roll failed:", err);
+    this.eventRollInterval = setInterval(async () => {
+      try {
+        const newEvents = await rollForEvents();
+        for (const event of newEvents) {
+          this.broadcastMarketEvent(event);
+          sendMarketEventNotification(event).catch((err) =>
+            logger.error("Failed to send event notification:", err),
+          );
         }
-      },
-      CRYPTO_CONFIG.EVENT_ROLL_INTERVAL_MS,
-    );
+      } catch (err) {
+        logger.error("Event roll failed:", err);
+      }
+    }, CRYPTO_CONFIG.EVENT_ROLL_INTERVAL_MS);
   }
 
   /** @private Broadcasts a market event to WebSocket subscribers */
@@ -876,9 +873,7 @@ export class CryptoMarketService {
     const finalPrice = Number(token.price);
 
     // Find all holders
-    const holdings = await Q.crypto.holding
-      .where({ tokenId: token.id })
-      .all();
+    const holdings = await Q.crypto.holding.where({ tokenId: token.id }).all();
 
     // Auto-sell each holder's position at the final price
     for (const holding of holdings) {
@@ -948,34 +943,28 @@ export class CryptoMarketService {
 
   /** @private Checks for ended IPOs every 30 seconds and transitions them to normal trading */
   private startIpoTransitionCheck(): void {
-    this.ipoCheckInterval = setInterval(
-      async () => {
-        try {
-          await this.transitionEndedIpos();
-        } catch (err) {
-          logger.error("IPO transition check failed:", err);
-        }
-      },
-      CRYPTO_CONFIG.IPO_CHECK_INTERVAL_MS,
-    );
+    this.ipoCheckInterval = setInterval(async () => {
+      try {
+        await this.transitionEndedIpos();
+      } catch (err) {
+        logger.error("IPO transition check failed:", err);
+      }
+    }, CRYPTO_CONFIG.IPO_CHECK_INTERVAL_MS);
   }
 
   /** @private Automatically spawns a new IPO memecoin on a recurring schedule */
   private startIpoSpawnScheduler(): void {
-    this.ipoSpawnInterval = setInterval(
-      async () => {
-        try {
-          // Only spawn if there isn't already an active IPO
-          const activeIpo = await this.getActiveIpo();
-          if (!activeIpo) {
-            await this.spawnIpoMemecoin();
-          }
-        } catch (err) {
-          logger.error("IPO spawn scheduler failed:", err);
+    this.ipoSpawnInterval = setInterval(async () => {
+      try {
+        // Only spawn if there isn't already an active IPO
+        const activeIpo = await this.getActiveIpo();
+        if (!activeIpo) {
+          await this.spawnIpoMemecoin();
         }
-      },
-      CRYPTO_CONFIG.IPO_SPAWN_INTERVAL_MS,
-    );
+      } catch (err) {
+        logger.error("IPO spawn scheduler failed:", err);
+      }
+    }, CRYPTO_CONFIG.IPO_SPAWN_INTERVAL_MS);
   }
 
   /**
@@ -1002,10 +991,7 @@ export class CryptoMarketService {
       const participants = holdings.length;
 
       // Clear IPO fields — token enters normal trading
-      await Q.crypto.token.update(
-        { id: token.id },
-        { ipoEndsAt: null },
-      );
+      await Q.crypto.token.update({ id: token.id }, { ipoEndsAt: null });
 
       // Send IPO result notification
       sendIpoResultNotification(

@@ -31,16 +31,76 @@ const EVENT_STYLES: Record<
   string,
   { border: string; bg: string; text: string; iconBg: string; dot: string }
 > = {
-  bull_run: { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.06]", text: "text-emerald-400", iconBg: "bg-emerald-500/15", dot: "bg-emerald-400" },
-  bear_market: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
-  flash_crash: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
-  pump_and_dump: { border: "border-yellow-500/30", bg: "bg-yellow-500/[0.06]", text: "text-yellow-400", iconBg: "bg-yellow-500/15", dot: "bg-yellow-400" },
-  liquidity_drought: { border: "border-orange-500/30", bg: "bg-orange-500/[0.06]", text: "text-orange-400", iconBg: "bg-orange-500/15", dot: "bg-orange-400" },
-  gold_rush: { border: "border-yellow-500/30", bg: "bg-yellow-500/[0.06]", text: "text-yellow-400", iconBg: "bg-yellow-500/15", dot: "bg-yellow-400" },
-  supply_shock: { border: "border-orange-500/30", bg: "bg-orange-500/[0.06]", text: "text-orange-400", iconBg: "bg-orange-500/15", dot: "bg-orange-400" },
-  tax_holiday: { border: "border-emerald-500/30", bg: "bg-emerald-500/[0.06]", text: "text-emerald-400", iconBg: "bg-emerald-500/15", dot: "bg-emerald-400" },
-  whale_dump: { border: "border-red-500/30", bg: "bg-red-500/[0.06]", text: "text-red-400", iconBg: "bg-red-500/15", dot: "bg-red-400" },
-  new_listing_frenzy: { border: "border-blue-500/30", bg: "bg-blue-500/[0.06]", text: "text-blue-400", iconBg: "bg-blue-500/15", dot: "bg-blue-400" },
+  bull_run: {
+    border: "border-emerald-500/30",
+    bg: "bg-emerald-500/[0.06]",
+    text: "text-emerald-400",
+    iconBg: "bg-emerald-500/15",
+    dot: "bg-emerald-400",
+  },
+  bear_market: {
+    border: "border-red-500/30",
+    bg: "bg-red-500/[0.06]",
+    text: "text-red-400",
+    iconBg: "bg-red-500/15",
+    dot: "bg-red-400",
+  },
+  flash_crash: {
+    border: "border-red-500/30",
+    bg: "bg-red-500/[0.06]",
+    text: "text-red-400",
+    iconBg: "bg-red-500/15",
+    dot: "bg-red-400",
+  },
+  pump_and_dump: {
+    border: "border-yellow-500/30",
+    bg: "bg-yellow-500/[0.06]",
+    text: "text-yellow-400",
+    iconBg: "bg-yellow-500/15",
+    dot: "bg-yellow-400",
+  },
+  liquidity_drought: {
+    border: "border-orange-500/30",
+    bg: "bg-orange-500/[0.06]",
+    text: "text-orange-400",
+    iconBg: "bg-orange-500/15",
+    dot: "bg-orange-400",
+  },
+  gold_rush: {
+    border: "border-yellow-500/30",
+    bg: "bg-yellow-500/[0.06]",
+    text: "text-yellow-400",
+    iconBg: "bg-yellow-500/15",
+    dot: "bg-yellow-400",
+  },
+  supply_shock: {
+    border: "border-orange-500/30",
+    bg: "bg-orange-500/[0.06]",
+    text: "text-orange-400",
+    iconBg: "bg-orange-500/15",
+    dot: "bg-orange-400",
+  },
+  tax_holiday: {
+    border: "border-emerald-500/30",
+    bg: "bg-emerald-500/[0.06]",
+    text: "text-emerald-400",
+    iconBg: "bg-emerald-500/15",
+    dot: "bg-emerald-400",
+  },
+  whale_dump: {
+    border: "border-red-500/30",
+    bg: "bg-red-500/[0.06]",
+    text: "text-red-400",
+    iconBg: "bg-red-500/15",
+    dot: "bg-red-400",
+  },
+  new_listing_frenzy: {
+    border: "border-blue-500/30",
+    bg: "bg-blue-500/[0.06]",
+    text: "text-blue-400",
+    iconBg: "bg-blue-500/15",
+    dot: "bg-blue-400",
+  },
 };
 
 const DEFAULT_STYLE = {
@@ -94,7 +154,9 @@ function EventBanner({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={cn("size-1.5 rounded-full animate-pulse", style.dot)} />
+          <span
+            className={cn("size-1.5 rounded-full animate-pulse", style.dot)}
+          />
           <span className={cn("font-semibold text-sm", style.text)}>
             {event.name}
           </span>
@@ -120,10 +182,9 @@ function EventBanner({
 }
 
 export function ActiveEvents() {
-  const { data: events } = trpc.public.crypto.activeEvents.useQuery(
-    undefined,
-    { refetchInterval: 30_000 },
-  );
+  const { data: events } = trpc.public.crypto.activeEvents.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
 
   if (!events?.length) return null;
 

@@ -91,9 +91,7 @@ export class LotteryService {
     const { minAmount } = config.economy.lottery;
 
     if (typeof amount !== "number" || amount < minAmount) {
-      throw new BadRequestError(
-        `Amount must be at least ${minAmount}`,
-      );
+      throw new BadRequestError(`Amount must be at least ${minAmount}`);
     }
 
     // Synchronously claim the slot before any await

@@ -5,9 +5,7 @@ export function MarketOverview() {
   const { data, isLoading } = trpc.public.crypto.marketOverview.useQuery();
 
   if (isLoading || !data) {
-    return (
-      <div className="h-[72px] animate-pulse rounded-xl bg-card border" />
-    );
+    return <div className="h-[72px] animate-pulse rounded-xl bg-card border" />;
   }
 
   return (

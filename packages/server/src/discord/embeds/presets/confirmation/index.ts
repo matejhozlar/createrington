@@ -33,7 +33,7 @@ export const ConfirmationEmbedPresets = {
       embed.field(
         change.name,
         `\`${change.oldValue}\` → \`${change.newValue}\``,
-        change.inline ?? true
+        change.inline ?? true,
       );
     });
 
@@ -71,7 +71,7 @@ export const ConfirmationEmbedPresets = {
       .description(
         `Are you sure you want to delete **${itemName}**?\n\n` +
           `\`${itemIdentifier}\`\n\n` +
-          `**This action cannot be undone.**`
+          `**This action cannot be undone.**`,
       )
       .color(EmbedColors.Error)
       .footer("Please confirm your action");

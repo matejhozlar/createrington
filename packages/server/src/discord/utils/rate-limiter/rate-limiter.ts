@@ -23,7 +23,8 @@ interface DiscordHttpError {
 /** Normalizes an unknown error into a DiscordHttpError shape for uniform handling */
 function toDiscordError(error: unknown): DiscordHttpError {
   if (error instanceof RateLimitError) return error;
-  if (typeof error === "object" && error !== null) return error as DiscordHttpError;
+  if (typeof error === "object" && error !== null)
+    return error as DiscordHttpError;
   return { message: String(error) };
 }
 
@@ -264,7 +265,11 @@ export class DiscordRateLimiter extends EventEmitter {
       executionTime,
     });
 
-    request.reject(rawError instanceof Error ? rawError : new Error(error.message ?? "Request failed"));
+    request.reject(
+      rawError instanceof Error
+        ? rawError
+        : new Error(error.message ?? "Request failed"),
+    );
   }
 
   /** @private Detects 429 status in various Discord error shapes */

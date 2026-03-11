@@ -59,7 +59,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 if (!ENV_VAR) {
   console.error(
-    "Please provide an environment variable name, e.g.: pnpm util:find-env DB_PASSWORD"
+    "Please provide an environment variable name, e.g.: pnpm util:find-env DB_PASSWORD",
   );
   process.exit(1);
 }

@@ -6,7 +6,10 @@ import { dateRangeInput } from "./schemas";
 /** Admin economy metrics — overview, distribution, transactions, top balances */
 export const economyMetricsRouter = router({
   getOverview: adminProcedure
-    .meta({ description: "Get economy overview: total balance, player count, average balance." })
+    .meta({
+      description:
+        "Get economy overview: total balance, player count, average balance.",
+    })
     .query(async () => {
       return await metricsService.economy.getOverview();
     }),

@@ -80,7 +80,13 @@ export async function execute(
         "Lottery Joined",
         `You entered the lottery with **${formatBalance(BalanceUtils.format(BalanceUtils.toStorage(result.entryAmount)))}**`,
       )
-        .field("Total Pot", formatBalance(BalanceUtils.format(BalanceUtils.toStorage(result.totalPot))), true)
+        .field(
+          "Total Pot",
+          formatBalance(
+            BalanceUtils.format(BalanceUtils.toStorage(result.totalPot)),
+          ),
+          true,
+        )
         .field("Players", `${result.participantCount}`, true);
 
       await interaction.reply({

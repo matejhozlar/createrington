@@ -61,7 +61,14 @@ export function Portfolio() {
   }
 
   if (isLoading) {
-    return <Loading mode="inline" size="large" text="Loading portfolio..." className="py-12" />;
+    return (
+      <Loading
+        mode="inline"
+        size="large"
+        text="Loading portfolio..."
+        className="py-12"
+      />
+    );
   }
 
   if (!data) return null;
@@ -192,7 +199,10 @@ export function Portfolio() {
                   {allocations.map((a) => (
                     <div
                       key={a.symbol}
-                      className={cn("h-full transition-all duration-500", a.color)}
+                      className={cn(
+                        "h-full transition-all duration-500",
+                        a.color,
+                      )}
                       style={{ width: `${Math.max(a.percent, 0.5)}%` }}
                       title={`${a.name}: ${a.percent.toFixed(1)}%`}
                     />
@@ -203,8 +213,15 @@ export function Portfolio() {
                   {allocations.slice(0, 8).map((a) => (
                     <div key={a.symbol} className="flex items-center gap-1.5">
                       <span className={cn("size-2 rounded-full", a.color)} />
-                      <span className="text-xs text-muted-foreground">{a.symbol}</span>
-                      <span className={cn("text-xs font-mono font-medium tabular-nums", a.textColor)}>
+                      <span className="text-xs text-muted-foreground">
+                        {a.symbol}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-xs font-mono font-medium tabular-nums",
+                          a.textColor,
+                        )}
+                      >
                         {a.percent.toFixed(1)}%
                       </span>
                     </div>
@@ -241,10 +258,13 @@ export function Portfolio() {
                   <TableBody>
                     {data.holdings.map((h) => {
                       const pnlPositive = Number(h.unrealizedPnl) >= 0;
-                      const allocIdx = allocations.findIndex((a) => a.symbol === h.symbol);
-                      const dotColor = allocIdx >= 0
-                        ? allocations[allocIdx].color
-                        : ALLOCATION_COLORS[0];
+                      const allocIdx = allocations.findIndex(
+                        (a) => a.symbol === h.symbol,
+                      );
+                      const dotColor =
+                        allocIdx >= 0
+                          ? allocations[allocIdx].color
+                          : ALLOCATION_COLORS[0];
                       return (
                         <TableRow
                           key={h.tokenId}
@@ -286,7 +306,8 @@ export function Portfolio() {
                             )}
                           >
                             {pnlPositive ? "+" : ""}
-                            {Number(h.unrealizedPnl).toFixed(2)} ({h.unrealizedPnlPercent}%)
+                            {Number(h.unrealizedPnl).toFixed(2)} (
+                            {h.unrealizedPnlPercent}%)
                           </TableCell>
                         </TableRow>
                       );

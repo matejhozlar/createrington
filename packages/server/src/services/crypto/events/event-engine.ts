@@ -203,9 +203,7 @@ async function executeEvent(
       targetToken = await pickRandomTarget(def);
     }
     if (!targetToken) {
-      logger.warn(
-        `Event ${eventType}: no valid target token found, skipping`,
-      );
+      logger.warn(`Event ${eventType}: no valid target token found, skipping`);
       return null;
     }
   }
@@ -258,8 +256,7 @@ async function executeEvent(
 
   // Special handling for pump_and_dump: schedule phase flip
   if (eventType === "pump_and_dump" && activeUntil) {
-    event.phaseFlipAt =
-      Date.now() + (activeUntil.getTime() - Date.now()) / 2;
+    event.phaseFlipAt = Date.now() + (activeUntil.getTime() - Date.now()) / 2;
   }
 
   // Only track duration-based events in active list (instant events fire once)
@@ -293,8 +290,9 @@ async function pickRandomTarget(
   const allTokens = await Q.crypto.token.where({ isCrashed: false }).all();
   const candidates = allTokens.filter(
     (t) =>
-      categories.includes(t.category as "memecoin" | "stable" | "blue_chip" | "seasonal") &&
-      !t.delistedAt,
+      categories.includes(
+        t.category as "memecoin" | "stable" | "blue_chip" | "seasonal",
+      ) && !t.delistedAt,
   );
 
   if (candidates.length === 0) return null;
@@ -341,8 +339,7 @@ async function applyInstantEffects(
   if (effects.instantSupplyChange !== undefined) {
     const currentSupply = Number(token.availableSupply);
     const magnitude = Math.abs(effects.instantSupplyChange);
-    const randomized =
-      magnitude * 0.6 + Math.random() * magnitude * 0.8;
+    const randomized = magnitude * 0.6 + Math.random() * magnitude * 0.8;
     const burnAmount = Math.floor(currentSupply * randomized);
     const newSupply = Math.max(1, currentSupply - burnAmount);
 

@@ -41,9 +41,7 @@ export async function execute(
   const serverId = parseInt(serverOpt, 10);
 
   try {
-    const playtimeManager = await getService(
-      Services.PLAYTIME_MANAGER_SERVICE,
-    );
+    const playtimeManager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
 
     const playtimeService = playtimeManager.getService(serverId);
 

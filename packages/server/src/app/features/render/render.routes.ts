@@ -22,7 +22,11 @@ const router = Router();
  * Validates the puppeteer secret query param.
  * Only the internal PuppeteerService should know this secret.
  */
-function requirePuppeteerSecret(req: Request, _res: Response, next: () => void) {
+function requirePuppeteerSecret(
+  req: Request,
+  _res: Response,
+  next: () => void,
+) {
   const secret = req.query.secret;
   if (!secret || secret !== config.puppeteer.secret) {
     throw new UnauthorizedError("Invalid render secret");
@@ -42,8 +46,15 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { player1, player2 } = req.query;
 
-    if (!player1 || !player2 || typeof player1 !== "string" || typeof player2 !== "string") {
-      res.status(400).json({ error: "player1 and player2 query params required" });
+    if (
+      !player1 ||
+      !player2 ||
+      typeof player1 !== "string" ||
+      typeof player2 !== "string"
+    ) {
+      res
+        .status(400)
+        .json({ error: "player1 and player2 query params required" });
       return;
     }
 
@@ -55,7 +66,9 @@ router.get(
     const mapPlayer = (details: typeof details1) => ({
       username: details.player.minecraftUsername,
       uuid: details.player.minecraftUuid,
-      balance: details.balance ? BalanceUtils.formatTrimmed(details.balance.balance) : "0",
+      balance: details.balance
+        ? BalanceUtils.formatTrimmed(details.balance.balance)
+        : "0",
       playtime: formatPlaytime(details.playtime.totalSeconds),
       playtimeSeconds: details.playtime.totalSeconds,
       sessions: details.playtime.totalSessions,

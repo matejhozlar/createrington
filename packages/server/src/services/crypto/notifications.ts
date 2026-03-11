@@ -112,7 +112,10 @@ export async function sendIpoAnnouncementNotification(
       embeds: embed.build(),
     });
   } catch (err) {
-    logger.error("Failed to send IPO announcement notification to Discord:", err);
+    logger.error(
+      "Failed to send IPO announcement notification to Discord:",
+      err,
+    );
   }
 
   createMarketEvent({
@@ -142,7 +145,7 @@ export async function sendIpoResultNotification(
   totalSupply: bigint,
   participants: number,
 ): Promise<void> {
-  const soldPercent = Number(totalSold) / Number(totalSupply) * 100;
+  const soldPercent = (Number(totalSold) / Number(totalSupply)) * 100;
   const totalRaised = Number(totalSold) * Number(ipoPrice);
 
   const embed = createEmbed()
@@ -152,7 +155,11 @@ export async function sendIpoResultNotification(
       `**${name}** (\`${symbol}\`) IPO has ended. The token is now open for trading!`,
     )
     .field("IPO Price", formatPrice(ipoPrice), true)
-    .field("Tokens Sold", `${Number(totalSold).toLocaleString()} (${soldPercent.toFixed(1)}%)`, true)
+    .field(
+      "Tokens Sold",
+      `${Number(totalSold).toLocaleString()} (${soldPercent.toFixed(1)}%)`,
+      true,
+    )
     .field("Total Raised", formatPrice(totalRaised), true)
     .field("Participants", `${participants}`, true)
     .footer("Normal trading has begun — price will now fluctuate")
@@ -285,10 +292,7 @@ export async function sendMarketEventNotification(
   let description = def.description;
   if (event.tokenSymbol) {
     // Replace the {token} template placeholder with the bolded token symbol
-    description = description.replace(
-      "{token}",
-      `**${event.tokenSymbol}**`,
-    );
+    description = description.replace("{token}", `**${event.tokenSymbol}**`);
   }
 
   const embed = createEmbed()
@@ -300,11 +304,7 @@ export async function sendMarketEventNotification(
     const durationMs = event.activeUntil.getTime() - Date.now();
     const durationMin = Math.round(durationMs / 60_000);
     if (durationMin > 60) {
-      embed.field(
-        "Duration",
-        `${(durationMin / 60).toFixed(1)} hours`,
-        true,
-      );
+      embed.field("Duration", `${(durationMin / 60).toFixed(1)} hours`, true);
     } else {
       embed.field("Duration", `${durationMin} minutes`, true);
     }
@@ -403,9 +403,7 @@ export async function getMarketSummary() {
  */
 export async function sendWeeklyMarketReport(): Promise<void> {
   try {
-    const tokens = await Q.crypto.token
-      .where({ isCrashed: false })
-      .all();
+    const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
     const activeTokens = tokens.filter((t) => !t.delistedAt);
 
     const totalMarketCap = activeTokens.reduce((sum, t) => {
@@ -437,7 +435,9 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     const leaderboardLines =
       topTraders.length > 0
         ? topTraders
-            .map((e) => `${e.rank}. **${e.playerName}** — ${formatPrice(e.value)}`)
+            .map(
+              (e) => `${e.rank}. **${e.playerName}** — ${formatPrice(e.value)}`,
+            )
             .join("\n")
         : "No traders yet";
 

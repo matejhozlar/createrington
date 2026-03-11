@@ -12,7 +12,8 @@ interface EmbedPreviewProps {
 export function EmbedPreview({ data }: EmbedPreviewProps) {
   const hasContent =
     data.title || data.description || data.fields.length > 0 || data.imageUrl;
-  const borderColor = data.color !== undefined ? numberToHex(data.color) : "#202225";
+  const borderColor =
+    data.color !== undefined ? numberToHex(data.color) : "#202225";
 
   if (!hasContent && !data.author && !data.footer) {
     return (
@@ -59,9 +60,7 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
           style={{
             backgroundColor: "#2B2D31",
             borderLeft: `4px solid ${borderColor}`,
-            gridTemplateColumns: data.thumbnailUrl
-              ? "1fr auto"
-              : "1fr",
+            gridTemplateColumns: data.thumbnailUrl ? "1fr auto" : "1fr",
           }}
         >
           <div className="flex flex-col gap-2 p-4">

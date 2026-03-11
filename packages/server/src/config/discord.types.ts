@@ -76,7 +76,6 @@ interface ChannelConfig {
   readonly textChannels: {
     readonly general: string;
   };
-
 }
 
 /** Discord category ID mappings */

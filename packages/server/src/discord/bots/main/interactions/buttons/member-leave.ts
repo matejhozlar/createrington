@@ -2,7 +2,11 @@ import { Q } from "@/db";
 import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { type ButtonInteraction, type GuildMember, MessageFlags } from "discord.js";
+import {
+  type ButtonInteraction,
+  type GuildMember,
+  MessageFlags,
+} from "discord.js";
 
 /**
  * Handles departed member management buttons
@@ -28,7 +32,11 @@ export async function checkPermission(
 ): Promise<boolean> {
   const member = interaction.member as GuildMember | null;
 
-  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+  if (
+    !member ||
+    typeof member.roles === "string" ||
+    Array.isArray(member.roles)
+  ) {
     return false;
   }
 

@@ -50,9 +50,7 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
       </div>
 
       {fields.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          No fields added yet.
-        </p>
+        <p className="text-xs text-muted-foreground">No fields added yet.</p>
       )}
 
       <div className="space-y-3">

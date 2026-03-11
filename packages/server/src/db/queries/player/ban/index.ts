@@ -40,7 +40,14 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     start: Date,
     end: Date,
     granularity: "day" | "week" | "month" = "day",
-  ): Promise<Array<{ period: string; total: number; temporary: number; permanent: number }>> {
+  ): Promise<
+    Array<{
+      period: string;
+      total: number;
+      temporary: number;
+      permanent: number;
+    }>
+  > {
     const query = `
       SELECT
         DATE_TRUNC($3, banned_at)::text AS period,
