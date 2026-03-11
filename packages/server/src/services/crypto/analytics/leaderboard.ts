@@ -1,10 +1,10 @@
 import { Q } from "@/db";
 
 export interface LeaderboardEntry {
-	rank: number;
-	playerUuid: string;
-	playerName: string;
-	value: string;
+  rank: number;
+  playerUuid: string;
+  playerName: string;
+  value: string;
 }
 
 type LeaderboardType = "networth" | "pnl" | "volume";
@@ -26,17 +26,17 @@ type LeaderboardType = "networth" | "pnl" | "volume";
  * @returns Ranked leaderboard entries, highest value first
  */
 export async function getLeaderboard(
-	type: LeaderboardType,
-	limit = 10,
+  type: LeaderboardType,
+  limit = 10,
 ): Promise<LeaderboardEntry[]> {
-	switch (type) {
-		case "networth":
-			return getNetworthLeaderboard(limit);
-		case "pnl":
-			return getPnlLeaderboard(limit);
-		case "volume":
-			return getVolumeLeaderboard(limit);
-	}
+  switch (type) {
+    case "networth":
+      return getNetworthLeaderboard(limit);
+    case "pnl":
+      return getPnlLeaderboard(limit);
+    case "volume":
+      return getVolumeLeaderboard(limit);
+  }
 }
 
 // ==========================================================================
@@ -51,24 +51,24 @@ export async function getLeaderboard(
  * @returns Leaderboard entries sorted by descending net worth
  */
 async function getNetworthLeaderboard(
-	limit: number,
+  limit: number,
 ): Promise<LeaderboardEntry[]> {
-	const tokens = await Q.crypto.token.where({}).all();
-	const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+  const tokens = await Q.crypto.token.where({}).all();
+  const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
-	const allHoldings = await Q.crypto.holding.where({}).all();
-	const playerValues = new Map<string, number>();
+  const allHoldings = await Q.crypto.holding.where({}).all();
+  const playerValues = new Map<string, number>();
 
-	for (const h of allHoldings) {
-		const price = tokenPriceMap.get(h.tokenId) ?? 0;
-		const value = price * Number(h.amount);
-		playerValues.set(
-			h.playerMinecraftUuid,
-			(playerValues.get(h.playerMinecraftUuid) ?? 0) + value,
-		);
-	}
+  for (const h of allHoldings) {
+    const price = tokenPriceMap.get(h.tokenId) ?? 0;
+    const value = price * Number(h.amount);
+    playerValues.set(
+      h.playerMinecraftUuid,
+      (playerValues.get(h.playerMinecraftUuid) ?? 0) + value,
+    );
+  }
 
-	return buildLeaderboard(playerValues, limit);
+  return buildLeaderboard(playerValues, limit);
 }
 
 /**
@@ -78,26 +78,21 @@ async function getNetworthLeaderboard(
  * @param limit - Maximum number of entries to return
  * @returns Leaderboard entries sorted by descending realized P&L
  */
-async function getPnlLeaderboard(
-	limit: number,
-): Promise<LeaderboardEntry[]> {
-	const allSells = await Q.crypto.transaction
-		.where({ type: "sell" })
-		.all();
+async function getPnlLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
+  const allSells = await Q.crypto.transaction.where({ type: "sell" }).all();
 
-	const playerPnl = new Map<string, number>();
+  const playerPnl = new Map<string, number>();
 
-	for (const tx of allSells) {
-		if (tx.realizedPnl) {
-			playerPnl.set(
-				tx.playerMinecraftUuid,
-				(playerPnl.get(tx.playerMinecraftUuid) ?? 0) +
-					Number(tx.realizedPnl),
-			);
-		}
-	}
+  for (const tx of allSells) {
+    if (tx.realizedPnl) {
+      playerPnl.set(
+        tx.playerMinecraftUuid,
+        (playerPnl.get(tx.playerMinecraftUuid) ?? 0) + Number(tx.realizedPnl),
+      );
+    }
+  }
 
-	return buildLeaderboard(playerPnl, limit);
+  return buildLeaderboard(playerPnl, limit);
 }
 
 /**
@@ -108,21 +103,21 @@ async function getPnlLeaderboard(
  * @returns Leaderboard entries sorted by descending volume
  */
 async function getVolumeLeaderboard(
-	limit: number,
+  limit: number,
 ): Promise<LeaderboardEntry[]> {
-	const allTxs = await Q.crypto.transaction.where({}).all();
+  const allTxs = await Q.crypto.transaction.where({}).all();
 
-	const playerVolume = new Map<string, number>();
+  const playerVolume = new Map<string, number>();
 
-	for (const tx of allTxs) {
-		const cost = Math.abs(Number(tx.totalCost));
-		playerVolume.set(
-			tx.playerMinecraftUuid,
-			(playerVolume.get(tx.playerMinecraftUuid) ?? 0) + cost,
-		);
-	}
+  for (const tx of allTxs) {
+    const cost = Math.abs(Number(tx.totalCost));
+    playerVolume.set(
+      tx.playerMinecraftUuid,
+      (playerVolume.get(tx.playerMinecraftUuid) ?? 0) + cost,
+    );
+  }
 
-	return buildLeaderboard(playerVolume, limit);
+  return buildLeaderboard(playerVolume, limit);
 }
 
 /**
@@ -136,23 +131,26 @@ async function getVolumeLeaderboard(
  * @returns Ranked and named leaderboard entries
  */
 async function buildLeaderboard(
-	playerValues: Map<string, number>,
-	limit: number,
+  playerValues: Map<string, number>,
+  limit: number,
 ): Promise<LeaderboardEntry[]> {
-	const sorted = [...playerValues.entries()]
-		.sort((a, b) => b[1] - a[1])
-		.slice(0, limit);
+  const sorted = [...playerValues.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit);
 
-	// Resolve player names in a single query rather than per-entry lookups
-	const players = await Q.player.where({}).all();
-	const nameMap = new Map(
-		players.map((p) => [p.minecraftUuid, p.minecraftUsername ?? p.minecraftUuid]),
-	);
+  // Resolve player names in a single query rather than per-entry lookups
+  const players = await Q.player.where({}).all();
+  const nameMap = new Map(
+    players.map((p) => [
+      p.minecraftUuid,
+      p.minecraftUsername ?? p.minecraftUuid,
+    ]),
+  );
 
-	return sorted.map(([uuid, value], i) => ({
-		rank: i + 1,
-		playerUuid: uuid,
-		playerName: nameMap.get(uuid) ?? uuid,
-		value: value.toFixed(2),
-	}));
+  return sorted.map(([uuid, value], i) => ({
+    rank: i + 1,
+    playerUuid: uuid,
+    playerName: nameMap.get(uuid) ?? uuid,
+    value: value.toFixed(2),
+  }));
 }

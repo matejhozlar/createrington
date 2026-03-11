@@ -84,7 +84,7 @@ export class CooldownManager {
   private getKey(
     commandName: string,
     type: CooldownType,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): string {
     switch (type) {
       case CooldownType.USER:
@@ -119,7 +119,7 @@ export class CooldownManager {
   public getExpiry(
     commandName: string,
     type: CooldownType,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): number | null {
     const key = this.getKey(commandName, type, interaction);
     const timestamps = this.cooldowns.get(commandName);
@@ -154,7 +154,7 @@ export class CooldownManager {
   public check(
     commandName: string,
     cfg: CooldownConfig,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): number | null {
     const key = this.getKey(commandName, cfg.type, interaction);
 
@@ -195,7 +195,7 @@ export class CooldownManager {
   public set(
     commandName: string,
     cfg: CooldownConfig,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): void {
     const key = this.getKey(commandName, cfg.type, interaction);
 
@@ -235,7 +235,7 @@ export class CooldownManager {
   public reset(
     commandName: string,
     type: CooldownType,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): boolean {
     const key = this.getKey(commandName, type, interaction);
     const timestamps = this.cooldowns.get(commandName);
@@ -299,7 +299,7 @@ export class CooldownManager {
   public getRemaining(
     commandName: string,
     type: CooldownType,
-    interaction: CooldownContext
+    interaction: CooldownContext,
   ): number | null {
     return this.check(commandName, { duration: 0, type }, interaction);
   }

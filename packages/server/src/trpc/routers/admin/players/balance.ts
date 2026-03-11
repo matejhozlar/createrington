@@ -8,8 +8,7 @@ import { parsePlayerId, trpcError } from "@/trpc/utils";
 export const balanceRouter = router({
   get: adminProcedure
     .meta({
-      description:
-        "Get a player's current balance and recent transactions.",
+      description: "Get a player's current balance and recent transactions.",
     })
     .input(
       z.object({
@@ -87,8 +86,7 @@ export const balanceRouter = router({
 
   bulkAdjust: adminProcedure
     .meta({
-      description:
-        "Bulk balance adjustment for multiple players at once.",
+      description: "Bulk balance adjustment for multiple players at once.",
     })
     .input(
       z.object({

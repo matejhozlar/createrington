@@ -1,10 +1,7 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
-import {
-  ChatInputCommandInteraction,
-  SlashCommandBuilder,
-} from "discord.js";
+import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
  * Slash command definition for the seen command
@@ -14,10 +11,7 @@ export const data = new SlashCommandBuilder()
   .setName("seen")
   .setDescription("Check when a player was last online")
   .addUserOption((opt) =>
-    opt
-      .setName("user")
-      .setDescription("User to check")
-      .setRequired(false),
+    opt.setName("user").setDescription("User to check").setRequired(false),
   );
 
 /**
@@ -54,14 +48,8 @@ export async function execute(
     const player = await Q.player.get({ discordId: targetUser.id });
 
     const embed = EmbedPresets.info(`${player.minecraftUsername}'s Status`)
-      .thumbnail(
-        `https://mc-heads.net/avatar/${player.minecraftUuid}`,
-      )
-      .field(
-        "Status",
-        player.online ? "🟢 Online" : "🔴 Offline",
-        true,
-      );
+      .thumbnail(`https://mc-heads.net/avatar/${player.minecraftUuid}`)
+      .field("Status", player.online ? "🟢 Online" : "🔴 Offline", true);
 
     if (player.online && player.currentServerId) {
       const server = await Q.server.find({ id: player.currentServerId });

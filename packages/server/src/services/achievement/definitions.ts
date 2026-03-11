@@ -1,7 +1,4 @@
-import {
-  AchievementCategory,
-  type AchievementGroup,
-} from "./types";
+import { AchievementCategory, type AchievementGroup } from "./types";
 
 /** All achievement group definitions, organized by category */
 export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
@@ -266,9 +263,7 @@ export function getGroupById(id: string): AchievementGroup | undefined {
 }
 
 /** Returns all achievement groups belonging to a category */
-export function getGroupsByCategory(
-  category: string,
-): AchievementGroup[] {
+export function getGroupsByCategory(category: string): AchievementGroup[] {
   return groupsByCategoryMap.get(category) ?? [];
 }
 
@@ -282,9 +277,7 @@ export function validateDefinitions(): void {
   for (const group of ACHIEVEMENT_GROUPS) {
     // No duplicate group IDs
     if (seenIds.has(group.id)) {
-      throw new Error(
-        `Duplicate achievement group ID: "${group.id}"`,
-      );
+      throw new Error(`Duplicate achievement group ID: "${group.id}"`);
     }
     seenIds.add(group.id);
 

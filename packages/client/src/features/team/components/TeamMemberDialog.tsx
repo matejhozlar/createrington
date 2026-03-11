@@ -17,7 +17,11 @@ type TeamMemberDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-export const TeamMemberDialog = ({ member, open, onOpenChange }: TeamMemberDialogProps) => {
+export const TeamMemberDialog = ({
+  member,
+  open,
+  onOpenChange,
+}: TeamMemberDialogProps) => {
   if (!member) return null;
 
   const config = TIER_CONFIG[member.tier];

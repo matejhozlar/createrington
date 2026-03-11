@@ -159,7 +159,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
         <NavMain
           items={filteredNavMain}
-          insertions={user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined}
+          insertions={
+            user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined
+          }
         />
       </SidebarContent>
 

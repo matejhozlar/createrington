@@ -162,10 +162,7 @@ export function PriceAlerts() {
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
-              <div
-                key={i}
-                className="h-12 animate-pulse rounded-lg bg-muted"
-              />
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />
             ))}
           </div>
         ) : !alerts || alerts.length === 0 ? (
@@ -180,7 +177,9 @@ export function PriceAlerts() {
                 className="flex items-center justify-between rounded-xl border bg-card/50 px-3 py-2.5"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-medium text-sm">{alert.tokenSymbol}</span>
+                  <span className="font-medium text-sm">
+                    {alert.tokenSymbol}
+                  </span>
                   <span
                     className={cn(
                       "flex items-center gap-1 text-xs font-medium",

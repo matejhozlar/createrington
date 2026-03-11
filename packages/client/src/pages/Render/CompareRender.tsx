@@ -97,7 +97,9 @@ export function CompareRender() {
   if (error) {
     return (
       <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <span className="text-base tracking-wide text-destructive">{error}</span>
+        <span className="text-base tracking-wide text-destructive">
+          {error}
+        </span>
       </div>
     );
   }

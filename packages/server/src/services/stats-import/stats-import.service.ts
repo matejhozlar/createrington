@@ -90,9 +90,7 @@ export class StatsImportService {
       playtimeService.on("sessionStart", () =>
         this.scheduleImport(cfg.serverId),
       );
-      playtimeService.on("sessionEnd", () =>
-        this.scheduleImport(cfg.serverId),
-      );
+      playtimeService.on("sessionEnd", () => this.scheduleImport(cfg.serverId));
 
       logger.info(
         `Subscribed to session events for server ${cfg.serverId} (${cfg.serverName})`,
@@ -229,9 +227,7 @@ export class StatsImportService {
         }
 
         try {
-          const content = await sftp.get(
-            `${cfg.sftp.statsPath}/${file.name}`,
-          );
+          const content = await sftp.get(`${cfg.sftp.statsPath}/${file.name}`);
           const parsed = JSON.parse(content.toString());
 
           statsToUpsert.push({

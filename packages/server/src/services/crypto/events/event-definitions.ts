@@ -98,7 +98,8 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
   flash_crash: {
     type: "flash_crash",
     name: "Flash Crash",
-    description: "{token} just flash-crashed, losing 20-50% of its value instantly!",
+    description:
+      "{token} just flash-crashed, losing 20-50% of its value instantly!",
     scope: "token",
     targetCategories: ["memecoin"],
     probability: 0.01,

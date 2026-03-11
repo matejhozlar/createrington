@@ -40,7 +40,8 @@ import { InviteWaitlistModal } from "./components/modals/InviteWaitlistModal";
 import { DeleteWaitlistModal } from "./components/modals/DeleteWaitlistModal";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type WaitlistEntry = RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+type WaitlistEntry =
+  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
@@ -422,7 +423,9 @@ export function AdminWaitlists() {
               </Button>
               <Button
                 type="button"
-                variant={statusFilter === "auto_accepted" ? "default" : "outline"}
+                variant={
+                  statusFilter === "auto_accepted" ? "default" : "outline"
+                }
                 size="default"
                 onClick={() => {
                   setStatusFilter("auto_accepted");

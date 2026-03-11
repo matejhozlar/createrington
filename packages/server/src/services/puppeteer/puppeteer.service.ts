@@ -60,7 +60,9 @@ export class PuppeteerService {
    * Initializes the service (browser launches lazily on first use)
    */
   async initialize(): Promise<void> {
-    logger.info("PuppeteerService initialized (browser will launch on first use)");
+    logger.info(
+      "PuppeteerService initialized (browser will launch on first use)",
+    );
   }
 
   /**
@@ -208,8 +210,9 @@ export class PuppeteerService {
   private async launchBrowser(): Promise<Browser> {
     logger.info("Launching Puppeteer browser...");
 
-    const executablePath = config.puppeteer.executablePath
-      ?? (config.envMode.isProd ? "/usr/bin/chromium-browser" : undefined);
+    const executablePath =
+      config.puppeteer.executablePath ??
+      (config.envMode.isProd ? "/usr/bin/chromium-browser" : undefined);
 
     if (!executablePath) {
       throw new Error(

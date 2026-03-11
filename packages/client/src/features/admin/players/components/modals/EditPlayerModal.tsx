@@ -334,7 +334,10 @@ export function EditPlayerModal({
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={updatePlayer.isPending} className="cursor-pointer">
+            <AlertDialogCancel
+              disabled={updatePlayer.isPending}
+              className="cursor-pointer"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

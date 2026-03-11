@@ -87,17 +87,11 @@ describe("QueryBuilder (server table)", () => {
   });
 
   it("should paginate correctly", async () => {
-    const page0 = await Q.server
-      .orderBy("name", "asc")
-      .paginate(0, 2)
-      .all();
+    const page0 = await Q.server.orderBy("name", "asc").paginate(0, 2).all();
     expect(page0).toHaveLength(2);
     expect(page0[0].name).toBe("Alpha");
 
-    const page1 = await Q.server
-      .orderBy("name", "asc")
-      .paginate(1, 2)
-      .all();
+    const page1 = await Q.server.orderBy("name", "asc").paginate(1, 2).all();
     expect(page1).toHaveLength(1);
     expect(page1[0].name).toBe("Gamma");
   });
@@ -151,7 +145,9 @@ describe("QueryBuilder (server table)", () => {
     await Q.server.create({ name: "Epsilon", identifier: "epsilon" });
 
     const results = await Q.server
-      .where({ name: { $in: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"] } as any })
+      .where({
+        name: { $in: ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"] } as any,
+      })
       .orderBy("name", "asc")
       .limit(2)
       .offset(1)

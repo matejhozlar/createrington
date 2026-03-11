@@ -9,9 +9,7 @@ import type { CryptoTokenCategory } from "@createrington/shared/db/database.type
 import { getEventFeeMultiplier } from "../events/event-engine";
 
 /** Returns the base fee rate for a token category (0 for stablecoins, up to 2.5% for memecoins) */
-export function getBaseFeeRate(
-  category: CryptoTokenCategory,
-): number {
+export function getBaseFeeRate(category: CryptoTokenCategory): number {
   switch (category) {
     case "stable":
       return CRYPTO_CONFIG.FEES.STABLE;
@@ -68,7 +66,9 @@ export function calculateFee(
   if (baseFeeRate === 0) return 0;
 
   const volumeDiscount = getVolumeDiscount(lifetimeTradeCount);
-  const achievementDiscount = hasMarketVeteran ? MARKET_VETERAN_FEE_DISCOUNT : 0;
+  const achievementDiscount = hasMarketVeteran
+    ? MARKET_VETERAN_FEE_DISCOUNT
+    : 0;
   const totalDiscount = Math.min(volumeDiscount + achievementDiscount, 1);
   const effectiveRate = baseFeeRate * (1 - totalDiscount);
   const eventMultiplier = getEventFeeMultiplier();

@@ -1,5 +1,8 @@
 import { Q } from "@/db";
-import { executeBuy, executeSell } from "@/services/crypto/trading/trade-executor";
+import {
+  executeBuy,
+  executeSell,
+} from "@/services/crypto/trading/trade-executor";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import {
   getPlayerAlerts,
@@ -268,7 +271,11 @@ async function handleTrade(
       .field("Total Cost", `$${result.totalCost.toFixed(2)}`, true);
 
     if (isIpo) {
-      embed.field("IPO Ends", `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`, true);
+      embed.field(
+        "IPO Ends",
+        `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`,
+        true,
+      );
     }
 
     embed.timestamp();
@@ -492,8 +499,7 @@ async function handleMarket(
   const activeEvents = getActiveEventsInMemory();
   if (activeEvents.length > 0) {
     const eventLines = activeEvents.map((e) => {
-      const def =
-        EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
+      const def = EVENT_DEFINITIONS[e.type as keyof typeof EVENT_DEFINITIONS];
       const name = def?.name ?? e.type;
       const remaining = e.activeUntil
         ? ` (${Math.round((e.activeUntil.getTime() - Date.now()) / 60_000)}m remaining)`

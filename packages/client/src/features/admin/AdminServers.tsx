@@ -188,9 +188,7 @@ export function AdminServers() {
                             />
                           </div>
                           <div>
-                            <p className="font-semibold">
-                              {server.serverName}
-                            </p>
+                            <p className="font-semibold">{server.serverName}</p>
                             <p className="text-xs text-muted-foreground">
                               {server.ip}:{server.port}
                             </p>
@@ -210,9 +208,7 @@ export function AdminServers() {
                       {/* Player count bar */}
                       <div>
                         <div className="mb-1 flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Players
-                          </span>
+                          <span className="text-muted-foreground">Players</span>
                           <span className="font-medium">
                             {livePlayerCount} / {server.maxPlayers}
                           </span>

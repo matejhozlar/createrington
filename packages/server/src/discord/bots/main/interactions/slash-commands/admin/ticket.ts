@@ -65,9 +65,7 @@ export const permissions = {
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
 
   const subcommand = interaction.options.getSubcommand();
   try {

@@ -27,7 +27,14 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
     start: Date,
     end: Date,
     granularity: "day" | "week" | "month" = "day",
-  ): Promise<Array<{ period: string; transactionCount: number; totalCredits: number; totalDebits: number }>> {
+  ): Promise<
+    Array<{
+      period: string;
+      transactionCount: number;
+      totalCredits: number;
+      totalDebits: number;
+    }>
+  > {
     const query = `
       SELECT
         DATE_TRUNC($3, created_at)::text AS period,
@@ -74,10 +81,9 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
       WHERE player_minecraft_uuid = $1 AND amount > 0`;
 
     try {
-      const result = await this.db.query<{ total_earned: bigint }>(
-        query,
-        [playerUuid],
-      );
+      const result = await this.db.query<{ total_earned: bigint }>(query, [
+        playerUuid,
+      ]);
       return Number(result.rows[0].total_earned);
     } catch (error) {
       logger.error("Failed to get total earned:", error);

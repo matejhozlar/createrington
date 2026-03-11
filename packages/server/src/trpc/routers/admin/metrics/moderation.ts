@@ -17,7 +17,10 @@ export const moderationMetricsRouter = router({
     }),
 
   getStrikesByPeriod: adminProcedure
-    .meta({ description: "Get strike counts grouped by time period with classification breakdown." })
+    .meta({
+      description:
+        "Get strike counts grouped by time period with classification breakdown.",
+    })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getStrikesByPeriod(
@@ -34,7 +37,10 @@ export const moderationMetricsRouter = router({
     }),
 
   getTicketOverview: adminProcedure
-    .meta({ description: "Get ticket overview: total, open, closed, average resolution time." })
+    .meta({
+      description:
+        "Get ticket overview: total, open, closed, average resolution time.",
+    })
     .query(async () => {
       return await metricsService.moderation.getTicketOverview();
     }),

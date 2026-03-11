@@ -104,8 +104,7 @@ export function TokenList() {
             const change24h = livePrice?.change24h ?? 0;
             const isIpo =
               !!token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date();
-            const hasEvent =
-              hasMarketWideEvent || eventTokenIds.has(token.id);
+            const hasEvent = hasMarketWideEvent || eventTokenIds.has(token.id);
             const heldPercent = getHeldPercent(
               availableSupply,
               token.totalSupply,

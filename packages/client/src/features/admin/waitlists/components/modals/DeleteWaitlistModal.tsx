@@ -16,7 +16,8 @@ import { X } from "lucide-react";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type WaitlistEntry = RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
+type WaitlistEntry =
+  RouterOutput["admin"]["waitlists"]["list"]["entries"][number];
 
 interface DeleteWaitlistModalProps {
   open: boolean;

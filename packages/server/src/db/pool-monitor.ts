@@ -84,10 +84,7 @@ export class PoolMonitor {
     if (stats.waitingCount > 0) {
       logger.warn("[Pool] Clients waiting for connections", stats);
     } else if (stats.utilization >= this.warnThreshold) {
-      logger.warn(
-        `[Pool] High utilization (${stats.utilization}%)`,
-        stats,
-      );
+      logger.warn(`[Pool] High utilization (${stats.utilization}%)`, stats);
     } else {
       logger.debug("[Pool] Health check", stats);
     }

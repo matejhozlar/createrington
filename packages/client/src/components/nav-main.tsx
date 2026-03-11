@@ -48,7 +48,9 @@ export function NavMain({
                       <SidebarMenuButton
                         isActive={isActive}
                         size="lg"
-                        className={cn(isActive && "text-primary! bg-primary/5!")}
+                        className={cn(
+                          isActive && "text-primary! bg-primary/5!",
+                        )}
                       >
                         {item.icon && (
                           <div className="relative">
@@ -56,11 +58,15 @@ export function NavMain({
                               className={cn(
                                 "size-6! transition-all",
                                 state === "collapsed" && "ml-3",
-                                isActive ? "text-primary/75!" : "text-zinc-400!",
+                                isActive
+                                  ? "text-primary/75!"
+                                  : "text-zinc-400!",
                               )}
                             />
 
-                            {item.badge && state === "collapsed" && <IconBadge />}
+                            {item.badge && state === "collapsed" && (
+                              <IconBadge />
+                            )}
                           </div>
                         )}
 
@@ -68,7 +74,9 @@ export function NavMain({
 
                         {item.badge && (
                           <SidebarMenuBadge>
-                            <Badge className="font-semibold bg-primary/90">{item.badge}</Badge>
+                            <Badge className="font-semibold bg-primary/90">
+                              {item.badge}
+                            </Badge>
                           </SidebarMenuBadge>
                         )}
                       </SidebarMenuButton>

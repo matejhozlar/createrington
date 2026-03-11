@@ -286,7 +286,9 @@ export function AdminLogs() {
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <FileText className="mx-auto size-12 text-muted-foreground" />
-                <p className="mt-2 text-muted-foreground">No log entries found</p>
+                <p className="mt-2 text-muted-foreground">
+                  No log entries found
+                </p>
               </div>
             </CardContent>
           ) : (
@@ -352,9 +354,7 @@ export function AdminLogs() {
                           {action.adminUsername}
                         </TableCell>
                         <TableCell className="px-4">
-                          <Badge variant="outline">
-                            {action.actionType}
-                          </Badge>
+                          <Badge variant="outline">{action.actionType}</Badge>
                         </TableCell>
                         <TableCell className="px-4 text-sm">
                           {action.targetPlayerName}
@@ -370,21 +370,31 @@ export function AdminLogs() {
                         <TableCell className="px-4">
                           <div className="flex flex-col gap-1 text-xs max-w-[200px]">
                             {action.oldValue != null && (
-                              <code className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded truncate block" title={action.oldValue}>
+                              <code
+                                className="bg-destructive/10 text-destructive px-1.5 py-0.5 rounded truncate block"
+                                title={action.oldValue}
+                              >
                                 {action.oldValue}
                               </code>
                             )}
                             {action.newValue != null && (
-                              <code className="bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded truncate block" title={action.newValue}>
+                              <code
+                                className="bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded truncate block"
+                                title={action.newValue}
+                              >
                                 {action.newValue}
                               </code>
                             )}
-                            {action.oldValue == null && action.newValue == null && (
-                              <span className="text-muted-foreground">—</span>
-                            )}
+                            {action.oldValue == null &&
+                              action.newValue == null && (
+                                <span className="text-muted-foreground">—</span>
+                              )}
                           </div>
                         </TableCell>
-                        <TableCell className="px-4 text-sm text-muted-foreground max-w-[150px] truncate" title={action.reason ?? undefined}>
+                        <TableCell
+                          className="px-4 text-sm text-muted-foreground max-w-[150px] truncate"
+                          title={action.reason ?? undefined}
+                        >
                           {action.reason ?? "—"}
                         </TableCell>
                         <TableCell className="px-4">

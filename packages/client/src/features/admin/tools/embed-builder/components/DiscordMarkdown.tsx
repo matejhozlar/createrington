@@ -185,9 +185,16 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
     if (headingMatch) {
       const level = headingMatch[1].length;
       const content = headingMatch[2];
-      const sizes = ["text-xl font-bold", "text-lg font-bold", "text-base font-semibold"];
+      const sizes = [
+        "text-xl font-bold",
+        "text-lg font-bold",
+        "text-base font-semibold",
+      ];
       blocks.push(
-        <div key={blocks.length} className={`${sizes[level - 1]} mt-1 text-white`}>
+        <div
+          key={blocks.length}
+          className={`${sizes[level - 1]} mt-1 text-white`}
+        >
           {renderInline(content)}
         </div>,
       );
@@ -198,7 +205,10 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
     // Blockquote: > text (collect consecutive > lines)
     if (line.startsWith("> ") || line === ">") {
       const quoteLines: string[] = [];
-      while (i < lines.length && (lines[i].startsWith("> ") || lines[i] === ">")) {
+      while (
+        i < lines.length &&
+        (lines[i].startsWith("> ") || lines[i] === ">")
+      ) {
         quoteLines.push(lines[i].slice(2));
         i++;
       }

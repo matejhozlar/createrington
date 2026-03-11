@@ -218,7 +218,9 @@ export class TicketService {
    *
    * @private
    */
-  private getTicketActionButtons(ticketId: number): ActionRowBuilder<ButtonBuilder>[] {
+  private getTicketActionButtons(
+    ticketId: number,
+  ): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -346,7 +348,9 @@ export class TicketService {
    *
    * @private
    */
-  private getClosedTicketButtons(ticketId: number): ActionRowBuilder<ButtonBuilder>[] {
+  private getClosedTicketButtons(
+    ticketId: number,
+  ): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()

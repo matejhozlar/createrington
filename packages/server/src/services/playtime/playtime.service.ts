@@ -59,7 +59,8 @@ interface TypedEventEmitter<T> {
  * - Lower server load
  * - More accurate session timestamps
  */
-export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> & EventEmitter) {
+export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> &
+  EventEmitter) {
   private config: Required<PlaytimeServiceConfig>;
   private activeSessions: Map<string, ActiveSession> = new Map();
   private isInitialized = false;

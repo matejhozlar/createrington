@@ -107,16 +107,18 @@ export class AchievementService {
     );
 
     // Load player data for evaluation (Minecraft + crypto in parallel)
-    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all([
-      Q.player.minecraft.stats
-        .find({ minecraftUuid: playerUuid, serverId })
-        .catch(() => null),
-      Q.player.playtime.summary
-        .find({ playerMinecraftUuid: playerUuid, serverId })
-        .catch(() => null),
-      Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
-      this.loadCryptoData(playerUuid),
-    ]);
+    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all(
+      [
+        Q.player.minecraft.stats
+          .find({ minecraftUuid: playerUuid, serverId })
+          .catch(() => null),
+        Q.player.playtime.summary
+          .find({ playerMinecraftUuid: playerUuid, serverId })
+          .catch(() => null),
+        Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
+        this.loadCryptoData(playerUuid),
+      ],
+    );
 
     const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
     const totalSeconds = playtimeSummary
@@ -232,7 +234,11 @@ export class AchievementService {
 
       if (!alreadyCompleted) {
         await Q.player.achievement.batchComplete(playerUuid, serverId, [
-          { achievementGroupId: groupId, tier: 1, rewardAmount: group.tiers[0].reward },
+          {
+            achievementGroupId: groupId,
+            tier: 1,
+            rewardAmount: group.tiers[0].reward,
+          },
         ]);
         awarded = true;
       }
@@ -261,7 +267,9 @@ export class AchievementService {
       .all();
 
     // Deduplicate by player UUID
-    const playerUuids = [...new Set(oldHoldings.map((h) => h.playerMinecraftUuid))];
+    const playerUuids = [
+      ...new Set(oldHoldings.map((h) => h.playerMinecraftUuid)),
+    ];
 
     let awarded = 0;
     for (const uuid of playerUuids) {
@@ -280,9 +288,7 @@ export class AchievementService {
    * Called when a token crashes.
    */
   async evaluateCrashAchievements(tokenId: number): Promise<void> {
-    const holdings = await Q.crypto.holding
-      .where({ tokenId })
-      .all();
+    const holdings = await Q.crypto.holding.where({ tokenId }).all();
 
     let crashSurvivorCount = 0;
     let bagHolderCount = 0;
@@ -365,16 +371,18 @@ export class AchievementService {
       completedByGroup.set(row.achievementGroupId, list);
     }
 
-    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all([
-      Q.player.minecraft.stats
-        .find({ minecraftUuid: playerUuid, serverId })
-        .catch(() => null),
-      Q.player.playtime.summary
-        .find({ playerMinecraftUuid: playerUuid, serverId })
-        .catch(() => null),
-      Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
-      this.loadCryptoData(playerUuid),
-    ]);
+    const [stats, playtimeSummary, totalEarned, cryptoData] = await Promise.all(
+      [
+        Q.player.minecraft.stats
+          .find({ minecraftUuid: playerUuid, serverId })
+          .catch(() => null),
+        Q.player.playtime.summary
+          .find({ playerMinecraftUuid: playerUuid, serverId })
+          .catch(() => null),
+        Q.player.balance.transaction.getTotalEarned(playerUuid).catch(() => 0),
+        this.loadCryptoData(playerUuid),
+      ],
+    );
 
     const statsJson = (stats as PlayerMinecraftStats)?.stats ?? {};
     const totalSeconds = playtimeSummary
@@ -569,7 +577,10 @@ export class AchievementService {
     }
 
     // Fallback: use all servers if no playtime data yet
-    const servers = await Q.server.where({}).all().catch(() => []);
+    const servers = await Q.server
+      .where({})
+      .all()
+      .catch(() => []);
     return servers.map((s) => s.id);
   }
 

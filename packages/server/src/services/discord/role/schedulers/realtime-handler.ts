@@ -42,10 +42,7 @@ export class RealtimeRoleHandler {
 
         const rules = getRealtimeRoleRules();
 
-        await this.roleService.processRoleHierarchy(
-          player.discordId,
-          rules,
-        );
+        await this.roleService.processRoleHierarchy(player.discordId, rules);
       } catch (error) {
         logger.error(
           `Failed to process realtime role check for ${event.username}:`,

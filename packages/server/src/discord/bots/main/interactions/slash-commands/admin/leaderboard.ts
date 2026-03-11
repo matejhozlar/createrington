@@ -96,9 +96,7 @@ export async function execute(
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
 
-  const leaderboardService = await getService(
-    Services.LEADERBOARD_SERVICE,
-  );
+  const leaderboardService = await getService(Services.LEADERBOARD_SERVICE);
 
   try {
     if (subcommand === "create") {

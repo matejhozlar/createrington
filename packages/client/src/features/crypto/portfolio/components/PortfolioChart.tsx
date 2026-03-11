@@ -84,7 +84,9 @@ export function PortfolioChart() {
     if (!seriesRef.current || !data || data.length === 0) return;
 
     const areaData: AreaData<Time>[] = data.map((d) => ({
-      time: (Math.floor(new Date(d.recordedAt).getTime() / 1000) as unknown) as Time,
+      time: Math.floor(
+        new Date(d.recordedAt).getTime() / 1000,
+      ) as unknown as Time,
       value: Number(d.totalValue),
     }));
 

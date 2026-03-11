@@ -58,7 +58,8 @@ interface TypedEventEmitter<T> {
  * - Emits events for real-time integration (WebSocket, etc.)
  * - Parses messages to detect source (System, Discord, Minecraft, Web)
  */
-export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> & EventEmitter) {
+export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> &
+  EventEmitter) {
   private cache: Map<number, CachedMessage[]> = new Map();
   private serverConfig: Map<number, ServerCacheConfig> = new Map();
   private isInitialized = false;

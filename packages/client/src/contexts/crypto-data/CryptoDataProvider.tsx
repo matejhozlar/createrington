@@ -36,9 +36,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   const websocketContext = useContext(WebSocketContext);
 
   if (!websocketContext) {
-    throw new Error(
-      "CryptoDataProvider must be used within WebSocketProvider",
-    );
+    throw new Error("CryptoDataProvider must be used within WebSocketProvider");
   }
 
   const { isConnected, on, subscribe, unsubscribe } = websocketContext;
@@ -46,9 +44,9 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
-  const [prices, setPrices] = useState<
-    Map<string, CryptoPriceUpdatePayload>
-  >(new Map());
+  const [prices, setPrices] = useState<Map<string, CryptoPriceUpdatePayload>>(
+    new Map(),
+  );
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   /** Merges an incoming batch of price updates into the live price map */

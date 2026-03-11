@@ -3,7 +3,7 @@ import { CryptoPriceSnapshotBaseQueries } from "@/generated/db/crypto_price_snap
 
 /**
  * Custom queries for crypto_price_snapshot table
- * 
+ *
  * Extends the auto-generated base class with custom methods.
  * This file is scaffolded once and never overwritten - add your custom
  * query methods here while inheriting all generated CRUD operations.

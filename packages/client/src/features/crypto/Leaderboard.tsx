@@ -59,7 +59,14 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
   );
 
   if (isLoading) {
-    return <Loading mode="inline" size="large" text="Loading leaderboard..." className="py-12" />;
+    return (
+      <Loading
+        mode="inline"
+        size="large"
+        text="Loading leaderboard..."
+        className="py-12"
+      />
+    );
   }
 
   if (!data || data.length === 0) {
@@ -99,17 +106,24 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
                     {style.label}
                   </span>
                 </div>
-                <span className={cn(
-                  "text-[10px] font-medium uppercase tracking-widest",
-                  style.accent,
-                )}>
+                <span
+                  className={cn(
+                    "text-[10px] font-medium uppercase tracking-widest",
+                    style.accent,
+                  )}
+                >
                   Rank #{index + 1}
                 </span>
               </div>
               <p className="text-base font-semibold truncate mb-1">
                 {entry.playerName}
               </p>
-              <p className={cn("text-xl font-bold font-mono tabular-nums", style.accent)}>
+              <p
+                className={cn(
+                  "text-xl font-bold font-mono tabular-nums",
+                  style.accent,
+                )}
+              >
                 {formatValue(entry.value)}
               </p>
             </div>
@@ -167,7 +181,6 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
 }
 
 export function Leaderboard() {
-
   return (
     <div className="flex flex-1 flex-col pb-16">
       {/* Header */}

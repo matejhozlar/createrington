@@ -198,5 +198,7 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     );
   }
 
-  return <div ref={containerRef} className="h-[350px] w-full [&_a[href]]:!hidden" />;
+  return (
+    <div ref={containerRef} className="h-[350px] w-full [&_a[href]]:!hidden" />
+  );
 }

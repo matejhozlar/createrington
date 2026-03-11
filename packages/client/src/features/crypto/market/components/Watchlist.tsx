@@ -77,7 +77,9 @@ export function Watchlist() {
                   onClick={() => navigate(`/crypto/${entry.symbol}`)}
                 >
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium leading-tight">{entry.name}</span>
+                    <span className="text-sm font-medium leading-tight">
+                      {entry.name}
+                    </span>
                     <span className="text-[10px] text-muted-foreground font-mono">
                       {entry.symbol}
                     </span>
@@ -92,9 +94,7 @@ export function Watchlist() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
-                            change24h > 0
-                              ? "text-emerald-400"
-                              : "text-red-400",
+                            change24h > 0 ? "text-emerald-400" : "text-red-400",
                           )}
                         >
                           {change24h > 0 ? (

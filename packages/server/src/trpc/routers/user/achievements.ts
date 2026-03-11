@@ -6,7 +6,10 @@ import { trpcError } from "@/trpc/utils";
 /** User achievements router — progress tracking, single/bulk reward claims. */
 export const achievementsRouter = router({
   getProgress: userProcedure
-    .meta({ description: "Get achievement progress for the authenticated player on a server." })
+    .meta({
+      description:
+        "Get achievement progress for the authenticated player on a server.",
+    })
     .input(
       z.object({
         serverId: z.number().int().positive(),
@@ -18,7 +21,9 @@ export const achievementsRouter = router({
     }),
 
   claim: userProcedure
-    .meta({ description: "Claim reward for a single completed achievement tier." })
+    .meta({
+      description: "Claim reward for a single completed achievement tier.",
+    })
     .input(
       z.object({
         serverId: z.number().int().positive(),
@@ -54,7 +59,10 @@ export const achievementsRouter = router({
     }),
 
   claimAll: userProcedure
-    .meta({ description: "Claim all unclaimed completed achievements for the authenticated player." })
+    .meta({
+      description:
+        "Claim all unclaimed completed achievements for the authenticated player.",
+    })
     .input(
       z.object({
         serverId: z.number().int().positive(),

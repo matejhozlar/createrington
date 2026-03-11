@@ -66,7 +66,9 @@ export async function placeOrder(
     throw new Error(`Token ${token.symbol} has been delisted`);
   }
   if (token.ipoEndsAt && token.ipoEndsAt > new Date()) {
-    throw new Error(`${token.symbol} is in its IPO phase — limit/stop orders are not available until trading opens`);
+    throw new Error(
+      `${token.symbol} is in its IPO phase — limit/stop orders are not available until trading opens`,
+    );
   }
   if (amount <= 0n) {
     throw new Error("Amount must be positive");
@@ -151,10 +153,7 @@ export async function placeOrder(
     }
 
     // Check that unreserved holdings are sufficient
-    const existingReserved = await getReservedTokens(
-      playerUuid,
-      token.id,
-    );
+    const existingReserved = await getReservedTokens(playerUuid, token.id);
     const availableToReserve = holding.amount - existingReserved;
 
     if (amount > availableToReserve) {
@@ -311,9 +310,7 @@ export async function checkAndFillOrders(
  * Expires all orders past their expiry time. Releases reserved balance/tokens.
  */
 export async function expireOrders(): Promise<number> {
-  const pendingOrders = await Q.crypto.order
-    .where({ status: "pending" })
-    .all();
+  const pendingOrders = await Q.crypto.order.where({ status: "pending" }).all();
 
   const now = new Date();
   let expiredCount = 0;
@@ -381,9 +378,7 @@ async function fillOrder(
   const amount = order.amount;
   const price = Number(token.price);
   const amountNum = Number(amount);
-  const lifetimeCount = await getLifetimeTradeCount(
-    order.playerMinecraftUuid,
-  );
+  const lifetimeCount = await getLifetimeTradeCount(order.playerMinecraftUuid);
 
   let feeAmount: number;
   let totalCost: number;
@@ -506,8 +501,7 @@ async function fillOrder(
         await Q.crypto.holding.delete({ id: holding.id });
       } else {
         const proportion = Number(amount) / Number(holding.amount);
-        const costBasisReduction =
-          Number(holding.totalCostBasis) * proportion;
+        const costBasisReduction = Number(holding.totalCostBasis) * proportion;
         await Q.crypto.holding.update(
           { id: holding.id },
           {
@@ -590,9 +584,7 @@ async function updateTreasury(
   category: string,
 ): Promise<void> {
   const burnAmount =
-    category === "memecoin"
-      ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO
-      : 0;
+    category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
   const collectedAmount = feeAmount - burnAmount;
 
   const treasury = await Q.crypto.treasury.where({}).first();
@@ -603,9 +595,7 @@ async function updateTreasury(
         totalCollected: (
           Number(treasury.totalCollected) + collectedAmount
         ).toFixed(8),
-        totalBurned: (
-          Number(treasury.totalBurned) + burnAmount
-        ).toFixed(8),
+        totalBurned: (Number(treasury.totalBurned) + burnAmount).toFixed(8),
         updatedAt: new Date(),
       },
     );

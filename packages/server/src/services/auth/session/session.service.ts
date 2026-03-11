@@ -61,7 +61,9 @@ class SessionService {
       expiresAt,
     });
 
-    logger.debug(`Created session for ${params.username} (${params.discordId})`);
+    logger.debug(
+      `Created session for ${params.username} (${params.discordId})`,
+    );
     return rawToken;
   }
 

@@ -28,7 +28,10 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
    *
    * @returns Total balance (user-facing decimal) and number of players
    */
-  async getTotalInCirculation(): Promise<{ totalBalance: number; playerCount: number }> {
+  async getTotalInCirculation(): Promise<{
+    totalBalance: number;
+    playerCount: number;
+  }> {
     const query = `
       SELECT
         COALESCE(SUM(balance), 0) AS total_balance,
@@ -36,7 +39,10 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       FROM ${this.table}`;
 
     try {
-      const result = await this.db.query<{ total_balance: bigint; player_count: number }>(query);
+      const result = await this.db.query<{
+        total_balance: bigint;
+        player_count: number;
+      }>(query);
       const row = result.rows[0];
       return {
         totalBalance: BalanceUtils.fromStorage(row.total_balance),
@@ -72,7 +78,9 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       ORDER BY MIN(balance)`;
 
     try {
-      const result = await this.db.query<{ range: string; count: number }>(query);
+      const result = await this.db.query<{ range: string; count: number }>(
+        query,
+      );
       return result.rows;
     } catch (error) {
       logger.error("Failed to get balance distribution:", error);
@@ -86,7 +94,11 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
    * Uses SQL aggregation instead of loading all rows into memory.
    * Balances are returned in storage format (bigint).
    */
-  async getAggregateStats(): Promise<{ total: bigint; average: bigint; median: bigint }> {
+  async getAggregateStats(): Promise<{
+    total: bigint;
+    average: bigint;
+    median: bigint;
+  }> {
     const query = `
       SELECT
         COALESCE(SUM(balance), 0) AS total,
@@ -95,7 +107,11 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       FROM ${this.table}`;
 
     try {
-      const result = await this.db.query<{ total: bigint; average: bigint; median: bigint }>(query);
+      const result = await this.db.query<{
+        total: bigint;
+        average: bigint;
+        median: bigint;
+      }>(query);
       const row = result.rows[0];
       return {
         total: BigInt(row.total),

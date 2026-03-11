@@ -59,7 +59,11 @@ export async function evaluateTradeAchievements(
 
   // Run event-based checks
   if (result.type === "sell") {
-    const paperHands = await checkPaperHands(achievementService, playerUuid, token.id);
+    const paperHands = await checkPaperHands(
+      achievementService,
+      playerUuid,
+      token.id,
+    );
     if (paperHands) newAchievements.push(paperHands);
 
     const tenX = await check10xReturn(achievementService, playerUuid, result);
@@ -67,12 +71,17 @@ export async function evaluateTradeAchievements(
   }
 
   if (result.type === "buy") {
-    const whale = await checkWhaleHolding(achievementService, playerUuid, token);
+    const whale = await checkWhaleHolding(
+      achievementService,
+      playerUuid,
+      token,
+    );
     if (whale) newAchievements.push(whale);
   }
 
   // Run threshold-based evaluation (First Trade, Diversified, Market Veteran, Wolf)
-  const thresholdNew = await achievementService.evaluateCryptoAchievements(playerUuid);
+  const thresholdNew =
+    await achievementService.evaluateCryptoAchievements(playerUuid);
   newAchievements.push(...thresholdNew);
 
   return newAchievements;
@@ -103,12 +112,13 @@ async function checkPaperHands(
     .orderBy("createdAt", "desc")
     .all();
 
-  const hasRecentBuy = recentBuys.some(
-    (tx) => tx.createdAt >= fiveMinAgo,
-  );
+  const hasRecentBuy = recentBuys.some((tx) => tx.createdAt >= fiveMinAgo);
 
   if (hasRecentBuy) {
-    const awarded = await service.awardCryptoEvent(playerUuid, "crypto_paper_hands");
+    const awarded = await service.awardCryptoEvent(
+      playerUuid,
+      "crypto_paper_hands",
+    );
     if (awarded) return getGroupById("crypto_paper_hands")?.name ?? null;
   }
 
@@ -143,7 +153,10 @@ async function check10xReturn(
   for (const lot of lots) {
     const entryPrice = Number(lot.pricePerUnit);
     if (entryPrice > 0 && sellPrice / entryPrice >= TEN_X_MULTIPLIER) {
-      const awarded = await service.awardCryptoEvent(playerUuid, "crypto_10x_return");
+      const awarded = await service.awardCryptoEvent(
+        playerUuid,
+        "crypto_10x_return",
+      );
       if (awarded) return getGroupById("crypto_10x_return")?.name ?? null;
       return null;
     }

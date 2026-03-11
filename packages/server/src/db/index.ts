@@ -71,7 +71,16 @@ export const db = new DatabaseQueries(pool);
 export const Q = createQueryInstances(pool);
 
 // Individual exports for convenience
-export const { player, discord, waitlist, admin, auth, server, leaderboard, faq } = Q;
+export const {
+  player,
+  discord,
+  waitlist,
+  admin,
+  auth,
+  server,
+  leaderboard,
+  faq,
+} = Q;
 
 // ============================================================================
 // QUERY FACTORY (for transactions)

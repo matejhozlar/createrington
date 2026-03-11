@@ -222,8 +222,8 @@ export abstract class BaseQueries<
     Update?: Record<string, any>;
     Create?: Record<string, any>;
   },
->
-/* eslint-enable @typescript-eslint/no-explicit-any */ {
+> {
+  /* eslint-enable @typescript-eslint/no-explicit-any */
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
   protected readonly VALID_IDENTIFIER_FIELDS?: Set<string>;
@@ -301,7 +301,9 @@ export abstract class BaseQueries<
   protected mapRowToEntity<TBdRow extends Record<string, unknown>, TEntity>(
     row: TBdRow,
   ): TEntity;
-  protected mapRowToEntity(row: Record<string, unknown>): Record<string, unknown> {
+  protected mapRowToEntity(
+    row: Record<string, unknown>,
+  ): Record<string, unknown> {
     const entity: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(row)) {
       entity[this.snakeToCamel(key)] = value;
@@ -319,7 +321,9 @@ export abstract class BaseQueries<
   protected mapRowsToEntities<TDbRow extends Record<string, unknown>, TEntity>(
     rows: TDbRow[],
   ): TEntity[];
-  protected mapRowsToEntities(rows: Record<string, unknown>[]): Record<string, unknown>[] {
+  protected mapRowsToEntities(
+    rows: Record<string, unknown>[],
+  ): Record<string, unknown>[] {
     return rows.map((row) => this.mapRowToEntity(row));
   }
 
@@ -680,7 +684,9 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     options?: { select?: Array<keyof TConfig["Entity"]> },
   ): Promise<TConfig["Entity"] | null> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values } = this.getColumnMapping(extracted);
 
     // Build column selection
@@ -766,7 +772,9 @@ export abstract class BaseQueries<
   async exists(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
   ): Promise<boolean> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values } = this.getColumnMapping(extracted);
     const query = `SELECT EXISTS(SELECT 1 FROM ${this.table} WHERE ${whereClause})`;
 
@@ -802,7 +810,9 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<void> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values: identifierValues } =
       this.getColumnMapping(extracted);
     const updateMappings = this.getUpdateMapping(updates);
@@ -854,7 +864,9 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     updates: Partial<NonNullable<TConfig["Update"]>>,
   ): Promise<TConfig["Entity"]> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values: identifierValues } =
       this.getColumnMapping(extracted);
     const updateMappings = this.getUpdateMapping(updates);
@@ -905,7 +917,9 @@ export abstract class BaseQueries<
   async delete(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
   ): Promise<void> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values } = this.getColumnMapping(extracted);
     const query = `DELETE FROM ${this.table} WHERE ${whereClause}`;
 
@@ -939,7 +953,9 @@ export abstract class BaseQueries<
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
     field: K,
   ): Promise<TConfig["Entity"][K]> {
-    const extracted = this.extractIdentifier(identifier as Record<string, unknown>);
+    const extracted = this.extractIdentifier(
+      identifier as Record<string, unknown>,
+    );
     const { whereClause, values } = this.getColumnMapping(extracted);
     const columnName = this.getColumnName(field as string);
 

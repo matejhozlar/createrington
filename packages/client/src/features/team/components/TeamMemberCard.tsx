@@ -15,7 +15,12 @@ type TeamMemberCardProps = {
 
 const AUTO_RESET_MS = 6000;
 
-export const TeamMemberCard = ({ member, index, total, onClick }: TeamMemberCardProps) => {
+export const TeamMemberCard = ({
+  member,
+  index,
+  total,
+  onClick,
+}: TeamMemberCardProps) => {
   const isMobile = useIsMobile();
   const config = TIER_CONFIG[member.tier];
   const size = isMobile ? config.size.mobile : config.size.desktop;

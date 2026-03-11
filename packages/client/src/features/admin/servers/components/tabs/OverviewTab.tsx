@@ -74,9 +74,7 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        navigate(`/admin/players/${player.uuid}`)
-                      }
+                      onClick={() => navigate(`/admin/players/${player.uuid}`)}
                       className="cursor-pointer"
                     >
                       View
@@ -133,9 +131,7 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
                   <TableCell className="px-4">
                     {Math.round(Number(entry.totalSeconds) / 3600)}h
                   </TableCell>
-                  <TableCell className="px-4">
-                    {entry.totalSessions}
-                  </TableCell>
+                  <TableCell className="px-4">{entry.totalSessions}</TableCell>
                   <TableCell className="px-4 text-sm text-muted-foreground">
                     {new Date(entry.lastSeen).toLocaleDateString()}
                   </TableCell>

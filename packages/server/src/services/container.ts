@@ -68,7 +68,8 @@ interface TypedEventEmitter<T> {
  * - Supports lazy services that initialize only on first access
  * - Emits events for service readiness and cross-service wiring
  */
-export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> & EventEmitter) {
+export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> &
+  EventEmitter) {
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
 

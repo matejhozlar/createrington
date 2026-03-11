@@ -51,7 +51,7 @@ const DiscordRoles = Object.fromEntries(
   Object.entries(roles).map(([key, value]) => [
     toScreamingSnakeCase(key),
     value,
-  ])
+  ]),
 ) as {
   [K in keyof typeof roles as ToScreamingSnakeCase<
     K & string
@@ -119,7 +119,7 @@ export const DiscordRolesNamespace = {
    */
   getRoleName(id: DiscordRoleId): string {
     const entry = Object.entries(DiscordRoles).find(
-      ([_, roleId]) => roleId === id
+      ([_, roleId]) => roleId === id,
     );
     return entry ? entry[0] : "Unknown role";
   },

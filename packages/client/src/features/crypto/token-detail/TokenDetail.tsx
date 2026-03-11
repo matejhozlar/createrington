@@ -5,7 +5,13 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Skull, Rocket, TrendingUp, TrendingDown } from "lucide-react";
+import {
+  ArrowLeft,
+  Skull,
+  Rocket,
+  TrendingUp,
+  TrendingDown,
+} from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
@@ -37,14 +43,25 @@ export function TokenDetail() {
   );
 
   if (isLoading) {
-    return <Loading mode="inline" size="large" text="Loading token..." className="py-12" />;
+    return (
+      <Loading
+        mode="inline"
+        size="large"
+        text="Loading token..."
+        className="py-12"
+      />
+    );
   }
 
   if (!token) {
     return (
       <div className="py-12 text-center">
         <p className="text-lg text-muted-foreground">Token not found</p>
-        <Button variant="outline" className="mt-4" onClick={() => navigate("/crypto")}>
+        <Button
+          variant="outline"
+          className="mt-4"
+          onClick={() => navigate("/crypto")}
+        >
           Back to Market
         </Button>
       </div>
@@ -65,7 +82,8 @@ export function TokenDetail() {
   const circulatingSupply = totalSupply - availableSupply;
   const marketCap = price * circulatingSupply;
   const volume24h = livePrice ? Number(livePrice.volume24h) : 0;
-  const heldPercent = totalSupply > 0 ? (circulatingSupply / totalSupply) * 100 : 0;
+  const heldPercent =
+    totalSupply > 0 ? (circulatingSupply / totalSupply) * 100 : 0;
 
   return (
     <div className="flex flex-1 flex-col pb-16">
@@ -156,7 +174,10 @@ export function TokenDetail() {
                   Market Cap
                 </p>
                 <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
-                  ${marketCap.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  $
+                  {marketCap.toLocaleString(undefined, {
+                    maximumFractionDigits: 0,
+                  })}
                 </p>
               </div>
               <div className="bg-card/70 px-4 py-2.5">
@@ -164,9 +185,11 @@ export function TokenDetail() {
                   24h Volume
                 </p>
                 <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
-                  {volume24h > 0
-                    ? volume24h.toLocaleString()
-                    : <span className="text-muted-foreground">—</span>}
+                  {volume24h > 0 ? (
+                    volume24h.toLocaleString()
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </p>
               </div>
               <div className="bg-card/70 px-4 py-2.5">
@@ -176,7 +199,11 @@ export function TokenDetail() {
                 <p className="mt-0.5 text-base font-semibold font-mono tabular-nums">
                   {circulatingSupply.toLocaleString()}
                   <span className="text-xs text-muted-foreground font-normal">
-                    {" "}/ {totalSupply >= 999999999 ? "∞" : totalSupply.toLocaleString()}
+                    {" "}
+                    /{" "}
+                    {totalSupply >= 999999999
+                      ? "∞"
+                      : totalSupply.toLocaleString()}
                   </span>
                 </p>
               </div>

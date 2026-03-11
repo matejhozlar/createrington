@@ -103,10 +103,7 @@ export async function execute(
       return `<t:${timestamp}:R> **${sign}$${amount}** ${label}${desc}`;
     });
 
-    const embed = EmbedPresets.info(
-      "Transaction History",
-      lines.join("\n"),
-    );
+    const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
 
     await interaction.reply({
       embeds: [embed.build()],

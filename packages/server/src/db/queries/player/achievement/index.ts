@@ -143,10 +143,12 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
       RETURNING reward_amount`;
 
     try {
-      const result = await this.db.query<{ reward_amount: number }>(
-        query,
-        [playerUuid, serverId, groupId, tier],
-      );
+      const result = await this.db.query<{ reward_amount: number }>(query, [
+        playerUuid,
+        serverId,
+        groupId,
+        tier,
+      ]);
       return result.rows[0]?.reward_amount ?? null;
     } catch (error) {
       logger.error("Failed to claim achievement reward:", error);

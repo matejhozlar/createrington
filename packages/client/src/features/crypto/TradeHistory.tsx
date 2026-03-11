@@ -36,7 +36,14 @@ export function TradeHistory() {
   }
 
   if (isLoading) {
-    return <Loading mode="inline" size="large" text="Loading trades..." className="py-12" />;
+    return (
+      <Loading
+        mode="inline"
+        size="large"
+        text="Loading trades..."
+        className="py-12"
+      />
+    );
   }
 
   if (!data) return null;
@@ -118,7 +125,9 @@ export function TradeHistory() {
                         <TableCell>
                           <span
                             className="cursor-pointer font-mono text-sm hover:underline hover:text-primary transition-colors"
-                            onClick={() => navigate(`/crypto/${tx.tokenSymbol}`)}
+                            onClick={() =>
+                              navigate(`/crypto/${tx.tokenSymbol}`)
+                            }
                           >
                             {tx.tokenSymbol}
                           </span>
@@ -158,8 +167,8 @@ export function TradeHistory() {
                                   : "text-red-400",
                               )}
                             >
-                              {Number(tx.realizedPnl) >= 0 ? "+" : ""}
-                              ${Number(tx.realizedPnl).toFixed(2)}
+                              {Number(tx.realizedPnl) >= 0 ? "+" : ""}$
+                              {Number(tx.realizedPnl).toFixed(2)}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>

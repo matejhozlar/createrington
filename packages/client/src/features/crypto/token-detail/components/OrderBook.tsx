@@ -83,9 +83,7 @@ export function OrderBook() {
                   >
                     {ORDER_TYPE_LABELS[order.type]}
                   </span>
-                  <span className="text-sm font-mono">
-                    {order.tokenSymbol}
-                  </span>
+                  <span className="text-sm font-mono">{order.tokenSymbol}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="font-mono tabular-nums">

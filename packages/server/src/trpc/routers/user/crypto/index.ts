@@ -2,7 +2,10 @@ import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError, buildPagination } from "@/trpc/utils";
 import { Q } from "@/db";
-import { executeBuy, executeSell } from "@/services/crypto/trading/trade-executor";
+import {
+  executeBuy,
+  executeSell,
+} from "@/services/crypto/trading/trade-executor";
 import {
   placeOrder,
   cancelOrder,
@@ -226,7 +229,9 @@ export const cryptoRouter = router({
         symbol: z.string().min(1).max(10),
         type: z.enum(["limit_buy", "limit_sell", "stop_loss", "take_profit"]),
         amount: z.number().int().positive(),
-        targetPrice: z.string().refine((v) => Number(v) > 0, "Price must be positive"),
+        targetPrice: z
+          .string()
+          .refine((v) => Number(v) > 0, "Price must be positive"),
         expiryHours: z.number().int().min(1).max(168).optional(),
       }),
     )
@@ -379,7 +384,9 @@ export const cryptoRouter = router({
       }
 
       const maxAllocation = BigInt(
-        Math.floor(Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT),
+        Math.floor(
+          Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+        ),
       );
 
       const holding = await Q.crypto.holding
@@ -462,7 +469,9 @@ export const cryptoRouter = router({
         return { success: true };
       } catch (err) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to remove from watchlist",
+          err instanceof Error
+            ? err.message
+            : "Failed to remove from watchlist",
         );
       }
     }),
@@ -498,7 +507,9 @@ export const cryptoRouter = router({
     .input(
       z.object({
         symbol: z.string().min(1).max(10),
-        targetPrice: z.string().refine((v) => Number(v) > 0, "Price must be positive"),
+        targetPrice: z
+          .string()
+          .refine((v) => Number(v) > 0, "Price must be positive"),
         direction: z.enum(["above", "below"]),
       }),
     )

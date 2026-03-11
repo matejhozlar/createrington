@@ -44,7 +44,9 @@ export const Loading: React.FC<LoadingProps> = ({
   return (
     <div
       className={`${modeClasses[mode]} ${
-        isInline ? "items-center justify-center" : "flex items-center justify-center"
+        isInline
+          ? "items-center justify-center"
+          : "flex items-center justify-center"
       } ${className || ""}`}
       role="status"
       aria-live="polite"

@@ -9,14 +9,11 @@ import { idToObject } from "@/app/utils/helpers";
 export const trpcError = {
   badRequest: (message: string) =>
     new TRPCError({ code: "BAD_REQUEST", message }),
-  notFound: (message: string) =>
-    new TRPCError({ code: "NOT_FOUND", message }),
-  conflict: (message: string) =>
-    new TRPCError({ code: "CONFLICT", message }),
+  notFound: (message: string) => new TRPCError({ code: "NOT_FOUND", message }),
+  conflict: (message: string) => new TRPCError({ code: "CONFLICT", message }),
   unauthorized: (message: string) =>
     new TRPCError({ code: "UNAUTHORIZED", message }),
-  forbidden: (message: string) =>
-    new TRPCError({ code: "FORBIDDEN", message }),
+  forbidden: (message: string) => new TRPCError({ code: "FORBIDDEN", message }),
   internal: (message: string) =>
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };

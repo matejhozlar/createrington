@@ -56,9 +56,7 @@ export function ApplyToJoin() {
     }
 
     if (!agreedToTerms) {
-      setFormError(
-        "You must agree to the Privacy Policy and Terms of Service",
-      );
+      setFormError("You must agree to the Privacy Policy and Terms of Service");
       return;
     }
 
