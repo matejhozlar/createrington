@@ -196,6 +196,7 @@ export const cryptoRouter = router({
         type: e.type,
         title: e.title,
         description: e.description,
+        article: e.article,
         tokenId: e.tokenId,
         severity: e.severity,
         metadata: e.metadata,

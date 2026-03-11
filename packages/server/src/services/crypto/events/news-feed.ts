@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import type { CryptoMarketEvent } from "@createrington/shared/db/crypto_market_event.types";
+import { fireAndForgetArticle } from "./article-generator";
 
 /** All recognised market event type identifiers used when creating news-feed entries */
 export type MarketEventType =
@@ -39,7 +40,7 @@ export async function createMarketEvent(params: {
   metadata?: Record<string, unknown>;
   activeUntil?: Date;
 }): Promise<CryptoMarketEvent> {
-  return Q.crypto.market.event.createAndReturn({
+  const event = await Q.crypto.market.event.createAndReturn({
     type: params.type,
     title: params.title,
     description: params.description ?? null,
@@ -48,6 +49,16 @@ export async function createMarketEvent(params: {
     metadata: params.metadata ?? {},
     activeUntil: params.activeUntil ?? null,
   });
+
+  fireAndForgetArticle(
+    event.id,
+    event.title,
+    event.description,
+    event.severity,
+    event.metadata as Record<string, unknown> | null,
+  );
+
+  return event;
 }
 
 /**

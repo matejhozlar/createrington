@@ -263,7 +263,7 @@ export function TokenDetail() {
             <OrderBook />
           </div>
 
-          <div>
+          <div className="lg:sticky lg:top-15 lg:self-start">
             <TradePanel
               symbol={token.symbol}
               price={displayPrice}
