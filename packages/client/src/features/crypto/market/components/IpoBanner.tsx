@@ -55,14 +55,15 @@ export function IpoBanner() {
 
           {/* Stats + CTA */}
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <IpoStat label="Price" value={`$${formatPrice(ipo.ipoPrice)}`} highlight />
+            <IpoStat
+              label="Price"
+              value={`$${formatPrice(ipo.ipoPrice)}`}
+              highlight
+            />
             <IpoStat label="Buyers" value={String(ipo.participants)} />
             <IpoStat label="Sold" value={`${soldPercent.toFixed(1)}%`} />
             <IpoStat label="Remaining" value={countdown} mono />
-            <Button
-              size="sm"
-              onClick={() => navigate(`/crypto/${ipo.symbol}`)}
-            >
+            <Button size="sm" onClick={() => navigate(`/crypto/${ipo.symbol}`)}>
               Buy Now
             </Button>
           </div>

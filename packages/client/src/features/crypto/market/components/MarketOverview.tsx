@@ -17,10 +17,7 @@ function Stat({
         {label}
       </span>
       <span
-        className={cn(
-          "text-sm font-bold font-mono tabular-nums",
-          className,
-        )}
+        className={cn("text-sm font-bold font-mono tabular-nums", className)}
       >
         {value}
       </span>
@@ -36,9 +33,7 @@ export function MarketOverview() {
   );
 
   if (isLoading || !data) {
-    return (
-      <div className="h-5 w-64 animate-pulse rounded bg-muted/30" />
-    );
+    return <div className="h-5 w-64 animate-pulse rounded bg-muted/30" />;
   }
 
   return (
@@ -63,8 +58,7 @@ export function MarketOverview() {
               Top Gainer
             </span>
             <span className="text-sm font-bold font-mono tabular-nums text-emerald-400">
-              {data.topGainer.symbol}{" "}
-              +{data.topGainer.change24h.toFixed(1)}%
+              {data.topGainer.symbol} +{data.topGainer.change24h.toFixed(1)}%
             </span>
           </button>
         </>
@@ -80,8 +74,7 @@ export function MarketOverview() {
               Top Loser
             </span>
             <span className="text-sm font-bold font-mono tabular-nums text-red-400">
-              {data.topLoser.symbol}{" "}
-              {data.topLoser.change24h.toFixed(1)}%
+              {data.topLoser.symbol} {data.topLoser.change24h.toFixed(1)}%
             </span>
           </button>
         </>

@@ -1180,7 +1180,11 @@ export class CryptoMarketService {
     // Enforce memecoin cap
     if (params.category === "memecoin") {
       const activeMemecoins = await Q.crypto.token
-        .where({ category: "memecoin", isCrashed: false, delistedAt: { $exists: false } })
+        .where({
+          category: "memecoin",
+          isCrashed: false,
+          delistedAt: { $exists: false },
+        })
         .all();
       if (activeMemecoins.length >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
         throw new Error(

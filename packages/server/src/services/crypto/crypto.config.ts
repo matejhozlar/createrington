@@ -55,11 +55,26 @@ export const CRYPTO_CONFIG = {
   // upwardBias: probability of going up (0.5 = neutral, >0.5 = upward drift, <0.5 = downward drift)
   // Higher-priced tokens have progressively lower upward bias — natural price ceiling
   VOLATILITY: {
-    PENNY: { maxPrice: 0.1, minChange: 0.01, maxChange: 0.03, upwardBias: 0.505 },
+    PENNY: {
+      maxPrice: 0.1,
+      minChange: 0.01,
+      maxChange: 0.03,
+      upwardBias: 0.505,
+    },
     LOW: { maxPrice: 5, minChange: 0.005, maxChange: 0.015, upwardBias: 0.502 },
-    MID: { maxPrice: 500, minChange: 0.003, maxChange: 0.008, upwardBias: 0.50 },
-    HIGH: { maxPrice: 10_000, minChange: 0.001, maxChange: 0.004, upwardBias: 0.495 },
-    MEGA: { maxPrice: Infinity, minChange: 0.0005, maxChange: 0.002, upwardBias: 0.49 },
+    MID: { maxPrice: 500, minChange: 0.003, maxChange: 0.008, upwardBias: 0.5 },
+    HIGH: {
+      maxPrice: 10_000,
+      minChange: 0.001,
+      maxChange: 0.004,
+      upwardBias: 0.495,
+    },
+    MEGA: {
+      maxPrice: Infinity,
+      minChange: 0.0005,
+      maxChange: 0.002,
+      upwardBias: 0.49,
+    },
   },
 
   // Fees (old system: 5% buy + 5% sell for memecoins)

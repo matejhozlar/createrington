@@ -172,7 +172,9 @@ export const authSession = pgTable(
     discordUsername: text("discord_username"),
     discordAvatar: text("discord_avatar"),
     tokenHash: text("token_hash").notNull().unique(),
-    familyId: uuid("family_id").notNull().default(sql`gen_random_uuid()`),
+    familyId: uuid("family_id")
+      .notNull()
+      .default(sql`gen_random_uuid()`),
     ipAddress: inet("ip_address"),
     userAgent: text("user_agent"),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
@@ -394,7 +396,9 @@ export const playerBalance = pgTable(
         onUpdate: "cascade",
         onDelete: "cascade",
       }),
-    balance: bigint("balance", { mode: "bigint" }).notNull().default(sql`0`),
+    balance: bigint("balance", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1017,7 +1021,9 @@ export const cryptoPriceSnapshot = pgTable(
     highPrice: numeric("high_price", { precision: 20, scale: 8 }).notNull(),
     lowPrice: numeric("low_price", { precision: 20, scale: 8 }).notNull(),
     closePrice: numeric("close_price", { precision: 20, scale: 8 }).notNull(),
-    volume: bigint("volume", { mode: "bigint" }).notNull().default(sql`0`),
+    volume: bigint("volume", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
     recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull(),
   },
   (table) => [

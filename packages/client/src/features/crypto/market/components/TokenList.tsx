@@ -63,7 +63,12 @@ export function TokenList() {
 
       {/* Token rows */}
       {isLoading ? (
-        <Loading mode="inline" size="large" text="Loading tokens..." className="py-12" />
+        <Loading
+          mode="inline"
+          size="large"
+          text="Loading tokens..."
+          className="py-12"
+        />
       ) : (
         <div className="divide-y divide-border/30 rounded-xl border bg-card/20 overflow-hidden">
           {tokens?.map((token) => {
@@ -143,7 +148,6 @@ export function TokenList() {
                   {change24h > 0 ? "+" : ""}
                   {change24h.toFixed(2)}%
                 </span>
-
               </div>
             );
           })}

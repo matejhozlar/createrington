@@ -98,7 +98,10 @@ export function PortfolioChart() {
             No portfolio data available yet
           </div>
         ) : (
-          <div ref={chartContainerRef} className="h-[280px] w-full [&_a[href]]:!hidden" />
+          <div
+            ref={chartContainerRef}
+            className="h-[280px] w-full [&_a[href]]:!hidden"
+          />
         )}
       </CardContent>
     </Card>

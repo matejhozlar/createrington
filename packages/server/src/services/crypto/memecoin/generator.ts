@@ -28,7 +28,11 @@ async function getUsedSymbols(): Promise<Set<string>> {
 /** Returns the count of active (non-crashed, non-delisted) memecoins */
 async function getActiveMemecoinCount(): Promise<number> {
   const tokens = await Q.crypto.token
-    .where({ category: "memecoin", isCrashed: false, delistedAt: { $exists: false } })
+    .where({
+      category: "memecoin",
+      isCrashed: false,
+      delistedAt: { $exists: false },
+    })
     .all();
   return tokens.length;
 }
@@ -74,7 +78,9 @@ async function pickRandomMemecoin() {
 export async function generateMemecoin(): Promise<CryptoToken | null> {
   const activeCount = await getActiveMemecoinCount();
   if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
-    logger.info(`Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping generation`);
+    logger.info(
+      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping generation`,
+    );
     return null;
   }
 
@@ -108,7 +114,9 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
 export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
   const activeCount = await getActiveMemecoinCount();
   if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
-    logger.info(`Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping IPO generation`);
+    logger.info(
+      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping IPO generation`,
+    );
     return null;
   }
 

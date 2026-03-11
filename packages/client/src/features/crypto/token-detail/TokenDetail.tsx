@@ -116,7 +116,9 @@ export function TokenDetail() {
                         ? "text-amber-400 hover:text-amber-300"
                         : "text-muted-foreground/50 hover:text-amber-400",
                     )}
-                    disabled={addToWatchlist.isPending || removeFromWatchlist.isPending}
+                    disabled={
+                      addToWatchlist.isPending || removeFromWatchlist.isPending
+                    }
                     onClick={() =>
                       isWatchlisted
                         ? removeFromWatchlist.mutate({ symbol: token.symbol })
@@ -254,24 +256,24 @@ export function TokenDetail() {
             </div>
           </div>
         </div>
-          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-            <div className="space-y-5">
-              <PriceChart symbol={token.symbol} />
-              <TokenDistribution symbol={token.symbol} />
-              <OrderBook />
-            </div>
+        <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+          <div className="space-y-5">
+            <PriceChart symbol={token.symbol} />
+            <TokenDistribution symbol={token.symbol} />
+            <OrderBook />
+          </div>
 
-            <div>
-              <TradePanel
-                symbol={token.symbol}
-                price={displayPrice}
-                isCrashed={isCrashed}
-                ipoEndsAt={token.ipoEndsAt}
-                ipoPrice={token.ipoPrice}
-              />
-            </div>
+          <div>
+            <TradePanel
+              symbol={token.symbol}
+              price={displayPrice}
+              isCrashed={isCrashed}
+              ipoEndsAt={token.ipoEndsAt}
+              ipoPrice={token.ipoPrice}
+            />
           </div>
         </div>
+      </div>
     </div>
   );
 }
