@@ -215,6 +215,13 @@ const config = {
     playerLimit: env.PLAYER_LIMIT,
   },
 
+  ai: {
+    openai: {
+      apiKey: env.OPENAI_API_KEY,
+      defaultModel: env.OPENAI_DEFAULT_MODEL,
+    },
+  },
+
   email: {
     host: env.EMAIL_HOST,
     port: env.EMAIL_PORT,

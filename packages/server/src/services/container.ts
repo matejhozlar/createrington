@@ -18,6 +18,7 @@ import type { AchievementService } from "./achievement";
 import type { FaqService } from "./discord/faq";
 import type { PuppeteerService } from "./puppeteer";
 import type { CryptoMarketService } from "./crypto";
+import type { AiService } from "./ai";
 
 /**
  * Service lifecycle states
@@ -347,6 +348,7 @@ export const Services = {
   FAQ_SERVICE: "discord.faqService",
   PUPPETEER_SERVICE: "infra.puppeteerService",
   CRYPTO_MARKET_SERVICE: "crypto.marketService",
+  AI_SERVICE: "infra.aiService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -376,4 +378,5 @@ export interface ServiceTypeMap {
   [Services.FAQ_SERVICE]: FaqService;
   [Services.PUPPETEER_SERVICE]: PuppeteerService;
   [Services.CRYPTO_MARKET_SERVICE]: CryptoMarketService;
+  [Services.AI_SERVICE]: AiService;
 }

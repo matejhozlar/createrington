@@ -27,6 +27,7 @@ import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
 import { CryptoMarketService } from "./crypto";
+import { AiService } from "./ai";
 import { lotteryService } from "./lottery";
 
 /**
@@ -57,6 +58,13 @@ export function registerServices(): void {
     const service = new PuppeteerService();
     await service.initialize();
     return service;
+  });
+
+  container.register(Services.AI_SERVICE, () => {
+    return new AiService(
+      config.ai.openai.apiKey,
+      config.ai.openai.defaultModel,
+    );
   });
 
   // =========================================================================
