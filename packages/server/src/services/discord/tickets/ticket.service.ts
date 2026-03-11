@@ -19,14 +19,11 @@ import { Q } from "@/db";
 import config from "@/config";
 import { EmbedPresets } from "@/discord/embeds";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 // Lazy-imported to avoid React 19/18 conflict at startup
 // discord-html-transcripts requires react-dom/static (React 19) but the workspace pins React 18
 const loadTranscripts = () => import("discord-html-transcripts");
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 interface CreateTicketResult {
   ticket: Ticket;
@@ -52,17 +49,7 @@ export class TicketService {
     private readonly bot: Client,
     private readonly repository: TicketRepository = new TicketRepository(),
   ) {
-    this.transcriptDir = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "..",
-      "..",
-      "..",
-      "storage",
-      "transcripts",
-    );
+    this.transcriptDir = path.join(process.cwd(), "storage", "transcripts");
     this.ensureTranscriptDir();
   }
 
