@@ -21,7 +21,7 @@ function Stat({
       {isLoading ? (
         <Skeleton className="h-4 w-14" />
       ) : (
-        <span className="text-sm font-semibold font-mono tabular-nums">
+        <span className="text-sm font-bold font-mono tabular-nums">
           {children}
         </span>
       )}

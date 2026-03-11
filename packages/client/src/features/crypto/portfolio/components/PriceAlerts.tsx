@@ -83,7 +83,7 @@ export function PriceAlerts() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bell className="size-4" />
+          <Bell className="size-4 text-muted-foreground" />
           Price Alerts
         </CardTitle>
       </CardHeader>

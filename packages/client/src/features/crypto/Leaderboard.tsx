@@ -199,6 +199,9 @@ export function Leaderboard() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-7xl mx-auto w-full space-y-5">
+          <div className="flex items-baseline justify-between">
+            <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
+          </div>
           <Tabs defaultValue="networth">
             <TabsList>
               <TabsTrigger value="networth">Net Worth</TabsTrigger>

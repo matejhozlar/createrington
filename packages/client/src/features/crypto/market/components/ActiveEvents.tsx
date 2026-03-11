@@ -62,7 +62,7 @@ function EventBanner({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-lg border px-4 py-2.5 animate-in fade-in slide-in-from-top-2 duration-300",
+        "flex items-center gap-3 rounded-lg border px-4 py-2.5",
         isBullish
           ? "border-primary/20 bg-primary/[0.04]"
           : "border-red-500/20 bg-red-500/[0.04]",

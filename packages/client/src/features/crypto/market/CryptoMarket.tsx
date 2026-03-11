@@ -7,8 +7,8 @@ import { IpoBanner } from "./components/IpoBanner";
 
 export function CryptoMarket() {
   return (
-    <div className="flex flex-1 flex-col px-5 md:px-8 pt-4 pb-16">
-      <div className="max-w-7xl mx-auto w-full crypto-stagger space-y-5">
+    <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
+      <div className="max-w-7xl mx-auto w-full space-y-5">
         {/* Page header + market stats */}
         <div className="space-y-3">
           <div className="flex items-baseline justify-between">
@@ -24,7 +24,7 @@ export function CryptoMarket() {
         {/* Main content */}
         <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
           <TokenList />
-          <div className="space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <div className="space-y-5 lg:sticky lg:top-5 lg:self-start">
             <Watchlist />
             <NewsFeed />
           </div>

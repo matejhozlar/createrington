@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Wallet, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
-import { PieChart, Pie, Cell, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Sector,
+  type PieSectorDataItem,
+} from "recharts";
 import { PortfolioChart } from "./components/PortfolioChart";
 import { PriceAlerts } from "./components/PriceAlerts";
 
@@ -44,22 +53,19 @@ const ALLOCATION_COLORS = [
   "bg-indigo-400",
 ];
 
-const ALLOCATION_TEXT_COLORS = [
-  "text-emerald-400",
-  "text-blue-400",
-  "text-purple-400",
-  "text-amber-400",
-  "text-rose-400",
-  "text-cyan-400",
-  "text-orange-400",
-  "text-pink-400",
-  "text-teal-400",
-  "text-indigo-400",
-];
 
 export function Portfolio() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const onPieEnter = useCallback((_: unknown, index: number) => {
+    setActiveIndex(index);
+  }, []);
+
+  const onPieLeave = useCallback(() => {
+    setActiveIndex(null);
+  }, []);
 
   const { data, isLoading } = trpc.user.crypto.portfolio.useQuery(undefined, {
     enabled: !!user,
@@ -101,7 +107,6 @@ export function Portfolio() {
       percent: totalValue > 0 ? (Number(h.currentValue) / totalValue) * 100 : 0,
       fill: ALLOCATION_FILLS[i % ALLOCATION_FILLS.length],
       color: ALLOCATION_COLORS[i % ALLOCATION_COLORS.length],
-      textColor: ALLOCATION_TEXT_COLORS[i % ALLOCATION_TEXT_COLORS.length],
     }))
     .sort((a, b) => b.value - a.value);
 
@@ -142,6 +147,9 @@ export function Portfolio() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-7xl mx-auto w-full space-y-5">
+          <div className="flex items-baseline justify-between">
+            <h1 className="text-xl font-bold tracking-tight">Portfolio</h1>
+          </div>
           {/* Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-px rounded-xl border bg-border/50 overflow-hidden">
             {stats.map((stat) => {
@@ -186,48 +194,55 @@ export function Portfolio() {
           {/* Allocation donut */}
           {allocations.length > 0 && totalValue > 0 && (
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base">Allocation</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                  {/* Legend */}
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 sm:flex-col sm:gap-y-2">
-                    {allocations.slice(0, 8).map((a) => (
-                      <div key={a.symbol} className="flex items-center gap-1.5">
-                        <span className={cn("size-2 rounded-full", a.color)} />
-                        <span className="text-xs text-muted-foreground">
-                          {a.symbol}
-                        </span>
-                        <span
-                          className={cn(
-                            "text-xs font-mono font-medium tabular-nums",
-                            a.textColor,
-                          )}
-                        >
-                          {a.percent.toFixed(1)}%
-                        </span>
-                      </div>
-                    ))}
-                    {allocations.length > 8 && (
-                      <span className="text-xs text-muted-foreground">
-                        +{allocations.length - 8} more
-                      </span>
-                    )}
-                  </div>
-                  {/* Donut chart */}
-                  <div className="size-52 shrink-0">
-                    <PieChart width={208} height={208}>
+              <CardContent className="space-y-3">
+                {/* Donut chart */}
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <PieChart>
                       <Pie
                         data={allocations}
                         dataKey="value"
                         nameKey="symbol"
                         cx="50%"
                         cy="50%"
-                        innerRadius="60%"
-                        outerRadius="90%"
+                        innerRadius={60}
+                        outerRadius={90}
                         paddingAngle={2}
                         strokeWidth={0}
+                        shape={(
+                          props: PieSectorDataItem & {
+                            isActive: boolean;
+                            index?: number;
+                          },
+                        ) => {
+                          const { isActive, index: idx, ...rest } = props;
+                          const dimmed =
+                            activeIndex !== null && activeIndex !== (idx ?? 0);
+
+                          if (isActive) {
+                            return (
+                              <Sector
+                                {...rest}
+                                innerRadius={(rest.innerRadius ?? 60) - 3}
+                                outerRadius={(rest.outerRadius ?? 90) + 6}
+                                cornerRadius={3}
+                              />
+                            );
+                          }
+
+                          return (
+                            <Sector
+                              {...rest}
+                              opacity={dimmed ? 0.4 : 1}
+                              style={{ cursor: "pointer", transition: "opacity 0.2s" }}
+                            />
+                          );
+                        }}
+                        onMouseEnter={onPieEnter}
+                        onMouseLeave={onPieLeave}
                       >
                         {allocations.map((a) => (
                           <Cell key={a.symbol} fill={a.fill} />
@@ -238,17 +253,90 @@ export function Portfolio() {
                           if (!active || !payload?.[0]) return null;
                           const d = payload[0].payload;
                           return (
-                            <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
-                              <p className="font-medium">{d.name}</p>
-                              <p className="text-muted-foreground font-mono tabular-nums">
-                                {d.percent.toFixed(1)}% &middot; ${d.value.toFixed(2)}
-                              </p>
+                            <div className="rounded-lg border bg-popover/95 backdrop-blur-sm px-3 py-2 shadow-xl">
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="size-2.5 rounded-full"
+                                  style={{ backgroundColor: d.fill }}
+                                />
+                                <span className="text-sm font-medium">{d.name}</span>
+                              </div>
+                              <div className="mt-1 flex items-baseline gap-2 text-xs text-muted-foreground">
+                                <span className="font-mono tabular-nums font-medium text-foreground">
+                                  ${d.value.toFixed(2)}
+                                </span>
+                                <span>({d.percent.toFixed(1)}%)</span>
+                              </div>
                             </div>
                           );
                         }}
                       />
                     </PieChart>
+                  </ResponsiveContainer>
+
+                  {/* Center label */}
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      {activeIndex !== null && allocations[activeIndex] ? (
+                        <>
+                          <p className="text-lg font-bold font-mono tabular-nums leading-tight">
+                            {allocations[activeIndex].percent.toFixed(1)}%
+                          </p>
+                          <p className="text-[11px] text-muted-foreground max-w-[90px] truncate">
+                            {allocations[activeIndex].symbol}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-bold font-mono tabular-nums leading-tight">
+                            {data.tokenCount}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            tokens
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                {/* Legend */}
+                <div className="space-y-1">
+                  {allocations.slice(0, 10).map((a, i) => (
+                    <div
+                      key={a.symbol}
+                      className={cn(
+                        "flex items-center justify-between rounded-md px-2 py-1 text-xs transition-colors cursor-default",
+                        activeIndex === i ? "bg-muted/60" : "hover:bg-muted/30",
+                      )}
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onMouseLeave={() => setActiveIndex(null)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: a.fill }}
+                        />
+                        <span className="text-muted-foreground truncate">
+                          {a.name}
+                        </span>
+                        <span className="text-muted-foreground font-mono">
+                          {a.symbol}
+                        </span>
+                      </div>
+                      <div className="flex gap-3 font-mono tabular-nums shrink-0">
+                        <span>${a.value.toFixed(2)}</span>
+                        <span className="text-muted-foreground w-12 text-right">
+                          {a.percent.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  {allocations.length > 10 && (
+                    <p className="text-[11px] text-muted-foreground text-center pt-1">
+                      +{allocations.length - 10} more tokens
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -265,12 +353,12 @@ export function Portfolio() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Token</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Avg Buy</TableHead>
-                      <TableHead className="text-right">Current</TableHead>
-                      <TableHead className="text-right">Value</TableHead>
-                      <TableHead className="text-right">P&L</TableHead>
+                      <TableHead className="text-[11px] font-medium uppercase tracking-wider">Token</TableHead>
+                      <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">Amount</TableHead>
+                      <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">Avg Buy</TableHead>
+                      <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">Current</TableHead>
+                      <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">Value</TableHead>
+                      <TableHead className="text-right text-[11px] font-medium uppercase tracking-wider">P&L</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

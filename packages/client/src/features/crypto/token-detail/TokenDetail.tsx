@@ -254,7 +254,7 @@ export function TokenDetail() {
             </div>
           </div>
         </div>
-          <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+          <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
             <div className="space-y-5">
               <PriceChart symbol={token.symbol} />
               <TokenDistribution symbol={token.symbol} />

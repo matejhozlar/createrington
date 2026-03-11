@@ -51,6 +51,9 @@ export function TradeHistory() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-7xl mx-auto w-full space-y-5">
+          <div className="flex items-baseline justify-between">
+            <h1 className="text-xl font-bold tracking-tight">Trade History</h1>
+          </div>
           <Card className="overflow-hidden">
             <CardContent className="p-0">
               <Table>
