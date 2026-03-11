@@ -41,8 +41,8 @@ export function getVolumeDiscount(lifetimeTradeCount: number): number {
   return discount;
 }
 
-/** Fee discount granted by the Market Veteran achievement (10% additional reduction) */
-export const MARKET_VETERAN_FEE_DISCOUNT = 0.1;
+/** Fee discount granted by the Market Veteran achievement (5% additional reduction) */
+export const MARKET_VETERAN_FEE_DISCOUNT = 0.05;
 
 /**
  * Calculates the trading fee for a transaction.
