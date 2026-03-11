@@ -52,6 +52,8 @@ export const cryptoRouter = router({
       // Filter out delisted tokens
       tokens = tokens.filter((t) => !t.delistedAt);
 
+      const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+
       return tokens.map((t) => ({
         id: t.id,
         name: t.name,
@@ -69,6 +71,7 @@ export const cryptoRouter = router({
         ipoEndsAt: t.ipoEndsAt?.toISOString() ?? null,
         ipoPrice: t.ipoPrice,
         metadata: t.metadata,
+        change24h: cryptoService.get24hChange(t.id, t.price),
       }));
     }),
 

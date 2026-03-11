@@ -8,15 +8,15 @@ import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
 } from "../hooks/use-active-events";
-import { formatPrice, getHeldPercent } from "../../format";
+import { formatPrice } from "../../format";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 type CategoryFilter = "stable" | "blue_chip" | "memecoin" | "seasonal";
 
 const FILTERS: { key: CategoryFilter; label: string; dot?: string }[] = [
   { key: "stable", label: "Stable", dot: "bg-emerald-400" },
-  { key: "blue_chip", label: "Blue Chip", dot: "bg-blue-400" },
   { key: "memecoin", label: "Memecoin", dot: "bg-orange-400" },
+  { key: "blue_chip", label: "Blue Chip", dot: "bg-blue-400" },
   { key: "seasonal", label: "Seasonal", dot: "bg-purple-400" },
 ];
 
@@ -58,7 +58,6 @@ export function TokenList() {
         <span className="flex-1">Token</span>
         <span className="w-24 text-right">Price</span>
         <span className="w-16 text-right">24h</span>
-        <span className="w-24 text-right">Supply</span>
       </div>
 
       {/* Token rows */}
@@ -80,16 +79,10 @@ export function TokenList() {
             const livePrice = getPrice(token.symbol);
             const displayPrice = Number(livePrice?.price ?? token.price);
             const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
-            const availableSupply =
-              livePrice?.availableSupply ?? token.availableSupply;
-            const change24h = livePrice?.change24h ?? 0;
+            const change24h = livePrice?.change24h ?? token.change24h;
             const isIpo =
               !!token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date();
             const hasEvent = hasMarketWideEvent || eventTokenIds.has(token.id);
-            const heldPercent = getHeldPercent(
-              availableSupply,
-              token.totalSupply,
-            );
 
             return (
               <div
@@ -160,20 +153,6 @@ export function TokenList() {
                   {change24h.toFixed(2)}%
                 </span>
 
-                {/* Supply bar */}
-                <div className="hidden sm:flex items-center gap-2 w-24 justify-end">
-                  <div className="w-12 h-1 rounded-full bg-muted/30 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-foreground/20 transition-all duration-500"
-                      style={{
-                        width: `${Math.min(heldPercent, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <span className="text-[11px] text-muted-foreground font-mono tabular-nums w-8 text-right">
-                    {heldPercent.toFixed(0)}%
-                  </span>
-                </div>
               </div>
             );
           })}

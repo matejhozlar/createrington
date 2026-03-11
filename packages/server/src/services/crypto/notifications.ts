@@ -56,7 +56,7 @@ export async function sendNewListingNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -108,7 +108,7 @@ export async function sendIpoAnnouncementNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -167,7 +167,7 @@ export async function sendIpoResultNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -207,7 +207,7 @@ export async function sendCrashNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -252,7 +252,7 @@ export async function sendWhaleAlertNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -320,7 +320,7 @@ export async function sendMarketEventNotification(
 
   try {
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
   } catch (err) {
@@ -459,7 +459,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
       .timestamp();
 
     await Discord.Messages.send({
-      channelId: Discord.Channels.general.BOT_SPAM,
+      channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
     });
 

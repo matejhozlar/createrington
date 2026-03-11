@@ -479,12 +479,11 @@ export class CryptoMarketService {
 
   /**
    * Computes the 24h price change percentage for a token.
-   * @private
    * @param tokenId - Token to look up in the 24h price cache
    * @param currentPrice - Current price as a decimal string
    * @returns Percentage change (e.g. 12.5 for +12.5%), or 0 if no baseline exists
    */
-  private get24hChange(tokenId: number, currentPrice: string): number {
+  get24hChange(tokenId: number, currentPrice: string): number {
     const oldPrice = this.prices24hAgo.get(tokenId);
     if (!oldPrice || oldPrice === 0) return 0;
     return ((Number(currentPrice) - oldPrice) / oldPrice) * 100;
