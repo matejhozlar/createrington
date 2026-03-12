@@ -524,7 +524,7 @@ async function handleChart(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const symbol = interaction.options.getString("symbol", true).toUpperCase();
-  const interval = interaction.options.getString("interval") ?? "minute";
+  const interval = interaction.options.getString("interval") ?? "tick";
 
   const token = await Q.crypto.token.find({ symbol });
 
