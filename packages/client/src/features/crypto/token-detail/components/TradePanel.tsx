@@ -62,7 +62,7 @@ export function TradePanel({
   const { user } = useAuth();
   const toast = useToastActions();
   const [tab, setTab] = useState<TradeTab>("buy");
-  const [orderMode, setOrderMode] = useState<OrderMode>("market");
+  const [orderMode /* , setOrderMode */] = useState<OrderMode>("market");
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
