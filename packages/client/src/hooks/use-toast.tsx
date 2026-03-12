@@ -1,55 +1,30 @@
-import { ToastContextType } from "@/components/ui/toast";
-import * as React from "react";
-
-// ============================================================================
-// Context
-// ============================================================================
-
-export const ToastContext = React.createContext<ToastContextType | undefined>(
-  undefined,
-);
-
-export function useToast() {
-  const context = React.useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToast must be used within ToastProvider");
-  }
-  return context;
-}
+import { useMemo } from "react";
+import { toast } from "sonner";
 
 /**
- * Convenience hook with pre-configured toast methods
+ * Convenience hook with pre-configured toast methods.
+ * Powered by sonner — no provider context needed.
  */
 export function useToastActions() {
-  const { addToast } = useToast();
-
-  return React.useMemo(
+  return useMemo(
     () => ({
       success: (description: string, title?: string) =>
-        addToast({
-          type: "success",
-          title,
-          description,
+        toast.success(title ?? description, {
+          description: title ? description : undefined,
         }),
       error: (description: string, title?: string) =>
-        addToast({
-          type: "error",
-          title,
-          description,
+        toast.error(title ?? description, {
+          description: title ? description : undefined,
         }),
       warning: (description: string, title?: string) =>
-        addToast({
-          type: "warning",
-          title,
-          description,
+        toast.warning(title ?? description, {
+          description: title ? description : undefined,
         }),
       info: (description: string, title?: string) =>
-        addToast({
-          type: "info",
-          title,
-          description,
+        toast.info(title ?? description, {
+          description: title ? description : undefined,
         }),
     }),
-    [addToast],
+    [],
   );
 }
