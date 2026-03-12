@@ -48,7 +48,7 @@ export function BansTab({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Bans</h3>
-        <Button size="sm" onClick={onIssueBan} className="cursor-pointer">
+        <Button size="sm" onClick={onIssueBan}>
           <Ban className="size-4" />
           Issue Ban
         </Button>

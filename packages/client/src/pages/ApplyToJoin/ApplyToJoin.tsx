@@ -133,7 +133,7 @@ export function ApplyToJoin() {
               </div>
             </div>
 
-            <Button asChild className="w-full cursor-pointer">
+            <Button asChild className="w-full">
               <a
                 href="https://discord.gg/createrington"
                 target="_blank"
@@ -161,7 +161,7 @@ export function ApplyToJoin() {
             meantime, feel free to join our Discord community.
           </p>
 
-          <Button asChild variant="outline" className="w-full cursor-pointer">
+          <Button asChild variant="outline" className="w-full">
             <a
               href="https://discord.gg/createrington"
               target="_blank"

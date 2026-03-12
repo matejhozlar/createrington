@@ -54,7 +54,7 @@ export function NavAdmin({
               <SidebarMenuButton
                 size="lg"
                 className={cn(
-                  "text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer",
+                  "text-destructive hover:text-destructive hover:bg-destructive/10",
                   isAdminActive && "bg-destructive/20 font-medium",
                 )}
               >
@@ -110,7 +110,7 @@ export function NavAdmin({
                       <NavLink
                         to={item.url}
                         className={cn(
-                          "transition-colors duration-150 cursor-pointer",
+                          "transition-colors duration-150",
                           isActive && "text-destructive bg-destructive/10",
                         )}
                       >
@@ -135,7 +135,7 @@ export function NavAdmin({
                       <NavLink
                         to={item.url}
                         className={cn(
-                          "flex size-8 items-center justify-center rounded-md transition-colors cursor-pointer",
+                          "flex size-8 items-center justify-center rounded-md transition-colors",
                           "text-destructive hover:bg-destructive/10",
                           isActive && "bg-destructive/20 font-medium",
                         )}
