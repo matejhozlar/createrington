@@ -94,39 +94,36 @@ export function IssueStrikeModal({
             >
               <SelectTrigger
                 id="strike-classification"
-                className="w-full cursor-pointer"
+                className="w-full"
               >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[100]" position="popper">
-                <SelectItem value="pvp" className="cursor-pointer">
+              <SelectContent className="z-[100]">
+                <SelectItem value="pvp">
                   PvP
                 </SelectItem>
-                <SelectItem value="theft" className="cursor-pointer">
+                <SelectItem value="theft">
                   Theft
                 </SelectItem>
-                <SelectItem value="griefing" className="cursor-pointer">
+                <SelectItem value="griefing">
                   Griefing
                 </SelectItem>
-                <SelectItem value="laggy_machines" className="cursor-pointer">
+                <SelectItem value="laggy_machines">
                   Laggy Machines
                 </SelectItem>
-                <SelectItem
-                  value="inappropriate_chat"
-                  className="cursor-pointer"
-                >
+                <SelectItem value="inappropriate_chat">
                   Inappropriate Chat
                 </SelectItem>
-                <SelectItem value="harassment" className="cursor-pointer">
+                <SelectItem value="harassment">
                   Harassment
                 </SelectItem>
-                <SelectItem value="exploiting" className="cursor-pointer">
+                <SelectItem value="exploiting">
                   Exploiting
                 </SelectItem>
-                <SelectItem value="rule_violation" className="cursor-pointer">
+                <SelectItem value="rule_violation">
                   Rule Violation
                 </SelectItem>
-                <SelectItem value="other" className="cursor-pointer">
+                <SelectItem value="other">
                   Other
                 </SelectItem>
               </SelectContent>

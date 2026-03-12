@@ -451,7 +451,7 @@ export function AdminWaitlists() {
                   : "Unverified"}
             </Button>
 
-            <Button type="submit" className="min-w-[85px] cursor-pointer">
+            <Button type="submit" className="min-w-[85px]">
               Search
             </Button>
           </form>

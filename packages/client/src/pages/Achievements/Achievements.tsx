@@ -167,7 +167,7 @@ export const Achievements: React.FC = () => {
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Select server" />
             </SelectTrigger>
-            <SelectContent position="popper">
+            <SelectContent>
               {servers.map((s) => (
                 <SelectItem key={s.serverId} value={s.serverId.toString()}>
                   {s.serverName}
@@ -181,7 +181,7 @@ export const Achievements: React.FC = () => {
             <SelectTrigger className="w-44">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent position="popper">
+            <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {Object.entries(CATEGORY_META).map(([key, meta]) => (
                 <SelectItem key={key} value={key}>
