@@ -245,7 +245,7 @@ export class WebSocketService {
    * @private
    */
   private async sendCryptoInitialSnapshot(socket: Socket): Promise<void> {
-    const { getService: getSvc } = await import("@/services");
+    const { getService: getSvc } = await import("@/services/index.js");
     const { Services: Svc } = await import("../container");
     const cryptoService = await getSvc(Svc.CRYPTO_MARKET_SERVICE);
 
