@@ -244,7 +244,7 @@ function AppContent() {
                     path="tools/embed-builder"
                     element={<EmbedBuilder />}
                   />
-                  <Route path="crypto" element={<AdminCrypto />} />
+                  <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>
