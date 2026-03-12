@@ -58,18 +58,21 @@ export class TrainsController {
     if (backwardsDriver) allUuids.add(backwardsDriver.uuid);
     for (const p of passengers ?? []) allUuids.add(p.uuid);
 
-    const nameMap = new Map<string, string>();
+    const displayMap = new Map<string, string>();
     if (allUuids.size > 0) {
       const players = await Q.player.findAll({
         minecraftUuid: { $in: [...allUuids] },
       });
       for (const p of players) {
-        nameMap.set(p.minecraftUuid, p.minecraftUsername);
+        const display = p.discordId
+          ? `${p.minecraftUsername} (${Discord.Users.mention(p.discordId)})`
+          : p.minecraftUsername;
+        displayMap.set(p.minecraftUuid, display);
       }
     }
 
     const resolveName = (uuid: string, fallbackName?: string) =>
-      nameMap.get(uuid) ?? fallbackName ?? uuid;
+      displayMap.get(uuid) ?? fallbackName ?? uuid;
 
     const dimensionName = dimension?.split(":").pop() ?? dimension ?? "Unknown";
     const formattedSpeed = speed?.toFixed(1) ?? "Unknown";
