@@ -34,11 +34,11 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_MEAN_REVERSION_STRENGTH: 0.005, // pull strength per tick (stronger correction)
 
   // Memecoin Generation
-  MEMECOIN_MAX_ACTIVE: 10, // max active (non-crashed, non-delisted) memecoins at a time
+  MEMECOIN_MAX_ACTIVE: 5, // max active (non-crashed, non-delisted) memecoins at a time
   MEMECOIN_INITIAL_PRICE_MIN: 0.001,
   MEMECOIN_INITIAL_PRICE_MAX: 100,
-  MEMECOIN_TOTAL_SUPPLY_MIN: 1_000,
-  MEMECOIN_TOTAL_SUPPLY_MAX: 10_000_000,
+  MEMECOIN_TOTAL_SUPPLY_MIN: 500,
+  MEMECOIN_TOTAL_SUPPLY_MAX: 50_000,
 
   // Stablecoin Pricing (flat amounts, not percentages)
   STABLECOIN_FLOOR_PRICE: 1.0,
@@ -107,9 +107,9 @@ export const CRYPTO_CONFIG = {
 
   // IPO (Initial Public Offering)
   IPO_DURATION_MS: 3_600_000, // 1 hour
-  IPO_MAX_ALLOCATION_PERCENT: 0.03, // max 3% of supply per player (was 5%)
+  IPO_MAX_ALLOCATION_PERCENT: 0.1, // max 10% of supply per player
   IPO_CHECK_INTERVAL_MS: 30_000, // check for ended IPOs every 30s
-  IPO_SPAWN_INTERVAL_MS: 12 * 3_600_000, // auto-spawn a new IPO memecoin every 12 hours (was 6)
+  IPO_SPAWN_INTERVAL_MS: 24 * 3_600_000, // auto-spawn a new IPO memecoin every 24 hours
 
   // Snapshot Retention (seconds)
   RETENTION: {
