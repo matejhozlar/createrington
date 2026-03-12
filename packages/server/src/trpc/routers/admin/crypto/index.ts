@@ -180,9 +180,7 @@ export const adminCryptoRouter = router({
       ).size;
 
       const totalMarketCap = activeTokens.reduce((sum, t) => {
-        return (
-          sum + Number(t.price) * Number(t.totalSupply - t.availableSupply)
-        );
+        return sum + Number(t.price) * Number(t.totalSupply);
       }, 0);
 
       const treasury = await Q.crypto.treasury.where({}).first();

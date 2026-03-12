@@ -126,7 +126,7 @@ export async function rollForEvents(): Promise<ActiveEvent[]> {
   pruneExpiredEvents();
 
   const newEvents: ActiveEvent[] = [];
-  const MAX_CONCURRENT_EVENTS = 2;
+  const MAX_CONCURRENT_EVENTS = CRYPTO_CONFIG.MAX_CONCURRENT_EVENTS;
 
   if (activeEvents.length >= MAX_CONCURRENT_EVENTS) {
     return newEvents;
@@ -262,9 +262,11 @@ async function executeEvent(
     tokenSymbol: targetToken?.symbol ?? null,
   };
 
-  // Special handling for pump_and_dump: schedule phase flip
+  // Special handling for pump_and_dump: schedule phase flip at midpoint
   if (eventType === "pump_and_dump" && activeUntil) {
-    event.phaseFlipAt = Date.now() + (activeUntil.getTime() - Date.now()) / 2;
+    const totalDuration =
+      activeUntil.getTime() - dbEvent.createdAt.getTime();
+    event.phaseFlipAt = dbEvent.createdAt.getTime() + totalDuration / 2;
   }
 
   // Only track duration-based events in active list (instant events fire once)
