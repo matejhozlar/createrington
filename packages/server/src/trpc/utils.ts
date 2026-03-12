@@ -55,6 +55,9 @@ export function paginationInput(opts?: {
 
 /**
  * Builds a pagination metadata object from query results.
+ * @param page - Current zero-based page index
+ * @param limit - Number of items per page
+ * @param total - Total number of matching records
  * @returns Object with page, limit, total, and totalPages
  */
 export function buildPagination(page: number, limit: number, total: number) {

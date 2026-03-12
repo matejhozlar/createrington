@@ -68,14 +68,30 @@ interface TypedEventEmitter<T> {
  * - Detects circular dependencies at init time
  * - Supports lazy services that initialize only on first access
  * - Emits events for service readiness and cross-service wiring
+ *
+ * NOTE: The singleton `container` instance exported from this module is the
+ * authoritative registry — all services must be registered through it before
+ * `initializeAll()` is called during server startup
  */
 export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> &
   EventEmitter) {
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
 
+  // ==========================================================================
+  // REGISTRATION
+  // ==========================================================================
+
   /**
-   * Register a service with its factory and dependencies
+   * Registers a service with its factory function and optional dependencies
+   *
+   * The factory receives the container so it can resolve its own dependencies
+   * at init time. Duplicate registrations throw immediately to catch wiring
+   * mistakes early.
+   *
+   * @param name - Unique service key (use the `Services` constants)
+   * @param factory - Factory that creates or initialises the service instance
+   * @param options - Optional dependency names and lazy flag
    */
   register<T>(
     name: string,
@@ -100,8 +116,22 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     logger.debug(`Registered service: ${name}`);
   }
 
+  // ==========================================================================
+  // ACCESS
+  // ==========================================================================
+
   /**
-   * Get a service instance (initializes if needed)
+   * Returns a fully-initialised service instance, initialising it on first access
+   *
+   * If the service is already ready its cached instance is returned immediately.
+   * If it is currently initialising the existing promise is awaited to avoid
+   * duplicate factory invocations. A previously-failed service re-throws its
+   * original error.
+   *
+   * @param name - Service key to retrieve
+   * @returns Promise resolving to the typed service instance
+   * @example
+   * const bot = await container.get(Services.DISCORD_MAIN_BOT);
    */
   async get<K extends ServiceKey>(name: K): Promise<ServiceTypeMap[K]>;
   async get<T>(name: string): Promise<T>;
@@ -130,8 +160,20 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return this.initializeService(name);
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
-   * Initialize a specific service and its dependencies
+   * Initialises a service and all of its declared dependencies
+   *
+   * Dependencies are awaited in parallel before the service's own factory runs.
+   * The resulting promise is stored while in-flight so concurrent callers share
+   * the same initialisation work rather than invoking the factory twice.
+   *
+   * @param name - Name of the service to initialise
+   * @returns Promise resolving to the initialised service instance
+   * @private
    */
   private async initializeService<T>(name: string): Promise<T> {
     const service = this.services.get(name);
@@ -184,7 +226,13 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   }
 
   /**
-   * Initializes all non-lazy services in parallel
+   * Initialises all non-lazy registered services in parallel
+   *
+   * Uses `Promise.allSettled` so a failure in one service does not block the
+   * rest. All failures are logged and the `allReady` event is still emitted
+   * afterward so downstream listeners can proceed.
+   *
+   * @returns Promise that resolves once every non-lazy service has settled
    */
   async initializeAll(): Promise<void> {
     const nonLazyServices = Array.from(this.services.values())
@@ -216,8 +264,20 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     this.emit("allReady");
   }
 
+  // ==========================================================================
+  // HELPERS
+  // ==========================================================================
+
   /**
-   * Check for circular dependencies
+   * Throws if the given service is part of a circular dependency chain
+   *
+   * Performs a depth-first walk of the dependency graph, tracking the current
+   * path so the cycle can be reported in the error message.
+   *
+   * @param serviceName - Root service to check from
+   * @param visited - Set of names already on the current DFS path
+   * @param path - Ordered list of names on the current DFS path (for error messages)
+   * @private
    */
   private checkCircularDependency(
     serviceName: string,
@@ -241,8 +301,21 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     }
   }
 
+  // ==========================================================================
+  // INTROSPECTION
+  // ==========================================================================
+
   /**
-   * Get a service instance synchronously (throws if not ready)
+   * Returns a fully-initialised service instance synchronously
+   *
+   * Throws if the service has not yet been initialised. Use this only in
+   * contexts where you are certain the service is already ready (e.g. inside
+   * a request handler after startup has completed).
+   *
+   * @param name - Service key to retrieve
+   * @returns The typed service instance
+   * @example
+   * const ws = container.getSync(Services.WEBSOCKET_SERVICE);
    */
   getSync<K extends ServiceKey>(name: K): ServiceTypeMap[K];
   getSync<T>(name: string): T;
@@ -259,22 +332,25 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return service.instance;
   }
 
-  /**
-   * Number of registered services
-   */
+  /** Total number of registered services */
   get size(): number {
     return this.services.size;
   }
 
   /**
-   * Get service state
+   * Returns the current lifecycle state of a service
+   *
+   * @param name - Service key to inspect
+   * @returns The service's `ServiceState`, or `undefined` if not registered
    */
   getState(name: string): ServiceState | undefined {
     return this.services.get(name)?.state;
   }
 
   /**
-   * Get all service states
+   * Returns a snapshot of every registered service's lifecycle state
+   *
+   * @returns Plain object mapping service name to its `ServiceState`
    */
   getAllStates(): Record<string, ServiceState> {
     const states: Record<string, ServiceState> = {};
@@ -284,9 +360,18 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return states;
   }
 
+  // ==========================================================================
+  // SHUTDOWN
+  // ==========================================================================
+
   /**
-   * Shuts down all services in reverse registration order.
-   * Calls `shutdown()` on any service that implements it.
+   * Shuts down all services in reverse registration order
+   *
+   * Calls `shutdown()` on every service instance that implements it, tolerating
+   * individual failures so that all services get a chance to clean up. Clears
+   * both the service registry and any pending initialisation promises.
+   *
+   * @returns Promise that resolves once all shutdown hooks have settled
    */
   async shutdown(): Promise<void> {
     logger.info("Shutting down services...");

@@ -16,6 +16,17 @@ export interface AiCompletionOptions {
   context?: ChatCompletionMessageParam[];
 }
 
+/**
+ * AI Completion Service
+ *
+ * Thin wrapper around the OpenAI chat completions API:
+ * - Sends single-turn and multi-turn prompts with optional system instructions
+ * - Supports conversation context via prior message history
+ * - Exposes the raw OpenAI client for advanced use cases
+ *
+ * NOTE: Constructed directly with an API key — not registered in the
+ * service container. Consumers are responsible for instantiation.
+ */
 export class AiService {
   private client: OpenAI;
   private defaultModel: string;
@@ -26,9 +37,14 @@ export class AiService {
   }
 
   /**
-   * Generate a chat completion from a prompt.
+   * Generates a chat completion from a prompt.
    *
-   * @returns The assistant's response text
+   * Assembles the message array in order: system prompt (if provided),
+   * optional prior context messages, then the user prompt. Throws if
+   * the model returns an empty response.
+   *
+   * @param options - Completion options including prompt, model, temperature, and context
+   * @returns The assistant's response text (trimmed)
    */
   async complete(options: AiCompletionOptions): Promise<string> {
     const {
@@ -65,9 +81,7 @@ export class AiService {
     return content.trim();
   }
 
-  /**
-   * Expose the raw OpenAI client for advanced use cases.
-   */
+  /** Returns the raw OpenAI client for advanced use cases not covered by `complete()` */
   get raw(): OpenAI {
     return this.client;
   }

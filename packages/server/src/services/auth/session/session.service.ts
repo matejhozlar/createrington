@@ -17,10 +17,17 @@ interface RotateResult {
 }
 
 /**
- * Session service
+ * Session Service
  *
- * Manages server-side auth sessions backed by the auth_session table.
- * Implements refresh token rotation with family-based theft detection.
+ * Manages server-side auth sessions backed by the auth_session table:
+ * - Creates new sessions on login, issuing opaque refresh tokens
+ * - Rotates refresh tokens on each use, invalidating the previous one
+ * - Detects token theft via family-based reuse detection and revokes entire families
+ * - Revokes individual sessions on logout and all sessions on logout-all
+ * - Periodically purges expired sessions from the database
+ *
+ * NOTE: Instantiated as a singleton — the cleanup interval starts automatically
+ * on first access and runs every hour for the lifetime of the process
  */
 class SessionService {
   private static instance: SessionService;
@@ -34,6 +41,11 @@ class SessionService {
     );
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
+  /** Returns the singleton instance, creating it on first call */
   static getInstance(): SessionService {
     if (!SessionService.instance) {
       SessionService.instance = new SessionService();
@@ -41,9 +53,18 @@ class SessionService {
     return SessionService.instance;
   }
 
+  // ==========================================================================
+  // SESSION MANAGEMENT
+  // ==========================================================================
+
   /**
-   * Create a new session for a user after login.
-   * Returns the raw (unhashed) refresh token to be sent as a cookie.
+   * Create a new session for a user after login
+   *
+   * Generates a fresh opaque refresh token, hashes it for storage, and
+   * inserts a new session record in its own token family.
+   *
+   * @param params - Session creation parameters (Discord identity + optional request metadata)
+   * @returns The raw (unhashed) refresh token to be sent as an httpOnly cookie
    */
   async createSession(params: CreateSessionParams): Promise<string> {
     const rawToken = refreshTokenService.generate();
@@ -68,13 +89,19 @@ class SessionService {
   }
 
   /**
-   * Rotate a refresh token.
+   * Rotate a refresh token, implementing the full token reuse detection flow
    *
-   * 1. Hash the incoming token → look up session
-   * 2. If not found → return null (unknown token)
-   * 3. If revoked → **theft detected** → revoke entire family → return null
-   * 4. If expired → revoke → return null
-   * 5. Valid: revoke old, create new session in same family, return new token + user info
+   * Workflow:
+   * 1. Hash the incoming token and look up the matching session
+   * 2. Unknown token → return null
+   * 3. Already-revoked token → theft detected → revoke entire family → return null
+   * 4. Expired token → revoke the session → return null
+   * 5. Valid token → revoke old session, issue new session in the same family
+   *
+   * @param rawToken - The raw refresh token received from the client cookie
+   * @param ip - Optional client IP address to record on the new session
+   * @param userAgent - Optional user-agent string to record on the new session
+   * @returns The new raw token and user identity, or null if rotation was rejected
    */
   async rotateToken(
     rawToken: string,
@@ -138,8 +165,16 @@ class SessionService {
     };
   }
 
+  // ==========================================================================
+  // REVOCATION
+  // ==========================================================================
+
   /**
-   * Revoke a single session by its raw refresh token (logout)
+   * Revoke a single session by its raw refresh token
+   *
+   * Used during normal logout to invalidate the current device's session.
+   *
+   * @param rawToken - The raw refresh token to revoke
    */
   async revokeByToken(rawToken: string): Promise<void> {
     const tokenHash = refreshTokenService.hash(rawToken);
@@ -147,15 +182,29 @@ class SessionService {
   }
 
   /**
-   * Revoke all sessions for a user (logout-all)
+   * Revoke all active sessions for a user
+   *
+   * Used for logout-all flows or when a security event requires invalidating
+   * every device simultaneously.
+   *
+   * @param discordId - The Discord ID of the user whose sessions should be revoked
    */
   async revokeAllForUser(discordId: string): Promise<void> {
     await auth.session.revokeAllForUser(discordId);
     logger.info(`Revoked all sessions for user ${discordId}`);
   }
 
+  // ==========================================================================
+  // MAINTENANCE
+  // ==========================================================================
+
   /**
-   * Delete expired sessions from the database
+   * Delete all expired sessions from the database
+   *
+   * Called automatically on the hourly cleanup interval. Also safe to call
+   * manually if an on-demand purge is needed.
+   *
+   * @returns Promise that resolves when the cleanup query has completed
    */
   async cleanupExpired(): Promise<void> {
     const deleted = await auth.session.deleteExpired();

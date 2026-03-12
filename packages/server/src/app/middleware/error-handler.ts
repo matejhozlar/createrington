@@ -100,6 +100,9 @@ interface ErrorResponse {
 
 /**
  * Format Zod validation errors into a readable structure
+ *
+ * @param error - The ZodError instance to format
+ * @returns Object containing a human-readable message and per-field error details
  */
 export function formatZodError(error: ZodError<unknown>): {
   message: string;
@@ -213,8 +216,11 @@ export function errorHandler(
 }
 
 /**
- * 404 Not Found error handler for undefined routes
- * Should be registered after all other routes
+ * 404 Not Found error handler for undefined routes — should be registered after all other routes
+ *
+ * @param req - Express request
+ * @param res - Express response
+ * @param next - Express next function
  */
 export function notFoundHandler(
   req: Request,

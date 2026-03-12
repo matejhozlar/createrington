@@ -368,21 +368,28 @@ export class TicketService {
   // ==========================================================================
 
   /**
-   * Finds a ticket based on an identifier
+   * Finds a ticket by identifier
    *
    * @param identifier - Identifier of the ticket
-   * @returns Promise resolving to the ticket or null
+   * @returns Promise resolving to the ticket, or null if not found
    */
   async find(identifier: TicketIdentifier): Promise<Ticket | null> {
     return await Q.ticket.find(identifier);
   }
 
+  // ==========================================================================
+  // TICKET ACTIONS
+  // ==========================================================================
+
   /**
-   * Reopens a closed ticket and restores functionality
+   * Reopens a closed ticket and restores full channel functionality
+   *
+   * Deletes the closure message, unlocks the channel for the original creator,
+   * and posts a reopen notification with the active ticket action buttons.
    *
    * @param ticketId - Ticket ID to reopen
    * @param reopenedBy - Discord ID of user reopening the ticket
-   * @returns Promise resolving to the reopened ticket
+   * @returns Promise resolving to the updated ticket record
    */
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await this.repository.reopen(ticketId, reopenedBy);
@@ -469,6 +476,7 @@ export class TicketService {
    *
    * @param ticketId - Database ID of the ticket to delete
    * @param deletedBy - Discord user ID of user deleting the ticket
+   * @returns Promise resolving when the ticket and channel are deleted
    */
   async deleteTicket(ticketId: number, deletedBy: string): Promise<void> {
     await this.repository.delete(ticketId, deletedBy);

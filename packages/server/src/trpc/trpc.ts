@@ -26,6 +26,7 @@ export const middleware = t.middleware;
 
 // ─── Procedures ──────────────────────────────────────────────
 
+/** Procedure with no authentication requirement. */
 export const publicProcedure = t.procedure;
 
 /** Rejects unauthenticated or unverified users. */
@@ -59,5 +60,7 @@ const isAdmin = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
+/** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
 export const userProcedure = t.procedure.use(isAuthenticated);
+/** Procedure that requires a valid JWT, a verified account, and the isAdmin flag. */
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);

@@ -1,3 +1,11 @@
+/**
+ * Price alert management for crypto tokens.
+ * Handles the full lifecycle of player-defined price alerts:
+ * - Creating and deleting per-player alerts with an active-alert cap
+ * - Evaluating all pending alerts against a current price snapshot
+ * - Marking triggered alerts in the database and returning them for notification dispatch
+ */
+
 import { Q } from "@/db";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import type { CryptoPriceAlert } from "@createrington/shared/db/crypto_price_alert.types";

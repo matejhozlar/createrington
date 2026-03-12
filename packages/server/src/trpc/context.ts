@@ -11,6 +11,9 @@ export interface Context {
  * Creates the tRPC context from an Express request.
  * Extracts and verifies the JWT from the Authorization header; invalid or
  * missing tokens result in `user: null` (unauthenticated).
+ *
+ * @param opts - Express request/response options provided by the tRPC adapter
+ * @returns Resolved context with the authenticated user payload, or null if unauthenticated
  */
 export async function createContext({
   req,

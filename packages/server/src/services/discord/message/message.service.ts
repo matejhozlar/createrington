@@ -41,6 +41,10 @@ export class DiscordMessageService {
     this.guildId = config.discord.guild.id;
   }
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Gets the singleton instance of DiscordMessageService
    *
@@ -56,6 +60,10 @@ export class DiscordMessageService {
     }
     return DiscordMessageService.instances.get(client)!;
   }
+
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
   /**
    * Fetches a channel and validates it's sendable
@@ -84,6 +92,10 @@ export class DiscordMessageService {
       return null;
     }
   }
+
+  // ==========================================================================
+  // MESSAGE OPERATIONS
+  // ==========================================================================
 
   /**
    * Send method - handles all message sending scenarios
@@ -351,6 +363,10 @@ export class DiscordMessageService {
     }
   }
 
+  // ==========================================================================
+  // FETCH
+  // ==========================================================================
+
   /**
    * Fetches a message from a channel
    *
@@ -444,6 +460,10 @@ export class DiscordMessageService {
       };
     }
   }
+
+  // ==========================================================================
+  // HELPERS
+  // ==========================================================================
 
   /**
    * Executes an operation with a loading message that updates on completion

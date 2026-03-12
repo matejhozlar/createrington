@@ -1,3 +1,18 @@
+/**
+ * Trade Executor
+ *
+ * Entry point for all player-initiated buy and sell orders in the crypto market:
+ * - Validates trade preconditions (token status, supply, rate limits, IPO rules)
+ * - Calculates fees using the fee calculator and deducts/credits player balance
+ * - Maintains token available supply and per-player holdings with cost basis
+ * - Records every trade as a transaction and routes fees to the treasury
+ * - Fires whale alerts and triggers achievement evaluation after each trade
+ *
+ * NOTE: Achievement evaluation is always fire-and-forget from this module.
+ * Callers that need newly earned achievement names should call
+ * `evaluateTradeAchievements` directly from `achievement-triggers`.
+ */
+
 import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";

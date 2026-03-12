@@ -231,6 +231,7 @@ export class WaitlistRepository {
    *
    * @param entryId - Waitlist entry ID
    * @param adminId - Discord ID of admin who approved
+   * @returns Updated waitlist entry with accepted status and generated token
    */
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });

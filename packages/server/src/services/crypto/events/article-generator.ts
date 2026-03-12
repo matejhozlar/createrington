@@ -1,3 +1,18 @@
+/**
+ * AI Article Generator for market events
+ *
+ * Generates Bloomberg/WSJ-style news articles for crypto market events using an
+ * AI language model grounded in live market data:
+ * - Builds a rich market context snapshot (prices, volume, breadth, leaderboard)
+ * - Fetches token-scoped data (recent trades, top holders, pending orders, price history)
+ * - Resolves Minecraft UUIDs to player display names for realistic reporting
+ * - Calls the AI service with a financial journalist system prompt
+ * - Persists the generated article text and structured sidebar data back to the event record
+ *
+ * NOTE: Article generation is always fire-and-forget. Errors are logged but never
+ * propagate — the market event is already recorded before generation is attempted.
+ */
+
 import { Q } from "@/db";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
@@ -76,6 +91,12 @@ Style guide:
 
 type PlayerNameMap = Map<string, string>;
 
+/**
+ * Builds a UUID-to-username lookup map for all registered players.
+ *
+ * @private
+ * @returns Map keyed by Minecraft UUID with display username as value
+ */
 async function buildPlayerNameMap(): Promise<PlayerNameMap> {
   const players = await Q.player.where({}).all();
   const map: PlayerNameMap = new Map();
@@ -85,6 +106,14 @@ async function buildPlayerNameMap(): Promise<PlayerNameMap> {
   return map;
 }
 
+/**
+ * Resolves a Minecraft UUID to a display username, falling back to "Unknown Trader".
+ *
+ * @private
+ * @param playerNameMap - Pre-built UUID-to-username map
+ * @param minecraftUuid - The UUID to resolve
+ * @returns The player's username, or "Unknown Trader" if not found
+ */
 function resolvePlayerName(
   playerNameMap: PlayerNameMap,
   minecraftUuid: string,
@@ -96,6 +125,15 @@ function resolvePlayerName(
 // Context section builders
 // ---------------------------------------------------------------------------
 
+/**
+ * Builds a formatted 24-hour volume section for the AI prompt.
+ * Returns an empty string when total volume is zero.
+ *
+ * @private
+ * @param cryptoService - Service used to retrieve per-token and total volume
+ * @param sortedTokens - Tokens sorted by market cap; top 5 are included in the output
+ * @returns Formatted volume text block, or an empty string if no volume exists
+ */
 function buildVolumeSection(
   cryptoService: CryptoMarketService,
   sortedTokens: { id: number; symbol: string }[],
@@ -120,6 +158,14 @@ function buildVolumeSection(
   return lines.join("\n");
 }
 
+/**
+ * Counts tokens by 24-hour direction (up / down / flat) and builds a breadth summary.
+ * A token is "up" if its 24h change exceeds +0.5%, "down" below -0.5%, "flat" otherwise.
+ *
+ * @private
+ * @param tokens - Token list with pre-calculated 24h change values
+ * @returns Formatted text block and the raw breadth counts for structured article data
+ */
 function buildMarketBreadthSection(
   tokens: { change24h: number }[],
 ): { text: string; breadth: { up: number; down: number; flat: number } } {
@@ -141,6 +187,14 @@ function buildMarketBreadthSection(
   return { text, breadth: { up, down, flat } };
 }
 
+/**
+ * Fetches the 10 most recent trades for a token and formats them for the AI prompt.
+ *
+ * @private
+ * @param tokenId - ID of the focus token
+ * @param playerNameMap - Pre-built UUID-to-username map for name resolution
+ * @returns Formatted text block and structured trade records for article sidebar data
+ */
 async function buildRecentTradesSection(
   tokenId: number,
   playerNameMap: PlayerNameMap,
@@ -176,6 +230,14 @@ async function buildRecentTradesSection(
   return { text: lines.join("\n"), trades };
 }
 
+/**
+ * Fetches the top 5 holders of a token by amount and formats them for the AI prompt.
+ *
+ * @private
+ * @param tokenId - ID of the focus token
+ * @param playerNameMap - Pre-built UUID-to-username map for name resolution
+ * @returns Formatted text block and structured holder records for article sidebar data
+ */
 async function buildTopHoldersSection(
   tokenId: number,
   playerNameMap: PlayerNameMap,
@@ -208,6 +270,14 @@ async function buildTopHoldersSection(
   return { text: lines.join("\n"), holders };
 }
 
+/**
+ * Summarizes pending limit orders for a token (buy count/volume vs. sell count/volume).
+ * Returns an empty string when no pending orders exist.
+ *
+ * @private
+ * @param tokenId - ID of the focus token
+ * @returns Formatted text block describing open order book depth, or an empty string
+ */
 async function buildPendingOrdersSection(
   tokenId: number,
 ): Promise<string> {
@@ -240,6 +310,14 @@ async function buildPendingOrdersSection(
   ].join("\n");
 }
 
+/**
+ * Fetches up to 3 recent market events (excluding the current one) to give the AI
+ * narrative context for referencing prior market activity.
+ *
+ * @private
+ * @param currentEventId - ID of the event being written about (excluded from results)
+ * @returns Formatted text block listing recent event titles with relative timestamps
+ */
 async function buildPreviousEventsSection(
   currentEventId: number,
 ): Promise<string> {
@@ -261,6 +339,13 @@ async function buildPreviousEventsSection(
   return lines.join("\n");
 }
 
+/**
+ * Fetches the top 3 players by net worth for inclusion in the article.
+ * Silently returns empty results on error so a leaderboard outage never blocks generation.
+ *
+ * @private
+ * @returns Formatted text block and structured leaderboard entries for article sidebar data
+ */
 async function buildLeaderboardSection(): Promise<{
   text: string;
   entries: ArticleLeaderboardEntry[];
@@ -289,6 +374,13 @@ async function buildLeaderboardSection(): Promise<{
   }
 }
 
+/**
+ * Fetches current treasury stats (total fees collected and burned) for prompt context.
+ * Returns an empty string when no treasury record exists.
+ *
+ * @private
+ * @returns Formatted text block with treasury totals, or an empty string
+ */
 async function buildTreasurySection(): Promise<string> {
   const treasury = await Q.crypto.treasury.where({}).first();
   if (!treasury) return "";
@@ -301,6 +393,14 @@ async function buildTreasurySection(): Promise<string> {
   ].join("\n");
 }
 
+/**
+ * Fetches the last 30 minute-interval OHLCV candles for a token in chronological order.
+ * Used to populate the price chart widget rendered alongside the article on the client.
+ *
+ * @private
+ * @param tokenId - ID of the focus token
+ * @returns Array of OHLCV candles sorted oldest-first, or an empty array if no history exists
+ */
 async function buildPriceHistoryData(
   tokenId: number,
 ): Promise<ArticlePriceCandle[]> {
@@ -326,6 +426,13 @@ async function buildPriceHistoryData(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Converts a past date to a human-readable relative string (e.g. "5m ago", "2h ago").
+ *
+ * @private
+ * @param date - The past timestamp to format
+ * @returns Relative time string relative to the current moment
+ */
 function relativeTimeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
   if (seconds < 60) return "just now";
@@ -342,8 +449,16 @@ function relativeTimeAgo(date: Date): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a snapshot of the current market to ground the AI in real data.
- * Returns both the text context for the prompt and structured article data.
+ * Builds a full market snapshot to ground the AI prompt in real data.
+ *
+ * Assembles all context sections (market overview, token list, breadth, volume,
+ * previous events, leaderboard, treasury, and focus-token detail) into a single
+ * prompt string, while also collecting structured data for the article sidebar.
+ *
+ * @private
+ * @param targetTokenId - Token the event targets, or null for market-wide events
+ * @param eventId - ID of the event being written (used to exclude it from "previous events")
+ * @returns The assembled prompt context string and structured article sidebar data
  */
 async function buildMarketContext(
   targetTokenId: number | null,
@@ -501,9 +616,19 @@ async function buildMarketContext(
 // ---------------------------------------------------------------------------
 
 /**
- * Generates an AI article for a market event and persists it to the database
- * along with structured sidebar data in metadata.articleData.
- * Completely fire-and-forget — errors are logged but never thrown.
+ * Generates an AI article for a market event and persists it to the database.
+ *
+ * Builds the market context prompt, calls the AI service, then updates the
+ * event record with the generated article text and structured sidebar data
+ * stored under `metadata.articleData`.
+ *
+ * @private
+ * @param eventId - ID of the event to generate an article for
+ * @param title - Event title used as the article subject
+ * @param description - Optional event description included in the prompt
+ * @param severity - Severity level that influences the article's tone
+ * @param metadata - Event metadata containing token/trade context fields
+ * @returns Promise that resolves when the article has been persisted
  */
 async function generateArticleForEvent(
   eventId: number,
@@ -566,6 +691,12 @@ async function generateArticleForEvent(
 /**
  * Fire-and-forget wrapper for article generation.
  * Silently catches all errors — the event is already persisted regardless.
+ *
+ * @param eventId - ID of the event to generate an article for
+ * @param title - Event title used as the article subject
+ * @param description - Optional event description included in the prompt
+ * @param severity - Severity level that influences the article's tone
+ * @param metadata - Event metadata containing token/trade context fields
  */
 export function fireAndForgetArticle(
   eventId: number,

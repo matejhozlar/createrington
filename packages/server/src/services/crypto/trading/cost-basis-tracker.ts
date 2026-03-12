@@ -9,6 +9,11 @@ import { Q } from "@/db";
 /**
  * Records a new cost basis lot when a player buys tokens.
  * Each buy creates a separate lot with the purchase price.
+ *
+ * @param playerUuid - Minecraft UUID of the buying player
+ * @param tokenId - Token that was purchased
+ * @param amount - Number of tokens in this lot
+ * @param pricePerUnit - Price paid per token, stored as a fixed-precision string
  */
 export async function recordCostBasisLot(
   playerUuid: string,
@@ -76,6 +81,10 @@ export async function consumeCostBasis(
 /**
  * Gets the average cost basis per unit for a player's holdings of a token.
  * Used for portfolio display.
+ *
+ * @param playerUuid - Minecraft UUID of the player
+ * @param tokenId - Token to calculate the average for
+ * @returns Weighted average entry price across all open lots, or 0 if none exist
  */
 export async function getAverageCostBasis(
   playerUuid: string,
@@ -105,6 +114,9 @@ export async function getAverageCostBasis(
 /**
  * Deletes all cost basis lots for a player-token pair.
  * Used when cleaning up crashed tokens.
+ *
+ * @param playerUuid - Minecraft UUID of the player
+ * @param tokenId - Token whose lots should be removed
  */
 export async function clearCostBasis(
   playerUuid: string,

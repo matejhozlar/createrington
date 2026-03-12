@@ -57,10 +57,18 @@ interface OAuthConfig {
 }
 
 /**
- * Unified Discord OAuth service
+ * Discord OAuth Service
  *
- * Handles all Discord OAuth flows with a single Discord application.
- * Implements the singleton pattern to ensure only one instance exists.
+ * Handles all Discord OAuth 2.0 flows for user authentication:
+ * - Generates authorization URLs with the correct scopes and optional CSRF state
+ * - Exchanges authorization codes for Discord access and refresh tokens
+ * - Fetches the authenticated user's Discord profile from the API
+ * - Determines each user's application role (ADMIN / USER / UNVERIFIED)
+ * - Orchestrates the full login flow into a single `authenticate` call
+ * - Refreshes and revokes Discord OAuth tokens as needed
+ *
+ * NOTE: Validates that all required OAuth environment variables are present
+ * at construction time — misconfiguration throws immediately rather than at runtime
  */
 export class DiscordOAuthService {
   private static instance: DiscordOAuthService;
@@ -73,10 +81,11 @@ export class DiscordOAuthService {
     this.validate();
   }
 
-  /**
-   * Get the singleton instance of DiscordOAuthService
-   * @returns The single instance of DiscordOAuthService
-   */
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
+  /** Returns the singleton instance, creating it on first call */
   public static getInstance(): DiscordOAuthService {
     if (!DiscordOAuthService.instance) {
       DiscordOAuthService.instance = new DiscordOAuthService();
@@ -84,11 +93,14 @@ export class DiscordOAuthService {
     return DiscordOAuthService.instance;
   }
 
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
+
   /**
-   * Validates that all required OAuth configuration is present
+   * Validate that all required OAuth configuration values are present
    *
    * @throws Error if any required environment variables are missing
-   *
    * @private
    */
   private validate(): void {
@@ -113,14 +125,18 @@ export class DiscordOAuthService {
     }
   }
 
+  // ==========================================================================
+  // TOKEN EXCHANGE
+  // ==========================================================================
+
   /**
-   * Exchange an authorization code for an access token
+   * Exchange an authorization code for a Discord access token
    *
    * This is the second step in the OAuth2 flow, where the authorization code
    * received from Discord is exchanged for an access token and refresh token.
    *
-   * @param code - The authorization code from Discord OAuth callback
-   * @returns Promise containing access token, refresh token, and token metadata
+   * @param code - The authorization code from the Discord OAuth callback
+   * @returns Promise containing the access token, refresh token, and token metadata
    * @throws Error if the token exchange fails
    */
   async exchange(code: string): Promise<DiscordTokenResponse> {
@@ -148,6 +164,10 @@ export class DiscordOAuthService {
       throw new Error("Failed to exchange authorization code");
     }
   }
+
+  // ==========================================================================
+  // USER DATA
+  // ==========================================================================
 
   /**
    * Fetch Discord user information using an access token
@@ -245,14 +265,18 @@ export class DiscordOAuthService {
     return authenticatedUser;
   }
 
+  // ==========================================================================
+  // AUTHORIZATION
+  // ==========================================================================
+
   /**
    * Generate a Discord OAuth authorization URL
    *
-   * Creates the URL that users should be redirected to in order to authorize
-   * the application. The URL includes the client ID, redirect URI, and requested scopes.
+   * Creates the URL that users are redirected to in order to authorize the
+   * application. Includes the client ID, redirect URI, and `identify` scope.
    *
    * @param state - Optional state parameter for CSRF protection
-   * @returns The complete authorization URL
+   * @returns The complete Discord authorization URL
    */
   generateAuthUrl(state?: string): string {
     const params = new URLSearchParams({
