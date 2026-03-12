@@ -32,7 +32,8 @@ async function buildMarketContext(
   const activeTokens = allTokens.filter((t) => !t.delistedAt);
 
   const totalMarketCap = activeTokens.reduce(
-    (sum, t) => sum + Number(t.price) * Number(t.totalSupply),
+    (sum, t) =>
+      sum + Number(t.price) * Number(t.totalSupply - t.availableSupply),
     0,
   );
 
@@ -61,7 +62,7 @@ async function buildMarketContext(
         symbol: t.symbol,
         name: t.name,
         price: Number(t.price),
-        marketCap: Number(t.price) * Number(t.totalSupply),
+        marketCap: Number(t.price) * Number(t.totalSupply - t.availableSupply),
         change24h,
         category: t.category,
       };
