@@ -40,7 +40,7 @@ export function ChannelSelector({ value, onChange }: ChannelSelectorProps) {
         <SelectTrigger className="w-full">
           <SelectValue placeholder="Select a channel..." />
         </SelectTrigger>
-        <SelectContent position="popper">
+        <SelectContent>
           {groups.map((group) => (
             <SelectGroup key={group.category}>
               <SelectLabel>{formatCategoryName(group.category)}</SelectLabel>

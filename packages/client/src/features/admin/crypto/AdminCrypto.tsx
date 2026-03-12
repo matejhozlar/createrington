@@ -281,7 +281,7 @@ function CreateTokenDialog() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent>
                   {CATEGORY_OPTIONS.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}
@@ -410,7 +410,7 @@ function TriggerEventDialog({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent position="popper">
+              <SelectContent>
                 {EVENT_TYPES.map((e) => (
                   <SelectItem key={e.value} value={e.value}>
                     <span className="flex items-center gap-2">
@@ -442,7 +442,7 @@ function TriggerEventDialog({
                 <SelectTrigger>
                   <SelectValue placeholder="Random target" />
                 </SelectTrigger>
-                <SelectContent position="popper">
+                <SelectContent>
                   {tokens.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)}>
                       {t.symbol} — {t.name}
