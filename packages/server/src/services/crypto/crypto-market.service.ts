@@ -284,7 +284,7 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Aggregates minute → hourly candles every 5 minutes */
+  /** @private Aggregates minute → hourly candles every 15 minutes */
   private startHourlyAggregation(): void {
     this.hourlyAggregationInterval = setInterval(
       async () => {
@@ -294,7 +294,7 @@ export class CryptoMarketService {
           logger.error("Hourly aggregation failed:", err);
         }
       },
-      5 * 60 * 1000,
+      15 * 60 * 1000,
     );
   }
 

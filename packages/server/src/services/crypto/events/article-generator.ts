@@ -402,9 +402,9 @@ async function buildPriceHistoryData(
   tokenId: number,
 ): Promise<ArticlePriceCandle[]> {
   const snapshots = await Q.crypto.price.snapshot
-    .where({ tokenId, interval: "minute" })
+    .where({ tokenId, interval: "tick" })
     .orderBy("recordedAt", "desc")
-    .limit(30)
+    .limit(60)
     .all();
 
   if (snapshots.length === 0) return [];

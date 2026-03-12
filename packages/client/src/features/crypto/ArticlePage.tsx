@@ -1,5 +1,4 @@
 import { useParams, Link } from "react-router-dom";
-import { useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
@@ -17,13 +16,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { timeAgo, formatPrice } from "./format";
-import {
-  createChart,
-  type IChartApi,
-  ColorType,
-  type Time,
-  AreaSeries,
-} from "lightweight-charts";
+import { PriceChart } from "./token-detail/components/PriceChart";
 
 // ---------------------------------------------------------------------------
 // Article data types (mirrors server JSONB shape)
@@ -50,14 +43,6 @@ interface ArticleLeaderboardEntry {
   value: string;
 }
 
-interface ArticlePriceCandle {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-}
-
 interface ArticleData {
   topHolders?: ArticleTopHolder[];
   recentTrades?: ArticleRecentTrade[];
@@ -65,7 +50,6 @@ interface ArticleData {
   leaderboardTop3?: ArticleLeaderboardEntry[];
   tokenVolume24h?: string;
   totalVolume24h?: string;
-  priceHistory?: ArticlePriceCandle[];
 }
 
 // ---------------------------------------------------------------------------
@@ -80,7 +64,6 @@ const SEVERITY_CONFIG: Record<
     badge: string;
     accent: string;
     headerGlow: string;
-    color: string;
   }
 > = {
   info: {
@@ -89,7 +72,6 @@ const SEVERITY_CONFIG: Record<
     badge: "bg-blue-500/10 text-blue-400 ring-blue-500/20",
     accent: "border-l-blue-400/40",
     headerGlow: "from-blue-500/[0.03] to-transparent",
-    color: "#60a5fa",
   },
   warning: {
     label: "Market Warning",
@@ -97,7 +79,6 @@ const SEVERITY_CONFIG: Record<
     badge: "bg-primary/10 text-primary ring-primary/20",
     accent: "border-l-primary/40",
     headerGlow: "from-primary/[0.04] to-transparent",
-    color: "oklch(var(--primary))",
   },
   critical: {
     label: "Critical Alert",
@@ -105,7 +86,6 @@ const SEVERITY_CONFIG: Record<
     badge: "bg-red-500/10 text-red-400 ring-red-500/20",
     accent: "border-l-red-400/40",
     headerGlow: "from-red-500/[0.05] to-transparent",
-    color: "#f87171",
   },
 };
 
@@ -356,95 +336,6 @@ function LeaderboardPodium({
   );
 }
 
-function MiniPriceChart({
-  data,
-  severityColor,
-}: {
-  data: ArticlePriceCandle[];
-  severityColor: string;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current || data.length < 2) return;
-
-    const chart = createChart(containerRef.current, {
-      height: 200,
-      layout: {
-        background: { type: ColorType.Solid, color: "transparent" },
-        textColor: "#a1a1aa",
-        fontFamily: "ui-monospace, monospace",
-        fontSize: 10,
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { color: "rgba(255, 255, 255, 0.03)" },
-      },
-      rightPriceScale: {
-        borderVisible: false,
-      },
-      timeScale: {
-        borderVisible: false,
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      handleScroll: false,
-      handleScale: false,
-      crosshair: {
-        vertLine: { color: "rgba(255, 255, 255, 0.1)", style: 2 },
-        horzLine: { color: "rgba(255, 255, 255, 0.1)", style: 2 },
-      },
-    });
-
-    const series = chart.addSeries(AreaSeries, {
-      lineColor: severityColor,
-      topColor: severityColor + "30",
-      bottomColor: severityColor + "05",
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-    });
-
-    series.setData(
-      data.map((d) => ({
-        time: d.time as Time,
-        value: d.close,
-      })),
-    );
-
-    chart.timeScale().fitContent();
-    chartRef.current = chart;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        chart.applyOptions({ width: entry.contentRect.width });
-      }
-    });
-    resizeObserver.observe(containerRef.current);
-
-    return () => {
-      resizeObserver.disconnect();
-      chart.remove();
-      chartRef.current = null;
-    };
-  }, [data, severityColor]);
-
-  if (data.length < 2) return null;
-
-  return (
-    <div className="mt-6">
-      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-        Price (last 30 min)
-      </h3>
-      <div
-        ref={containerRef}
-        className="rounded-lg border bg-card/20 overflow-hidden [&_a[href]]:!hidden"
-      />
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Main page
 // ---------------------------------------------------------------------------
@@ -574,17 +465,16 @@ export function ArticlePage() {
               </p>
             )}
 
+            {/* Price chart for token-specific events */}
+            {tokenSymbol && (
+              <div className="mt-6">
+                <PriceChart symbol={tokenSymbol} />
+              </div>
+            )}
+
             {/* Data widgets below article */}
             {articleData && (
               <>
-                {articleData.priceHistory &&
-                  articleData.priceHistory.length >= 2 && (
-                    <MiniPriceChart
-                      data={articleData.priceHistory}
-                      severityColor={severity.color}
-                    />
-                  )}
-
                 {articleData.recentTrades &&
                   articleData.recentTrades.length > 0 && (
                     <RecentTradesTimeline trades={articleData.recentTrades} />
