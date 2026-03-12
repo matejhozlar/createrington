@@ -37,6 +37,7 @@ import {
   sendMarketEventNotification,
   sendIpoAnnouncementNotification,
   sendIpoResultNotification,
+  sendPriceAlertDMs,
 } from "./notifications";
 import {
   rollForEvents,
@@ -755,6 +756,11 @@ export class CryptoMarketService {
         );
       }
     }
+
+    // Send Discord DMs (fire-and-forget, does not block the tick cycle)
+    sendPriceAlertDMs(alerts).catch((err) => {
+      logger.error("Failed to send price alert DMs:", err);
+    });
   }
 
   // ==========================================================================

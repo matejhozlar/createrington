@@ -6,6 +6,9 @@ import { Q } from "@/db";
 import { getLeaderboard } from "./analytics/leaderboard";
 import { EVENT_DEFINITIONS } from "./events/event-definitions";
 import type { ActiveEvent } from "./events/event-engine";
+import { getService } from "@/services";
+import { Services } from "../container";
+import type { TriggeredAlert } from "./alerts/alert-manager";
 
 function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
@@ -457,5 +460,56 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     logger.info("Weekly crypto market report sent");
   } catch (err) {
     logger.error("Failed to send weekly market report:", err);
+  }
+}
+
+// ==========================================================================
+// PRICE ALERT DM NOTIFICATIONS
+// ==========================================================================
+
+/**
+ * Sends Discord DMs to players whose price alerts have been triggered.
+ *
+ * Looks up each player's Discord ID from their Minecraft UUID, then sends
+ * a DM with an embed showing the alert details. Failures are logged but
+ * do not throw — a single failed DM does not block the rest.
+ *
+ * @param alerts - Array of triggered alerts to notify
+ */
+export async function sendPriceAlertDMs(
+  alerts: TriggeredAlert[],
+): Promise<void> {
+  if (alerts.length === 0) return;
+
+  let mainBot;
+  try {
+    mainBot = await getService(Services.DISCORD_MAIN_BOT);
+  } catch {
+    logger.warn("Discord bot not available for price alert DMs");
+    return;
+  }
+
+  for (const alert of alerts) {
+    try {
+      const player = await Q.player.get({
+        minecraftUuid: alert.playerUuid,
+      });
+      if (!player?.discordId) continue;
+
+      const user = await mainBot.users.fetch(player.discordId);
+      const embed = EmbedPresets.crypto.priceAlertTriggered({
+        symbol: alert.tokenSymbol,
+        direction: alert.direction,
+        targetPrice: formatPrice(alert.targetPrice),
+        currentPrice: formatPrice(alert.currentPrice),
+      });
+
+      await user.send({ embeds: [embed.build()] });
+    } catch (err) {
+      logger.error(
+        `Failed to send price alert DM for alert ${alert.alertId}:`,
+        err,
+      );
+    }
   }
 }

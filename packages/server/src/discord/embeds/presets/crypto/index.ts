@@ -314,6 +314,23 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  priceAlertTriggered(data: {
+    symbol: string;
+    direction: string;
+    targetPrice: string;
+    currentPrice: string;
+  }) {
+    return createEmbed()
+      .title("Price Alert Triggered!")
+      .color(EmbedColors.Warning)
+      .description(
+        `**${data.symbol}** went **${data.direction}** your target of ${data.targetPrice}`,
+      )
+      .field("Current Price", data.currentPrice, true)
+      .field("Target", `${data.direction} ${data.targetPrice}`, true)
+      .timestamp();
+  },
+
   alertList(lines: string) {
     return createEmbed()
       .title("Price Alerts")
