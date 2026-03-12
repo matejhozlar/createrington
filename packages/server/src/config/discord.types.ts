@@ -30,6 +30,7 @@ interface MemberRolesConfig {
   readonly tester: string;
   readonly cogsAndSteam: string;
   readonly verified: string;
+  readonly cogsAndSteamnotifications: string;
   readonly unverified: string;
 }
 
@@ -66,6 +67,7 @@ interface ChannelConfig {
 
   readonly cogsAndSteam: {
     readonly chat: string;
+    readonly notifications: string;
     readonly minecraftChat: string;
   };
 
@@ -88,6 +90,7 @@ interface ChannelConfig {
   readonly crypto: {
     readonly news: string;
   };
+
 }
 
 interface CategoriesConfig {
