@@ -1093,6 +1093,11 @@ export class CryptoMarketService {
     return total;
   }
 
+  /** Returns the 24h trading volume for a specific token */
+  getTokenVolume24h(tokenId: number): bigint {
+    return this.volume24h.get(tokenId) ?? 0n;
+  }
+
   /**
    * Returns the top gainer and top loser by 24h price change.
    * Only considers active, non-crashed, non-IPO tokens.

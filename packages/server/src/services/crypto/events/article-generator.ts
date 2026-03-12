@@ -1,15 +1,68 @@
 import { Q } from "@/db";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
+import { getLeaderboard } from "../analytics/leaderboard";
+import type { CryptoMarketService } from "../crypto-market.service";
+
+// ---------------------------------------------------------------------------
+// Types for structured article data persisted alongside the article text
+// ---------------------------------------------------------------------------
+
+interface ArticleTopHolder {
+  name: string;
+  amount: string;
+  costBasis: string;
+}
+
+interface ArticleRecentTrade {
+  name: string;
+  type: string;
+  amount: string;
+  price: string;
+  total: string;
+  timeAgo: string;
+}
+
+interface ArticleLeaderboardEntry {
+  rank: number;
+  name: string;
+  value: string;
+}
+
+interface ArticlePriceCandle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+interface ArticleData {
+  topHolders: ArticleTopHolder[];
+  recentTrades: ArticleRecentTrade[];
+  marketBreadth: { up: number; down: number; flat: number };
+  leaderboardTop3: ArticleLeaderboardEntry[];
+  tokenVolume24h: string;
+  totalVolume24h: string;
+  priceHistory: ArticlePriceCandle[];
+}
+
+// ---------------------------------------------------------------------------
+// System prompt
+// ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = `You are a seasoned financial journalist writing for the Createrington Exchange — a fictional cryptocurrency market on a Minecraft server powered by the Create mod.
 
 Your articles read like real Bloomberg or WSJ coverage, but with a fun Minecraft twist. Players trade memecoins, speculate on volatile tokens, and react to market events — all within a blocky economy of redstone, contraptions, and cobblestone fortunes.
 
 Style guide:
-- Write 3-4 paragraphs, each 2-3 sentences
-- Lead with the most impactful fact or development
-- Quote fictional analysts, traders, or market observers by name (make up Minecraft-themed names like "RedstoneRick", "CopperCog", "PistonPete")
+- Write 4-7 paragraphs of varying length (1-4 sentences each) — avoid uniform paragraph sizes
+- Lead with the most impactful fact, a player's notable trade, or a surprising market statistic
+- When REAL PLAYER TRADES data is provided, use those actual player names as traders in the article — they are real exchange participants, not fictional characters. Dedicate at least one paragraph to their trading activity
+- When TOP HOLDERS data is provided, mention the largest positions and who controls them
+- Also include fictional analyst commentary with Minecraft-themed names (e.g. "RedstoneRick", "CopperCog", "PistonPete") — but keep the balance: real player data should dominate when available
+- Vary article structure: sometimes lead with a player's bold trade, sometimes with market stats, sometimes with historical context from recent events
+- Reference recent events for narrative continuity when previous event data is provided
 - Include specific numbers from the data provided (prices, percentages, volumes) — never invent figures
 - Reference Minecraft/Create mod context naturally (redstone circuits, mechanical crafters, server builds, andesite alloy, etc.)
 - Vary tone by severity: "info" events are optimistic/neutral, "warning" events are cautious, "critical" events are urgent
@@ -17,18 +70,289 @@ Style guide:
 - Do not include a headline or title — it is provided separately
 - Only reference tokens from the provided token list — never invent token names or symbols`;
 
+// ---------------------------------------------------------------------------
+// Player name resolution
+// ---------------------------------------------------------------------------
+
+type PlayerNameMap = Map<string, string>;
+
+async function buildPlayerNameMap(): Promise<PlayerNameMap> {
+  const players = await Q.player.where({}).all();
+  const map: PlayerNameMap = new Map();
+  for (const p of players) {
+    map.set(p.minecraftUuid, p.minecraftUsername);
+  }
+  return map;
+}
+
+function resolvePlayerName(
+  playerNameMap: PlayerNameMap,
+  minecraftUuid: string,
+): string {
+  return playerNameMap.get(minecraftUuid) ?? "Unknown Trader";
+}
+
+// ---------------------------------------------------------------------------
+// Context section builders
+// ---------------------------------------------------------------------------
+
+function buildVolumeSection(
+  cryptoService: CryptoMarketService,
+  sortedTokens: { id: number; symbol: string }[],
+): string {
+  const totalVolume = cryptoService.getTotalVolume24h();
+  if (totalVolume === 0n) return "";
+
+  const lines = [
+    ``,
+    `=== 24H VOLUME ===`,
+    `Total exchange volume (24h): ${totalVolume.toLocaleString()} tokens traded`,
+  ];
+
+  const top5 = sortedTokens.slice(0, 5);
+  for (const t of top5) {
+    const vol = cryptoService.getTokenVolume24h(t.id);
+    if (vol > 0n) {
+      lines.push(`- ${t.symbol}: ${vol.toLocaleString()} tokens`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function buildMarketBreadthSection(
+  tokens: { change24h: number }[],
+): { text: string; breadth: { up: number; down: number; flat: number } } {
+  let up = 0;
+  let down = 0;
+  let flat = 0;
+  for (const t of tokens) {
+    if (t.change24h > 0.5) up++;
+    else if (t.change24h < -0.5) down++;
+    else flat++;
+  }
+
+  const text = [
+    ``,
+    `=== MARKET BREADTH ===`,
+    `Tokens up: ${up} | Tokens down: ${down} | Flat: ${flat}`,
+  ].join("\n");
+
+  return { text, breadth: { up, down, flat } };
+}
+
+async function buildRecentTradesSection(
+  tokenId: number,
+  playerNameMap: PlayerNameMap,
+): Promise<{ text: string; trades: ArticleRecentTrade[] }> {
+  const transactions = await Q.crypto.transaction
+    .where({ tokenId })
+    .orderBy("createdAt", "desc")
+    .limit(10)
+    .all();
+
+  if (transactions.length === 0) return { text: "", trades: [] };
+
+  const lines = [``, `=== RECENT TRADES (focus token) ===`];
+  const trades: ArticleRecentTrade[] = [];
+
+  for (const tx of transactions) {
+    const name = resolvePlayerName(playerNameMap, tx.playerMinecraftUuid);
+    const amount = tx.amount < 0n ? -tx.amount : tx.amount;
+    const ago = relativeTimeAgo(tx.createdAt);
+    lines.push(
+      `- ${name} ${tx.type} ${amount.toLocaleString()} tokens @ $${Number(tx.priceAtExecution).toFixed(4)} (total: $${Number(tx.totalCost).toFixed(2)}) — ${ago}`,
+    );
+    trades.push({
+      name,
+      type: tx.type,
+      amount: amount.toString(),
+      price: tx.priceAtExecution,
+      total: tx.totalCost,
+      timeAgo: ago,
+    });
+  }
+
+  return { text: lines.join("\n"), trades };
+}
+
+async function buildTopHoldersSection(
+  tokenId: number,
+  playerNameMap: PlayerNameMap,
+): Promise<{ text: string; holders: ArticleTopHolder[] }> {
+  const holdings = await Q.crypto.holding.where({ tokenId }).all();
+
+  if (holdings.length === 0) return { text: "", holders: [] };
+
+  // Sort by amount descending
+  const sorted = [...holdings].sort(
+    (a, b) => Number(b.amount - a.amount),
+  );
+  const top5 = sorted.slice(0, 5);
+
+  const lines = [``, `=== TOP HOLDERS (focus token) ===`];
+  const holders: ArticleTopHolder[] = [];
+
+  for (const h of top5) {
+    const name = resolvePlayerName(playerNameMap, h.playerMinecraftUuid);
+    lines.push(
+      `- ${name}: ${h.amount.toLocaleString()} tokens (cost basis: $${Number(h.totalCostBasis).toFixed(2)})`,
+    );
+    holders.push({
+      name,
+      amount: h.amount.toString(),
+      costBasis: h.totalCostBasis,
+    });
+  }
+
+  return { text: lines.join("\n"), holders };
+}
+
+async function buildPendingOrdersSection(
+  tokenId: number,
+): Promise<string> {
+  const orders = await Q.crypto.order
+    .where({ tokenId, status: "pending" })
+    .all();
+
+  if (orders.length === 0) return "";
+
+  let buyCount = 0;
+  let sellCount = 0;
+  let buyVolume = 0n;
+  let sellVolume = 0n;
+
+  for (const o of orders) {
+    if (o.type === "limit_buy") {
+      buyCount++;
+      buyVolume += o.amount;
+    } else {
+      sellCount++;
+      sellVolume += o.amount;
+    }
+  }
+
+  return [
+    ``,
+    `=== PENDING ORDERS (focus token) ===`,
+    `Buy orders: ${buyCount} (${buyVolume.toLocaleString()} tokens)`,
+    `Sell orders: ${sellCount} (${sellVolume.toLocaleString()} tokens)`,
+  ].join("\n");
+}
+
+async function buildPreviousEventsSection(
+  currentEventId: number,
+): Promise<string> {
+  const events = await Q.crypto.market.event
+    .where({})
+    .orderBy("createdAt", "desc")
+    .limit(4)
+    .all();
+
+  const previous = events.filter((e) => e.id !== currentEventId).slice(0, 3);
+  if (previous.length === 0) return "";
+
+  const lines = [``, `=== RECENT EVENTS (for narrative continuity) ===`];
+  for (const e of previous) {
+    const ago = relativeTimeAgo(e.createdAt);
+    lines.push(`- "${e.title}" — ${ago}`);
+  }
+
+  return lines.join("\n");
+}
+
+async function buildLeaderboardSection(): Promise<{
+  text: string;
+  entries: ArticleLeaderboardEntry[];
+}> {
+  try {
+    const top3 = await getLeaderboard("networth", 3);
+    if (top3.length === 0) return { text: "", entries: [] };
+
+    const lines = [``, `=== TOP TRADERS (by net worth) ===`];
+    const entries: ArticleLeaderboardEntry[] = [];
+
+    for (const entry of top3) {
+      lines.push(
+        `#${entry.rank} ${entry.playerName}: $${Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+      );
+      entries.push({
+        rank: entry.rank,
+        name: entry.playerName,
+        value: entry.value,
+      });
+    }
+
+    return { text: lines.join("\n"), entries };
+  } catch {
+    return { text: "", entries: [] };
+  }
+}
+
+async function buildTreasurySection(): Promise<string> {
+  const treasury = await Q.crypto.treasury.where({}).first();
+  if (!treasury) return "";
+
+  return [
+    ``,
+    `=== EXCHANGE TREASURY ===`,
+    `Total fees collected: $${Number(treasury.totalCollected).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+    `Total burned: $${Number(treasury.totalBurned).toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+  ].join("\n");
+}
+
+async function buildPriceHistoryData(
+  tokenId: number,
+): Promise<ArticlePriceCandle[]> {
+  const snapshots = await Q.crypto.price.snapshot
+    .where({ tokenId, interval: "minute" })
+    .orderBy("recordedAt", "desc")
+    .limit(30)
+    .all();
+
+  if (snapshots.length === 0) return [];
+
+  // Reverse to chronological order
+  return snapshots.reverse().map((s) => ({
+    time: Math.floor(s.recordedAt.getTime() / 1000),
+    open: Number(s.openPrice),
+    high: Number(s.highPrice),
+    low: Number(s.lowPrice),
+    close: Number(s.closePrice),
+  }));
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function relativeTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+// ---------------------------------------------------------------------------
+// Main context builder
+// ---------------------------------------------------------------------------
+
 /**
  * Builds a snapshot of the current market to ground the AI in real data.
+ * Returns both the text context for the prompt and structured article data.
  */
 async function buildMarketContext(
   targetTokenId: number | null,
-): Promise<string> {
+  eventId: number,
+): Promise<{ context: string; articleData: ArticleData }> {
   const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+  const playerNameMap = await buildPlayerNameMap();
 
-  const allTokens = await Q.crypto.token
-    .where({ isCrashed: false })
-    .all();
-
+  const allTokens = await Q.crypto.token.where({ isCrashed: false }).all();
   const activeTokens = allTokens.filter((t) => !t.delistedAt);
 
   const totalMarketCap = activeTokens.reduce(
@@ -39,6 +363,24 @@ async function buildMarketContext(
 
   const { topGainer, topLoser } = await cryptoService.getTopMovers();
 
+  // Build sorted token list with change data
+  const sorted = activeTokens
+    .map((t) => {
+      const change24h = cryptoService.get24hChange(t.id, t.price);
+      return {
+        id: t.id,
+        symbol: t.symbol,
+        name: t.name,
+        price: Number(t.price),
+        marketCap:
+          Number(t.price) * Number(t.totalSupply - t.availableSupply),
+        change24h,
+        category: t.category,
+      };
+    })
+    .sort((a, b) => b.marketCap - a.marketCap);
+
+  // === Market snapshot (existing) ===
   const lines: string[] = [
     `=== MARKET SNAPSHOT ===`,
     `Active tokens: ${activeTokens.length}`,
@@ -52,22 +394,6 @@ async function buildMarketContext(
     ``,
     `=== TOKEN LIST (only reference these tokens) ===`,
   ].filter(Boolean);
-
-  // Sort by market cap descending, show top tokens
-  const sorted = activeTokens
-    .map((t) => {
-      const change24h = cryptoService.get24hChange(t.id, t.price);
-      return {
-        id: t.id,
-        symbol: t.symbol,
-        name: t.name,
-        price: Number(t.price),
-        marketCap: Number(t.price) * Number(t.totalSupply - t.availableSupply),
-        change24h,
-        category: t.category,
-      };
-    })
-    .sort((a, b) => b.marketCap - a.marketCap);
 
   for (const t of sorted.slice(0, 20)) {
     const changeStr =
@@ -83,7 +409,39 @@ async function buildMarketContext(
     lines.push(`... and ${sorted.length - 20} more tokens`);
   }
 
-  // If there's a specific target token, add extra detail
+  // === Market breadth ===
+  const { text: breadthText, breadth } = buildMarketBreadthSection(sorted);
+  lines.push(breadthText);
+
+  // === Volume ===
+  const volumeText = buildVolumeSection(cryptoService, sorted);
+  if (volumeText) lines.push(volumeText);
+
+  // === Previous events ===
+  const prevEventsText = await buildPreviousEventsSection(eventId);
+  if (prevEventsText) lines.push(prevEventsText);
+
+  // === Leaderboard ===
+  const { text: leaderboardText, entries: leaderboardTop3 } =
+    await buildLeaderboardSection();
+  if (leaderboardText) lines.push(leaderboardText);
+
+  // === Treasury ===
+  const treasuryText = await buildTreasurySection();
+  if (treasuryText) lines.push(treasuryText);
+
+  // Initialize article data
+  const articleData: ArticleData = {
+    topHolders: [],
+    recentTrades: [],
+    marketBreadth: breadth,
+    leaderboardTop3,
+    tokenVolume24h: "0",
+    totalVolume24h: cryptoService.getTotalVolume24h().toString(),
+    priceHistory: [],
+  };
+
+  // === Focus token sections ===
   if (targetTokenId) {
     const target = allTokens.find((t) => t.id === targetTokenId);
     if (target) {
@@ -105,14 +463,46 @@ async function buildMarketContext(
         `Category: ${target.category}`,
         `Supply: ${held}`,
       );
+
+      articleData.tokenVolume24h = cryptoService
+        .getTokenVolume24h(targetTokenId)
+        .toString();
+
+      // Recent trades
+      const { text: tradesText, trades } = await buildRecentTradesSection(
+        targetTokenId,
+        playerNameMap,
+      );
+      if (tradesText) lines.push(tradesText);
+      articleData.recentTrades = trades;
+
+      // Top holders
+      const { text: holdersText, holders } = await buildTopHoldersSection(
+        targetTokenId,
+        playerNameMap,
+      );
+      if (holdersText) lines.push(holdersText);
+      articleData.topHolders = holders;
+
+      // Pending orders
+      const ordersText = await buildPendingOrdersSection(targetTokenId);
+      if (ordersText) lines.push(ordersText);
+
+      // Price history for chart widget
+      articleData.priceHistory = await buildPriceHistoryData(targetTokenId);
     }
   }
 
-  return lines.join("\n");
+  return { context: lines.join("\n"), articleData };
 }
 
+// ---------------------------------------------------------------------------
+// Article generation
+// ---------------------------------------------------------------------------
+
 /**
- * Generates an AI article for a market event and persists it to the database.
+ * Generates an AI article for a market event and persists it to the database
+ * along with structured sidebar data in metadata.articleData.
  * Completely fire-and-forget — errors are logged but never thrown.
  */
 async function generateArticleForEvent(
@@ -124,11 +514,12 @@ async function generateArticleForEvent(
 ): Promise<void> {
   const aiService = await getService(Services.AI_SERVICE);
 
-  const tokenId = metadata?.tokenId
-    ? Number(metadata.tokenId)
-    : null;
+  const tokenId = metadata?.tokenId ? Number(metadata.tokenId) : null;
 
-  const marketContext = await buildMarketContext(tokenId);
+  const { context: marketContext, articleData } = await buildMarketContext(
+    tokenId,
+    eventId,
+  );
 
   const eventDetails = [
     `Event: ${title}`,
@@ -139,8 +530,7 @@ async function generateArticleForEvent(
     metadata?.amount && `Amount: ${metadata.amount}`,
     metadata?.totalCost && `Total value: $${metadata.totalCost}`,
     metadata?.playerName && `Trader: ${metadata.playerName}`,
-    metadata?.effects &&
-      `Effects: ${JSON.stringify(metadata.effects)}`,
+    metadata?.effects && `Effects: ${JSON.stringify(metadata.effects)}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -158,10 +548,19 @@ async function generateArticleForEvent(
     system: SYSTEM_PROMPT,
     prompt,
     temperature: 0.85,
-    maxTokens: 500,
+    maxTokens: 1200,
   });
 
-  await Q.crypto.market.event.update({ id: eventId }, { article });
+  // Persist article text and structured data
+  const enrichedMetadata = {
+    ...(metadata ?? {}),
+    articleData,
+  };
+
+  await Q.crypto.market.event.update(
+    { id: eventId },
+    { article, metadata: enrichedMetadata },
+  );
 }
 
 /**
@@ -175,9 +574,13 @@ export function fireAndForgetArticle(
   severity: string,
   metadata: Record<string, unknown> | null,
 ): void {
-  generateArticleForEvent(eventId, title, description, severity, metadata).catch(
-    (err) => {
-      logger.warn(`Failed to generate article for event ${eventId}: ${err}`);
-    },
-  );
+  generateArticleForEvent(
+    eventId,
+    title,
+    description,
+    severity,
+    metadata,
+  ).catch((err) => {
+    logger.warn(`Failed to generate article for event ${eventId}: ${err}`);
+  });
 }
