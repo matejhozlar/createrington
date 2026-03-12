@@ -5,6 +5,16 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { Clock, Rocket, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { formatCountdown } from "../../format";
@@ -50,6 +60,7 @@ export function TradePanel({
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const isIpo = !!ipoEndsAt && new Date(ipoEndsAt) > new Date();
 
@@ -135,11 +146,7 @@ export function TradePanel({
     }
 
     if (orderMode === "market") {
-      if (tab === "buy") {
-        buyMutation.mutate({ symbol, amount: amountNum });
-      } else {
-        sellMutation.mutate({ symbol, amount: amountNum });
-      }
+      setShowConfirm(true);
     } else {
       if (!targetPrice || Number(targetPrice) <= 0) {
         toast.error("Enter a valid target price");
@@ -159,6 +166,15 @@ export function TradePanel({
         amount: amountNum,
         targetPrice,
       });
+    }
+  };
+
+  const executeMarketTrade = () => {
+    const amountNum = parseInt(amount);
+    if (tab === "buy") {
+      buyMutation.mutate({ symbol, amount: amountNum });
+    } else {
+      sellMutation.mutate({ symbol, amount: amountNum });
     }
   };
 
@@ -445,6 +461,49 @@ export function TradePanel({
                 ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
                 : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
         </Button>
+
+        {/* Market order confirmation dialog */}
+        <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm {tab === "buy" ? "Buy" : "Sell"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {tab === "buy" ? "Buy" : "Sell"}{" "}
+                <span className="font-semibold text-foreground">
+                  {amountNum.toLocaleString()} {symbol}
+                </span>{" "}
+                at ~$
+                {numPrice.toFixed(numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2)}{" "}
+                for{" "}
+                <span className="font-semibold text-foreground">
+                  ~$
+                  {estimatedCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+                </span>
+                {FEE_RATES[category]
+                  ? ` + ${(FEE_RATES[category] * 100).toFixed(1)}% fee`
+                  : ""}
+                .
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn(
+                  tab === "buy"
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                    : "bg-red-500 hover:bg-red-600 text-white",
+                )}
+                onClick={executeMarketTrade}
+              >
+                {tab === "buy" ? "Buy" : "Sell"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
