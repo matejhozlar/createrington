@@ -1090,8 +1090,7 @@ INSERT INTO crypto_treasury (total_collected, total_burned) VALUES (0, 0);
 -- Stablecoins
 INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price, floor_price)
 VALUES
-  ('Ringcoin', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000),
-  ('Pulsecoin', 'PLC', 'Earned through dedication. Cannot be purchased — only earned and sold.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000);
+  ('Ringcoin', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000);
 
 -- Initial Memecoins
 INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
@@ -1102,7 +1101,7 @@ VALUES
   ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 2000000, 2000000, 0.01000000),
   ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 750000, 750000, 5.00000000);
 
--- Token IDs (by insert order): 1=RGC, 2=PLC, 3=FLF, 4=CRP, 5=DDG, 6=END, 7=RSR
+-- Token IDs (by insert order): 1=RGC, 2=FLF, 3=CRP, 4=DDG, 5=END, 6=RSR
 
 -- Update available supply to reflect held tokens
 UPDATE crypto_token SET available_supply = 994500  WHERE symbol = 'FLF'; -- 5500 held
@@ -1117,24 +1116,24 @@ UPDATE crypto_token SET available_supply = 747200  WHERE symbol = 'RSR'; -- 2800
 
 INSERT INTO crypto_holding (player_minecraft_uuid, token_id, amount, total_cost_basis, created_at, updated_at) VALUES
 -- saunhardy: 3000 FLF, 100 CRP, 50 DDG, 100000 END
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 3000, 900.00000000, NOW() - INTERVAL '28 days', NOW() - INTERVAL '5 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 100,  200.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '5 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 50,   600.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 6, 100000, 800.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 2, 3000, 900.00000000, NOW() - INTERVAL '28 days', NOW() - INTERVAL '5 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 3, 100,  200.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '5 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50,   600.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 100000, 800.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
 -- Steve: 500 FLF, 500 RSR
-('550e8400-e29b-41d4-a716-446655440001', 3, 500,  175.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '7 days'),
-('550e8400-e29b-41d4-a716-446655440001', 7, 500,  2250.00000000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days'),
+('550e8400-e29b-41d4-a716-446655440001', 2, 500,  175.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '7 days'),
+('550e8400-e29b-41d4-a716-446655440001', 6, 500,  2250.00000000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days'),
 -- Alex: 10 DDG, 200 CRP
-('550e8400-e29b-41d4-a716-446655440002', 5, 10,   140.00000000, NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days'),
-('550e8400-e29b-41d4-a716-446655440002', 4, 200,  440.00000000, NOW() - INTERVAL '8 days', NOW() - INTERVAL '8 days'),
+('550e8400-e29b-41d4-a716-446655440002', 4, 10,   140.00000000, NOW() - INTERVAL '12 days', NOW() - INTERVAL '12 days'),
+('550e8400-e29b-41d4-a716-446655440002', 3, 200,  440.00000000, NOW() - INTERVAL '8 days', NOW() - INTERVAL '8 days'),
 -- Notch: 2000 RSR, 100 DDG
-('550e8400-e29b-41d4-a716-446655440003', 7, 2000, 8000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
-('550e8400-e29b-41d4-a716-446655440003', 5, 100,  1000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 6, 2000, 8000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 4, 100,  1000.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days'),
 -- Herobrine: 2000 FLF
-('550e8400-e29b-41d4-a716-446655440004', 3, 2000, 800.00000000, NOW() - INTERVAL '18 days', NOW() - INTERVAL '5 days'),
+('550e8400-e29b-41d4-a716-446655440004', 2, 2000, 800.00000000, NOW() - INTERVAL '18 days', NOW() - INTERVAL '5 days'),
 -- Technoblade: 300 RSR, 500 CRP
-('550e8400-e29b-41d4-a716-446655440007', 7, 300,  1560.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440007', 4, 500,  1150.00000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '3 days');
+('550e8400-e29b-41d4-a716-446655440007', 6, 300,  1560.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
+('550e8400-e29b-41d4-a716-446655440007', 3, 500,  1150.00000000, NOW() - INTERVAL '7 days', NOW() - INTERVAL '3 days');
 
 -- ============================================================================
 -- CRYPTO TRANSACTIONS
@@ -1142,35 +1141,35 @@ INSERT INTO crypto_holding (player_minecraft_uuid, token_id, amount, total_cost_
 
 INSERT INTO crypto_transaction (player_minecraft_uuid, token_id, type, trigger, amount, price_at_execution, fee_amount, total_cost, realized_pnl, created_at) VALUES
 -- saunhardy buys
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'buy', 'market', 5000, 0.30000000, 15.00000000, 1515.00000000, NULL, NOW() - INTERVAL '28 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 'buy', 'market', 200,  2.00000000, 4.00000000,  404.00000000, NULL, NOW() - INTERVAL '25 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 'buy', 'market', 50,   12.00000000, 6.00000000, 606.00000000, NULL, NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 6, 'buy', 'market', 100000, 0.00800000, 8.00000000, 808.00000000, NULL, NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'buy', 'market', 5000, 0.30000000, 15.00000000, 1515.00000000, NULL, NOW() - INTERVAL '28 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'buy', 'market', 200,  2.00000000, 4.00000000,  404.00000000, NULL, NOW() - INTERVAL '25 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 4, 'buy', 'market', 50,   12.00000000, 6.00000000, 606.00000000, NULL, NOW() - INTERVAL '20 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 'buy', 'market', 100000, 0.00800000, 8.00000000, 808.00000000, NULL, NOW() - INTERVAL '10 days'),
 -- saunhardy sells
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'sell', 'market', 2000, 0.45000000, 9.00000000, 891.00000000, 300.00000000, NOW() - INTERVAL '15 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 'sell', 'market', 100,  2.80000000, 2.80000000, 277.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'sell', 'market', 2000, 0.45000000, 9.00000000, 891.00000000, 300.00000000, NOW() - INTERVAL '15 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'sell', 'market', 100,  2.80000000, 2.80000000, 277.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
 -- Steve buys
-('550e8400-e29b-41d4-a716-446655440001', 3, 'buy', 'market', 1000, 0.35000000, 3.50000000, 353.50000000, NULL, NOW() - INTERVAL '20 days'),
-('550e8400-e29b-41d4-a716-446655440001', 7, 'buy', 'market', 500,  4.50000000, 22.50000000, 2272.50000000, NULL, NOW() - INTERVAL '15 days'),
+('550e8400-e29b-41d4-a716-446655440001', 2, 'buy', 'market', 1000, 0.35000000, 3.50000000, 353.50000000, NULL, NOW() - INTERVAL '20 days'),
+('550e8400-e29b-41d4-a716-446655440001', 6, 'buy', 'market', 500,  4.50000000, 22.50000000, 2272.50000000, NULL, NOW() - INTERVAL '15 days'),
 -- Steve sell
-('550e8400-e29b-41d4-a716-446655440001', 3, 'sell', 'market', 500,  0.50000000, 2.50000000, 247.50000000, 75.00000000, NOW() - INTERVAL '7 days'),
+('550e8400-e29b-41d4-a716-446655440001', 2, 'sell', 'market', 500,  0.50000000, 2.50000000, 247.50000000, 75.00000000, NOW() - INTERVAL '7 days'),
 -- Alex buys
-('550e8400-e29b-41d4-a716-446655440002', 5, 'buy', 'market', 10,   14.00000000, 1.40000000, 141.40000000, NULL, NOW() - INTERVAL '12 days'),
-('550e8400-e29b-41d4-a716-446655440002', 4, 'buy', 'market', 200,  2.20000000, 4.40000000, 444.40000000, NULL, NOW() - INTERVAL '8 days'),
+('550e8400-e29b-41d4-a716-446655440002', 4, 'buy', 'market', 10,   14.00000000, 1.40000000, 141.40000000, NULL, NOW() - INTERVAL '12 days'),
+('550e8400-e29b-41d4-a716-446655440002', 3, 'buy', 'market', 200,  2.20000000, 4.40000000, 444.40000000, NULL, NOW() - INTERVAL '8 days'),
 -- Notch buys
-('550e8400-e29b-41d4-a716-446655440003', 7, 'buy', 'market', 2000, 4.00000000, 80.00000000, 8080.00000000, NULL, NOW() - INTERVAL '25 days'),
-('550e8400-e29b-41d4-a716-446655440003', 5, 'buy', 'market', 100,  10.00000000, 10.00000000, 1010.00000000, NULL, NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 6, 'buy', 'market', 2000, 4.00000000, 80.00000000, 8080.00000000, NULL, NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 4, 'buy', 'market', 100,  10.00000000, 10.00000000, 1010.00000000, NULL, NOW() - INTERVAL '25 days'),
 -- Herobrine buys
-('550e8400-e29b-41d4-a716-446655440004', 6, 'buy', 'market', 50000, 0.00500000, 2.50000000, 252.50000000, NULL, NOW() - INTERVAL '22 days'),
-('550e8400-e29b-41d4-a716-446655440004', 3, 'buy', 'market', 3000, 0.40000000, 12.00000000, 1212.00000000, NULL, NOW() - INTERVAL '18 days'),
+('550e8400-e29b-41d4-a716-446655440004', 5, 'buy', 'market', 50000, 0.00500000, 2.50000000, 252.50000000, NULL, NOW() - INTERVAL '22 days'),
+('550e8400-e29b-41d4-a716-446655440004', 2, 'buy', 'market', 3000, 0.40000000, 12.00000000, 1212.00000000, NULL, NOW() - INTERVAL '18 days'),
 -- Herobrine sells
-('550e8400-e29b-41d4-a716-446655440004', 6, 'sell', 'market', 50000, 0.01200000, 6.00000000, 594.00000000, 350.00000000, NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440004', 3, 'sell', 'market', 1000, 0.48000000, 4.80000000, 475.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
+('550e8400-e29b-41d4-a716-446655440004', 5, 'sell', 'market', 50000, 0.01200000, 6.00000000, 594.00000000, 350.00000000, NOW() - INTERVAL '10 days'),
+('550e8400-e29b-41d4-a716-446655440004', 2, 'sell', 'market', 1000, 0.48000000, 4.80000000, 475.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
 -- Technoblade buys
-('550e8400-e29b-41d4-a716-446655440007', 7, 'buy', 'market', 300,  5.20000000, 15.60000000, 1575.60000000, NULL, NOW() - INTERVAL '10 days'),
-('550e8400-e29b-41d4-a716-446655440007', 4, 'buy', 'market', 1000, 2.30000000, 23.00000000, 2323.00000000, NULL, NOW() - INTERVAL '7 days'),
+('550e8400-e29b-41d4-a716-446655440007', 6, 'buy', 'market', 300,  5.20000000, 15.60000000, 1575.60000000, NULL, NOW() - INTERVAL '10 days'),
+('550e8400-e29b-41d4-a716-446655440007', 3, 'buy', 'market', 1000, 2.30000000, 23.00000000, 2323.00000000, NULL, NOW() - INTERVAL '7 days'),
 -- Technoblade sell
-('550e8400-e29b-41d4-a716-446655440007', 4, 'sell', 'market', 500,  2.60000000, 13.00000000, 1287.00000000, 150.00000000, NOW() - INTERVAL '3 days');
+('550e8400-e29b-41d4-a716-446655440007', 3, 'sell', 'market', 500,  2.60000000, 13.00000000, 1287.00000000, 150.00000000, NOW() - INTERVAL '3 days');
 
 -- ============================================================================
 -- CRYPTO COST BASIS (remaining lots after sells, FIFO)
@@ -1178,31 +1177,31 @@ INSERT INTO crypto_transaction (player_minecraft_uuid, token_id, type, trigger, 
 
 INSERT INTO crypto_cost_basis (player_minecraft_uuid, token_id, amount_remaining, price_per_unit, acquired_at) VALUES
 -- saunhardy: remaining FLF (bought 5000 @ $0.30, sold 2000 → 3000 left)
-('091b900c-4174-478c-900c-a0fe5a31a329', 3, 3000, 0.30000000, NOW() - INTERVAL '28 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 2, 3000, 0.30000000, NOW() - INTERVAL '28 days'),
 -- saunhardy: remaining CRP (bought 200 @ $2.00, sold 100 → 100 left)
-('091b900c-4174-478c-900c-a0fe5a31a329', 4, 100, 2.00000000, NOW() - INTERVAL '25 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 3, 100, 2.00000000, NOW() - INTERVAL '25 days'),
 -- saunhardy: DDG (full lot)
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 50, 12.00000000, NOW() - INTERVAL '20 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50, 12.00000000, NOW() - INTERVAL '20 days'),
 -- saunhardy: END (full lot)
-('091b900c-4174-478c-900c-a0fe5a31a329', 6, 100000, 0.00800000, NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 100000, 0.00800000, NOW() - INTERVAL '10 days'),
 -- Steve: remaining FLF (bought 1000 @ $0.35, sold 500 → 500 left)
-('550e8400-e29b-41d4-a716-446655440001', 3, 500, 0.35000000, NOW() - INTERVAL '20 days'),
+('550e8400-e29b-41d4-a716-446655440001', 2, 500, 0.35000000, NOW() - INTERVAL '20 days'),
 -- Steve: RSR (full lot)
-('550e8400-e29b-41d4-a716-446655440001', 7, 500, 4.50000000, NOW() - INTERVAL '15 days'),
+('550e8400-e29b-41d4-a716-446655440001', 6, 500, 4.50000000, NOW() - INTERVAL '15 days'),
 -- Alex: DDG
-('550e8400-e29b-41d4-a716-446655440002', 5, 10, 14.00000000, NOW() - INTERVAL '12 days'),
+('550e8400-e29b-41d4-a716-446655440002', 4, 10, 14.00000000, NOW() - INTERVAL '12 days'),
 -- Alex: CRP
-('550e8400-e29b-41d4-a716-446655440002', 4, 200, 2.20000000, NOW() - INTERVAL '8 days'),
+('550e8400-e29b-41d4-a716-446655440002', 3, 200, 2.20000000, NOW() - INTERVAL '8 days'),
 -- Notch: RSR
-('550e8400-e29b-41d4-a716-446655440003', 7, 2000, 4.00000000, NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 6, 2000, 4.00000000, NOW() - INTERVAL '25 days'),
 -- Notch: DDG
-('550e8400-e29b-41d4-a716-446655440003', 5, 100, 10.00000000, NOW() - INTERVAL '25 days'),
+('550e8400-e29b-41d4-a716-446655440003', 4, 100, 10.00000000, NOW() - INTERVAL '25 days'),
 -- Herobrine: remaining FLF (bought 3000 @ $0.40, sold 1000 → 2000 left)
-('550e8400-e29b-41d4-a716-446655440004', 3, 2000, 0.40000000, NOW() - INTERVAL '18 days'),
+('550e8400-e29b-41d4-a716-446655440004', 2, 2000, 0.40000000, NOW() - INTERVAL '18 days'),
 -- Technoblade: RSR
-('550e8400-e29b-41d4-a716-446655440007', 7, 300, 5.20000000, NOW() - INTERVAL '10 days'),
+('550e8400-e29b-41d4-a716-446655440007', 6, 300, 5.20000000, NOW() - INTERVAL '10 days'),
 -- Technoblade: remaining CRP (bought 1000 @ $2.30, sold 500 → 500 left)
-('550e8400-e29b-41d4-a716-446655440007', 4, 500, 2.30000000, NOW() - INTERVAL '7 days');
+('550e8400-e29b-41d4-a716-446655440007', 3, 500, 2.30000000, NOW() - INTERVAL '7 days');
 
 -- ============================================================================
 -- CRYPTO PRICE SNAPSHOTS (minute interval around 24h ago for change24h)
@@ -1211,12 +1210,11 @@ INSERT INTO crypto_cost_basis (player_minecraft_uuid, token_id, amount_remaining
 INSERT INTO crypto_price_snapshot (token_id, interval, open_price, high_price, low_price, close_price, volume, recorded_at) VALUES
 -- ~24h ago minute snapshots (used by get24hChange)
 (1, 'minute', 1.00000000, 1.00000000, 1.00000000, 1.00000000, 0, NOW() - INTERVAL '24 hours'),
-(2, 'minute', 1.00000000, 1.00000000, 1.00000000, 1.00000000, 0, NOW() - INTERVAL '24 hours'),
-(3, 'minute', 0.47000000, 0.47500000, 0.46500000, 0.47000000, 120, NOW() - INTERVAL '24 hours'),
-(4, 'minute', 2.40000000, 2.42000000, 2.38000000, 2.40000000, 80, NOW() - INTERVAL '24 hours'),
-(5, 'minute', 14.50000000, 14.60000000, 14.40000000, 14.50000000, 15, NOW() - INTERVAL '24 hours'),
-(6, 'minute', 0.00950000, 0.00960000, 0.00940000, 0.00950000, 5000, NOW() - INTERVAL '24 hours'),
-(7, 'minute', 4.80000000, 4.85000000, 4.75000000, 4.80000000, 50, NOW() - INTERVAL '24 hours');
+(2, 'minute', 0.47000000, 0.47500000, 0.46500000, 0.47000000, 120, NOW() - INTERVAL '24 hours'),
+(3, 'minute', 2.40000000, 2.42000000, 2.38000000, 2.40000000, 80, NOW() - INTERVAL '24 hours'),
+(4, 'minute', 14.50000000, 14.60000000, 14.40000000, 14.50000000, 15, NOW() - INTERVAL '24 hours'),
+(5, 'minute', 0.00950000, 0.00960000, 0.00940000, 0.00950000, 5000, NOW() - INTERVAL '24 hours'),
+(6, 'minute', 4.80000000, 4.85000000, 4.75000000, 4.80000000, 50, NOW() - INTERVAL '24 hours');
 
 -- ============================================================================
 -- CRYPTO PRICE SNAPSHOTS (daily interval for price chart)
@@ -1225,50 +1223,50 @@ INSERT INTO crypto_price_snapshot (token_id, interval, open_price, high_price, l
 INSERT INTO crypto_price_snapshot (token_id, interval, open_price, high_price, low_price, close_price, volume, recorded_at)
 SELECT token_id, 'daily', open_p, high_p, low_p, close_p, vol, ts
 FROM (VALUES
-  -- FLF (token 3): $0.30 → $0.50 over 30 days
-  (3, 0.30, 0.32, 0.29, 0.31, 800,  NOW() - INTERVAL '30 days'),
-  (3, 0.31, 0.33, 0.30, 0.32, 650,  NOW() - INTERVAL '27 days'),
-  (3, 0.32, 0.36, 0.31, 0.35, 1200, NOW() - INTERVAL '24 days'),
-  (3, 0.35, 0.38, 0.34, 0.37, 900,  NOW() - INTERVAL '21 days'),
-  (3, 0.37, 0.40, 0.35, 0.38, 1100, NOW() - INTERVAL '18 days'),
-  (3, 0.38, 0.42, 0.37, 0.41, 750,  NOW() - INTERVAL '15 days'),
-  (3, 0.41, 0.44, 0.40, 0.43, 600,  NOW() - INTERVAL '12 days'),
-  (3, 0.43, 0.46, 0.42, 0.45, 500,  NOW() - INTERVAL '9 days'),
-  (3, 0.45, 0.48, 0.44, 0.47, 400,  NOW() - INTERVAL '6 days'),
-  (3, 0.47, 0.51, 0.46, 0.50, 350,  NOW() - INTERVAL '3 days'),
-  (3, 0.50, 0.52, 0.49, 0.50, 300,  NOW() - INTERVAL '1 day'),
-  -- CRP (token 4): $2.00 → $2.50
-  (4, 2.00, 2.10, 1.95, 2.05, 200, NOW() - INTERVAL '30 days'),
-  (4, 2.05, 2.15, 2.00, 2.10, 180, NOW() - INTERVAL '25 days'),
-  (4, 2.10, 2.25, 2.08, 2.20, 300, NOW() - INTERVAL '20 days'),
-  (4, 2.20, 2.30, 2.15, 2.25, 250, NOW() - INTERVAL '15 days'),
-  (4, 2.25, 2.40, 2.22, 2.35, 280, NOW() - INTERVAL '10 days'),
-  (4, 2.35, 2.45, 2.30, 2.40, 200, NOW() - INTERVAL '5 days'),
-  (4, 2.40, 2.52, 2.38, 2.50, 150, NOW() - INTERVAL '1 day'),
-  -- DDG (token 5): $10.00 → $15.00
-  (5, 10.00, 10.50, 9.80,  10.30, 30, NOW() - INTERVAL '30 days'),
-  (5, 10.30, 11.00, 10.10, 10.80, 25, NOW() - INTERVAL '25 days'),
-  (5, 10.80, 12.00, 10.50, 11.50, 40, NOW() - INTERVAL '20 days'),
-  (5, 11.50, 12.50, 11.20, 12.20, 35, NOW() - INTERVAL '15 days'),
-  (5, 12.20, 13.50, 12.00, 13.00, 30, NOW() - INTERVAL '10 days'),
-  (5, 13.00, 14.20, 12.80, 14.00, 20, NOW() - INTERVAL '5 days'),
-  (5, 14.00, 15.20, 13.80, 15.00, 18, NOW() - INTERVAL '1 day'),
-  -- END (token 6): $0.005 → $0.01
-  (6, 0.005,  0.0055, 0.0048, 0.0052, 20000, NOW() - INTERVAL '30 days'),
-  (6, 0.0052, 0.006,  0.005,  0.0058, 18000, NOW() - INTERVAL '25 days'),
-  (6, 0.0058, 0.007,  0.0055, 0.0065, 25000, NOW() - INTERVAL '20 days'),
-  (6, 0.0065, 0.008,  0.006,  0.0075, 22000, NOW() - INTERVAL '15 days'),
-  (6, 0.0075, 0.009,  0.007,  0.0085, 15000, NOW() - INTERVAL '10 days'),
-  (6, 0.0085, 0.010,  0.008,  0.0095, 12000, NOW() - INTERVAL '5 days'),
-  (6, 0.0095, 0.011,  0.009,  0.0100, 10000, NOW() - INTERVAL '1 day'),
-  -- RSR (token 7): $4.00 → $5.00
-  (7, 4.00, 4.20, 3.90, 4.10, 100, NOW() - INTERVAL '30 days'),
-  (7, 4.10, 4.30, 4.00, 4.20, 90,  NOW() - INTERVAL '25 days'),
-  (7, 4.20, 4.50, 4.10, 4.40, 120, NOW() - INTERVAL '20 days'),
-  (7, 4.40, 4.60, 4.30, 4.50, 110, NOW() - INTERVAL '15 days'),
-  (7, 4.50, 4.70, 4.40, 4.60, 80,  NOW() - INTERVAL '10 days'),
-  (7, 4.60, 4.90, 4.55, 4.80, 70,  NOW() - INTERVAL '5 days'),
-  (7, 4.80, 5.10, 4.75, 5.00, 60,  NOW() - INTERVAL '1 day')
+  -- FLF (token 2): $0.30 → $0.50 over 30 days
+  (2, 0.30, 0.32, 0.29, 0.31, 800,  NOW() - INTERVAL '30 days'),
+  (2, 0.31, 0.33, 0.30, 0.32, 650,  NOW() - INTERVAL '27 days'),
+  (2, 0.32, 0.36, 0.31, 0.35, 1200, NOW() - INTERVAL '24 days'),
+  (2, 0.35, 0.38, 0.34, 0.37, 900,  NOW() - INTERVAL '21 days'),
+  (2, 0.37, 0.40, 0.35, 0.38, 1100, NOW() - INTERVAL '18 days'),
+  (2, 0.38, 0.42, 0.37, 0.41, 750,  NOW() - INTERVAL '15 days'),
+  (2, 0.41, 0.44, 0.40, 0.43, 600,  NOW() - INTERVAL '12 days'),
+  (2, 0.43, 0.46, 0.42, 0.45, 500,  NOW() - INTERVAL '9 days'),
+  (2, 0.45, 0.48, 0.44, 0.47, 400,  NOW() - INTERVAL '6 days'),
+  (2, 0.47, 0.51, 0.46, 0.50, 350,  NOW() - INTERVAL '3 days'),
+  (2, 0.50, 0.52, 0.49, 0.50, 300,  NOW() - INTERVAL '1 day'),
+  -- CRP (token 3): $2.00 → $2.50
+  (3, 2.00, 2.10, 1.95, 2.05, 200, NOW() - INTERVAL '30 days'),
+  (3, 2.05, 2.15, 2.00, 2.10, 180, NOW() - INTERVAL '25 days'),
+  (3, 2.10, 2.25, 2.08, 2.20, 300, NOW() - INTERVAL '20 days'),
+  (3, 2.20, 2.30, 2.15, 2.25, 250, NOW() - INTERVAL '15 days'),
+  (3, 2.25, 2.40, 2.22, 2.35, 280, NOW() - INTERVAL '10 days'),
+  (3, 2.35, 2.45, 2.30, 2.40, 200, NOW() - INTERVAL '5 days'),
+  (3, 2.40, 2.52, 2.38, 2.50, 150, NOW() - INTERVAL '1 day'),
+  -- DDG (token 4): $10.00 → $15.00
+  (4, 10.00, 10.50, 9.80,  10.30, 30, NOW() - INTERVAL '30 days'),
+  (4, 10.30, 11.00, 10.10, 10.80, 25, NOW() - INTERVAL '25 days'),
+  (4, 10.80, 12.00, 10.50, 11.50, 40, NOW() - INTERVAL '20 days'),
+  (4, 11.50, 12.50, 11.20, 12.20, 35, NOW() - INTERVAL '15 days'),
+  (4, 12.20, 13.50, 12.00, 13.00, 30, NOW() - INTERVAL '10 days'),
+  (4, 13.00, 14.20, 12.80, 14.00, 20, NOW() - INTERVAL '5 days'),
+  (4, 14.00, 15.20, 13.80, 15.00, 18, NOW() - INTERVAL '1 day'),
+  -- END (token 5): $0.005 → $0.01
+  (5, 0.005,  0.0055, 0.0048, 0.0052, 20000, NOW() - INTERVAL '30 days'),
+  (5, 0.0052, 0.006,  0.005,  0.0058, 18000, NOW() - INTERVAL '25 days'),
+  (5, 0.0058, 0.007,  0.0055, 0.0065, 25000, NOW() - INTERVAL '20 days'),
+  (5, 0.0065, 0.008,  0.006,  0.0075, 22000, NOW() - INTERVAL '15 days'),
+  (5, 0.0075, 0.009,  0.007,  0.0085, 15000, NOW() - INTERVAL '10 days'),
+  (5, 0.0085, 0.010,  0.008,  0.0095, 12000, NOW() - INTERVAL '5 days'),
+  (5, 0.0095, 0.011,  0.009,  0.0100, 10000, NOW() - INTERVAL '1 day'),
+  -- RSR (token 6): $4.00 → $5.00
+  (6, 4.00, 4.20, 3.90, 4.10, 100, NOW() - INTERVAL '30 days'),
+  (6, 4.10, 4.30, 4.00, 4.20, 90,  NOW() - INTERVAL '25 days'),
+  (6, 4.20, 4.50, 4.10, 4.40, 120, NOW() - INTERVAL '20 days'),
+  (6, 4.40, 4.60, 4.30, 4.50, 110, NOW() - INTERVAL '15 days'),
+  (6, 4.50, 4.70, 4.40, 4.60, 80,  NOW() - INTERVAL '10 days'),
+  (6, 4.60, 4.90, 4.55, 4.80, 70,  NOW() - INTERVAL '5 days'),
+  (6, 4.80, 5.10, 4.75, 5.00, 60,  NOW() - INTERVAL '1 day')
 ) AS v(token_id, open_p, high_p, low_p, close_p, vol, ts);
 
 -- ============================================================================
