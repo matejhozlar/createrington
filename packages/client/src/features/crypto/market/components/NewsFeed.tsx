@@ -13,10 +13,9 @@ const SEVERITY_DOT: Record<string, string> = {
 };
 
 export function NewsFeed() {
-  const { data, isLoading } = trpc.public.crypto.newsFeed.useQuery(
-    { limit: 15 },
-    { refetchInterval: 30_000 },
-  );
+  const { data, isLoading } = trpc.public.crypto.newsFeed.useQuery({
+    limit: 15,
+  });
 
   return (
     <Card className="py-4 gap-3">

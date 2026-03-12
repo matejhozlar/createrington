@@ -148,25 +148,8 @@ export const cryptoRouter = router({
   marketOverview: publicProcedure
     .meta({ description: "Get global market overview stats" })
     .query(async () => {
-      const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
-      const activeTokens = tokens.filter((t) => !t.delistedAt);
-
-      const totalMarketCap = activeTokens.reduce((sum, t) => {
-        return (
-          sum + Number(t.price) * Number(t.totalSupply - t.availableSupply)
-        );
-      }, 0);
-
       const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
-      const totalVolume24h = cryptoService.getTotalVolume24h();
-      const { topGainer, topLoser } = await cryptoService.getTopMovers();
-
-      return {
-        totalMarketCap: totalMarketCap.toFixed(2),
-        totalVolume24h: String(totalVolume24h),
-        topGainer,
-        topLoser,
-      };
+      return cryptoService.buildMarketOverview();
     }),
 
   leaderboard: publicProcedure

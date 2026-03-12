@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState, useContext } from "react";
 import type {
   CryptoPriceUpdatePayload,
+  CryptoPriceBroadcast,
+  CryptoMarketOverview,
   CryptoOrderUpdatePayload,
   SubscriptionType,
 } from "@createrington/shared/socket";
@@ -22,7 +24,9 @@ interface CryptoDataProviderProps {
  *
  * Manages real-time crypto market data delivered over WebSocket:
  * - Subscribes to the `crypto:market` room on connect (when autoSubscribe is enabled)
+ * - Receives an immediate snapshot of all token prices + market overview on subscribe
  * - Maintains a live price map keyed by token symbol
+ * - Maintains a live market overview (market cap, volume, top movers)
  * - Listens for order fill events and shows toasts + invalidates relevant queries
  * - Listens for market event broadcasts and reflects them in active-events / news-feed queries
  * - Unsubscribes from the WebSocket room on unmount
@@ -47,21 +51,21 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   const [prices, setPrices] = useState<Map<string, CryptoPriceUpdatePayload>>(
     new Map(),
   );
+  const [overview, setOverview] = useState<CryptoMarketOverview | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
   /** Merges an incoming batch of price updates into the live price map */
-  const handlePriceUpdate = useCallback(
-    (payload: CryptoPriceUpdatePayload[]) => {
-      setPrices((prev) => {
-        const updated = new Map(prev);
-        for (const update of payload) {
-          updated.set(update.symbol, update);
-        }
-        return updated;
-      });
-    },
-    [],
-  );
+  const handlePriceBroadcast = useCallback((raw: unknown) => {
+    const data = raw as CryptoPriceBroadcast;
+    setPrices((prev) => {
+      const updated = new Map(prev);
+      for (const update of data.prices) {
+        updated.set(update.symbol, update);
+      }
+      return updated;
+    });
+    setOverview(data.overview);
+  }, []);
 
   /** Subscribes to the `crypto:market` WebSocket room and marks the provider as subscribed */
   const subscribeToUpdates = useCallback(async () => {
@@ -103,14 +107,12 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   useEffect(() => {
     if (!isConnected) return;
 
-    const unsub = on("update:crypto:prices", (data) => {
-      handlePriceUpdate(data as CryptoPriceUpdatePayload[]);
-    });
+    const unsub = on("update:crypto:prices", handlePriceBroadcast);
 
     return unsub;
-  }, [isConnected, on, handlePriceUpdate]);
+  }, [isConnected, on, handlePriceBroadcast]);
 
-  // Order fill events are broadcast to the whole room — filter down to the authenticated player's UUID
+  // Order fill events — invalidate balance, orders, portfolio, and trade history
   useEffect(() => {
     if (!isConnected || !user) return;
 
@@ -123,6 +125,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
       toast.success(
         `Order #${payload.orderId} ${payload.status}${payload.filledPrice ? ` at $${Number(payload.filledPrice).toFixed(4)}` : ""}`,
       );
+      utils.user.crypto.balance.invalidate();
       utils.user.crypto.listOrders.invalidate();
       utils.user.crypto.portfolio.invalidate();
       utils.user.crypto.tradeHistory.invalidate();
@@ -131,6 +134,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     return unsub;
   }, [isConnected, on, user, toast, utils]);
 
+  // Market events — invalidate active events + news feed
   useEffect(() => {
     if (!isConnected) return;
 
@@ -144,7 +148,6 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
         activeUntil?: string;
       };
 
-      // Invalidate active events query to refresh the banner
       utils.public.crypto.activeEvents.invalidate();
       utils.public.crypto.newsFeed.invalidate();
 
@@ -174,6 +177,7 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
 
   const value: CryptoDataContextType = {
     prices,
+    overview,
     isSubscribed,
     getPrice,
     subscribeToUpdates,

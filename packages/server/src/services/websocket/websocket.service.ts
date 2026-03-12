@@ -209,6 +209,16 @@ export class WebSocketService {
       }
 
       socket.emit(SocketEvent.SUBSCRIBED, confirmation);
+
+      // Push an immediate price snapshot so the client doesn't wait for the next tick
+      if (request.type === SubscriptionType.CRYPTO_MARKET) {
+        this.sendCryptoInitialSnapshot(socket).catch((err) =>
+          logger.error(
+            `Failed to send crypto initial snapshot to ${socket.id}:`,
+            err,
+          ),
+        );
+      }
     } catch (error) {
       logger.error(
         `Failed to subscribe client ${socket.id} to ${request.type}:`,
@@ -227,6 +237,24 @@ export class WebSocketService {
         callback(confirmation);
       }
     }
+  }
+
+  /**
+   * Sends the current crypto market state to a newly subscribed client.
+   * Includes all active token prices and the market overview.
+   * @private
+   */
+  private async sendCryptoInitialSnapshot(socket: Socket): Promise<void> {
+    const { getService: getSvc } = await import("@/services");
+    const { Services: Svc } = await import("../container");
+    const cryptoService = await getSvc(Svc.CRYPTO_MARKET_SERVICE);
+
+    const [prices, overview] = await Promise.all([
+      cryptoService.buildFullPriceSnapshot(),
+      cryptoService.buildMarketOverview(),
+    ]);
+
+    socket.emit(SocketEvent.UPDATE_CRYPTO_PRICES, { prices, overview });
   }
 
   /**
