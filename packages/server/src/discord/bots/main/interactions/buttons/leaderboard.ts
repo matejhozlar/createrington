@@ -16,7 +16,11 @@ export const pattern = "leaderboard:*";
 export const prodOnly = false;
 
 /**
- * Parses the button customId
+ * Parses the leaderboard button customId (format: leaderboard:action:type)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed action and leaderboard type, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): {
   action: string;
@@ -92,9 +96,7 @@ async function handleRefresh(
   interaction: ButtonInteraction,
   type: LeaderboardType,
 ): Promise<void> {
-  const leaderboardService = await getService(
-    Services.LEADERBOARD_SERVICE,
-  );
+  const leaderboardService = await getService(Services.LEADERBOARD_SERVICE);
   const cooldownCheck = await leaderboardService.canRefresh(type);
 
   if (!cooldownCheck.canRefresh) {

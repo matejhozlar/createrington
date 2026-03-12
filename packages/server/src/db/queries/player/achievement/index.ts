@@ -5,7 +5,9 @@ import type { PlayerAchievement } from "@createrington/shared/db/player_achievem
 /**
  * Custom queries for player_achievement table
  *
- * Extends the auto-generated base class with custom methods.
+ * - Completed/unclaimed achievement lookups per player+server
+ * - Batch tier completion insertion (idempotent via ON CONFLICT DO NOTHING)
+ * - Single-tier claim with atomic reward return
  */
 export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -14,6 +16,10 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
 
   /**
    * Get all completed achievement rows for a player on a server
+   *
+   * @param playerUuid - Minecraft UUID
+   * @param serverId - Server ID
+   * @returns Achievements ordered by group and tier
    */
   async getCompletedForPlayer(
     playerUuid: string,
@@ -35,6 +41,10 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
 
   /**
    * Get unclaimed completed achievements for a player on a server
+   *
+   * @param playerUuid - Minecraft UUID
+   * @param serverId - Server ID
+   * @returns Unclaimed achievements (claimed_at IS NULL) ordered by group and tier
    */
   async getUnclaimedForPlayer(
     playerUuid: string,
@@ -56,6 +66,12 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
 
   /**
    * Batch insert multiple tier completions at once
+   *
+   * Uses ON CONFLICT DO NOTHING so re-completing an already-recorded tier is a no-op.
+   *
+   * @param playerUuid - Minecraft UUID
+   * @param serverId - Server ID
+   * @param entries - Array of achievement group IDs, tiers, and reward amounts
    */
   async batchComplete(
     playerUuid: string,
@@ -99,8 +115,16 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
   }
 
   /**
-   * Claim a single achievement tier and return the reward amount.
+   * Claim a single achievement tier and return the reward amount
+   *
+   * Atomically sets claimed_at = NOW() only if not already claimed.
    * Returns null if the row doesn't exist or is already claimed.
+   *
+   * @param playerUuid - Minecraft UUID
+   * @param serverId - Server ID
+   * @param groupId - Achievement group identifier
+   * @param tier - Tier number within the group
+   * @returns Reward amount, or null if nothing was claimed
    */
   async claimAndReturnReward(
     playerUuid: string,
@@ -119,10 +143,12 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
       RETURNING reward_amount`;
 
     try {
-      const result = await this.db.query<{ reward_amount: number }>(
-        query,
-        [playerUuid, serverId, groupId, tier],
-      );
+      const result = await this.db.query<{ reward_amount: number }>(query, [
+        playerUuid,
+        serverId,
+        groupId,
+        tier,
+      ]);
       return result.rows[0]?.reward_amount ?? null;
     } catch (error) {
       logger.error("Failed to claim achievement reward:", error);

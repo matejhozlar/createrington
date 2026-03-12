@@ -1,7 +1,9 @@
 import { EmbedBuilder, type ColorResolvable } from "discord.js";
 /**
  * Fluent interface for building Discord embeds with sensible defaults
- * Provides a clean, chainable API for creatng embeds throughout the app
+ *
+ * Provides a clean, chainable API for creating embeds throughout the app.
+ * All setter methods return `this` for chaining; call `build()` to get the final EmbedBuilder.
  */
 export class DiscordEmbedBuilder {
   private embed: EmbedBuilder;
@@ -67,16 +69,19 @@ export class DiscordEmbedBuilder {
     return this;
   }
 
+  /** Removes any previously set timestamp */
   public noTimestamp(): this {
     this.embed.setTimestamp(null);
     return this;
   }
 
+  /** Returns the underlying discord.js EmbedBuilder instance */
   public build(): EmbedBuilder {
     return this.embed;
   }
 }
 
+/** Shorthand factory for creating a new DiscordEmbedBuilder instance */
 export function createEmbed(): DiscordEmbedBuilder {
   return new DiscordEmbedBuilder();
 }

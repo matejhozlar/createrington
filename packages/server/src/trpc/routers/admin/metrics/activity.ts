@@ -6,7 +6,9 @@ import { dateRangeWithMonthInput } from "./schemas";
 /** Admin activity metrics — active players, peak concurrent, sessions, retention */
 export const activityMetricsRouter = router({
   getActivePlayers: adminProcedure
-    .meta({ description: "Get unique active player counts grouped by time period." })
+    .meta({
+      description: "Get unique active player counts grouped by time period.",
+    })
     .input(dateRangeWithMonthInput)
     .query(async ({ input }) => {
       return await metricsService.activity.getActivePlayers(
@@ -17,7 +19,9 @@ export const activityMetricsRouter = router({
     }),
 
   getPeakConcurrent: adminProcedure
-    .meta({ description: "Get peak concurrent player count within a time range." })
+    .meta({
+      description: "Get peak concurrent player count within a time range.",
+    })
     .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
     .query(async ({ input }) => {
       return await metricsService.activity.getPeakConcurrent(

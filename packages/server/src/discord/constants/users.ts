@@ -156,7 +156,7 @@ export const DiscordUsers = {
     if (!user) return null;
 
     return user.displayAvatarURL({
-      size: options?.size as any,
+      size: options?.size,
       extension: options?.format,
     });
   },

@@ -1,4 +1,5 @@
 import { router } from "@/trpc/trpc";
+import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
@@ -8,7 +9,9 @@ import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 
+/** Admin-only router — crypto, dashboard, embeds, FAQ, logs, metrics, players, servers, waitlists. */
 export const adminRouter = router({
+  crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   embeds: embedsRouter,
   faq: faqRouter,

@@ -1,9 +1,15 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { z } from "zod";
-import { parsePlayerId, paginationInput, buildPagination, trpcError } from "@/trpc/utils";
+import {
+  parsePlayerId,
+  paginationInput,
+  buildPagination,
+  trpcError,
+} from "@/trpc/utils";
 import type { PlayerFilters } from "@createrington/shared/db";
 
+/** Public players router — lookup, list, and count players without auth. */
 export const playersRouter = router({
   get: publicProcedure
     .meta({

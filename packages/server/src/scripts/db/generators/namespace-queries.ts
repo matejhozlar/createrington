@@ -96,7 +96,7 @@ export class ${className}Queries {
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
-    Map<string, any>
+    Map<string, unknown>
   >();
 
   /**

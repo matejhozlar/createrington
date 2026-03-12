@@ -7,7 +7,7 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { MessageCircleQuestion, Paintbrush } from "lucide-react";
+import { Coins, MessageCircleQuestion, Paintbrush } from "lucide-react";
 
 const tools = [
   {
@@ -23,6 +23,13 @@ const tools = [
       "Visually build Discord embeds with a live preview and send them to any channel. Save and load presets.",
     icon: Paintbrush,
     href: "/admin/tools/embed-builder",
+  },
+  {
+    title: "Crypto Market",
+    description:
+      "Manage tokens, trigger market events, view treasury stats, and monitor the in-game crypto economy.",
+    icon: Coins,
+    href: "/admin/tools/crypto",
   },
 ];
 
@@ -48,7 +55,7 @@ export function AdminTools() {
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
         <h1 className="text-2xl font-semibold">Tools</h1>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
           {tools.map((tool) => (
             <button
               key={tool.href}

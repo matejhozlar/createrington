@@ -4,6 +4,7 @@ import { waitlistRepo } from "@/db";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
+/** Admin waitlists router — stats, list, detail, invite, and delete waitlist entries. */
 export const waitlistsRouter = router({
   stats: adminProcedure
     .meta({

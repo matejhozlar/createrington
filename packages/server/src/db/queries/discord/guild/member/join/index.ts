@@ -4,7 +4,8 @@ import { DiscordGuildMemberJoinBaseQueries } from "@/generated/db/discord_guild_
 /**
  * Custom queries for discord_guild_member_join table
  *
- * Extends the auto-generated base class with custom methods
+ * - Time-series join analytics per period
+ * - Idempotent join recording with sequential join_number assignment
  */
 export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQueries {
   constructor(db: Pool | PoolClient) {

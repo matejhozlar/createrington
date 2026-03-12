@@ -39,8 +39,7 @@ export function EmbedBuilder() {
 
   const sendEmbed = trpc.admin.embeds.send.useMutation();
 
-  const hasContent =
-    data.title || data.description || data.fields.length > 0;
+  const hasContent = data.title || data.description || data.fields.length > 0;
 
   async function handleSend() {
     if (!channelId) {
@@ -48,7 +47,9 @@ export function EmbedBuilder() {
       return;
     }
     if (!hasContent) {
-      toast.error("Embed must have a title, description, or at least one field");
+      toast.error(
+        "Embed must have a title, description, or at least one field",
+      );
       return;
     }
 
@@ -80,9 +81,7 @@ export function EmbedBuilder() {
         : loaded.authorUrl;
 
     const authorIconUrl =
-      raw.author &&
-      typeof raw.author === "object" &&
-      "icon_url" in raw.author
+      raw.author && typeof raw.author === "object" && "icon_url" in raw.author
         ? ((raw.author as { icon_url?: string }).icon_url ??
           loaded.authorIconUrl)
         : loaded.authorIconUrl;

@@ -1,3 +1,13 @@
+/**
+ * Centralized application configuration
+ *
+ * Aggregates all environment-validated settings, Discord entities,
+ * and static configuration into a single frozen config object.
+ *
+ * NOTE: Discord entity data (roles, channels, categories) is loaded from
+ * a generated JSON file. Run `pnpm scrape-discord` to regenerate it.
+ */
+
 import { env, envMode } from "./env/env.config";
 import type {
   MemberRolesConfig,
@@ -21,7 +31,7 @@ interface DiscordEntities {
 let discordEntities: DiscordEntities;
 try {
   discordEntities = JSON.parse(fs.readFileSync(discordEntitiesPath, "utf-8"));
-} catch (error) {
+} catch {
   console.warn(
     "Warning: discord-entities.json not found. Run 'pnpm scrape-discord' to generate it.",
   );
@@ -45,10 +55,10 @@ const config = {
     },
     links: {
       discordInvite: "https://discord.gg/7PAptNgqk2",
-      website: "https://create-rington.com",
-      adminPanel: "https://create-rington.com/login-admin/",
+      website: "https://dev.create-rington.com",
+      adminPanel: "https://dev.create-rington.com/login-admin/",
       modpack: "https://www.curseforge.com/minecraft/modpacks/create-rington",
-      map: "https://create-rington.com/blue-map",
+      map: "https://dev.create-rington.com/blue-map",
       assets: "https://assets.create-rington.com",
     },
   },
@@ -203,6 +213,13 @@ const config = {
       },
     },
     playerLimit: env.PLAYER_LIMIT,
+  },
+
+  ai: {
+    openai: {
+      apiKey: env.OPENAI_API_KEY,
+      defaultModel: env.OPENAI_DEFAULT_MODEL,
+    },
   },
 
   email: {

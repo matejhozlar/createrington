@@ -19,6 +19,7 @@ import type {
   EnumTypeInfo,
   GenerationContext,
   GenerationResult,
+  TableInfo,
   TableStructure,
 } from "./types";
 
@@ -170,7 +171,7 @@ function canOverwriteWithNamespace(filePath: string): boolean {
 
 function generateTableFiles(
   structure: TableStructure,
-  tableMap: Map<string, any>,
+  tableMap: Map<string, TableInfo>,
   context: GenerationContext,
   generatedFiles: string[],
   scaffoldedFiles: string[],
@@ -468,12 +469,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   generate()
     .then((result) => {
       console.log(`[generate] Generated ${result.files.length} files`);
-      console.log(`[generate] Scaffolded ${result.scaffolds.length} new query files`);
+      console.log(
+        `[generate] Scaffolded ${result.scaffolds.length} new query files`,
+      );
       console.log(`[generate] Total tables: ${result.tablesFound}`);
 
       if (result.scaffolds.length > 0) {
-        console.log("[generate] Scaffolded files (edit these in src/db/queries/):");
-        result.scaffolds.forEach((file) => console.log(`[generate]   - ${file}`));
+        console.log(
+          "[generate] Scaffolded files (edit these in src/db/queries/):",
+        );
+        result.scaffolds.forEach((file) =>
+          console.log(`[generate]   - ${file}`),
+        );
       }
     })
     .catch((error) => {

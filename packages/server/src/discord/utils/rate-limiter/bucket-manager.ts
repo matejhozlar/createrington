@@ -57,7 +57,11 @@ export class BucketManager {
   }
 
   /**
-   * Handle 429 Rate Limit response
+   * Handles a 429 response by zeroing the bucket's remaining count or activating the global limiter
+   *
+   * @param route - The API route that received the 429
+   * @param retryAfter - Seconds to wait before retrying
+   * @param global - Whether this is a global rate limit
    */
   handle429(route: string, retryAfter: number, global: boolean): void {
     logger.warn(`Rate limit hir for route ${route}:`, {
@@ -81,7 +85,10 @@ export class BucketManager {
   }
 
   /**
-   * Check if a rotue can make a request
+   * Checks whether a route is allowed to make a request right now
+   *
+   * @param route - The API route to check
+   * @returns Object with `allowed` flag, `waitTime` in ms, and optional `reason`
    */
   canRequest(route: string): {
     allowed: boolean;
@@ -128,9 +135,7 @@ export class BucketManager {
     };
   }
 
-  /**
-   * Consume a request from a bucket
-   */
+  /** Decrements the remaining count for the bucket associated with this route */
   consumeRequest(route: string): void {
     const bucketId = this.routeToBucket.get(route);
     if (!bucketId) return;
@@ -143,9 +148,7 @@ export class BucketManager {
     }
   }
 
-  /**
-   * Set global rate limit
-   */
+  /** @private Activates the global rate limit for the given duration */
   private setGlobalRateLimit(retryAfter: number): void {
     this.globalRateLimit = {
       active: true,
@@ -155,25 +158,19 @@ export class BucketManager {
     logger.error(`Global rate limit activated for ${retryAfter}s`);
   }
 
-  /**
-   * Get bucket info for a route
-   */
+  /** Returns the bucket associated with a route, or null if unknown */
   getBucket(route: string): RateLimitBucket | null {
     const bucketId = this.routeToBucket.get(route);
     if (!bucketId) return null;
     return this.buckets.get(bucketId) || null;
   }
 
-  /**
-   * Get all active buckets
-   */
+  /** Returns all tracked buckets (for stats/debugging) */
   getAllBuckets(): RateLimitBucket[] {
     return Array.from(this.buckets.values());
   }
 
-  /**
-   * Check if global rate limit is active
-   */
+  /** Returns true if the global rate limit is currently in effect */
   isGlobalRateLimitActive(): boolean {
     if (!this.globalRateLimit.active) return false;
 
@@ -186,9 +183,7 @@ export class BucketManager {
     return false;
   }
 
-  /**
-   * Cleanup expired buckets
-   */
+  /** Removes buckets whose reset time is more than 5 minutes in the past */
   cleanup(): void {
     const now = Date.now() / 1000;
     const expiredBuckets: string[] = [];

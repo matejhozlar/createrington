@@ -22,7 +22,7 @@ const sizeClasses = {
 };
 
 const modeClasses = {
-  inline: "inline-flex",
+  inline: "flex",
   overlay: "fixed inset-0 z-50 bg-background/80 backdrop-blur-sm",
   fullscreen: "fixed inset-0 z-50 bg-background",
 };
@@ -44,7 +44,9 @@ export const Loading: React.FC<LoadingProps> = ({
   return (
     <div
       className={`${modeClasses[mode]} ${
-        isInline ? "" : "flex items-center justify-center"
+        isInline
+          ? "items-center justify-center"
+          : "flex items-center justify-center"
       } ${className || ""}`}
       role="status"
       aria-live="polite"

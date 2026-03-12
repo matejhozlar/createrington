@@ -6,8 +6,9 @@ import config from "@/config";
 
 const links = config.meta.links;
 
+/** Email template for inviting a waitlisted user to join the server */
 export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvitationData> {
-  protected getSubject(data: WaitlistInvitationData): string {
+  protected getSubject(_data: WaitlistInvitationData): string {
     return "Your Invitation to Createrington is Ready!";
   }
 
@@ -313,7 +314,7 @@ This is an automated message — if you need help, contact matejhoz on Discord
     `.trim();
   }
 
-  protected getAttachments(data: WaitlistInvitationData): EmailAttachment[] {
+  protected getAttachments(_data: WaitlistInvitationData): EmailAttachment[] {
     const logoPath = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
       "..",

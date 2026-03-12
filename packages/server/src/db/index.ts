@@ -1,3 +1,12 @@
+/**
+ * Database layer entry point
+ *
+ * Initializes the PostgreSQL connection pool and exposes three access patterns:
+ * - `db` -- DatabaseQueries instance with transaction support
+ * - `Q` -- singleton query instances for direct table access
+ * - `R` -- repository singletons for complex business logic
+ */
+
 import pg from "pg";
 import config from "@/config";
 import {
@@ -19,6 +28,7 @@ import * as repositories from "./repositories";
  */
 const pool = new pg.Pool(config.database.pool);
 
+// Parse PostgreSQL BIGINT (OID 20) as native BigInt instead of string
 pg.types.setTypeParser(20, BigInt);
 
 try {
@@ -57,10 +67,20 @@ export const db = new DatabaseQueries(pool);
 // QUERY SINGLETONS (for normal usage)
 // ============================================================================
 
+/** Pre-built query instances sharing the pool -- use for non-transactional reads/writes */
 export const Q = createQueryInstances(pool);
 
 // Individual exports for convenience
-export const { player, discord, waitlist, admin, auth, server, leaderboard, faq } = Q;
+export const {
+  player,
+  discord,
+  waitlist,
+  admin,
+  auth,
+  server,
+  leaderboard,
+  faq,
+} = Q;
 
 // ============================================================================
 // QUERY FACTORY (for transactions)
@@ -100,6 +120,7 @@ export const playerAuditRepo = new repositories.PlayerAuditRepository();
 
 export const playerRepo = new repositories.PlayerRepository();
 
+/** Convenience aggregate of all repository singletons */
 export const R = {
   waitlistRepo,
   playtimeRepo,

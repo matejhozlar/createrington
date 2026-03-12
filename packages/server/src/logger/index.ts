@@ -5,8 +5,16 @@ import winston from "winston";
 import config from "@/config";
 
 const logDir = config.utils.logger.logDir;
-const SPLAT = Symbol.for("splat");
 
+/**
+ * Winston-based logger that organizes output into daily folders
+ *
+ * - Creates a `logs/YYYY-MM-DD/` directory per day with separate files
+ *   for server, errors, debug (dev only), and uncaught exceptions
+ * - Automatically rotates to a new folder at midnight
+ * - Cleans up folders older than `config.utils.logger.keepDays`
+ * - Attaches the calling filename to every log entry via stack trace inspection
+ */
 class DailyFolderLogger {
   private currentDate: string;
   private logger: winston.Logger;
@@ -18,11 +26,13 @@ class DailyFolderLogger {
     this.monitorDateChange();
   }
 
+  /** @private Returns today's date in YYYY-MM-DD format (used for folder names) */
   private getDateString(): string {
     const now = new Date();
     return now.toLocaleDateString("sv-SE");
   }
 
+  /** @private Resolves the full path for a log file, creating the date folder if needed */
   private getLogPathForDate(date: string, filename: string): string {
     const datedDir = path.join(logDir, date);
     if (!fs.existsSync(datedDir)) {
@@ -68,6 +78,7 @@ class DailyFolderLogger {
     }
   }
 
+  /** @private Creates a Winston logger configured with file and console transports for the given date */
   private createLoggerForDate(date: string): winston.Logger {
     const isDev = process.env.NODE_ENV !== "production";
 
@@ -78,9 +89,9 @@ class DailyFolderLogger {
         const { timestamp, level, message, filename } = info;
         const fileTag = filename ? `[${filename}]` : "";
         return `[${timestamp}]${fileTag}[${String(
-          level
+          level,
         ).toUpperCase()}] ${message}`;
-      })
+      }),
     );
 
     const consoleFormat = winston.format.combine(
@@ -95,7 +106,7 @@ class DailyFolderLogger {
         const { timestamp, level, message, filename } = info;
         const fileTag = filename ? `[${filename}]` : "";
         return `[${timestamp}]${fileTag}[${level}] ${message}`;
-      })
+      }),
     );
 
     return winston.createLogger({
@@ -134,6 +145,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** @private Deletes log folders older than the specified retention period */
   private cleanOldLogFolders(daysToKeep: number): void {
     const cutoff = Date.now() - daysToKeep * 24 * 60 * 60 * 1000;
 
@@ -162,6 +174,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** @private Polls every 60s and rotates to a new date folder at midnight */
   private monitorDateChange(): void {
     this.timer = setInterval(() => {
       const newDate = this.getDateString();
@@ -176,32 +189,45 @@ class DailyFolderLogger {
 
   public debug(...args: unknown[]): void {
     const filename = this.getCallerFile();
-    (this.logger as any).debug({ message: util.format(...args), filename });
-  }
-
-  public error(...args: unknown[]): void {
-    const filename = this.getCallerFile();
-    (this.logger as any).error({ message: util.format(...args), filename });
-  }
-
-  public warn(...args: unknown[]): void {
-    const filename = this.getCallerFile();
-    (this.logger as any).warn({ message: util.format(...args), filename });
-  }
-
-  public info(...args: unknown[]): void {
-    const filename = this.getCallerFile();
-    (this.logger as any).info({ message: util.format(...args), filename });
-  }
-
-  public log(level: string, ...args: unknown[]): void {
-    const filename = this.getCallerFile();
-    (this.logger as any).log(level, {
+    (this.logger as winston.Logger).debug({
       message: util.format(...args),
       filename,
     });
   }
 
+  public error(...args: unknown[]): void {
+    const filename = this.getCallerFile();
+    (this.logger as winston.Logger).error({
+      message: util.format(...args),
+      filename,
+    });
+  }
+
+  public warn(...args: unknown[]): void {
+    const filename = this.getCallerFile();
+    (this.logger as winston.Logger).warn({
+      message: util.format(...args),
+      filename,
+    });
+  }
+
+  public info(...args: unknown[]): void {
+    const filename = this.getCallerFile();
+    (this.logger as winston.Logger).info({
+      message: util.format(...args),
+      filename,
+    });
+  }
+
+  public log(level: string, ...args: unknown[]): void {
+    const filename = this.getCallerFile();
+    (this.logger as winston.Logger).log(level, {
+      message: util.format(...args),
+      filename,
+    });
+  }
+
+  /** Stops the date-change monitor and closes all Winston transports */
   public close(): void {
     if (this.timer) {
       clearInterval(this.timer);

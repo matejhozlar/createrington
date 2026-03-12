@@ -98,6 +98,7 @@ export class PlayerRepository extends BasePlayerRepository {
    *
    * @param identifier - Player identifier
    * @param transactionLimit - Number of recent transactions to include
+   * @returns Balance record, formatted balance string, and recent transactions
    */
   async getBalanceInfo(
     identifier: PlayerIdentifier,
@@ -130,8 +131,11 @@ export class PlayerRepository extends BasePlayerRepository {
   }
 
   /**
-   * Gets all players with filtering and pagination
-   * (For admin list view)
+   * Gets all players with filtering and pagination (for admin list view)
+   *
+   * @param filters - Optional player filter criteria
+   * @param options - Pagination and sorting options
+   * @returns Array of players matching the criteria
    */
   async getAll(
     filters?: PlayerFilters,
@@ -147,6 +151,9 @@ export class PlayerRepository extends BasePlayerRepository {
 
   /**
    * Counts players matching filters
+   *
+   * @param filters - Optional player filter criteria
+   * @returns Total count
    */
   async count(filters?: PlayerFilters): Promise<number> {
     return await Q.player.count(filters);
@@ -263,6 +270,8 @@ export class PlayerRepository extends BasePlayerRepository {
 
   /**
    * Gets overall player statistics for admin dashboard
+   *
+   * @returns Total/online counts, registration trends, and balance aggregates
    */
   async getStats(): Promise<{
     total: number;

@@ -173,7 +173,8 @@ export class WebSocketService {
         request.serverId === undefined &&
         request.type !== SubscriptionType.SERVER_STATUS &&
         request.type !== SubscriptionType.PLAYERS &&
-        request.type !== SubscriptionType.MESSAGES
+        request.type !== SubscriptionType.MESSAGES &&
+        request.type !== SubscriptionType.CRYPTO_MARKET
       ) {
         throw new Error(`Server ID required for ${request.type} subscription`);
       }
@@ -585,6 +586,7 @@ export class WebSocketService {
       [SubscriptionType.SERVER_STATUS]: 0,
       [SubscriptionType.PLAYERS]: 0,
       [SubscriptionType.MESSAGES]: 0,
+      [SubscriptionType.CRYPTO_MARKET]: 0,
     };
 
     // Count clients in each room
@@ -658,5 +660,16 @@ export class WebSocketService {
     logger.info(
       `Broadcast player sync for server ${serverId}: ${players.length} players`,
     );
+  }
+
+  /**
+   * Generic broadcast to a named room
+   *
+   * @param room - Room name to broadcast to
+   * @param event - Socket event name
+   * @param payload - Data to send
+   */
+  broadcastToRoom(room: string, event: string, payload: unknown): void {
+    this.io.to(room).emit(event, payload);
   }
 }

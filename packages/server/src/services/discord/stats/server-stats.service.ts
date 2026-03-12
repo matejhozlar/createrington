@@ -19,6 +19,10 @@ export class ServerStatsService {
     private readonly config: ServerStatsConfig,
   ) {}
 
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
   /**
    * Initialize the service and start stat tracking
    * Called by the service container during startup
@@ -43,6 +47,10 @@ export class ServerStatsService {
   async shutdown(): Promise<void> {
     logger.info("ServerStatsService stopped");
   }
+
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
   /**
    * Ensures guild members are fetched and cached
@@ -189,9 +197,13 @@ export class ServerStatsService {
         `Server stats updated - Members: ${stats.members}, Bots: ${stats.bots}, Total: ${stats.total}`,
       );
     } catch (error) {
-      logger.error("Failed to udpate server stats:", error);
+      logger.error("Failed to update server stats:", error);
     }
   }
+
+  // ==========================================================================
+  // PUBLIC API
+  // ==========================================================================
 
   /**
    * Manually triggers a stats update

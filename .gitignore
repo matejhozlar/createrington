@@ -29,7 +29,6 @@ pnpm-debug.log*
 Thumbs.db
 
 # IDE
-.vscode
 .claude
 
 # Misc
@@ -38,9 +37,7 @@ postgres_data/
 *.zip
 *.rar
 .cache/
-temp.txt
-CLAUDE.md
-COMMENTING.md
+.playwright-mcp
 IDEAS.md
 .mcp.json
 storage/transcripts

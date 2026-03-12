@@ -34,10 +34,7 @@ function Section({
       <CollapsibleTrigger className="flex w-full cursor-pointer items-center justify-between rounded-md px-3 py-2 text-sm font-medium hover:bg-accent">
         {title}
         <ChevronDown
-          className={cn(
-            "size-4 transition-transform",
-            open && "rotate-180",
-          )}
+          className={cn("size-4 transition-transform", open && "rotate-180")}
         />
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 px-3 pb-3 pt-1">

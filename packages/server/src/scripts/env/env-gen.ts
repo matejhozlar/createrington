@@ -44,7 +44,7 @@ try {
   console.log(`Processed ${lines.length} lines`);
 
   const envVarCount = exampleLines.filter(
-    (line) => line.trim() && !line.trim().startsWith("#") && line.includes("=")
+    (line) => line.trim() && !line.trim().startsWith("#") && line.includes("="),
   ).length;
   console.log(`Found ${envVarCount} environment variables`);
 } catch (error) {

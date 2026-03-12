@@ -28,7 +28,9 @@ export const growthMetricsRouter = router({
     }),
 
   getDiscordGrowth: adminProcedure
-    .meta({ description: "Get Discord server growth (joins and leaves) by period." })
+    .meta({
+      description: "Get Discord server growth (joins and leaves) by period.",
+    })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.growth.getDiscordGrowth(

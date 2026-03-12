@@ -3,7 +3,6 @@ import {
   TextChannel,
   ChannelType,
   PermissionFlagsBits,
-  EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
@@ -12,12 +11,7 @@ import {
 } from "discord.js";
 import { TicketRepository } from "@/db/repositories/ticket";
 import type { Ticket, TicketIdentifier } from "@/generated/db";
-import {
-  type TicketType,
-  TicketStatus,
-  type CreateTicketOptions,
-  TicketUserAction,
-} from "./";
+import { TicketStatus, type CreateTicketOptions, TicketUserAction } from "./";
 import { getTicketTypeConfig, TicketSystemIds } from "./";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
@@ -31,17 +25,23 @@ import { isSendableChannel } from "@/discord/utils/channel-guard";
 // discord-html-transcripts requires react-dom/static (React 19) but the workspace pins React 18
 const loadTranscripts = () => import("discord-html-transcripts");
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 interface CreateTicketResult {
   ticket: Ticket;
   channel: TextChannel;
 }
 
 /**
- * Service for managing Discord support tickets
- * Handles ticket lifecycle including creation, closure, reopening, and deletion
- * Integrates with Discord channels and permissions manager
+ * Discord Support Ticket Service
+ *
+ * Manages the full ticket lifecycle:
+ * - Creating ticket channels with role-based permissions
+ * - Closing tickets (lock channel, post closure embed)
+ * - Reopening closed tickets (restore permissions)
+ * - Deleting tickets and their channels
+ * - Generating and sending HTML transcripts via discord-html-transcripts
+ *
+ * NOTE: Requires a Discord client (main bot) and is initialized
+ * by the service container during startup
  */
 export class TicketService {
   private readonly transcriptDir: string;
@@ -49,17 +49,11 @@ export class TicketService {
     private readonly bot: Client,
     private readonly repository: TicketRepository = new TicketRepository(),
   ) {
-    this.transcriptDir = path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "..",
-      "..",
-      "..",
-      "storage",
-      "transcripts",
-    );
+    // Resolve from file location to monorepo root (works in both dev and prod
+    // since packages/server/src and dist/server/src have the same depth)
+    const __dirname = path.dirname(fileURLToPath(import.meta.url));
+    const monorepoRoot = path.resolve(__dirname, "../../../../../..");
+    this.transcriptDir = path.join(monorepoRoot, "storage", "transcripts");
     this.ensureTranscriptDir();
   }
 
@@ -194,8 +188,6 @@ export class TicketService {
     ticket: Ticket,
     creatorId: string,
   ): Promise<void> {
-    const config = getTicketTypeConfig(ticket.type as TicketType);
-
     const minecraftUsername = await Q.player.select.minecraftUsername({
       discordId: creatorId,
     });
@@ -217,7 +209,9 @@ export class TicketService {
    *
    * @private
    */
-  private getTicketActionButtons(ticketId: number): any[] {
+  private getTicketActionButtons(
+    ticketId: number,
+  ): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -295,7 +289,7 @@ export class TicketService {
         return;
       }
 
-      const guild = await this.bot.guilds.fetch(config.discord.guild.id);
+      await this.bot.guilds.fetch(config.discord.guild.id);
       const textChannel = channel as TextChannel;
 
       await textChannel.permissionOverwrites.edit(creatorId, {
@@ -345,7 +339,9 @@ export class TicketService {
    *
    * @private
    */
-  private getClosedTicketButtons(ticketId: number): any[] {
+  private getClosedTicketButtons(
+    ticketId: number,
+  ): ActionRowBuilder<ButtonBuilder>[] {
     return [
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
@@ -371,21 +367,28 @@ export class TicketService {
   // ==========================================================================
 
   /**
-   * Finds a ticket based on an identifier
+   * Finds a ticket by identifier
    *
    * @param identifier - Identifier of the ticket
-   * @returns Promise resolving to the ticket or null
+   * @returns Promise resolving to the ticket, or null if not found
    */
   async find(identifier: TicketIdentifier): Promise<Ticket | null> {
     return await Q.ticket.find(identifier);
   }
 
+  // ==========================================================================
+  // TICKET ACTIONS
+  // ==========================================================================
+
   /**
-   * Reopens a closed ticket and restores functionality
+   * Reopens a closed ticket and restores full channel functionality
+   *
+   * Deletes the closure message, unlocks the channel for the original creator,
+   * and posts a reopen notification with the active ticket action buttons.
    *
    * @param ticketId - Ticket ID to reopen
    * @param reopenedBy - Discord ID of user reopening the ticket
-   * @returns Promise resolving to the reopened ticket
+   * @returns Promise resolving to the updated ticket record
    */
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await this.repository.reopen(ticketId, reopenedBy);
@@ -404,18 +407,14 @@ export class TicketService {
 
     await this.unlockTicketChannel(ticket.channelId, ticket.creatorDiscordId);
 
-    const embed = new EmbedBuilder()
-      .setColor("#57F287")
-      .setTitle("🔓 Ticket Reopened")
-      .setDescription(
-        `This ticket has been reopened by <@${reopenedBy}>.\n\n` +
-          `<@${ticket.creatorDiscordId}> can now send messages again.`,
-      )
-      .setTimestamp();
+    const embed = EmbedPresets.ticket.reopen(
+      reopenedBy,
+      ticket.creatorDiscordId,
+    );
 
     await Discord.Messages.send({
       channelId: ticket.channelId,
-      embeds: embed,
+      embeds: embed.build(),
       components: this.getTicketActionButtons(ticket.id),
     });
 
@@ -466,11 +465,13 @@ export class TicketService {
   }
 
   /**
-   * Deletes a ticket and its assiciated Discord channel
-   * This action cannot be undone
+   * Deletes a ticket and its associated Discord channel
+   *
+   * This action cannot be undone.
    *
    * @param ticketId - Database ID of the ticket to delete
    * @param deletedBy - Discord user ID of user deleting the ticket
+   * @returns Promise resolving when the ticket and channel are deleted
    */
   async deleteTicket(ticketId: number, deletedBy: string): Promise<void> {
     await this.repository.delete(ticketId, deletedBy);
@@ -546,7 +547,7 @@ export class TicketService {
 
     try {
       await fs.access(transcriptPath);
-    } catch (error) {
+    } catch {
       throw new Error("Transcript file not found");
     }
 
@@ -555,35 +556,20 @@ export class TicketService {
       name: `ticket-${ticket.ticketNumber}.html`,
     });
 
-    const embed = new EmbedBuilder()
-      .setColor("#5865F2")
-      .setTitle(`📄 Ticket #${ticket.ticketNumber} Transcript`)
-      .setDescription(
-        `**Ticket Type:** ${ticket.type}\n` +
-          `**Creator:** <@${ticket.creatorDiscordId}>\n` +
-          `**Closed By:** <@${ticket.closedByDiscordId}>\n` +
-          `**Generated By:** <@${generatedBy}>\n` +
-          `**Channel:** <#${ticket.channelId}>`,
-      )
-      .addFields(
-        {
-          name: "Created At",
-          value: `<t:${Math.floor(ticket.createdAt.getTime() / 1000)}:F>`,
-          inline: true,
-        },
-        {
-          name: "Closed At",
-          value: ticket.closedAt
-            ? `<t:${Math.floor(ticket.closedAt.getTime() / 1000)}:F>`
-            : "N/A",
-          inline: true,
-        },
-      )
-      .setTimestamp();
+    const embed = EmbedPresets.ticket.transcript({
+      ticketNumber: ticket.ticketNumber,
+      type: ticket.type,
+      creatorDiscordId: ticket.creatorDiscordId,
+      closedByDiscordId: ticket.closedByDiscordId!,
+      generatedBy,
+      channelId: ticket.channelId,
+      createdAt: ticket.createdAt,
+      closedAt: ticket.closedAt,
+    });
 
     const message = await Discord.Messages.send({
       channelId: TicketSystemIds.TRANSCRIPT_CHANNEL,
-      embeds: embed,
+      embeds: embed.build(),
       files: [attachment],
     });
 

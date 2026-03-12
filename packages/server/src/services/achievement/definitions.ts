@@ -1,8 +1,6 @@
-import {
-  AchievementCategory,
-  type AchievementGroup,
-} from "./types";
+import { AchievementCategory, type AchievementGroup } from "./types";
 
+/** All achievement group definitions, organized by category */
 export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
   // =========================================================================
   // MINING
@@ -159,12 +157,97 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
       { tier: 3, threshold: 360_000, reward: 200 },
     ],
   },
+
+  // =========================================================================
+  // TRADING (Crypto Market)
+  // =========================================================================
+  {
+    id: "crypto_first_trade",
+    name: "First Trade",
+    description: "Complete your first buy or sell",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_trade_count" },
+    tiers: [{ tier: 1, threshold: 1, reward: 10 }],
+  },
+  {
+    id: "crypto_diversified",
+    name: "Diversified",
+    description: "Hold 5+ different tokens simultaneously",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_unique_holdings" },
+    tiers: [{ tier: 1, threshold: 5, reward: 50 }],
+  },
+  {
+    id: "crypto_diamond_hands",
+    name: "Diamond Hands",
+    description: "Hold a token for 30+ days",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "diamond_hands" },
+    tiers: [{ tier: 1, threshold: 1, reward: 100 }],
+  },
+  {
+    id: "crypto_paper_hands",
+    name: "Paper Hands",
+    description: "Sell within 5 minutes of buying",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "paper_hands" },
+    tiers: [{ tier: 1, threshold: 1, reward: 0 }],
+  },
+  {
+    id: "crypto_whale",
+    name: "Whale",
+    description: "Own >10% of any single token's supply",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "whale" },
+    tiers: [{ tier: 1, threshold: 1, reward: 0 }],
+  },
+  {
+    id: "crypto_crash_survivor",
+    name: "Crash Survivor",
+    description: "Hold a token through a crash event without selling",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "crash_survivor" },
+    tiers: [{ tier: 1, threshold: 1, reward: 100 }],
+  },
+  {
+    id: "crypto_10x_return",
+    name: "10x Return",
+    description: "Sell a token at 10x your purchase price",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "10x_return" },
+    tiers: [{ tier: 1, threshold: 1, reward: 200 }],
+  },
+  {
+    id: "crypto_market_veteran",
+    name: "Market Veteran",
+    description: "Complete 100 trades",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_trade_count" },
+    tiers: [{ tier: 1, threshold: 100, reward: 200 }],
+  },
+  {
+    id: "crypto_wolf",
+    name: "Wolf of Createrington",
+    description: "Reach $100,000 portfolio value",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_portfolio_value" },
+    tiers: [{ tier: 1, threshold: 100_000, reward: 500 }],
+  },
+  {
+    id: "crypto_bag_holder",
+    name: "Bag Holder",
+    description: "Hold a crashed token worth $0",
+    category: AchievementCategory.TRADING,
+    criteria: { source: "crypto_event", eventType: "bag_holder" },
+    tiers: [{ tier: 1, threshold: 1, reward: 0 }],
+  },
 ];
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
+// Pre-built at module load for O(1) lookups at runtime
 const groupByIdMap = new Map(ACHIEVEMENT_GROUPS.map((g) => [g.id, g]));
 
 const groupsByCategoryMap = new Map<string, AchievementGroup[]>();
@@ -174,13 +257,13 @@ for (const group of ACHIEVEMENT_GROUPS) {
   groupsByCategoryMap.set(group.category, existing);
 }
 
+/** Looks up an achievement group by its unique ID */
 export function getGroupById(id: string): AchievementGroup | undefined {
   return groupByIdMap.get(id);
 }
 
-export function getGroupsByCategory(
-  category: string,
-): AchievementGroup[] {
+/** Returns all achievement groups belonging to a category */
+export function getGroupsByCategory(category: string): AchievementGroup[] {
   return groupsByCategoryMap.get(category) ?? [];
 }
 
@@ -194,9 +277,7 @@ export function validateDefinitions(): void {
   for (const group of ACHIEVEMENT_GROUPS) {
     // No duplicate group IDs
     if (seenIds.has(group.id)) {
-      throw new Error(
-        `Duplicate achievement group ID: "${group.id}"`,
-      );
+      throw new Error(`Duplicate achievement group ID: "${group.id}"`);
     }
     seenIds.add(group.id);
 

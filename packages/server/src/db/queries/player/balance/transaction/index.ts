@@ -4,7 +4,8 @@ import { PlayerBalanceTransactionBaseQueries } from "@/generated/db/player_balan
 /**
  * Custom queries for player_balance_transaction table
  *
- * Extends the auto-generated base class with custom methods
+ * - Time-series volume analytics (credits vs debits per period)
+ * - Per-player lifetime earnings aggregation
  */
 export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -26,7 +27,14 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
     start: Date,
     end: Date,
     granularity: "day" | "week" | "month" = "day",
-  ): Promise<Array<{ period: string; transactionCount: number; totalCredits: number; totalDebits: number }>> {
+  ): Promise<
+    Array<{
+      period: string;
+      transactionCount: number;
+      totalCredits: number;
+      totalDebits: number;
+    }>
+  > {
     const query = `
       SELECT
         DATE_TRUNC($3, created_at)::text AS period,
@@ -59,8 +67,12 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
   }
 
   /**
-   * Get the total amount earned (sum of positive transactions) for a player.
+   * Get the total amount earned (sum of positive transactions) for a player
+   *
    * Returns 0 if no positive transactions exist.
+   *
+   * @param playerUuid - Minecraft UUID of the player
+   * @returns Total earned amount in storage format (bigint cast to number)
    */
   async getTotalEarned(playerUuid: string): Promise<number> {
     const query = `
@@ -69,10 +81,9 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
       WHERE player_minecraft_uuid = $1 AND amount > 0`;
 
     try {
-      const result = await this.db.query<{ total_earned: bigint }>(
-        query,
-        [playerUuid],
-      );
+      const result = await this.db.query<{ total_earned: bigint }>(query, [
+        playerUuid,
+      ]);
       return Number(result.rows[0].total_earned);
     } catch (error) {
       logger.error("Failed to get total earned:", error);

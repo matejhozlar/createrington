@@ -1,9 +1,21 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeHourlyBaseQueries } from "@/generated/db/player_playtime_hourly.queries";
 
+type PlayerHourlyPatternRow = {
+  hour_of_day: string;
+  total_seconds: string;
+};
+
 export type PlayerHourlyPattern = {
   hourOfDay: number;
   totalSeconds: number;
+};
+
+type ServerHeatMapRow = {
+  day: Date;
+  hour: string;
+  unique_players: string;
+  total_seconds: string;
 };
 
 export type ServerHeatMap = {
@@ -16,7 +28,9 @@ export type ServerHeatMap = {
 /**
  * Custom queries for player_playtime_hourly table
  *
- * Extends the auto-generated base class with custom methods
+ * - Session aggregation: splits sessions across hour boundaries via upsert
+ * - Player activity patterns: hourly playtime distribution (0-23)
+ * - Server heatmap: day x hour grid of activity metrics
  */
 export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -24,8 +38,15 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
   }
 
   /**
-   * Upserts hourly playtime records for a session, splitting across hour boundaries.
-   * Adds seconds to existing records via ON CONFLICT.
+   * Upserts hourly playtime records for a session, splitting across hour boundaries
+   *
+   * Iterates hour-by-hour from sessionStart to sessionEnd, computing per-hour seconds
+   * and upserting via ON CONFLICT to increment existing records.
+   *
+   * @param playerMinecraftUuid - Player's Minecraft UUID
+   * @param serverId - Server ID the session occurred on
+   * @param sessionStart - Session start timestamp
+   * @param sessionEnd - Session end timestamp
    */
   async aggregateSession(
     playerMinecraftUuid: string,
@@ -69,7 +90,7 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
    *
    * @param playerMinecraftUuid - The Minecraft UUID of the player
    * @param serverId - The ID of the server to analyze activity for
-   * @returns Array of hourly activity records with total seconds player per hour
+   * @returns Array of hourly activity records with total seconds played per hour
    */
   async getPlayerHourlyPattern(
     playerMinecraftUuid: string,
@@ -91,7 +112,10 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
         serverId,
       ]);
 
-      return this.mapRowsToEntities<any, PlayerHourlyPattern>(result.rows);
+      return this.mapRowsToEntities<
+        PlayerHourlyPatternRow,
+        PlayerHourlyPattern
+      >(result.rows);
     } catch (error) {
       logger.error("Failed to get player hourly pattern:", error);
       throw error;
@@ -132,7 +156,9 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
     try {
       const result = await this.db.query(query, [serverId, days]);
 
-      return this.mapRowsToEntities<any, ServerHeatMap>(result.rows);
+      return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(
+        result.rows,
+      );
     } catch (error) {
       logger.error("Failed to get server heatmap:", error);
       throw error;

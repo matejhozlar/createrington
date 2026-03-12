@@ -19,10 +19,7 @@ export const data = new SlashCommandBuilder()
   .setName("compare")
   .setDescription("Compare stats between two players")
   .addUserOption((opt) =>
-    opt
-      .setName("player1")
-      .setDescription("First player")
-      .setRequired(true),
+    opt.setName("player1").setDescription("First player").setRequired(true),
   )
   .addUserOption((opt) =>
     opt
@@ -57,7 +54,8 @@ export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const user1 = interaction.options.getUser("player1", true);
-  const user2 = interaction.options.getUser("player2", false) || interaction.user;
+  const user2 =
+    interaction.options.getUser("player2", false) || interaction.user;
 
   if (user1.id === user2.id) {
     const embed = EmbedPresets.error(
@@ -83,8 +81,11 @@ export async function execute(
     let screenshotBuffer: Buffer | null = null;
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-      const baseUrl = config.puppeteer.baseUrl
-        ?? (config.envMode.isDev ? "http://localhost:3000" : config.meta.links.website);
+      const baseUrl =
+        config.puppeteer.baseUrl ??
+        (config.envMode.isDev
+          ? "http://localhost:3000"
+          : config.meta.links.website);
 
       const renderUrl = new URL("/render/compare", baseUrl);
       renderUrl.searchParams.set("secret", config.puppeteer.secret);
@@ -103,7 +104,10 @@ export async function execute(
 
       screenshotBuffer = result.buffer;
     } catch (err) {
-      logger.warn("Puppeteer screenshot failed for /compare, falling back to text embed:", err);
+      logger.warn(
+        "Puppeteer screenshot failed for /compare, falling back to text embed:",
+        err,
+      );
     }
 
     if (screenshotBuffer) {
@@ -111,8 +115,9 @@ export async function execute(
         name: `compare_${name1}_vs_${name2}.png`,
       });
 
-      const embed = EmbedPresets.info(`${name1} vs ${name2}`)
-        .image(`attachment://compare_${name1}_vs_${name2}.png`);
+      const embed = EmbedPresets.info(`${name1} vs ${name2}`).image(
+        `attachment://compare_${name1}_vs_${name2}.png`,
+      );
 
       await interaction.editReply({
         embeds: [embed.build()],

@@ -11,8 +11,10 @@ const ALLOWED_IPS = {
 };
 
 /**
- * Extract real IP from the request
- * Handles proxies and load balancers
+ * Extract real IP from the request, honoring X-Forwarded-For and X-Real-IP proxy headers
+ *
+ * @param req - Express request
+ * @returns The resolved client IP address, or "unknown" if it cannot be determined
  */
 function getClientIp(req: Request): string {
   const forwardedFor = req.headers["x-forwarded-for"];
@@ -32,8 +34,10 @@ function getClientIp(req: Request): string {
 }
 
 /**
- * Normalize IP address for comparison
- * Handles IPv6-mapped IPv4 addresses
+ * Normalize an IP address for comparison, stripping IPv6-mapped IPv4 prefixes
+ *
+ * @param ip - Raw IP address string
+ * @returns Normalized IP address suitable for allowlist comparison
  */
 function normalizeIp(ip: string): string {
   if (ip.startsWith("::ffff:")) {
@@ -96,7 +100,11 @@ export const verifyServerIP = (
 };
 
 /**
- * Helper to check if an IP is allowed (for texting/debugging)
+ * Check whether an IP address is in the allowlist for the given environment
+ *
+ * @param ip - IP address to check
+ * @param environment - Target environment whose allowlist is used
+ * @returns True if the IP is allowed, false otherwise
  */
 export function isIpAllowed(
   ip: string,

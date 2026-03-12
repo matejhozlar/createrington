@@ -3,23 +3,23 @@ import { DiscordGuildMemberQueries } from "@/db/queries/discord/guild/member";
 
 /**
  * Namespace queries for discord_guild
- * 
+ *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
  * access to child tables that share the 'discord_guild_' prefix.
- * 
+ *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
  * - Shared across all DiscordGuildQueries instances using same connection
- * 
+ *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class DiscordGuildQueries {
   /**
    * Static singleton registry for child query instances
-   * 
+   *
    * Uses WeakMap keyed by database connection (Pool or PoolClient):
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
@@ -28,20 +28,20 @@ export class DiscordGuildQueries {
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
-    Map<string, any>
+    Map<string, unknown>
   >();
 
   /**
    * Get or create a child query instance from the singleton cache
-   * 
+   *
    * Implements the singleton pattern by checking the cache first and
    * creating new instances only when needed. All instances for a given
    * connection are stored in the same cache.
-   * 
+   *
    * @param key - Cache key for this child (e.g., "actions", "settings")
    * @param QueryClass - Constructor for the child query class
    * @returns Cached or newly created child query instance
-   * 
+   *
    * @remarks
    * - Cache key is prefixed with namespace (e.g., "discord_guild.actions")
    * - Ensures child shares the same database connection as parent
@@ -49,7 +49,7 @@ export class DiscordGuildQueries {
    */
   protected getOrCreateChild<T>(
     key: string,
-    QueryClass: new (db: Pool | PoolClient) => T
+    QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
     if (!DiscordGuildQueries.queryInstances.has(this.db)) {
@@ -77,16 +77,19 @@ export class DiscordGuildQueries {
 
   /**
    * Lazy-loaded singleton accessor for discord_guild_member
-   * 
+   *
    * Returns a DiscordGuildMemberQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton DiscordGuildMemberQueries instance
    */
   get member(): DiscordGuildMemberQueries {
     if (!this._member) {
-      this._member = this.getOrCreateChild<DiscordGuildMemberQueries>('member', DiscordGuildMemberQueries);
+      this._member = this.getOrCreateChild<DiscordGuildMemberQueries>(
+        "member",
+        DiscordGuildMemberQueries,
+      );
     }
     return this._member;
   }

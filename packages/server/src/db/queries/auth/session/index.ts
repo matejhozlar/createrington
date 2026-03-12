@@ -5,8 +5,11 @@ import type { AuthSessionRow } from "@createrington/shared/db/auth_session.types
 /**
  * Custom queries for auth_session table
  *
- * Extends the auto-generated base class with session management methods
- * used by the session service for token rotation, theft detection, and cleanup.
+ * - Token lookup by hash (includes revoked/expired for theft detection)
+ * - Revocation at multiple scopes: single session, token family, all user sessions
+ * - Expired session cleanup
+ * - Active session listing for user session management UI
+ * - Session insertion with family-based token rotation support
  */
 export class AuthSessionQueries extends AuthSessionBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -15,6 +18,9 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Find a session by token hash (includes revoked/expired for theft detection)
+   *
+   * @param tokenHash - SHA-256 hash of the refresh token
+   * @returns Session row or null if not found
    */
   async findByTokenHash(tokenHash: string): Promise<AuthSessionRow | null> {
     const result = await this.db.query<AuthSessionRow>(
@@ -26,6 +32,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Revoke a single session by ID
+   *
+   * @param id - Session row ID
    */
   async revokeById(id: number): Promise<void> {
     await this.db.query(
@@ -36,6 +44,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Revoke all sessions in a token family (theft detection response)
+   *
+   * @param familyId - UUID identifying the token rotation family
    */
   async revokeByFamily(familyId: string): Promise<void> {
     await this.db.query(
@@ -46,6 +56,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Revoke all sessions for a user (logout-all)
+   *
+   * @param discordId - Discord user ID
    */
   async revokeAllForUser(discordId: string): Promise<void> {
     await this.db.query(
@@ -56,6 +68,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Revoke a single session by token hash
+   *
+   * @param tokenHash - SHA-256 hash of the refresh token
    */
   async revokeByTokenHash(tokenHash: string): Promise<void> {
     await this.db.query(
@@ -66,6 +80,8 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Delete expired sessions (cleanup)
+   *
+   * @returns Number of deleted rows
    */
   async deleteExpired(): Promise<number> {
     const result = await this.db.query(
@@ -76,6 +92,9 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Get all active sessions for a user
+   *
+   * @param discordId - Discord user ID
+   * @returns Active (non-revoked, non-expired) sessions ordered by last use
    */
   async getActiveSessions(discordId: string): Promise<AuthSessionRow[]> {
     const result = await this.db.query<AuthSessionRow>(
@@ -89,6 +108,9 @@ export class AuthSessionQueries extends AuthSessionBaseQueries {
 
   /**
    * Insert a new session row
+   *
+   * @param data - Session data including token hash, user info, and expiry
+   * @returns The created session row (includes generated id and family_id)
    */
   async insertSession(data: {
     discordId: string;

@@ -2,6 +2,7 @@ import { router, publicProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import { z } from "zod";
 
+/** Public playtime metrics router — total hours and per-server breakdown. */
 export const playtimeRouter = router({
   getTotalHours: publicProcedure
     .meta({

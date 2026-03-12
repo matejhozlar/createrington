@@ -2,10 +2,15 @@ import { ActivityType, Client } from "discord.js";
 import { type StatusCategory, type StatusConfig, statusConfigs } from "./types";
 
 /**
- * Rotating status manager for the web bot
+ * Rotating Status Service
  *
- * Handles status rotation with support for dynamic data
- * Automatically rotates through configured statuses at a set interval
+ * Manages the web bot's Discord presence by cycling through a configured list of statuses:
+ * - Rotates statuses on a fixed interval (default: 60 seconds)
+ * - Supports dynamic status text resolved at rotation time (e.g. live player counts)
+ * - Falls back to static text if the dynamic resolver throws
+ * - Exposes controls to add, filter, and reset the active status pool
+ *
+ * NOTE: Waits for the Discord client to reach the ready state before starting rotation
  */
 export class RotatingStatusService {
   private statuses: StatusConfig[];
@@ -16,7 +21,7 @@ export class RotatingStatusService {
    * Creates a new rotating status service
    *
    * @param client - The Discord client instance (web bot)
-   * @param rotationInterval - Interval between status changes in milliseconds (default: 60000)
+   * @param rotatingInterval - Interval between status changes in milliseconds (default: 60000)
    */
   constructor(
     private readonly client: Client,
@@ -24,6 +29,10 @@ export class RotatingStatusService {
   ) {
     this.statuses = statusConfigs;
   }
+
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
 
   /**
    * Initialize the service and start status rotation
@@ -74,6 +83,10 @@ export class RotatingStatusService {
       logger.info("RotatingStatusService stopped");
     }
   }
+
+  // ==========================================================================
+  // PRIVATE
+  // ==========================================================================
 
   /**
    * Rotates to the next status
@@ -126,10 +139,16 @@ export class RotatingStatusService {
     logger.debug(`Set bot status to: "${status}"`);
   }
 
+  // ==========================================================================
+  // CONTROLS
+  // ==========================================================================
+
   /**
    * Manually triggers a status rotation
    *
-   * Useful for rtesting or forcing an immediate rotation
+   * Useful for testing or forcing an immediate update outside the scheduled interval.
+   *
+   * @returns Promise resolving when the rotation is complete
    */
   async forceRotation(): Promise<void> {
     await this.rotateStatus();

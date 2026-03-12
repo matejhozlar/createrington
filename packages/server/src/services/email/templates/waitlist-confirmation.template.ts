@@ -3,8 +3,9 @@ import { fileURLToPath } from "node:url";
 import type { EmailAttachment, WaitlistConfirmationData } from "../types";
 import { BaseEmailTemplate } from "./base.template";
 
+/** Email template for confirming a user has been added to the waitlist */
 export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConfirmationData> {
-  protected getSubject(data: WaitlistConfirmationData): string {
+  protected getSubject(_data: WaitlistConfirmationData): string {
     return "You're on the waitlist!";
   }
 
@@ -152,7 +153,7 @@ Questions? Contact us on Discord: matejhoz
     `.trim();
   }
 
-  protected getAttachments(data: WaitlistConfirmationData): EmailAttachment[] {
+  protected getAttachments(_data: WaitlistConfirmationData): EmailAttachment[] {
     const logoPath = path.join(
       path.dirname(fileURLToPath(import.meta.url)),
       "..",

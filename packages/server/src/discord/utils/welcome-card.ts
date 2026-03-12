@@ -1,5 +1,5 @@
 import { AttachmentBuilder, GuildMember } from "discord.js";
-import { createCanvas, loadImage } from "canvas";
+import { type CanvasRenderingContext2D, createCanvas, loadImage } from "canvas";
 
 /** Configuration for welcome card colors */
 interface WelcomeCardConfig {
@@ -27,7 +27,7 @@ const DEFAULT_CONFIG: WelcomeCardConfig = {
 export async function generateWelcomeCard(
   member: GuildMember,
   memberCount: number,
-  config: Partial<WelcomeCardConfig> = {}
+  config: Partial<WelcomeCardConfig> = {},
 ): Promise<AttachmentBuilder> {
   const finalConfig = { ...DEFAULT_CONFIG, ...config };
   const width = 1600;
@@ -87,7 +87,7 @@ export async function generateWelcomeCard(
       avatarX - avatarSize / 2,
       avatarY - avatarSize / 2,
       avatarSize,
-      avatarSize
+      avatarSize,
     );
     ctx.restore();
   } catch (error) {
@@ -134,13 +134,13 @@ function adjustBrightness(color: string, amount: number): string {
 
 /** Draws text with a stroke outline for better readability over background images */
 function drawTextWithStroke(
-  ctx: any,
+  ctx: CanvasRenderingContext2D,
   text: string,
   x: number,
   y: number,
   fillColor: string,
   strokeColor: string = "rgba(0, 0, 0, 0.8)",
-  strokeWidth: number = 4
+  strokeWidth: number = 4,
 ) {
   ctx.strokeStyle = strokeColor;
   ctx.lineWidth = strokeWidth;
@@ -164,7 +164,7 @@ export async function generateCustomWelcomeCard(
     backgroundImageURL?: string;
     message?: string;
     config?: Partial<WelcomeCardConfig>;
-  } = {}
+  } = {},
 ): Promise<AttachmentBuilder> {
   const finalConfig = { ...DEFAULT_CONFIG, ...options.config };
   const width = 1600;
@@ -188,7 +188,7 @@ export async function generateCustomWelcomeCard(
     gradient.addColorStop(0, finalConfig.backgroundColor);
     gradient.addColorStop(
       1,
-      adjustBrightness(finalConfig.backgroundColor, -20)
+      adjustBrightness(finalConfig.backgroundColor, -20),
     );
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
@@ -230,7 +230,7 @@ export async function generateCustomWelcomeCard(
       avatarX - avatarSize / 2,
       avatarY - avatarSize / 2,
       avatarSize,
-      avatarSize
+      avatarSize,
     );
     ctx.restore();
   } catch (error) {
@@ -254,7 +254,7 @@ export async function generateCustomWelcomeCard(
     startY,
     "#F37B0B",
     "rgba(0, 0, 0, 0.9)",
-    10
+    10,
   );
 
   ctx.font = "bold 104px Impact, Arial Black, sans-serif";
@@ -269,7 +269,7 @@ export async function generateCustomWelcomeCard(
     startY + spacing + usernameSize,
     "#FFFFFF",
     "rgba(0, 0, 0, 0.9)",
-    12
+    12,
   );
 
   ctx.font = "72px Impact, Arial Black, sans-serif";
@@ -281,7 +281,7 @@ export async function generateCustomWelcomeCard(
     startY + spacing + usernameSize + spacing + memberSize,
     "#CCCCCC",
     "rgba(0, 0, 0, 0.9)",
-    8
+    8,
   );
 
   const buffer = canvas.toBuffer("image/png");

@@ -15,6 +15,7 @@ const router = Router();
 // LOGIN (server IP only — creates the mod JWT)
 // ============================================================================
 
+// POST /api/currency/login — issue a short-lived mod JWT
 router.post(
   "/login",
   ...customRoute([verifyServerIP], CurrencyController.login),
@@ -24,26 +25,31 @@ router.post(
 // BALANCE & TRANSACTIONS (server IP + mod JWT)
 // ============================================================================
 
+// GET /api/currency/balance — current balance for the authenticated player
 router.get(
   "/balance",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.getBalance),
 );
 
+// POST /api/currency/pay — transfer currency between two players
 router.post(
   "/pay",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.pay),
 );
 
+// POST /api/currency/deposit — add currency to the authenticated player
 router.post(
   "/deposit",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.deposit),
 );
 
+// POST /api/currency/withdraw — remove currency from the authenticated player
 router.post(
   "/withdraw",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.withdraw),
 );
 
+// GET /api/currency/top — leaderboard of top 10 balances
 router.get(
   "/top",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.getTop),
@@ -53,13 +59,14 @@ router.get(
 // DAILY REWARD
 // ============================================================================
 
+// POST /api/currency/daily — claim the daily reward
 router.post(
   "/daily",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.claimDaily),
 );
 
 // ============================================================================
-// PLACEHOLDERS
+// LOTTERY & VOTE (placeholder stubs)
 // ============================================================================
 
 router.post(

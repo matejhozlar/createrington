@@ -58,7 +58,7 @@ export const optionalAuth = async (
     }
 
     next();
-  } catch (error) {
+  } catch {
     next();
   }
 };
@@ -90,7 +90,7 @@ export const requireAdmin = (
 
 /**
  * Requires user to have at least USER role
- * Must be used aftter authenticate middleware
+ * Must be used after authenticate middleware
  *
  * @throws ForbiddenError if user is unverified
  */
@@ -143,7 +143,7 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
  * @param getUserId - Function to extract the user ID from the request
  */
 export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return (req: Request, _res: Response, _next: NextFunction): void => {
     if (!req.user) {
       throw new UnauthorizedError("Authentication required");
     }

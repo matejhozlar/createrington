@@ -18,9 +18,10 @@ export interface StrikeStatistics {
 /**
  * Custom queries for player_strike table
  *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
+ * - Active vs removed strike tracking
+ * - Statistics by classification, severity, and time period
+ * - Bulk active strike counts for list views
+ * - Moderator-scoped queries
  */
 export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -42,7 +43,13 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
     start: Date,
     end: Date,
     granularity: "day" | "week" | "month" = "day",
-  ): Promise<Array<{ period: string; total: number; byClassification: Record<string, number> }>> {
+  ): Promise<
+    Array<{
+      period: string;
+      total: number;
+      byClassification: Record<string, number>;
+    }>
+  > {
     try {
       const rawQuery = `
         SELECT
@@ -60,7 +67,10 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
         count: number;
       }>(rawQuery, [start, end, granularity]);
 
-      const periodMap = new Map<string, { total: number; byClassification: Record<string, number> }>();
+      const periodMap = new Map<
+        string,
+        { total: number; byClassification: Record<string, number> }
+      >();
 
       for (const row of result.rows) {
         if (!periodMap.has(row.period)) {
@@ -86,7 +96,9 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
    *
    * @returns Array of severity levels (1-5) with their active strike counts
    */
-  async getSeverityDistribution(): Promise<Array<{ severity: number; count: number }>> {
+  async getSeverityDistribution(): Promise<
+    Array<{ severity: number; count: number }>
+  > {
     const query = `
       SELECT severity, COUNT(*)::integer AS count
       FROM ${this.table}
@@ -95,7 +107,9 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       ORDER BY severity`;
 
     try {
-      const result = await this.db.query<{ severity: number; count: number }>(query);
+      const result = await this.db.query<{ severity: number; count: number }>(
+        query,
+      );
       return result.rows;
     } catch (error) {
       logger.error("Failed to get severity distribution:", error);

@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
+/** Admin player audit router — paginated audit log for a specific player. */
 export const auditRouter = router({
   list: adminProcedure
     .meta({ description: "Get the admin action audit log for a player." })

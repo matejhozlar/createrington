@@ -31,7 +31,7 @@ export const verifyModJWT = (
       throw new UnauthorizedError("Mod authentication required");
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+    const decoded = jwt.verify(token, JWT_SECRET) as ModJwtPayload;
 
     const now = Math.floor(Date.now() / 1000);
     if (decoded.exp && decoded.exp < now) {

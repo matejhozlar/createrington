@@ -4,16 +4,15 @@ import { DailyReward } from "./rewards/daily.reward";
 import { RewardType } from "./types";
 
 /**
- * Main reward service
+ * Reward Service
  *
- * Provides a unified interface for accessing different reward types through
- * a clean, type-safe API. Each reward type is lazily intialized and cached
- * for optimal performance
+ * Unified entry point for all player reward types:
+ * - Initializes only enabled reward types from configuration
+ * - Caches each reward instance and exposes it via a typed accessor
+ * - Provides a list of all currently active reward types
  *
- * Architecture:
- * - Singleton pattern ensures singleton instance accross the app
- * - Each reward type extends BaseReward with custom claim logic
- * - Only enabled rewards are initialized
+ * NOTE: Each reward type extends BaseReward; add new types to
+ * `initializeRewards()` and expose a corresponding getter
  */
 export class RewardService {
   private rewards: Map<RewardType, BaseReward> = new Map();
@@ -23,9 +22,7 @@ export class RewardService {
   }
 
   /**
-   * Initializes all enabled reward types from configuration
-   *
-   * Only enabled rewards are initialized to avoid unnecessary overhead
+   * Initializes all enabled reward types from configuration.
    *
    * @private
    */
@@ -41,13 +38,12 @@ export class RewardService {
   }
 
   /**
-   * Retrieves a specific reward instance by type
-   *
-   * @param type - The reward type to retrieve
-   * @returns The reward instance
-   * @throws Error if reward type is not found or not enabled
+   * Returns the cached reward instance for the given type.
    *
    * @private
+   * @param type - The reward type to retrieve
+   * @returns The corresponding BaseReward instance
+   * @throws Error if the reward type is not found or not enabled
    */
   private getReward(type: RewardType): BaseReward {
     const reward = this.rewards.get(type);
@@ -58,14 +54,9 @@ export class RewardService {
   }
 
   /**
-   * Accessor for daily reward operations
+   * Daily reward accessor — provides `checkEligibility`, `claim`, and `getNextClaimTime`.
    *
-   * Provides methods:
-   * - checkEligibility(player): Check if a player can claim
-   * - claim(player): Claim reward
-   * - getNextClaimTime(lastClaim): Calculate next claim
-   *
-   * @returns DailyReward instance
+   * @returns The DailyReward instance
    * @throws Error if daily rewards are not enabled
    */
   get daily(): BaseReward {
@@ -73,16 +64,14 @@ export class RewardService {
   }
 
   /**
-   * Get all currently available (enabled) reward types
+   * Returns the list of currently enabled reward type identifiers.
    *
-   * @returns Array of enabled reward type identifiers
+   * @returns Array of enabled RewardType values
    */
   getAvailableRewards(): RewardType[] {
     return Array.from(this.rewards.keys());
   }
 }
 
-/**
- * Singleton instance fo the reward service
- */
+/** Singleton instance of the reward service */
 export const rewardService = new RewardService();

@@ -35,24 +35,6 @@ const OUTPUT_SQL_FILE =
   path.resolve(process.cwd(), "migration-inserts.sql");
 
 /**
- * Executes SQL against SOURCE DB and returns stdout.
- * Uses psql in "tuples only" mode (-t) and unaligned (-A).
- */
-async function querySource(sql: string): Promise<string> {
-  // Note: we avoid embedding untrusted strings; SQL here is hardcoded in this script.
-  const cmd =
-    `psql -h ${SOURCE.host} -p ${SOURCE.port} -U ${SOURCE.user} -d ${SOURCE.database} ` +
-    `-v ON_ERROR_STOP=1 -t -A -c "${sql.replace(/"/g, '\\"')}"`;
-
-  const { stdout } = await execAsync(cmd, {
-    env: { ...process.env, PGPASSWORD: SOURCE.password },
-    maxBuffer: 1024 * 1024 * 256, // 256MB buffer for safety
-  });
-
-  return stdout;
-}
-
-/**
  * Uses COPY ... TO STDOUT WITH CSV so we can parse safely (handles tabs/newlines in text).
  */
 import os from "node:os";
@@ -513,22 +495,17 @@ async function main(): Promise<void> {
 
   await fs.writeFile(OUTPUT_SQL_FILE, lines.join("\n"), "utf-8");
 
-  // eslint-disable-next-line no-console
   console.log(`✓ Wrote ${OUTPUT_SQL_FILE}`);
-  // eslint-disable-next-line no-console
   console.log(
     `  player: ${emittedPlayers} inserts, ${skippedNoDiscord} skipped (missing discord_id)`,
   );
-  // eslint-disable-next-line no-console
   console.log(
     `  player_balance: ${emittedBalances} inserts, ${skippedNegative} skipped (negative balance)`,
   );
 }
 
 main().catch((err) => {
-  // eslint-disable-next-line no-console
   console.error("Migration export failed:");
-  // eslint-disable-next-line no-console
   console.error(err);
   process.exit(1);
 });

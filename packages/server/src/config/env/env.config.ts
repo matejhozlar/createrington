@@ -41,7 +41,7 @@ const discordToken = (label = "Token") =>
   z
     .string()
     .min(1, `${label} is required`)
-    .regex(/^[\w\-\.]+$/, `${label} format is invalid`);
+    .regex(/^[\w\-.]+$/, `${label} format is invalid`);
 
 const envSchema = z.object({
   // Server
@@ -134,14 +134,12 @@ const envSchema = z.object({
   PUPPETEER_SECRET: z
     .string()
     .min(32, "Puppeteer secret must be at least 32 characters"),
-  PUPPETEER_EXECUTABLE_PATH: z
-    .string()
-    .min(1)
-    .optional(),
-  PUPPETEER_BASE_URL: z
-    .string()
-    .url()
-    .optional(),
+  PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
+  PUPPETEER_BASE_URL: z.string().url().optional(),
+
+  // AI (OpenAI)
+  OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
+  OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
   // Email
   EMAIL_HOST: z
@@ -195,7 +193,7 @@ function validateEnv(): Env {
 
   if (process.env.VALIDATION_MODE === "generation") {
     console.log("Generation mode: Skipping full validation (DB vars only)");
-    return process.env as any as Env;
+    return process.env as unknown as Env;
   }
 
   try {

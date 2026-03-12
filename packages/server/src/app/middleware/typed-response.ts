@@ -46,7 +46,7 @@ export class TypedResponse {
    *   data: player, // TypeScript ensures this matches GetPlayerResponse
    * });
    */
-  static ok<T extends ApiResponse<any>>(res: Response, response: T): void {
+  static ok<T extends ApiResponse<unknown>>(res: Response, response: T): void {
     const serialized = this.serialize(response);
     res.status(200).json(serialized);
   }
@@ -54,7 +54,10 @@ export class TypedResponse {
   /**
    * Send 201 Created response with typed data
    */
-  static created<T extends ApiResponse<any>>(res: Response, response: T): void {
+  static created<T extends ApiResponse<unknown>>(
+    res: Response,
+    response: T,
+  ): void {
     const serialized = this.serialize(response);
     res.status(201).json(serialized);
   }
@@ -86,7 +89,7 @@ export class TypedResponse {
 
     // Handle objects
     if (typeof obj === "object") {
-      const serialized: any = {};
+      const serialized: Record<string, unknown> = {};
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
           serialized[key] = this.serialize(obj[key]);
@@ -111,6 +114,6 @@ export class TypedResponse {
  *
  * return TypedResponse.ok(res, response);
  */
-export function buildResponse<T extends ApiResponse<any>>(response: T): T {
+export function buildResponse<T extends ApiResponse<unknown>>(response: T): T {
   return response;
 }

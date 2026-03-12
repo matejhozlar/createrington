@@ -285,9 +285,9 @@ describe("BaseQueries (server table)", () => {
     });
 
     it("should throw NotFoundError for missing record", async () => {
-      await expect(
-        Q.server.pluck({ id: 99999 }, "name"),
-      ).rejects.toThrow(NotFoundError);
+      await expect(Q.server.pluck({ id: 99999 }, "name")).rejects.toThrow(
+        NotFoundError,
+      );
     });
   });
 
@@ -343,7 +343,10 @@ describe("BaseQueries (server table)", () => {
     });
 
     it("should updateAll matching a filter", async () => {
-      const updated = await Q.server.updateAll({ name: "Updated" }, { name: "Alpha" });
+      const updated = await Q.server.updateAll(
+        { name: "Updated" },
+        { name: "Alpha" },
+      );
       expect(updated).toBe(1);
 
       const result = await Q.server.find({ identifier: "alpha" });

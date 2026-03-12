@@ -9,9 +9,32 @@ import type {
 import { RequestTimeoutError, RequestPriority } from "./types";
 import { RateLimitError } from "discord.js";
 
+interface DiscordHttpError {
+  message?: string;
+  status?: number;
+  code?: number;
+  httpStatus?: number;
+  global?: boolean;
+  retry_after?: number;
+  retryAfter?: number;
+  headers?: Record<string, string>;
+}
+
+/** Normalizes an unknown error into a DiscordHttpError shape for uniform handling */
+function toDiscordError(error: unknown): DiscordHttpError {
+  if (error instanceof RateLimitError) return error;
+  if (typeof error === "object" && error !== null)
+    return error as DiscordHttpError;
+  return { message: String(error) };
+}
+
 /**
- * Advanced Discord rate limiter with bucket management, priority queuing,
- * automatic retries, and comprehensive observability
+ * Discord API rate limiter
+ *
+ * - Bucket-aware rate limiting synced from response headers
+ * - Priority queue with automatic retry on 429 responses
+ * - Global and per-route rate limit tracking
+ * - Background cleanup of stale buckets and high-queue alerts
  */
 export class DiscordRateLimiter extends EventEmitter {
   private bucketManager = new BucketManager();
@@ -64,7 +87,7 @@ export class DiscordRateLimiter extends EventEmitter {
     } = options;
 
     return new Promise<T>((resolve, reject) => {
-      const requestId = this.queueManager.enqueue({
+      this.queueManager.enqueue({
         route,
         priority,
         operation,
@@ -81,7 +104,8 @@ export class DiscordRateLimiter extends EventEmitter {
   }
 
   /**
-   * Process the queue for a specific route
+   * Drains the queue for a route one request at a time, respecting bucket limits
+   * @private
    */
   private async processQueue(route: string): Promise<void> {
     if (this.processing.has(route)) {
@@ -124,7 +148,8 @@ export class DiscordRateLimiter extends EventEmitter {
   }
 
   /**
-   * Execute a single request with timeout and retry logic
+   * Executes a single request with timeout enforcement and records metrics
+   * @private
    */
   private async executeRequest<T>(request: QueuedRequest<T>): Promise<void> {
     const startTime = Date.now();
@@ -174,13 +199,15 @@ export class DiscordRateLimiter extends EventEmitter {
   }
 
   /**
-   * Handle request errors with retry logic
+   * Handles errors by re-queuing on 429s (up to maxRetries) or rejecting permanently
+   * @private
    */
   private async handleRequestError<T>(
     request: QueuedRequest<T>,
-    error: any,
+    rawError: unknown,
     startTime: number,
   ): Promise<void> {
+    const error = toDiscordError(rawError);
     const executionTime = Date.now() - startTime;
 
     if (this.isRateLimitError(error)) {
@@ -238,13 +265,15 @@ export class DiscordRateLimiter extends EventEmitter {
       executionTime,
     });
 
-    request.reject(error);
+    request.reject(
+      rawError instanceof Error
+        ? rawError
+        : new Error(error.message ?? "Request failed"),
+    );
   }
 
-  /**
-   * Check if error is a rate limit error
-   */
-  private isRateLimitError(error: any): boolean {
+  /** @private Detects 429 status in various Discord error shapes */
+  private isRateLimitError(error: DiscordHttpError): boolean {
     return (
       error?.status === 429 ||
       error?.code === 429 ||
@@ -253,10 +282,8 @@ export class DiscordRateLimiter extends EventEmitter {
     );
   }
 
-  /**
-   * Extract retry-after time from error
-   */
-  private extractRetryAfter(error: any): number {
+  /** @private Extracts the retry-after value (in seconds) from various error formats */
+  private extractRetryAfter(error: DiscordHttpError): number {
     if (error instanceof RateLimitError) {
       return error.retryAfter;
     }
@@ -264,15 +291,13 @@ export class DiscordRateLimiter extends EventEmitter {
     return (
       error?.retry_after ||
       error?.retryAfter ||
-      parseFloat(error?.headers?.["retry-after"]) ||
+      parseFloat(error?.headers?.["retry-after"] ?? "") ||
       1
     );
   }
 
-  /**
-   * Check if rate limit is global
-   */
-  private isGlobalRateLimit(error: any): boolean {
+  /** @private Determines whether a rate limit error applies globally */
+  private isGlobalRateLimit(error: DiscordHttpError): boolean {
     if (error instanceof RateLimitError) {
       return error.global;
     }
@@ -283,9 +308,7 @@ export class DiscordRateLimiter extends EventEmitter {
     );
   }
 
-  /**
-   * Update bucket information from response headers
-   */
+  /** Forwards response headers to the bucket manager to update rate limit state */
   updateBucketFromHeaders(
     route: string,
     headers: Record<string, string>,
@@ -293,9 +316,7 @@ export class DiscordRateLimiter extends EventEmitter {
     this.bucketManager.updateFromHeaders(route, headers);
   }
 
-  /**
-   * Get comprehensive statistics
-   */
+  /** Returns combined statistics from the queue manager, bucket manager, and internal counters */
   getStats(): RateLimiterStats {
     const queueStats = this.queueManager.getStats();
 
@@ -320,15 +341,14 @@ export class DiscordRateLimiter extends EventEmitter {
   }
 
   /**
-   * Start background maintenance tasks
+   * Starts periodic bucket cleanup (every 5 min) and high-queue-size warnings (every 1 min)
+   * @private
    */
   private startBackgroundTasks(): void {
-    // Periodic cleanup
     setInterval(() => {
       this.bucketManager.cleanup();
     }, this.CLEANUP_INTERVAL);
 
-    // Periodic stats logging
     setInterval(() => {
       const stats = this.getStats();
       if (stats.totalQueued > 50) {
@@ -337,9 +357,7 @@ export class DiscordRateLimiter extends EventEmitter {
     }, 60000); // Every minute
   }
 
-  /**
-   * Graceful shutdown
-   */
+  /** Clears all queued requests, removes event listeners, and logs final stats */
   async shutdown(): Promise<void> {
     logger.info("Shutting down rate limiter...");
 

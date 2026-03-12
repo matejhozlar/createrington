@@ -113,7 +113,7 @@ export class DailyRoleScheduler {
       if (playtimeRules.length > 0) {
         const playtimeResults =
           await this.roleService.processAllPlayers(playtimeRules);
-        for (const [discordId, result] of playtimeResults) {
+        for (const [_discordId, result] of playtimeResults) {
           if (result.success && result.assigned) totalAssignments++;
           if (result.removedRoles) totalRemovals += result.removedRoles.length;
         }
@@ -122,7 +122,7 @@ export class DailyRoleScheduler {
       if (serverAgeRules.length > 0) {
         const serverAgeResult =
           await this.roleService.processAllPlayers(serverAgeRules);
-        for (const [discordId, result] of serverAgeResult) {
+        for (const [_discordId, result] of serverAgeResult) {
           if (result.success && result.assigned) totalAssignments++;
           if (result.removedRoles) totalRemovals += result.removedRoles.length;
         }
@@ -137,7 +137,7 @@ export class DailyRoleScheduler {
   }
 
   /**
-   * Manually trigger a daily check (for testin or admin commands)
+   * Manually trigger a daily check (for testing or admin commands)
    */
   async triggerManualCheck(): Promise<void> {
     await this.runDailyCheck();

@@ -68,11 +68,6 @@ export const permissions = {
 };
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
-
-/**
  * Executes the leaderboard command to manually manage leaderboards
  *
  * Process:
@@ -101,9 +96,7 @@ export async function execute(
 ): Promise<void> {
   const subcommand = interaction.options.getSubcommand();
 
-  const leaderboardService = await getService(
-    Services.LEADERBOARD_SERVICE,
-  );
+  const leaderboardService = await getService(Services.LEADERBOARD_SERVICE);
 
   try {
     if (subcommand === "create") {

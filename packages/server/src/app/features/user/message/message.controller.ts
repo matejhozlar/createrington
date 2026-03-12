@@ -8,6 +8,7 @@ import {
   type SendMessageResponse,
 } from "@createrington/shared/api";
 
+/** 10 MB hard cap for uploaded images (must match multer config in routes) */
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024;
 
 /** MIME types we accept for image uploads */
@@ -31,30 +32,29 @@ function resolveChannelForServer(serverId: number): string | null {
 }
 
 /**
- * Message controller
+ * Message Controller
  *
- * Handles sending messages from the web client to a monitored Discord channel.
+ * Handles sending messages from the web client to a monitored Discord channel:
+ * - Validates image attachments (MIME type and size)
+ * - Resolves the target Discord channel for the requested Minecraft server
+ * - Prefixes text content with the sender's Minecraft username
+ * - Delegates delivery to WEB_MESSAGE_SERVICE
  *
- * The message is sent by the web bot, which means the bot's own messageCreate
- * listener will pick it up and add it to the MessageCacheService automatically.
- * There is no need to manually insert into the cache — the WebSocket broadcast
- * happens as a side-effect of the existing event pipeline.
+ * NOTE: The web bot's own messageCreate listener picks up the sent message and
+ * inserts it into MessageCacheService — there is no need to update the cache
+ * manually here. The WebSocket broadcast is a side-effect of that pipeline.
  */
 export class MessageController {
   /**
-   * POST /api/messages
+   * Sends a message to the Discord channel linked to a Minecraft server.
    *
-   * Send a message to a Minecraft server's linked Discord channel.
+   * Validates the uploaded image if present, resolves the channel for the
+   * given `serverId`, prepends the sender's display name to the text content,
+   * and forwards the payload to WEB_MESSAGE_SERVICE.
    *
-   * Body (multipart/form-data):
-   * - serverId: number          (required) — target Minecraft server ID
-   * - content:  string          (optional) — text content
-   * - image:    file            (optional) — image attachment (≤ 10 MB, image/* only)
-   *
-   * At least one of `content` or `image` must be provided.
-   *
-   * The message is sent as a webhook-style post under the authenticated user's
-   * display name and avatar when possible, falling back to the bot identity.
+   * @param req - Express request with multipart body (serverId, content, image)
+   * @param res - Express response; returns 201 with messageId, serverId, channelId
+   * @returns Promise that resolves when the message has been delivered
    */
   static async sendMessage(req: Request, res: Response): Promise<void> {
     const { serverId, content } = SendMessageBodySchema.parse(req.body);
@@ -103,9 +103,7 @@ export class MessageController {
       }
     }
 
-    const messageService = await getService(
-      Services.WEB_MESSAGE_SERVICE,
-    );
+    const messageService = await getService(Services.WEB_MESSAGE_SERVICE);
 
     const result = await messageService.send({
       channelId,

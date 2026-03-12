@@ -3,12 +3,12 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  EmbedBuilder,
   MessageFlags,
 } from "discord.js";
 import {
   parseTicketButtonId,
   TicketStatus,
+  type TicketType,
 } from "@/services/discord/tickets";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { Discord } from "@/discord/constants";
@@ -112,9 +112,7 @@ async function handleTranscript(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
   try {
@@ -190,11 +188,9 @@ async function handleTranscript(
  */
 async function handleCreate(
   interaction: ButtonInteraction,
-  type: any,
+  type: TicketType,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
   const hasOpen = await ticketService.hasOpenTicket(interaction.user.id);
@@ -217,7 +213,7 @@ async function handleCreate(
     return;
   }
 
-  const { ticket, channel } = await ticketService.createTicket({
+  const { channel } = await ticketService.createTicket({
     type,
     creatorId: interaction.user.id,
   });
@@ -284,9 +280,7 @@ async function handleConfirmClose(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
   await ticketService.closeTicket(ticketId, interaction.user.id, false);
@@ -308,7 +302,7 @@ async function handleConfirmClose(
  */
 async function handleCancelClose(
   interaction: ButtonInteraction,
-  ticketId: number,
+  _ticketId: number,
 ): Promise<void> {
   try {
     await interaction.message.delete().catch(console.error);
@@ -330,9 +324,7 @@ async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  const ticketService = await getService(
-    Services.TICKET_SERVICE,
-  );
+  const ticketService = await getService(Services.TICKET_SERVICE);
   await ticketService.reopenTicket(ticketId, interaction.user.id);
 }
 
@@ -352,9 +344,7 @@ async function handleDelete(
   ticketId: number,
 ): Promise<void> {
   try {
-    const ticketService = await getService(
-      Services.TICKET_SERVICE,
-    );
+    const ticketService = await getService(Services.TICKET_SERVICE);
     const channel = interaction.channel;
 
     if (!channel || !isSendableChannel(channel)) {
@@ -382,15 +372,13 @@ async function handleDelete(
 
     if (interaction.channel && isSendableChannel(interaction.channel)) {
       try {
-        const errorEmbed = new EmbedBuilder()
-          .setTitle("❌ Deletion Failed")
-          .setDescription(
-            error instanceof Error ? error.message : "Failed to delete ticket",
-          )
-          .setColor(0xed4245);
+        const errorEmbed = EmbedPresets.error(
+          "Deletion Failed",
+          error instanceof Error ? error.message : "Failed to delete ticket",
+        );
 
         await interaction.channel.send({
-          embeds: [errorEmbed],
+          embeds: [errorEmbed.build()],
         });
       } catch (sendError) {
         logger.error("Failed to send error message to channel:", sendError);

@@ -2,7 +2,11 @@ import { Q } from "@/db";
 import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
-import { type ButtonInteraction, type GuildMember, MessageFlags } from "discord.js";
+import {
+  type ButtonInteraction,
+  type GuildMember,
+  MessageFlags,
+} from "discord.js";
 
 /**
  * Handles departed member management buttons
@@ -19,13 +23,20 @@ export const permissionDeniedMessage = "You must be an admin to do that.";
 
 /**
  * Permission check - requires admin role or database admin
+ *
+ * @param interaction - The button interaction to check permissions for
+ * @returns True if the user has admin privileges
  */
 export async function checkPermission(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
   const member = interaction.member as GuildMember | null;
 
-  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+  if (
+    !member ||
+    typeof member.roles === "string" ||
+    Array.isArray(member.roles)
+  ) {
     return false;
   }
 
@@ -33,7 +44,11 @@ export async function checkPermission(
 }
 
 /**
- * Parses the button customId
+ * Parses the departed member button customId (format: departed:action:id)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed action and record id, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): {
   action: string;
@@ -44,6 +59,11 @@ function parseCustomId(customId: string): {
   return { action, id };
 }
 
+/**
+ * Routes departed member button interactions to the appropriate handler
+ *
+ * @param interaction - The button interaction from Discord
+ */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 
@@ -68,6 +88,16 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   }
 }
 
+/**
+ * Handles immediate deletion of a departed member's data
+ *
+ * Removes the player from the database, revokes their whitelist entry,
+ * and updates the notification embed to reflect the deletion.
+ *
+ * @param interaction - The button interaction from Discord
+ * @param departedId - Database ID of the departed member record
+ * @private
+ */
 async function handleDeleteNow(
   interaction: ButtonInteraction,
   departedId: number,

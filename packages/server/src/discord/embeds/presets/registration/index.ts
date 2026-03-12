@@ -3,12 +3,6 @@ import { EmbedColors } from "../../colors";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { ProgressEmbedPresets } from "../progress";
 
-interface RegistrationStep {
-  name: string;
-  completed: boolean;
-  error?: string;
-}
-
 export const RegistrationEmbedPresets = {
   /**
    * Creates a user-facing registration progress embed
@@ -16,7 +10,7 @@ export const RegistrationEmbedPresets = {
   userProgress(
     username: string,
     steps: Array<{ name: string; completed: boolean; error?: string }>,
-    currentStepIndex: number
+    currentStepIndex: number,
   ): DiscordEmbedBuilder {
     return ProgressEmbedPresets.create({
       title: "🔄 Registering your Minecraft account...",
@@ -35,7 +29,7 @@ export const RegistrationEmbedPresets = {
     const embed = createEmbed()
       .title("✅ Registration Complete!")
       .description(
-        `You've been successfully registered and whitelisted as **${username}**.\n\nWelcome aboard! 🚂`
+        `You've been successfully registered and whitelisted as **${username}**.\n\nWelcome aboard! 🚂`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("UUID", `\`${uuid}\``, true)
@@ -57,26 +51,27 @@ export const RegistrationEmbedPresets = {
   userError(
     username: string,
     error: string,
-    step: string
+    step: string,
   ): DiscordEmbedBuilder {
     return ProgressEmbedPresets.error(
       "Registration Failed",
       `An error occurred while registering **${username}**.\n\n**Error:** ${error}\n\nAn admin has been notified and will assist you shortly.`,
-      step
+      step,
     ).footer("Please wait for admin assistance");
   },
 
+  /** Creates an admin-facing notification embed when a registration fails */
   adminError(
     username: string,
     discordTag: string,
     discordId: string,
     error: string,
-    step: string
+    step: string,
   ) {
     const embed = createEmbed()
       .title("⚠️ Registration Error")
       .description(
-        `Registration failed for **${discordTag}** (\`${discordId}\`)`
+        `Registration failed for **${discordTag}** (\`${discordId}\`)`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("Failed Step", step, true)

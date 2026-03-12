@@ -11,6 +11,10 @@ import {
 
 /**
  * Disables all non-link buttons in the message components
+ *
+ * @param interaction - The button interaction containing the message to modify
+ * @returns New action rows with non-link buttons disabled
+ * @private
  */
 function disableNonLinkButtons(
   interaction: ButtonInteraction,
@@ -33,8 +37,11 @@ function disableNonLinkButtons(
 }
 
 /**
- * Parses the waitlist button customId
- * Format: waitlist:action:id
+ * Parses the waitlist button customId (format: waitlist:action:id)
+ *
+ * @param customId - The button's customId string
+ * @returns Parsed action and id, or null if invalid
+ * @private
  */
 function parseCustomId(customId: string): {
   action: "accept" | "decline";
@@ -59,18 +66,36 @@ export const prodOnly = false;
 
 export const permissionDeniedMessage = "You must be an admin to do that.";
 
+/**
+ * Permission check - requires admin role or database admin
+ *
+ * @param interaction - The button interaction to check permissions for
+ * @returns True if the user has admin privileges
+ */
 export async function checkPermission(
   interaction: ButtonInteraction,
 ): Promise<boolean> {
   const member = interaction.member as GuildMember | null;
 
-  if (!member || typeof member.roles === "string" || Array.isArray(member.roles)) {
+  if (
+    !member ||
+    typeof member.roles === "string" ||
+    Array.isArray(member.roles)
+  ) {
     return false;
   }
 
   return isAdmin(member);
 }
 
+/**
+ * Routes waitlist button interactions to accept or decline handlers
+ *
+ * On accept: sends an invite email (if email exists) and enables progress tracking.
+ * On decline: marks the entry as declined and disables buttons.
+ *
+ * @param interaction - The button interaction from Discord
+ */
 export async function execute(interaction: ButtonInteraction): Promise<void> {
   const parsed = parseCustomId(interaction.customId);
 

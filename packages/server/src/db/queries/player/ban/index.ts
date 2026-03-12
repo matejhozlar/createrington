@@ -15,7 +15,10 @@ export interface BanStatistics {
 /**
  * Custom queries for player_ban table
  *
- * Extends the auto-generated base class with custom methods
+ * - Active ban detection (considers both expiry and unbanned flag)
+ * - Ban history, statistics, and moderator activity reports
+ * - Bulk active ban counts for list views
+ * - Expired ban discovery for cleanup jobs
  */
 export class PlayerBanQueries extends PlayerBanBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -37,7 +40,14 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
     start: Date,
     end: Date,
     granularity: "day" | "week" | "month" = "day",
-  ): Promise<Array<{ period: string; total: number; temporary: number; permanent: number }>> {
+  ): Promise<
+    Array<{
+      period: string;
+      total: number;
+      temporary: number;
+      permanent: number;
+    }>
+  > {
     const query = `
       SELECT
         DATE_TRUNC($3, banned_at)::text AS period,

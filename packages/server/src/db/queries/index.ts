@@ -1,9 +1,9 @@
 /**
  * Barrel export for all actual query classes
- * 
+ *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- * 
+ *
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
  */
@@ -11,6 +11,17 @@
 export { AdminQueries } from "./admin";
 export { AdminLogActionQueries } from "./admin/log/action";
 export { AuthSessionQueries } from "./auth/session";
+export { CryptoCostBasisQueries } from "./crypto/cost/basis";
+export { CryptoHoldingQueries } from "./crypto/holding";
+export { CryptoMarketEventQueries } from "./crypto/market/event";
+export { CryptoOrderQueries } from "./crypto/order";
+export { CryptoPortfolioSnapshotQueries } from "./crypto/portfolio/snapshot";
+export { CryptoPriceAlertQueries } from "./crypto/price/alert";
+export { CryptoPriceSnapshotQueries } from "./crypto/price/snapshot";
+export { CryptoTokenQueries } from "./crypto/token";
+export { CryptoTransactionQueries } from "./crypto/transaction";
+export { CryptoTreasuryQueries } from "./crypto/treasury";
+export { CryptoWatchlistQueries } from "./crypto/watchlist";
 export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";

@@ -40,7 +40,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
       reason: string;
       expiresAt: Date;
       serverId?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     },
     adminDiscordId: string,
     adminUsername: string,
@@ -115,7 +115,7 @@ export class PlayerBanRepository extends BasePlayerRepository {
     data: {
       reason: string;
       serverId?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     },
     adminDiscordId: string,
     adminUsername: string,

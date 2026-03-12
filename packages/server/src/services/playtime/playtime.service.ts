@@ -27,14 +27,11 @@ export interface PlaytimeServiceEvents {
   syncComplete: () => void;
 }
 
-export declare interface PlaytimeService {
-  on<K extends keyof PlaytimeServiceEvents>(
+interface TypedEventEmitter<T> {
+  on<K extends keyof T>(event: K, listener: T[K]): this;
+  emit<K extends keyof T>(
     event: K,
-    listener: PlaytimeServiceEvents[K],
-  ): this;
-  emit<K extends keyof PlaytimeServiceEvents>(
-    event: K,
-    ...args: Parameters<PlaytimeServiceEvents[K]>
+    ...args: T[K] extends (...args: infer A) => unknown ? A : never
   ): boolean;
 }
 
@@ -62,7 +59,8 @@ export declare interface PlaytimeService {
  * - Lower server load
  * - More accurate session timestamps
  */
-export class PlaytimeService extends EventEmitter {
+export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitter<PlaytimeServiceEvents> &
+  EventEmitter) {
   private config: Required<PlaytimeServiceConfig>;
   private activeSessions: Map<string, ActiveSession> = new Map();
   private isInitialized = false;
@@ -115,7 +113,13 @@ export class PlaytimeService extends EventEmitter {
   }
 
   /**
-   * Detect server state - called externally after message cache is ready
+   * Detects the initial server state by inspecting recent Discord relay messages
+   *
+   * Looks for the most recent system message with a "server closed" description.
+   * If found, marks the server as OFFLINE; otherwise assumes ONLINE. This is
+   * called by PlaytimeManagerService after the MessageCacheService is ready.
+   *
+   * @param messageCacheService - Cache to inspect for recent system messages
    */
   public async detectServerState(
     messageCacheService: MessageCacheService,
@@ -676,8 +680,8 @@ export class PlaytimeService extends EventEmitter {
   /**
    * Calculates how long a player has been online in their current session
    *
-   * @param uuid - Minecraft player UUID
-   * @returns Duration in seconds, or null if player is not online
+   * @param identifier - Minecraft player UUID string or an ActiveSession object
+   * @returns Duration in seconds since session start, or null if player is not online
    */
   public getSessionDuration(identifier: string | ActiveSession): number | null {
     let session: ActiveSession | undefined;
@@ -709,14 +713,18 @@ export class PlaytimeService extends EventEmitter {
   }
 
   /**
-   * Get current server state
+   * Returns the current state of this server (ONLINE, OFFLINE, or UNKNOWN)
+   *
+   * @returns The current ServerState value
    */
   public getServerState(): ServerState {
     return this.serverState;
   }
 
   /**
-   * Check if server is online
+   * Returns whether the server is currently considered online
+   *
+   * @returns True if server state is ONLINE
    */
   public isOnline(): boolean {
     return this.serverState === ServerState.ONLINE;

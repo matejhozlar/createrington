@@ -3,6 +3,7 @@ import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
 
+/** Public waitlists router — check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
     .meta({
@@ -34,7 +35,9 @@ export const waitlistsRouter = router({
       const hasCapacity = await waitlistRepo.hasCapacity();
 
       if (!hasCapacity && !email) {
-        throw trpcError.badRequest("Email is required when the server is at capacity");
+        throw trpcError.badRequest(
+          "Email is required when the server is at capacity",
+        );
       }
 
       if (email) {
@@ -52,7 +55,9 @@ export const waitlistsRouter = router({
         { limit: 1 },
       );
       if (discordExists) {
-        throw trpcError.conflict("This Discord username is already on the waitlist");
+        throw trpcError.conflict(
+          "This Discord username is already on the waitlist",
+        );
       }
 
       const result = await waitlistRepo.register({

@@ -89,7 +89,7 @@ export class WaitlistRepository {
             id: entry.id,
             email: entry.email,
             discordName: entry.discordName,
-            botMention: `<@${config.discord.bots.main.id}>` || "bot",
+            botMention: `<@${config.discord.bots.main.id}>`,
           });
 
         const result = await Discord.Messages.send({
@@ -126,10 +126,10 @@ export class WaitlistRepository {
   }
 
   /**
-   * Generic method to update a progress step
+   * Updates a single onboarding progress step and refreshes the Discord embed
    *
    * @param discordId - Discord user ID to update progress step for
-   * @param step - Progress step to update
+   * @param step - Progress step to mark as complete
    * @private
    */
   private async updateProgressStep(
@@ -231,6 +231,7 @@ export class WaitlistRepository {
    *
    * @param entryId - Waitlist entry ID
    * @param adminId - Discord ID of admin who approved
+   * @returns Updated waitlist entry with accepted status and generated token
    */
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
@@ -281,8 +282,11 @@ export class WaitlistRepository {
   }
 
   /**
-   * Gets all waitlist entries with filtering and pagination
-   * (For admin list view)
+   * Gets all waitlist entries with filtering and pagination (for admin list view)
+   *
+   * @param filters - Optional waitlist entry filter criteria
+   * @param options - Pagination and sorting options
+   * @returns Array of waitlist entries matching the criteria
    */
   async getAll(
     filters?: WaitlistEntryFilters,
@@ -298,6 +302,9 @@ export class WaitlistRepository {
 
   /**
    * Counts waitlist entries matching filters
+   *
+   * @param filters - Optional waitlist entry filter criteria
+   * @returns Total count
    */
   async count(filters?: WaitlistEntryFilters): Promise<number> {
     return await Q.waitlist.entry.count(filters);
@@ -385,7 +392,10 @@ export class WaitlistRepository {
         try {
           player = await Q.player.find({ discordId: entry.discordId });
         } catch (error) {
-          logger.debug(`No player found for Discord ID ${entry.discordId}`);
+          logger.debug(
+            `No player found for Discord ID ${entry.discordId}:`,
+            error,
+          );
         }
       }
 
@@ -409,18 +419,22 @@ export class WaitlistRepository {
     }
   }
 
+  /** Mark the "joined Discord" onboarding step as complete */
   async markJoinedDiscord(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.JOINED_DISCORD);
   }
 
+  /** Mark the "verified" onboarding step as complete */
   async markVerified(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.VERIFIED);
   }
 
+  /** Mark the "registered" onboarding step as complete */
   async markRegistered(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.REGISTERED);
   }
 
+  /** Mark the "joined Minecraft" onboarding step as complete */
   async markJoinedMinecraft(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.JOINED_MINECRAFT);
   }
@@ -431,6 +445,8 @@ export class WaitlistRepository {
 
   /**
    * Gets overall waitlist statistics for admin dashboard
+   *
+   * @returns Status breakdowns, milestone progress counts, and submission trends
    */
   async getStats(): Promise<{
     total: number;

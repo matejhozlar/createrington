@@ -6,12 +6,16 @@ import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { EmbedBuilder } from "discord.js";
 import config from "@/config";
-import { embedDataSchema, type EmbedData } from "@createrington/shared/api/embed";
+import {
+  embedDataSchema,
+  type EmbedData,
+} from "@createrington/shared/api/embed";
 
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
 const colors = config.discord.embeds.colors;
 
+/** Admin embeds router — send Discord embeds, manage embed presets (CRUD). */
 export const embedsRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category." })

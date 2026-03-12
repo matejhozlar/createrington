@@ -9,9 +9,9 @@ import type { EmailAttachment } from "../types";
  *
  * @template TData - The type of data required to render the email template
  */
-export abstract class BaseEmailTemplate<TData = any> {
+export abstract class BaseEmailTemplate<TData = unknown> {
   /**
-   * Generates the email subjest line
+   * Generates the email subject line
    *
    * @param data - Template data used to generate the subject
    * @returns The email subject line
@@ -46,14 +46,14 @@ export abstract class BaseEmailTemplate<TData = any> {
    * @param data - Template data used to generate attachments
    * @returns Array of email attachments
    */
-  protected getAttachments(data: TData): EmailAttachment[] {
+  protected getAttachments(_data: TData): EmailAttachment[] {
     return [];
   }
   /**
    * Renders the complete email using the provided data
    *
    * Calls all template methods and returns a complete email object ready
-   * to be send via an email service
+   * to be sent via an email service
    *
    * @param data - Template data to render the email with
    * @returns Object containing all rendered email components

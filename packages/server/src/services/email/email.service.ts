@@ -10,10 +10,16 @@ import type {
 import { EmailTemplateRegistry } from "./templates";
 
 /**
- * Singleton service for sending emails using Nodemailer
+ * Email Service
  *
- * Provides methods for sending plain emails, template-based emails, and admin notification emails
- * Automatically handles email formatting, normalization, and error handling
+ * Sends transactional emails via Nodemailer:
+ * - Plain emails with full header control (to, cc, bcc, replyTo, attachments)
+ * - Template-based emails rendered from the EmailTemplateRegistry
+ * - Convenience methods for delivering notifications directly to the admin
+ * - Normalizes recipient addresses from string or structured email objects
+ *
+ * NOTE: Implemented as a singleton; use `EmailService.getInstance()` or
+ * the pre-initialized `email` export rather than constructing directly
  */
 export class EmailService {
   private static instance: EmailService;
@@ -28,13 +34,7 @@ export class EmailService {
     this.transporter = nodemailer.createTransport(config.email);
   }
 
-  /**
-   * Gets the singleton instance of EmailService
-   *
-   * Creates a new instance if one doesn't exist, otherwise returns the existing instance
-   *
-   * @returns The EmailService singleton instance
-   */
+  /** Returns the singleton instance, creating it on first call */
   public static getInstance(): EmailService {
     if (!EmailService.instance) {
       EmailService.instance = new EmailService();
@@ -42,14 +42,14 @@ export class EmailService {
     return EmailService.instance;
   }
   /**
-   * Normalizes an email address into a string format
+   * Normalizes a single email address into a formatted string.
    *
-   * Converts email objects with optional names into properly formatted email strings
-   * Supports both plain email strings and objects with email/name properties
+   * Converts `{ email, name? }` objects into `"Name <email>"` format;
+   * plain strings are returned as-is.
    *
+   * @private
    * @param email - Email as string or object with email and optional name
    * @returns Formatted email string
-   * @private
    */
   private normalizeEmail(
     email: string | { email: string; name?: string },
@@ -59,14 +59,14 @@ export class EmailService {
   }
 
   /**
-   * Normalizes one or more email addresses into an array of formatted strings
+   * Normalizes one or more email addresses into an array of formatted strings.
    *
-   * Handles single emails, email objects, or arrays or either. Useful for processing
-   * the "to", "cc", and "bcc" fields
+   * Accepts a single value or array of strings/objects and delegates each
+   * element to `normalizeEmail`. Used internally for the to, cc, and bcc fields.
    *
+   * @private
    * @param emails - Single email, email object, or array of either
    * @returns Array of formatted email strings
-   * @private
    */
   private normalizeEmails(
     emails:
@@ -78,23 +78,13 @@ export class EmailService {
     return emailArray.map((e) => this.normalizeEmail(e));
   }
   /**
-   * Sends an email with the specified options
+   * Sends an email with the specified options.
    *
-   * Core email sending method that handles all email fields including recipients,
-   * subject, content (HTML and plain text), and attachments. Automatically uses
-   * default sender info if not specified
+   * All recipient fields (to, cc, bcc, replyTo) are normalized before dispatch.
+   * Falls back to the configured author name and email if `from` is not provided.
    *
-   * @param options - Email configuration options
-   * @param options.to - Recipient email(s)
-   * @param options.subject - Email subject line
-   * @param options.html - HTML version of the email body
-   * @param options.text - Plain text version of the email body
-   * @param options.from - Optional sender override (defaults to config author)
-   * @param options.cc - Optional CC recipients
-   * @param options.bcc - Optional BCC recipients
-   * @param options.replyTo - Optional reply-to address
-   * @param options.attachments - Optional file attachments
-   * @returns Promise resolving to EmailResult with success status and messageId or error
+   * @param options - Full email options including recipients, subject, and body
+   * @returns Result with `success` flag and either `messageId` or `error` message
    */
   async send(options: EmailOptions): Promise<EmailResult> {
     try {
@@ -119,7 +109,7 @@ export class EmailService {
       });
 
       logger.info(
-        `Email send successfully: ${info.messageId} to ${this.normalizeEmails(
+        `Email sent successfully: ${info.messageId} to ${this.normalizeEmails(
           options.to,
         ).join(", ")}`,
       );
@@ -138,16 +128,12 @@ export class EmailService {
   }
 
   /**
-   * Sends an email using a predefined template
+   * Renders a template and sends the resulting email to a recipient.
    *
-   * Renders the specified template with the provided data and sends the resulting email
-   * Templates are retrieved from the EmailTemplateRepository
-   *
-   * @template T - The template type from EmailTemplate enum
-   * @param to - Recipient email address
-   * @param template - Template identifier from EmailTemplate enum
-   * @param data - Data to populate the template with (type-safe based on template)
-   * @returns Promise resolving to EmailResult with success status and messageId or error
+   * @param to - Recipient email address or `{ email, name }` object
+   * @param template - Template identifier from the EmailTemplate enum
+   * @param data - Type-safe data object required by the chosen template
+   * @returns Result with `success` flag and either `messageId` or `error` message
    */
   async sendTemplate<T extends EmailTemplate>(
     to: string | { email: string; name?: string },
@@ -176,15 +162,12 @@ export class EmailService {
   }
 
   /**
-   * Sends a plain email to the admin/author
-   *
-   * Convenience method for sending notifications or alerts to the configured
-   * admin email address (from config.meta.author.email)
+   * Sends a plain email to the configured admin address.
    *
    * @param subject - Email subject line
-   * @param html - HTML version of the email body
-   * @param text - Optional plain text version (if not provided, only HTML is sent)
-   * @returns Promise resolving to EmailResult with success status and messageId or error
+   * @param html - HTML body
+   * @param text - Optional plain-text fallback
+   * @returns Result with `success` flag and either `messageId` or `error` message
    */
   async sendToAdmin(
     subject: string,
@@ -199,15 +182,11 @@ export class EmailService {
     });
   }
   /**
-   * Sends a template-based email to the admin/author
+   * Renders a template and sends the resulting email to the configured admin address.
    *
-   * Convenience method for sending template emails to the configured admin
-   * Useful for system notifications, error reports, or administrative alerts
-   *
-   * @template TData - The type of data required by the template
-   * @param template - Template identifier from EmailTemplate enum
-   * @param data - Data to populate the template with
-   * @returns Promise resolving to EmailResult with success status and messageId or error
+   * @param template - Template identifier from the EmailTemplate enum
+   * @param data - Type-safe data object required by the chosen template
+   * @returns Result with `success` flag and either `messageId` or `error` message
    */
   async sendTemplateToAdmin<T extends EmailTemplate>(
     template: EmailTemplate,
@@ -216,12 +195,12 @@ export class EmailService {
     return this.sendTemplate(config.meta.author.email, template, data);
   }
   /**
-   * Verifies the email transporter connection
+   * Verifies the SMTP transporter connection.
    *
-   * Tests the connection to the email server to ensure email can be sent
-   * Useful for startup checks or health monitoring
+   * Useful for startup health checks to confirm the mail server is reachable
+   * before the application begins accepting traffic.
    *
-   * @returns Promise resolving to true if connection is successful, false otherwise
+   * @returns `true` if the connection is successful, `false` otherwise
    */
   async verify(): Promise<boolean> {
     try {
@@ -235,9 +214,5 @@ export class EmailService {
   }
 }
 
-/**
- * Singleton instance of the email service
- *
- * Pre-initialized instance ready for use throughout the application
- */
+/** Pre-initialized singleton instance — use this instead of constructing EmailService directly */
 export const email = EmailService.getInstance();

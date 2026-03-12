@@ -3,7 +3,7 @@ import { FaqWelcomeMessageBaseQueries } from "@/generated/db/faq_welcome_message
 
 /**
  * Custom queries for faq_welcome_message table
- * 
+ *
  * Extends the auto-generated base class with custom methods.
  * This file is scaffolded once and never overwritten - add your custom
  * query methods here while inheriting all generated CRUD operations.

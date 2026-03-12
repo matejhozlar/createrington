@@ -34,21 +34,29 @@ export const SERVER_CONFIGS: ServerConfig[] = [
 ];
 
 /**
- * Gets all enabled server configuration
+ * Gets all enabled server configurations
+ *
+ * @returns Array of server configs where enabled is true
  */
 export function getEnabledServers(): ServerConfig[] {
   return SERVER_CONFIGS.filter((server) => server.enabled);
 }
 
 /**
- * Gets a server config by ID
+ * Gets a server config by its internal ID
+ *
+ * @param serverId - The internal server ID
+ * @returns The matching server config, or undefined if not found
  */
 export function getServerConfig(serverId: number): ServerConfig | undefined {
   return SERVER_CONFIGS.find((server) => server.id === serverId);
 }
 
 /**
- * Gets role ID for a server
+ * Gets the Discord role ID for a server
+ *
+ * @param serverId - The internal server ID
+ * @returns The Discord role ID, or undefined if not found
  */
 export function getServerRoleId(serverId: number): string | undefined {
   return getServerConfig(serverId)?.roleId;

@@ -42,10 +42,7 @@ export class RealtimeRoleHandler {
 
         const rules = getRealtimeRoleRules();
 
-        const result = await this.roleService.processRoleHierarchy(
-          player.discordId,
-          rules,
-        );
+        await this.roleService.processRoleHierarchy(player.discordId, rules);
       } catch (error) {
         logger.error(
           `Failed to process realtime role check for ${event.username}:`,
@@ -58,7 +55,7 @@ export class RealtimeRoleHandler {
   /**
    * Manually trigger a role check for a specific player
    *
-   * @param discord - Discord user ID of the player
+   * @param discordId - Discord user ID of the player
    */
   async checkPlayer(discordId: string): Promise<void> {
     const rules = getRealtimeRoleRules();

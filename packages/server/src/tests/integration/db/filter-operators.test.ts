@@ -20,10 +20,10 @@ describe("Filter operators (server table)", () => {
     await truncateTable("server");
 
     // Seed rows with predictable IDs (RESTART IDENTITY ensures id starts at 1)
-    await Q.server.create({ name: "Alpha", identifier: "alpha" });   // id=1
-    await Q.server.create({ name: "Beta", identifier: "beta" });     // id=2
-    await Q.server.create({ name: "Gamma", identifier: "gamma" });   // id=3
-    await Q.server.create({ name: "Delta", identifier: "delta" });   // id=4
+    await Q.server.create({ name: "Alpha", identifier: "alpha" }); // id=1
+    await Q.server.create({ name: "Beta", identifier: "beta" }); // id=2
+    await Q.server.create({ name: "Gamma", identifier: "gamma" }); // id=3
+    await Q.server.create({ name: "Delta", identifier: "delta" }); // id=4
   });
 
   afterAll(async () => {

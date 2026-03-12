@@ -9,6 +9,7 @@ import {
   type ServerStatus,
 } from "@/trpc/routers/public/servers";
 
+/** Admin servers router — server list with stats, detail view, activity, heatmap, and sessions. */
 export const adminServersRouter = router({
   list: adminProcedure
     .meta({ description: "List all servers with aggregate stats" })
@@ -113,7 +114,9 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
+        throw trpcError.badRequest(
+          `Server with id ${input.serverId} not found`,
+        );
       }
 
       const activity = await R.playtimeRepo.getServerActivity(
@@ -158,7 +161,9 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
+        throw trpcError.badRequest(
+          `Server with id ${input.serverId} not found`,
+        );
       }
 
       const heatmapData = await R.playtimeRepo.getServerHeatmap(
@@ -187,7 +192,9 @@ export const adminServersRouter = router({
     .query(async ({ input }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
-        throw trpcError.badRequest(`Server with id ${input.serverId} not found`);
+        throw trpcError.badRequest(
+          `Server with id ${input.serverId} not found`,
+        );
       }
 
       const offset = input.page * input.limit;

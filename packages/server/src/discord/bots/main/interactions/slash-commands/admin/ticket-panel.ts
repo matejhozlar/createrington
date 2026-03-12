@@ -22,11 +22,6 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
-
-/**
  * Executes the ticket-panel command to create a ticket support panel
  *
  * Process:
@@ -69,7 +64,7 @@ export async function execute(
 
       try {
         button.setEmoji(config.emoji);
-      } catch (error) {
+      } catch {
         logger.warn(
           `Invalid emoji for ticket type ${config.type}: ${config.emoji}`,
         );

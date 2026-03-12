@@ -38,14 +38,11 @@ export interface MessageCacheEvents {
   serverClosed: (serverId: number) => void;
 }
 
-export declare interface MessageCacheService {
-  on<K extends keyof MessageCacheEvents>(
+interface TypedEventEmitter<T> {
+  on<K extends keyof T>(event: K, listener: T[K]): this;
+  emit<K extends keyof T>(
     event: K,
-    listener: MessageCacheEvents[K],
-  ): this;
-  emit<K extends keyof MessageCacheEvents>(
-    event: K,
-    ...args: Parameters<MessageCacheEvents[K]>
+    ...args: T[K] extends (...args: infer A) => unknown ? A : never
   ): boolean;
 }
 
@@ -61,7 +58,8 @@ export declare interface MessageCacheService {
  * - Emits events for real-time integration (WebSocket, etc.)
  * - Parses messages to detect source (System, Discord, Minecraft, Web)
  */
-export class MessageCacheService extends EventEmitter {
+export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> &
+  EventEmitter) {
   private cache: Map<number, CachedMessage[]> = new Map();
   private serverConfig: Map<number, ServerCacheConfig> = new Map();
   private isInitialized = false;
@@ -99,7 +97,7 @@ export class MessageCacheService extends EventEmitter {
     this.botUserId = this.bot.user?.id || null;
     if (!this.botUserId) {
       logger.warn(
-        "MessageCacheService couldnt initialize bot ID, continuing without it",
+        "MessageCacheService couldn't initialize bot ID, continuing without it",
       );
     }
 
@@ -435,7 +433,7 @@ export class MessageCacheService extends EventEmitter {
    *
    * @private
    */
-  private parseWebData(message: Message): WebMessageData | undefined {
+  private parseWebData(_message: Message): WebMessageData | undefined {
     // TODO: Implement web message detection
     return undefined;
   }
@@ -604,7 +602,7 @@ export class MessageCacheService extends EventEmitter {
   // ==========================================================================
 
   /**
-   * Adds a message to the cached message for a server
+   * Retrieves cached messages for a server with optional filtering
    *
    * @param serverId - Server ID
    * @param options - Optional query filters
@@ -685,12 +683,12 @@ export class MessageCacheService extends EventEmitter {
     number,
     {
       messageCount: number;
-      oldestMessage?: Date;
-      newestMessage?: Date;
+      oldestMessage?: Date | string;
+      newestMessage?: Date | string;
       bySource: Record<MessageSource, number>;
     }
   > {
-    const stats: Record<number, any> = {};
+    const stats: ReturnType<MessageCacheService["getStats"]> = {};
 
     for (const [serverId, cache] of this.cache) {
       const bySource: Record<MessageSource, number> = {
@@ -706,9 +704,9 @@ export class MessageCacheService extends EventEmitter {
 
       stats[serverId] = {
         messageCount: cache.length,
-        oldestMessage: cache.length > 0 ? cache[0]?.createdAt : undefined,
+        oldestMessage: cache.length > 0 ? cache[0]!.createdAt : undefined,
         newestMessage:
-          cache.length > 0 ? cache[cache.length - 1]?.createdAt : undefined,
+          cache.length > 0 ? cache[cache.length - 1]!.createdAt : undefined,
         bySource,
       };
     }
@@ -726,6 +724,6 @@ export class MessageCacheService extends EventEmitter {
     if (cache) {
       cache.length = 0;
     }
-    logger.info(`Cleared cached for server ${serverId}`);
+    logger.info(`Cleared cache for server ${serverId}`);
   }
 }

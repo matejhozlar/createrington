@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
+/** Admin audit logs router — filterable, paginated admin action history. */
 export const logsRouter = router({
   list: adminProcedure
     .meta({
@@ -18,12 +19,7 @@ export const logsRouter = router({
         tableName: z.string().optional(),
         adminUsername: z.string().optional(),
         orderBy: z
-          .enum([
-            "performedAt",
-            "actionType",
-            "tableName",
-            "adminUsername",
-          ])
+          .enum(["performedAt", "actionType", "tableName", "adminUsername"])
           .default("performedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),

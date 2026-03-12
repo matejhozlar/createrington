@@ -202,9 +202,7 @@ export class FaqService {
    *
    * @private
    */
-  private matchPattern(
-    content: string,
-  ): CompiledPattern | null {
+  private matchPattern(content: string): CompiledPattern | null {
     for (const pattern of this.patterns) {
       if (pattern.regex.test(content)) {
         return pattern;
@@ -261,9 +259,7 @@ export class FaqService {
           return;
         }
       } catch {
-        logger.info(
-          "FAQ welcome message not found in channel, reposting...",
-        );
+        logger.info("FAQ welcome message not found in channel, reposting...");
       }
     }
 

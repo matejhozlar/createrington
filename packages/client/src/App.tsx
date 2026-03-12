@@ -31,17 +31,18 @@ import {
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
 import { ServerChat } from "./components/chat";
-import { AdminLogs } from "./features/admin/logs/AdminLogs";
-import { AdminServers } from "./features/admin/servers/AdminServers";
-import { AdminServerDetail } from "./features/admin/servers/detail/AdminServerDetail";
+import { AdminLogs } from "./features/admin/AdminLogs";
+import { AdminServers } from "./features/admin/AdminServers";
+import { AdminServerDetail } from "./features/admin/servers/AdminServerDetail";
 import { AdminPlayerProvider } from "./contexts/admin";
-import { AdminPlayerDetail } from "./features/admin/players/detail/AdminPlayerDetail";
-import { AdminPlayers } from "./features/admin/players/AdminPlayers";
+import { AdminPlayerDetail } from "./features/admin/players/AdminPlayerDetail";
+import { AdminPlayers } from "./features/admin/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
-import { AdminDashboard } from "./features/admin/dashboard/AdminDashboard";
+import { AdminDashboard } from "./features/admin/AdminDashboard";
+import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -54,9 +55,23 @@ import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
-import { OnlinePlayers } from "./pages/OnlinePlayers/OnlinePlayers";
+import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
+import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
+import { CryptoDataProvider } from "./contexts/crypto-data";
+import { CryptoLayout } from "./features/crypto/CryptoLayout";
+import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
+import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
+import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
+import { TradeHistory as CryptoTradeHistory } from "./features/crypto/TradeHistory";
+import { Leaderboard as CryptoLeaderboard } from "./features/crypto/Leaderboard";
+import { ArticlePage as CryptoArticle } from "./features/crypto/ArticlePage";
 
+// ==========================================================================
+// LAYOUT HELPERS
+// ==========================================================================
+
+/** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
   const { pathname } = useLocation();
 
@@ -67,6 +82,7 @@ function ScrollToTop() {
   return null;
 }
 
+/** Shared shell rendered for all standard routes — sidebar, inset content area, and conditional footer. */
 function AppLayout() {
   const { loading } = useAuth();
   const location = useLocation();
@@ -75,6 +91,7 @@ function AppLayout() {
     return <LoadingScreen text="Logging in..." />;
   }
 
+  // Footer is hidden on full-screen routes that manage their own layout
   const hideFooter =
     location.pathname.startsWith("/admin") ||
     location.pathname.startsWith("/chat") ||
@@ -97,6 +114,11 @@ function AppLayout() {
   );
 }
 
+// ==========================================================================
+// ROUTES
+// ==========================================================================
+
+/** Declares the full client-side route tree, including public, protected, and admin routes. */
 function AppContent() {
   return (
     <Routes>
@@ -105,6 +127,7 @@ function AppContent() {
 
       {/* Puppeteer render routes (no layout, screenshot targets) */}
       <Route path="/render/compare" element={<CompareRender />} />
+      <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
@@ -114,7 +137,16 @@ function AppContent() {
         <Route
           path="/team"
           element={
-            <Suspense fallback={<Loading mode="inline" size="large" text="Loading..." className="flex items-center justify-center py-32" />}>
+            <Suspense
+              fallback={
+                <Loading
+                  mode="inline"
+                  size="large"
+                  text="Loading..."
+                  className="flex items-center justify-center py-32"
+                />
+              }
+            >
               <Team />
             </Suspense>
           }
@@ -122,7 +154,28 @@ function AppContent() {
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<div>Crypto Page</div>} />
+        <Route path="/crypto" element={<CryptoLayout />}>
+          <Route index element={<CryptoMarket />} />
+          <Route
+            path="portfolio"
+            element={
+              <ProtectedRoute>
+                <CryptoPortfolio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="history"
+            element={
+              <ProtectedRoute>
+                <CryptoTradeHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="leaderboard" element={<CryptoLeaderboard />} />
+          <Route path="news/:id" element={<CryptoArticle />} />
+          <Route path=":symbol" element={<TokenDetail />} />
+        </Route>
 
         {/* Market Routes */}
         <Route path="/market" element={<div>Market Dashboard</div>} />
@@ -191,7 +244,11 @@ function AppContent() {
                   <Route path="servers/:id" element={<AdminServerDetail />} />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
-                  <Route path="tools/embed-builder" element={<EmbedBuilder />} />
+                  <Route
+                    path="tools/embed-builder"
+                    element={<EmbedBuilder />}
+                  />
+                  <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>
@@ -206,6 +263,16 @@ function AppContent() {
   );
 }
 
+// ==========================================================================
+// ROOT
+// ==========================================================================
+
+/**
+ * Root application component.
+ *
+ * Establishes the full provider hierarchy required across the app:
+ * tRPC → QueryClient → Auth → WebSocket → ServerData → PlayerData → Toast → CryptoData → Router
+ */
 function App() {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -222,12 +289,14 @@ function App() {
             <ServerDataProvider autoSubscribe>
               <PlayerDataProvider autoSubscribe>
                 <ToastProvider>
-                  <BrowserRouter>
-                    <ScrollToTop />
-                    <SidebarProvider>
-                      <AppContent />
-                    </SidebarProvider>
-                  </BrowserRouter>
+                  <CryptoDataProvider autoSubscribe>
+                    <BrowserRouter>
+                      <ScrollToTop />
+                      <SidebarProvider>
+                        <AppContent />
+                      </SidebarProvider>
+                    </BrowserRouter>
+                  </CryptoDataProvider>
                 </ToastProvider>
               </PlayerDataProvider>
             </ServerDataProvider>

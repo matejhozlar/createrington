@@ -29,14 +29,17 @@
     "dev:client": "pnpm --filter @createrington/client dev",
     "dev:server": "pnpm --filter @createrington/server dev",
     "dev:types": "pnpm --filter @createrington/server dev:types",
-    "dev": "concurrently -n \"server,client,types\" -c \"blue,green,yellow\" \"pnpm dev:server\" \"pnpm dev:client\" \"pnpm dev:types\"",
+    "dev": "concurrently -n \"types,client,server\" -c \"yellow,green,blue\" \"pnpm dev:types\" \"pnpm dev:client\" \"node scripts/delay.mjs 5000 && pnpm dev:server\"",
     "build:client": "pnpm --filter @createrington/client build",
     "build:server": "pnpm --filter @createrington/server build",
     "build:shared": "pnpm --filter @createrington/shared build",
     "build": "pnpm generate && pnpm build:shared && pnpm build:server && pnpm build:client && pnpm build:dist",
     "build:dist": "node scripts/build-dist.js",
     "start": "node dist/server/src/server.js",
-    "lint": "pnpm --filter @createrington/client lint",
+    "format": "prettier --write ./packages",
+    "format:check": "prettier --check ./packages",
+    "lint": "pnpm -r lint",
+    "lint:server": "pnpm --filter @createrington/server lint",
     "lint:client": "pnpm --filter @createrington/client lint",
     "test": "pnpm --filter @createrington/server test",
     "test:unit": "pnpm --filter @createrington/server test:unit",
@@ -54,11 +57,12 @@
     "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",
-    "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin"
+    "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin",
+    "kill-ports": "bash scripts/kill-ports.sh"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {}
+  }
 }

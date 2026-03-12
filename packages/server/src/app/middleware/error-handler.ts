@@ -11,7 +11,7 @@ export class AppError extends Error {
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
-    public details?: any,
+    public details?: unknown,
   ) {
     super(message);
     this.name = "AppError";
@@ -19,16 +19,19 @@ export class AppError extends Error {
   }
 }
 
-/**
- * Common HTTP error constructors
- */
+// ==========================================================================
+// HTTP Error Classes
+// ==========================================================================
+
+/** 400 Bad Request */
 export class BadRequestError extends AppError {
-  constructor(message: string = "Bad Request", details?: any) {
+  constructor(message: string = "Bad Request", details?: unknown) {
     super(message, 400, true, details);
     this.name = "BadRequestError";
   }
 }
 
+/** 401 Unauthorized */
 export class UnauthorizedError extends AppError {
   constructor(message: string = "Unauthorized") {
     super(message, 401);
@@ -36,6 +39,7 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/** 403 Forbidden */
 export class ForbiddenError extends AppError {
   constructor(message: string = "Forbidden") {
     super(message, 403);
@@ -43,6 +47,7 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** 404 Not Found */
 export class NotFoundError extends AppError {
   constructor(message: string = "Resource not found") {
     super(message, 404);
@@ -50,6 +55,7 @@ export class NotFoundError extends AppError {
   }
 }
 
+/** 409 Conflict */
 export class ConflictError extends AppError {
   constructor(message: string = "Conflict") {
     super(message, 409);
@@ -57,6 +63,7 @@ export class ConflictError extends AppError {
   }
 }
 
+/** 500 Internal Server Error */
 export class InternalServerError extends AppError {
   constructor(message: string = "Internal Server Error") {
     super(message, 500);
@@ -86,13 +93,16 @@ interface ErrorResponse {
   error: {
     message: string;
     statusCode: number;
-    details?: any;
+    details?: unknown;
     stack?: string;
   };
 }
 
 /**
  * Format Zod validation errors into a readable structure
+ *
+ * @param error - The ZodError instance to format
+ * @returns Object containing a human-readable message and per-field error details
  */
 export function formatZodError(error: ZodError<unknown>): {
   message: string;
@@ -130,12 +140,12 @@ export function errorHandler(
   err: Error | AppError | DatabaseError | ZodError,
   req: Request,
   res: Response,
-  next: NextFunction,
+  _next: NextFunction,
 ): void {
   let statusCode = 500;
   let message = "Internal Server Error";
   let isOperational = false;
-  let details: any = undefined;
+  let details: unknown = undefined;
 
   if (err instanceof ZodError) {
     const { message: ZodMessage, fieldErrors } = formatZodError(err);
@@ -197,7 +207,7 @@ export function errorHandler(
     error: {
       message,
       statusCode,
-      ...(details && { details }),
+      ...(details !== undefined ? { details } : {}),
       ...(config.envMode.isDev && { stack: err.stack }),
     },
   };
@@ -206,8 +216,11 @@ export function errorHandler(
 }
 
 /**
- * 404 Not Found error handler for undefined routes
- * Should be registered after all other routes
+ * 404 Not Found error handler for undefined routes — should be registered after all other routes
+ *
+ * @param req - Express request
+ * @param res - Express response
+ * @param next - Express next function
  */
 export function notFoundHandler(
   req: Request,

@@ -10,16 +10,22 @@ import type { Request, Response } from "express";
 /**
  * Presence Controller
  *
- * Handles Minecraft player presence updates from presenceAPI
- * Integrates with playtime service to track player sessions
+ * Handles Minecraft player join/leave events reported by the presenceAPI mod:
+ * - Validates and parses incoming presence payloads
+ * - Resolves the originating server by IP or explicit serverId
+ * - Delegates session tracking to the appropriate PlaytimeService instance
  */
 export class PresenceController {
   /**
-   * POST /api/presence
-   * Body: { minecraftUsername: string, uuid: string, state: "joined" | "left", timestamp: number, serverId?: string }
+   * Records a player join or leave event from a Minecraft server.
    *
-   * Receives player presence data from Minecraft server
-   * Requires mod JWT authentication and IP verification
+   * Resolves the target server from either the `serverId` field in the request
+   * body or the verified server IP attached by the middleware. Dispatches to the
+   * correct PlaytimeService instance and responds with the echoed event details.
+   *
+   * @param req - Express request containing presence payload in the body
+   * @param res - Express response
+   * @returns Promise that resolves when the event has been processed
    */
   static async updatePresence(req: Request, res: Response): Promise<void> {
     const { minecraftUsername, uuid, state, timestamp, serverId } = req.body;
@@ -40,6 +46,8 @@ export class PresenceController {
       throw new BadRequestError("Invalid UUID format");
     }
 
+    // Resolve the target server: explicit serverId in body takes priority,
+    // otherwise fall back to the IP that was verified by the middleware
     let targetServerId: number | undefined;
 
     if (serverId) {

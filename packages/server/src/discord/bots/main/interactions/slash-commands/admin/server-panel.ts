@@ -21,10 +21,6 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /**
- * Whether this command should only be available in production
- */
-
-/**
  * Permission configuration for the server-panel command
  * Requires owner privileges to execute
  */

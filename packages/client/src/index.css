@@ -100,6 +100,11 @@
     user-drag: none;
   }
 
+  /* Prevent grid children from overflowing their track on mobile */
+  .grid > * {
+    min-width: 0;
+  }
+
   /* Global scrollbar styles */
   *::-webkit-scrollbar {
     @apply w-1.5;
@@ -183,15 +188,5 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Toast countdown animation - width goes from 100% to 0% */
-@keyframes toast-countdown {
-  from {
-    width: 100%;
-  }
-  to {
-    width: 0%;
   }
 }

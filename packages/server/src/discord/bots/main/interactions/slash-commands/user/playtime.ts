@@ -26,7 +26,7 @@ export const data = new SlashCommandBuilder()
 /**
  * Cooldown configuration for the playtime command
  *
- * - duration: 3 seconds
+ * - duration: 5 seconds
  * - type: "user" - Each user has their own cooldown
  * - message: Custom message shown when the user is on cooldown
  */
@@ -37,17 +37,14 @@ export const cooldown = {
 };
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development environments
- */
-
-/**
  * Executes the playtime command to display the users playtime
  *
  * Process:
  * 1. Get the target user (from option or command initiator)
  * 2. Fetch playtime data from the database
  * 3. Reply with the playtime information
+ *
+ * @param interaction - The chat input command interaction
  */
 export async function execute(interaction: ChatInputCommandInteraction) {
   const userOption = interaction.options.getUser("user", false);
@@ -93,6 +90,11 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     const embed = EmbedPresets.error(
       "Playtime Error",
       `Failed to fetch playtime for ${targetUser.displayName}. They may not have any recorded playtime yet.`,
+    );
+
+    logger.error(
+      `Failed to fetch playtime for ${targetUser.displayName}:`,
+      error,
     );
 
     await interaction.reply({

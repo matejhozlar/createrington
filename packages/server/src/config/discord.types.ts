@@ -13,6 +13,15 @@ interface MemberRolesConfig {
   readonly kineticOperator: string;
   readonly cogCarrier: string;
   readonly shaftScraper: string;
+  readonly starforged: string;
+  readonly netherite: string;
+  readonly emerald: string;
+  readonly diamond: string;
+  readonly gold: string;
+  readonly iron: string;
+  readonly copper: string;
+  readonly stone: string;
+  readonly wood: string;
   readonly legend: string;
   readonly veteran: string;
   readonly regular: string;
@@ -66,6 +75,7 @@ interface ChannelConfig {
   };
 
   readonly dev: {
+    readonly createringtonKubejs: string;
     readonly createrington: string;
     readonly chat: string;
     readonly createringtonCurrency: string;
@@ -75,6 +85,9 @@ interface ChannelConfig {
     readonly general: string;
   };
 
+  readonly crypto: {
+    readonly news: string;
+  };
 }
 
 interface CategoriesConfig {
@@ -88,6 +101,7 @@ interface CategoriesConfig {
   readonly testServer: string;
   readonly administration: string;
   readonly dev: string;
+  readonly crypto: string;
 }
 
 export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };

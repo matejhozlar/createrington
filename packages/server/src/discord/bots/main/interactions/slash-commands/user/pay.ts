@@ -51,11 +51,6 @@ export const cooldown = {
 };
 
 /**
- * Whether this command should only be available in production
- * Set to false to allow usage in development
- */
-
-/**
  * Executes the pay command to transfer money between users
  *
  * Process:
@@ -114,6 +109,10 @@ export async function execute(interaction: ChatInputCommandInteraction) {
           ? error.message
           : "Amount must have at most 3 decimals!",
       );
+      await interaction.reply({
+        embeds: [embed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
 

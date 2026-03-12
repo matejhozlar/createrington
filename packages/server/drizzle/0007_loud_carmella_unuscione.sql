@@ -1,0 +1,1 @@
+ALTER TABLE "crypto_market_event" ADD COLUMN "article" text;
