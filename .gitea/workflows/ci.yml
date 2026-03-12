@@ -47,17 +47,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Create placeholder Discord entities
-        run: |
-          mkdir -p packages/server/generated/discord
-          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
-          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
-          interface MemberRolesConfig {}
-          interface ChannelConfig {}
-          interface CategoriesConfig {}
-          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
-          EOF
-
       - name: Generate code
         run: pnpm generate:ci
 
@@ -79,17 +68,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
-
-      - name: Create placeholder Discord entities
-        run: |
-          mkdir -p packages/server/generated/discord
-          echo '{"roles":{},"channels":{},"categories":{}}' > packages/server/generated/discord/discord-entities.json
-          cat > packages/server/generated/discord/discord.types.ts << 'EOF'
-          interface MemberRolesConfig {}
-          interface ChannelConfig {}
-          interface CategoriesConfig {}
-          export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };
-          EOF
 
       - name: Generate code
         run: pnpm generate:ci
