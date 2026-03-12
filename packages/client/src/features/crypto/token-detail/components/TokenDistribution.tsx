@@ -89,7 +89,7 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
     chartData.push({
       name: "Unclaimed",
       value: availableSupply,
-      percentage: Math.round(unclaimedPercent * 10) / 10,
+      percentage: Math.round(unclaimedPercent * 100) / 100,
       fill: "rgba(161, 161, 170, 0.2)",
       isUnclaimed: true,
     });
