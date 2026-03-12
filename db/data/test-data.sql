@@ -1092,34 +1092,34 @@ INSERT INTO crypto_token (name, symbol, description, category, total_supply, ava
 VALUES
   ('Ringcoin', 'RGC', 'The official currency of Createrington. Pegged to server activity.', 'stable', 999999999, 999999999, 1.00000000, 1.00000000);
 
--- Initial Memecoins
+-- Initial Memecoins (supply range: 500–50,000 per CRYPTO_CONFIG)
 INSERT INTO crypto_token (name, symbol, description, category, total_supply, available_supply, price)
 VALUES
-  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 1000000, 1000000, 0.50000000),
-  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 500000, 500000, 2.50000000),
-  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 100000, 100000, 15.00000000),
-  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 2000000, 2000000, 0.01000000),
-  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 750000, 750000, 5.00000000);
+  ('FluffCoin', 'FLF', 'Backed by the raw power of sheep wool. May crash during shearing season.', 'memecoin', 40000, 40000, 0.50000000),
+  ('CreeperCash', 'CRP', 'Explosive growth potential. Literally.', 'memecoin', 20000, 20000, 2.50000000),
+  ('DiamondDoge', 'DDG', 'To the bedrock and beyond!', 'memecoin', 5000, 5000, 15.00000000),
+  ('EnderToken', 'END', 'Teleports between price points with no warning.', 'memecoin', 50000, 50000, 0.01000000),
+  ('RedstoneRuble', 'RSR', 'Powers the Minecraft economy, one tick at a time.', 'memecoin', 30000, 30000, 5.00000000);
 
 -- Token IDs (by insert order): 1=RGC, 2=FLF, 3=CRP, 4=DDG, 5=END, 6=RSR
 
 -- Update available supply to reflect held tokens
-UPDATE crypto_token SET available_supply = 994500  WHERE symbol = 'FLF'; -- 5500 held
-UPDATE crypto_token SET available_supply = 499200  WHERE symbol = 'CRP'; -- 800 held
-UPDATE crypto_token SET available_supply = 99840   WHERE symbol = 'DDG'; -- 160 held
-UPDATE crypto_token SET available_supply = 1900000 WHERE symbol = 'END'; -- 100000 held
-UPDATE crypto_token SET available_supply = 747200  WHERE symbol = 'RSR'; -- 2800 held
+UPDATE crypto_token SET available_supply = 34500  WHERE symbol = 'FLF'; -- 5500 held
+UPDATE crypto_token SET available_supply = 19200  WHERE symbol = 'CRP'; -- 800 held
+UPDATE crypto_token SET available_supply = 4840   WHERE symbol = 'DDG'; -- 160 held
+UPDATE crypto_token SET available_supply = 40000  WHERE symbol = 'END'; -- 10000 held
+UPDATE crypto_token SET available_supply = 27200  WHERE symbol = 'RSR'; -- 2800 held
 
 -- ============================================================================
 -- CRYPTO HOLDINGS
 -- ============================================================================
 
 INSERT INTO crypto_holding (player_minecraft_uuid, token_id, amount, total_cost_basis, created_at, updated_at) VALUES
--- saunhardy: 3000 FLF, 100 CRP, 50 DDG, 100000 END
+-- saunhardy: 3000 FLF, 100 CRP, 50 DDG, 10000 END
 ('091b900c-4174-478c-900c-a0fe5a31a329', 2, 3000, 900.00000000, NOW() - INTERVAL '28 days', NOW() - INTERVAL '5 days'),
 ('091b900c-4174-478c-900c-a0fe5a31a329', 3, 100,  200.00000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '5 days'),
 ('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50,   600.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 100000, 800.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 10000, 80.00000000, NOW() - INTERVAL '10 days', NOW() - INTERVAL '10 days'),
 -- Steve: 500 FLF, 500 RSR
 ('550e8400-e29b-41d4-a716-446655440001', 2, 500,  175.00000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '7 days'),
 ('550e8400-e29b-41d4-a716-446655440001', 6, 500,  2250.00000000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days'),
@@ -1144,7 +1144,7 @@ INSERT INTO crypto_transaction (player_minecraft_uuid, token_id, type, trigger, 
 ('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'buy', 'market', 5000, 0.30000000, 15.00000000, 1515.00000000, NULL, NOW() - INTERVAL '28 days'),
 ('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'buy', 'market', 200,  2.00000000, 4.00000000,  404.00000000, NULL, NOW() - INTERVAL '25 days'),
 ('091b900c-4174-478c-900c-a0fe5a31a329', 4, 'buy', 'market', 50,   12.00000000, 6.00000000, 606.00000000, NULL, NOW() - INTERVAL '20 days'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 'buy', 'market', 100000, 0.00800000, 8.00000000, 808.00000000, NULL, NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 'buy', 'market', 10000, 0.00800000, 4.00000000, 84.00000000, NULL, NOW() - INTERVAL '10 days'),
 -- saunhardy sells
 ('091b900c-4174-478c-900c-a0fe5a31a329', 2, 'sell', 'market', 2000, 0.45000000, 9.00000000, 891.00000000, 300.00000000, NOW() - INTERVAL '15 days'),
 ('091b900c-4174-478c-900c-a0fe5a31a329', 3, 'sell', 'market', 100,  2.80000000, 2.80000000, 277.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
@@ -1160,10 +1160,10 @@ INSERT INTO crypto_transaction (player_minecraft_uuid, token_id, type, trigger, 
 ('550e8400-e29b-41d4-a716-446655440003', 6, 'buy', 'market', 2000, 4.00000000, 80.00000000, 8080.00000000, NULL, NOW() - INTERVAL '25 days'),
 ('550e8400-e29b-41d4-a716-446655440003', 4, 'buy', 'market', 100,  10.00000000, 10.00000000, 1010.00000000, NULL, NOW() - INTERVAL '25 days'),
 -- Herobrine buys
-('550e8400-e29b-41d4-a716-446655440004', 5, 'buy', 'market', 50000, 0.00500000, 2.50000000, 252.50000000, NULL, NOW() - INTERVAL '22 days'),
+('550e8400-e29b-41d4-a716-446655440004', 5, 'buy', 'market', 5000, 0.00500000, 1.25000000, 26.25000000, NULL, NOW() - INTERVAL '22 days'),
 ('550e8400-e29b-41d4-a716-446655440004', 2, 'buy', 'market', 3000, 0.40000000, 12.00000000, 1212.00000000, NULL, NOW() - INTERVAL '18 days'),
 -- Herobrine sells
-('550e8400-e29b-41d4-a716-446655440004', 5, 'sell', 'market', 50000, 0.01200000, 6.00000000, 594.00000000, 350.00000000, NOW() - INTERVAL '10 days'),
+('550e8400-e29b-41d4-a716-446655440004', 5, 'sell', 'market', 5000, 0.01200000, 3.00000000, 57.00000000, 35.00000000, NOW() - INTERVAL '10 days'),
 ('550e8400-e29b-41d4-a716-446655440004', 2, 'sell', 'market', 1000, 0.48000000, 4.80000000, 475.20000000, 80.00000000, NOW() - INTERVAL '5 days'),
 -- Technoblade buys
 ('550e8400-e29b-41d4-a716-446655440007', 6, 'buy', 'market', 300,  5.20000000, 15.60000000, 1575.60000000, NULL, NOW() - INTERVAL '10 days'),
@@ -1183,7 +1183,7 @@ INSERT INTO crypto_cost_basis (player_minecraft_uuid, token_id, amount_remaining
 -- saunhardy: DDG (full lot)
 ('091b900c-4174-478c-900c-a0fe5a31a329', 4, 50, 12.00000000, NOW() - INTERVAL '20 days'),
 -- saunhardy: END (full lot)
-('091b900c-4174-478c-900c-a0fe5a31a329', 5, 100000, 0.00800000, NOW() - INTERVAL '10 days'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 5, 10000, 0.00800000, NOW() - INTERVAL '10 days'),
 -- Steve: remaining FLF (bought 1000 @ $0.35, sold 500 → 500 left)
 ('550e8400-e29b-41d4-a716-446655440001', 2, 500, 0.35000000, NOW() - INTERVAL '20 days'),
 -- Steve: RSR (full lot)
@@ -1306,7 +1306,7 @@ FROM (VALUES
 ) AS v(uuid, tv, ti, rpnl, tc, ts);
 
 -- Treasury: total fees collected across all trades
-UPDATE crypto_treasury SET total_collected = 245.50, total_burned = 24.55;
+UPDATE crypto_treasury SET total_collected = 237.25, total_burned = 20.43;
 
 -- Show some sample stats
 SELECT
