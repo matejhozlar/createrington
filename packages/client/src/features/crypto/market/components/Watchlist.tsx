@@ -66,7 +66,7 @@ export function Watchlist() {
             {watchlist.map((entry) => {
               const livePrice = getPrice(entry.symbol);
               const displayPrice = Number(livePrice?.price ?? entry.price);
-              const change24h = livePrice?.change24h ?? 0;
+              const change24h = livePrice?.change24h ?? null;
 
               return (
                 <div
@@ -90,19 +90,21 @@ export function Watchlist() {
                         format={(n) => `$${formatPrice(n)}`}
                         className="text-sm font-mono tabular-nums font-medium block"
                       />
-                      <span
-                        className={cn(
-                          "text-[10px] font-mono tabular-nums block text-right",
-                          change24h > 0
-                            ? "text-emerald-400"
-                            : change24h < 0
-                              ? "text-red-400"
-                              : "text-muted-foreground",
-                        )}
-                      >
-                        {change24h > 0 ? "+" : ""}
-                        {change24h.toFixed(2)}%
-                      </span>
+                      {change24h !== null && (
+                        <span
+                          className={cn(
+                            "text-[10px] font-mono tabular-nums block text-right",
+                            change24h > 0
+                              ? "text-emerald-400"
+                              : change24h < 0
+                                ? "text-red-400"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {change24h > 0 ? "+" : ""}
+                          {change24h.toFixed(2)}%
+                        </span>
+                      )}
                     </div>
 
                     <Button

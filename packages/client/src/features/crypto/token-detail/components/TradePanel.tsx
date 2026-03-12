@@ -232,7 +232,11 @@ export function TradePanel({
   const amountNum = parseInt(amount) || 0;
   const effectivePrice =
     isIpo || orderMode === "market" ? numPrice : Number(targetPrice) || 0;
-  const estimatedCost = effectivePrice * amountNum;
+  const feeRate = FEE_RATES[category] ?? 0.05;
+  const estimatedCost =
+    tab === "buy"
+      ? effectivePrice * amountNum * (1 + feeRate)
+      : effectivePrice * amountNum * (1 - feeRate);
 
   const showBuySellTabs = orderMode === "market" || orderMode === "limit";
 
@@ -420,7 +424,6 @@ export function TradePanel({
           {effectivePrice > 0 && (
             <div className="grid grid-cols-4 gap-1.5 mt-2">
               {[25, 50, 75, 100].map((pct) => {
-                const feeRate = FEE_RATES[category] ?? 0.05;
                 const costPerToken = effectivePrice * (1 + feeRate);
                 const max =
                   tab === "buy"
@@ -549,8 +552,8 @@ export function TradePanel({
                     maximumFractionDigits: 4,
                   })}
                 </span>
-                {FEE_RATES[category]
-                  ? ` + ${(FEE_RATES[category] * 100).toFixed(1)}% fee`
+                {feeRate > 0
+                  ? ` (incl. ${(feeRate * 100).toFixed(1)}% fee)`
                   : ""}
                 .
               </AlertDialogDescription>
