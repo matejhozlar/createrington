@@ -107,7 +107,7 @@ export interface InitialDataRequest {
 }
 
 /**
- * Crypto price update payload (server -> client)
+ * Crypto price update payload for a single token (server -> client)
  */
 export interface CryptoPriceUpdatePayload {
   tokenId: number;
@@ -117,6 +117,26 @@ export interface CryptoPriceUpdatePayload {
   volume24h: string;
   availableSupply: string;
   isCrashed: boolean;
+}
+
+/**
+ * Aggregate market overview, included alongside every price broadcast
+ * so clients never need to poll for it separately.
+ */
+export interface CryptoMarketOverview {
+  totalMarketCap: string;
+  totalVolume24h: string;
+  topGainer: { symbol: string; change24h: number } | null;
+  topLoser: { symbol: string; change24h: number } | null;
+}
+
+/**
+ * Top-level payload for the UPDATE_CRYPTO_PRICES event.
+ * Wraps per-token prices together with a market-wide summary.
+ */
+export interface CryptoPriceBroadcast {
+  prices: CryptoPriceUpdatePayload[];
+  overview: CryptoMarketOverview;
 }
 
 /**

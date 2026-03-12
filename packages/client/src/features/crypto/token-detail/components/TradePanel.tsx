@@ -144,6 +144,7 @@ export function TradePanel({
     utils.user.crypto.balance.invalidate();
     utils.user.crypto.portfolio.invalidate();
     utils.user.crypto.listOrders.invalidate();
+    utils.user.crypto.tradeHistory.invalidate();
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
   };

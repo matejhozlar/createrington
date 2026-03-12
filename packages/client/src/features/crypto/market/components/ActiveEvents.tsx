@@ -120,9 +120,7 @@ function EventBanner({
 }
 
 export function ActiveEvents() {
-  const { data: events } = trpc.public.crypto.activeEvents.useQuery(undefined, {
-    refetchInterval: 30_000,
-  });
+  const { data: events } = trpc.public.crypto.activeEvents.useQuery();
 
   if (!events?.length) return null;
 

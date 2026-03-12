@@ -32,7 +32,7 @@ type QueuedArticle = {
   metadata: Record<string, unknown> | null;
 };
 
-let articleQueue: QueuedArticle[] = [];
+const articleQueue: QueuedArticle[] = [];
 let processing = false;
 
 async function processQueue(): Promise<void> {

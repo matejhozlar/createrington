@@ -35,13 +35,11 @@ export function CryptoHeader() {
   const { data: balanceData, isLoading: balanceLoading } =
     trpc.user.crypto.balance.useQuery(undefined, {
       enabled: !!user,
-      refetchInterval: 30_000,
     });
 
   const { data: portfolio, isLoading: portfolioLoading } =
     trpc.user.crypto.portfolio.useQuery(undefined, {
       enabled: !!user,
-      refetchInterval: 30_000,
     });
 
   if (!user) return null;
