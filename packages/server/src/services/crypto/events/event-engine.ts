@@ -264,8 +264,7 @@ async function executeEvent(
 
   // Special handling for pump_and_dump: schedule phase flip at midpoint
   if (eventType === "pump_and_dump" && activeUntil) {
-    const totalDuration =
-      activeUntil.getTime() - dbEvent.createdAt.getTime();
+    const totalDuration = activeUntil.getTime() - dbEvent.createdAt.getTime();
     event.phaseFlipAt = dbEvent.createdAt.getTime() + totalDuration / 2;
   }
 
