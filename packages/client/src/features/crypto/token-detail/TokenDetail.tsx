@@ -267,6 +267,7 @@ export function TokenDetail() {
             <TradePanel
               symbol={token.symbol}
               price={displayPrice}
+              category={token.category}
               isCrashed={isCrashed}
               ipoEndsAt={token.ipoEndsAt}
               ipoPrice={token.ipoPrice}

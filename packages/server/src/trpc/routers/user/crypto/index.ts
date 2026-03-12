@@ -24,6 +24,7 @@ import {
 import { getPortfolioHistory } from "@/services/crypto/analytics/portfolio-tracker";
 import { evaluateTradeAchievements } from "@/services/crypto/trading/achievement-triggers";
 import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
  * User Crypto Router
@@ -45,7 +46,9 @@ export const cryptoRouter = router({
       const balance = await Q.player.balance.find({
         minecraftUuid: ctx.user.minecraftUuid,
       });
-      return { balance: String(balance?.balance ?? 0) };
+      return {
+        balance: String(BalanceUtils.fromStorage(balance?.balance ?? 0n)),
+      };
     }),
 
   buy: userProcedure

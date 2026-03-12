@@ -15,10 +15,18 @@ type TradeTab = "buy" | "sell";
 interface TradePanelProps {
   symbol: string;
   price: string;
+  category: string;
   isCrashed: boolean;
   ipoEndsAt?: string | null;
   ipoPrice?: string | null;
 }
+
+const FEE_RATES: Record<string, number> = {
+  stable: 0,
+  blue_chip: 0.005,
+  memecoin: 0.05,
+  seasonal: 0.01,
+};
 
 const ORDER_MODE_LABELS: Record<OrderMode, string> = {
   market: "Market",
@@ -30,6 +38,7 @@ const ORDER_MODE_LABELS: Record<OrderMode, string> = {
 export function TradePanel({
   symbol,
   price,
+  category,
   isCrashed,
   ipoEndsAt,
   ipoPrice,
@@ -62,21 +71,26 @@ export function TradePanel({
     return () => clearInterval(interval);
   }, [isIpo, ipoEndsAt]);
 
+  const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const { data: portfolioData } = trpc.user.crypto.portfolio.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+
+  const userBalance = Number(balanceData?.balance ?? 0);
+  const holding = portfolioData?.holdings.find((h) => h.symbol === symbol);
+  const holdingAmount = Number(holding?.amount ?? 0);
+
   const utils = trpc.useUtils();
 
   const invalidateAll = () => {
+    utils.user.crypto.balance.invalidate();
     utils.user.crypto.portfolio.invalidate();
     utils.user.crypto.listOrders.invalidate();
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
-  };
-
-  const showAchievementToasts = (newAchievements?: string[]) => {
-    if (newAchievements && newAchievements.length > 0) {
-      for (const name of newAchievements) {
-        toast.success(`Achievement Unlocked: ${name}`);
-      }
-    }
   };
 
   const buyMutation = trpc.user.crypto.buy.useMutation({
@@ -84,7 +98,6 @@ export function TradePanel({
       toast.success(
         `Bought ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
-      showAchievementToasts(data.newAchievements);
       setAmount("");
       invalidateAll();
     },
@@ -96,7 +109,6 @@ export function TradePanel({
       toast.success(
         `Sold ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
-      showAchievementToasts(data.newAchievements);
       setAmount("");
       invalidateAll();
     },
@@ -342,6 +354,30 @@ export function TradePanel({
             min={1}
             className="font-mono mt-1.5 h-11"
           />
+          {/* Percentage quick-fill buttons */}
+          {effectivePrice > 0 && (
+            <div className="grid grid-cols-4 gap-1.5 mt-2">
+              {[25, 50, 75, 100].map((pct) => {
+                const feeRate = FEE_RATES[category] ?? 0.05;
+                const costPerToken = effectivePrice * (1 + feeRate);
+                const max =
+                  tab === "buy"
+                    ? Math.floor(userBalance / costPerToken)
+                    : holdingAmount;
+                const qty = pct === 100 ? max : Math.floor((max * pct) / 100);
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    className="rounded-md border bg-muted/30 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                    onClick={() => setAmount(String(Math.max(0, qty)))}
+                  >
+                    {pct === 100 ? "Max" : `${pct}%`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Target price input */}
