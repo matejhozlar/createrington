@@ -57,6 +57,7 @@ import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
+import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
@@ -126,6 +127,7 @@ function AppContent() {
 
       {/* Puppeteer render routes (no layout, screenshot targets) */}
       <Route path="/render/compare" element={<CompareRender />} />
+      <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />

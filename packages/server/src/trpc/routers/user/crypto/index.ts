@@ -5,6 +5,7 @@ import { Q } from "@/db";
 import {
   executeBuy,
   executeSell,
+  getCooldownExpiresAt,
 } from "@/services/crypto/trading/trade-executor";
 import {
   placeOrder,
@@ -91,6 +92,10 @@ export const cryptoRouter = router({
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
           newAchievements,
+          cooldownExpiresAt: getCooldownExpiresAt(
+            ctx.user.minecraftUuid,
+            token.id,
+          ),
         };
       } catch (err) {
         throw trpcError.badRequest(
@@ -139,12 +144,34 @@ export const cryptoRouter = router({
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
           newAchievements,
+          cooldownExpiresAt: getCooldownExpiresAt(
+            ctx.user.minecraftUuid,
+            token.id,
+          ),
         };
       } catch (err) {
         throw trpcError.badRequest(
           err instanceof Error ? err.message : "Trade execution failed",
         );
       }
+    }),
+
+  cooldown: userProcedure
+    .meta({ description: "Get remaining trade cooldown for a token" })
+    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .query(async ({ ctx, input }) => {
+      const token = await Q.crypto.token
+        .where({ symbol: input.symbol.toUpperCase() })
+        .first();
+
+      if (!token) return { expiresAt: null };
+
+      const expiresAt = getCooldownExpiresAt(
+        ctx.user.minecraftUuid,
+        token.id,
+      );
+
+      return { expiresAt };
     }),
 
   portfolio: userProcedure

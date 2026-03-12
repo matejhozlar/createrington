@@ -16,7 +16,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { Clock, Rocket, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import {
+  Clock,
+  Rocket,
+  ArrowUpRight,
+  ArrowDownRight,
+  Timer,
+} from "lucide-react";
 import { formatCountdown } from "../../format";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
@@ -61,6 +67,10 @@ export function TradePanel({
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [cooldownExpiresAt, setCooldownExpiresAt] = useState<number | null>(
+    null,
+  );
+  const [cooldownText, setCooldownText] = useState("");
 
   const isIpo = !!ipoEndsAt && new Date(ipoEndsAt) > new Date();
 
@@ -81,6 +91,40 @@ export function TradePanel({
     const interval = setInterval(update, 1000);
     return () => clearInterval(interval);
   }, [isIpo, ipoEndsAt]);
+
+  // Fetch server-side cooldown on mount (survives page refresh)
+  const { data: cooldownData } = trpc.user.crypto.cooldown.useQuery(
+    { symbol },
+    { enabled: !!user && !isIpo },
+  );
+
+  useEffect(() => {
+    if (cooldownData?.expiresAt && cooldownData.expiresAt > Date.now()) {
+      setCooldownExpiresAt(cooldownData.expiresAt);
+    }
+  }, [cooldownData]);
+
+  // Countdown timer for active cooldown
+  useEffect(() => {
+    if (!cooldownExpiresAt) {
+      setCooldownText("");
+      return;
+    }
+
+    const update = () => {
+      const remaining = cooldownExpiresAt - Date.now();
+      if (remaining <= 0) {
+        setCooldownExpiresAt(null);
+        setCooldownText("");
+      } else {
+        setCooldownText(formatCountdown(remaining));
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownExpiresAt]);
 
   const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
     enabled: !!user,
@@ -110,6 +154,7 @@ export function TradePanel({
         `Bought ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
       setAmount("");
+      if (data.cooldownExpiresAt) setCooldownExpiresAt(data.cooldownExpiresAt);
       invalidateAll();
     },
     onError: (err) => toast.error(err.message),
@@ -121,6 +166,7 @@ export function TradePanel({
         `Sold ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
       setAmount("");
+      if (data.cooldownExpiresAt) setCooldownExpiresAt(data.cooldownExpiresAt);
       invalidateAll();
     },
     onError: (err) => toast.error(err.message),
@@ -442,6 +488,19 @@ export function TradePanel({
           </div>
         </div>
 
+        {/* Cooldown indicator */}
+        {cooldownText && orderMode === "market" && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm text-amber-400">
+            <Timer className="size-4 shrink-0" />
+            <span>
+              Trade again in{" "}
+              <span className="font-mono font-semibold tabular-nums">
+                {cooldownText}
+              </span>
+            </span>
+          </div>
+        )}
+
         {/* Submit button */}
         <Button
           className={cn(
@@ -451,7 +510,12 @@ export function TradePanel({
               : "bg-red-500 hover:bg-red-600 text-white",
           )}
           onClick={handleTrade}
-          disabled={isPending || isCrashed || amountNum <= 0}
+          disabled={
+            isPending ||
+            isCrashed ||
+            amountNum <= 0 ||
+            (!!cooldownExpiresAt && orderMode === "market")
+          }
         >
           {isPending
             ? "Processing..."

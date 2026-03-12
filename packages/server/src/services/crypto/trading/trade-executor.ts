@@ -43,6 +43,23 @@ export interface TradeResult {
 /** Per-player-per-token cooldown tracker: key is `${playerUuid}:${tokenId}`, value is last trade timestamp */
 const cooldownMap = new Map<string, number>();
 
+/**
+ * Returns the absolute timestamp (ms) when the cooldown expires for a player+token pair,
+ * or null if there is no active cooldown.
+ */
+export function getCooldownExpiresAt(
+  playerUuid: string,
+  tokenId: number,
+): number | null {
+  const key = `${playerUuid}:${tokenId}`;
+  const lastTradeTime = cooldownMap.get(key);
+  if (!lastTradeTime) return null;
+
+  const expiresAt =
+    lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
+  return expiresAt > Date.now() ? expiresAt : null;
+}
+
 // ==========================================================================
 // HELPERS
 // ==========================================================================

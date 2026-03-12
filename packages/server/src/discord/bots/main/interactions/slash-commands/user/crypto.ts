@@ -16,7 +16,10 @@ import { EmbedPresets } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds";
 import { createEmbed } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { getService, Services } from "@/services";
+import config from "@/config";
 import {
+  AttachmentBuilder,
   type ChatInputCommandInteraction,
   MessageFlags,
   SlashCommandBuilder,
@@ -97,6 +100,28 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub.setName("market").setDescription("View market summary and stats"),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("chart")
+      .setDescription("View a token's price chart")
+      .addStringOption((opt) =>
+        opt
+          .setName("symbol")
+          .setDescription("Token symbol (e.g. FLF)")
+          .setRequired(true),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("interval")
+          .setDescription("Chart time interval")
+          .addChoices(
+            { name: "Live", value: "tick" },
+            { name: "1 Minute", value: "minute" },
+            { name: "1 Hour", value: "hourly" },
+            { name: "1 Day", value: "daily" },
+          ),
+      ),
   )
   .addSubcommandGroup((group) =>
     group
@@ -187,6 +212,9 @@ export async function execute(
         break;
       case "market":
         await handleMarket(interaction);
+        break;
+      case "chart":
+        await handleChart(interaction);
         break;
     }
   } catch (error) {
@@ -512,6 +540,103 @@ async function handleMarket(
   embed.footer("Use /crypto buy or /crypto sell to trade").timestamp();
 
   await interaction.reply({ embeds: [embed.build()] });
+}
+
+/**
+ * Handles the `chart` subcommand
+ *
+ * Screenshots the crypto chart render page via PuppeteerService and replies
+ * with the image as a Discord attachment. Falls back to a text embed with
+ * basic price info if Puppeteer is unavailable.
+ *
+ * @param interaction - The incoming slash command interaction
+ */
+async function handleChart(
+  interaction: ChatInputCommandInteraction,
+): Promise<void> {
+  const symbol = interaction.options.getString("symbol", true).toUpperCase();
+  const interval = interaction.options.getString("interval") ?? "minute";
+
+  const token = await Q.crypto.token.find({ symbol });
+
+  if (!token) {
+    const embed = EmbedPresets.error(
+      "Token Not Found",
+      `No token with symbol **${symbol}** exists.`,
+    );
+    await interaction.reply({
+      embeds: [embed.build()],
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  await interaction.deferReply();
+
+  let screenshotBuffer: Buffer | null = null;
+  try {
+    const puppeteer = await getService(Services.PUPPETEER_SERVICE);
+    const baseUrl =
+      config.puppeteer.baseUrl ??
+      (config.envMode.isDev
+        ? "http://localhost:3000"
+        : config.meta.links.website);
+
+    const renderUrl = new URL("/render/crypto-chart", baseUrl);
+    renderUrl.searchParams.set("secret", config.puppeteer.secret);
+    renderUrl.searchParams.set("symbol", symbol);
+    renderUrl.searchParams.set("interval", interval);
+
+    const result = await puppeteer.screenshot({
+      url: renderUrl.toString(),
+      waitForSelector: "#chart-container",
+      elementSelector: "#chart-container",
+      settleDelay: 2000,
+      timeout: 15_000,
+      viewportWidth: 800,
+      viewportHeight: 420,
+    });
+
+    screenshotBuffer = result.buffer;
+  } catch (err) {
+    logger.warn(
+      "Puppeteer screenshot failed for /crypto chart, falling back to text embed:",
+      err,
+    );
+  }
+
+  if (screenshotBuffer) {
+    const filename = `chart_${symbol}.png`;
+    const attachment = new AttachmentBuilder(screenshotBuffer, {
+      name: filename,
+    });
+
+    const embed = createEmbed()
+      .title(`${token.name} (${symbol})`)
+      .color(EmbedColors.Info)
+      .image(`attachment://${filename}`);
+
+    await interaction.editReply({
+      embeds: [embed.build()],
+      files: [attachment],
+    });
+  } else {
+    // Text fallback
+    const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+    const change24h = cryptoService.get24hChange(token.id, token.price);
+    const changeSign = change24h >= 0 ? "+" : "";
+
+    const embed = createEmbed()
+      .title(`${token.name} (${symbol})`)
+      .color(change24h >= 0 ? EmbedColors.Success : EmbedColors.Error)
+      .field("Price", formatPrice(token.price), true)
+      .field("24h Change", `${changeSign}${change24h.toFixed(2)}%`, true)
+      .field("Category", token.category.replace("_", " "), true)
+      .footer("Chart image unavailable — install Chromium for visual charts")
+      .timestamp();
+
+    await interaction.editReply({ embeds: [embed.build()] });
+  }
 }
 
 /**
