@@ -64,6 +64,7 @@ import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
 import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
 import { TradeHistory as CryptoTradeHistory } from "./features/crypto/TradeHistory";
 import { Leaderboard as CryptoLeaderboard } from "./features/crypto/Leaderboard";
+import { ArticlePage as CryptoArticle } from "./features/crypto/ArticlePage";
 
 // ==========================================================================
 // LAYOUT HELPERS
@@ -170,6 +171,7 @@ function AppContent() {
             }
           />
           <Route path="leaderboard" element={<CryptoLeaderboard />} />
+          <Route path="news/:id" element={<CryptoArticle />} />
           <Route path=":symbol" element={<TokenDetail />} />
         </Route>
 

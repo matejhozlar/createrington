@@ -1,3 +1,4 @@
+import config from "@/config";
 import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors } from "@/discord/embeds";
 import { createMarketEvent } from "./events/news-feed";
@@ -5,6 +6,10 @@ import { Q } from "@/db";
 import { getLeaderboard } from "./analytics/leaderboard";
 import { EVENT_DEFINITIONS } from "./events/event-definitions";
 import type { ActiveEvent } from "./events/event-engine";
+
+function articleUrl(eventId: number): string {
+  return `${config.meta.links.website}/crypto/news/${eventId}`;
+}
 
 // ==========================================================================
 // HELPERS
@@ -45,6 +50,16 @@ export async function sendNewListingNotification(
   price: string,
   totalSupply: string,
 ): Promise<void> {
+  const event = await createMarketEvent({
+    type: "new_listing",
+    title: `New Token: ${name} (${symbol})`,
+    description: `Starting at ${formatPrice(price)} with ${Number(totalSupply).toLocaleString()} total supply`,
+    severity: "info",
+  }).catch((err) => {
+    logger.error("Failed to record listing event:", err);
+    return null;
+  });
+
   const embed = createEmbed()
     .title("New Token Listed!")
     .color(EmbedColors.Success)
@@ -54,6 +69,8 @@ export async function sendNewListingNotification(
     .footer("Use /crypto buy to start trading")
     .timestamp();
 
+  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
@@ -62,13 +79,6 @@ export async function sendNewListingNotification(
   } catch (err) {
     logger.error("Failed to send new listing notification to Discord:", err);
   }
-
-  createMarketEvent({
-    type: "new_listing",
-    title: `New Token: ${name} (${symbol})`,
-    description: `Starting at ${formatPrice(price)} with ${Number(totalSupply).toLocaleString()} total supply`,
-    severity: "info",
-  }).catch((err) => logger.error("Failed to record listing event:", err));
 }
 
 /**
@@ -92,6 +102,16 @@ export async function sendIpoAnnouncementNotification(
   const durationMin = Math.round(durationMs / 60_000);
   const maxPerPlayer = Math.floor(Number(totalSupply) * 0.05);
 
+  const event = await createMarketEvent({
+    type: "ipo_launch",
+    title: `IPO: ${name} (${symbol})`,
+    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends <t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>.`,
+    severity: "info",
+  }).catch((err) => {
+    logger.error("Failed to record IPO launch event:", err);
+    return null;
+  });
+
   const embed = createEmbed()
     .title("IPO Launch!")
     .color(EmbedColors.Premium)
@@ -106,6 +126,8 @@ export async function sendIpoAnnouncementNotification(
     .footer("Use /crypto buy to participate in the IPO")
     .timestamp();
 
+  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
@@ -117,13 +139,6 @@ export async function sendIpoAnnouncementNotification(
       err,
     );
   }
-
-  createMarketEvent({
-    type: "ipo_launch",
-    title: `IPO: ${name} (${symbol})`,
-    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends <t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>.`,
-    severity: "info",
-  }).catch((err) => logger.error("Failed to record IPO launch event:", err));
 }
 
 /**
@@ -148,6 +163,16 @@ export async function sendIpoResultNotification(
   const soldPercent = (Number(totalSold) / Number(totalSupply)) * 100;
   const totalRaised = Number(totalSold) * Number(ipoPrice);
 
+  const event = await createMarketEvent({
+    type: "ipo_complete",
+    title: `IPO Complete: ${name} (${symbol})`,
+    description: `${Number(totalSold).toLocaleString()} tokens sold to ${participants} players, raising ${formatPrice(totalRaised)}. Trading is now open.`,
+    severity: "info",
+  }).catch((err) => {
+    logger.error("Failed to record IPO result event:", err);
+    return null;
+  });
+
   const embed = createEmbed()
     .title("IPO Complete!")
     .color(EmbedColors.Success)
@@ -165,6 +190,8 @@ export async function sendIpoResultNotification(
     .footer("Normal trading has begun — price will now fluctuate")
     .timestamp();
 
+  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
@@ -173,13 +200,6 @@ export async function sendIpoResultNotification(
   } catch (err) {
     logger.error("Failed to send IPO result notification to Discord:", err);
   }
-
-  createMarketEvent({
-    type: "ipo_complete",
-    title: `IPO Complete: ${name} (${symbol})`,
-    description: `${Number(totalSold).toLocaleString()} tokens sold to ${participants} players, raising ${formatPrice(totalRaised)}. Trading is now open.`,
-    severity: "info",
-  }).catch((err) => logger.error("Failed to record IPO result event:", err));
 }
 
 /**
@@ -195,6 +215,16 @@ export async function sendCrashNotification(
   symbol: string,
   lastPrice: string,
 ): Promise<void> {
+  const event = await createMarketEvent({
+    type: "crash",
+    title: `${name} (${symbol}) Crashed!`,
+    description: `Last price was ${formatPrice(lastPrice)}. The token will be delisted in 48 hours.`,
+    severity: "critical",
+  }).catch((err) => {
+    logger.error("Failed to record crash event:", err);
+    return null;
+  });
+
   const embed = createEmbed()
     .title("Token Crashed!")
     .color(EmbedColors.Error)
@@ -205,6 +235,8 @@ export async function sendCrashNotification(
     .footer("The token will be delisted in 48 hours")
     .timestamp();
 
+  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
@@ -213,13 +245,6 @@ export async function sendCrashNotification(
   } catch (err) {
     logger.error("Failed to send crash notification to Discord:", err);
   }
-
-  createMarketEvent({
-    type: "crash",
-    title: `${name} (${symbol}) Crashed!`,
-    description: `Last price was ${formatPrice(lastPrice)}. The token will be delisted in 48 hours.`,
-    severity: "critical",
-  }).catch((err) => logger.error("Failed to record crash event:", err));
 }
 
 /**
@@ -238,6 +263,7 @@ export async function sendWhaleAlertNotification(
   tradeType: "buy" | "sell",
   amount: string,
   totalCost: string,
+  eventId?: number,
 ): Promise<void> {
   const action = tradeType === "buy" ? "bought" : "sold";
 
@@ -249,6 +275,8 @@ export async function sendWhaleAlertNotification(
     )
     .footer("Large trade detected")
     .timestamp();
+
+  if (eventId) embed.field("\u200B", `[Read more](${articleUrl(eventId)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -301,13 +329,8 @@ export async function sendMarketEventNotification(
     .description(description);
 
   if (event.activeUntil) {
-    const durationMs = event.activeUntil.getTime() - Date.now();
-    const durationMin = Math.round(durationMs / 60_000);
-    if (durationMin > 60) {
-      embed.field("Duration", `${(durationMin / 60).toFixed(1)} hours`, true);
-    } else {
-      embed.field("Duration", `${durationMin} minutes`, true);
-    }
+    const unixEnd = Math.floor(event.activeUntil.getTime() / 1000);
+    embed.field("Ends", `<t:${unixEnd}:R>`, true);
   } else {
     embed.field("Type", "Instant", true);
   }
@@ -316,6 +339,7 @@ export async function sendMarketEventNotification(
     embed.field("Affected Token", event.tokenSymbol, true);
   }
 
+  embed.field("\u200B", `[Read more](${articleUrl(event.eventId)})`, false);
   embed.timestamp();
 
   try {

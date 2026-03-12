@@ -181,6 +181,26 @@ export const cryptoRouter = router({
       return getLeaderboard(input.type, input.limit);
     }),
 
+  article: publicProcedure
+    .meta({ description: "Get a single market event article by ID" })
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const event = await Q.crypto.market.event.get({ id: input.id });
+      if (!event) throw trpcError.notFound("Article not found");
+      return {
+        id: event.id,
+        type: event.type,
+        title: event.title,
+        description: event.description,
+        article: event.article,
+        tokenId: event.tokenId,
+        severity: event.severity,
+        metadata: event.metadata,
+        activeUntil: event.activeUntil?.toISOString() ?? null,
+        createdAt: event.createdAt.toISOString(),
+      };
+    }),
+
   newsFeed: publicProcedure
     .meta({ description: "Get recent market events" })
     .input(

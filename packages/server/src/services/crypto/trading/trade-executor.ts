@@ -91,20 +91,24 @@ async function checkWhaleAlert(
   if (supplyRatio >= CRYPTO_CONFIG.WHALE_TRADE_THRESHOLD) {
     const player = await Q.player.find({ minecraftUuid: playerUuid });
     const playerName = player?.minecraftUsername ?? "Unknown";
-    recordWhaleEvent(
+    const whaleEvent = await recordWhaleEvent(
       playerName,
       token.symbol,
       token.id,
       tradeType,
       String(amount),
       totalCost.toFixed(2),
-    ).catch((err) => logger.error("Failed to record whale event:", err));
+    ).catch((err) => {
+      logger.error("Failed to record whale event:", err);
+      return null;
+    });
     sendWhaleAlertNotification(
       playerName,
       token.symbol,
       tradeType,
       String(amount),
       totalCost.toFixed(2),
+      whaleEvent?.id,
     ).catch((err) =>
       logger.error("Failed to send whale alert notification:", err),
     );
