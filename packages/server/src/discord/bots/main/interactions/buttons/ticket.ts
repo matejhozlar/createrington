@@ -3,7 +3,6 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
-  EmbedBuilder,
   MessageFlags,
 } from "discord.js";
 import {
@@ -373,15 +372,13 @@ async function handleDelete(
 
     if (interaction.channel && isSendableChannel(interaction.channel)) {
       try {
-        const errorEmbed = new EmbedBuilder()
-          .setTitle("❌ Deletion Failed")
-          .setDescription(
-            error instanceof Error ? error.message : "Failed to delete ticket",
-          )
-          .setColor(0xed4245);
+        const errorEmbed = EmbedPresets.error(
+          "Deletion Failed",
+          error instanceof Error ? error.message : "Failed to delete ticket",
+        );
 
         await interaction.channel.send({
-          embeds: [errorEmbed],
+          embeds: [errorEmbed.build()],
         });
       } catch (sendError) {
         logger.error("Failed to send error message to channel:", sendError);

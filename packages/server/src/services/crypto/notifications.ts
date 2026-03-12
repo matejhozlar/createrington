@@ -1,6 +1,6 @@
 import config from "@/config";
 import { Discord } from "@/discord/constants";
-import { createEmbed, EmbedColors } from "@/discord/embeds";
+import { EmbedPresets } from "@/discord/embeds";
 import { createMarketEvent } from "./events/news-feed";
 import { Q } from "@/db";
 import { getLeaderboard } from "./analytics/leaderboard";
@@ -60,14 +60,12 @@ export async function sendNewListingNotification(
     return null;
   });
 
-  const embed = createEmbed()
-    .title("New Token Listed!")
-    .color(EmbedColors.Success)
-    .description(`**${name}** (\`${symbol}\`) is now available for trading!`)
-    .field("Starting Price", formatPrice(price), true)
-    .field("Total Supply", Number(totalSupply).toLocaleString(), true)
-    .footer("Use /crypto buy to start trading")
-    .timestamp();
+  const embed = EmbedPresets.crypto.newListing({
+    name,
+    symbol,
+    price: formatPrice(price),
+    totalSupply: Number(totalSupply).toLocaleString(),
+  });
 
   if (event)
     embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
@@ -113,19 +111,15 @@ export async function sendIpoAnnouncementNotification(
     return null;
   });
 
-  const embed = createEmbed()
-    .title("IPO Launch!")
-    .color(EmbedColors.Premium)
-    .description(
-      `**${name}** (\`${symbol}\`) is launching via IPO!\nGet in at the fixed price before open trading begins.`,
-    )
-    .field("IPO Price", formatPrice(ipoPrice), true)
-    .field("Total Supply", Number(totalSupply).toLocaleString(), true)
-    .field("Max Per Player", maxPerPlayer.toLocaleString(), true)
-    .field("IPO Ends", `<t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>`, true)
-    .field("Duration", `${durationMin} minutes`, true)
-    .footer("Use /crypto buy to participate in the IPO")
-    .timestamp();
+  const embed = EmbedPresets.crypto.ipoAnnouncement({
+    name,
+    symbol,
+    ipoPrice: formatPrice(ipoPrice),
+    totalSupply: Number(totalSupply).toLocaleString(),
+    maxPerPlayer: maxPerPlayer.toLocaleString(),
+    ipoEndsAt: `<t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>`,
+    duration: `${durationMin} minutes`,
+  });
 
   if (event)
     embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
@@ -175,22 +169,14 @@ export async function sendIpoResultNotification(
     return null;
   });
 
-  const embed = createEmbed()
-    .title("IPO Complete!")
-    .color(EmbedColors.Success)
-    .description(
-      `**${name}** (\`${symbol}\`) IPO has ended. The token is now open for trading!`,
-    )
-    .field("IPO Price", formatPrice(ipoPrice), true)
-    .field(
-      "Tokens Sold",
-      `${Number(totalSold).toLocaleString()} (${soldPercent.toFixed(1)}%)`,
-      true,
-    )
-    .field("Total Raised", formatPrice(totalRaised), true)
-    .field("Participants", `${participants}`, true)
-    .footer("Normal trading has begun — price will now fluctuate")
-    .timestamp();
+  const embed = EmbedPresets.crypto.ipoResult({
+    name,
+    symbol,
+    ipoPrice: formatPrice(ipoPrice),
+    tokensSold: `${Number(totalSold).toLocaleString()} (${soldPercent.toFixed(1)}%)`,
+    totalRaised: formatPrice(totalRaised),
+    participants: `${participants}`,
+  });
 
   if (event)
     embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
@@ -228,15 +214,7 @@ export async function sendCrashNotification(
     return null;
   });
 
-  const embed = createEmbed()
-    .title("Token Crashed!")
-    .color(EmbedColors.Error)
-    .description(
-      `**${name}** (\`${symbol}\`) has crashed to $0! All holdings are now worthless.`,
-    )
-    .field("Last Price", formatPrice(lastPrice), true)
-    .footer("The token will be delisted in 48 hours")
-    .timestamp();
+  const embed = EmbedPresets.crypto.crash(name, symbol, formatPrice(lastPrice));
 
   if (event)
     embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
@@ -271,14 +249,13 @@ export async function sendWhaleAlertNotification(
 ): Promise<void> {
   const action = tradeType === "buy" ? "bought" : "sold";
 
-  const embed = createEmbed()
-    .title("Whale Alert!")
-    .color(EmbedColors.Warning)
-    .description(
-      `**${playerName}** ${action} **${Number(amount).toLocaleString()} ${tokenSymbol}** worth **${formatPrice(totalCost)}**`,
-    )
-    .footer("Large trade detected")
-    .timestamp();
+  const embed = EmbedPresets.crypto.whaleAlert(
+    playerName,
+    action,
+    Number(amount).toLocaleString(),
+    tokenSymbol,
+    formatPrice(totalCost),
+  );
 
   if (eventId)
     embed.field("\u200B", `[Read more](${articleUrl(eventId)})`, false);
@@ -315,23 +292,17 @@ export async function sendMarketEventNotification(
   const def = EVENT_DEFINITIONS[event.type as keyof typeof EVENT_DEFINITIONS];
   if (!def) return;
 
-  // Maps event severity levels to their corresponding embed accent colors
-  const colorMap: Record<string, number> = {
-    info: EmbedColors.Info,
-    warning: EmbedColors.Warning,
-    critical: EmbedColors.Error,
-  };
-
   let description = def.description;
   if (event.tokenSymbol) {
     // Replace the {token} template placeholder with the bolded token symbol
     description = description.replace("{token}", `**${event.tokenSymbol}**`);
   }
 
-  const embed = createEmbed()
-    .title(`Market Event: ${def.name}`)
-    .color(colorMap[def.severity] ?? EmbedColors.Info)
-    .description(description);
+  const embed = EmbedPresets.crypto.marketEvent(
+    def.name,
+    description,
+    def.severity as "info" | "warning" | "critical",
+  );
 
   if (event.activeUntil) {
     const unixEnd = Math.floor(event.activeUntil.getTime() / 1000);
@@ -345,7 +316,6 @@ export async function sendMarketEventNotification(
   }
 
   embed.field("\u200B", `[Read more](${articleUrl(event.eventId)})`, false);
-  embed.timestamp();
 
   try {
     await Discord.Messages.send({
@@ -470,22 +440,14 @@ export async function sendWeeklyMarketReport(): Promise<void> {
             .join("\n")
         : "No traders yet";
 
-    const embed = createEmbed()
-      .title("Weekly Market Report")
-      .color(EmbedColors.Premium)
-      .description("Here's what happened in the crypto market this week.")
-      .field("Total Market Cap", formatPrice(totalMarketCap), true)
-      .field("Weekly Volume", formatPrice(weeklyVolume), true)
-      .field("Active Traders", `${uniqueTraders}`, true)
-      .field(
-        "Active Tokens",
-        `${activeTokens.length} (${stableCount} stable, ${bluechipCount} blue-chip, ${memecoinCount} meme)`,
-        false,
-      )
-      .field("Total Trades", `${weeklyTxs.length}`, true)
-      .field("Top Traders (Net Worth)", leaderboardLines, false)
-      .footer("Reports are generated weekly")
-      .timestamp();
+    const embed = EmbedPresets.crypto.weeklyReport({
+      totalMarketCap: formatPrice(totalMarketCap),
+      weeklyVolume: formatPrice(weeklyVolume),
+      activeTraders: `${uniqueTraders}`,
+      activeTokens: `${activeTokens.length} (${stableCount} stable, ${bluechipCount} blue-chip, ${memecoinCount} meme)`,
+      totalTrades: `${weeklyTxs.length}`,
+      topTraders: leaderboardLines,
+    });
 
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,

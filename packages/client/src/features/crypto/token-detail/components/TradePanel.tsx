@@ -98,21 +98,18 @@ export function TradePanel({
     { enabled: !!user && !isIpo },
   );
 
+  // Countdown timer for active cooldown (merges mutation-set and query-fetched expiry)
   useEffect(() => {
-    if (cooldownData?.expiresAt && cooldownData.expiresAt > Date.now()) {
-      setCooldownExpiresAt(cooldownData.expiresAt);
-    }
-  }, [cooldownData]);
+    const expiresAt =
+      cooldownExpiresAt ??
+      (cooldownData?.expiresAt && cooldownData.expiresAt > Date.now()
+        ? cooldownData.expiresAt
+        : null);
 
-  // Countdown timer for active cooldown
-  useEffect(() => {
-    if (!cooldownExpiresAt) {
-      setCooldownText("");
-      return;
-    }
+    if (!expiresAt) return;
 
     const update = () => {
-      const remaining = cooldownExpiresAt - Date.now();
+      const remaining = expiresAt - Date.now();
       if (remaining <= 0) {
         setCooldownExpiresAt(null);
         setCooldownText("");
@@ -123,8 +120,11 @@ export function TradePanel({
 
     update();
     const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [cooldownExpiresAt]);
+    return () => {
+      clearInterval(interval);
+      setCooldownText("");
+    };
+  }, [cooldownExpiresAt, cooldownData]);
 
   const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
     enabled: !!user,

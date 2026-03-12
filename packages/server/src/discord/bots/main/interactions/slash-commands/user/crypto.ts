@@ -13,8 +13,6 @@ import { getMarketSummary } from "@/services/crypto/notifications";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { EmbedPresets } from "@/discord/embeds";
-import { EmbedColors } from "@/discord/embeds";
-import { createEmbed } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import config from "@/config";
@@ -288,25 +286,17 @@ async function handleTrade(
       BigInt(amount),
     );
 
-    const embed = createEmbed()
-      .title(isIpo ? "IPO Buy" : "Crypto Buy")
-      .color(EmbedColors.Success)
-      .description(
-        `Bought **${Number(result.amount).toLocaleString()} ${result.symbol}**${isIpo ? " (IPO)" : ""}`,
-      )
-      .field("Price", `$${Number(result.priceAtExecution).toFixed(4)}`, true)
-      .field("Fee", `$${result.feeAmount.toFixed(4)}`, true)
-      .field("Total Cost", `$${result.totalCost.toFixed(2)}`, true);
-
-    if (isIpo) {
-      embed.field(
-        "IPO Ends",
-        `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`,
-        true,
-      );
-    }
-
-    embed.timestamp();
+    const embed = EmbedPresets.crypto.buy({
+      symbol: result.symbol,
+      amount: Number(result.amount).toLocaleString(),
+      price: `$${Number(result.priceAtExecution).toFixed(4)}`,
+      fee: `$${result.feeAmount.toFixed(4)}`,
+      totalCost: `$${result.totalCost.toFixed(2)}`,
+      isIpo,
+      ipoEndsAt: isIpo
+        ? `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`
+        : undefined,
+    });
 
     await interaction.reply({ embeds: [embed.build()] });
   } else {
@@ -316,16 +306,13 @@ async function handleTrade(
       BigInt(amount),
     );
 
-    const embed = createEmbed()
-      .title("Crypto Sell")
-      .color(EmbedColors.Success)
-      .description(
-        `Sold **${Number(result.amount).toLocaleString()} ${result.symbol}**`,
-      )
-      .field("Price", `$${Number(result.priceAtExecution).toFixed(4)}`, true)
-      .field("Fee", `$${result.feeAmount.toFixed(4)}`, true)
-      .field("Revenue", `$${result.totalCost.toFixed(2)}`, true)
-      .timestamp();
+    const embed = EmbedPresets.crypto.sell({
+      symbol: result.symbol,
+      amount: Number(result.amount).toLocaleString(),
+      price: `$${Number(result.priceAtExecution).toFixed(4)}`,
+      fee: `$${result.feeAmount.toFixed(4)}`,
+      revenue: `$${result.totalCost.toFixed(2)}`,
+    });
 
     await interaction.reply({ embeds: [embed.build()] });
   }
@@ -375,13 +362,9 @@ async function handlePortfolio(
   );
 
   if (holdings.length === 0) {
-    const embed = createEmbed()
-      .title("Crypto Portfolio")
-      .color(EmbedColors.Info)
-      .description("You don't hold any crypto tokens yet.")
-      .field("Realized P&L", formatPnl(totalRealizedPnl), true)
-      .footer("Use /crypto buy to start trading")
-      .timestamp();
+    const embed = EmbedPresets.crypto.portfolioEmpty(
+      formatPnl(totalRealizedPnl),
+    );
 
     await interaction.reply({
       embeds: [embed.build()],
@@ -420,15 +403,14 @@ async function handlePortfolio(
 
   const portfolioPnl = totalValue - totalInvested;
 
-  const embed = createEmbed()
-    .title("Crypto Portfolio")
-    .color(portfolioPnl >= 0 ? EmbedColors.Success : EmbedColors.Error)
-    .description(lines.join("\n\n"))
-    .field("Total Value", formatPrice(totalValue), true)
-    .field("Unrealized P&L", formatPnl(portfolioPnl), true)
-    .field("Realized P&L", formatPnl(totalRealizedPnl), true)
-    .footer(`${holdings.length} token${holdings.length === 1 ? "" : "s"} held`)
-    .timestamp();
+  const embed = EmbedPresets.crypto.portfolio({
+    description: lines.join("\n\n"),
+    totalValue: formatPrice(totalValue),
+    unrealizedPnl: formatPnl(portfolioPnl),
+    realizedPnl: formatPnl(totalRealizedPnl),
+    holdingCount: holdings.length,
+    isProfit: portfolioPnl >= 0,
+  });
 
   await interaction.reply({
     embeds: [embed.build()],
@@ -458,11 +440,7 @@ async function handleLeaderboard(
   const entries = await getLeaderboard(type, 10);
 
   if (entries.length === 0) {
-    const embed = createEmbed()
-      .title("Crypto Leaderboard")
-      .color(EmbedColors.Info)
-      .description("No trading activity yet.");
-
+    const embed = EmbedPresets.crypto.leaderboardEmpty();
     await interaction.reply({ embeds: [embed.build()] });
     return;
   }
@@ -479,12 +457,10 @@ async function handleLeaderboard(
     return `${prefix} **${e.playerName}** — ${formatPrice(e.value)}`;
   });
 
-  const embed = createEmbed()
-    .title(`Crypto Leaderboard — ${typeLabels[type]}`)
-    .color(EmbedColors.Premium)
-    .description(lines.join("\n"))
-    .footer("Updated in real-time")
-    .timestamp();
+  const embed = EmbedPresets.crypto.leaderboard(
+    typeLabels[type],
+    lines.join("\n"),
+  );
 
   await interaction.reply({ embeds: [embed.build()] });
 }
@@ -511,18 +487,13 @@ async function handleMarket(
     .filter(Boolean)
     .join(", ");
 
-  const embed = createEmbed()
-    .title("Crypto Market Summary")
-    .color(EmbedColors.Premium)
-    .field("Total Market Cap", formatPrice(summary.totalMarketCap), true)
-    .field("24h Volume", formatPrice(summary.dailyVolume), true)
-    .field("24h Trades", `${summary.dailyTrades}`, true)
-    .field(
-      "Active Tokens",
-      `${summary.activeTokenCount} (${tokenBreakdown})`,
-      false,
-    )
-    .field("Active Traders (24h)", `${summary.uniqueTraders}`, true);
+  const embed = EmbedPresets.crypto.marketSummary({
+    totalMarketCap: formatPrice(summary.totalMarketCap),
+    dailyVolume: formatPrice(summary.dailyVolume),
+    dailyTrades: `${summary.dailyTrades}`,
+    activeTokens: `${summary.activeTokenCount} (${tokenBreakdown})`,
+    uniqueTraders: `${summary.uniqueTraders}`,
+  });
 
   const activeEvents = getActiveEventsInMemory();
   if (activeEvents.length > 0) {
@@ -536,8 +507,6 @@ async function handleMarket(
     });
     embed.field("Active Events", eventLines.join("\n"), false);
   }
-
-  embed.footer("Use /crypto buy or /crypto sell to trade").timestamp();
 
   await interaction.reply({ embeds: [embed.build()] });
 }
@@ -611,10 +580,7 @@ async function handleChart(
       name: filename,
     });
 
-    const embed = createEmbed()
-      .title(`${token.name} (${symbol})`)
-      .color(EmbedColors.Info)
-      .image(`attachment://${filename}`);
+    const embed = EmbedPresets.crypto.chart(token.name, symbol, filename);
 
     await interaction.editReply({
       embeds: [embed.build()],
@@ -626,14 +592,14 @@ async function handleChart(
     const change24h = cryptoService.get24hChange(token.id, token.price);
     const changeSign = change24h >= 0 ? "+" : "";
 
-    const embed = createEmbed()
-      .title(`${token.name} (${symbol})`)
-      .color(change24h >= 0 ? EmbedColors.Success : EmbedColors.Error)
-      .field("Price", formatPrice(token.price), true)
-      .field("24h Change", `${changeSign}${change24h.toFixed(2)}%`, true)
-      .field("Category", token.category.replace("_", " "), true)
-      .footer("Chart image unavailable — install Chromium for visual charts")
-      .timestamp();
+    const embed = EmbedPresets.crypto.chartFallback({
+      tokenName: token.name,
+      symbol,
+      price: formatPrice(token.price),
+      change24h: `${changeSign}${change24h.toFixed(2)}%`,
+      category: token.category.replace("_", " "),
+      isPositive: change24h >= 0,
+    });
 
     await interaction.editReply({ embeds: [embed.build()] });
   }
@@ -701,15 +667,13 @@ async function handleAlert(
         direction,
       );
 
-      const embed = createEmbed()
-        .title("Price Alert Created")
-        .color(EmbedColors.Success)
-        .description(
-          `Alert when **${symbol}** goes **${direction}** ${formatPrice(price)}`,
-        )
-        .field("Current Price", formatPrice(token.price), true)
-        .field("Alert ID", `#${alert.id}`, true)
-        .timestamp();
+      const embed = EmbedPresets.crypto.alertCreated({
+        symbol,
+        direction,
+        price: formatPrice(price),
+        currentPrice: formatPrice(token.price),
+        alertId: `#${alert.id}`,
+      });
 
       await interaction.reply({
         embeds: [embed.build()],
@@ -723,11 +687,7 @@ async function handleAlert(
 
       await deleteAlert(playerEntry.minecraftUuid, alertId);
 
-      const embed = createEmbed()
-        .title("Price Alert Removed")
-        .color(EmbedColors.Success)
-        .description(`Alert **#${alertId}** has been removed.`)
-        .timestamp();
+      const embed = EmbedPresets.crypto.alertRemoved(alertId);
 
       await interaction.reply({
         embeds: [embed.build()],
@@ -740,11 +700,7 @@ async function handleAlert(
       const alerts = await getPlayerAlerts(playerEntry.minecraftUuid);
 
       if (alerts.length === 0) {
-        const embed = createEmbed()
-          .title("Price Alerts")
-          .color(EmbedColors.Info)
-          .description("You have no active price alerts.")
-          .footer("Use /crypto alert add to create one");
+        const embed = EmbedPresets.crypto.alertListEmpty();
 
         await interaction.reply({
           embeds: [embed.build()],
@@ -766,14 +722,7 @@ async function handleAlert(
         );
       });
 
-      const embed = createEmbed()
-        .title("Price Alerts")
-        .color(EmbedColors.Info)
-        .description(lines.join("\n\n"))
-        .footer(
-          `${alerts.length} active alert${alerts.length === 1 ? "" : "s"}`,
-        )
-        .timestamp();
+      const embed = EmbedPresets.crypto.alertList(lines.join("\n\n"));
 
       await interaction.reply({
         embeds: [embed.build()],
