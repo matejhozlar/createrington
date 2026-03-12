@@ -12,14 +12,4 @@ export class CryptoPriceSnapshotQueries extends CryptoPriceSnapshotBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
-
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<CryptoPriceSnapshot[]> {
-  //   const result = await this.db.query<CryptoPriceSnapshot>(
-  //     `SELECT * FROM crypto_price_snapshot WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
 }
