@@ -16,12 +16,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Load environment for Discord scrape
-        run: cp /opt/createrington/.env .env
-
-      - name: Scrape Discord entities
-        run: pnpm scrape-discord
-
       - name: Build
         run: pnpm build
 
