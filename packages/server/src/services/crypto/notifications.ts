@@ -68,7 +68,7 @@ export async function sendNewListingNotification(
   });
 
   if (event)
-    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -122,7 +122,7 @@ export async function sendIpoAnnouncementNotification(
   });
 
   if (event)
-    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -179,7 +179,7 @@ export async function sendIpoResultNotification(
   });
 
   if (event)
-    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -217,7 +217,7 @@ export async function sendCrashNotification(
   const embed = EmbedPresets.crypto.crash(name, symbol, formatPrice(lastPrice));
 
   if (event)
-    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -258,7 +258,7 @@ export async function sendWhaleAlertNotification(
   );
 
   if (eventId)
-    embed.field("\u200B", `[Read more](${articleUrl(eventId)})`, false);
+    embed.field("\u200B", `[Read more →](${articleUrl(eventId)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -315,7 +315,7 @@ export async function sendMarketEventNotification(
     embed.field("Affected Token", event.tokenSymbol, true);
   }
 
-  embed.field("\u200B", `[Read more](${articleUrl(event.eventId)})`, false);
+  embed.field("\u200B", `[Read more →](${articleUrl(event.eventId)})`, false);
 
   try {
     await Discord.Messages.send({
