@@ -8,6 +8,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { ChevronRight, Newspaper } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -24,6 +25,23 @@ const SEVERITY_LABEL: Record<string, string> = {
   warning: "Market Warning",
   critical: "Critical Alert",
 };
+
+const SEVERITY_ACCENT: Record<string, string> = {
+  info: "border-l-muted-foreground/30",
+  warning: "border-l-primary/60",
+  critical: "border-l-red-400",
+};
+
+function formatArticleDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 type NewsEvent = {
   id: number;
@@ -121,21 +139,31 @@ export function NewsFeed() {
                     )}
                   />
                   {SEVERITY_LABEL[selected.severity] ?? "Market Update"}
-                  {" · "}
-                  {timeAgo(selected.createdAt)}
                 </SheetDescription>
-                <SheetTitle>{selected.title}</SheetTitle>
+                <SheetTitle className="text-xl leading-snug">
+                  {selected.title}
+                </SheetTitle>
               </SheetHeader>
               <div className="px-4 pb-6">
+                <p className="text-xs text-muted-foreground mb-4">
+                  Createrington Exchange &middot;{" "}
+                  {formatArticleDate(selected.createdAt)}
+                </p>
+                <Separator className="mb-4" />
                 {selected.description && (
-                  <p className="text-sm text-muted-foreground italic mb-4">
+                  <p className="text-sm font-medium text-muted-foreground italic mb-4 border-l-2 border-muted-foreground/20 pl-3">
                     {selected.description}
                   </p>
                 )}
                 {selected.article ? (
-                  <div className="text-sm leading-relaxed whitespace-pre-line">
+                  <article
+                    className={cn(
+                      "border-l-2 pl-4 text-sm leading-7 whitespace-pre-line",
+                      SEVERITY_ACCENT[selected.severity] ?? SEVERITY_ACCENT.info,
+                    )}
+                  >
                     {selected.article}
-                  </div>
+                  </article>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     No article available for this event.

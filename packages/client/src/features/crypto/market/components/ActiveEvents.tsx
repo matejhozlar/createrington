@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
@@ -34,9 +35,17 @@ const BULLISH_EVENTS = new Set([
   "new_listing_frenzy",
 ]);
 
-function formatRemaining(activeUntil: string): string {
-  const remaining = new Date(activeUntil).getTime() - Date.now();
-  return formatCountdown(remaining);
+function useCountdown(activeUntil: string | null): string | null {
+  const [now, setNow] = useState(Date.now);
+
+  useEffect(() => {
+    if (!activeUntil) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [activeUntil]);
+
+  if (!activeUntil) return null;
+  return formatCountdown(new Date(activeUntil).getTime() - now);
 }
 
 function EventBanner({
@@ -53,6 +62,7 @@ function EventBanner({
 }) {
   const Icon = EVENT_ICONS[event.type] ?? Zap;
   const isBullish = BULLISH_EVENTS.has(event.type);
+  const countdown = useCountdown(event.activeUntil);
 
   let description = event.description ?? "";
   if (event.tokenSymbol) {
@@ -100,9 +110,9 @@ function EventBanner({
           </span>
         )}
       </div>
-      {event.activeUntil && (
+      {countdown && (
         <span className="text-xs font-mono shrink-0 text-muted-foreground tabular-nums">
-          {formatRemaining(event.activeUntil)}
+          {countdown}
         </span>
       )}
     </div>

@@ -117,6 +117,6 @@ export async function recordWhaleEvent(
     description: `A large trade of $${Number(totalCost).toFixed(2)} was executed`,
     tokenId,
     severity: "warning",
-    metadata: { playerName, tradeType, amount, totalCost },
+    metadata: { playerName, tradeType, amount, totalCost, tokenId, targetSymbol: tokenSymbol },
   });
 }

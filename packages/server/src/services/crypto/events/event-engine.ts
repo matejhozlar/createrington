@@ -242,6 +242,7 @@ async function executeEvent(
       eventType,
       effects: def.effects,
       targetSymbol: targetToken?.symbol,
+      tokenId: targetToken?.id,
     },
   });
 
