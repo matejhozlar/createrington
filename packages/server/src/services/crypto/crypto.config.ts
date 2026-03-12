@@ -34,15 +34,16 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_MEAN_REVERSION_STRENGTH: 0.005, // pull strength per tick (stronger correction)
 
   // Memecoin Generation
+  MEMECOIN_MAX_ACTIVE: 5, // max active (non-crashed, non-delisted) memecoins at a time
   MEMECOIN_INITIAL_PRICE_MIN: 0.001,
   MEMECOIN_INITIAL_PRICE_MAX: 100,
-  MEMECOIN_TOTAL_SUPPLY_MIN: 1_000,
-  MEMECOIN_TOTAL_SUPPLY_MAX: 10_000_000,
+  MEMECOIN_TOTAL_SUPPLY_MIN: 500,
+  MEMECOIN_TOTAL_SUPPLY_MAX: 50_000,
 
-  // Stablecoin Pricing
+  // Stablecoin Pricing (flat amounts, not percentages)
   STABLECOIN_FLOOR_PRICE: 1.0,
-  STABLECOIN_INFLATION_PER_PLAYER: 0.0003,
-  STABLECOIN_DECAY_RATE: 0.00005,
+  STABLECOIN_INFLATION_PER_PLAYER: 0.0007, // flat $ per player per tick (old: ~$0.0005 equivalent)
+  STABLECOIN_DECAY_RATE: 0.0001, // flat $ decay when no players online
 
   // Blue-Chip Pricing
   BLUECHIP_SENSITIVITY: 0.01, // metric delta multiplier
@@ -54,11 +55,26 @@ export const CRYPTO_CONFIG = {
   // upwardBias: probability of going up (0.5 = neutral, >0.5 = upward drift, <0.5 = downward drift)
   // Higher-priced tokens have progressively lower upward bias — natural price ceiling
   VOLATILITY: {
-    PENNY: { maxPrice: 0.1, minChange: 0.01, maxChange: 0.03, upwardBias: 0.505 },
+    PENNY: {
+      maxPrice: 0.1,
+      minChange: 0.01,
+      maxChange: 0.03,
+      upwardBias: 0.505,
+    },
     LOW: { maxPrice: 5, minChange: 0.005, maxChange: 0.015, upwardBias: 0.502 },
-    MID: { maxPrice: 500, minChange: 0.003, maxChange: 0.008, upwardBias: 0.50 },
-    HIGH: { maxPrice: 10_000, minChange: 0.001, maxChange: 0.004, upwardBias: 0.495 },
-    MEGA: { maxPrice: Infinity, minChange: 0.0005, maxChange: 0.002, upwardBias: 0.49 },
+    MID: { maxPrice: 500, minChange: 0.003, maxChange: 0.008, upwardBias: 0.5 },
+    HIGH: {
+      maxPrice: 10_000,
+      minChange: 0.001,
+      maxChange: 0.004,
+      upwardBias: 0.495,
+    },
+    MEGA: {
+      maxPrice: Infinity,
+      minChange: 0.0005,
+      maxChange: 0.002,
+      upwardBias: 0.49,
+    },
   },
 
   // Fees (old system: 5% buy + 5% sell for memecoins)
@@ -70,14 +86,11 @@ export const CRYPTO_CONFIG = {
     BURN_RATIO: 0.5, // 50% of memecoin fees burned
   },
 
-  // Volume Discounts (drastically reduced — old system had none)
-  VOLUME_DISCOUNTS: [
-    { minTrades: 500, discount: 0.05 }, // 5% off fees
-    { minTrades: 2000, discount: 0.1 }, // 10% off fees
-  ],
+  // Volume Discounts (none — matches old system)
+  VOLUME_DISCOUNTS: [] as { minTrades: number; discount: number }[],
 
   // Trading Limits
-  MAX_TRADES_PER_MINUTE: 3, // much stricter (old system had 3-min cooldown per token)
+  TRADE_COOLDOWN_PER_TOKEN_MS: 180_000, // 3-minute cooldown per token per player (matches old system)
   MAX_PENDING_ORDERS: 5,
   ORDER_DEFAULT_EXPIRY_HOURS: 24,
   ORDER_MAX_EXPIRY_HOURS: 168, // 7 days
@@ -94,9 +107,9 @@ export const CRYPTO_CONFIG = {
 
   // IPO (Initial Public Offering)
   IPO_DURATION_MS: 3_600_000, // 1 hour
-  IPO_MAX_ALLOCATION_PERCENT: 0.03, // max 3% of supply per player (was 5%)
+  IPO_MAX_ALLOCATION_PERCENT: 0.1, // max 10% of supply per player
   IPO_CHECK_INTERVAL_MS: 30_000, // check for ended IPOs every 30s
-  IPO_SPAWN_INTERVAL_MS: 12 * 3_600_000, // auto-spawn a new IPO memecoin every 12 hours (was 6)
+  IPO_SPAWN_INTERVAL_MS: 24 * 3_600_000, // auto-spawn a new IPO memecoin every 24 hours
 
   // Snapshot Retention (seconds)
   RETENTION: {

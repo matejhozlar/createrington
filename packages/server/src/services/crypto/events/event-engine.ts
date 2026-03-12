@@ -126,7 +126,7 @@ export async function rollForEvents(): Promise<ActiveEvent[]> {
   pruneExpiredEvents();
 
   const newEvents: ActiveEvent[] = [];
-  const MAX_CONCURRENT_EVENTS = 2;
+  const MAX_CONCURRENT_EVENTS = CRYPTO_CONFIG.MAX_CONCURRENT_EVENTS;
 
   if (activeEvents.length >= MAX_CONCURRENT_EVENTS) {
     return newEvents;
@@ -166,7 +166,14 @@ export async function triggerEvent(
   // Remove existing event of the same type if any
   const existingIdx = activeEvents.findIndex((e) => e.type === eventType);
   if (existingIdx !== -1) {
+    const existing = activeEvents[existingIdx];
     activeEvents.splice(existingIdx, 1);
+
+    // Expire the old DB record so it doesn't resurface in queries or on restart
+    await Q.crypto.market.event.update(
+      { id: existing.eventId },
+      { activeUntil: new Date() },
+    );
   }
 
   return executeEvent(eventType, tokenId);
@@ -221,7 +228,7 @@ async function executeEvent(
   if (targetToken) {
     description = description.replace(
       "{token}",
-      `**${targetToken.name}** (${targetToken.symbol})`,
+      `${targetToken.name} (${targetToken.symbol})`,
     );
   }
 
@@ -242,6 +249,7 @@ async function executeEvent(
       eventType,
       effects: def.effects,
       targetSymbol: targetToken?.symbol,
+      tokenId: targetToken?.id,
     },
   });
 
@@ -254,9 +262,10 @@ async function executeEvent(
     tokenSymbol: targetToken?.symbol ?? null,
   };
 
-  // Special handling for pump_and_dump: schedule phase flip
+  // Special handling for pump_and_dump: schedule phase flip at midpoint
   if (eventType === "pump_and_dump" && activeUntil) {
-    event.phaseFlipAt = Date.now() + (activeUntil.getTime() - Date.now()) / 2;
+    const totalDuration = activeUntil.getTime() - dbEvent.createdAt.getTime();
+    event.phaseFlipAt = dbEvent.createdAt.getTime() + totalDuration / 2;
   }
 
   // Only track duration-based events in active list (instant events fire once)
@@ -401,6 +410,9 @@ export async function restoreActiveEvents(): Promise<void> {
     const eventType = dbEvent.type as MarketEventType;
     if (!EVENT_DEFINITIONS[eventType]) continue;
 
+    // Skip if an event of this type was already restored (keep the newest)
+    if (activeEvents.some((e) => e.type === eventType)) continue;
+
     const meta = dbEvent.metadata as Record<string, unknown> | null;
     const effects =
       (meta?.effects as EventEffect | undefined) ??
@@ -439,7 +451,10 @@ export async function restoreActiveEvents(): Promise<void> {
  * @private
  */
 async function getActiveEventsFromDb() {
-  const all = await Q.crypto.market.event.where({}).all();
+  const all = await Q.crypto.market.event
+    .where({})
+    .orderBy("createdAt", "desc")
+    .all();
   const now = new Date();
   return all.filter((e) => e.activeUntil && e.activeUntil > now);
 }

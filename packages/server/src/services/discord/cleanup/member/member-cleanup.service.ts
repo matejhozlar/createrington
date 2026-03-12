@@ -4,11 +4,17 @@ import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 
 /**
- * Service to automatically clean up departed members after 30 days
+ * Member Cleanup Service
  *
- * Runs periodic checks to find members who left the Discord server
- * more than 30 days ago and automatically removes their data and
- * Minecraft whitelist access
+ * Automatically removes player data for Discord members who departed more than 30 days ago:
+ * - Runs an immediate cleanup on startup, then repeats every 6 hours
+ * - Deletes the player record from the database
+ * - Removes the player from all Minecraft server whitelists via RCON
+ * - Marks the departed_member row as deleted with a timestamp
+ * - Updates the associated Discord administration notification embed
+ *
+ * NOTE: RCON failures during whitelist removal are logged but do not
+ * abort the rest of the cleanup for that member
  */
 export class MemberCleanupService {
   private intervalId?: NodeJS.Timeout;

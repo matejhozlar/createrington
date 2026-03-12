@@ -68,8 +68,6 @@ export function NavUser({ user }: { user: User }) {
     logout();
   };
 
-  console.log("minecraftUuid:", user.minecraftUuid, "| full user:", user);
-
   const crafatarAvatarUrl = user.minecraftUuid
     ? `https://mc-heads.net/avatar/${user.minecraftUuid}`
     : undefined;

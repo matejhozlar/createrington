@@ -25,6 +25,18 @@ async function getUsedSymbols(): Promise<Set<string>> {
   return new Set(tokens.map((t) => t.symbol));
 }
 
+/** Returns the count of active (non-crashed, non-delisted) memecoins */
+async function getActiveMemecoinCount(): Promise<number> {
+  const tokens = await Q.crypto.token
+    .where({
+      category: "memecoin",
+      isCrashed: false,
+      delistedAt: { $exists: false },
+    })
+    .all();
+  return tokens.length;
+}
+
 /**
  * Picks an unused catalog definition, randomizes price and supply.
  *
@@ -64,6 +76,14 @@ async function pickRandomMemecoin() {
  * @returns The newly created token, or null if all catalog entries are in use
  */
 export async function generateMemecoin(): Promise<CryptoToken | null> {
+  const activeCount = await getActiveMemecoinCount();
+  if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+    logger.info(
+      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping generation`,
+    );
+    return null;
+  }
+
   const pick = await pickRandomMemecoin();
   if (!pick) return null;
 
@@ -92,6 +112,14 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
  * @returns The newly created IPO token, or null if the catalog is exhausted
  */
 export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
+  const activeCount = await getActiveMemecoinCount();
+  if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+    logger.info(
+      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping IPO generation`,
+    );
+    return null;
+  }
+
   const pick = await pickRandomMemecoin();
   if (!pick) return null;
 
@@ -144,6 +172,33 @@ export async function cleanupCrashedTokens(): Promise<number> {
 
       for (const holding of holdings) {
         await Q.crypto.holding.delete({ id: holding.id });
+      }
+
+      // Clean up cost basis lots for all players
+      const costBasisLots = await Q.crypto.cost.basis
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const lot of costBasisLots) {
+        await Q.crypto.cost.basis.delete({ id: lot.id });
+      }
+
+      // Clean up watchlist entries
+      const watchlistEntries = await Q.crypto.watchlist
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const entry of watchlistEntries) {
+        await Q.crypto.watchlist.delete({ id: entry.id });
+      }
+
+      // Clean up price alerts
+      const alerts = await Q.crypto.price.alert
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const alert of alerts) {
+        await Q.crypto.price.alert.delete({ id: alert.id });
       }
 
       const snapshots = await Q.crypto.price.snapshot

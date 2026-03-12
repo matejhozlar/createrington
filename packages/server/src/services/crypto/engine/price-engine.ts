@@ -281,6 +281,7 @@ export function tickStablecoinPrice(
 
   const eventEffects = resolveEffects(token.id);
 
+  // Flat amount model (not percentage-based) — linear growth like old system
   let priceChange: number;
   if (activePlayerCount > 0) {
     priceChange =
@@ -291,7 +292,7 @@ export function tickStablecoinPrice(
     priceChange = -CRYPTO_CONFIG.STABLECOIN_DECAY_RATE;
   }
 
-  const newPrice = Math.max(floorPrice, currentPrice * (1 + priceChange));
+  const newPrice = Math.max(floorPrice, currentPrice + priceChange);
 
   return {
     tokenId: token.id,
@@ -500,20 +501,24 @@ export async function recordTickSnapshot(
   now.setMilliseconds(0);
   now.setSeconds(now.getSeconds() - (now.getSeconds() % 30));
 
-  await Q.crypto.price.snapshot.create({
-    tokenId: update.tokenId,
-    interval: "tick",
-    openPrice: update.oldPrice,
-    highPrice:
-      Number(update.newPrice) > Number(update.oldPrice)
-        ? update.newPrice
-        : update.oldPrice,
-    lowPrice:
-      Number(update.newPrice) < Number(update.oldPrice)
-        ? update.newPrice
-        : update.oldPrice,
-    closePrice: price,
-    volume,
-    recordedAt: now,
-  });
+  await Q.crypto.price.snapshot.upsert(
+    {
+      tokenId: update.tokenId,
+      interval: "tick",
+      openPrice: update.oldPrice,
+      highPrice:
+        Number(update.newPrice) > Number(update.oldPrice)
+          ? update.newPrice
+          : update.oldPrice,
+      lowPrice:
+        Number(update.newPrice) < Number(update.oldPrice)
+          ? update.newPrice
+          : update.oldPrice,
+      closePrice: price,
+      volume,
+      recordedAt: now,
+    },
+    ["tokenId", "interval", "recordedAt"],
+    ["closePrice"],
+  );
 }

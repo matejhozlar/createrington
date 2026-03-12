@@ -1,4 +1,3 @@
-/** Discord guild role ID mappings, keyed by role purpose */
 interface MemberRolesConfig {
   readonly owner: string;
   readonly bot: string;
@@ -14,6 +13,15 @@ interface MemberRolesConfig {
   readonly kineticOperator: string;
   readonly cogCarrier: string;
   readonly shaftScraper: string;
+  readonly starforged: string;
+  readonly netherite: string;
+  readonly emerald: string;
+  readonly diamond: string;
+  readonly gold: string;
+  readonly iron: string;
+  readonly copper: string;
+  readonly stone: string;
+  readonly wood: string;
   readonly legend: string;
   readonly veteran: string;
   readonly regular: string;
@@ -25,7 +33,6 @@ interface MemberRolesConfig {
   readonly unverified: string;
 }
 
-/** Discord channel ID mappings, grouped by category */
 interface ChannelConfig {
   readonly createringtonOfficial: {
     readonly welcome: string;
@@ -68,6 +75,7 @@ interface ChannelConfig {
   };
 
   readonly dev: {
+    readonly createringtonKubejs: string;
     readonly createrington: string;
     readonly chat: string;
     readonly createringtonCurrency: string;
@@ -76,9 +84,12 @@ interface ChannelConfig {
   readonly textChannels: {
     readonly general: string;
   };
+
+  readonly crypto: {
+    readonly news: string;
+  };
 }
 
-/** Discord category ID mappings */
 interface CategoriesConfig {
   readonly createringtonOfficial: string;
   readonly general: string;
@@ -90,6 +101,7 @@ interface CategoriesConfig {
   readonly testServer: string;
   readonly administration: string;
   readonly dev: string;
+  readonly crypto: string;
 }
 
 export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };

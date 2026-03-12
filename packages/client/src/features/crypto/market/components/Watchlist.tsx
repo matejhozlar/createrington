@@ -5,8 +5,10 @@ import { useAuth } from "@/contexts/auth";
 import { useCryptoData } from "@/contexts/crypto-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, X, TrendingUp, TrendingDown } from "lucide-react";
+import { Star, X } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { formatPrice } from "../../format";
+import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 export function Watchlist() {
   const navigate = useNavigate();
@@ -28,10 +30,10 @@ export function Watchlist() {
 
   if (!user) {
     return (
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Star className="size-4 text-yellow-500" />
+      <Card className="py-4 gap-3">
+        <CardHeader className="pb-0">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Star className="size-3.5 text-muted-foreground" />
             Watchlist
           </CardTitle>
         </CardHeader>
@@ -45,20 +47,16 @@ export function Watchlist() {
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="py-4 gap-3">
+      <CardHeader className="pb-0">
         <CardTitle className="flex items-center gap-2 text-sm">
-          <Star className="size-3.5 text-yellow-500" />
+          <Star className="size-3.5 text-muted-foreground" />
           Watchlist
         </CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-11 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
+          <LoadingSpinner size="small" className="py-8" />
         ) : !watchlist || watchlist.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No tokens in your watchlist
@@ -67,17 +65,17 @@ export function Watchlist() {
           <div className="space-y-0.5">
             {watchlist.map((entry) => {
               const livePrice = getPrice(entry.symbol);
-              const displayPrice = livePrice?.price ?? entry.price;
-              const change24h = livePrice?.change24h ?? 0;
+              const displayPrice = Number(livePrice?.price ?? entry.price);
+              const change24h = livePrice?.change24h ?? null;
 
               return (
                 <div
                   key={entry.tokenId}
-                  className="flex items-center justify-between rounded-lg px-2 py-2 cursor-pointer transition-colors hover:bg-muted/30"
+                  className="flex items-center justify-between rounded-lg px-2 py-1.5 cursor-pointer transition-colors hover:bg-muted/20"
                   onClick={() => navigate(`/crypto/${entry.symbol}`)}
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium leading-tight">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium leading-tight block truncate">
                       {entry.name}
                     </span>
                     <span className="text-[10px] text-muted-foreground font-mono">
@@ -85,29 +83,26 @@ export function Watchlist() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <div className="flex flex-col items-end gap-0.5">
-                      <span className="text-sm font-mono tabular-nums font-medium">
-                        ${formatPrice(displayPrice)}
-                      </span>
-                      {change24h !== 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="text-right">
+                      <AnimatedNumber
+                        value={displayPrice}
+                        format={(n) => `$${formatPrice(n)}`}
+                        className="text-sm font-mono tabular-nums font-medium block"
+                      />
+                      {change24h !== null && (
                         <span
                           className={cn(
-                            "inline-flex items-center gap-0.5 text-[10px] font-mono tabular-nums",
-                            change24h > 0 ? "text-emerald-400" : "text-red-400",
+                            "text-[10px] font-mono tabular-nums block text-right",
+                            change24h > 0
+                              ? "text-emerald-400"
+                              : change24h < 0
+                                ? "text-red-400"
+                                : "text-muted-foreground",
                           )}
                         >
-                          {change24h > 0 ? (
-                            <TrendingUp className="size-2.5" />
-                          ) : (
-                            <TrendingDown className="size-2.5" />
-                          )}
                           {change24h > 0 ? "+" : ""}
                           {change24h.toFixed(2)}%
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground font-mono">
-                          0.00%
                         </span>
                       )}
                     </div>
@@ -115,7 +110,7 @@ export function Watchlist() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-6 text-muted-foreground hover:text-red-400"
+                      className="size-6 text-muted-foreground/50 hover:text-red-400"
                       disabled={removeMutation.isPending}
                       onClick={(e) => {
                         e.stopPropagation();

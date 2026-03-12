@@ -11,7 +11,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Trophy, Crown, Medal } from "lucide-react";
+import { Crown, Medal } from "lucide-react";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
@@ -115,9 +116,16 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
                   Rank #{index + 1}
                 </span>
               </div>
-              <p className="text-base font-semibold truncate mb-1">
-                {entry.playerName}
-              </p>
+              <div className="flex items-center gap-2 mb-1">
+                <MinecraftAvatar
+                  username={entry.playerName}
+                  uuid={entry.playerUuid}
+                  size={28}
+                />
+                <p className="text-base font-semibold truncate">
+                  {entry.playerName}
+                </p>
+              </div>
               <p
                 className={cn(
                   "text-xl font-bold font-mono tabular-nums",
@@ -163,7 +171,14 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <span>{entry.playerName}</span>
+                        <div className="flex items-center gap-2">
+                          <MinecraftAvatar
+                            username={entry.playerName}
+                            uuid={entry.playerUuid}
+                            size={24}
+                          />
+                          <span>{entry.playerName}</span>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-mono tabular-nums">
                         {formatValue(entry.value)}
@@ -182,47 +197,30 @@ function LeaderboardTable({ type }: { type: LeaderboardType }) {
 
 export function Leaderboard() {
   return (
-    <div className="flex flex-1 flex-col pb-16">
-      {/* Header */}
-      <div className="relative overflow-hidden border-b border-border/50">
-        <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/[0.03] via-transparent to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-yellow-500/20 to-transparent" />
-        <div className="relative px-5 md:px-8 pt-5 pb-5">
-          <div className="max-w-7xl mx-auto space-y-3">
-            <div className="flex items-center gap-3.5">
-              <div className="flex size-11 items-center justify-center rounded-xl bg-yellow-500/10 ring-1 ring-yellow-500/20">
-                <Trophy className="size-5 text-yellow-400" />
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                Leaderboard
-              </h1>
-            </div>
-          </div>
+    <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
+      <div className="max-w-7xl mx-auto w-full space-y-5">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-xl font-bold tracking-tight">Leaderboard</h1>
         </div>
-      </div>
+        <Tabs defaultValue="networth">
+          <TabsList>
+            <TabsTrigger value="networth">Net Worth</TabsTrigger>
+            <TabsTrigger value="pnl">P&L</TabsTrigger>
+            <TabsTrigger value="volume">Volume</TabsTrigger>
+          </TabsList>
 
-      <div className="px-5 md:px-8 pt-5">
-        <div className="max-w-7xl mx-auto space-y-5">
-          <Tabs defaultValue="networth">
-            <TabsList>
-              <TabsTrigger value="networth">Net Worth</TabsTrigger>
-              <TabsTrigger value="pnl">P&L</TabsTrigger>
-              <TabsTrigger value="volume">Volume</TabsTrigger>
-            </TabsList>
+          <TabsContent value="networth">
+            <LeaderboardTable type="networth" />
+          </TabsContent>
 
-            <TabsContent value="networth">
-              <LeaderboardTable type="networth" />
-            </TabsContent>
+          <TabsContent value="pnl">
+            <LeaderboardTable type="pnl" />
+          </TabsContent>
 
-            <TabsContent value="pnl">
-              <LeaderboardTable type="pnl" />
-            </TabsContent>
-
-            <TabsContent value="volume">
-              <LeaderboardTable type="volume" />
-            </TabsContent>
-          </Tabs>
-        </div>
+          <TabsContent value="volume">
+            <LeaderboardTable type="volume" />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

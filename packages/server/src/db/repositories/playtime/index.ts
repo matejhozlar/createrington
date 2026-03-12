@@ -188,6 +188,7 @@ export class PlaytimeRepository {
    *
    * @param playerMinecraftUuid - Minecraft player UUID
    * @param serverId - Server ID
+   * @returns Active session record, or null if the player has no open session
    */
   async getActiveSession(
     playerMinecraftUuid: string,
@@ -210,6 +211,7 @@ export class PlaytimeRepository {
    * Get all active sessions
    *
    * @param serverId - Optional server ID filter
+   * @returns Array of sessions with no end timestamp
    */
   async getActiveSessions(serverId?: number): Promise<PlayerSession[]> {
     try {
@@ -331,8 +333,9 @@ export class PlaytimeRepository {
    *
    * @param playerMinecraftUuid - Player's Minecraft UUID
    * @param serverId - Server ID
-   * @param startDate - Start date
-   * @param endDate - End date
+   * @param startDate - Start date (inclusive)
+   * @param endDate - End date (inclusive)
+   * @returns Daily playtime records within the given range, ordered by date ascending
    */
   async getPlayerDailyRange(
     playerMinecraftUuid: string,
@@ -361,8 +364,9 @@ export class PlaytimeRepository {
    *
    * @param playerMinecraftUuid - Player's Minecraft UUID
    * @param serverId - Server ID
-   * @param startTime - Start timestamp
-   * @param endTime - End timestamp
+   * @param startTime - Start timestamp (inclusive)
+   * @param endTime - End timestamp (exclusive)
+   * @returns Hourly playtime records within the given range, ordered by hour ascending
    */
   async getPlayerHourlyRange(
     playerMinecraftUuid: string,
@@ -392,6 +396,7 @@ export class PlaytimeRepository {
    * @param serverId - Server ID
    * @param limit - Number of sessions to return
    * @param includeActive - Whether to include active sessions
+   * @returns Sessions ordered by start time descending
    */
   async getPlayerSessionHistory(
     playerMinecraftUuid: string,
@@ -421,6 +426,7 @@ export class PlaytimeRepository {
    * @param playerMinecraftUuid - Player's Minecraft UUID
    * @param serverId - Server ID
    * @param minSeconds - Minimum session length in seconds
+   * @returns Sessions meeting the minimum duration, ordered by length descending
    */
   async getLongSessions(
     playerMinecraftUuid: string,
@@ -450,6 +456,7 @@ export class PlaytimeRepository {
    * Get server-wide statistics
    *
    * @param serverId - Server ID
+   * @returns Aggregate server summary and top-10 playtime leaderboard
    */
   async getServerStats(serverId: number): Promise<{
     summary: ServerStats;
@@ -475,7 +482,8 @@ export class PlaytimeRepository {
    * Get server activity over time
    *
    * @param serverId - Server ID
-   * @param days - Number of days to include
+   * @param days - Number of days to include (default: 30)
+   * @returns Daily activity records for the server over the requested period
    */
   async getServerActivity(
     serverId: number,
@@ -500,7 +508,8 @@ export class PlaytimeRepository {
    * Get server activity heatmap
    *
    * @param serverId - Server ID
-   * @param days - Number of days to include
+   * @param days - Number of days to include (default: 30)
+   * @returns Hourly heatmap data grouped by day-of-week and hour-of-day
    */
   async getServerHeatmap(
     serverId: number,
@@ -519,9 +528,10 @@ export class PlaytimeRepository {
    * Uses operators!
    *
    * @param serverId - Server ID
-   * @param startDate - Start date
-   * @param endDate - End date
-   * @param limit - Number of players to return
+   * @param startDate - Start date (inclusive)
+   * @param endDate - End date (inclusive)
+   * @param limit - Number of players to return (default: 10)
+   * @returns Players ranked by total seconds played within the range, with username and hour totals
    */
   async getTopPlayersByDateRange(
     serverId: number,

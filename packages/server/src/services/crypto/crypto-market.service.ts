@@ -37,6 +37,7 @@ import {
   sendMarketEventNotification,
   sendIpoAnnouncementNotification,
   sendIpoResultNotification,
+  sendPriceAlertDMs,
 } from "./notifications";
 import {
   rollForEvents,
@@ -77,6 +78,12 @@ export class CryptoMarketService {
   private bluechipInterval: ReturnType<typeof setInterval> | null = null;
   private cleanupInterval: ReturnType<typeof setInterval> | null = null;
   private minuteAggregationInterval: ReturnType<typeof setInterval> | null =
+    null;
+  private hourlyAggregationInterval: ReturnType<typeof setInterval> | null =
+    null;
+  private dailyAggregationInterval: ReturnType<typeof setInterval> | null =
+    null;
+  private weeklyAggregationInterval: ReturnType<typeof setInterval> | null =
     null;
   private orderExpiryInterval: ReturnType<typeof setInterval> | null = null;
   private eventRollInterval: ReturnType<typeof setInterval> | null = null;
@@ -157,6 +164,9 @@ export class CryptoMarketService {
     this.startBluechipTicker();
     this.startCleanupJob();
     this.startMinuteAggregation();
+    this.startHourlyAggregation();
+    this.startDailyAggregation();
+    this.startWeeklyAggregation();
     this.startOrderExpiryJob();
     this.startEventRoller();
     this.startSeasonalTokenCheck();
@@ -176,6 +186,12 @@ export class CryptoMarketService {
     if (this.cleanupInterval) clearInterval(this.cleanupInterval);
     if (this.minuteAggregationInterval)
       clearInterval(this.minuteAggregationInterval);
+    if (this.hourlyAggregationInterval)
+      clearInterval(this.hourlyAggregationInterval);
+    if (this.dailyAggregationInterval)
+      clearInterval(this.dailyAggregationInterval);
+    if (this.weeklyAggregationInterval)
+      clearInterval(this.weeklyAggregationInterval);
     if (this.orderExpiryInterval) clearInterval(this.orderExpiryInterval);
     if (this.eventRollInterval) clearInterval(this.eventRollInterval);
     if (this.seasonalCheckInterval) clearInterval(this.seasonalCheckInterval);
@@ -266,6 +282,48 @@ export class CryptoMarketService {
         }
       },
       5 * 60 * 1000,
+    );
+  }
+
+  /** @private Aggregates minute → hourly candles every 15 minutes */
+  private startHourlyAggregation(): void {
+    this.hourlyAggregationInterval = setInterval(
+      async () => {
+        try {
+          await this.aggregateHourlySnapshots();
+        } catch (err) {
+          logger.error("Hourly aggregation failed:", err);
+        }
+      },
+      15 * 60 * 1000,
+    );
+  }
+
+  /** @private Aggregates hourly → daily candles every hour */
+  private startDailyAggregation(): void {
+    this.dailyAggregationInterval = setInterval(
+      async () => {
+        try {
+          await this.aggregateDailySnapshots();
+        } catch (err) {
+          logger.error("Daily aggregation failed:", err);
+        }
+      },
+      60 * 60 * 1000,
+    );
+  }
+
+  /** @private Aggregates daily → weekly candles every 6 hours */
+  private startWeeklyAggregation(): void {
+    this.weeklyAggregationInterval = setInterval(
+      async () => {
+        try {
+          await this.aggregateWeeklySnapshots();
+        } catch (err) {
+          logger.error("Weekly aggregation failed:", err);
+        }
+      },
+      6 * 60 * 60 * 1000,
     );
   }
 
@@ -479,12 +537,11 @@ export class CryptoMarketService {
 
   /**
    * Computes the 24h price change percentage for a token.
-   * @private
    * @param tokenId - Token to look up in the 24h price cache
    * @param currentPrice - Current price as a decimal string
    * @returns Percentage change (e.g. 12.5 for +12.5%), or 0 if no baseline exists
    */
-  private get24hChange(tokenId: number, currentPrice: string): number {
+  get24hChange(tokenId: number, currentPrice: string): number {
     const oldPrice = this.prices24hAgo.get(tokenId);
     if (!oldPrice || oldPrice === 0) return 0;
     return ((Number(currentPrice) - oldPrice) / oldPrice) * 100;
@@ -699,6 +756,11 @@ export class CryptoMarketService {
         );
       }
     }
+
+    // Send Discord DMs (fire-and-forget, does not block the tick cycle)
+    sendPriceAlertDMs(alerts).catch((err) => {
+      logger.error("Failed to send price alert DMs:", err);
+    });
   }
 
   // ==========================================================================
@@ -726,27 +788,24 @@ export class CryptoMarketService {
         .where({
           tokenId: token.id,
           interval: "tick",
+          recordedAt: { $gte: minuteStart, $lt: now },
         })
+        .orderBy("recordedAt", "asc")
         .all();
 
-      // Filter ticks within the last minute window
-      const relevantTicks = ticks.filter(
-        (t) => t.recordedAt >= minuteStart && t.recordedAt < now,
-      );
+      if (ticks.length === 0) continue;
 
-      if (relevantTicks.length === 0) continue;
-
-      const open = relevantTicks[0].openPrice;
-      const close = relevantTicks[relevantTicks.length - 1].closePrice;
-      const high = relevantTicks.reduce(
+      const open = ticks[0].openPrice;
+      const close = ticks[ticks.length - 1].closePrice;
+      const high = ticks.reduce(
         (max, t) => (Number(t.highPrice) > Number(max) ? t.highPrice : max),
-        relevantTicks[0].highPrice,
+        ticks[0].highPrice,
       );
-      const low = relevantTicks.reduce(
+      const low = ticks.reduce(
         (min, t) => (Number(t.lowPrice) < Number(min) ? t.lowPrice : min),
-        relevantTicks[0].lowPrice,
+        ticks[0].lowPrice,
       );
-      const volume = relevantTicks.reduce((sum, t) => sum + t.volume, 0n);
+      const volume = ticks.reduce((sum, t) => sum + t.volume, 0n);
 
       try {
         await Q.crypto.price.snapshot.create({
@@ -764,19 +823,216 @@ export class CryptoMarketService {
       }
     }
 
-    // Prune old tick snapshots (older than 2 hours)
+    // Prune old tick snapshots
     const tickCutoff = new Date(
       Date.now() - CRYPTO_CONFIG.RETENTION.TICK * 1000,
     );
-    const oldTicks = await Q.crypto.price.snapshot
-      .where({ interval: "tick" })
-      .all();
+    await Q.crypto.price.snapshot.deleteAll({
+      interval: "tick",
+      recordedAt: { $lt: tickCutoff },
+    });
+  }
 
-    for (const tick of oldTicks) {
-      if (tick.recordedAt < tickCutoff) {
-        await Q.crypto.price.snapshot.delete({ id: tick.id });
+  /**
+   * Rolls up minute-level snapshots into hourly OHLCV candles and prunes old minute snapshots.
+   * @private
+   */
+  private async aggregateHourlySnapshots(): Promise<void> {
+    const tokens = await Q.crypto.token.where({}).all();
+    const now = new Date();
+
+    // Round down to start of current hour
+    const currentHourStart = new Date(now);
+    currentHourStart.setMinutes(0, 0, 0);
+
+    // The completed hour: [hourStart, currentHourStart)
+    const hourStart = new Date(currentHourStart.getTime() - 3_600_000);
+
+    for (const token of tokens) {
+      const minutes = await Q.crypto.price.snapshot
+        .where({
+          tokenId: token.id,
+          interval: "minute",
+          recordedAt: { $gte: hourStart, $lt: currentHourStart },
+        })
+        .orderBy("recordedAt", "asc")
+        .all();
+
+      if (minutes.length === 0) continue;
+
+      const open = minutes[0].openPrice;
+      const close = minutes[minutes.length - 1].closePrice;
+      const high = minutes.reduce(
+        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
+        minutes[0].highPrice,
+      );
+      const low = minutes.reduce(
+        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
+        minutes[0].lowPrice,
+      );
+      const volume = minutes.reduce((sum, s) => sum + s.volume, 0n);
+
+      try {
+        await Q.crypto.price.snapshot.create({
+          tokenId: token.id,
+          interval: "hourly",
+          openPrice: open,
+          highPrice: high,
+          lowPrice: low,
+          closePrice: close,
+          volume,
+          recordedAt: hourStart,
+        });
+      } catch {
+        // Ignore duplicate (unique constraint on token+interval+recordedAt)
       }
     }
+
+    // Prune old minute snapshots
+    const minuteCutoff = new Date(
+      Date.now() - CRYPTO_CONFIG.RETENTION.MINUTE * 1000,
+    );
+    await Q.crypto.price.snapshot.deleteAll({
+      interval: "minute",
+      recordedAt: { $lt: minuteCutoff },
+    });
+  }
+
+  /**
+   * Rolls up hourly snapshots into daily OHLCV candles and prunes old hourly snapshots.
+   * Uses midnight-to-midnight UTC boundaries.
+   * @private
+   */
+  private async aggregateDailySnapshots(): Promise<void> {
+    const tokens = await Q.crypto.token.where({}).all();
+    const now = new Date();
+
+    // Start of today UTC
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    // The completed day: yesterday
+    const dayStart = new Date(todayStart.getTime() - 86_400_000);
+
+    for (const token of tokens) {
+      const hourlySnaps = await Q.crypto.price.snapshot
+        .where({
+          tokenId: token.id,
+          interval: "hourly",
+          recordedAt: { $gte: dayStart, $lt: todayStart },
+        })
+        .orderBy("recordedAt", "asc")
+        .all();
+
+      if (hourlySnaps.length === 0) continue;
+
+      const open = hourlySnaps[0].openPrice;
+      const close = hourlySnaps[hourlySnaps.length - 1].closePrice;
+      const high = hourlySnaps.reduce(
+        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
+        hourlySnaps[0].highPrice,
+      );
+      const low = hourlySnaps.reduce(
+        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
+        hourlySnaps[0].lowPrice,
+      );
+      const volume = hourlySnaps.reduce((sum, s) => sum + s.volume, 0n);
+
+      try {
+        await Q.crypto.price.snapshot.create({
+          tokenId: token.id,
+          interval: "daily",
+          openPrice: open,
+          highPrice: high,
+          lowPrice: low,
+          closePrice: close,
+          volume,
+          recordedAt: dayStart,
+        });
+      } catch {
+        // Ignore duplicate (unique constraint on token+interval+recordedAt)
+      }
+    }
+
+    // Prune old hourly snapshots
+    const hourlyCutoff = new Date(
+      Date.now() - CRYPTO_CONFIG.RETENTION.HOURLY * 1000,
+    );
+    await Q.crypto.price.snapshot.deleteAll({
+      interval: "hourly",
+      recordedAt: { $lt: hourlyCutoff },
+    });
+  }
+
+  /**
+   * Rolls up daily snapshots into weekly OHLCV candles and prunes old daily snapshots.
+   * Uses Monday-to-Sunday UTC boundaries.
+   * @private
+   */
+  private async aggregateWeeklySnapshots(): Promise<void> {
+    const tokens = await Q.crypto.token.where({}).all();
+    const now = new Date();
+
+    // Find this Monday 00:00 UTC
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const dayOfWeek = todayStart.getUTCDay(); // 0=Sun, 1=Mon, ...
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const thisMonday = new Date(
+      todayStart.getTime() - daysSinceMonday * 86_400_000,
+    );
+    // The completed week: [lastMonday, thisMonday)
+    const lastMonday = new Date(thisMonday.getTime() - 7 * 86_400_000);
+
+    for (const token of tokens) {
+      const dailySnaps = await Q.crypto.price.snapshot
+        .where({
+          tokenId: token.id,
+          interval: "daily",
+          recordedAt: { $gte: lastMonday, $lt: thisMonday },
+        })
+        .orderBy("recordedAt", "asc")
+        .all();
+
+      if (dailySnaps.length === 0) continue;
+
+      const open = dailySnaps[0].openPrice;
+      const close = dailySnaps[dailySnaps.length - 1].closePrice;
+      const high = dailySnaps.reduce(
+        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
+        dailySnaps[0].highPrice,
+      );
+      const low = dailySnaps.reduce(
+        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
+        dailySnaps[0].lowPrice,
+      );
+      const volume = dailySnaps.reduce((sum, s) => sum + s.volume, 0n);
+
+      try {
+        await Q.crypto.price.snapshot.create({
+          tokenId: token.id,
+          interval: "weekly",
+          openPrice: open,
+          highPrice: high,
+          lowPrice: low,
+          closePrice: close,
+          volume,
+          recordedAt: lastMonday,
+        });
+      } catch {
+        // Ignore duplicate (unique constraint on token+interval+recordedAt)
+      }
+    }
+
+    // Prune old daily snapshots
+    const dailyCutoff = new Date(
+      Date.now() - CRYPTO_CONFIG.RETENTION.DAILY * 1000,
+    );
+    await Q.crypto.price.snapshot.deleteAll({
+      interval: "daily",
+      recordedAt: { $lt: dailyCutoff },
+    });
   }
 
   // ==========================================================================
@@ -1085,6 +1341,52 @@ export class CryptoMarketService {
     return getActiveEventsInMemory();
   }
 
+  /** Returns the total 24h trading volume across all tokens */
+  getTotalVolume24h(): bigint {
+    let total = 0n;
+    for (const vol of this.volume24h.values()) {
+      total += vol;
+    }
+    return total;
+  }
+
+  /** Returns the 24h trading volume for a specific token */
+  getTokenVolume24h(tokenId: number): bigint {
+    return this.volume24h.get(tokenId) ?? 0n;
+  }
+
+  /**
+   * Returns the top gainer and top loser by 24h price change.
+   * Only considers active, non-crashed, non-IPO tokens.
+   */
+  async getTopMovers(): Promise<{
+    topGainer: { symbol: string; change24h: number } | null;
+    topLoser: { symbol: string; change24h: number } | null;
+  }> {
+    const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
+    const now = new Date();
+
+    let topGainer: { symbol: string; change24h: number } | null = null;
+    let topLoser: { symbol: string; change24h: number } | null = null;
+
+    for (const token of tokens) {
+      if (token.delistedAt) continue;
+      if (token.ipoEndsAt && token.ipoEndsAt > now) continue;
+
+      const change = this.get24hChange(token.id, token.price);
+      if (change === 0) continue;
+
+      if (!topGainer || change > topGainer.change24h) {
+        topGainer = { symbol: token.symbol, change24h: change };
+      }
+      if (!topLoser || change < topLoser.change24h) {
+        topLoser = { symbol: token.symbol, change24h: change };
+      }
+    }
+
+    return { topGainer, topLoser };
+  }
+
   /**
    * Manually triggers a market event (admin action).
    *
@@ -1135,6 +1437,22 @@ export class CryptoMarketService {
     const existing = await Q.crypto.token.find({ symbol: params.symbol });
     if (existing) {
       throw new Error(`Token with symbol ${params.symbol} already exists`);
+    }
+
+    // Enforce memecoin cap
+    if (params.category === "memecoin") {
+      const activeMemecoins = await Q.crypto.token
+        .where({
+          category: "memecoin",
+          isCrashed: false,
+          delistedAt: { $exists: false },
+        })
+        .all();
+      if (activeMemecoins.length >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+        throw new Error(
+          `Maximum active memecoins (${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}) reached`,
+        );
+      }
     }
 
     const token = await Q.crypto.token.createAndReturn({

@@ -3,6 +3,8 @@ import { trpc } from "@/lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { PieChart as PieChartIcon, Users } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import {
   PieChart,
   Pie,
@@ -64,7 +66,7 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[320px] animate-pulse rounded-lg bg-muted" />
+          <LoadingSpinner size="small" className="py-12" />
         </CardContent>
       </Card>
     );
@@ -87,7 +89,7 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
     chartData.push({
       name: "Unclaimed",
       value: availableSupply,
-      percentage: Math.round(unclaimedPercent * 10) / 10,
+      percentage: Math.round(unclaimedPercent * 100) / 100,
       fill: "rgba(161, 161, 170, 0.2)",
       isUnclaimed: true,
     });
@@ -205,6 +207,11 @@ export function TokenDistribution({ symbol }: TokenDistributionProps) {
                 <div
                   className="size-2.5 rounded-full shrink-0"
                   style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                />
+                <MinecraftAvatar
+                  username={h.playerName}
+                  uuid={h.playerUuid}
+                  size={18}
                 />
                 <span className="text-muted-foreground truncate">
                   {h.playerName}

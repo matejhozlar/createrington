@@ -154,11 +154,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent>
         <ServerStatus />
-        {/* Admin Section - only show if user is admin */}
-        {user?.isAdmin && <NavAdmin items={data.adminNav} />}
-
         <NavMain
           items={filteredNavMain}
+          prepend={
+            user?.isAdmin ? <NavAdmin items={data.adminNav} /> : undefined
+          }
           insertions={
             user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined
           }

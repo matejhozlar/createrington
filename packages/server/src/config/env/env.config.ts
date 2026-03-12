@@ -137,6 +137,10 @@ const envSchema = z.object({
   PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
   PUPPETEER_BASE_URL: z.string().url().optional(),
 
+  // AI (OpenAI)
+  OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
+  OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
+
   // Email
   EMAIL_HOST: z
     .string()

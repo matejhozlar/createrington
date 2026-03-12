@@ -5,8 +5,24 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToastActions } from "@/hooks/use-toast";
-import { Clock, Rocket, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import {
+  Clock,
+  Rocket,
+  ArrowUpRight,
+  ArrowDownRight,
+  Timer,
+} from "lucide-react";
 import { formatCountdown } from "../../format";
 
 type OrderMode = "market" | "limit" | "stop_loss" | "take_profit";
@@ -15,10 +31,18 @@ type TradeTab = "buy" | "sell";
 interface TradePanelProps {
   symbol: string;
   price: string;
+  category: string;
   isCrashed: boolean;
   ipoEndsAt?: string | null;
   ipoPrice?: string | null;
 }
+
+const FEE_RATES: Record<string, number> = {
+  stable: 0,
+  blue_chip: 0.005,
+  memecoin: 0.05,
+  seasonal: 0.01,
+};
 
 const ORDER_MODE_LABELS: Record<OrderMode, string> = {
   market: "Market",
@@ -30,6 +54,7 @@ const ORDER_MODE_LABELS: Record<OrderMode, string> = {
 export function TradePanel({
   symbol,
   price,
+  category,
   isCrashed,
   ipoEndsAt,
   ipoPrice,
@@ -41,6 +66,11 @@ export function TradePanel({
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [cooldownExpiresAt, setCooldownExpiresAt] = useState<number | null>(
+    null,
+  );
+  const [cooldownText, setCooldownText] = useState("");
 
   const isIpo = !!ipoEndsAt && new Date(ipoEndsAt) > new Date();
 
@@ -62,21 +92,60 @@ export function TradePanel({
     return () => clearInterval(interval);
   }, [isIpo, ipoEndsAt]);
 
+  // Fetch server-side cooldown on mount (survives page refresh)
+  const { data: cooldownData } = trpc.user.crypto.cooldown.useQuery(
+    { symbol },
+    { enabled: !!user && !isIpo },
+  );
+
+  // Countdown timer for active cooldown (merges mutation-set and query-fetched expiry)
+  useEffect(() => {
+    const expiresAt =
+      cooldownExpiresAt ??
+      (cooldownData?.expiresAt && cooldownData.expiresAt > Date.now()
+        ? cooldownData.expiresAt
+        : null);
+
+    if (!expiresAt) return;
+
+    const update = () => {
+      const remaining = expiresAt - Date.now();
+      if (remaining <= 0) {
+        setCooldownExpiresAt(null);
+        setCooldownText("");
+      } else {
+        setCooldownText(formatCountdown(remaining));
+      }
+    };
+
+    update();
+    const interval = setInterval(update, 1000);
+    return () => {
+      clearInterval(interval);
+      setCooldownText("");
+    };
+  }, [cooldownExpiresAt, cooldownData]);
+
+  const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
+    enabled: !!user,
+  });
+  const { data: portfolioData } = trpc.user.crypto.portfolio.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+
+  const userBalance = Number(balanceData?.balance ?? 0);
+  const holding = portfolioData?.holdings.find((h) => h.symbol === symbol);
+  const holdingAmount = Number(holding?.amount ?? 0);
+
   const utils = trpc.useUtils();
 
   const invalidateAll = () => {
+    utils.user.crypto.balance.invalidate();
     utils.user.crypto.portfolio.invalidate();
     utils.user.crypto.listOrders.invalidate();
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
-  };
-
-  const showAchievementToasts = (newAchievements?: string[]) => {
-    if (newAchievements && newAchievements.length > 0) {
-      for (const name of newAchievements) {
-        toast.success(`Achievement Unlocked: ${name}`);
-      }
-    }
   };
 
   const buyMutation = trpc.user.crypto.buy.useMutation({
@@ -84,8 +153,8 @@ export function TradePanel({
       toast.success(
         `Bought ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
-      showAchievementToasts(data.newAchievements);
       setAmount("");
+      if (data.cooldownExpiresAt) setCooldownExpiresAt(data.cooldownExpiresAt);
       invalidateAll();
     },
     onError: (err) => toast.error(err.message),
@@ -96,8 +165,8 @@ export function TradePanel({
       toast.success(
         `Sold ${data.amount} ${data.symbol} at $${Number(data.priceAtExecution).toFixed(4)}`,
       );
-      showAchievementToasts(data.newAchievements);
       setAmount("");
+      if (data.cooldownExpiresAt) setCooldownExpiresAt(data.cooldownExpiresAt);
       invalidateAll();
     },
     onError: (err) => toast.error(err.message),
@@ -123,11 +192,7 @@ export function TradePanel({
     }
 
     if (orderMode === "market") {
-      if (tab === "buy") {
-        buyMutation.mutate({ symbol, amount: amountNum });
-      } else {
-        sellMutation.mutate({ symbol, amount: amountNum });
-      }
+      setShowConfirm(true);
     } else {
       if (!targetPrice || Number(targetPrice) <= 0) {
         toast.error("Enter a valid target price");
@@ -150,6 +215,15 @@ export function TradePanel({
     }
   };
 
+  const executeMarketTrade = () => {
+    const amountNum = parseInt(amount);
+    if (tab === "buy") {
+      buyMutation.mutate({ symbol, amount: amountNum });
+    } else {
+      sellMutation.mutate({ symbol, amount: amountNum });
+    }
+  };
+
   const isPending =
     buyMutation.isPending ||
     sellMutation.isPending ||
@@ -158,7 +232,11 @@ export function TradePanel({
   const amountNum = parseInt(amount) || 0;
   const effectivePrice =
     isIpo || orderMode === "market" ? numPrice : Number(targetPrice) || 0;
-  const estimatedCost = effectivePrice * amountNum;
+  const feeRate = FEE_RATES[category] ?? 0.05;
+  const estimatedCost =
+    tab === "buy"
+      ? effectivePrice * amountNum * (1 + feeRate)
+      : effectivePrice * amountNum * (1 - feeRate);
 
   const showBuySellTabs = orderMode === "market" || orderMode === "limit";
 
@@ -342,6 +420,29 @@ export function TradePanel({
             min={1}
             className="font-mono mt-1.5 h-11"
           />
+          {/* Percentage quick-fill buttons */}
+          {effectivePrice > 0 && (
+            <div className="grid grid-cols-4 gap-1.5 mt-2">
+              {[25, 50, 75, 100].map((pct) => {
+                const costPerToken = effectivePrice * (1 + feeRate);
+                const max =
+                  tab === "buy"
+                    ? Math.floor(userBalance / costPerToken)
+                    : holdingAmount;
+                const qty = pct === 100 ? max : Math.floor((max * pct) / 100);
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    className="rounded-md border bg-muted/30 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                    onClick={() => setAmount(String(Math.max(0, qty)))}
+                  >
+                    {pct === 100 ? "Max" : `${pct}%`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Target price input */}
@@ -390,6 +491,19 @@ export function TradePanel({
           </div>
         </div>
 
+        {/* Cooldown indicator */}
+        {cooldownText && orderMode === "market" && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm text-amber-400">
+            <Timer className="size-4 shrink-0" />
+            <span>
+              Trade again in{" "}
+              <span className="font-mono font-semibold tabular-nums">
+                {cooldownText}
+              </span>
+            </span>
+          </div>
+        )}
+
         {/* Submit button */}
         <Button
           className={cn(
@@ -399,7 +513,12 @@ export function TradePanel({
               : "bg-red-500 hover:bg-red-600 text-white",
           )}
           onClick={handleTrade}
-          disabled={isPending || isCrashed || amountNum <= 0}
+          disabled={
+            isPending ||
+            isCrashed ||
+            amountNum <= 0 ||
+            (!!cooldownExpiresAt && orderMode === "market")
+          }
         >
           {isPending
             ? "Processing..."
@@ -409,6 +528,51 @@ export function TradePanel({
                 ? `${tab === "buy" ? "Buy" : "Sell"} ${symbol}`
                 : `Place ${ORDER_MODE_LABELS[orderMode]} Order`}
         </Button>
+
+        {/* Market order confirmation dialog */}
+        <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Confirm {tab === "buy" ? "Buy" : "Sell"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {tab === "buy" ? "Buy" : "Sell"}{" "}
+                <span className="font-semibold text-foreground">
+                  {amountNum.toLocaleString()} {symbol}
+                </span>{" "}
+                at ~$
+                {numPrice.toFixed(
+                  numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2,
+                )}{" "}
+                for{" "}
+                <span className="font-semibold text-foreground">
+                  ~$
+                  {estimatedCost.toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+                </span>
+                {feeRate > 0
+                  ? ` (incl. ${(feeRate * 100).toFixed(1)}% fee)`
+                  : ""}
+                .
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className={cn(
+                  tab === "buy"
+                    ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+                    : "bg-red-500 hover:bg-red-600 text-white",
+                )}
+                onClick={executeMarketTrade}
+              >
+                {tab === "buy" ? "Buy" : "Sell"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );

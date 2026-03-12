@@ -33,7 +33,7 @@ export function PriceChart({ symbol }: PriceChartProps) {
 
   const { data, isLoading } = trpc.public.crypto.priceHistory.useQuery(
     { symbol, interval, limit: 200 },
-    { refetchInterval: interval === "tick" ? 30_000 : 60_000 },
+    { refetchInterval: interval === "tick" ? 10_000 : 60_000 },
   );
 
   return (
@@ -114,6 +114,7 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
         borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: true,
         secondsVisible: false,
+        rightOffset: 0,
       },
       handleScroll: false,
       handleScale: false,

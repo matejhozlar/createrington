@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import {
@@ -27,93 +28,24 @@ const EVENT_ICONS: Record<string, typeof TrendingUp> = {
   new_listing_frenzy: Sparkles,
 };
 
-const EVENT_STYLES: Record<
-  string,
-  { border: string; bg: string; text: string; iconBg: string; dot: string }
-> = {
-  bull_run: {
-    border: "border-emerald-500/30",
-    bg: "bg-emerald-500/[0.06]",
-    text: "text-emerald-400",
-    iconBg: "bg-emerald-500/15",
-    dot: "bg-emerald-400",
-  },
-  bear_market: {
-    border: "border-red-500/30",
-    bg: "bg-red-500/[0.06]",
-    text: "text-red-400",
-    iconBg: "bg-red-500/15",
-    dot: "bg-red-400",
-  },
-  flash_crash: {
-    border: "border-red-500/30",
-    bg: "bg-red-500/[0.06]",
-    text: "text-red-400",
-    iconBg: "bg-red-500/15",
-    dot: "bg-red-400",
-  },
-  pump_and_dump: {
-    border: "border-yellow-500/30",
-    bg: "bg-yellow-500/[0.06]",
-    text: "text-yellow-400",
-    iconBg: "bg-yellow-500/15",
-    dot: "bg-yellow-400",
-  },
-  liquidity_drought: {
-    border: "border-orange-500/30",
-    bg: "bg-orange-500/[0.06]",
-    text: "text-orange-400",
-    iconBg: "bg-orange-500/15",
-    dot: "bg-orange-400",
-  },
-  gold_rush: {
-    border: "border-yellow-500/30",
-    bg: "bg-yellow-500/[0.06]",
-    text: "text-yellow-400",
-    iconBg: "bg-yellow-500/15",
-    dot: "bg-yellow-400",
-  },
-  supply_shock: {
-    border: "border-orange-500/30",
-    bg: "bg-orange-500/[0.06]",
-    text: "text-orange-400",
-    iconBg: "bg-orange-500/15",
-    dot: "bg-orange-400",
-  },
-  tax_holiday: {
-    border: "border-emerald-500/30",
-    bg: "bg-emerald-500/[0.06]",
-    text: "text-emerald-400",
-    iconBg: "bg-emerald-500/15",
-    dot: "bg-emerald-400",
-  },
-  whale_dump: {
-    border: "border-red-500/30",
-    bg: "bg-red-500/[0.06]",
-    text: "text-red-400",
-    iconBg: "bg-red-500/15",
-    dot: "bg-red-400",
-  },
-  new_listing_frenzy: {
-    border: "border-blue-500/30",
-    bg: "bg-blue-500/[0.06]",
-    text: "text-blue-400",
-    iconBg: "bg-blue-500/15",
-    dot: "bg-blue-400",
-  },
-};
+const BULLISH_EVENTS = new Set([
+  "bull_run",
+  "gold_rush",
+  "tax_holiday",
+  "new_listing_frenzy",
+]);
 
-const DEFAULT_STYLE = {
-  border: "border-blue-500/30",
-  bg: "bg-blue-500/[0.06]",
-  text: "text-blue-400",
-  iconBg: "bg-blue-500/15",
-  dot: "bg-blue-400",
-};
+function useCountdown(activeUntil: string | null): string | null {
+  const [now, setNow] = useState(Date.now);
 
-function formatRemaining(activeUntil: string): string {
-  const remaining = new Date(activeUntil).getTime() - Date.now();
-  return formatCountdown(remaining);
+  useEffect(() => {
+    if (!activeUntil) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [activeUntil]);
+
+  if (!activeUntil) return null;
+  return formatCountdown(new Date(activeUntil).getTime() - now);
 }
 
 function EventBanner({
@@ -129,7 +61,8 @@ function EventBanner({
   };
 }) {
   const Icon = EVENT_ICONS[event.type] ?? Zap;
-  const style = EVENT_STYLES[event.type] ?? DEFAULT_STYLE;
+  const isBullish = BULLISH_EVENTS.has(event.type);
+  const countdown = useCountdown(event.activeUntil);
 
   let description = event.description ?? "";
   if (event.tokenSymbol) {
@@ -139,42 +72,47 @@ function EventBanner({
   return (
     <div
       className={cn(
-        "flex items-center gap-3.5 rounded-xl border px-4 py-3.5 animate-in fade-in slide-in-from-top-2 duration-300",
-        style.border,
-        style.bg,
+        "flex items-center gap-3 rounded-lg border px-4 py-2.5",
+        isBullish
+          ? "border-primary/20 bg-primary/[0.04]"
+          : "border-red-500/20 bg-red-500/[0.04]",
       )}
     >
-      <div
+      <Icon
         className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-lg",
-          style.iconBg,
+          "size-4 shrink-0",
+          isBullish ? "text-primary" : "text-red-400",
         )}
-      >
-        <Icon className={cn("size-4", style.text)} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span
-            className={cn("size-1.5 rounded-full animate-pulse", style.dot)}
-          />
-          <span className={cn("font-semibold text-sm", style.text)}>
-            {event.name}
-          </span>
-          {event.tokenSymbol && (
-            <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-xs font-mono text-muted-foreground">
-              {event.tokenSymbol}
-            </span>
+      />
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span
+          className={cn(
+            "size-1.5 rounded-full animate-pulse shrink-0",
+            isBullish ? "bg-primary" : "bg-red-400",
           )}
-        </div>
+        />
+        <span
+          className={cn(
+            "font-medium text-sm",
+            isBullish ? "text-primary" : "text-red-400",
+          )}
+        >
+          {event.name}
+        </span>
+        {event.tokenSymbol && (
+          <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-[11px] font-mono text-muted-foreground">
+            {event.tokenSymbol}
+          </span>
+        )}
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5 truncate">
+          <span className="hidden md:inline text-xs text-muted-foreground truncate">
             {description}
-          </p>
+          </span>
         )}
       </div>
-      {event.activeUntil && (
+      {countdown && (
         <span className="text-xs font-mono shrink-0 text-muted-foreground tabular-nums">
-          {formatRemaining(event.activeUntil)}
+          {countdown}
         </span>
       )}
     </div>
@@ -189,7 +127,7 @@ export function ActiveEvents() {
   if (!events?.length) return null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {events.map((event) => (
         <EventBanner key={event.id} event={event} />
       ))}

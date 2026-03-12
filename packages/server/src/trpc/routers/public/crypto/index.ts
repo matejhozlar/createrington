@@ -7,6 +7,8 @@ import { getRecentEvents } from "@/services/crypto/events/news-feed";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { getService } from "@/services";
+import { Services } from "@/services/container";
 
 /**
  * Public Crypto Router
@@ -50,6 +52,8 @@ export const cryptoRouter = router({
       // Filter out delisted tokens
       tokens = tokens.filter((t) => !t.delistedAt);
 
+      const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+
       return tokens.map((t) => ({
         id: t.id,
         name: t.name,
@@ -67,6 +71,7 @@ export const cryptoRouter = router({
         ipoEndsAt: t.ipoEndsAt?.toISOString() ?? null,
         ipoPrice: t.ipoPrice,
         metadata: t.metadata,
+        change24h: cryptoService.get24hChange(t.id, t.price),
       }));
     }),
 
@@ -144,7 +149,6 @@ export const cryptoRouter = router({
     .meta({ description: "Get global market overview stats" })
     .query(async () => {
       const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
-
       const activeTokens = tokens.filter((t) => !t.delistedAt);
 
       const totalMarketCap = activeTokens.reduce((sum, t) => {
@@ -153,18 +157,15 @@ export const cryptoRouter = router({
         );
       }, 0);
 
+      const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);
+      const totalVolume24h = cryptoService.getTotalVolume24h();
+      const { topGainer, topLoser } = await cryptoService.getTopMovers();
+
       return {
         totalMarketCap: totalMarketCap.toFixed(2),
-        activeTokens: activeTokens.length,
-        tokensByCategory: {
-          stable: activeTokens.filter((t) => t.category === "stable").length,
-          blue_chip: activeTokens.filter((t) => t.category === "blue_chip")
-            .length,
-          memecoin: activeTokens.filter((t) => t.category === "memecoin")
-            .length,
-          seasonal: activeTokens.filter((t) => t.category === "seasonal")
-            .length,
-        },
+        totalVolume24h: String(totalVolume24h),
+        topGainer,
+        topLoser,
       };
     }),
 
@@ -178,6 +179,26 @@ export const cryptoRouter = router({
     )
     .query(async ({ input }) => {
       return getLeaderboard(input.type, input.limit);
+    }),
+
+  article: publicProcedure
+    .meta({ description: "Get a single market event article by ID" })
+    .input(z.object({ id: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      const event = await Q.crypto.market.event.get({ id: input.id });
+      if (!event) throw trpcError.notFound("Article not found");
+      return {
+        id: event.id,
+        type: event.type,
+        title: event.title,
+        description: event.description,
+        article: event.article,
+        tokenId: event.tokenId,
+        severity: event.severity,
+        metadata: event.metadata,
+        activeUntil: event.activeUntil?.toISOString() ?? null,
+        createdAt: event.createdAt.toISOString(),
+      };
     }),
 
   newsFeed: publicProcedure
@@ -195,6 +216,7 @@ export const cryptoRouter = router({
         type: e.type,
         title: e.title,
         description: e.description,
+        article: e.article,
         tokenId: e.tokenId,
         severity: e.severity,
         metadata: e.metadata,
@@ -285,6 +307,7 @@ export const cryptoRouter = router({
 
       const holders = holdings
         .map((h) => ({
+          playerUuid: h.playerMinecraftUuid,
           playerName: nameMap.get(h.playerMinecraftUuid) ?? "Unknown",
           amount: String(h.amount),
           // Scale by 10 000 in BigInt arithmetic before dividing to preserve two decimal places of precision

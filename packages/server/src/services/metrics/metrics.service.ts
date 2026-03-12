@@ -23,9 +23,7 @@ export class MetricsService {
   private _moderation?: ModerationMetrics;
   private _growth?: GrowthMetrics;
 
-  /**
-   * Playtime metrics domain
-   */
+  /** Lazily initialized playtime metrics domain (total hours, per-server breakdowns) */
   get playtime(): PlaytimeMetrics {
     if (!this._playtime) {
       this._playtime = new PlaytimeMetrics();
@@ -33,9 +31,7 @@ export class MetricsService {
     return this._playtime;
   }
 
-  /**
-   * Economy metrics domain
-   */
+  /** Lazily initialized economy metrics domain (balance circulation, distribution, transaction volume) */
   get economy(): EconomyMetrics {
     if (!this._economy) {
       this._economy = new EconomyMetrics();
@@ -43,9 +39,7 @@ export class MetricsService {
     return this._economy;
   }
 
-  /**
-   * Activity metrics domain
-   */
+  /** Lazily initialized activity metrics domain (active players, peak concurrent, session length, retention) */
   get activity(): ActivityMetrics {
     if (!this._activity) {
       this._activity = new ActivityMetrics();
@@ -53,9 +47,7 @@ export class MetricsService {
     return this._activity;
   }
 
-  /**
-   * Moderation metrics domain
-   */
+  /** Lazily initialized moderation metrics domain (bans, strikes, tickets, moderator leaderboard) */
   get moderation(): ModerationMetrics {
     if (!this._moderation) {
       this._moderation = new ModerationMetrics();
@@ -63,9 +55,7 @@ export class MetricsService {
     return this._moderation;
   }
 
-  /**
-   * Growth metrics domain
-   */
+  /** Lazily initialized growth metrics domain (registrations, waitlist funnel, Discord member trends) */
   get growth(): GrowthMetrics {
     if (!this._growth) {
       this._growth = new GrowthMetrics();

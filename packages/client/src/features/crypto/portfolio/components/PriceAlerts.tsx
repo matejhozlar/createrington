@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Bell, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { LoadingSpinner } from "@/components/loading-spinner";
 
 export function PriceAlerts() {
   const { user } = useAuth();
@@ -82,7 +83,7 @@ export function PriceAlerts() {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
-          <Bell className="size-4" />
+          <Bell className="size-4 text-muted-foreground" />
           Price Alerts
         </CardTitle>
       </CardHeader>
@@ -160,11 +161,7 @@ export function PriceAlerts() {
 
         {/* Alerts List */}
         {isLoading ? (
-          <div className="space-y-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-lg bg-muted" />
-            ))}
-          </div>
+          <LoadingSpinner size="small" className="py-6" />
         ) : !alerts || alerts.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
             No price alerts set

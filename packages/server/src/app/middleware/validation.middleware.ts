@@ -24,7 +24,10 @@ export interface ValidatedData<
 }
 
 /**
- * Creates validation middleware that validates and stores parsed data in res.locals
+ * Creates validation middleware that validates request data and stores the parsed result in res.locals
+ *
+ * @param schemas - Zod schemas to validate against for params, query, and/or body
+ * @returns Express middleware that validates the request and calls next — or forwards a ZodError on failure
  *
  * @example
  * router.get(
@@ -80,8 +83,10 @@ type MergeValidated<T> = {
 };
 
 /**
- * Helper to get typed validated data from res.locals
- * Only specify the parts you actually validated!
+ * Helper to retrieve typed validated data from res.locals — only specify the parts you actually validated
+ *
+ * @param res - Express response whose locals contain the validated data
+ * @returns Typed object with params, query, and body shaped by the provided generic
  *
  * @example
  * // Only params

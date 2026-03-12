@@ -500,14 +500,13 @@ async function fillOrder(
       if (newAmount <= 0n) {
         await Q.crypto.holding.delete({ id: holding.id });
       } else {
-        const proportion = Number(amount) / Number(holding.amount);
-        const costBasisReduction = Number(holding.totalCostBasis) * proportion;
+        // Reduce cost basis by the FIFO-consumed amount (consistent with market sells)
         await Q.crypto.holding.update(
           { id: holding.id },
           {
             amount: newAmount,
             totalCostBasis: (
-              Number(holding.totalCostBasis) - costBasisReduction
+              Number(holding.totalCostBasis) - costBasisConsumed
             ).toFixed(8),
             updatedAt: new Date(),
           },

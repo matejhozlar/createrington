@@ -5,6 +5,7 @@ import { Q } from "@/db";
 import {
   executeBuy,
   executeSell,
+  getCooldownExpiresAt,
 } from "@/services/crypto/trading/trade-executor";
 import {
   placeOrder,
@@ -24,6 +25,7 @@ import {
 import { getPortfolioHistory } from "@/services/crypto/analytics/portfolio-tracker";
 import { evaluateTradeAchievements } from "@/services/crypto/trading/achievement-triggers";
 import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
  * User Crypto Router
@@ -39,6 +41,17 @@ import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
  * - portfolioHistory: daily portfolio value snapshots
  */
 export const cryptoRouter = router({
+  balance: userProcedure
+    .meta({ description: "Get player's current in-game balance" })
+    .query(async ({ ctx }) => {
+      const balance = await Q.player.balance.find({
+        minecraftUuid: ctx.user.minecraftUuid,
+      });
+      return {
+        balance: String(BalanceUtils.fromStorage(balance?.balance ?? 0n)),
+      };
+    }),
+
   buy: userProcedure
     .meta({ description: "Market buy tokens" })
     .input(
@@ -79,6 +92,10 @@ export const cryptoRouter = router({
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
           newAchievements,
+          cooldownExpiresAt: getCooldownExpiresAt(
+            ctx.user.minecraftUuid,
+            token.id,
+          ),
         };
       } catch (err) {
         throw trpcError.badRequest(
@@ -127,12 +144,31 @@ export const cryptoRouter = router({
           feeAmount: result.feeAmount.toFixed(8),
           totalCost: result.totalCost.toFixed(8),
           newAchievements,
+          cooldownExpiresAt: getCooldownExpiresAt(
+            ctx.user.minecraftUuid,
+            token.id,
+          ),
         };
       } catch (err) {
         throw trpcError.badRequest(
           err instanceof Error ? err.message : "Trade execution failed",
         );
       }
+    }),
+
+  cooldown: userProcedure
+    .meta({ description: "Get remaining trade cooldown for a token" })
+    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .query(async ({ ctx, input }) => {
+      const token = await Q.crypto.token
+        .where({ symbol: input.symbol.toUpperCase() })
+        .first();
+
+      if (!token) return { expiresAt: null };
+
+      const expiresAt = getCooldownExpiresAt(ctx.user.minecraftUuid, token.id);
+
+      return { expiresAt };
     }),
 
   portfolio: userProcedure

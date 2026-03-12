@@ -71,7 +71,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Market sentiment is overwhelmingly positive! Memecoin volatility increased with upward bias.",
     scope: "market",
-    probability: 0.02, // was 0.03 — less frequent
+    probability: 0.01, // rare — positive events should be uncommon
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
       volatilityMultiplier: 1.2, // was 1.5 — milder boost
@@ -86,7 +86,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Fear is spreading across the market. Memecoin volatility increased with downward pressure.",
     scope: "market",
-    probability: 0.02, // was 0.03
+    probability: 0.025, // more common than bull runs
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
       volatilityMultiplier: 1.2, // was 1.5
@@ -148,10 +148,10 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Server activity is booming! Stablecoin inflation rate boosted.",
     scope: "market",
-    probability: 0.01, // was 0.02
+    probability: 0.005, // rare — stablecoin should grow slowly
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-3)
     effects: {
-      stablecoinInflationMultiplier: 3.0,
+      stablecoinInflationMultiplier: 2.0, // reduced from 3.0
     },
     severity: "info",
   },
@@ -176,7 +176,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     name: "Tax Holiday",
     description: "Trading fees halved for a limited time!",
     scope: "market",
-    probability: 0.005, // was 0.01 — rarer
+    probability: 0.002, // very rare — fees are an important money sink
     durationMs: [30 * 60 * 1000, 1 * 60 * 60 * 1000], // 30min-1h (was 1-2h)
     effects: {
       feeMultiplier: 0.5, // was 0 (free) — now just 50% off
@@ -191,7 +191,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
       "A massive sell-off hit {token}! The price has been pushed down.",
     scope: "token",
     targetCategories: ["memecoin"],
-    probability: 0.02,
+    probability: 0.025, // slightly more common
     durationMs: null, // instant
     effects: {
       instantPriceChange: -0.1, // was -0.15 — slightly milder

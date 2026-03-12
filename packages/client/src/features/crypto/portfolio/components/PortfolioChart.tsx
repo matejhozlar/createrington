@@ -4,8 +4,6 @@ import { useAuth } from "@/contexts/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   createChart,
-  type IChartApi,
-  type ISeriesApi,
   type AreaData,
   type Time,
   ColorType,
@@ -15,8 +13,6 @@ import {
 export function PortfolioChart() {
   const { user } = useAuth();
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
 
   const { data } = trpc.user.crypto.portfolioHistory.useQuery(
     { limit: 90 },
@@ -24,7 +20,7 @@ export function PortfolioChart() {
   );
 
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || !data || data.length === 0) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -43,12 +39,14 @@ export function PortfolioChart() {
       timeScale: {
         borderColor: "rgba(255, 255, 255, 0.06)",
         timeVisible: false,
+        rightOffset: 0,
       },
       crosshair: {
         vertLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
         horzLine: { color: "rgba(255, 255, 255, 0.15)", style: 2 },
       },
-      handleScroll: { vertTouchDrag: false },
+      handleScroll: false,
+      handleScale: false,
       width: chartContainerRef.current.clientWidth,
       height: 280,
     });
@@ -60,8 +58,15 @@ export function PortfolioChart() {
       lineWidth: 2,
     });
 
-    chartRef.current = chart;
-    seriesRef.current = series;
+    const areaData: AreaData<Time>[] = data.map((d) => ({
+      time: Math.floor(
+        new Date(d.recordedAt).getTime() / 1000,
+      ) as unknown as Time,
+      value: Number(d.totalValue),
+    }));
+
+    series.setData(areaData);
+    chart.timeScale().fitContent();
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -75,23 +80,7 @@ export function PortfolioChart() {
     return () => {
       resizeObserver.disconnect();
       chart.remove();
-      chartRef.current = null;
-      seriesRef.current = null;
     };
-  }, []);
-
-  useEffect(() => {
-    if (!seriesRef.current || !data || data.length === 0) return;
-
-    const areaData: AreaData<Time>[] = data.map((d) => ({
-      time: Math.floor(
-        new Date(d.recordedAt).getTime() / 1000,
-      ) as unknown as Time,
-      value: Number(d.totalValue),
-    }));
-
-    seriesRef.current.setData(areaData);
-    chartRef.current?.timeScale().fitContent();
   }, [data]);
 
   return (
@@ -109,7 +98,10 @@ export function PortfolioChart() {
             No portfolio data available yet
           </div>
         ) : (
-          <div ref={chartContainerRef} className="h-[280px] w-full" />
+          <div
+            ref={chartContainerRef}
+            className="h-[280px] w-full [&_a[href]]:!hidden"
+          />
         )}
       </CardContent>
     </Card>

@@ -1,3 +1,18 @@
+/**
+ * Trade Executor
+ *
+ * Entry point for all player-initiated buy and sell orders in the crypto market:
+ * - Validates trade preconditions (token status, supply, rate limits, IPO rules)
+ * - Calculates fees using the fee calculator and deducts/credits player balance
+ * - Maintains token available supply and per-player holdings with cost basis
+ * - Records every trade as a transaction and routes fees to the treasury
+ * - Fires whale alerts and triggers achievement evaluation after each trade
+ *
+ * NOTE: Achievement evaluation is always fire-and-forget from this module.
+ * Callers that need newly earned achievement names should call
+ * `evaluateTradeAchievements` directly from `achievement-triggers`.
+ */
+
 import { Q, R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
@@ -25,42 +40,61 @@ export interface TradeResult {
   totalCost: number;
 }
 
-interface TradeRateLimiter {
-  counts: Map<string, { count: number; resetAt: number }>;
-}
+/** Per-player-per-token cooldown tracker: key is `${playerUuid}:${tokenId}`, value is last trade timestamp */
+const cooldownMap = new Map<string, number>();
 
-const rateLimiter: TradeRateLimiter = { counts: new Map() };
+/**
+ * Returns the absolute timestamp (ms) when the cooldown expires for a player+token pair,
+ * or null if there is no active cooldown.
+ */
+export function getCooldownExpiresAt(
+  playerUuid: string,
+  tokenId: number,
+): number | null {
+  const key = `${playerUuid}:${tokenId}`;
+  const lastTradeTime = cooldownMap.get(key);
+  if (!lastTradeTime) return null;
+
+  const expiresAt = lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
+  return expiresAt > Date.now() ? expiresAt : null;
+}
 
 // ==========================================================================
 // HELPERS
 // ==========================================================================
 
 /**
- * Enforces per-player trade rate limiting using an in-memory sliding window.
+ * Enforces a per-token trade cooldown per player (matches old system's 3-minute per-token cooldown).
  *
  * @private
  * @param playerUuid - Minecraft UUID of the player to check
- * @throws Error if the player exceeds MAX_TRADES_PER_MINUTE
+ * @param tokenId - Token being traded
+ * @param tokenSymbol - Token symbol for error messages
+ * @throws Error if the player is still on cooldown for this token
  */
-function checkRateLimit(playerUuid: string): void {
+function checkRateLimit(
+  playerUuid: string,
+  tokenId: number,
+  tokenSymbol: string,
+): void {
   const now = Date.now();
-  const entry = rateLimiter.counts.get(playerUuid);
+  const key = `${playerUuid}:${tokenId}`;
+  const lastTradeTime = cooldownMap.get(key);
 
-  if (!entry || now > entry.resetAt) {
-    rateLimiter.counts.set(playerUuid, {
-      count: 1,
-      resetAt: now + 60_000,
-    });
-    return;
-  }
-
-  if (entry.count >= CRYPTO_CONFIG.MAX_TRADES_PER_MINUTE) {
+  if (
+    lastTradeTime &&
+    now - lastTradeTime < CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS
+  ) {
+    const remainingSeconds = Math.ceil(
+      (CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS - (now - lastTradeTime)) /
+        1000,
+    );
     throw new Error(
-      `Rate limit exceeded: max ${CRYPTO_CONFIG.MAX_TRADES_PER_MINUTE} trades per minute`,
+      `Trade cooldown: wait ${remainingSeconds}s before trading ${tokenSymbol} again`,
     );
   }
 
-  entry.count++;
+  cooldownMap.set(key, now);
 }
 
 /**
@@ -88,20 +122,24 @@ async function checkWhaleAlert(
   if (supplyRatio >= CRYPTO_CONFIG.WHALE_TRADE_THRESHOLD) {
     const player = await Q.player.find({ minecraftUuid: playerUuid });
     const playerName = player?.minecraftUsername ?? "Unknown";
-    recordWhaleEvent(
+    const whaleEvent = await recordWhaleEvent(
       playerName,
       token.symbol,
       token.id,
       tradeType,
       String(amount),
       totalCost.toFixed(2),
-    ).catch((err) => logger.error("Failed to record whale event:", err));
+    ).catch((err) => {
+      logger.error("Failed to record whale event:", err);
+      return null;
+    });
     sendWhaleAlertNotification(
       playerName,
       token.symbol,
       tradeType,
       String(amount),
       totalCost.toFixed(2),
+      whaleEvent?.id,
     ).catch((err) =>
       logger.error("Failed to send whale alert notification:", err),
     );
@@ -218,7 +256,7 @@ export async function executeBuy(
     }
   }
 
-  checkRateLimit(playerUuid);
+  checkRateLimit(playerUuid, token.id, token.symbol);
 
   // During IPO, use the fixed IPO price instead of the current market price
   const price = isInIpo(token) ? Number(token.ipoPrice) : Number(token.price);
@@ -352,7 +390,7 @@ export async function executeSell(
     throw new Error("Amount must be positive");
   }
 
-  checkRateLimit(playerUuid);
+  checkRateLimit(playerUuid, token.id, token.symbol);
 
   const holding = await Q.crypto.holding
     .where({

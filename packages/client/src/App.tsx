@@ -42,6 +42,7 @@ import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
+import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -56,12 +57,15 @@ import { Achievements } from "./pages/Achievements/Achievements";
 import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
+import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
+import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
 import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
 import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
 import { TradeHistory as CryptoTradeHistory } from "./features/crypto/TradeHistory";
 import { Leaderboard as CryptoLeaderboard } from "./features/crypto/Leaderboard";
+import { ArticlePage as CryptoArticle } from "./features/crypto/ArticlePage";
 
 // ==========================================================================
 // LAYOUT HELPERS
@@ -123,6 +127,7 @@ function AppContent() {
 
       {/* Puppeteer render routes (no layout, screenshot targets) */}
       <Route path="/render/compare" element={<CompareRender />} />
+      <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
       <Route element={<AppLayout />}>
         <Route path="/" element={<Home />} />
@@ -149,25 +154,28 @@ function AppContent() {
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<CryptoMarket />} />
-        <Route
-          path="/crypto/portfolio"
-          element={
-            <ProtectedRoute>
-              <CryptoPortfolio />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/crypto/history"
-          element={
-            <ProtectedRoute>
-              <CryptoTradeHistory />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/crypto/leaderboard" element={<CryptoLeaderboard />} />
-        <Route path="/crypto/:symbol" element={<TokenDetail />} />
+        <Route path="/crypto" element={<CryptoLayout />}>
+          <Route index element={<CryptoMarket />} />
+          <Route
+            path="portfolio"
+            element={
+              <ProtectedRoute>
+                <CryptoPortfolio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="history"
+            element={
+              <ProtectedRoute>
+                <CryptoTradeHistory />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="leaderboard" element={<CryptoLeaderboard />} />
+          <Route path="news/:id" element={<CryptoArticle />} />
+          <Route path=":symbol" element={<TokenDetail />} />
+        </Route>
 
         {/* Market Routes */}
         <Route path="/market" element={<div>Market Dashboard</div>} />
@@ -240,6 +248,7 @@ function AppContent() {
                     path="tools/embed-builder"
                     element={<EmbedBuilder />}
                   />
+                  <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>

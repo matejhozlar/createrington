@@ -77,10 +77,6 @@ const sections = [
           infrastructure
         </li>
         <li>
-          Authentication tokens (JWT) are stored in your browser's localStorage
-          and expire after 7 days
-        </li>
-        <li>
           We use HTTPS for all communications between your browser and our
           servers
         </li>

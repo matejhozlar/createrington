@@ -27,13 +27,20 @@ import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
 import { CryptoMarketService } from "./crypto";
+import { AiService } from "./ai";
 import { lotteryService } from "./lottery";
 
 /**
- * Register all services with the container
+ * Registers all application services with the shared container
  *
- * This function defines the entire service dependency graph.
- * Services are initialized in parallel where possible based on dependencies.
+ * Defines the complete service dependency graph for the application.
+ * Services that share no dependencies are initialised in parallel by the
+ * container. Cross-service wiring that cannot be expressed as a static
+ * dependency is handled via the `serviceReady` event listener at the bottom
+ * of this function.
+ *
+ * NOTE: `StatsImportService` is skipped in development mode to avoid
+ * requiring a live Minecraft server connection during local development.
  */
 export function registerServices(): void {
   // =========================================================================
@@ -57,6 +64,13 @@ export function registerServices(): void {
     const service = new PuppeteerService();
     await service.initialize();
     return service;
+  });
+
+  container.register(Services.AI_SERVICE, () => {
+    return new AiService(
+      config.ai.openai.apiKey,
+      config.ai.openai.defaultModel,
+    );
   });
 
   // =========================================================================
@@ -385,7 +399,13 @@ export function registerServices(): void {
 }
 
 /**
- * Initialize all core services
+ * Registers and initialises all application services
+ *
+ * Calls `registerServices()` to populate the container, then triggers
+ * parallel initialisation of all non-lazy services. Logs a summary of
+ * ready vs total services on completion.
+ *
+ * @returns Promise that resolves once all services have settled
  */
 export async function initializeServices(): Promise<void> {
   logger.info("Starting service initialization...");
@@ -403,7 +423,12 @@ export async function initializeServices(): Promise<void> {
 }
 
 /**
- * Graceful shutdown
+ * Gracefully shuts down all registered services in reverse order
+ *
+ * Delegates to `container.shutdown()`, which calls each service's `shutdown()`
+ * method where available and clears the registry.
+ *
+ * @returns Promise that resolves once all shutdown hooks have settled
  */
 export async function shutdownServices(): Promise<void> {
   await container.shutdown();

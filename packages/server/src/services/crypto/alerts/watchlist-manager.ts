@@ -1,3 +1,11 @@
+/**
+ * Watchlist management for crypto tokens.
+ * Allows players to maintain a personal list of tokens to monitor:
+ * - Fetching all tokens currently on a player's watchlist
+ * - Adding tokens with duplicate and size-cap enforcement
+ * - Removing tokens by player UUID and token ID
+ */
+
 import { Q } from "@/db";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import type { CryptoWatchlist } from "@createrington/shared/db/crypto_watchlist.types";
