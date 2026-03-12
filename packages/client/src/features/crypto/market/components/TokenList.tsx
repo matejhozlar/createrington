@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useCryptoData } from "@/contexts/crypto-data";
-import { Skull, Zap, Rocket } from "lucide-react";
+import { Skull, Zap, Rocket, Search, X } from "lucide-react";
 import { Loading } from "@/components/loading-spinner";
 import {
   useActiveEventTokenIds,
@@ -24,6 +24,7 @@ const FILTERS: { key: CategoryFilter; label: string; dot?: string }[] = [
 export function TokenList() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<CategoryFilter>("stable");
+  const [search, setSearch] = useState("");
   const { getPrice } = useCryptoData();
   const eventTokenIds = useActiveEventTokenIds();
   const hasMarketWideEvent = useHasMarketWideEvent();
@@ -33,25 +34,55 @@ export function TokenList() {
     includesCrashed: true,
   });
 
+  const filteredTokens = useMemo(() => {
+    if (!tokens || !search.trim()) return tokens;
+    const q = search.trim().toLowerCase();
+    return tokens.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        t.symbol.toLowerCase().includes(q),
+    );
+  }, [tokens, search]);
+
   return (
     <div className="space-y-3">
-      {/* Filters */}
-      <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
-        {FILTERS.map(({ key, label, dot }) => (
-          <button
-            key={key}
-            className={cn(
-              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
-              filter === key
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
-            )}
-            onClick={() => setFilter(key)}
-          >
-            {dot && <span className={cn("size-1.5 rounded-full", dot)} />}
-            {label}
-          </button>
-        ))}
+      {/* Filters + search */}
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
+          {FILTERS.map(({ key, label, dot }) => (
+            <button
+              key={key}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                filter === key
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/30",
+              )}
+              onClick={() => setFilter(key)}
+            >
+              {dot && <span className={cn("size-1.5 rounded-full", dot)} />}
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-56">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tokens..."
+            className="h-[34px] w-full rounded-lg border bg-card pl-8 pr-8 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Column headers */}
@@ -71,7 +102,7 @@ export function TokenList() {
         />
       ) : (
         <div className="divide-y divide-border/30 rounded-xl border bg-card/20 overflow-hidden">
-          {tokens?.map((token) => {
+          {filteredTokens?.map((token) => {
             const livePrice = getPrice(token.symbol);
             const displayPrice = Number(livePrice?.price ?? token.price);
             const isCrashed = livePrice?.isCrashed ?? token.isCrashed;
@@ -151,9 +182,11 @@ export function TokenList() {
               </div>
             );
           })}
-          {(!tokens || tokens.length === 0) && (
+          {(!filteredTokens || filteredTokens.length === 0) && (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              No tokens found
+              {search.trim()
+                ? `No tokens matching "${search.trim()}"`
+                : "No tokens found"}
             </div>
           )}
         </div>
