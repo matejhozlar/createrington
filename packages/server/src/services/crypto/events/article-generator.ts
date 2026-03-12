@@ -20,6 +20,46 @@ import { getLeaderboard } from "../analytics/leaderboard";
 import type { CryptoMarketService } from "../crypto-market.service";
 
 // ---------------------------------------------------------------------------
+// Serial queue — ensures only one article generates at a time to avoid
+// parallel OpenAI calls and redundant DB snapshots when events burst
+// ---------------------------------------------------------------------------
+
+type QueuedArticle = {
+  eventId: number;
+  title: string;
+  description: string | null;
+  severity: string;
+  metadata: Record<string, unknown> | null;
+};
+
+let articleQueue: QueuedArticle[] = [];
+let processing = false;
+
+async function processQueue(): Promise<void> {
+  if (processing) return;
+  processing = true;
+
+  while (articleQueue.length > 0) {
+    const job = articleQueue.shift()!;
+    try {
+      await generateArticleForEvent(
+        job.eventId,
+        job.title,
+        job.description,
+        job.severity,
+        job.metadata,
+      );
+    } catch (err) {
+      logger.warn(
+        `Failed to generate article for event ${job.eventId}: ${err}`,
+      );
+    }
+  }
+
+  processing = false;
+}
+
+// ---------------------------------------------------------------------------
 // Types for structured article data persisted alongside the article text
 // ---------------------------------------------------------------------------
 
@@ -685,8 +725,9 @@ async function generateArticleForEvent(
 }
 
 /**
- * Fire-and-forget wrapper for article generation.
- * Silently catches all errors — the event is already persisted regardless.
+ * Enqueues an article for generation. Articles are processed serially so that
+ * burst events (e.g. crash + whale + milestone) don't spawn parallel OpenAI
+ * calls or redundant DB snapshot queries.
  *
  * @param eventId - ID of the event to generate an article for
  * @param title - Event title used as the article subject
@@ -701,13 +742,8 @@ export function fireAndForgetArticle(
   severity: string,
   metadata: Record<string, unknown> | null,
 ): void {
-  generateArticleForEvent(
-    eventId,
-    title,
-    description,
-    severity,
-    metadata,
-  ).catch((err) => {
-    logger.warn(`Failed to generate article for event ${eventId}: ${err}`);
+  articleQueue.push({ eventId, title, description, severity, metadata });
+  processQueue().catch((err) => {
+    logger.warn(`Article queue processing failed: ${err}`);
   });
 }

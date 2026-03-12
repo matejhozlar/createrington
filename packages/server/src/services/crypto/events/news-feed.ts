@@ -80,15 +80,12 @@ export async function getRecentEvents(
 /**
  * Returns events whose `activeUntil` timestamp is still in the future.
  *
- * NOTE: Filtering is done in application code because the query layer does not
- * expose a greater-than filter on timestamp columns.
- *
  * @returns Currently active market events
  */
 export async function getActiveEvents(): Promise<CryptoMarketEvent[]> {
-  const all = await Q.crypto.market.event.where({}).all();
-  const now = new Date();
-  return all.filter((e) => e.activeUntil && e.activeUntil > now);
+  return Q.crypto.market.event
+    .where({ activeUntil: { $gt: new Date() } })
+    .all();
 }
 
 /**
