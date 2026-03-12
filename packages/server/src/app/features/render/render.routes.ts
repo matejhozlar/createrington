@@ -155,9 +155,8 @@ router.get(
     const activeEvent = tokenEvent
       ? {
           name:
-            EVENT_DEFINITIONS[
-              tokenEvent.type as keyof typeof EVENT_DEFINITIONS
-            ]?.name ?? tokenEvent.type,
+            EVENT_DEFINITIONS[tokenEvent.type as keyof typeof EVENT_DEFINITIONS]
+              ?.name ?? tokenEvent.type,
           activeUntil: tokenEvent.activeUntil?.toISOString() ?? null,
         }
       : null;

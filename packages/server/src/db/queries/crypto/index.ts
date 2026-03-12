@@ -12,23 +12,23 @@ import { CryptoWatchlistQueries } from "@/db/queries/crypto/watchlist";
 
 /**
  * Namespace queries for crypto
- * 
+ *
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
  * access to child tables that share the 'crypto_' prefix.
- * 
+ *
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
  * - Shared across all CryptoQueries instances using same connection
- * 
+ *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class CryptoQueries {
   /**
    * Static singleton registry for child query instances
-   * 
+   *
    * Uses WeakMap keyed by database connection (Pool or PoolClient):
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
@@ -42,15 +42,15 @@ export class CryptoQueries {
 
   /**
    * Get or create a child query instance from the singleton cache
-   * 
+   *
    * Implements the singleton pattern by checking the cache first and
    * creating new instances only when needed. All instances for a given
    * connection are stored in the same cache.
-   * 
+   *
    * @param key - Cache key for this child (e.g., "actions", "settings")
    * @param QueryClass - Constructor for the child query class
    * @returns Cached or newly created child query instance
-   * 
+   *
    * @remarks
    * - Cache key is prefixed with namespace (e.g., "crypto.actions")
    * - Ensures child shares the same database connection as parent
@@ -58,7 +58,7 @@ export class CryptoQueries {
    */
   protected getOrCreateChild<T>(
     key: string,
-    QueryClass: new (db: Pool | PoolClient) => T
+    QueryClass: new (db: Pool | PoolClient) => T,
   ): T {
     // Initialize cache for this connection if not exists
     if (!CryptoQueries.queryInstances.has(this.db)) {
@@ -86,16 +86,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_cost
-   * 
+   *
    * Returns a CryptoCostQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoCostQueries instance
    */
   get cost(): CryptoCostQueries {
     if (!this._cost) {
-      this._cost = this.getOrCreateChild<CryptoCostQueries>('cost', CryptoCostQueries);
+      this._cost = this.getOrCreateChild<CryptoCostQueries>(
+        "cost",
+        CryptoCostQueries,
+      );
     }
     return this._cost;
   }
@@ -105,16 +108,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_holding
-   * 
+   *
    * Returns a CryptoHoldingQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoHoldingQueries instance
    */
   get holding(): CryptoHoldingQueries {
     if (!this._holding) {
-      this._holding = this.getOrCreateChild<CryptoHoldingQueries>('holding', CryptoHoldingQueries);
+      this._holding = this.getOrCreateChild<CryptoHoldingQueries>(
+        "holding",
+        CryptoHoldingQueries,
+      );
     }
     return this._holding;
   }
@@ -124,16 +130,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_market
-   * 
+   *
    * Returns a CryptoMarketQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoMarketQueries instance
    */
   get market(): CryptoMarketQueries {
     if (!this._market) {
-      this._market = this.getOrCreateChild<CryptoMarketQueries>('market', CryptoMarketQueries);
+      this._market = this.getOrCreateChild<CryptoMarketQueries>(
+        "market",
+        CryptoMarketQueries,
+      );
     }
     return this._market;
   }
@@ -143,16 +152,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_order
-   * 
+   *
    * Returns a CryptoOrderQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoOrderQueries instance
    */
   get order(): CryptoOrderQueries {
     if (!this._order) {
-      this._order = this.getOrCreateChild<CryptoOrderQueries>('order', CryptoOrderQueries);
+      this._order = this.getOrCreateChild<CryptoOrderQueries>(
+        "order",
+        CryptoOrderQueries,
+      );
     }
     return this._order;
   }
@@ -162,16 +174,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_portfolio
-   * 
+   *
    * Returns a CryptoPortfolioQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoPortfolioQueries instance
    */
   get portfolio(): CryptoPortfolioQueries {
     if (!this._portfolio) {
-      this._portfolio = this.getOrCreateChild<CryptoPortfolioQueries>('portfolio', CryptoPortfolioQueries);
+      this._portfolio = this.getOrCreateChild<CryptoPortfolioQueries>(
+        "portfolio",
+        CryptoPortfolioQueries,
+      );
     }
     return this._portfolio;
   }
@@ -181,16 +196,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_price
-   * 
+   *
    * Returns a CryptoPriceQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoPriceQueries instance
    */
   get price(): CryptoPriceQueries {
     if (!this._price) {
-      this._price = this.getOrCreateChild<CryptoPriceQueries>('price', CryptoPriceQueries);
+      this._price = this.getOrCreateChild<CryptoPriceQueries>(
+        "price",
+        CryptoPriceQueries,
+      );
     }
     return this._price;
   }
@@ -200,16 +218,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_token
-   * 
+   *
    * Returns a CryptoTokenQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoTokenQueries instance
    */
   get token(): CryptoTokenQueries {
     if (!this._token) {
-      this._token = this.getOrCreateChild<CryptoTokenQueries>('token', CryptoTokenQueries);
+      this._token = this.getOrCreateChild<CryptoTokenQueries>(
+        "token",
+        CryptoTokenQueries,
+      );
     }
     return this._token;
   }
@@ -219,16 +240,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_transaction
-   * 
+   *
    * Returns a CryptoTransactionQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoTransactionQueries instance
    */
   get transaction(): CryptoTransactionQueries {
     if (!this._transaction) {
-      this._transaction = this.getOrCreateChild<CryptoTransactionQueries>('transaction', CryptoTransactionQueries);
+      this._transaction = this.getOrCreateChild<CryptoTransactionQueries>(
+        "transaction",
+        CryptoTransactionQueries,
+      );
     }
     return this._transaction;
   }
@@ -238,16 +262,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_treasury
-   * 
+   *
    * Returns a CryptoTreasuryQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoTreasuryQueries instance
    */
   get treasury(): CryptoTreasuryQueries {
     if (!this._treasury) {
-      this._treasury = this.getOrCreateChild<CryptoTreasuryQueries>('treasury', CryptoTreasuryQueries);
+      this._treasury = this.getOrCreateChild<CryptoTreasuryQueries>(
+        "treasury",
+        CryptoTreasuryQueries,
+      );
     }
     return this._treasury;
   }
@@ -257,16 +284,19 @@ export class CryptoQueries {
 
   /**
    * Lazy-loaded singleton accessor for crypto_watchlist
-   * 
+   *
    * Returns a CryptoWatchlistQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   * 
+   *
    * @returns Singleton CryptoWatchlistQueries instance
    */
   get watchlist(): CryptoWatchlistQueries {
     if (!this._watchlist) {
-      this._watchlist = this.getOrCreateChild<CryptoWatchlistQueries>('watchlist', CryptoWatchlistQueries);
+      this._watchlist = this.getOrCreateChild<CryptoWatchlistQueries>(
+        "watchlist",
+        CryptoWatchlistQueries,
+      );
     }
     return this._watchlist;
   }

@@ -89,11 +89,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 // Chart component
 // ---------------------------------------------------------------------------
 
-function OHLCChart({
-  data,
-}: {
-  data: ChartData["priceHistory"];
-}) {
+function OHLCChart({ data }: { data: ChartData["priceHistory"] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -193,10 +189,7 @@ function OHLCChart({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="h-[260px] w-full [&_a[href]]:!hidden"
-    />
+    <div ref={containerRef} className="h-[260px] w-full [&_a[href]]:!hidden" />
   );
 }
 

@@ -179,12 +179,13 @@ function ArticleParagraphs({ text, accent }: { text: string; accent: string }) {
 // Widgets
 // ---------------------------------------------------------------------------
 
-function MarketStatsBar({
-  articleData,
-}: {
-  articleData: ArticleData;
-}) {
-  const stats: { icon: typeof Activity; label: string; value: string; color: string }[] = [];
+function MarketStatsBar({ articleData }: { articleData: ArticleData }) {
+  const stats: {
+    icon: typeof Activity;
+    label: string;
+    value: string;
+    color: string;
+  }[] = [];
 
   if (articleData.totalVolume24h && Number(articleData.totalVolume24h) > 0) {
     stats.push({
@@ -234,11 +235,7 @@ function MarketStatsBar({
   );
 }
 
-function RecentTradesTimeline({
-  trades,
-}: {
-  trades: ArticleRecentTrade[];
-}) {
+function RecentTradesTimeline({ trades }: { trades: ArticleRecentTrade[] }) {
   if (trades.length === 0) return null;
   const display = trades.slice(0, 8);
 
@@ -272,7 +269,8 @@ function RecentTradesTimeline({
                 {trade.type}
               </span>
               <span className="font-mono tabular-nums text-muted-foreground ml-auto shrink-0">
-                {Number(trade.amount).toLocaleString()} @ ${formatPrice(trade.price)}
+                {Number(trade.amount).toLocaleString()} @ $
+                {formatPrice(trade.price)}
               </span>
               <span className="text-muted-foreground/60 shrink-0">
                 {trade.timeAgo}
@@ -336,12 +334,20 @@ function LeaderboardPodium({
             key={i}
             className="flex-1 flex flex-col items-center gap-1 rounded-lg border bg-card/20 px-3 py-3"
           >
-            <Trophy className={cn("size-4", RANK_COLORS[i] ?? "text-muted-foreground")} />
+            <Trophy
+              className={cn(
+                "size-4",
+                RANK_COLORS[i] ?? "text-muted-foreground",
+              )}
+            />
             <span className="text-xs font-medium truncate max-w-full">
               {entry.name}
             </span>
             <span className="text-[11px] font-mono tabular-nums text-muted-foreground">
-              ${Number(entry.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              $
+              {Number(entry.value).toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
             </span>
           </div>
         ))}

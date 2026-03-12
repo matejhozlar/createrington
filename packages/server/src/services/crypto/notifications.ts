@@ -69,7 +69,8 @@ export async function sendNewListingNotification(
     .footer("Use /crypto buy to start trading")
     .timestamp();
 
-  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+  if (event)
+    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -126,7 +127,8 @@ export async function sendIpoAnnouncementNotification(
     .footer("Use /crypto buy to participate in the IPO")
     .timestamp();
 
-  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+  if (event)
+    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -190,7 +192,8 @@ export async function sendIpoResultNotification(
     .footer("Normal trading has begun — price will now fluctuate")
     .timestamp();
 
-  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+  if (event)
+    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -235,7 +238,8 @@ export async function sendCrashNotification(
     .footer("The token will be delisted in 48 hours")
     .timestamp();
 
-  if (event) embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
+  if (event)
+    embed.field("\u200B", `[Read more](${articleUrl(event.id)})`, false);
 
   try {
     await Discord.Messages.send({
@@ -276,7 +280,8 @@ export async function sendWhaleAlertNotification(
     .footer("Large trade detected")
     .timestamp();
 
-  if (eventId) embed.field("\u200B", `[Read more](${articleUrl(eventId)})`, false);
+  if (eventId)
+    embed.field("\u200B", `[Read more](${articleUrl(eventId)})`, false);
 
   try {
     await Discord.Messages.send({

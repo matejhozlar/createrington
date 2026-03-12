@@ -539,7 +539,9 @@ export function TradePanel({
                   {amountNum.toLocaleString()} {symbol}
                 </span>{" "}
                 at ~$
-                {numPrice.toFixed(numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2)}{" "}
+                {numPrice.toFixed(
+                  numPrice < 0.01 ? 6 : numPrice < 1 ? 4 : 2,
+                )}{" "}
                 for{" "}
                 <span className="font-semibold text-foreground">
                   ~$

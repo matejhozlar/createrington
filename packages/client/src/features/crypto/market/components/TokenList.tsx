@@ -39,8 +39,7 @@ export function TokenList() {
     const q = search.trim().toLowerCase();
     return tokens.filter(
       (t) =>
-        t.name.toLowerCase().includes(q) ||
-        t.symbol.toLowerCase().includes(q),
+        t.name.toLowerCase().includes(q) || t.symbol.toLowerCase().includes(q),
     );
   }, [tokens, search]);
 

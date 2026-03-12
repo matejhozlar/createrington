@@ -77,16 +77,66 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const EVENT_TYPES = [
-  { value: "bull_run", label: "Bull Run", severity: "info", description: "+20% volatility, upward price bias for 1-2h" },
-  { value: "bear_market", label: "Bear Market", severity: "warning", description: "+20% volatility, downward price pressure for 1-2h" },
-  { value: "flash_crash", label: "Flash Crash", severity: "critical", description: "Instant ~18% price drop on a random memecoin" },
-  { value: "pump_and_dump", label: "Pump & Dump", severity: "warning", description: "2h event: pumps a token first half, dumps second half" },
-  { value: "liquidity_drought", label: "Liquidity Drought", severity: "warning", description: "2x trading fees for 30min-2h" },
-  { value: "gold_rush", label: "Gold Rush", severity: "info", description: "2x stablecoin inflation rate for 1-2h" },
-  { value: "supply_shock", label: "Supply Shock", severity: "warning", description: "Instantly burns ~15% of a memecoin's available supply" },
-  { value: "tax_holiday", label: "Tax Holiday", severity: "info", description: "50% off trading fees for 30min-1h" },
-  { value: "whale_dump", label: "Whale Dump", severity: "warning", description: "Instant ~10% price drop on a random memecoin" },
-  { value: "new_listing_frenzy", label: "New Listing Frenzy", severity: "info", description: "+10% memecoin volatility for 1h" },
+  {
+    value: "bull_run",
+    label: "Bull Run",
+    severity: "info",
+    description: "+20% volatility, upward price bias for 1-2h",
+  },
+  {
+    value: "bear_market",
+    label: "Bear Market",
+    severity: "warning",
+    description: "+20% volatility, downward price pressure for 1-2h",
+  },
+  {
+    value: "flash_crash",
+    label: "Flash Crash",
+    severity: "critical",
+    description: "Instant ~18% price drop on a random memecoin",
+  },
+  {
+    value: "pump_and_dump",
+    label: "Pump & Dump",
+    severity: "warning",
+    description: "2h event: pumps a token first half, dumps second half",
+  },
+  {
+    value: "liquidity_drought",
+    label: "Liquidity Drought",
+    severity: "warning",
+    description: "2x trading fees for 30min-2h",
+  },
+  {
+    value: "gold_rush",
+    label: "Gold Rush",
+    severity: "info",
+    description: "2x stablecoin inflation rate for 1-2h",
+  },
+  {
+    value: "supply_shock",
+    label: "Supply Shock",
+    severity: "warning",
+    description: "Instantly burns ~15% of a memecoin's available supply",
+  },
+  {
+    value: "tax_holiday",
+    label: "Tax Holiday",
+    severity: "info",
+    description: "50% off trading fees for 30min-1h",
+  },
+  {
+    value: "whale_dump",
+    label: "Whale Dump",
+    severity: "warning",
+    description: "Instant ~10% price drop on a random memecoin",
+  },
+  {
+    value: "new_listing_frenzy",
+    label: "New Listing Frenzy",
+    severity: "info",
+    description: "+10% memecoin volatility for 1h",
+  },
 ] as const;
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -172,7 +222,11 @@ function CreateTokenDialog() {
     });
   }
 
-  const isValid = name.length > 0 && symbol.length > 0 && Number(price) > 0 && Number(totalSupply) > 0;
+  const isValid =
+    name.length > 0 &&
+    symbol.length > 0 &&
+    Number(price) > 0 &&
+    Number(totalSupply) > 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -185,22 +239,40 @@ function CreateTokenDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Token</DialogTitle>
-          <DialogDescription>Add a new token to the exchange.</DialogDescription>
+          <DialogDescription>
+            Add a new token to the exchange.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="token-name">Name</Label>
-              <Input id="token-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="DogeCoin" />
+              <Input
+                id="token-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="DogeCoin"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="token-symbol">Symbol</Label>
-              <Input id="token-symbol" value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="DOGE" maxLength={10} />
+              <Input
+                id="token-symbol"
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                placeholder="DOGE"
+                maxLength={10}
+              />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="token-description">Description</Label>
-            <Input id="token-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description..." />
+            <Input
+              id="token-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description..."
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -211,29 +283,55 @@ function CreateTokenDialog() {
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {CATEGORY_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="token-supply">Total Supply</Label>
-              <Input id="token-supply" type="number" value={totalSupply} onChange={(e) => setTotalSupply(e.target.value)} min={1} />
+              <Input
+                id="token-supply"
+                type="number"
+                value={totalSupply}
+                onChange={(e) => setTotalSupply(e.target.value)}
+                min={1}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="token-price">Starting Price ($)</Label>
-              <Input id="token-price" type="number" value={price} onChange={(e) => setPrice(e.target.value)} min={0} step="0.01" />
+              <Input
+                id="token-price"
+                type="number"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                min={0}
+                step="0.01"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="token-floor">Floor Price ($)</Label>
-              <Input id="token-floor" type="number" value={floorPrice} onChange={(e) => setFloorPrice(e.target.value)} min={0} step="0.01" placeholder="Optional" />
+              <Input
+                id="token-floor"
+                type="number"
+                value={floorPrice}
+                onChange={(e) => setFloorPrice(e.target.value)}
+                min={0}
+                step="0.01"
+                placeholder="Optional"
+              />
             </div>
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={handleCreate} disabled={!isValid || createMutation.isPending}>
+          <Button
+            onClick={handleCreate}
+            disabled={!isValid || createMutation.isPending}
+          >
             {createMutation.isPending ? "Creating..." : "Create Token"}
           </Button>
         </DialogFooter>
@@ -246,7 +344,11 @@ function CreateTokenDialog() {
 // TRIGGER EVENT DIALOG
 // ---------------------------------------------------------------------------
 
-function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; name: string }[] }) {
+function TriggerEventDialog({
+  tokens,
+}: {
+  tokens: { id: number; symbol: string; name: string }[];
+}) {
   const [open, setOpen] = useState(false);
   const [eventType, setEventType] = useState<string>(EVENT_TYPES[0].value);
   const [tokenId, setTokenId] = useState<string>("");
@@ -256,7 +358,9 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
   const triggerMutation = trpc.admin.crypto.triggerEvent.useMutation({
     onSuccess: (data) => {
       if (data.success && "event" in data) {
-        toast.success(`Triggered ${eventType.replace(/_/g, " ")}${data.event?.tokenSymbol ? ` on ${data.event.tokenSymbol}` : ""}`);
+        toast.success(
+          `Triggered ${eventType.replace(/_/g, " ")}${data.event?.tokenSymbol ? ` on ${data.event.tokenSymbol}` : ""}`,
+        );
         utils.admin.crypto.activeEvents.invalidate();
         utils.public.crypto.activeEvents.invalidate();
       } else if ("message" in data) {
@@ -267,8 +371,15 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
     onError: (err) => toast.error(err.message),
   });
 
-  const selectedDef = EVENT_TYPES.find((e) => e.value === eventType) as { value: string; label: string; severity: string; description: string } | undefined;
-  const isTokenScoped = ["flash_crash", "pump_and_dump", "supply_shock", "whale_dump"].includes(eventType);
+  const selectedDef = EVENT_TYPES.find((e) => e.value === eventType) as
+    | { value: string; label: string; severity: string; description: string }
+    | undefined;
+  const isTokenScoped = [
+    "flash_crash",
+    "pump_and_dump",
+    "supply_shock",
+    "whale_dump",
+  ].includes(eventType);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -281,12 +392,21 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Trigger Market Event</DialogTitle>
-          <DialogDescription>Manually fire a market event. Active events of the same type will be replaced.</DialogDescription>
+          <DialogDescription>
+            Manually fire a market event. Active events of the same type will be
+            replaced.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="space-y-1.5">
             <Label>Event Type</Label>
-            <Select value={eventType} onValueChange={(v) => { setEventType(v); setTokenId(""); }}>
+            <Select
+              value={eventType}
+              onValueChange={(v) => {
+                setEventType(v);
+                setTokenId("");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -295,7 +415,13 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
                   <SelectItem key={e.value} value={e.value}>
                     <span className="flex items-center gap-2">
                       {e.label}
-                      <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", SEVERITY_COLORS[e.severity])}>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[10px] px-1.5 py-0",
+                          SEVERITY_COLORS[e.severity],
+                        )}
+                      >
                         {e.severity}
                       </Badge>
                     </span>
@@ -306,14 +432,21 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
           </div>
           {isTokenScoped && (
             <div className="space-y-1.5">
-              <Label>Target Token <span className="text-muted-foreground text-xs">(optional — random if empty)</span></Label>
+              <Label>
+                Target Token{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional — random if empty)
+                </span>
+              </Label>
               <Select value={tokenId} onValueChange={setTokenId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Random target" />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   {tokens.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>{t.symbol} — {t.name}</SelectItem>
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.symbol} — {t.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -326,7 +459,15 @@ function TriggerEventDialog({ tokens }: { tokens: { id: number; symbol: string; 
           )}
         </div>
         <DialogFooter>
-          <Button onClick={() => triggerMutation.mutate({ eventType: eventType as typeof EVENT_TYPES[number]["value"], tokenId: tokenId ? Number(tokenId) : undefined })} disabled={triggerMutation.isPending}>
+          <Button
+            onClick={() =>
+              triggerMutation.mutate({
+                eventType: eventType as (typeof EVENT_TYPES)[number]["value"],
+                tokenId: tokenId ? Number(tokenId) : undefined,
+              })
+            }
+            disabled={triggerMutation.isPending}
+          >
             {triggerMutation.isPending ? "Triggering..." : "Trigger Event"}
           </Button>
         </DialogFooter>
@@ -345,8 +486,12 @@ export function AdminCrypto() {
 
   const statsQuery = trpc.admin.crypto.marketStats.useQuery();
   const treasuryQuery = trpc.admin.crypto.treasury.useQuery();
-  const activeEventsQuery = trpc.admin.crypto.activeEvents.useQuery(undefined, { refetchInterval: 30_000 });
-  const tokensQuery = trpc.public.crypto.list.useQuery({ includesCrashed: true });
+  const activeEventsQuery = trpc.admin.crypto.activeEvents.useQuery(undefined, {
+    refetchInterval: 30_000,
+  });
+  const tokensQuery = trpc.public.crypto.list.useQuery({
+    includesCrashed: true,
+  });
 
   const delistMutation = trpc.admin.crypto.delistToken.useMutation({
     onSuccess: () => {
@@ -403,7 +548,11 @@ export function AdminCrypto() {
           </BreadcrumbList>
         </Breadcrumb>
         <div className="flex items-center gap-2">
-          <TriggerEventDialog tokens={tokens.filter((t) => !t.isCrashed && !t.delistedAt).map((t) => ({ id: t.id, symbol: t.symbol, name: t.name }))} />
+          <TriggerEventDialog
+            tokens={tokens
+              .filter((t) => !t.isCrashed && !t.delistedAt)
+              .map((t) => ({ id: t.id, symbol: t.symbol, name: t.name }))}
+          />
           <CreateTokenDialog />
         </div>
       </header>
@@ -411,10 +560,26 @@ export function AdminCrypto() {
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Active Tokens" value={stats?.activeTokens ?? 0} icon={Coins} />
-          <StatCard label="Total Market Cap" value={`$${Number(stats?.totalMarketCap ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={TrendingUp} />
-          <StatCard label="24h Volume" value={`$${Number(stats?.dailyVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`} icon={BarChart3} />
-          <StatCard label="24h Traders" value={stats?.uniqueTraders24h ?? 0} icon={Wallet} />
+          <StatCard
+            label="Active Tokens"
+            value={stats?.activeTokens ?? 0}
+            icon={Coins}
+          />
+          <StatCard
+            label="Total Market Cap"
+            value={`$${Number(stats?.totalMarketCap ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            icon={TrendingUp}
+          />
+          <StatCard
+            label="24h Volume"
+            value={`$${Number(stats?.dailyVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            icon={BarChart3}
+          />
+          <StatCard
+            label="24h Traders"
+            value={stats?.uniqueTraders24h ?? 0}
+            icon={Wallet}
+          />
         </div>
 
         {/* Treasury + Active Events row */}
@@ -430,16 +595,27 @@ export function AdminCrypto() {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Fees Collected</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Fees Collected
+                  </p>
                   <p className="text-xl font-bold font-mono tabular-nums mt-0.5">
-                    ${Number(treasury?.totalCollected ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    $
+                    {Number(treasury?.totalCollected ?? 0).toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 2 },
+                    )}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Fees Burned</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                    Fees Burned
+                  </p>
                   <p className="text-xl font-bold font-mono tabular-nums mt-0.5 flex items-center gap-1.5">
-                    <Flame className="size-4 text-orange-400" />
-                    ${Number(treasury?.totalBurned ?? 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    <Flame className="size-4 text-orange-400" />$
+                    {Number(treasury?.totalBurned ?? 0).toLocaleString(
+                      undefined,
+                      { maximumFractionDigits: 2 },
+                    )}
                   </p>
                 </div>
               </div>
@@ -453,22 +629,36 @@ export function AdminCrypto() {
                 <Zap className="size-4 text-muted-foreground" />
                 Active Events
                 {activeEvents.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">{activeEvents.length}</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    {activeEvents.length}
+                  </Badge>
                 )}
               </CardTitle>
             </CardHeader>
             <CardContent>
               {activeEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No active events</p>
+                <p className="text-sm text-muted-foreground">
+                  No active events
+                </p>
               ) : (
                 <div className="space-y-2">
                   {activeEvents.map((event) => (
-                    <div key={event.id} className="flex items-center justify-between rounded-lg border px-3 py-2">
+                    <div
+                      key={event.id}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2"
+                    >
                       <div className="flex items-center gap-2">
                         <Zap className="size-3.5 text-amber-400" />
-                        <span className="text-sm font-medium">{event.type.replace(/_/g, " ")}</span>
+                        <span className="text-sm font-medium">
+                          {event.type.replace(/_/g, " ")}
+                        </span>
                         {event.tokenSymbol && (
-                          <Badge variant="outline" className="text-xs font-mono">{event.tokenSymbol}</Badge>
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-mono"
+                          >
+                            {event.tokenSymbol}
+                          </Badge>
                         )}
                       </div>
                       {event.activeUntil && (
@@ -491,7 +681,9 @@ export function AdminCrypto() {
             <CardTitle className="text-sm flex items-center gap-2">
               <Coins className="size-4 text-muted-foreground" />
               All Tokens
-              <Badge variant="secondary" className="text-xs">{tokens.length}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {tokens.length}
+              </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -510,36 +702,68 @@ export function AdminCrypto() {
                 </TableHeader>
                 <TableBody>
                   {tokens.map((token) => {
-                    const held = Number(token.totalSupply) - Number(token.availableSupply);
-                    const heldPct = Number(token.totalSupply) > 0 ? ((held / Number(token.totalSupply)) * 100).toFixed(1) : "0";
+                    const held =
+                      Number(token.totalSupply) - Number(token.availableSupply);
+                    const heldPct =
+                      Number(token.totalSupply) > 0
+                        ? ((held / Number(token.totalSupply)) * 100).toFixed(1)
+                        : "0";
                     const isActive = !token.isCrashed && !token.delistedAt;
 
                     return (
-                      <TableRow key={token.id} className={cn(!isActive && "opacity-50")}>
+                      <TableRow
+                        key={token.id}
+                        className={cn(!isActive && "opacity-50")}
+                      >
                         <TableCell>
                           <div>
                             <p className="font-medium">{token.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">{token.symbol}</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                              {token.symbol}
+                            </p>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={cn("text-xs", CATEGORY_COLORS[token.category])}>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs",
+                              CATEGORY_COLORS[token.category],
+                            )}
+                          >
                             {token.category.replace("_", " ")}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-mono tabular-nums">
-                          ${Number(token.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 })}
+                          $
+                          {Number(token.price).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 6,
+                          })}
                         </TableCell>
                         <TableCell className="text-right">
                           <div>
-                            <p className="text-sm font-mono tabular-nums">{held.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">{heldPct}% held</p>
+                            <p className="text-sm font-mono tabular-nums">
+                              {held.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {heldPct}% held
+                            </p>
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {token.change24h !== undefined && token.change24h !== 0 ? (
-                            <span className={cn("font-mono tabular-nums text-sm", token.change24h > 0 ? "text-emerald-400" : "text-red-400")}>
-                              {token.change24h > 0 ? "+" : ""}{token.change24h.toFixed(2)}%
+                          {token.change24h !== undefined &&
+                          token.change24h !== 0 ? (
+                            <span
+                              className={cn(
+                                "font-mono tabular-nums text-sm",
+                                token.change24h > 0
+                                  ? "text-emerald-400"
+                                  : "text-red-400",
+                              )}
+                            >
+                              {token.change24h > 0 ? "+" : ""}
+                              {token.change24h.toFixed(2)}%
                             </span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
@@ -547,13 +771,28 @@ export function AdminCrypto() {
                         </TableCell>
                         <TableCell>
                           {token.isCrashed ? (
-                            <Badge variant="destructive" className="text-xs">Crashed</Badge>
+                            <Badge variant="destructive" className="text-xs">
+                              Crashed
+                            </Badge>
                           ) : token.delistedAt ? (
-                            <Badge variant="secondary" className="text-xs">Delisted</Badge>
-                          ) : token.ipoEndsAt && new Date(token.ipoEndsAt) > new Date() ? (
-                            <Badge variant="outline" className="text-xs text-primary border-primary/30 bg-primary/10">IPO</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Delisted
+                            </Badge>
+                          ) : token.ipoEndsAt &&
+                            new Date(token.ipoEndsAt) > new Date() ? (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-primary border-primary/30 bg-primary/10"
+                            >
+                              IPO
+                            </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10">Active</Badge>
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
+                            >
+                              Active
+                            </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -563,7 +802,11 @@ export function AdminCrypto() {
                               size="icon"
                               className="size-7 text-muted-foreground hover:text-destructive"
                               onClick={() => {
-                                if (window.confirm(`Delist ${token.symbol}? All holdings will be auto-sold at current price.`)) {
+                                if (
+                                  window.confirm(
+                                    `Delist ${token.symbol}? All holdings will be auto-sold at current price.`,
+                                  )
+                                ) {
                                   delistMutation.mutate({ id: token.id });
                                 }
                               }}
@@ -584,9 +827,21 @@ export function AdminCrypto() {
 
         {/* Extra stats row */}
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Total Trades" value={(stats?.totalTrades ?? 0).toLocaleString()} icon={BarChart3} />
-          <StatCard label="24h Trades" value={stats?.dailyTrades ?? 0} icon={TrendingUp} />
-          <StatCard label="Crashed Tokens" value={stats?.crashedTokens ?? 0} icon={Flame} />
+          <StatCard
+            label="Total Trades"
+            value={(stats?.totalTrades ?? 0).toLocaleString()}
+            icon={BarChart3}
+          />
+          <StatCard
+            label="24h Trades"
+            value={stats?.dailyTrades ?? 0}
+            icon={TrendingUp}
+          />
+          <StatCard
+            label="Crashed Tokens"
+            value={stats?.crashedTokens ?? 0}
+            icon={Flame}
+          />
         </div>
       </div>
     </div>

@@ -166,10 +166,7 @@ export const cryptoRouter = router({
 
       if (!token) return { expiresAt: null };
 
-      const expiresAt = getCooldownExpiresAt(
-        ctx.user.minecraftUuid,
-        token.id,
-      );
+      const expiresAt = getCooldownExpiresAt(ctx.user.minecraftUuid, token.id);
 
       return { expiresAt };
     }),

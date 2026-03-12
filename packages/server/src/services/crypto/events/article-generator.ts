@@ -166,9 +166,10 @@ function buildVolumeSection(
  * @param tokens - Token list with pre-calculated 24h change values
  * @returns Formatted text block and the raw breadth counts for structured article data
  */
-function buildMarketBreadthSection(
-  tokens: { change24h: number }[],
-): { text: string; breadth: { up: number; down: number; flat: number } } {
+function buildMarketBreadthSection(tokens: { change24h: number }[]): {
+  text: string;
+  breadth: { up: number; down: number; flat: number };
+} {
   let up = 0;
   let down = 0;
   let flat = 0;
@@ -247,9 +248,7 @@ async function buildTopHoldersSection(
   if (holdings.length === 0) return { text: "", holders: [] };
 
   // Sort by amount descending
-  const sorted = [...holdings].sort(
-    (a, b) => Number(b.amount - a.amount),
-  );
+  const sorted = [...holdings].sort((a, b) => Number(b.amount - a.amount));
   const top5 = sorted.slice(0, 5);
 
   const lines = [``, `=== TOP HOLDERS (focus token) ===`];
@@ -278,9 +277,7 @@ async function buildTopHoldersSection(
  * @param tokenId - ID of the focus token
  * @returns Formatted text block describing open order book depth, or an empty string
  */
-async function buildPendingOrdersSection(
-  tokenId: number,
-): Promise<string> {
+async function buildPendingOrdersSection(tokenId: number): Promise<string> {
   const orders = await Q.crypto.order
     .where({ tokenId, status: "pending" })
     .all();
@@ -487,8 +484,7 @@ async function buildMarketContext(
         symbol: t.symbol,
         name: t.name,
         price: Number(t.price),
-        marketCap:
-          Number(t.price) * Number(t.totalSupply - t.availableSupply),
+        marketCap: Number(t.price) * Number(t.totalSupply - t.availableSupply),
         change24h,
         category: t.category,
       };

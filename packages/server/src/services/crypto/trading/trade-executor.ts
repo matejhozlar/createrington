@@ -55,8 +55,7 @@ export function getCooldownExpiresAt(
   const lastTradeTime = cooldownMap.get(key);
   if (!lastTradeTime) return null;
 
-  const expiresAt =
-    lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
+  const expiresAt = lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
   return expiresAt > Date.now() ? expiresAt : null;
 }
 
