@@ -228,7 +228,7 @@ async function executeEvent(
   if (targetToken) {
     description = description.replace(
       "{token}",
-      `**${targetToken.name}** (${targetToken.symbol})`,
+      `${targetToken.name} (${targetToken.symbol})`,
     );
   }
 
