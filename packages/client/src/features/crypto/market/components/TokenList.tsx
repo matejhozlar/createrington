@@ -47,7 +47,7 @@ export function TokenList() {
   return (
     <div className="space-y-3">
       {/* Filters + search */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
         <div className="flex items-center gap-1 rounded-lg border bg-card p-1">
           {FILTERS.map(({ key, label, dot }) => (
             <button
@@ -65,7 +65,7 @@ export function TokenList() {
             </button>
           ))}
         </div>
-        <div className="relative flex-1 max-w-56">
+        <div className="relative sm:flex-1 sm:max-w-56">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="text"
