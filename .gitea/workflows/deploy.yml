@@ -3,6 +3,16 @@ name: Deploy
 on:
   push:
     branches: [dev]
+  workflow_dispatch:
+    inputs:
+      reset_db:
+        description: 'Reset the database (drop + recreate + seed)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 jobs:
   deploy:
@@ -35,7 +45,19 @@ jobs:
           rm -rf /opt/createrington/packages/server/node_modules
           cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
 
+      - name: Migrate database
+        if: ${{ github.event.inputs.reset_db != 'true' }}
+        run: |
+          export DB_HOST=infra-postgres
+          export DB_PORT=5432
+          export DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
+          export PGPASSWORD=$DB_PASSWORD
+          pnpm db:migrate
+
       - name: Reset database
+        if: ${{ github.event.inputs.reset_db == 'true' }}
         run: |
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
           export DB_HOST=infra-postgres
