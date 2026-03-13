@@ -19,9 +19,6 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: Enable maintenance mode
-        run: /opt/createrington/maintenance-on.sh
-
       - name: Deploy frontend
         run: |
           rm -rf /var/www/createrington/*
@@ -58,6 +55,3 @@ jobs:
           chown -R 1000:988 /opt/createrington
           chown -R 1000:988 /var/www/createrington
           touch /opt/createrington/.restart-trigger
-
-      - name: Disable maintenance mode
-        run: /opt/createrington/maintenance-off.sh
