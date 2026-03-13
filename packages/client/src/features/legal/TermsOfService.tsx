@@ -104,17 +104,15 @@ const sections = [
             Tokens may crash (losing all value) or be delisted at any time
             without prior notice
           </li>
-          <li>
-            Trading fees are automatically deducted from transactions
-          </li>
+          <li>Trading fees are automatically deducted from transactions</li>
           <li>
             We reserve the right to modify trading rules, fee structures, token
             availability, and market mechanics at any time
           </li>
           <li>
             Market manipulation, abuse of trading mechanics, or exploitation of
-            system bugs is prohibited and may result in balance resets or account
-            suspension
+            system bugs is prohibited and may result in balance resets or
+            account suspension
           </li>
           <li>
             IPO (Initial Public Offering) participation is subject to per-player

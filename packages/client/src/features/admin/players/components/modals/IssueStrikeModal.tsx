@@ -92,40 +92,21 @@ export function IssueStrikeModal({
                 setClassification(value as StrikeClassification)
               }
             >
-              <SelectTrigger
-                id="strike-classification"
-                className="w-full"
-              >
+              <SelectTrigger id="strike-classification" className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="z-[100]">
-                <SelectItem value="pvp">
-                  PvP
-                </SelectItem>
-                <SelectItem value="theft">
-                  Theft
-                </SelectItem>
-                <SelectItem value="griefing">
-                  Griefing
-                </SelectItem>
-                <SelectItem value="laggy_machines">
-                  Laggy Machines
-                </SelectItem>
+                <SelectItem value="pvp">PvP</SelectItem>
+                <SelectItem value="theft">Theft</SelectItem>
+                <SelectItem value="griefing">Griefing</SelectItem>
+                <SelectItem value="laggy_machines">Laggy Machines</SelectItem>
                 <SelectItem value="inappropriate_chat">
                   Inappropriate Chat
                 </SelectItem>
-                <SelectItem value="harassment">
-                  Harassment
-                </SelectItem>
-                <SelectItem value="exploiting">
-                  Exploiting
-                </SelectItem>
-                <SelectItem value="rule_violation">
-                  Rule Violation
-                </SelectItem>
-                <SelectItem value="other">
-                  Other
-                </SelectItem>
+                <SelectItem value="harassment">Harassment</SelectItem>
+                <SelectItem value="exploiting">Exploiting</SelectItem>
+                <SelectItem value="rule_violation">Rule Violation</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </Field>

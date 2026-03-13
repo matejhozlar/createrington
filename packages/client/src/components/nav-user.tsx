@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, ChevronsUpDown, LogOut } from "lucide-react";
+import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -60,6 +60,7 @@ function UserSummary({
   );
 }
 
+/** Sidebar footer item showing the current user's avatar, name, and an account actions dropdown */
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const { logout, loading } = useAuth();
@@ -68,10 +69,12 @@ export function NavUser({ user }: { user: User }) {
     logout();
   };
 
+  // Fetch the player's Minecraft avatar from mc-heads.net using their UUID
   const crafatarAvatarUrl = user.minecraftUuid
     ? `https://mc-heads.net/avatar/${user.minecraftUuid}`
     : undefined;
 
+  // Prefer the Minecraft username for the fallback initial; fall back to Discord username
   const avatarFallbackLetter = (user.minecraftUsername || user.username)
     .trim()
     .charAt(0)
@@ -116,18 +119,23 @@ export function NavUser({ user }: { user: User }) {
 
             <DropdownMenuSeparator />
 
-            {user.isAdmin && (
-              <>
-                <DropdownMenuItem asChild>
-                  <NavLink to="/admin/dashboard" className="cursor-pointer">
-                    <BadgeCheck />
-                    Admin Panel
-                  </NavLink>
-                </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <NavLink to="/settings" className="cursor-pointer">
+                <Settings />
+                Account Settings
+              </NavLink>
+            </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-              </>
+            {user.isAdmin && (
+              <DropdownMenuItem asChild>
+                <NavLink to="/admin/dashboard" className="cursor-pointer">
+                  <BadgeCheck />
+                  Admin Panel
+                </NavLink>
+              </DropdownMenuItem>
             )}
+
+            <DropdownMenuSeparator />
 
             <DropdownMenuItem
               onClick={handleLogout}

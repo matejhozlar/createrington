@@ -90,7 +90,6 @@ interface ChannelConfig {
   readonly crypto: {
     readonly news: string;
   };
-
 }
 
 interface CategoriesConfig {
