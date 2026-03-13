@@ -1,4 +1,7 @@
-import type { CryptoPriceUpdatePayload } from "@createrington/shared/socket";
+import type {
+  CryptoPriceUpdatePayload,
+  CryptoMarketOverview,
+} from "@createrington/shared/socket";
 
 /**
  * Crypto data context type
@@ -6,6 +9,8 @@ import type { CryptoPriceUpdatePayload } from "@createrington/shared/socket";
 export interface CryptoDataContextType {
   /** Live price updates from WebSocket, keyed by symbol */
   prices: Map<string, CryptoPriceUpdatePayload>;
+  /** Latest market overview from WebSocket (market cap, volume, top movers) */
+  overview: CryptoMarketOverview | null;
   /** Whether we're subscribed to crypto market updates */
   isSubscribed: boolean;
 

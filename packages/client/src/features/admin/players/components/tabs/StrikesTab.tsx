@@ -22,7 +22,7 @@ export function StrikesTab({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">Strikes</h3>
-        <Button size="sm" onClick={onIssueStrike} className="cursor-pointer">
+        <Button size="sm" onClick={onIssueStrike}>
           <Shield className="size-4" />
           Issue Strike
         </Button>

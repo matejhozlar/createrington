@@ -19,7 +19,6 @@ export function Watchlist() {
   const { data: watchlist, isLoading } =
     trpc.user.crypto.watchlistList.useQuery(undefined, {
       enabled: !!user,
-      refetchInterval: 30_000,
     });
 
   const removeMutation = trpc.user.crypto.watchlistRemove.useMutation({

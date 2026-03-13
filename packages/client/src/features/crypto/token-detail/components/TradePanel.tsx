@@ -62,7 +62,7 @@ export function TradePanel({
   const { user } = useAuth();
   const toast = useToastActions();
   const [tab, setTab] = useState<TradeTab>("buy");
-  const [orderMode, setOrderMode] = useState<OrderMode>("market");
+  const [orderMode /* , setOrderMode */] = useState<OrderMode>("market");
   const [amount, setAmount] = useState("");
   const [targetPrice, setTargetPrice] = useState("");
   const [ipoCountdown, setIpoCountdown] = useState("");
@@ -144,6 +144,7 @@ export function TradePanel({
     utils.user.crypto.balance.invalidate();
     utils.user.crypto.portfolio.invalidate();
     utils.user.crypto.listOrders.invalidate();
+    utils.user.crypto.tradeHistory.invalidate();
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
   };
@@ -354,7 +355,7 @@ export function TradePanel({
         <CardTitle className="text-base">Trade {symbol}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Order mode selector */}
+        {/* Order mode selector — hidden until we decide on unlock/premium gating
         <div className="grid grid-cols-4 gap-1 rounded-xl border bg-card p-1">
           {(Object.keys(ORDER_MODE_LABELS) as OrderMode[]).map((mode) => (
             <button
@@ -376,6 +377,7 @@ export function TradePanel({
             </button>
           ))}
         </div>
+        */}
 
         {/* Buy/Sell toggle */}
         {showBuySellTabs && (

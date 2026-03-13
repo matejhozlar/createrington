@@ -553,6 +553,7 @@ export class CryptoMarketService {
 
   /**
    * Sends price update payloads to all WebSocket crypto market subscribers.
+   * Includes a market overview snapshot so clients never need to poll for it.
    * Lazily resolves the WebSocket service if it wasn't available at init time.
    * @private
    * @param updates - Price updates from the latest tick to broadcast
@@ -583,11 +584,71 @@ export class CryptoMarketService {
       }),
     );
 
+    const overview = await this.buildMarketOverview();
+
     this.wsService!.broadcastToRoom(
       RoomManager.getCryptoMarketRoom(),
       SocketEvent.UPDATE_CRYPTO_PRICES,
-      pricePayloads,
+      { prices: pricePayloads, overview },
     );
+  }
+
+  /**
+   * Builds a market overview snapshot from in-memory caches and active tokens.
+   * Used in both price broadcasts and initial snapshots.
+   */
+  async buildMarketOverview(): Promise<{
+    totalMarketCap: string;
+    totalVolume24h: string;
+    topGainer: { symbol: string; change24h: number } | null;
+    topLoser: { symbol: string; change24h: number } | null;
+  }> {
+    const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
+    const activeTokens = tokens.filter((t) => !t.delistedAt);
+
+    const totalMarketCap = activeTokens.reduce(
+      (sum, t) =>
+        sum + Number(t.price) * Number(t.totalSupply - t.availableSupply),
+      0,
+    );
+
+    const { topGainer, topLoser } = await this.getTopMovers();
+
+    return {
+      totalMarketCap: totalMarketCap.toFixed(2),
+      totalVolume24h: String(this.getTotalVolume24h()),
+      topGainer,
+      topLoser,
+    };
+  }
+
+  /**
+   * Builds a full price snapshot for all active tokens.
+   * Used when a client first subscribes to the crypto market room.
+   */
+  async buildFullPriceSnapshot(): Promise<
+    Array<{
+      tokenId: number;
+      symbol: string;
+      price: string;
+      change24h: number;
+      volume24h: string;
+      availableSupply: string;
+      isCrashed: boolean;
+    }>
+  > {
+    const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
+    const activeTokens = tokens.filter((t) => !t.delistedAt);
+
+    return activeTokens.map((t) => ({
+      tokenId: t.id,
+      symbol: t.symbol,
+      price: t.price,
+      change24h: this.get24hChange(t.id, t.price),
+      volume24h: String(this.volume24h.get(t.id) ?? 0n),
+      availableSupply: String(t.availableSupply),
+      isCrashed: t.isCrashed,
+    }));
   }
 
   // ==========================================================================

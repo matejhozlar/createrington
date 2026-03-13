@@ -76,11 +76,54 @@ const sections = [
           Exploiting bugs or glitches for economic gain is a violation of these
           terms
         </li>
+        <li>
+          Lottery participation is voluntary and uses in-game currency only
+        </li>
       </ul>
     ),
   },
   {
-    title: "5. Intellectual Property",
+    title: "5. Virtual Trading System",
+    content: (
+      <>
+        <p>
+          Createrington offers a simulated cryptocurrency trading system as part
+          of the in-game economy. By using this feature, you acknowledge and
+          agree:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 mt-2">
+          <li>
+            All tokens, balances, and trades are entirely virtual and have{" "}
+            <strong>no real-world monetary value</strong>
+          </li>
+          <li>
+            Token prices are algorithmically generated and do not represent any
+            real cryptocurrency or financial instrument
+          </li>
+          <li>
+            Tokens may crash (losing all value) or be delisted at any time
+            without prior notice
+          </li>
+          <li>Trading fees are automatically deducted from transactions</li>
+          <li>
+            We reserve the right to modify trading rules, fee structures, token
+            availability, and market mechanics at any time
+          </li>
+          <li>
+            Market manipulation, abuse of trading mechanics, or exploitation of
+            system bugs is prohibited and may result in balance resets or
+            account suspension
+          </li>
+          <li>
+            IPO (Initial Public Offering) participation is subject to per-player
+            purchase limits and time windows
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "6. Intellectual Property",
     content: (
       <>
         <p>
@@ -97,7 +140,47 @@ const sections = [
     ),
   },
   {
-    title: "6. Disclaimers",
+    title: "7. Notifications & Communication",
+    content: (
+      <>
+        <p>
+          Certain features allow you to opt into notifications delivered via
+          Discord (e.g., train crash alerts). By opting in:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 mt-2">
+          <li>
+            You consent to being mentioned in Discord messages related to the
+            notification type
+          </li>
+          <li>You may opt out at any time by removing the associated role</li>
+          <li>
+            We reserve the right to add, modify, or discontinue notification
+            types
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "8. Support Tickets",
+    content: (
+      <ul className="list-disc pl-6 space-y-1">
+        <li>
+          Tickets may be opened for general support or to report rule violations
+        </li>
+        <li>
+          All ticket conversations are logged and may be reviewed by
+          administrators
+        </li>
+        <li>
+          Misuse of the ticket system (spam, false reports, or abuse) may result
+          in disciplinary action
+        </li>
+      </ul>
+    ),
+  },
+  {
+    title: "9. Disclaimers",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -116,7 +199,7 @@ const sections = [
     ),
   },
   {
-    title: "7. Limitation of Liability",
+    title: "10. Limitation of Liability",
     content: (
       <p>
         To the maximum extent permitted by law, the Createrington team shall not
@@ -128,7 +211,7 @@ const sections = [
     ),
   },
   {
-    title: "8. Termination",
+    title: "11. Termination",
     content: (
       <>
         <p>
@@ -146,7 +229,7 @@ const sections = [
     ),
   },
   {
-    title: "9. Changes to These Terms",
+    title: "12. Changes to These Terms",
     content: (
       <p>
         We may update these Terms of Service from time to time. Changes will be
@@ -156,7 +239,7 @@ const sections = [
     ),
   },
   {
-    title: "10. Contact Us",
+    title: "13. Contact Us",
     content: (
       <p>
         If you have questions about these Terms of Service, you can reach us at{" "}
@@ -194,7 +277,7 @@ export const TermsOfService: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: February 16, 2026
+              Effective date: March 13, 2026
             </p>
 
             <div className="flex flex-col gap-6">

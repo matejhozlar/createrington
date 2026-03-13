@@ -33,7 +33,10 @@ export function PriceChart({ symbol }: PriceChartProps) {
 
   const { data, isLoading } = trpc.public.crypto.priceHistory.useQuery(
     { symbol, interval, limit: 200 },
-    { refetchInterval: interval === "tick" ? 10_000 : 60_000 },
+    {
+      refetchInterval: interval === "tick" ? 60_000 : 3 * 60_000,
+      refetchOnWindowFocus: false,
+    },
   );
 
   return (

@@ -21,8 +21,29 @@ const sections = [
             username, linked during the verification process
           </li>
           <li>
-            <strong>Gameplay data</strong> — playtime, in-game economy balances,
-            transactions, and achievements
+            <strong>Session & device data</strong> — your IP address and browser
+            user agent, stored with each login session for security purposes
+          </li>
+          <li>
+            <strong>Gameplay data</strong> — playtime (per-session, hourly,
+            daily, and cumulative), online status, server activity, and full
+            Minecraft statistics (blocks mined, items crafted, kills, deaths,
+            advancements, etc.)
+          </li>
+          <li>
+            <strong>Economy data</strong> — in-game currency balances, every
+            balance transaction (amount, type, reason, before/after balances),
+            and lottery participation
+          </li>
+          <li>
+            <strong>Virtual trading data</strong> — token holdings, buy/sell
+            transactions, pending orders (limit, stop-loss, take-profit), cost
+            basis records, price alerts, watchlist selections, and daily
+            portfolio value snapshots
+          </li>
+          <li>
+            <strong>Achievement & reward data</strong> — achievements unlocked,
+            tier progress, and reward claims
           </li>
           <li>
             <strong>Waitlist information</strong> — email address submitted when
@@ -30,8 +51,17 @@ const sections = [
             upon successful verification and registration, whichever comes first
           </li>
           <li>
-            <strong>Moderation records</strong> — bans, warnings, and related
-            notes
+            <strong>Moderation records</strong> — strikes (with classification
+            and severity), bans (temporary and permanent), and related
+            administrator notes
+          </li>
+          <li>
+            <strong>Support tickets</strong> — ticket type, messages exchanged,
+            and resolution status
+          </li>
+          <li>
+            <strong>Discord activity</strong> — guild join and leave events
+            (user ID, username, timestamp) for community tracking
           </li>
         </ul>
       </>
@@ -44,8 +74,23 @@ const sections = [
         <li>Authenticating and identifying you across the platform</li>
         <li>Linking your Discord and Minecraft accounts for server access</li>
         <li>Tracking playtime, economy, and leaderboard statistics</li>
+        <li>
+          Operating the virtual trading system (executing trades, tracking
+          portfolios, triggering price alerts)
+        </li>
+        <li>
+          Assigning Discord roles automatically based on playtime, balance, and
+          server tenure
+        </li>
         <li>Processing waitlist applications and sending notifications</li>
+        <li>
+          Delivering opt-in Discord notifications (e.g., train crash alerts)
+        </li>
+        <li>Tracking achievements and issuing rewards</li>
         <li>Enforcing server rules and managing moderation</li>
+        <li>
+          Maintaining admin audit logs for accountability and transparency
+        </li>
         <li>Improving and maintaining the service</li>
       </ul>
     ),
@@ -57,8 +102,12 @@ const sections = [
         <p>We rely on the following third-party services:</p>
         <ul className="list-disc pl-6 space-y-1 mt-2">
           <li>
-            <strong>Discord API</strong> — for OAuth authentication and bot
-            functionality
+            <strong>Discord API</strong> — for OAuth authentication, bot
+            functionality, role management, and sending notifications
+          </li>
+          <li>
+            <strong>Email delivery service</strong> — for sending waitlist
+            confirmation emails, invitation notifications, and admin alerts
           </li>
         </ul>
         <p className="mt-2">
@@ -81,8 +130,16 @@ const sections = [
           servers
         </li>
         <li>
+          Authentication tokens are stored as salted hashes and expire after 7
+          days
+        </li>
+        <li>
           Access to the database and admin tools is restricted to authorized
           administrators
+        </li>
+        <li>
+          All administrative actions are logged in an audit trail for
+          accountability
         </li>
       </ul>
     ),
@@ -90,14 +147,35 @@ const sections = [
   {
     title: "5. Data Retention",
     content: (
-      <p>
-        We retain your data for as long as your account is active on the
-        platform. Waitlist email addresses are automatically deleted after 30
-        days or upon successful verification and registration, whichever comes
-        first. If you request account deletion, we will remove your personal
-        data within a reasonable timeframe. Some anonymized or aggregated data
-        (e.g., server statistics) may be retained indefinitely.
-      </p>
+      <>
+        <p>
+          We retain your data for as long as your account is active on the
+          platform. Specific retention details:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 mt-2">
+          <li>
+            <strong>Waitlist emails</strong> — deleted after 30 days or upon
+            successful verification and registration, whichever comes first
+          </li>
+          <li>
+            <strong>Login sessions</strong> — automatically expire after 7 days
+          </li>
+          <li>
+            <strong>Gameplay & economy data</strong> — retained for the lifetime
+            of your account
+          </li>
+          <li>
+            <strong>Moderation records</strong> — strikes and bans may be
+            removed by administrators but are retained for the duration of your
+            account
+          </li>
+        </ul>
+        <p className="mt-2">
+          If you request account deletion, we will remove your personal data
+          within a reasonable timeframe. Some anonymized or aggregated data
+          (e.g., server statistics) may be retained indefinitely.
+        </p>
+      </>
     ),
   },
   {
@@ -212,7 +290,7 @@ export const PrivacyPolicy: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: February 16, 2026
+              Effective date: March 13, 2026
             </p>
 
             <div className="flex flex-col gap-6">

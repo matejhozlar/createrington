@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skull, Rocket, TrendingUp, TrendingDown, Star } from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
-import { OrderBook } from "./components/OrderBook";
+// import { OrderBook } from "./components/OrderBook";
 import { PriceChart } from "./components/PriceChart";
 import { TokenDistribution } from "./components/TokenDistribution";
 import { formatPrice } from "../format";
@@ -260,7 +260,8 @@ export function TokenDetail() {
           <div className="space-y-5">
             <PriceChart symbol={token.symbol} />
             <TokenDistribution symbol={token.symbol} />
-            <OrderBook />
+            {/* OrderBook hidden until we decide on unlock/premium gating */}
+            {/* <OrderBook /> */}
           </div>
 
           <div className="lg:sticky lg:top-15 lg:self-start">

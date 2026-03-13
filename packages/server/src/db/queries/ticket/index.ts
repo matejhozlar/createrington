@@ -6,7 +6,7 @@ import { TicketBaseQueries } from "@/generated/db/ticket.queries";
  *
  * - Overview statistics (open/closed counts, avg resolution time)
  * - Volume analytics grouped by time period
- * - Ticket number sequence management (getNext/getCurrent)
+ * - Ticket number management (getNext/getCurrent)
  */
 export class TicketQueries extends TicketBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -116,13 +116,12 @@ export class TicketQueries extends TicketBaseQueries {
   }
 
   /**
-   * Gets the next ticket number from the sequence
-   * This is transaction-safe and guarantees unique sequential numbers
+   * Gets the next ticket number by reading MAX(ticket_number) + 1
    *
    * @returns Promise resolving to the next ticket number
    */
   async getNext(): Promise<number> {
-    const query = "SELECT nextval('ticket_number_seq') as ticket_number";
+    const query = `SELECT COALESCE(MAX(ticket_number), 0) + 1 AS ticket_number FROM ${this.table}`;
 
     try {
       const result = await this.db.query<{ ticket_number: string }>(query);
@@ -134,13 +133,12 @@ export class TicketQueries extends TicketBaseQueries {
   }
 
   /**
-   * Gets the current ticket number without incrementing the sequence
-   * Useful for displaying the current ticket count
+   * Gets the current highest ticket number
    *
-   * @returns Promise resolving to the current ticket number
+   * @returns Promise resolving to the current ticket number (0 if no tickets exist)
    */
   async getCurrent(): Promise<number> {
-    const query = "SELECT last_value as ticket_number FROM ticket_number_seq";
+    const query = `SELECT COALESCE(MAX(ticket_number), 0) AS ticket_number FROM ${this.table}`;
 
     try {
       const result = await this.db.query<{ ticket_number: string }>(query);

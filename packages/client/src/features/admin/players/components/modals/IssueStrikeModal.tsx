@@ -92,43 +92,21 @@ export function IssueStrikeModal({
                 setClassification(value as StrikeClassification)
               }
             >
-              <SelectTrigger
-                id="strike-classification"
-                className="w-full cursor-pointer"
-              >
+              <SelectTrigger id="strike-classification" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="z-[100]" position="popper">
-                <SelectItem value="pvp" className="cursor-pointer">
-                  PvP
-                </SelectItem>
-                <SelectItem value="theft" className="cursor-pointer">
-                  Theft
-                </SelectItem>
-                <SelectItem value="griefing" className="cursor-pointer">
-                  Griefing
-                </SelectItem>
-                <SelectItem value="laggy_machines" className="cursor-pointer">
-                  Laggy Machines
-                </SelectItem>
-                <SelectItem
-                  value="inappropriate_chat"
-                  className="cursor-pointer"
-                >
+              <SelectContent className="z-[100]">
+                <SelectItem value="pvp">PvP</SelectItem>
+                <SelectItem value="theft">Theft</SelectItem>
+                <SelectItem value="griefing">Griefing</SelectItem>
+                <SelectItem value="laggy_machines">Laggy Machines</SelectItem>
+                <SelectItem value="inappropriate_chat">
                   Inappropriate Chat
                 </SelectItem>
-                <SelectItem value="harassment" className="cursor-pointer">
-                  Harassment
-                </SelectItem>
-                <SelectItem value="exploiting" className="cursor-pointer">
-                  Exploiting
-                </SelectItem>
-                <SelectItem value="rule_violation" className="cursor-pointer">
-                  Rule Violation
-                </SelectItem>
-                <SelectItem value="other" className="cursor-pointer">
-                  Other
-                </SelectItem>
+                <SelectItem value="harassment">Harassment</SelectItem>
+                <SelectItem value="exploiting">Exploiting</SelectItem>
+                <SelectItem value="rule_violation">Rule Violation</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
           </Field>

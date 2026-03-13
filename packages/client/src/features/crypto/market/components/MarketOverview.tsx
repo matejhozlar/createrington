@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useCryptoData } from "@/contexts/crypto-data";
 
 function Stat({
   label,
@@ -27,12 +27,9 @@ function Stat({
 
 export function MarketOverview() {
   const navigate = useNavigate();
-  const { data, isLoading } = trpc.public.crypto.marketOverview.useQuery(
-    undefined,
-    { refetchInterval: 30_000 },
-  );
+  const { overview } = useCryptoData();
 
-  if (isLoading || !data) {
+  if (!overview) {
     return <div className="h-5 w-64 animate-pulse rounded bg-muted/30" />;
   }
 
@@ -40,41 +37,43 @@ export function MarketOverview() {
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <Stat
         label="Market Cap"
-        value={`$${Number(data.totalMarketCap).toLocaleString()}`}
+        value={`$${Number(overview.totalMarketCap).toLocaleString()}`}
       />
       <div className="h-3.5 w-px bg-border/60" />
       <Stat
         label="24h Vol"
-        value={`$${Number(data.totalVolume24h).toLocaleString()}`}
+        value={`$${Number(overview.totalVolume24h).toLocaleString()}`}
       />
-      {data.topGainer && (
+      {overview.topGainer && (
         <>
           <div className="h-3.5 w-px bg-border/60" />
           <button
             className="flex items-center gap-2 transition-colors hover:opacity-80"
-            onClick={() => navigate(`/crypto/${data.topGainer!.symbol}`)}
+            onClick={() => navigate(`/crypto/${overview.topGainer!.symbol}`)}
           >
             <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
               Top Gainer
             </span>
             <span className="text-sm font-bold font-mono tabular-nums text-emerald-400">
-              {data.topGainer.symbol} +{data.topGainer.change24h.toFixed(1)}%
+              {overview.topGainer.symbol} +
+              {overview.topGainer.change24h.toFixed(1)}%
             </span>
           </button>
         </>
       )}
-      {data.topLoser && (
+      {overview.topLoser && (
         <>
           <div className="h-3.5 w-px bg-border/60" />
           <button
             className="flex items-center gap-2 transition-colors hover:opacity-80"
-            onClick={() => navigate(`/crypto/${data.topLoser!.symbol}`)}
+            onClick={() => navigate(`/crypto/${overview.topLoser!.symbol}`)}
           >
             <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
               Top Loser
             </span>
             <span className="text-sm font-bold font-mono tabular-nums text-red-400">
-              {data.topLoser.symbol} {data.topLoser.change24h.toFixed(1)}%
+              {overview.topLoser.symbol}{" "}
+              {overview.topLoser.change24h.toFixed(1)}%
             </span>
           </button>
         </>

@@ -68,7 +68,6 @@ export function Portfolio() {
 
   const { data, isLoading } = trpc.user.crypto.portfolio.useQuery(undefined, {
     enabled: !!user,
-    refetchInterval: 30_000,
   });
 
   if (!user) {

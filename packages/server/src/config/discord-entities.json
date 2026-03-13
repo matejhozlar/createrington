@@ -31,6 +31,7 @@
     "tester": "1463548332147478630",
     "cogsAndSteam": "1462787499138093122",
     "verified": "1447001301824045128",
+    "cogsAndSteamnotifications": "1481786151764492380",
     "unverified": "1447307459449327616"
   },
   "channels": {
@@ -62,6 +63,7 @@
     },
     "cogsAndSteam": {
       "chat": "1462157544679014556",
+      "notifications": "1481783573983006832",
       "minecraftChat": "1462119421064646726"
     },
     "testServer": {

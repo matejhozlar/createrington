@@ -168,14 +168,12 @@ export function IssueBanModal({
                 value={banType}
                 onValueChange={(value) => setBanType(value as BanType)}
               >
-                <SelectTrigger id="ban-type" className="cursor-pointer">
+                <SelectTrigger id="ban-type">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="z-[100]" position="popper">
-                  <SelectItem value="temporary" className="cursor-pointer">
-                    Temporary
-                  </SelectItem>
-                  <SelectItem value="permanent" className="cursor-pointer">
+                <SelectContent className="z-[100]">
+                  <SelectItem value="temporary">Temporary</SelectItem>
+                  <SelectItem value="permanent">
                     Permanent (Deletes Player)
                   </SelectItem>
                 </SelectContent>
@@ -189,31 +187,17 @@ export function IssueBanModal({
                   value={durationDays.toString()}
                   onValueChange={(value) => setDurationDays(parseInt(value))}
                 >
-                  <SelectTrigger id="duration" className="cursor-pointer">
+                  <SelectTrigger id="duration">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="z-[100]" position="popper">
-                    <SelectItem value="1" className="cursor-pointer">
-                      1 Day
-                    </SelectItem>
-                    <SelectItem value="3" className="cursor-pointer">
-                      3 Days
-                    </SelectItem>
-                    <SelectItem value="7" className="cursor-pointer">
-                      7 Days
-                    </SelectItem>
-                    <SelectItem value="14" className="cursor-pointer">
-                      14 Days
-                    </SelectItem>
-                    <SelectItem value="30" className="cursor-pointer">
-                      30 Days
-                    </SelectItem>
-                    <SelectItem value="60" className="cursor-pointer">
-                      60 Days
-                    </SelectItem>
-                    <SelectItem value="90" className="cursor-pointer">
-                      90 Days
-                    </SelectItem>
+                  <SelectContent className="z-[100]">
+                    <SelectItem value="1">1 Day</SelectItem>
+                    <SelectItem value="3">3 Days</SelectItem>
+                    <SelectItem value="7">7 Days</SelectItem>
+                    <SelectItem value="14">14 Days</SelectItem>
+                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="60">60 Days</SelectItem>
+                    <SelectItem value="90">90 Days</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

@@ -1,3 +1,4 @@
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import config from "@/config";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -12,6 +13,17 @@ import type { TriggeredAlert } from "./alerts/alert-manager";
 
 function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
+}
+
+function readMoreButton(eventId: number): ActionRowBuilder<ButtonBuilder>[] {
+  return [
+    new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setStyle(ButtonStyle.Link)
+        .setLabel("Read more")
+        .setURL(articleUrl(eventId)),
+    ),
+  ];
 }
 
 // ==========================================================================
@@ -70,13 +82,11 @@ export async function sendNewListingNotification(
     totalSupply: Number(totalSupply).toLocaleString(),
   });
 
-  if (event)
-    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: event ? readMoreButton(event.id) : undefined,
     });
   } catch (err) {
     logger.error("Failed to send new listing notification to Discord:", err);
@@ -124,13 +134,11 @@ export async function sendIpoAnnouncementNotification(
     duration: `${durationMin} minutes`,
   });
 
-  if (event)
-    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: event ? readMoreButton(event.id) : undefined,
     });
   } catch (err) {
     logger.error(
@@ -181,13 +189,11 @@ export async function sendIpoResultNotification(
     participants: `${participants}`,
   });
 
-  if (event)
-    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: event ? readMoreButton(event.id) : undefined,
     });
   } catch (err) {
     logger.error("Failed to send IPO result notification to Discord:", err);
@@ -219,13 +225,11 @@ export async function sendCrashNotification(
 
   const embed = EmbedPresets.crypto.crash(name, symbol, formatPrice(lastPrice));
 
-  if (event)
-    embed.field("\u200B", `[Read more →](${articleUrl(event.id)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: event ? readMoreButton(event.id) : undefined,
     });
   } catch (err) {
     logger.error("Failed to send crash notification to Discord:", err);
@@ -260,13 +264,11 @@ export async function sendWhaleAlertNotification(
     formatPrice(totalCost),
   );
 
-  if (eventId)
-    embed.field("\u200B", `[Read more →](${articleUrl(eventId)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: eventId ? readMoreButton(eventId) : undefined,
     });
   } catch (err) {
     logger.error("Failed to send whale alert notification to Discord:", err);
@@ -318,12 +320,11 @@ export async function sendMarketEventNotification(
     embed.field("Affected Token", event.tokenSymbol, true);
   }
 
-  embed.field("\u200B", `[Read more →](${articleUrl(event.eventId)})`, false);
-
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
       embeds: embed.build(),
+      components: readMoreButton(event.eventId),
     });
   } catch (err) {
     logger.error("Failed to send market event notification to Discord:", err);

@@ -61,7 +61,7 @@ export function AnalyticsTab({ serverId }: AnalyticsTabProps) {
           <SelectTrigger className="w-[160px]">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent position="popper">
+          <SelectContent>
             {TIME_RANGES.map((range) => (
               <SelectItem key={range.value} value={range.value}>
                 {range.label}

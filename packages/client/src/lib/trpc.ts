@@ -14,8 +14,9 @@ export const trpc = createTRPCReact<AppRouter>();
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 minute
+      staleTime: 5 * 60 * 1000, // 5 minutes
       retry: 3,
+      refetchOnWindowFocus: false,
     },
   },
 });

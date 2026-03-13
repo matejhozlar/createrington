@@ -29,12 +29,13 @@ export function OrderBook() {
 
   const { data: orders, isLoading } = trpc.user.crypto.listOrders.useQuery(
     undefined,
-    { enabled: !!user, refetchInterval: 30_000 },
+    { enabled: !!user },
   );
 
   const cancelMutation = trpc.user.crypto.cancelOrder.useMutation({
     onSuccess: () => {
       toast.success("Order cancelled");
+      utils.user.crypto.balance.invalidate();
       utils.user.crypto.listOrders.invalidate();
       utils.user.crypto.portfolio.invalidate();
     },
