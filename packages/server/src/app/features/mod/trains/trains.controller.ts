@@ -121,9 +121,7 @@ export class TrainsController {
       embed.field("Owner", resolveName(owner), true);
     }
 
-    embed
-      .footer(`ID: ${trainId}`)
-      .timestamp(timestamp ?? Date.now());
+    embed.footer(`ID: ${trainId}`).timestamp(timestamp ?? Date.now());
 
     await Discord.Messages.send({
       channelId: Discord.Channels.cogsAndSteam.NOTIFICATIONS,

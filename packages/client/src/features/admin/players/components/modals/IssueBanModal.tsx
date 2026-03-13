@@ -172,9 +172,7 @@ export function IssueBanModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="z-[100]">
-                  <SelectItem value="temporary">
-                    Temporary
-                  </SelectItem>
+                  <SelectItem value="temporary">Temporary</SelectItem>
                   <SelectItem value="permanent">
                     Permanent (Deletes Player)
                   </SelectItem>
@@ -193,27 +191,13 @@ export function IssueBanModal({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="z-[100]">
-                    <SelectItem value="1">
-                      1 Day
-                    </SelectItem>
-                    <SelectItem value="3">
-                      3 Days
-                    </SelectItem>
-                    <SelectItem value="7">
-                      7 Days
-                    </SelectItem>
-                    <SelectItem value="14">
-                      14 Days
-                    </SelectItem>
-                    <SelectItem value="30">
-                      30 Days
-                    </SelectItem>
-                    <SelectItem value="60">
-                      60 Days
-                    </SelectItem>
-                    <SelectItem value="90">
-                      90 Days
-                    </SelectItem>
+                    <SelectItem value="1">1 Day</SelectItem>
+                    <SelectItem value="3">3 Days</SelectItem>
+                    <SelectItem value="7">7 Days</SelectItem>
+                    <SelectItem value="14">14 Days</SelectItem>
+                    <SelectItem value="30">30 Days</SelectItem>
+                    <SelectItem value="60">60 Days</SelectItem>
+                    <SelectItem value="90">90 Days</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>

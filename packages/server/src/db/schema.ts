@@ -452,7 +452,12 @@ export const playerBan = pgTable(
   "player_ban",
   {
     id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
-    playerMinecraftUuid: uuid("player_minecraft_uuid").notNull(),
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .notNull()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     banType: banTypeEnum("ban_type").notNull(),
     reason: text("reason").notNull(),
     bannedByDiscordId: text("banned_by_discord_id").notNull(),
@@ -738,7 +743,10 @@ export const rewardClaim = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid, { onDelete: "cascade" }),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     rewardType: varchar("reward_type", { length: 50 }).notNull(),
     claimedAt: timestamp("claimed_at", { withTimezone: true })
       .notNull()
@@ -941,7 +949,10 @@ export const cryptoHolding = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -976,7 +987,10 @@ export const cryptoTransaction = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -1049,7 +1063,10 @@ export const cryptoOrder = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -1090,7 +1107,10 @@ export const cryptoCostBasis = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -1137,7 +1157,10 @@ export const cryptoPriceAlert = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -1165,7 +1188,10 @@ export const cryptoWatchlist = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     tokenId: integer("token_id")
       .notNull()
       .references(() => cryptoToken.id),
@@ -1190,7 +1216,10 @@ export const cryptoPortfolioSnapshot = pgTable(
     id: serial("id").primaryKey(),
     playerMinecraftUuid: uuid("player_minecraft_uuid")
       .notNull()
-      .references(() => player.minecraftUuid),
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     totalValue: numeric("total_value", { precision: 20, scale: 8 }).notNull(),
     totalInvested: numeric("total_invested", {
       precision: 20,

@@ -1,8 +1,4 @@
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import config from "@/config";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -19,9 +15,7 @@ function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
 }
 
-function readMoreButton(
-  eventId: number,
-): ActionRowBuilder<ButtonBuilder>[] {
+function readMoreButton(eventId: number): ActionRowBuilder<ButtonBuilder>[] {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
