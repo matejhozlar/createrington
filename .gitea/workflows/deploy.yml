@@ -52,6 +52,7 @@ jobs:
 
       - name: Fix permissions and trigger restart
         run: |
+          rm -f /opt/createrington/.maintenance
           chown -R 1000:988 /opt/createrington
           chown -R 1000:988 /var/www/createrington
           touch /opt/createrington/.restart-trigger
