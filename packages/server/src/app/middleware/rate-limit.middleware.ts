@@ -14,10 +14,10 @@ function rateLimitHandler(req: Request, res: Response) {
   });
 }
 
-/** Global rate limiter — 200 requests per 15-minute window per IP */
+/** Global rate limiter — 600 requests per 15-minute window per IP */
 export const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 200,
+  limit: 600,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,

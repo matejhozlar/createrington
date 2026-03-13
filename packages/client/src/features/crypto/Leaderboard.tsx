@@ -56,7 +56,7 @@ function formatValue(value: string | number) {
 function LeaderboardTable({ type }: { type: LeaderboardType }) {
   const { data, isLoading } = trpc.public.crypto.leaderboard.useQuery(
     { type },
-    { refetchInterval: 60_000 },
+    { staleTime: 5 * 60_000, refetchOnWindowFocus: false },
   );
 
   if (isLoading) {
