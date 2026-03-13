@@ -22,6 +22,8 @@ import { Forum } from "./pages/Forum/Forum";
 import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
 import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/not-found";
+import { ComingSoon } from "./pages/ComingSoon";
+import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppSidebar } from "./components/app-sidebar";
 import {
@@ -178,11 +180,11 @@ function AppContent() {
         </Route>
 
         {/* Market Routes */}
-        <Route path="/market" element={<div>Market Dashboard</div>} />
-        <Route path="/marketplace" element={<div>Marketplace Page</div>} />
-        <Route path="/market/companies" element={<div>Companies Page</div>} />
-        <Route path="/market/shops" element={<div>Shops Page</div>} />
-        <Route path="/market/requests" element={<div>Requests Page</div>} />
+        <Route path="/market" element={<ComingSoon title="Market" description="The market dashboard is currently under development." />} />
+        <Route path="/marketplace" element={<ComingSoon title="Marketplace" description="The marketplace is currently under development." />} />
+        <Route path="/market/companies" element={<ComingSoon title="Companies" description="The companies page is currently under development." />} />
+        <Route path="/market/shops" element={<ComingSoon title="Shops" description="The shops page is currently under development." />} />
+        <Route path="/market/requests" element={<ComingSoon title="Requests" description="The requests page is currently under development." />} />
 
         {/* Protected Routes */}
         <Route
@@ -292,9 +294,11 @@ function App() {
                   <CryptoDataProvider autoSubscribe>
                     <BrowserRouter>
                       <ScrollToTop />
-                      <SidebarProvider>
-                        <AppContent />
-                      </SidebarProvider>
+                      <ErrorBoundary>
+                        <SidebarProvider>
+                          <AppContent />
+                        </SidebarProvider>
+                      </ErrorBoundary>
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>
