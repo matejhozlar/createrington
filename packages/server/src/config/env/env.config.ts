@@ -130,6 +130,12 @@ const envSchema = z.object({
     .min(1, "RCON password is required")
     .max(100, "RCON password is too long"),
 
+  // URLs
+  WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
+  ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
+  ASSETS_URL: z.string().url("Assets URL must be a valid URL"),
+  MAP_URL: z.string().url("Map URL must be a valid URL"),
+
   // Puppeteer (internal rendering)
   PUPPETEER_SECRET: z
     .string()
