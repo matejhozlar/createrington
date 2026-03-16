@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Dev
 
 on:
   push:
@@ -27,32 +27,32 @@ jobs:
         run: pnpm install
 
       - name: Build
-        run: pnpm build
+        run: VITE_API_URL=https://dev.create-rington.com pnpm build
 
       - name: Deploy frontend
         run: |
-          rm -rf /var/www/createrington/*
-          cp -r dist/public/* /var/www/createrington/
+          rm -rf /var/www/createrington-dev/*
+          cp -r dist/public/* /var/www/createrington-dev/
 
       - name: Deploy backend
         run: |
-          rm -rf /opt/createrington/dist
-          cp -r dist /opt/createrington/dist
-          cp package.json /opt/createrington/package.json
-          rm -rf /opt/createrington/node_modules
-          cp -r node_modules /opt/createrington/node_modules
-          mkdir -p /opt/createrington/packages/server
-          rm -rf /opt/createrington/packages/server/node_modules
-          cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
+          rm -rf /opt/createrington-dev/dist
+          cp -r dist /opt/createrington-dev/dist
+          cp package.json /opt/createrington-dev/package.json
+          rm -rf /opt/createrington-dev/node_modules
+          cp -r node_modules /opt/createrington-dev/node_modules
+          mkdir -p /opt/createrington-dev/packages/server
+          rm -rf /opt/createrington-dev/packages/server/node_modules
+          cp -r packages/server/node_modules /opt/createrington-dev/packages/server/node_modules
 
       - name: Migrate database
         if: ${{ github.event.inputs.reset_db != 'true' }}
         run: |
           export DB_HOST=infra-postgres
           export DB_PORT=5432
-          export DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_USER=$(grep '^DB_USER=' /opt/createrington-dev/.env | cut -d'=' -f2-)
+          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington-dev/.env | cut -d'=' -f2-)
+          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington-dev/.env | cut -d'=' -f2-)
           export PGPASSWORD=$DB_PASSWORD
           pnpm db:migrate
 
@@ -62,9 +62,9 @@ jobs:
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
           export DB_HOST=infra-postgres
           export DB_PORT=5432
-          export DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
+          export DB_USER=$(grep '^DB_USER=' /opt/createrington-dev/.env | cut -d'=' -f2-)
+          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington-dev/.env | cut -d'=' -f2-)
+          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington-dev/.env | cut -d'=' -f2-)
           export PGPASSWORD=$DB_PASSWORD
 
           psql -h $DB_HOST -U "$DB_USER" -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
@@ -74,7 +74,7 @@ jobs:
 
       - name: Fix permissions and trigger restart
         run: |
-          rm -f /opt/createrington/.maintenance
-          chown -R 1000:988 /opt/createrington
-          chown -R 1000:988 /var/www/createrington
-          touch /opt/createrington/.restart-trigger
+          rm -f /opt/createrington-dev/.maintenance
+          chown -R 1000:988 /opt/createrington-dev
+          chown -R 1000:988 /var/www/createrington-dev
+          touch /opt/createrington-dev/.restart-trigger
