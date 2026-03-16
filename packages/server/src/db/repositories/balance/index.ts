@@ -721,6 +721,7 @@ export class BalanceRepository {
   async getHistory(
     identifier: PlayerIdentifier,
     limit: number = 50,
+    offset: number = 0,
   ): Promise<PlayerBalanceTransaction[]> {
     const uuid = await this.resolvePlayerUuid(identifier);
 
@@ -728,6 +729,7 @@ export class BalanceRepository {
       { playerMinecraftUuid: uuid },
       {
         limit,
+        offset,
         orderBy:
           DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.CREATED_AT,
         orderDirection: "desc",
@@ -745,6 +747,7 @@ export class BalanceRepository {
   async getFormattedHistory(
     identifier: PlayerIdentifier,
     limit: number = 50,
+    offset: number = 0,
   ): Promise<
     Array<{
       id: number;
@@ -757,7 +760,7 @@ export class BalanceRepository {
       metadata: Record<string, unknown>;
     }>
   > {
-    const history = await this.getHistory(identifier, limit);
+    const history = await this.getHistory(identifier, limit, offset);
 
     return history.map((tx) => ({
       id: tx.id,
