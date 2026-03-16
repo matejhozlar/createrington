@@ -28,6 +28,7 @@ import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
 import { CryptoMarketService } from "./crypto";
 import { AiService } from "./ai";
+import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
 
 /**
@@ -214,6 +215,17 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_WEB_BOT] },
+  );
+
+  container.register(
+    Services.AUTO_MESSAGE_SERVICE,
+    async (c) => {
+      const messageService = await c.get(Services.WEB_MESSAGE_SERVICE);
+      const service = new AutoMessageService(messageService);
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE, Services.WEB_MESSAGE_SERVICE] },
   );
 
   container.register(
