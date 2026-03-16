@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -46,13 +46,11 @@ import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder"
 import { AdminDashboard } from "./features/admin/AdminDashboard";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { Footer } from "./components/footer";
-import { Loading, LoadingScreen } from "./components/loading-spinner";
+import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
 import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
 import { TermsOfService } from "./features/legal/TermsOfService";
-const Team = lazy(() =>
-  import("./features/team/Team").then((m) => ({ default: m.Team })),
-);
+import { Team } from "./features/team/Team";
 import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
@@ -136,23 +134,7 @@ function AppContent() {
         <Route path="/rules" element={<Rules />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
-        <Route
-          path="/team"
-          element={
-            <Suspense
-              fallback={
-                <Loading
-                  mode="inline"
-                  size="large"
-                  text="Loading..."
-                  className="flex items-center justify-center py-32"
-                />
-              }
-            >
-              <Team />
-            </Suspense>
-          }
-        />
+        <Route path="/team" element={<Team />} />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />

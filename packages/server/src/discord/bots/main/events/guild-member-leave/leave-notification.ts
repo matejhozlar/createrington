@@ -26,7 +26,7 @@ export const eventName: EventModule<"guildMemberRemove">["eventName"] =
 /**
  * Whether this event should only be registered in production
  */
-export const prodOnly = false;
+export const prodOnly = true;
 
 /**
  * Executes when a member leaves the guild
