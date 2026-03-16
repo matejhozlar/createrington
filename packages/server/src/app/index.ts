@@ -162,10 +162,22 @@ export function createApp(): Express {
   const indexHtml = path.join(clientDir, "index.html");
 
   if (fs.existsSync(indexHtml)) {
-    app.use(express.static(clientDir));
+    // Hashed assets are immutable — cache forever
+    app.use(
+      "/assets",
+      express.static(path.join(clientDir, "assets"), {
+        maxAge: "1y",
+        immutable: true,
+      }),
+    );
 
-    // SPA catch-all: serve index.html for client-side routes
+    // Everything else (favicon, etc.) — short cache
+    app.use(express.static(clientDir, { maxAge: "1h" }));
+
+    // SPA catch-all: serve index.html with no-cache so the browser
+    // always fetches the latest version after deployments
     app.get("/{*splat}", (_req, res) => {
+      res.setHeader("Cache-Control", "no-cache");
       res.sendFile(indexHtml);
     });
   }
