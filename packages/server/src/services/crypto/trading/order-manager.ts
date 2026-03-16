@@ -392,10 +392,9 @@ async function fillOrder(
   return await db.inTransaction(async (tx) => {
     // Lock token row and get fresh data
     const client = tx.getDb();
-    await client.query(
-      "SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE",
-      [token.id],
-    );
+    await client.query("SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE", [
+      token.id,
+    ]);
     const freshToken = await tx.crypto.token.get({ id: token.id });
     const price = Number(freshToken.price);
 

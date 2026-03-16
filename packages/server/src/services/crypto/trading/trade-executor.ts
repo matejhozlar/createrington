@@ -202,10 +202,9 @@ async function lockAndFetchToken(
   tokenId: number,
 ): Promise<CryptoToken> {
   const client = tx.getDb();
-  await client.query(
-    "SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE",
-    [tokenId],
-  );
+  await client.query("SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE", [
+    tokenId,
+  ]);
   return tx.crypto.token.get({ id: tokenId });
 }
 
