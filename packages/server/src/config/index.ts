@@ -55,11 +55,11 @@ const config = {
     },
     links: {
       discordInvite: "https://discord.gg/7PAptNgqk2",
-      website: "https://dev.create-rington.com",
-      adminPanel: "https://dev.create-rington.com/login-admin/",
+      website: env.WEBSITE_URL,
+      adminPanel: env.ADMIN_PANEL_URL,
       modpack: "https://www.curseforge.com/minecraft/modpacks/create-rington",
-      map: "https://dev.create-rington.com/blue-map",
-      assets: "https://assets.create-rington.com",
+      map: env.MAP_URL,
+      assets: env.ASSETS_URL,
     },
   },
 
@@ -111,7 +111,7 @@ const config = {
       main: {
         id: env.DISCORD_MAIN_BOT_ID,
         token: env.DISCORD_MAIN_BOT_TOKEN,
-        webbhook: {
+        webhook: {
           id: env.DISCORD_MAIN_BOT_WEBHOOK_ID,
         },
       },

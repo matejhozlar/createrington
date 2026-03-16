@@ -75,7 +75,7 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
       const result = await this.db.query(query);
       return result.rows.flatMap((row) => this.mapRowsToEntities(row));
     } catch (error) {
-      console.error("Error fetching expired members:", error);
+      logger.error("Error fetching expired members:", error);
       throw error;
     }
   }

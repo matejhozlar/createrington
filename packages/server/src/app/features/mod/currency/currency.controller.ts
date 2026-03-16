@@ -247,9 +247,4 @@ export class CurrencyController {
 
     res.json(result);
   }
-
-  /** POST /api/currency/vote/start — not yet implemented */
-  static async startVote(_req: Request, _res: Response): Promise<void> {
-    throw new BadRequestError("Not implemented");
-  }
 }
