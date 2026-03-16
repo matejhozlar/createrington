@@ -53,8 +53,8 @@ export function CryptoHeader() {
   return (
     <div className="sticky top-0 z-30 border-b border-border/40 bg-sidebar">
       <div className="px-5 md:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-end h-10">
-          <div className="flex items-center gap-5">
+        <div className="max-w-7xl mx-auto flex items-center justify-end min-h-10 py-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-1">
             <Stat label="Balance" isLoading={balanceLoading}>
               $
               {Number(balanceData?.balance ?? 0).toLocaleString(undefined, {
@@ -62,7 +62,7 @@ export function CryptoHeader() {
               })}
             </Stat>
 
-            <div className="h-3.5 w-px bg-border/80" />
+            <div className="hidden sm:block h-3.5 w-px bg-border/80" />
 
             <Stat label="Portfolio" isLoading={portfolioLoading}>
               $
