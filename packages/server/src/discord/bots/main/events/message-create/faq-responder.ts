@@ -12,7 +12,7 @@ import type { Client, Message } from "discord.js";
 export const eventName: EventModule<"messageCreate">["eventName"] =
   "messageCreate";
 
-export const prodOnly = false;
+export const prodOnly = true;
 
 /**
  * Executes when a message is created in the questions channel

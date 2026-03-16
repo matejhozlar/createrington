@@ -31,7 +31,7 @@ const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 export const eventName: EventModule<"guildMemberAdd">["eventName"] =
   "guildMemberAdd";
 
-export const prodOnly = false;
+export const prodOnly = true;
 
 /**
  * Executes when a new member joins the guild
