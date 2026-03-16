@@ -206,7 +206,10 @@ export class CurrencyController {
   static async getHistory(req: Request, res: Response): Promise<void> {
     const { uuid } = req.modAuth!;
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const perPage = Math.min(20, Math.max(1, parseInt(req.query.limit as string) || 10));
+    const perPage = Math.min(
+      20,
+      Math.max(1, parseInt(req.query.limit as string) || 10),
+    );
     const offset = (page - 1) * perPage;
 
     const transactions = await R.balanceRepo.getFormattedHistory(
