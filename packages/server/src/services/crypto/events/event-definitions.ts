@@ -74,8 +74,8 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     probability: 0.01, // rare — positive events should be uncommon
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
-      volatilityMultiplier: 1.2, // was 1.5 — milder boost
-      directionBias: 0.015, // was 0.05 — much weaker upward pressure
+      volatilityMultiplier: 1.2,
+      directionBias: 0.003, // was 0.015 — (1.003)^120 ≈ +43% over 1hr, not 500%
     },
     severity: "info",
   },
@@ -87,10 +87,10 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
       "Fear is spreading across the market. Memecoin volatility increased with downward pressure.",
     scope: "market",
     probability: 0.025, // more common than bull runs
-    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
+    durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours
     effects: {
-      volatilityMultiplier: 1.2, // was 1.5
-      directionBias: -0.015, // was -0.05
+      volatilityMultiplier: 1.2,
+      directionBias: -0.003, // was -0.015 — symmetric with bull_run
     },
     severity: "warning",
   },
@@ -123,8 +123,8 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
       // Phase 1 (first half): upward bias
       // Phase 2 (second half): downward bias
       // Handled specially in the event engine
-      volatilityMultiplier: 1.15, // was 1.3
-      directionBias: 0.03, // was 0.08 — much weaker pump/dump swing
+      volatilityMultiplier: 1.15,
+      directionBias: 0.005, // was 0.03 — (1.005)^120 ≈ 82% swing per phase
     },
     severity: "warning",
   },
