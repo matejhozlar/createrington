@@ -194,15 +194,20 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
     chartRef.current?.timeScale().fitContent();
   }, [data]);
 
-  if (data.length < 2) {
-    return (
-      <div className="flex h-[350px] items-center justify-center text-sm text-muted-foreground">
-        Not enough data points
-      </div>
-    );
-  }
-
   return (
-    <div ref={containerRef} className="h-[350px] w-full [&_a[href]]:!hidden" />
+    <div className="relative h-[350px] w-full">
+      {data.length < 2 && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">
+          Not enough data points
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        className={cn(
+          "h-full w-full [&_a[href]]:!hidden",
+          data.length < 2 && "invisible",
+        )}
+      />
+    </div>
   );
 }
