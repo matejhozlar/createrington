@@ -85,9 +85,4 @@ router.post(
   ),
 );
 
-router.post(
-  "/vote/start",
-  ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.startVote),
-);
-
 export default router;
