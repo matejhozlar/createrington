@@ -60,9 +60,7 @@ export function ErrorFallback({
                 <RefreshCw className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  Try again
-                </p>
+                <p className="text-sm font-medium text-foreground">Try again</p>
                 <p className="text-xs text-muted-foreground">
                   Re-render the page
                 </p>
@@ -82,9 +80,7 @@ export function ErrorFallback({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Go back</p>
-                <p className="text-xs text-muted-foreground">
-                  Previous page
-                </p>
+                <p className="text-xs text-muted-foreground">Previous page</p>
               </div>
             </button>
 
@@ -101,9 +97,7 @@ export function ErrorFallback({
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">Home</p>
-                <p className="text-xs text-muted-foreground">
-                  Go to homepage
-                </p>
+                <p className="text-xs text-muted-foreground">Go to homepage</p>
               </div>
             </button>
           </div>

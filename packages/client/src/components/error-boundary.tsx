@@ -38,10 +38,7 @@ export class ErrorBoundary extends Component<
       if (this.props.fallback) return this.props.fallback;
 
       return (
-        <ErrorFallback
-          error={this.state.error}
-          onReset={this.handleReset}
-        />
+        <ErrorFallback error={this.state.error} onReset={this.handleReset} />
       );
     }
 

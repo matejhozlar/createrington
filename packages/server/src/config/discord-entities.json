@@ -32,6 +32,7 @@
     "cogsAndSteam": "1462787499138093122",
     "verified": "1447001301824045128",
     "cogsAndSteamnotifications": "1481786151764492380",
+    "cryptonotifications": "1483031274405888010",
     "unverified": "1447307459449327616"
   },
   "channels": {
@@ -80,7 +81,8 @@
       "general": "1446995003611152568"
     },
     "crypto": {
-      "news": "1481259910019678228"
+      "news": "1481259910019678228",
+      "discussion": "1481825021906391150"
     }
   },
   "categories": {
