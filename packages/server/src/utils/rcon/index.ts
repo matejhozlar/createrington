@@ -187,6 +187,7 @@ class ServerRconConnection {
         host: this.cfg.host,
         port: this.cfg.port,
         password: this.cfg.password,
+        timeout: 10000,
       });
 
       this.lastUsed = Date.now();

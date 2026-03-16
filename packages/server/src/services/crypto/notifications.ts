@@ -15,6 +15,8 @@ function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
 }
 
+const CRYPTO_ROLE_MENTION = `||${Discord.Roles.mention(Discord.Roles.CRYPTONOTIFICATIONS)}||`;
+
 function readMoreButton(eventId: number): ActionRowBuilder<ButtonBuilder>[] {
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -85,6 +87,7 @@ export async function sendNewListingNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
@@ -137,6 +140,7 @@ export async function sendIpoAnnouncementNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
@@ -192,6 +196,7 @@ export async function sendIpoResultNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
@@ -228,6 +233,7 @@ export async function sendCrashNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
@@ -267,6 +273,7 @@ export async function sendWhaleAlertNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: eventId ? readMoreButton(eventId) : undefined,
     });
@@ -323,6 +330,7 @@ export async function sendMarketEventNotification(
   try {
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
       components: readMoreButton(event.eventId),
     });
@@ -455,6 +463,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
 
     await Discord.Messages.send({
       channelId: Discord.Channels.crypto.NEWS,
+      content: CRYPTO_ROLE_MENTION,
       embeds: embed.build(),
     });
 

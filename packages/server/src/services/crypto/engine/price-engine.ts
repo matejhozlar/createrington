@@ -210,13 +210,15 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   }
   momentumMap.set(token.id, state);
 
-  // --- 3. Demand pressure component ---
+  // --- 3. Demand pressure component (capped to prevent low-supply manipulation) ---
   const netVolume = consumeNetVolume(token.id);
   const availableSupply = Number(token.availableSupply);
   let demandPressure = 0;
   if (availableSupply > 0 && netVolume !== 0) {
-    demandPressure =
+    const rawPressure =
       (netVolume / availableSupply) * CRYPTO_CONFIG.MEMECOIN_DEMAND_SENSITIVITY;
+    const cap = CRYPTO_CONFIG.MEMECOIN_MAX_DEMAND_PRESSURE;
+    demandPressure = Math.max(-cap, Math.min(cap, rawPressure));
   }
 
   // --- 4. Mean reversion component ---

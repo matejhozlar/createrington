@@ -933,8 +933,8 @@ export class CryptoMarketService {
       );
       const volume = minutes.reduce((sum, s) => sum + s.volume, 0n);
 
-      try {
-        await Q.crypto.price.snapshot.create({
+      await Q.crypto.price.snapshot.upsert(
+        {
           tokenId: token.id,
           interval: "hourly",
           openPrice: open,
@@ -943,10 +943,9 @@ export class CryptoMarketService {
           closePrice: close,
           volume,
           recordedAt: hourStart,
-        });
-      } catch {
-        // Ignore duplicate (unique constraint on token+interval+recordedAt)
-      }
+        },
+        ["tokenId", "interval", "recordedAt"],
+      );
     }
 
     // Prune old minute snapshots
@@ -999,8 +998,8 @@ export class CryptoMarketService {
       );
       const volume = hourlySnaps.reduce((sum, s) => sum + s.volume, 0n);
 
-      try {
-        await Q.crypto.price.snapshot.create({
+      await Q.crypto.price.snapshot.upsert(
+        {
           tokenId: token.id,
           interval: "daily",
           openPrice: open,
@@ -1009,10 +1008,9 @@ export class CryptoMarketService {
           closePrice: close,
           volume,
           recordedAt: dayStart,
-        });
-      } catch {
-        // Ignore duplicate (unique constraint on token+interval+recordedAt)
-      }
+        },
+        ["tokenId", "interval", "recordedAt"],
+      );
     }
 
     // Prune old hourly snapshots

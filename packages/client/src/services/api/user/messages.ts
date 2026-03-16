@@ -26,7 +26,7 @@ export const messagesApi = {
 
     const data = await api
       .getClient()
-      .post("/api/messages", { body: formData })
+      .post("api/messages", { body: formData })
       .json<SendMessageResponse>();
 
     return data.data;
