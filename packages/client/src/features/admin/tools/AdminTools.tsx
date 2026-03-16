@@ -7,12 +7,7 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  Coins,
-  MessageCircleQuestion,
-  Paintbrush,
-  Timer,
-} from "lucide-react";
+import { Coins, MessageCircleQuestion, Paintbrush, Timer } from "lucide-react";
 
 const tools = [
   {

@@ -38,9 +38,7 @@ export class AutoMessageService {
       this.startTimer(config);
     }
 
-    logger.info(
-      `Started ${configs.length} auto-message timer(s)`,
-    );
+    logger.info(`Started ${configs.length} auto-message timer(s)`);
   }
 
   async startConfig(configId: number): Promise<void> {

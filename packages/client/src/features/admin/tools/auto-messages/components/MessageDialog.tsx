@@ -33,10 +33,8 @@ export function MessageDialog({
   const toast = useToastActions();
   const isEdit = !!message;
 
-  const createMutation =
-    trpc.admin.autoMessages.messages.create.useMutation();
-  const updateMutation =
-    trpc.admin.autoMessages.messages.update.useMutation();
+  const createMutation = trpc.admin.autoMessages.messages.create.useMutation();
+  const updateMutation = trpc.admin.autoMessages.messages.update.useMutation();
 
   const [content, setContent] = useState(message?.content ?? "");
   const [enabled, setEnabled] = useState(message?.enabled ?? true);
@@ -77,9 +75,7 @@ export function MessageDialog({
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit Message" : "Add Message"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Message" : "Add Message"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">

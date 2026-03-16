@@ -85,9 +85,7 @@ export const autoMessagesRouter = router({
           channelId: z.string().min(1),
           enabled: z.boolean().default(false),
           intervalMinutes: z.number().int().min(1).max(10080).default(60),
-          rotationMode: z
-            .enum(["sequential", "random"])
-            .default("sequential"),
+          rotationMode: z.enum(["sequential", "random"]).default("sequential"),
         }),
       )
       .mutation(async ({ input }) => {

@@ -24,10 +24,8 @@ import { useToastActions } from "@/hooks/use-toast";
 import { UpsertConfigDialog } from "./components/UpsertConfigDialog";
 import { MessageDialog } from "./components/MessageDialog";
 
-type Config =
-  RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
-type ConfigDetail =
-  RouterOutput["admin"]["autoMessages"]["configs"]["get"];
+type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
+type ConfigDetail = RouterOutput["admin"]["autoMessages"]["configs"]["get"];
 type Message = ConfigDetail["messages"][number];
 
 export function AutoMessages() {
@@ -52,8 +50,7 @@ export function AutoMessages() {
     { id: expandedId! },
     { enabled: expandedId !== null },
   );
-  const deleteMutation =
-    trpc.admin.autoMessages.configs.delete.useMutation();
+  const deleteMutation = trpc.admin.autoMessages.configs.delete.useMutation();
   const deleteMessageMutation =
     trpc.admin.autoMessages.messages.delete.useMutation();
 
@@ -172,9 +169,7 @@ export function AutoMessages() {
                   {/* Config header */}
                   <div
                     className="flex cursor-pointer items-center gap-3 p-4 transition-colors hover:bg-sidebar-accent/30"
-                    onClick={() =>
-                      setExpandedId(isExpanded ? null : config.id)
-                    }
+                    onClick={() => setExpandedId(isExpanded ? null : config.id)}
                   >
                     {isExpanded ? (
                       <ChevronDown className="size-4 text-muted-foreground" />
@@ -222,9 +217,7 @@ export function AutoMessages() {
                         size="sm"
                         variant="outline"
                         className="cursor-pointer"
-                        onClick={() =>
-                          setConfigDialog({ open: true, config })
-                        }
+                        onClick={() => setConfigDialog({ open: true, config })}
                       >
                         <Pencil className="size-4" />
                       </Button>

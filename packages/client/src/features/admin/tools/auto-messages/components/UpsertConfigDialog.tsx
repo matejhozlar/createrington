@@ -20,10 +20,8 @@ import {
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 
-type Config =
-  RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
-type ChannelGroup =
-  RouterOutput["admin"]["autoMessages"]["channels"][number];
+type Config = RouterOutput["admin"]["autoMessages"]["configs"]["list"][number];
+type ChannelGroup = RouterOutput["admin"]["autoMessages"]["channels"][number];
 
 interface UpsertConfigDialogProps {
   open: boolean;
@@ -168,9 +166,7 @@ export function UpsertConfigDialog({
               <Button
                 type="button"
                 size="sm"
-                variant={
-                  rotationMode === "sequential" ? "default" : "outline"
-                }
+                variant={rotationMode === "sequential" ? "default" : "outline"}
                 onClick={() => setRotationMode("sequential")}
                 className="cursor-pointer"
               >
@@ -209,7 +205,11 @@ export function UpsertConfigDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" className="cursor-pointer" disabled={isPending}>
+            <Button
+              type="submit"
+              className="cursor-pointer"
+              disabled={isPending}
+            >
               {isPending
                 ? isEdit
                   ? "Saving..."
