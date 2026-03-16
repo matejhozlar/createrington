@@ -67,6 +67,11 @@ export const waitlistStatusEnum = pgEnum("waitlist_status", [
   "completed",
 ]);
 
+export const discordAutoMessageRotationEnum = pgEnum(
+  "discord_auto_message_rotation",
+  ["sequential", "random"],
+);
+
 // ============================================================================
 // Tables
 // ============================================================================
@@ -254,6 +259,51 @@ export const discordGuildMemberLeave = pgTable(
     index("idx_discord_guild_member_leave_deleted_at")
       .on(table.deletedAt)
       .where(sql`deleted_at IS NULL`),
+  ],
+);
+
+// --- discord_auto_message_config ---
+
+export const discordAutoMessageConfig = pgTable("discord_auto_message_config", {
+  id: serial("id").primaryKey(),
+  channelId: text("channel_id").notNull(),
+  name: text("name").notNull(),
+  enabled: boolean("enabled").notNull().default(false),
+  intervalMinutes: integer("interval_minutes").notNull().default(60),
+  rotationMode: discordAutoMessageRotationEnum("rotation_mode")
+    .notNull()
+    .default("sequential"),
+  currentIndex: integer("current_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+// --- discord_auto_message ---
+
+export const discordAutoMessage = pgTable(
+  "discord_auto_message",
+  {
+    id: serial("id").primaryKey(),
+    configId: integer("config_id")
+      .notNull()
+      .references(() => discordAutoMessageConfig.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_discord_auto_message_config_id").on(table.configId),
+    index("idx_discord_auto_message_sort").on(table.configId, table.sortOrder),
   ],
 );
 

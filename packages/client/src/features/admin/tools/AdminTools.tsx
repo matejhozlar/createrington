@@ -7,7 +7,12 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Coins, MessageCircleQuestion, Paintbrush } from "lucide-react";
+import {
+  Coins,
+  MessageCircleQuestion,
+  Paintbrush,
+  Timer,
+} from "lucide-react";
 
 const tools = [
   {
@@ -23,6 +28,13 @@ const tools = [
       "Visually build Discord embeds with a live preview and send them to any channel. Save and load presets.",
     icon: Paintbrush,
     href: "/admin/tools/embed-builder",
+  },
+  {
+    title: "Auto Messages",
+    description:
+      "Configure scheduled rotating messages sent to Discord channels on a timer.",
+    icon: Timer,
+    href: "/admin/tools/auto-messages",
   },
   {
     title: "Crypto Market",
