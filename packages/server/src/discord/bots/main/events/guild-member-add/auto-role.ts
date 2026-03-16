@@ -7,7 +7,7 @@ import type {
 } from "discord.js";
 import { PermissionFlagsBits, ChannelType } from "discord.js";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { discord, Q } from "@/db";
+import { Q } from "@/db";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -31,9 +31,6 @@ const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 export const eventName: EventModule<"guildMemberAdd">["eventName"] =
   "guildMemberAdd";
 
-/**
- * Whether this event should only be registered in production
- */
 export const prodOnly = false;
 
 /**
@@ -47,7 +44,7 @@ export async function execute(
   member: GuildMember,
 ): Promise<void> {
   try {
-    const joinNumber = await discord.guild.member.join.recordJoin(
+    const joinNumber = await Q.discord.guild.member.join.recordJoin(
       member.user.id,
       member.user.username,
     );
@@ -92,6 +89,7 @@ export async function execute(
       }
 
       try {
+        // Channel is private: hidden from everyone, visible only to the joining member and admins
         const permissionOverwrites: OverwriteResolvable[] = [
           {
             id: member.guild.id,
@@ -166,6 +164,7 @@ export async function execute(
 
         const textChannel = channel as TextChannel;
 
+        // Use a custom background if configured, otherwise fall back to the default card
         const welcomeCard = welcomeConfig.imageConfig.backgroundImageURL
           ? await generateCustomWelcomeCard(member, joinNumber, {
               backgroundImageURL: welcomeConfig.imageConfig.backgroundImageURL,

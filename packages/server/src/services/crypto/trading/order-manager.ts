@@ -3,7 +3,8 @@
  * Handles creation, validation, filling, cancellation, and expiration.
  */
 
-import { Q, R } from "@/db";
+import { db, Q, R } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { CRYPTO_CONFIG } from "../crypto.config";
 import { calculateFee } from "./fee-calculator";
@@ -308,6 +309,8 @@ export async function checkAndFillOrders(
 
 /**
  * Expires all orders past their expiry time. Releases reserved balance/tokens.
+ *
+ * @returns Number of orders that were expired
  */
 export async function expireOrders(): Promise<number> {
   const pendingOrders = await Q.crypto.order.where({ status: "pending" }).all();
@@ -363,6 +366,9 @@ export async function getPlayerOrders(
 /**
  * @private Executes a triggered order at the current market price.
  *
+ * The entire operation is wrapped in a database transaction with a
+ * SELECT FOR UPDATE lock on the token row to prevent race conditions.
+ *
  * For limit buys: deducts from reserved balance, upserts holding, records cost basis,
  * refunds any excess reservation. For sell-type orders: credits balance, consumes
  * cost basis FIFO, calculates realized P&L, updates holding.
@@ -376,182 +382,202 @@ async function fillOrder(
   token: CryptoToken,
 ): Promise<OrderFillResult> {
   const amount = order.amount;
-  const price = Number(token.price);
   const amountNum = Number(amount);
   const lifetimeCount = await getLifetimeTradeCount(order.playerMinecraftUuid);
-
-  let feeAmount: number;
-  let totalCost: number;
-  let realizedPnl: number | null = null;
   const triggerType =
     order.type === "limit_buy" || order.type === "limit_sell"
       ? "limit"
       : order.type;
 
-  if (order.type === "limit_buy") {
-    // Buy execution: use actual current price (may be better than target)
-    const rawCost = price * amountNum;
-    feeAmount = calculateFee(rawCost, token.category, lifetimeCount);
-    totalCost = rawCost + feeAmount;
-
-    // Calculate difference from reserved balance
-    const reserved = Number(order.reservedBalance);
-    const refundAmount = reserved - totalCost;
-
-    // Update token supply
-    await Q.crypto.token.update(
-      { id: token.id },
-      { availableSupply: token.availableSupply - amount },
+  return await db.inTransaction(async (tx) => {
+    // Lock token row and get fresh data
+    const client = tx.getDb();
+    await client.query(
+      "SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE",
+      [token.id],
     );
+    const freshToken = await tx.crypto.token.get({ id: token.id });
+    const price = Number(freshToken.price);
 
-    // Upsert holding
-    const existingHolding = await Q.crypto.holding
-      .where({
-        playerMinecraftUuid: order.playerMinecraftUuid,
-        tokenId: token.id,
-      })
-      .first();
+    let feeAmount: number;
+    let totalCost: number;
+    let realizedPnl: number | null = null;
 
-    if (existingHolding) {
-      await Q.crypto.holding.update(
-        { id: existingHolding.id },
-        {
-          amount: existingHolding.amount + amount,
-          totalCostBasis: (
-            Number(existingHolding.totalCostBasis) + rawCost
-          ).toFixed(8),
-          updatedAt: new Date(),
-        },
+    if (order.type === "limit_buy") {
+      // Buy execution: use actual current price (may be better than target)
+      const rawCost = price * amountNum;
+      feeAmount = calculateFee(rawCost, freshToken.category, lifetimeCount);
+      totalCost = rawCost + feeAmount;
+
+      // Calculate difference from reserved balance
+      const reserved = Number(order.reservedBalance);
+      const refundAmount = reserved - totalCost;
+
+      // Check supply within lock
+      if (amount > freshToken.availableSupply) {
+        throw new Error(
+          `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
+        );
+      }
+
+      // Update token supply atomically
+      await tx.crypto.token.update(
+        { id: freshToken.id },
+        { availableSupply: freshToken.availableSupply - amount },
       );
-    } else {
-      await Q.crypto.holding.create({
-        playerMinecraftUuid: order.playerMinecraftUuid,
-        tokenId: token.id,
-        amount,
-        totalCostBasis: rawCost.toFixed(8),
-      });
-    }
 
-    // Record cost basis lot
-    await recordCostBasisLot(
-      order.playerMinecraftUuid,
-      token.id,
-      amount,
-      token.price,
-    );
+      // Upsert holding
+      const existingHolding = await tx.crypto.holding
+        .where({
+          playerMinecraftUuid: order.playerMinecraftUuid,
+          tokenId: freshToken.id,
+        })
+        .first();
 
-    // Refund unused reserved balance (price may have dropped since order was placed)
-    if (refundAmount > 0.00000001) {
-      await R.balanceRepo.add(
-        { minecraftUuid: order.playerMinecraftUuid },
-        refundAmount,
-        `Crypto order filled: refund excess from ${token.symbol} limit buy`,
-        BalanceTransactionType.CRYPTO_BUY,
-        { orderId: order.id, refund: true },
-      );
-    }
-  } else {
-    // Sell execution (limit_sell, stop_loss, take_profit)
-    const rawRevenue = price * amountNum;
-    feeAmount = calculateFee(rawRevenue, token.category, lifetimeCount);
-    const netRevenue = rawRevenue - feeAmount;
-    totalCost = netRevenue;
-
-    // Credit player balance
-    await R.balanceRepo.add(
-      { minecraftUuid: order.playerMinecraftUuid },
-      netRevenue,
-      `Crypto order filled: ${triggerType} sell ${amountNum} ${token.symbol} @ $${price}`,
-      BalanceTransactionType.CRYPTO_SELL,
-      {
-        tokenId: token.id,
-        tokenSymbol: token.symbol,
-        orderId: order.id,
-        amount: amountNum,
-        price,
-        fee: feeAmount,
-      },
-    );
-
-    // Update token supply
-    await Q.crypto.token.update(
-      { id: token.id },
-      { availableSupply: token.availableSupply + amount },
-    );
-
-    // Consume cost basis FIFO and calculate realized P&L
-    const costBasisConsumed = await consumeCostBasis(
-      order.playerMinecraftUuid,
-      token.id,
-      amount,
-    );
-    realizedPnl = rawRevenue - costBasisConsumed;
-
-    // Update holding
-    const holding = await Q.crypto.holding
-      .where({
-        playerMinecraftUuid: order.playerMinecraftUuid,
-        tokenId: token.id,
-      })
-      .first();
-
-    if (holding) {
-      const newAmount = holding.amount - amount;
-      if (newAmount <= 0n) {
-        await Q.crypto.holding.delete({ id: holding.id });
-      } else {
-        // Reduce cost basis by the FIFO-consumed amount (consistent with market sells)
-        await Q.crypto.holding.update(
-          { id: holding.id },
+      if (existingHolding) {
+        await tx.crypto.holding.update(
+          { id: existingHolding.id },
           {
-            amount: newAmount,
+            amount: existingHolding.amount + amount,
             totalCostBasis: (
-              Number(holding.totalCostBasis) - costBasisConsumed
+              Number(existingHolding.totalCostBasis) + rawCost
             ).toFixed(8),
             updatedAt: new Date(),
           },
         );
+      } else {
+        await tx.crypto.holding.create({
+          playerMinecraftUuid: order.playerMinecraftUuid,
+          tokenId: freshToken.id,
+          amount,
+          totalCostBasis: rawCost.toFixed(8),
+        });
+      }
+
+      // Record cost basis lot
+      await recordCostBasisLot(
+        order.playerMinecraftUuid,
+        freshToken.id,
+        amount,
+        freshToken.price,
+        tx.crypto,
+      );
+
+      // Refund unused reserved balance (price may have dropped since order was placed)
+      if (refundAmount > 0.00000001) {
+        await R.balanceRepo.add(
+          { minecraftUuid: order.playerMinecraftUuid },
+          refundAmount,
+          `Crypto order filled: refund excess from ${freshToken.symbol} limit buy`,
+          BalanceTransactionType.CRYPTO_BUY,
+          { orderId: order.id, refund: true },
+          tx,
+        );
+      }
+    } else {
+      // Sell execution (limit_sell, stop_loss, take_profit)
+      const rawRevenue = price * amountNum;
+      feeAmount = calculateFee(rawRevenue, freshToken.category, lifetimeCount);
+      const netRevenue = rawRevenue - feeAmount;
+      totalCost = netRevenue;
+
+      // Credit player balance
+      await R.balanceRepo.add(
+        { minecraftUuid: order.playerMinecraftUuid },
+        netRevenue,
+        `Crypto order filled: ${triggerType} sell ${amountNum} ${freshToken.symbol} @ $${price}`,
+        BalanceTransactionType.CRYPTO_SELL,
+        {
+          tokenId: freshToken.id,
+          tokenSymbol: freshToken.symbol,
+          orderId: order.id,
+          amount: amountNum,
+          price,
+          fee: feeAmount,
+        },
+        tx,
+      );
+
+      // Update token supply atomically
+      await tx.crypto.token.update(
+        { id: freshToken.id },
+        { availableSupply: freshToken.availableSupply + amount },
+      );
+
+      // Consume cost basis FIFO and calculate realized P&L
+      const costBasisConsumed = await consumeCostBasis(
+        order.playerMinecraftUuid,
+        freshToken.id,
+        amount,
+        tx.crypto,
+      );
+      realizedPnl = rawRevenue - costBasisConsumed;
+
+      // Update holding
+      const holding = await tx.crypto.holding
+        .where({
+          playerMinecraftUuid: order.playerMinecraftUuid,
+          tokenId: freshToken.id,
+        })
+        .first();
+
+      if (holding) {
+        const newAmount = holding.amount - amount;
+        if (newAmount <= 0n) {
+          await tx.crypto.holding.delete({ id: holding.id });
+        } else {
+          await tx.crypto.holding.update(
+            { id: holding.id },
+            {
+              amount: newAmount,
+              totalCostBasis: (
+                Number(holding.totalCostBasis) - costBasisConsumed
+              ).toFixed(8),
+              updatedAt: new Date(),
+            },
+          );
+        }
       }
     }
-  }
 
-  // Record transaction
-  await Q.crypto.transaction.createAndReturn({
-    playerMinecraftUuid: order.playerMinecraftUuid,
-    tokenId: token.id,
-    type: order.type === "limit_buy" ? "buy" : "sell",
-    trigger: triggerType,
-    amount,
-    priceAtExecution: token.price,
-    feeAmount: feeAmount.toFixed(8),
-    totalCost: totalCost.toFixed(8),
-    realizedPnl: realizedPnl?.toFixed(8) ?? null,
-    orderId: order.id,
+    // Record transaction
+    await tx.crypto.transaction.createAndReturn({
+      playerMinecraftUuid: order.playerMinecraftUuid,
+      tokenId: freshToken.id,
+      type: order.type === "limit_buy" ? "buy" : "sell",
+      trigger: triggerType,
+      amount,
+      priceAtExecution: freshToken.price,
+      feeAmount: feeAmount.toFixed(8),
+      totalCost: totalCost.toFixed(8),
+      realizedPnl: realizedPnl?.toFixed(8) ?? null,
+      orderId: order.id,
+    });
+
+    // Update order status
+    await tx.crypto.order.update(
+      { id: order.id },
+      { status: "filled", filledAt: new Date() },
+    );
+
+    // Update treasury
+    if (feeAmount > 0) {
+      await updateTreasury(feeAmount, freshToken.category, tx);
+    }
+
+    return {
+      orderId: order.id,
+      playerUuid: order.playerMinecraftUuid,
+      tokenId: freshToken.id,
+      symbol: freshToken.symbol,
+      type: order.type,
+      amount,
+      filledPrice: freshToken.price,
+      feeAmount,
+      totalCost,
+      realizedPnl,
+    };
   });
-
-  // Update order status
-  await Q.crypto.order.update(
-    { id: order.id },
-    { status: "filled", filledAt: new Date() },
-  );
-
-  // Update treasury
-  if (feeAmount > 0) {
-    await updateTreasury(feeAmount, token.category);
-  }
-
-  return {
-    orderId: order.id,
-    playerUuid: order.playerMinecraftUuid,
-    tokenId: token.id,
-    symbol: token.symbol,
-    type: order.type,
-    amount,
-    filledPrice: token.price,
-    feeAmount,
-    totalCost,
-    realizedPnl,
-  };
 }
 
 /** Queries the total number of trades a player has ever executed (for volume discounts) */
@@ -581,14 +607,16 @@ async function getReservedTokens(
 async function updateTreasury(
   feeAmount: number,
   category: string,
+  txOverride?: DatabaseQueries,
 ): Promise<void> {
   const burnAmount =
     category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
   const collectedAmount = feeAmount - burnAmount;
 
-  const treasury = await Q.crypto.treasury.where({}).first();
+  const crypto = txOverride ? txOverride.crypto : Q.crypto;
+  const treasury = await crypto.treasury.where({}).first();
   if (treasury) {
-    await Q.crypto.treasury.update(
+    await crypto.treasury.update(
       { id: treasury.id },
       {
         totalCollected: (

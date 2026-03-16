@@ -5,6 +5,7 @@
  */
 
 import { Q } from "@/db";
+import type { CryptoQueries } from "@/db/queries/crypto";
 
 /**
  * Records a new cost basis lot when a player buys tokens.
@@ -14,14 +15,17 @@ import { Q } from "@/db";
  * @param tokenId - Token that was purchased
  * @param amount - Number of tokens in this lot
  * @param pricePerUnit - Price paid per token, stored as a fixed-precision string
+ * @param txCrypto - Optional transaction-bound CryptoQueries for atomic operations
  */
 export async function recordCostBasisLot(
   playerUuid: string,
   tokenId: number,
   amount: bigint,
   pricePerUnit: string,
+  txCrypto?: CryptoQueries,
 ): Promise<void> {
-  await Q.crypto.cost.basis.create({
+  const crypto = txCrypto ?? Q.crypto;
+  await crypto.cost.basis.create({
     playerMinecraftUuid: playerUuid,
     tokenId,
     amountRemaining: amount,
@@ -37,14 +41,17 @@ export async function recordCostBasisLot(
  * @param playerUuid - Minecraft UUID of the seller
  * @param tokenId - Token being sold
  * @param sellAmount - Number of tokens being sold
+ * @param txCrypto - Optional transaction-bound CryptoQueries for atomic operations
  * @returns Total cost basis consumed (used to calculate realized P&L)
  */
 export async function consumeCostBasis(
   playerUuid: string,
   tokenId: number,
   sellAmount: bigint,
+  txCrypto?: CryptoQueries,
 ): Promise<number> {
-  const lots = await Q.crypto.cost.basis
+  const crypto = txCrypto ?? Q.crypto;
+  const lots = await crypto.cost.basis
     .where({
       playerMinecraftUuid: playerUuid,
       tokenId,
@@ -65,10 +72,10 @@ export async function consumeCostBasis(
 
     if (consumed === lot.amountRemaining) {
       // Lot fully consumed — delete it
-      await Q.crypto.cost.basis.delete({ id: lot.id });
+      await crypto.cost.basis.delete({ id: lot.id });
     } else {
       // Partially consumed — update remaining
-      await Q.crypto.cost.basis.update(
+      await crypto.cost.basis.update(
         { id: lot.id },
         { amountRemaining: lot.amountRemaining - consumed },
       );

@@ -27,6 +27,7 @@ export const CRYPTO_CONFIG = {
 
   // Demand Pressure (net buy/sell volume within a tick window shifts price)
   MEMECOIN_DEMAND_SENSITIVITY: 0.01, // multiplier: (netVolume / supply) * this (5x weaker)
+  MEMECOIN_MAX_DEMAND_PRESSURE: 0.03, // cap demand pressure at ±3% per tick to prevent low-supply manipulation
 
   // Mean Reversion (pull price toward 24h average when far off)
   MEMECOIN_MEAN_REVERSION_HIGH_THRESHOLD: 1.5, // trigger when price > 1.5x avg (tighter)

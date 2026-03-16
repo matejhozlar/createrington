@@ -13,7 +13,8 @@
  * `evaluateTradeAchievements` directly from `achievement-triggers`.
  */
 
-import { Q, R } from "@/db";
+import { db, Q, R } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
@@ -183,6 +184,32 @@ async function hasMarketVeteranAchievement(
 }
 
 // ==========================================================================
+// HELPERS: Transaction support
+// ==========================================================================
+
+/**
+ * Locks a token row with SELECT FOR UPDATE within a transaction,
+ * then re-fetches fresh data. Prevents concurrent trades from
+ * reading stale supply/price values.
+ *
+ * @private
+ * @param tx - Transaction-bound DatabaseQueries instance
+ * @param tokenId - Token ID to lock
+ * @returns Fresh token data with the row locked until commit
+ */
+async function lockAndFetchToken(
+  tx: DatabaseQueries,
+  tokenId: number,
+): Promise<CryptoToken> {
+  const client = tx.getDb();
+  await client.query(
+    "SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE",
+    [tokenId],
+  );
+  return tx.crypto.token.get({ id: tokenId });
+}
+
+// ==========================================================================
 // BUY
 // ==========================================================================
 
@@ -201,6 +228,9 @@ export function isInIpo(token: CryptoToken): boolean {
  * upserts the player's holding with cost basis tracking, records the
  * transaction, and collects fees into the treasury.
  *
+ * The entire operation is wrapped in a database transaction with a
+ * SELECT FOR UPDATE lock on the token row to prevent race conditions.
+ *
  * During an IPO, the buy executes at the fixed IPO price and enforces
  * a per-player allocation limit (IPO_MAX_ALLOCATION_PERCENT of total supply).
  *
@@ -215,6 +245,7 @@ export async function executeBuy(
   token: CryptoToken,
   amount: bigint,
 ): Promise<TradeResult> {
+  // Quick pre-checks (no DB needed)
   if (token.isCrashed) {
     throw new Error(
       `Token ${token.symbol} has crashed and cannot be purchased`,
@@ -229,132 +260,155 @@ export async function executeBuy(
     throw new Error("Amount must be positive");
   }
 
-  if (amount > token.availableSupply) {
-    throw new Error(
-      `Insufficient supply: only ${token.availableSupply} ${token.symbol} available`,
-    );
-  }
-
-  // IPO allocation enforcement
-  if (isInIpo(token)) {
-    const maxAllocation = BigInt(
-      Math.floor(
-        Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
-      ),
-    );
-
-    const existingHolding = await Q.crypto.holding
-      .where({ playerMinecraftUuid: playerUuid, tokenId: token.id })
-      .first();
-
-    const currentHeld = existingHolding?.amount ?? 0n;
-    if (currentHeld + amount > maxAllocation) {
-      const remaining = maxAllocation - currentHeld;
-      throw new Error(
-        `IPO allocation limit: you can buy at most ${remaining} more ${token.symbol} (max ${maxAllocation} per player)`,
-      );
-    }
-  }
-
   checkRateLimit(playerUuid, token.id, token.symbol);
 
-  // During IPO, use the fixed IPO price instead of the current market price
-  const price = isInIpo(token) ? Number(token.ipoPrice) : Number(token.price);
-  const amountNum = Number(amount);
-  const rawCost = price * amountNum;
+  // Pre-fetch data that doesn't need to be inside the transaction
   const [lifetimeCount, hasVeteran] = await Promise.all([
     getLifetimeTradeCount(playerUuid),
     hasMarketVeteranAchievement(playerUuid),
   ]);
-  const feeAmount = calculateFee(
-    rawCost,
-    token.category,
-    lifetimeCount,
-    hasVeteran,
-  );
-  // Round to 3 decimal places to match the balance system's precision
-  const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
 
-  await R.balanceRepo.deduct(
-    { minecraftUuid: playerUuid },
-    totalCost,
-    `Crypto buy: ${amountNum} ${token.symbol} @ $${price}`,
-    BalanceTransactionType.CRYPTO_BUY,
-    {
-      tokenId: token.id,
-      tokenSymbol: token.symbol,
-      amount: amountNum,
-      price,
-      fee: feeAmount,
-    },
-  );
+  const tradeResult = await db.inTransaction(async (tx) => {
+    // Lock token row and get fresh data
+    const freshToken = await lockAndFetchToken(tx, token.id);
 
-  await Q.crypto.token.update(
-    { id: token.id },
-    { availableSupply: token.availableSupply - amount },
-  );
+    if (amount > freshToken.availableSupply) {
+      throw new Error(
+        `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
+      );
+    }
 
-  const priceStr = price.toFixed(8);
+    // IPO allocation enforcement (within transaction for atomicity)
+    if (isInIpo(freshToken)) {
+      const maxAllocation = BigInt(
+        Math.floor(
+          Number(freshToken.totalSupply) *
+            CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+        ),
+      );
 
-  // Upsert holding — accumulate amount and cost basis if one already exists
-  const holding = await Q.crypto.holding
-    .where({
-      playerMinecraftUuid: playerUuid,
-      tokenId: token.id,
-    })
-    .first();
+      const existingHolding = await tx.crypto.holding
+        .where({ playerMinecraftUuid: playerUuid, tokenId: freshToken.id })
+        .first();
 
-  if (holding) {
-    await Q.crypto.holding.update(
-      { id: holding.id },
-      {
-        amount: holding.amount + amount,
-        totalCostBasis: (Number(holding.totalCostBasis) + rawCost).toFixed(8),
-        updatedAt: new Date(),
-      },
+      const currentHeld = existingHolding?.amount ?? 0n;
+      if (currentHeld + amount > maxAllocation) {
+        const remaining = maxAllocation - currentHeld;
+        throw new Error(
+          `IPO allocation limit: you can buy at most ${remaining} more ${freshToken.symbol} (max ${maxAllocation} per player)`,
+        );
+      }
+    }
+
+    // During IPO, use the fixed IPO price instead of the current market price
+    const price = isInIpo(freshToken)
+      ? Number(freshToken.ipoPrice)
+      : Number(freshToken.price);
+    const amountNum = Number(amount);
+    const rawCost = price * amountNum;
+    const feeAmount = calculateFee(
+      rawCost,
+      freshToken.category,
+      lifetimeCount,
+      hasVeteran,
     );
-  } else {
-    await Q.crypto.holding.create({
-      playerMinecraftUuid: playerUuid,
-      tokenId: token.id,
+    // Round to 3 decimal places to match the balance system's precision
+    const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
+
+    // Deduct balance (joins this transaction via txOverride)
+    await R.balanceRepo.deduct(
+      { minecraftUuid: playerUuid },
+      totalCost,
+      `Crypto buy: ${amountNum} ${freshToken.symbol} @ $${price}`,
+      BalanceTransactionType.CRYPTO_BUY,
+      {
+        tokenId: freshToken.id,
+        tokenSymbol: freshToken.symbol,
+        amount: amountNum,
+        price,
+        fee: feeAmount,
+      },
+      tx,
+    );
+
+    // Update supply atomically (using fresh data under lock)
+    await tx.crypto.token.update(
+      { id: freshToken.id },
+      { availableSupply: freshToken.availableSupply - amount },
+    );
+
+    const priceStr = price.toFixed(8);
+
+    const holding = await tx.crypto.holding
+      .where({
+        playerMinecraftUuid: playerUuid,
+        tokenId: freshToken.id,
+      })
+      .first();
+
+    if (holding) {
+      await tx.crypto.holding.update(
+        { id: holding.id },
+        {
+          amount: holding.amount + amount,
+          totalCostBasis: (Number(holding.totalCostBasis) + rawCost).toFixed(8),
+          updatedAt: new Date(),
+        },
+      );
+    } else {
+      await tx.crypto.holding.create({
+        playerMinecraftUuid: playerUuid,
+        tokenId: freshToken.id,
+        amount,
+        totalCostBasis: rawCost.toFixed(8),
+      });
+    }
+
+    // Record cost basis lot for FIFO P&L tracking on future sells
+    await recordCostBasisLot(
+      playerUuid,
+      freshToken.id,
       amount,
-      totalCostBasis: rawCost.toFixed(8),
+      priceStr,
+      tx.crypto,
+    );
+
+    const txResult = await tx.crypto.transaction.createAndReturn({
+      playerMinecraftUuid: playerUuid,
+      tokenId: freshToken.id,
+      type: "buy",
+      trigger: "market",
+      amount,
+      priceAtExecution: priceStr,
+      feeAmount: feeAmount.toFixed(8),
+      totalCost: totalCost.toFixed(8),
     });
-  }
 
-  // Record cost basis lot for FIFO P&L tracking on future sells
-  await recordCostBasisLot(playerUuid, token.id, amount, priceStr);
+    if (feeAmount > 0) {
+      await updateTreasury(feeAmount, freshToken.category, tx);
+    }
 
-  const txResult = await Q.crypto.transaction.createAndReturn({
-    playerMinecraftUuid: playerUuid,
-    tokenId: token.id,
-    type: "buy",
-    trigger: "market",
-    amount,
-    priceAtExecution: priceStr,
-    feeAmount: feeAmount.toFixed(8),
-    totalCost: totalCost.toFixed(8),
+    return {
+      transactionId: txResult.id,
+      tokenId: freshToken.id,
+      symbol: freshToken.symbol,
+      type: "buy" as const,
+      amount,
+      priceAtExecution: priceStr,
+      feeAmount,
+      totalCost,
+    };
   });
 
-  if (feeAmount > 0) {
-    await updateTreasury(feeAmount, token.category);
-  }
-
-  recordTradeVolume(token.id, amountNum, true);
-
-  checkWhaleAlert(playerUuid, token, amount, totalCost, "buy").catch(() => {});
-
-  const tradeResult: TradeResult = {
-    transactionId: txResult.id,
-    tokenId: token.id,
-    symbol: token.symbol,
-    type: "buy",
+  // Fire-and-forget side effects (outside transaction)
+  recordTradeVolume(token.id, Number(amount), true);
+  checkWhaleAlert(
+    playerUuid,
+    token,
     amount,
-    priceAtExecution: priceStr,
-    feeAmount,
-    totalCost,
-  };
-
+    tradeResult.totalCost,
+    "buy",
+  ).catch(() => {});
   triggerTradeAchievements(playerUuid, token, tradeResult);
 
   return tradeResult;
@@ -369,6 +423,9 @@ export async function executeBuy(
  * to available supply, adjusts cost basis proportionally, calculates realized
  * P&L, records the transaction, and collects fees into the treasury.
  *
+ * The entire operation is wrapped in a database transaction with a
+ * SELECT FOR UPDATE lock on the token row to prevent race conditions.
+ *
  * @param playerUuid - Minecraft UUID of the seller
  * @param token - Token being sold
  * @param amount - Number of tokens to sell
@@ -380,6 +437,7 @@ export async function executeSell(
   token: CryptoToken,
   amount: bigint,
 ): Promise<TradeResult> {
+  // Quick pre-checks (no DB needed)
   if (isInIpo(token)) {
     throw new Error(
       `${token.symbol} is in its IPO phase — selling is not allowed until trading opens`,
@@ -392,113 +450,128 @@ export async function executeSell(
 
   checkRateLimit(playerUuid, token.id, token.symbol);
 
-  const holding = await Q.crypto.holding
-    .where({
-      playerMinecraftUuid: playerUuid,
-      tokenId: token.id,
-    })
-    .first();
-
-  if (!holding || holding.amount < amount) {
-    throw new Error(
-      `Insufficient holdings: you have ${holding?.amount ?? 0n} ${token.symbol}`,
-    );
-  }
-
-  const price = Number(token.price);
-  const amountNum = Number(amount);
-  const rawRevenue = price * amountNum;
+  // Pre-fetch data that doesn't need to be inside the transaction
   const [lifetimeCount, hasVeteran] = await Promise.all([
     getLifetimeTradeCount(playerUuid),
     hasMarketVeteranAchievement(playerUuid),
   ]);
-  const feeAmount = calculateFee(
-    rawRevenue,
-    token.category,
-    lifetimeCount,
-    hasVeteran,
-  );
-  // Round to 3 decimal places to match the balance system's precision
-  const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
 
-  await R.balanceRepo.add(
-    { minecraftUuid: playerUuid },
-    netRevenue,
-    `Crypto sell: ${amountNum} ${token.symbol} @ $${price}`,
-    BalanceTransactionType.CRYPTO_SELL,
-    {
-      tokenId: token.id,
-      tokenSymbol: token.symbol,
-      amount: amountNum,
-      price,
-      fee: feeAmount,
-    },
-  );
+  const tradeResult = await db.inTransaction(async (tx) => {
+    // Lock token row and get fresh data
+    const freshToken = await lockAndFetchToken(tx, token.id);
 
-  await Q.crypto.token.update(
-    { id: token.id },
-    { availableSupply: token.availableSupply + amount },
-  );
+    // Verify holdings within the transaction
+    const holding = await tx.crypto.holding
+      .where({
+        playerMinecraftUuid: playerUuid,
+        tokenId: freshToken.id,
+      })
+      .first();
 
-  // Consume cost basis lots FIFO and calculate realized P&L
-  const costBasisConsumed = await consumeCostBasis(
-    playerUuid,
-    token.id,
-    amount,
-  );
-  const realizedPnl = rawRevenue - costBasisConsumed;
+    if (!holding || holding.amount < amount) {
+      throw new Error(
+        `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
+      );
+    }
 
-  const newAmount = holding.amount - amount;
-  if (newAmount === 0n) {
-    // Holding fully liquidated — delete the row rather than leaving a zero-amount record
-    await Q.crypto.holding.delete({ id: holding.id });
-  } else {
-    // Reduce cost basis by the FIFO-consumed amount
-    await Q.crypto.holding.update(
-      { id: holding.id },
-      {
-        amount: newAmount,
-        totalCostBasis: (
-          Number(holding.totalCostBasis) - costBasisConsumed
-        ).toFixed(8),
-        updatedAt: new Date(),
-      },
+    const price = Number(freshToken.price);
+    const amountNum = Number(amount);
+    const rawRevenue = price * amountNum;
+    const feeAmount = calculateFee(
+      rawRevenue,
+      freshToken.category,
+      lifetimeCount,
+      hasVeteran,
     );
-  }
+    // Round to 3 decimal places to match the balance system's precision
+    const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
 
-  const txResult = await Q.crypto.transaction.createAndReturn({
-    playerMinecraftUuid: playerUuid,
-    tokenId: token.id,
-    type: "sell",
-    trigger: "market",
-    amount,
-    priceAtExecution: token.price,
-    feeAmount: feeAmount.toFixed(8),
-    totalCost: netRevenue.toFixed(8),
-    realizedPnl: realizedPnl.toFixed(8),
+    // Credit balance (joins this transaction via txOverride)
+    await R.balanceRepo.add(
+      { minecraftUuid: playerUuid },
+      netRevenue,
+      `Crypto sell: ${amountNum} ${freshToken.symbol} @ $${price}`,
+      BalanceTransactionType.CRYPTO_SELL,
+      {
+        tokenId: freshToken.id,
+        tokenSymbol: freshToken.symbol,
+        amount: amountNum,
+        price,
+        fee: feeAmount,
+      },
+      tx,
+    );
+
+    // Return tokens to supply atomically (using fresh data under lock)
+    await tx.crypto.token.update(
+      { id: freshToken.id },
+      { availableSupply: freshToken.availableSupply + amount },
+    );
+
+    // Consume cost basis lots FIFO and calculate realized P&L
+    const costBasisConsumed = await consumeCostBasis(
+      playerUuid,
+      freshToken.id,
+      amount,
+      tx.crypto,
+    );
+    const realizedPnl = rawRevenue - costBasisConsumed;
+
+    const newAmount = holding.amount - amount;
+    if (newAmount === 0n) {
+      // Holding fully liquidated — delete the row
+      await tx.crypto.holding.delete({ id: holding.id });
+    } else {
+      // Reduce cost basis by the FIFO-consumed amount
+      await tx.crypto.holding.update(
+        { id: holding.id },
+        {
+          amount: newAmount,
+          totalCostBasis: (
+            Number(holding.totalCostBasis) - costBasisConsumed
+          ).toFixed(8),
+          updatedAt: new Date(),
+        },
+      );
+    }
+
+    const txResult = await tx.crypto.transaction.createAndReturn({
+      playerMinecraftUuid: playerUuid,
+      tokenId: freshToken.id,
+      type: "sell",
+      trigger: "market",
+      amount,
+      priceAtExecution: freshToken.price,
+      feeAmount: feeAmount.toFixed(8),
+      totalCost: netRevenue.toFixed(8),
+      realizedPnl: realizedPnl.toFixed(8),
+    });
+
+    if (feeAmount > 0) {
+      await updateTreasury(feeAmount, freshToken.category, tx);
+    }
+
+    return {
+      transactionId: txResult.id,
+      tokenId: freshToken.id,
+      symbol: freshToken.symbol,
+      type: "sell" as const,
+      amount,
+      priceAtExecution: freshToken.price,
+      feeAmount,
+      totalCost: netRevenue,
+    };
   });
 
-  if (feeAmount > 0) {
-    await updateTreasury(feeAmount, token.category);
-  }
-
-  recordTradeVolume(token.id, amountNum, false);
-
-  checkWhaleAlert(playerUuid, token, amount, rawRevenue, "sell").catch(
-    () => {},
-  );
-
-  const tradeResult: TradeResult = {
-    transactionId: txResult.id,
-    tokenId: token.id,
-    symbol: token.symbol,
-    type: "sell",
+  // Fire-and-forget side effects (outside transaction)
+  recordTradeVolume(token.id, Number(amount), false);
+  checkWhaleAlert(
+    playerUuid,
+    token,
     amount,
-    priceAtExecution: token.price,
-    feeAmount,
-    totalCost: netRevenue,
-  };
-
+    tradeResult.totalCost,
+    "sell",
+  ).catch(() => {});
   triggerTradeAchievements(playerUuid, token, tradeResult);
 
   return tradeResult;
@@ -516,19 +589,23 @@ export async function executeSell(
  * @private
  * @param feeAmount - Total fee amount in in-game currency
  * @param category - Token category ("memecoin", "stable", "blue_chip") used to determine burn ratio
+ * @param txOverride - Optional transaction-bound DatabaseQueries for atomic operations
  */
 async function updateTreasury(
   feeAmount: number,
   category: string,
+  txOverride?: DatabaseQueries,
 ): Promise<void> {
   const burnAmount =
     category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
   const collectedAmount = feeAmount - burnAmount;
 
+  const crypto = txOverride ? txOverride.crypto : Q.crypto;
+
   // Treasury is a singleton row — create it on first fee collection if absent
-  const treasury = await Q.crypto.treasury.where({}).first();
+  const treasury = await crypto.treasury.where({}).first();
   if (treasury) {
-    await Q.crypto.treasury.update(
+    await crypto.treasury.update(
       { id: treasury.id },
       {
         totalCollected: (
@@ -539,7 +616,7 @@ async function updateTreasury(
       },
     );
   } else {
-    await Q.crypto.treasury.create({
+    await crypto.treasury.create({
       totalCollected: collectedAmount.toFixed(8),
       totalBurned: burnAmount.toFixed(8),
     });

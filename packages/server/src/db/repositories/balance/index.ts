@@ -1,5 +1,5 @@
 import { db, Q } from "@/db";
-import { DatabaseTable } from "@/generated/db";
+import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type {
   Player,
   PlayerBalance,
@@ -34,13 +34,17 @@ export enum BalanceTransactionType {
 }
 
 /**
- * Repository for player balance management
- * Uses 3 decimal precision (e.g., 1.500, 0.200)
+ * Balance Repository
  *
- * Handles:
- * - Balance queries and updates
- * - Transaction logging
- * - Balance transfers
+ * Manages player currency balances and their full audit trail:
+ * - Reads balances in raw, decimal, and formatted forms
+ * - Adds, deducts, and sets balances within atomic DB transactions
+ * - Transfers funds between two players atomically
+ * - Logs every mutation to the transaction history table
+ * - Exposes privileged admin operations that also write to the admin audit log
+ *
+ * NOTE: Balances are stored as bigint with 3 implicit decimal places
+ * (e.g. 1500n represents $1.500). Use BalanceUtils for all conversions.
  */
 export class BalanceRepository {
   constructor() {}
@@ -71,19 +75,24 @@ export class BalanceRepository {
    * Records a balance transaction to the audit trail
    *
    * @param data - Transaction details including amounts, type, and optional metadata
+   * @param txOverride - Optional transaction context to use instead of the default db instance
    * @private
    */
-  private async logTransaction(data: {
-    playerMinecraftUuid: string;
-    amount: bigint;
-    balanceBefore: bigint;
-    balanceAfter: bigint;
-    transactionType: string;
-    description?: string;
-    relatedPlayerUuid?: string;
-    metadata?: Record<string, unknown>;
-  }): Promise<void> {
-    await db.player.balance.transaction.create({
+  private async logTransaction(
+    data: {
+      playerMinecraftUuid: string;
+      amount: bigint;
+      balanceBefore: bigint;
+      balanceAfter: bigint;
+      transactionType: string;
+      description?: string;
+      relatedPlayerUuid?: string;
+      metadata?: Record<string, unknown>;
+    },
+    txOverride?: DatabaseQueries,
+  ): Promise<void> {
+    const dbInstance = txOverride ?? db;
+    await dbInstance.player.balance.transaction.create({
       playerMinecraftUuid: data.playerMinecraftUuid,
       amount: data.amount,
       balanceBefore: data.balanceBefore,
@@ -115,7 +124,10 @@ export class BalanceRepository {
   }
 
   /**
-   * Gets balance amount as decimal
+   * Gets balance amount as a decimal number
+   *
+   * @param identifier - Player identifier
+   * @returns Balance as a floating-point decimal (e.g. 1.5)
    *
    * @example
    * const amount = await balanceRepo.getAmount(player) // 1.5
@@ -129,7 +141,11 @@ export class BalanceRepository {
   }
 
   /**
-   * Gets formatted balance string (3 decimals)
+   * Gets balance formatted as a fixed-decimal string
+   *
+   * @param identifier - Player identifier
+   * @param decimals - Number of decimal places to show (default: 3)
+   * @returns Formatted balance string (e.g. "1.500")
    *
    * @example
    * await balanceRepo.getFormatted(player) // "1.500"
@@ -146,7 +162,10 @@ export class BalanceRepository {
   }
 
   /**
-   * Gets formatted balance with auto-trimmed zeros
+   * Gets balance formatted as a string with trailing zeros removed
+   *
+   * @param identifier - Player identifier
+   * @returns Trimmed balance string (e.g. "1.5" instead of "1.500")
    *
    * @example
    * await balanceRepo.getFormattedTrimmed(player) // "1.5" (instead of "1.500")
@@ -173,7 +192,11 @@ export class BalanceRepository {
   }
 
   /**
-   * Checks if player has sufficient balance
+   * Checks if a player has sufficient balance for a given amount
+   *
+   * @param identifier - Player identifier
+   * @param amount - Required amount as a decimal (e.g. 0.200)
+   * @returns True if the player's balance is greater than or equal to the required amount
    *
    * @example
    * if (await balanceRepo.hasSufficient(player, 0.200)) {
@@ -263,6 +286,8 @@ export class BalanceRepository {
     reason: string,
     type: BalanceTransactionType,
     metadata?: Record<string, unknown>,
+    /** Optional outer transaction context; if provided the operation joins it instead of creating its own */
+    txOverride?: DatabaseQueries,
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -272,7 +297,7 @@ export class BalanceRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
-    return await db.inTransaction(async (tx) => {
+    return await (txOverride ?? db).inTransaction(async (tx) => {
       const current = await tx.player.balance.get({ minecraftUuid: uuid });
 
       if (BalanceUtils.wouldOverflow(current.balance, amount)) {
@@ -286,15 +311,18 @@ export class BalanceRepository {
         { balance: newBalance },
       );
 
-      await this.logTransaction({
-        playerMinecraftUuid: uuid,
-        amount: amountBigInt,
-        balanceBefore: current.balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata,
-      });
+      await this.logTransaction(
+        {
+          playerMinecraftUuid: uuid,
+          amount: amountBigInt,
+          balanceBefore: current.balance,
+          balanceAfter: newBalance,
+          transactionType: type,
+          description: reason,
+          metadata,
+        },
+        tx,
+      );
 
       return BalanceUtils.fromStorage(newBalance);
     });
@@ -320,6 +348,8 @@ export class BalanceRepository {
     reason: string,
     type: BalanceTransactionType,
     metadata?: Record<string, unknown>,
+    /** Optional outer transaction context; if provided the operation joins it instead of creating its own */
+    txOverride?: DatabaseQueries,
   ): Promise<number> {
     if (amount <= 0) {
       throw new Error("Amount must be positive");
@@ -329,7 +359,7 @@ export class BalanceRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const amountBigInt = BalanceUtils.toStorage(amount);
 
-    return await db.inTransaction(async (tx) => {
+    return await (txOverride ?? db).inTransaction(async (tx) => {
       const current = await tx.player.balance.get({ minecraftUuid: uuid });
 
       if (current.balance < amountBigInt) {
@@ -345,15 +375,18 @@ export class BalanceRepository {
         { balance: newBalance },
       );
 
-      await this.logTransaction({
-        playerMinecraftUuid: uuid,
-        amount: -amountBigInt,
-        balanceBefore: current.balance,
-        balanceAfter: newBalance,
-        transactionType: type,
-        description: reason,
-        metadata,
-      });
+      await this.logTransaction(
+        {
+          playerMinecraftUuid: uuid,
+          amount: -amountBigInt,
+          balanceBefore: current.balance,
+          balanceAfter: newBalance,
+          transactionType: type,
+          description: reason,
+          metadata,
+        },
+        tx,
+      );
 
       return BalanceUtils.fromStorage(newBalance);
     });
@@ -388,6 +421,7 @@ export class BalanceRepository {
       const current = await tx.player.balance.get({
         minecraftUuid: uuid,
       });
+      // Compute the net delta so the transaction log records the signed change, not the new absolute value
       const difference = amountBigInt - current.balance;
 
       await tx.player.balance.update(
