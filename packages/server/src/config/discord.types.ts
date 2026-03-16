@@ -31,6 +31,7 @@ interface MemberRolesConfig {
   readonly cogsAndSteam: string;
   readonly verified: string;
   readonly cogsAndSteamnotifications: string;
+  readonly cryptonotifications: string;
   readonly unverified: string;
 }
 
@@ -89,6 +90,7 @@ interface ChannelConfig {
 
   readonly crypto: {
     readonly news: string;
+    readonly discussion: string;
   };
 }
 

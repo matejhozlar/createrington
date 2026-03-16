@@ -180,11 +180,51 @@ function AppContent() {
         </Route>
 
         {/* Market Routes */}
-        <Route path="/market" element={<ComingSoon title="Market" description="The market dashboard is currently under development." />} />
-        <Route path="/marketplace" element={<ComingSoon title="Marketplace" description="The marketplace is currently under development." />} />
-        <Route path="/market/companies" element={<ComingSoon title="Companies" description="The companies page is currently under development." />} />
-        <Route path="/market/shops" element={<ComingSoon title="Shops" description="The shops page is currently under development." />} />
-        <Route path="/market/requests" element={<ComingSoon title="Requests" description="The requests page is currently under development." />} />
+        <Route
+          path="/market"
+          element={
+            <ComingSoon
+              title="Market"
+              description="The market dashboard is currently under development."
+            />
+          }
+        />
+        <Route
+          path="/marketplace"
+          element={
+            <ComingSoon
+              title="Marketplace"
+              description="The marketplace is currently under development."
+            />
+          }
+        />
+        <Route
+          path="/market/companies"
+          element={
+            <ComingSoon
+              title="Companies"
+              description="The companies page is currently under development."
+            />
+          }
+        />
+        <Route
+          path="/market/shops"
+          element={
+            <ComingSoon
+              title="Shops"
+              description="The shops page is currently under development."
+            />
+          }
+        />
+        <Route
+          path="/market/requests"
+          element={
+            <ComingSoon
+              title="Requests"
+              description="The requests page is currently under development."
+            />
+          }
+        />
 
         {/* Protected Routes */}
         <Route
