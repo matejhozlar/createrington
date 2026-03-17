@@ -7,7 +7,13 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Coins, MessageCircleQuestion, Paintbrush, Timer } from "lucide-react";
+import {
+  Coins,
+  MessageCircleQuestion,
+  Package,
+  Paintbrush,
+  Timer,
+} from "lucide-react";
 
 const tools = [
   {
@@ -30,6 +36,13 @@ const tools = [
       "Configure scheduled rotating messages sent to Discord channels on a timer.",
     icon: Timer,
     href: "/admin/tools/auto-messages",
+  },
+  {
+    title: "Modpack Changelog",
+    description:
+      "Compose and send modpack update changelogs to the Discord notifications channel.",
+    icon: Package,
+    href: "/admin/tools/changelog",
   },
   {
     title: "Crypto Market",

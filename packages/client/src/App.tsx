@@ -44,6 +44,7 @@ import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
+import { ModpackChangelog } from "./features/admin/tools/changelog/ModpackChangelog";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { Footer } from "./components/footer";
@@ -276,6 +277,10 @@ function AppContent() {
                   <Route
                     path="tools/auto-messages"
                     element={<AutoMessages />}
+                  />
+                  <Route
+                    path="tools/changelog"
+                    element={<ModpackChangelog />}
                   />
                   <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="logs" element={<AdminLogs />} />
