@@ -212,6 +212,10 @@ const config = {
     },
   },
 
+  curseforge: {
+    apiKey: env.CURSEFORGE_API_KEY,
+  },
+
   email: {
     host: env.EMAIL_HOST,
     port: env.EMAIL_PORT,
