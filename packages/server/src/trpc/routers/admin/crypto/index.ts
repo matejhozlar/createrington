@@ -6,6 +6,14 @@ import type { MarketEventType } from "@/services/crypto/events/event-definitions
 import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
 import { trpcError } from "@/trpc/utils";
 
+function serializeToken(token: Record<string, unknown>) {
+  return {
+    ...token,
+    totalSupply: String(token.totalSupply),
+    availableSupply: String(token.availableSupply),
+  };
+}
+
 /** Admin crypto router — token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
   availableMemecoins: adminProcedure
@@ -59,7 +67,7 @@ export const adminCryptoRouter = router({
         delistedAt: input.delistedAt ? new Date(input.delistedAt) : undefined,
       });
 
-      return { token };
+      return { token: serializeToken(token) };
     }),
 
   updateToken: adminProcedure
@@ -92,7 +100,7 @@ export const adminCryptoRouter = router({
       await Q.crypto.token.update({ id }, updateData);
       const token = await Q.crypto.token.get({ id });
 
-      return { token };
+      return { token: serializeToken(token) };
     }),
 
   delistToken: adminProcedure
