@@ -16,12 +16,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Scrape Discord entities and deploy commands
+      - name: Scrape Discord entities, generate types, and deploy commands
         run: |
           set -a
           source /opt/createrington/.env
           set +a
           pnpm scrape-discord
+          pnpm generate:ci
           pnpm deploy-commands
 
       - name: Build
