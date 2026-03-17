@@ -1,35 +1,40 @@
-/** Environment in which a command should be deployed and loaded */
+/**
+ * Environment in which a command should be deployed and loaded.
+ * - "prod" — deploy and load in all environments
+ * - "both" — same as "prod"
+ * - "dev"  — skip deployment and loading (WIP/experimental commands)
+ */
 export type CommandEnv = "dev" | "prod" | "both";
 
 /** Registry mapping command names to their deployment environment */
 export const commandRegistry: Record<string, CommandEnv> = {
   // Public
-  verify: "both",
-  register: "both",
+  verify: "prod",
+  register: "prod",
 
   // User
-  ping: "both",
-  money: "both",
-  daily: "both",
-  pay: "both",
-  lottery: "both",
-  playtime: "both",
-  seen: "both",
-  skin: "both",
-  coinflip: "both",
-  compare: "both",
-  status: "both",
-  history: "both",
-  list: "both",
-  username: "both",
-  crypto: "both",
+  ping: "prod",
+  money: "prod",
+  daily: "prod",
+  pay: "prod",
+  lottery: "prod",
+  playtime: "prod",
+  seen: "prod",
+  skin: "prod",
+  coinflip: "prod",
+  compare: "prod",
+  status: "prod",
+  history: "prod",
+  list: "prod",
+  username: "prod",
+  crypto: "prod",
 
   // Admin
-  leaderboard: "both",
-  ticket: "both",
-  cooldown: "both",
-  purge: "both",
-  message: "both",
-  "ticket-panel": "both",
-  "server-panel": "both",
+  leaderboard: "prod",
+  ticket: "prod",
+  cooldown: "prod",
+  purge: "prod",
+  message: "prod",
+  "ticket-panel": "prod",
+  "server-panel": "prod",
 };
