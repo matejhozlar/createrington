@@ -68,9 +68,24 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
     LIMIT 1`;
 
     try {
-      const result = await this.db.query(query, [discordId]);
+      const result = await this.db.query<{
+        id: number;
+        discord_id: string;
+        minecraft_uuid: string;
+        minecraft_username: string;
+        notification_message_id: string | null;
+        departed_at: Date;
+      }>(query, [discordId]);
       if (result.rows.length === 0) return null;
-      return this.mapRowsToEntities(result.rows[0])[0] ?? null;
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        discordId: row.discord_id,
+        minecraftUuid: row.minecraft_uuid,
+        minecraftUsername: row.minecraft_username,
+        notificationMessageId: row.notification_message_id,
+        departedAt: row.departed_at,
+      };
     } catch (error) {
       logger.error("Error fetching active departure record:", error);
       throw error;
@@ -101,7 +116,7 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
 
     try {
       const result = await this.db.query(query);
-      return result.rows.flatMap((row) => this.mapRowsToEntities(row));
+      return this.mapRowsToEntities(result.rows);
     } catch (error) {
       logger.error("Error fetching expired members:", error);
       throw error;

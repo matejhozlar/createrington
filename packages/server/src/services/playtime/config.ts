@@ -26,20 +26,6 @@ export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
     ip: config.servers.cogs.ip,
     port: config.servers.cogs.port,
   },
-
-  // [config.servers.test.ip]: {
-  //   serverId: config.servers.test.id,
-  //   serverName: config.servers.test.name,
-  //   ip: config.servers.test.ip,
-  //   port: config.servers.test.port,
-  // },
-
-  // "192.168.1.101": {
-  //   serverId: 2,
-  //   serverName: "Creative Server",
-  //   ip: "192.168.1.101",
-  //   port: 25566,
-  // },
 };
 
 /**
@@ -66,20 +52,6 @@ export const MINECRAFT_SERVERS: Record<number, ServerConfig> = {
     port: config.servers.cogs.port,
     maxPlayers: 20,
   },
-
-  // [config.servers.test.id]: {
-  //   id: config.servers.test.id,
-  //   name: config.servers.test.name,
-  //   ip: config.servers.test.ip,
-  //   port: config.servers.test.port,
-  // },
-
-  // 2: {
-  //   id: 2,
-  //   name: "Creative Server",
-  //   ip: "192.168.1.101",
-  //   port: 25566,
-  // },
 };
 
 /**

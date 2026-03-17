@@ -109,8 +109,6 @@ const envSchema = z.object({
   // Minecraft Servers
   COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),
   COGS_AND_STEAM_SERVER_PORT: port("Cogs and Steam server port"),
-  TEST_SERVER_IP: ipv4("Test server IP"),
-  TEST_SERVER_PORT: port("Test server port"),
   LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP"),
   PLAYER_LIMIT: z.coerce
     .number()
@@ -124,12 +122,6 @@ const envSchema = z.object({
     .string()
     .min(1, "RCON password is required")
     .max(100, "RCON password is too long"),
-  TEST_RCON_PORT: port("Test RCON port"),
-  TEST_RCON_PASSWORD: z
-    .string()
-    .min(1, "RCON password is required")
-    .max(100, "RCON password is too long"),
-
   // URLs
   WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
   ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),

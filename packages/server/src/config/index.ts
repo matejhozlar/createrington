@@ -202,17 +202,6 @@ const config = {
         statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH,
       },
     },
-    test: {
-      ip: env.TEST_SERVER_IP,
-      port: env.TEST_SERVER_PORT,
-      name: "Test Server",
-      id: 2,
-      rcon: {
-        host: env.TEST_SERVER_IP,
-        port: env.TEST_RCON_PORT,
-        password: env.TEST_RCON_PASSWORD,
-      },
-    },
     playerLimit: env.PLAYER_LIMIT,
   },
 
