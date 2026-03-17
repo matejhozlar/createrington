@@ -944,9 +944,7 @@ export class MinecraftRconManager {
         );
         failures.push({ serverId, serverName, error: result.error! });
       } else {
-        logger.info(
-          `[${serverName}] Successfully ${operation} ${playerName}`,
-        );
+        logger.info(`[${serverName}] Successfully ${operation} ${playerName}`);
       }
     }
 

@@ -26,7 +26,6 @@ export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
     ip: config.servers.cogs.ip,
     port: config.servers.cogs.port,
   },
-
 };
 
 /**
@@ -53,7 +52,6 @@ export const MINECRAFT_SERVERS: Record<number, ServerConfig> = {
     port: config.servers.cogs.port,
     maxPlayers: 20,
   },
-
 };
 
 /**
