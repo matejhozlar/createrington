@@ -52,11 +52,6 @@ interface ChannelConfig {
     readonly botSpam: string;
   };
 
-  readonly uncategorized: {
-    readonly chat: string;
-    readonly minecraftChat: string;
-  };
-
   readonly serverStats: {
     readonly bots: string;
     readonly members: string;
@@ -90,6 +85,7 @@ interface ChannelConfig {
     readonly createrington: string;
     readonly createringtonCurrency: string;
   };
+
 }
 
 interface CategoriesConfig {
