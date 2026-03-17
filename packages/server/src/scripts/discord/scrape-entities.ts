@@ -178,9 +178,9 @@ async function scrapeDiscordEntities(): Promise<void> {
     // Group channels by category
     const channelsByCategory = new Map<string, any[]>();
 
-    // Include both text channels (0) and voice channels (2)
+    // Include text (0), voice (2), and announcement (5) channels
     const channels = guild.channels.cache.filter(
-      (channel) => channel.type === 0 || channel.type === 2,
+      (channel) => channel.type === 0 || channel.type === 2 || channel.type === 5,
     );
 
     for (const channel of channels.values()) {
