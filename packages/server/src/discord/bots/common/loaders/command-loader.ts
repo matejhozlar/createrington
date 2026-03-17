@@ -61,11 +61,10 @@ function shouldLoadCommand(commandName: string): boolean {
     return true;
   }
 
-  if (env === "both") return true;
-  if (env === "dev" && isDev) return true;
-  if (env === "prod" && !isDev) return true;
-
-  return false;
+  // In development, load everything (including WIP commands)
+  // In production, skip dev-only commands
+  if (isDev) return true;
+  return env !== "dev";
 }
 
 /**

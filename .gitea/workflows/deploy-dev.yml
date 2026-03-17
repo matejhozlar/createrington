@@ -1,8 +1,8 @@
 name: Deploy Dev
 
 on:
-  # push:
-  #   branches: [dev]
+  push:
+    branches: [dev]
   workflow_dispatch:
     inputs:
       reset_db:
@@ -25,6 +25,16 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Generate types and deploy commands
+        run: |
+          set -a
+          source /opt/createrington-dev/.env
+          set +a
+          export DB_HOST=infra-postgres
+          export DB_PORT=5432
+          pnpm generate:ci
+          pnpm deploy-commands
 
       - name: Build
         run: VITE_API_URL=https://dev.create-rington.com pnpm build

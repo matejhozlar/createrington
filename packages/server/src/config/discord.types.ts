@@ -36,20 +36,20 @@ interface MemberRolesConfig {
 }
 
 interface ChannelConfig {
-  readonly createringtonOfficial: {
-    readonly welcome: string;
-    readonly support: string;
-    readonly rules: string;
-    readonly download: string;
-    readonly roles: string;
+  readonly administration: {
+    readonly chat: string;
+    readonly test: string;
+    readonly communityUpdates: string;
+    readonly transcripts: string;
+    readonly notifications: string;
   };
 
-  readonly administration: {
-    readonly notifications: string;
-    readonly transcripts: string;
-    readonly communityUpdates: string;
-    readonly test: string;
-    readonly chat: string;
+  readonly general: {
+    readonly hallOfFame: string;
+    readonly commands: string;
+    readonly leaderboards: string;
+    readonly questions: string;
+    readonly botSpam: string;
   };
 
   readonly serverStats: {
@@ -58,48 +58,45 @@ interface ChannelConfig {
     readonly allMembers: string;
   };
 
-  readonly general: {
-    readonly hallOfFame: string;
-    readonly botSpam: string;
-    readonly leaderboards: string;
-    readonly commands: string;
-    readonly questions: string;
-  };
-
   readonly cogsAndSteam: {
-    readonly chat: string;
     readonly notifications: string;
+    readonly serverPics: string;
+    readonly chat: string;
     readonly minecraftChat: string;
   };
 
-  readonly dev: {
-    readonly createringtonKubejs: string;
-    readonly createrington: string;
-    readonly chat: string;
-    readonly createringtonCurrency: string;
-  };
-
-  readonly textChannels: {
-    readonly general: string;
+  readonly createringtonOfficial: {
+    readonly download: string;
+    readonly support: string;
+    readonly announcements: string;
+    readonly roles: string;
+    readonly rules: string;
+    readonly welcome: string;
   };
 
   readonly crypto: {
-    readonly news: string;
     readonly discussion: string;
+    readonly news: string;
+  };
+
+  readonly dev: {
+    readonly chat: string;
+    readonly createringtonKubejs: string;
+    readonly createrington: string;
+    readonly createringtonCurrency: string;
   };
 }
 
 interface CategoriesConfig {
+  readonly crypto: string;
   readonly createringtonOfficial: string;
+  readonly administration: string;
+  readonly verification: string;
+  readonly dev: string;
+  readonly serverStats: string;
   readonly general: string;
   readonly tickets: string;
-  readonly verification: string;
-  readonly serverStats: string;
-  readonly textChannels: string;
   readonly cogsAndSteam: string;
-  readonly administration: string;
-  readonly dev: string;
-  readonly crypto: string;
 }
 
 export type { MemberRolesConfig, ChannelConfig, CategoriesConfig };

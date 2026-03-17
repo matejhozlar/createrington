@@ -1,4 +1,9 @@
-/** Environment in which a command should be deployed and loaded */
+/**
+ * Environment in which a command should be deployed and loaded.
+ * - "prod" — deploy and load in all environments
+ * - "both" — same as "prod"
+ * - "dev"  — skip deployment and loading (WIP/experimental commands)
+ */
 export type CommandEnv = "dev" | "prod" | "both";
 
 /** Registry mapping command names to their deployment environment */
