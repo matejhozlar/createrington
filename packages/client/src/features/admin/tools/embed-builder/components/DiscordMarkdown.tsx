@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
  *   # / ## / ### heading — heading (Discord supports up to h3 in embeds)
  *   - item / * item     — unordered list
  *   1. item              — ordered list
+ *     - sub item         — nested list (indent 2+ spaces)
  */
 
 // ── Inline parsing ──────────────────────────────────────────────────────
@@ -228,34 +229,78 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
       continue;
     }
 
-    // Unordered list: - item or * item (collect consecutive lines)
+    // Unordered list: - item or * item (collect consecutive lines, with optional nested sub-items)
     if (/^[-*]\s+/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^[-*]\s+/, ""));
-        i++;
+      const items: { text: string; subItems: string[] }[] = [];
+      while (i < lines.length) {
+        if (/^[-*]\s+/.test(lines[i])) {
+          items.push({
+            text: lines[i].replace(/^[-*]\s+/, ""),
+            subItems: [],
+          });
+          i++;
+          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lines[i])) {
+            items[items.length - 1].subItems.push(
+              lines[i].replace(/^\s{2,}[-*]\s+/, ""),
+            );
+            i++;
+          }
+        } else {
+          break;
+        }
       }
       blocks.push(
         <ul key={blocks.length} className="my-0.5 list-disc pl-6">
           {items.map((item, j) => (
-            <li key={j}>{renderInline(item)}</li>
+            <li key={j}>
+              {renderInline(item.text)}
+              {item.subItems.length > 0 && (
+                <ul className="my-0.5 list-disc pl-6">
+                  {item.subItems.map((sub, k) => (
+                    <li key={k}>{renderInline(sub)}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
           ))}
         </ul>,
       );
       continue;
     }
 
-    // Ordered list: 1. item, 2. item, etc. (collect consecutive lines)
+    // Ordered list: 1. item, 2. item, etc. (with optional nested sub-items)
     if (/^\d+\.\s+/.test(line)) {
-      const items: string[] = [];
-      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
-        items.push(lines[i].replace(/^\d+\.\s+/, ""));
-        i++;
+      const items: { text: string; subItems: string[] }[] = [];
+      while (i < lines.length) {
+        if (/^\d+\.\s+/.test(lines[i])) {
+          items.push({
+            text: lines[i].replace(/^\d+\.\s+/, ""),
+            subItems: [],
+          });
+          i++;
+          while (i < lines.length && /^\s{2,}[-*]\s+/.test(lines[i])) {
+            items[items.length - 1].subItems.push(
+              lines[i].replace(/^\s{2,}[-*]\s+/, ""),
+            );
+            i++;
+          }
+        } else {
+          break;
+        }
       }
       blocks.push(
         <ol key={blocks.length} className="my-0.5 list-decimal pl-6">
           {items.map((item, j) => (
-            <li key={j}>{renderInline(item)}</li>
+            <li key={j}>
+              {renderInline(item.text)}
+              {item.subItems.length > 0 && (
+                <ul className="my-0.5 list-disc pl-6">
+                  {item.subItems.map((sub, k) => (
+                    <li key={k}>{renderInline(sub)}</li>
+                  ))}
+                </ul>
+              )}
+            </li>
           ))}
         </ol>,
       );
