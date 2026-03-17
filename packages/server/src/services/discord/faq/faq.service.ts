@@ -11,7 +11,7 @@ interface CompiledPattern {
 }
 
 /** Delay before reposting the welcome message after channel activity */
-const REPOST_DELAY_MS = 30_000;
+const REPOST_DELAY_MS = 5 * 60_000;
 
 /**
  * Discord FAQ Auto-Reply Service

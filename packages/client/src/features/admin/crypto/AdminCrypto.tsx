@@ -63,8 +63,6 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 const CATEGORY_OPTIONS = [
-  { value: "stable", label: "Stable" },
-  { value: "blue_chip", label: "Blue Chip" },
   { value: "memecoin", label: "Memecoin" },
   { value: "seasonal", label: "Seasonal" },
 ] as const;
@@ -179,20 +177,28 @@ function StatCard({
 
 function CreateTokenDialog() {
   const [open, setOpen] = useState(false);
+  const [category, setCategory] = useState<"memecoin" | "seasonal">("memecoin");
+  const [selectedSymbol, setSelectedSymbol] = useState("");
   const [name, setName] = useState("");
   const [symbol, setSymbol] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("memecoin");
-  const [totalSupply, setTotalSupply] = useState("1000000");
+  const [totalSupply, setTotalSupply] = useState("10000");
   const [price, setPrice] = useState("1.00");
   const [floorPrice, setFloorPrice] = useState("");
   const toast = useToastActions();
   const utils = trpc.useUtils();
 
+  const catalogQuery = trpc.admin.crypto.availableMemecoins.useQuery(
+    undefined,
+    { enabled: open },
+  );
+  const catalog = catalogQuery.data ?? [];
+
   const createMutation = trpc.admin.crypto.createToken.useMutation({
     onSuccess: (data) => {
       toast.success(`Created ${data.token.symbol}`);
       utils.admin.crypto.marketStats.invalidate();
+      utils.admin.crypto.availableMemecoins.invalidate();
       utils.public.crypto.list.invalidate();
       setOpen(false);
       resetForm();
@@ -201,13 +207,24 @@ function CreateTokenDialog() {
   });
 
   function resetForm() {
+    setCategory("memecoin");
+    setSelectedSymbol("");
     setName("");
     setSymbol("");
     setDescription("");
-    setCategory("memecoin");
-    setTotalSupply("1000000");
+    setTotalSupply("10000");
     setPrice("1.00");
     setFloorPrice("");
+  }
+
+  function handleCatalogSelect(sym: string) {
+    setSelectedSymbol(sym);
+    const entry = catalog.find((m) => m.symbol === sym);
+    if (entry) {
+      setName(entry.name);
+      setSymbol(entry.symbol);
+      setDescription(entry.description);
+    }
   }
 
   function handleCreate() {
@@ -215,7 +232,7 @@ function CreateTokenDialog() {
       name,
       symbol,
       description: description || undefined,
-      category: category as "stable" | "blue_chip" | "memecoin" | "seasonal",
+      category,
       totalSupply: Number(totalSupply),
       price: Number(price),
       floorPrice: floorPrice ? Number(floorPrice) : undefined,
@@ -227,6 +244,8 @@ function CreateTokenDialog() {
     symbol.length > 0 &&
     Number(price) > 0 &&
     Number(totalSupply) > 0;
+
+  const isMemecoin = category === "memecoin";
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -240,56 +259,105 @@ function CreateTokenDialog() {
         <DialogHeader>
           <DialogTitle>Create Token</DialogTitle>
           <DialogDescription>
-            Add a new token to the exchange.
+            {isMemecoin
+              ? "Pick a memecoin from the catalog."
+              : "Create a seasonal token."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="token-name">Name</Label>
-              <Input
-                id="token-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="DogeCoin"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="token-symbol">Symbol</Label>
-              <Input
-                id="token-symbol"
-                value={symbol}
-                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                placeholder="DOGE"
-                maxLength={10}
-              />
-            </div>
-          </div>
           <div className="space-y-1.5">
-            <Label htmlFor="token-description">Description</Label>
-            <Input
-              id="token-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description..."
-            />
+            <Label>Category</Label>
+            <Select
+              value={category}
+              onValueChange={(v) => {
+                setCategory(v as "memecoin" | "seasonal");
+                setSelectedSymbol("");
+                setName("");
+                setSymbol("");
+                setDescription("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {isMemecoin ? (
             <div className="space-y-1.5">
-              <Label>Category</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Label>Memecoin</Label>
+              <Select
+                value={selectedSymbol}
+                onValueChange={handleCatalogSelect}
+              >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select a memecoin..." />
                 </SelectTrigger>
-                <SelectContent>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+                <SelectContent className="max-h-60">
+                  {catalog.map((m) => (
+                    <SelectItem key={m.symbol} value={m.symbol}>
+                      {m.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({m.symbol})
+                      </span>
                     </SelectItem>
                   ))}
+                  {catalog.length === 0 && (
+                    <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                      {catalogQuery.isLoading
+                        ? "Loading..."
+                        : "No available memecoins"}
+                    </p>
+                  )}
                 </SelectContent>
               </Select>
+              {selectedSymbol && (
+                <p className="text-xs text-muted-foreground">{description}</p>
+              )}
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="token-name">Name</Label>
+                  <Input
+                    id="token-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Spring Token"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="token-symbol">Symbol</Label>
+                  <Input
+                    id="token-symbol"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                    placeholder="SPR"
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="token-description">Description</Label>
+                <Input
+                  id="token-description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Optional description..."
+                />
+              </div>
+            </>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="token-supply">Total Supply</Label>
               <Input
@@ -300,8 +368,6 @@ function CreateTokenDialog() {
                 min={1}
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="token-price">Starting Price ($)</Label>
               <Input
@@ -313,18 +379,18 @@ function CreateTokenDialog() {
                 step="0.01"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="token-floor">Floor Price ($)</Label>
-              <Input
-                id="token-floor"
-                type="number"
-                value={floorPrice}
-                onChange={(e) => setFloorPrice(e.target.value)}
-                min={0}
-                step="0.01"
-                placeholder="Optional"
-              />
-            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="token-floor">Floor Price ($)</Label>
+            <Input
+              id="token-floor"
+              type="number"
+              value={floorPrice}
+              onChange={(e) => setFloorPrice(e.target.value)}
+              min={0}
+              step="0.01"
+              placeholder="Optional"
+            />
           </div>
         </div>
         <DialogFooter>

@@ -142,6 +142,60 @@ function formatDuration(ms: number): string {
   return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
 }
 
+/**
+ * Replace Discord timestamp syntax with readable text before markdown rendering.
+ * Mentions are resolved server-side in MessageCacheService.
+ */
+function processDiscordTimestamps(text: string): string {
+  return text.replace(
+    /<t:(\d+)(?::([tTdDfFR]))?>/g,
+    (_match, ts: string, style?: string) => {
+      const date = new Date(Number(ts) * 1000);
+      if (Number.isNaN(date.getTime())) return _match;
+      switch (style) {
+        case "R": {
+          const diffSec = Math.round((Date.now() - date.getTime()) / 1000);
+          const abs = Math.abs(diffSec);
+          const suffix = diffSec >= 0 ? "ago" : "from now";
+          if (abs < 60) return `just now`;
+          if (abs < 3600) return `${Math.floor(abs / 60)}m ${suffix}`;
+          if (abs < 86400) return `${Math.floor(abs / 3600)}h ${suffix}`;
+          return `${Math.floor(abs / 86400)}d ${suffix}`;
+        }
+        case "t":
+          return date.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        case "T":
+          return date.toLocaleTimeString();
+        case "d":
+          return date.toLocaleDateString();
+        case "D":
+          return date.toLocaleDateString([], {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        case "F":
+          return date.toLocaleDateString([], {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+        case "f":
+        default:
+          return date.toLocaleDateString([], {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+      }
+    },
+  );
+}
+
 // Resolve display name + avatar from a CachedMessage
 function resolveAuthor(message: CachedMessage) {
   const source = (message.source as MessageSource) ?? MessageSource.DISCORD;
@@ -389,7 +443,7 @@ function ChatMarkdown({
           ),
         }}
       >
-        {children}
+        {processDiscordTimestamps(children)}
       </ReactMarkdown>
     </div>
   );
@@ -686,7 +740,7 @@ function MessageRow({
         {message.embeds.map((embed, i) => (
           <div
             key={i}
-            className="mt-2 rounded-lg border border-border bg-card/60 p-3"
+            className="mt-2 overflow-hidden rounded-lg border border-border bg-card/60 p-3"
             style={{
               borderLeftWidth: "3px",
               borderLeftColor:
@@ -695,14 +749,90 @@ function MessageRow({
                   : "var(--sidebar-primary)",
             }}
           >
-            {embed.title && (
-              <ChatMarkdown variant="embed-title">{embed.title}</ChatMarkdown>
+            {embed.author && (
+              <div className="mb-1 flex items-center gap-1.5">
+                {embed.author.iconUrl && (
+                  <img
+                    src={embed.author.iconUrl}
+                    alt=""
+                    className="size-5 rounded-full object-cover"
+                  />
+                )}
+                <span className="text-sm font-semibold text-foreground">
+                  {embed.author.url ? (
+                    <a
+                      href={embed.author.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      {embed.author.name}
+                    </a>
+                  ) : (
+                    embed.author.name
+                  )}
+                </span>
+              </div>
             )}
-            {embed.description && (
-              <div className={embed.title ? "mt-1" : ""}>
-                <ChatMarkdown variant="embed-body">
-                  {embed.description}
-                </ChatMarkdown>
+
+            <div className="flex gap-4">
+              <div className="min-w-0 flex-1">
+                {embed.title && (
+                  <ChatMarkdown variant="embed-title">
+                    {embed.title}
+                  </ChatMarkdown>
+                )}
+                {embed.description && (
+                  <div className={embed.title ? "mt-1" : ""}>
+                    <ChatMarkdown variant="embed-body">
+                      {embed.description}
+                    </ChatMarkdown>
+                  </div>
+                )}
+
+                {embed.fields && embed.fields.length > 0 && (
+                  <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
+                    {embed.fields.map((field, j) => (
+                      <div key={j} className={field.inline ? "" : "col-span-3"}>
+                        <div className="text-xs font-semibold text-foreground">
+                          {field.name}
+                        </div>
+                        <ChatMarkdown variant="embed-body">
+                          {field.value}
+                        </ChatMarkdown>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {embed.thumbnail && (
+                <img
+                  src={embed.thumbnail.url}
+                  alt=""
+                  className="size-16 shrink-0 rounded object-cover"
+                />
+              )}
+            </div>
+
+            {embed.image && (
+              <img
+                src={embed.image.url}
+                alt=""
+                className="mt-2 max-h-64 max-w-sm rounded object-contain"
+              />
+            )}
+
+            {embed.footer && (
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                {embed.footer.iconUrl && (
+                  <img
+                    src={embed.footer.iconUrl}
+                    alt=""
+                    className="size-4 rounded-full"
+                  />
+                )}
+                <span>{embed.footer.text}</span>
               </div>
             )}
           </div>
