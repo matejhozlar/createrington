@@ -3,7 +3,7 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { BadRequestError, ConflictError } from "@/app/middleware";
 import { Discord } from "@/discord/constants";
-import { getService, Services } from "@/services/container";
+import { getService, Services } from "@/services";
 import config from "@/config";
 import type {
   ActiveLottery,
@@ -356,7 +356,7 @@ export class LotteryService {
           content: message,
         }),
       )
-      .catch((err) => {
+      .catch((err: unknown) => {
         logger.error("Failed to announce lottery to Discord:", err);
       });
   }
