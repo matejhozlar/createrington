@@ -31,6 +31,8 @@ jobs:
           set -a
           source /opt/createrington-dev/.env
           set +a
+          export DB_HOST=infra-postgres
+          export DB_PORT=5432
           pnpm generate:ci
           pnpm deploy-commands
 
