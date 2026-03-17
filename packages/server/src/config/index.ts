@@ -155,7 +155,7 @@ const config = {
     events: {
       onGuildMemberAdd: {
         welcome: {
-          channelId: "1446998934428848238",
+          channelId: discordEntities.channels.createringtonOfficial?.welcome,
           enabled: true,
           imageConfig: {
             backgroundColor: "#2C2F33",
@@ -167,7 +167,7 @@ const config = {
           },
         },
         autoRole: {
-          roleId: "1447307459449327616",
+          roleId: discordEntities.roles.unverified,
           enabled: true,
         },
       },
