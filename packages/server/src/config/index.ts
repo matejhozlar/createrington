@@ -54,10 +54,11 @@ const config = {
       discord: "matejhoz",
     },
     links: {
-      discordInvite: "https://discord.gg/7PAptNgqk2",
+      discordInvite: "https://discord.gg/mtF6MDHj4Z",
       website: env.WEBSITE_URL,
       adminPanel: env.ADMIN_PANEL_URL,
-      modpack: "https://www.curseforge.com/minecraft/modpacks/create-rington",
+      modpack:
+        "https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam",
       map: env.MAP_URL,
       assets: env.ASSETS_URL,
     },

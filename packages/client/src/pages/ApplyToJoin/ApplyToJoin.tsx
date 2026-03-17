@@ -135,7 +135,7 @@ export function ApplyToJoin() {
 
             <Button asChild className="w-full">
               <a
-                href="https://discord.gg/createrington"
+                href="https://discord.gg/mtF6MDHj4Z"
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -163,7 +163,7 @@ export function ApplyToJoin() {
 
           <Button asChild variant="outline" className="w-full">
             <a
-              href="https://discord.gg/createrington"
+              href="https://discord.gg/mtF6MDHj4Z"
               target="_blank"
               rel="noopener noreferrer"
             >
