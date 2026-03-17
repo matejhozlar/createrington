@@ -551,14 +551,21 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       if (typeof id === "string") {
         this.roleMap.set(
           id,
-          name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()),
+          name
+            .replace(/([a-z])([A-Z])/g, "$1 $2")
+            .replace(/^./, (c) => c.toUpperCase()),
         );
       }
     }
 
     for (const category of Object.values(config.discord.guild.channels)) {
-      for (const [name, id] of Object.entries(category as Record<string, string>)) {
-        this.channelMap.set(id, name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase());
+      for (const [name, id] of Object.entries(
+        category as Record<string, string>,
+      )) {
+        this.channelMap.set(
+          id,
+          name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase(),
+        );
       }
     }
 

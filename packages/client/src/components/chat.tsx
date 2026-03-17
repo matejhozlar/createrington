@@ -793,10 +793,7 @@ function MessageRow({
                 {embed.fields && embed.fields.length > 0 && (
                   <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
                     {embed.fields.map((field, j) => (
-                      <div
-                        key={j}
-                        className={field.inline ? "" : "col-span-3"}
-                      >
+                      <div key={j} className={field.inline ? "" : "col-span-3"}>
                         <div className="text-xs font-semibold text-foreground">
                           {field.name}
                         </div>
