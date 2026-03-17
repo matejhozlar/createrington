@@ -50,6 +50,36 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
   }
 
   /**
+   * Finds the active (non-deleted) departure record for a given Discord user
+   */
+  async findActive(
+    discordId: string,
+  ): Promise<{
+    id: number;
+    discordId: string;
+    minecraftUuid: string;
+    minecraftUsername: string;
+    notificationMessageId: string | null;
+    departedAt: Date;
+  } | null> {
+    const query = `
+    SELECT id, discord_id, minecraft_uuid, minecraft_username, notification_message_id, departed_at
+    FROM ${this.table}
+    WHERE discord_id = $1
+      AND deleted_at IS NULL
+    LIMIT 1`;
+
+    try {
+      const result = await this.db.query(query, [discordId]);
+      if (result.rows.length === 0) return null;
+      return this.mapRowsToEntities(result.rows[0])[0] ?? null;
+    } catch (error) {
+      logger.error("Error fetching active departure record:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Finds all members who departed more than 30 days ago
    * and haven't been deleted
    *

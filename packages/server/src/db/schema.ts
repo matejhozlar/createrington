@@ -241,7 +241,7 @@ export const discordGuildMemberLeave = pgTable(
   "discord_guild_member_leave",
   {
     id: serial("id").primaryKey(),
-    discordId: text("discord_id").notNull().unique(),
+    discordId: text("discord_id").notNull(),
     minecraftUuid: uuid("minecraft_uuid").notNull(),
     minecraftUsername: text("minecraft_username").notNull(),
     departedAt: timestamp("departed_at", { withTimezone: true })
