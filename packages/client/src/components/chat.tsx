@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useWebSocket } from "@/contexts/websocket";
 import { useServerData } from "@/contexts/server-data";
@@ -37,7 +29,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { messagesApi } from "@/services/api/user/messages";
-import { trpc } from "@/lib/trpc";
 
 // ============================================================================
 // Types & Helpers
@@ -76,14 +67,6 @@ const SOURCE_CONFIG: Record<MessageSource, SourceConfig> = {
     accentColor: "hsl(var(--chart-3))",
   },
 };
-
-interface DiscordResolver {
-  resolveUser: (id: string) => string | undefined;
-  resolveRole: (id: string) => string | undefined;
-  resolveChannel: (id: string) => string | undefined;
-}
-
-const DiscordResolverContext = createContext<DiscordResolver | null>(null);
 
 /**
  * Returns a `now` timestamp (ms) that updates every `intervalMs`.
@@ -160,15 +143,11 @@ function formatDuration(ms: number): string {
 }
 
 /**
- * Replace Discord-specific syntax with readable text before markdown rendering.
- * Handles timestamps (<t:unix:style>) and mention formats (<@id>, <#id>, <@&id>).
+ * Replace Discord timestamp syntax with readable text before markdown rendering.
+ * Mentions are resolved server-side in MessageCacheService.
  */
-function processDiscordSyntax(
-  text: string,
-  resolver?: DiscordResolver | null,
-): string {
-  // Discord timestamps: <t:1234567890:R>, <t:1234567890:f>, etc.
-  text = text.replace(
+function processDiscordTimestamps(text: string): string {
+  return text.replace(
     /<t:(\d+)(?::([tTdDfFR]))?>/g,
     (_match, ts: string, style?: string) => {
       const date = new Date(Number(ts) * 1000);
@@ -215,24 +194,6 @@ function processDiscordSyntax(
       }
     },
   );
-
-  // Discord user/member mentions: <@123456> or <@!123456>
-  text = text.replace(/<@!?(\d+)>/g, (_, id: string) => {
-    const name = resolver?.resolveUser(id);
-    return name ? `**@${name}**` : "`@user`";
-  });
-  // Discord channel mentions: <#123456>
-  text = text.replace(/<#(\d+)>/g, (_, id: string) => {
-    const name = resolver?.resolveChannel(id);
-    return name ? `**#${name}**` : "`#channel`";
-  });
-  // Discord role mentions: <@&123456>
-  text = text.replace(/<@&(\d+)>/g, (_, id: string) => {
-    const name = resolver?.resolveRole(id);
-    return name ? `**@${name}**` : "`@role`";
-  });
-
-  return text;
 }
 
 // Resolve display name + avatar from a CachedMessage
@@ -294,7 +255,6 @@ function ChatMarkdown({
   children: string;
   variant?: "body" | "embed-title" | "embed-body";
 }) {
-  const resolver = useContext(DiscordResolverContext);
   const isTitle = variant === "embed-title";
   const isEmbed = variant === "embed-body";
 
@@ -483,7 +443,7 @@ function ChatMarkdown({
           ),
         }}
       >
-        {processDiscordSyntax(children, resolver)}
+        {processDiscordTimestamps(children)}
       </ReactMarkdown>
     </div>
   );
@@ -1260,27 +1220,6 @@ export function ServerChat() {
   // without each MessageRow running its own independent interval
   const tick = useRelativeTick();
 
-  // Discord entity resolution for mentions
-  const entitiesQuery = trpc.public.discord.entities.useQuery(undefined, {
-    staleTime: Infinity,
-  });
-
-  const discordResolver = useMemo<DiscordResolver>(() => {
-    const userMap = new Map<string, string>();
-    for (const msg of messages) {
-      if (!userMap.has(msg.authorId)) {
-        userMap.set(msg.authorId, msg.authorDisplayname || msg.authorUsername);
-      }
-    }
-
-    const entities = entitiesQuery.data;
-    return {
-      resolveUser: (id) => userMap.get(id),
-      resolveRole: (id) => entities?.roles[id],
-      resolveChannel: (id) => entities?.channels[id],
-    };
-  }, [messages, entitiesQuery.data]);
-
   // Auto-expand the textarea as the user types multiline content
   useAutoResize(textareaRef, draft);
 
@@ -1508,7 +1447,6 @@ export function ServerChat() {
   }
 
   return (
-    <DiscordResolverContext.Provider value={discordResolver}>
     <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-card/50 md:h-screen select-none">
       {/* Player-list slide-over — only rendered on desktop (md+) */}
       {!isMobile && serverId && (
@@ -1714,6 +1652,5 @@ export function ServerChat() {
         </div>
       </div>
     </div>
-    </DiscordResolverContext.Provider>
   );
 }

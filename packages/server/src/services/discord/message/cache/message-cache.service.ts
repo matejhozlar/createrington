@@ -19,6 +19,8 @@ import type {
   TextChannel,
 } from "discord.js";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { Q } from "@/db";
+import config from "@/config";
 
 /**
  * Events emitted by MessageCacheService
@@ -65,6 +67,13 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   private isInitialized = false;
   private botUserId: string | null = null;
 
+  /** Discord ID → player username for mention resolution */
+  private userMap = new Map<string, string>();
+  /** Role ID → display name */
+  private roleMap = new Map<string, string>();
+  /** Channel ID → display name */
+  private channelMap = new Map<string, string>();
+
   constructor(
     private readonly bot: Client,
     private readonly config: MessageCacheServiceConfig,
@@ -101,6 +110,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       );
     }
 
+    await this.loadMentionMaps();
     this.setupEventListeners();
 
     if (this.config.loadHistoryOnStartup) {
@@ -525,6 +535,61 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   /**
+   * Loads player, role, and channel maps for mention resolution.
+   * Called once on init — roles/channels come from static config,
+   * users come from the player table.
+   */
+  private async loadMentionMaps(): Promise<void> {
+    const players = await Q.player.findAll(undefined, {
+      select: ["discordId", "minecraftUsername"],
+    });
+    for (const p of players) {
+      this.userMap.set(p.discordId, p.minecraftUsername);
+    }
+
+    for (const [name, id] of Object.entries(config.discord.guild.roles)) {
+      if (typeof id === "string") {
+        this.roleMap.set(
+          id,
+          name.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase()),
+        );
+      }
+    }
+
+    for (const category of Object.values(config.discord.guild.channels)) {
+      for (const [name, id] of Object.entries(category as Record<string, string>)) {
+        this.channelMap.set(id, name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase());
+      }
+    }
+
+    logger.info(
+      `Loaded mention maps: ${this.userMap.size} users, ${this.roleMap.size} roles, ${this.channelMap.size} channels`,
+    );
+  }
+
+  /**
+   * Replaces Discord mention syntax in text with resolved names.
+   */
+  private resolveMentions(text: string): string {
+    // User mentions: <@123456> or <@!123456>
+    text = text.replace(/<@!?(\d+)>/g, (match, id: string) => {
+      const name = this.userMap.get(id);
+      return name ? `@${name}` : match;
+    });
+    // Role mentions: <@&123456>
+    text = text.replace(/<@&(\d+)>/g, (match, id: string) => {
+      const name = this.roleMap.get(id);
+      return name ? `@${name}` : match;
+    });
+    // Channel mentions: <#123456>
+    text = text.replace(/<#(\d+)>/g, (match, id: string) => {
+      const name = this.channelMap.get(id);
+      return name ? `#${name}` : match;
+    });
+    return text;
+  }
+
+  /**
    * Converts a Discord message to a CachedMessage with full parsing
    *
    * @param message - Discord message
@@ -548,7 +613,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       authorTag: message.author.tag,
       authorDisplayname: message.author.displayName,
       authorAvatarUrl: message.author.displayAvatarURL({ size: 128 }),
-      content: message.content,
+      content: this.resolveMentions(message.content),
       createdAt: message.createdAt,
       editedAt: message.editedAt || undefined,
       attachments: this.parseAttachments(message.attachments),
