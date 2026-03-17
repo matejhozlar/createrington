@@ -10,6 +10,7 @@ import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { Q } from "@/db";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
+import { EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import {
   generateCustomWelcomeCard,
@@ -50,6 +51,57 @@ export async function execute(
     );
 
     logger.info(`Member ${member.user.tag} joined - Join #${joinNumber}`);
+
+    // Cancel any active departure record so the 30-day deletion doesn't fire
+    try {
+      const activeDeparture = await Q.discord.guild.member.leave.findActive(
+        member.user.id,
+      );
+
+      if (activeDeparture) {
+        await Q.discord.guild.member.leave.update(
+          { id: activeDeparture.id },
+          { deletedAt: new Date() },
+        );
+
+        logger.info(
+          `Cancelled departure record #${activeDeparture.id} for returning member ${member.user.tag}`,
+        );
+
+        // Update the admin notification embed
+        if (activeDeparture.notificationMessageId) {
+          try {
+            const result = await Discord.Messages.fetchMessage({
+              channelId: Discord.Channels.administration.NOTIFICATIONS,
+              messageId: activeDeparture.notificationMessageId,
+            });
+
+            if (result.success) {
+              const returnedEmbed = EmbedPresets.departed.returned({
+                minecraftUsername: activeDeparture.minecraftUsername,
+                departedAt: activeDeparture.departedAt,
+                returnedAt: new Date(),
+              });
+
+              await result.message.edit({
+                embeds: [returnedEmbed.build()],
+                components: [],
+              });
+            }
+          } catch (error) {
+            logger.warn(
+              `Could not update departure notification for ${activeDeparture.minecraftUsername}:`,
+              error,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      logger.error(
+        `Failed to cancel departure record for ${member.user.tag}:`,
+        error,
+      );
+    }
 
     const existingPlayer = await Q.player.exists({
       discordId: member.user.id,
