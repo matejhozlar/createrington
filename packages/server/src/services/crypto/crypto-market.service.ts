@@ -1193,7 +1193,7 @@ export class CryptoMarketService {
     // Auto-sell each holder's position at the final price
     for (const holding of holdings) {
       const amount = Number(holding.amount);
-      const revenue = amount * finalPrice;
+      const revenue = Math.floor(amount * finalPrice * 1000) / 1000;
 
       if (revenue > 0) {
         await R.balanceRepo.add(
