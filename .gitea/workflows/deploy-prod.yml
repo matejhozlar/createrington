@@ -16,12 +16,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Scrape Discord entities
+      - name: Scrape Discord entities and deploy commands
         run: |
           set -a
           source /opt/createrington/.env
           set +a
           pnpm scrape-discord
+          pnpm deploy-commands
 
       - name: Build
         run: VITE_API_URL=https://create-rington.com pnpm build
