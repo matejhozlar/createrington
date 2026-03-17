@@ -73,6 +73,7 @@ interface ChannelConfig {
   readonly createringtonOfficial: {
     readonly download: string;
     readonly support: string;
+    readonly announcements: string;
     readonly roles: string;
     readonly rules: string;
     readonly welcome: string;
@@ -89,7 +90,6 @@ interface ChannelConfig {
     readonly createrington: string;
     readonly createringtonCurrency: string;
   };
-
 }
 
 interface CategoriesConfig {
