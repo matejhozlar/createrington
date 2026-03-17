@@ -57,7 +57,8 @@ function shouldDeployCommand(commandName: string): boolean {
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
 
-  const ext = isDev ? ".ts" : ".js";
+  // Always scan .ts files — this script runs via tsx even in CI
+  const ext = ".ts";
   const files: string[] = [];
 
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
