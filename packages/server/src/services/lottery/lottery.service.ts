@@ -3,6 +3,7 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { BadRequestError, ConflictError } from "@/app/middleware";
 import { Discord } from "@/discord/constants";
+import { getService, Services } from "@/services/container";
 import config from "@/config";
 import type {
   ActiveLottery,
@@ -348,12 +349,16 @@ export class LotteryService {
    * @private
    */
   private announceToDiscord(message: string): void {
-    Discord.Messages.send({
-      channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
-      content: message,
-    }).catch((err) => {
-      logger.error("Failed to announce lottery to Discord:", err);
-    });
+    getService(Services.WEB_MESSAGE_SERVICE)
+      .then((webMessages) =>
+        webMessages.send({
+          channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
+          content: message,
+        }),
+      )
+      .catch((err) => {
+        logger.error("Failed to announce lottery to Discord:", err);
+      });
   }
 }
 
