@@ -6,7 +6,7 @@ import type { MarketEventType } from "@/services/crypto/events/event-definitions
 import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
 import { trpcError } from "@/trpc/utils";
 
-function serializeToken(token: Record<string, unknown>) {
+function serializeToken<T extends { totalSupply: bigint; availableSupply: bigint }>(token: T) {
   return {
     ...token,
     totalSupply: String(token.totalSupply),
