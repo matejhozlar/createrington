@@ -1,5 +1,6 @@
 import type { ServerStats, ServerStatsConfig } from "./types";
 import type { Client } from "discord.js";
+import config from "@/config";
 
 /**
  * Service for updating Discord server statistics in channel names
@@ -34,7 +35,16 @@ export class ServerStatsService {
    * @returns Promise resolving when the initialization is completed
    */
   async initialize(): Promise<void> {
-    logger.info("Initializing ServerStatsService");
+    if (!config.envMode.isProd) {
+      logger.info("ServerStatsService skipped (not production)");
+      return;
+    }
+
+    logger.info("Initializing ServerStatsService...");
+    await this.ensureMembersFetched();
+    await this.updateStats();
+    this.setupEventListeners();
+    logger.info("ServerStatsService initialized");
   }
 
   /**
