@@ -218,6 +218,30 @@ export const discordEmbedPreset = pgTable("discord_embed_preset", {
     .defaultNow(),
 });
 
+// --- discord_embed_preset_message ---
+
+export const discordEmbedPresetMessage = pgTable(
+  "discord_embed_preset_message",
+  {
+    id: serial("id").primaryKey(),
+    presetId: integer("preset_id")
+      .notNull()
+      .references(() => discordEmbedPreset.id, { onDelete: "cascade" }),
+    channelId: text("channel_id").notNull(),
+    messageId: text("message_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_discord_embed_preset_message_preset").on(table.presetId),
+    uniqueIndex("idx_discord_embed_preset_message_unique").on(
+      table.channelId,
+      table.messageId,
+    ),
+  ],
+);
+
 // --- discord_guild_member_join ---
 
 export const discordGuildMemberJoin = pgTable(

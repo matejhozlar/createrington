@@ -78,6 +78,13 @@
       "when": 1773763238332,
       "tag": "0010_colorful_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1773787478149,
+      "tag": "0011_easy_moonstone",
+      "breakpoints": true
     }
   ]
 }

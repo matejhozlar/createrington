@@ -14,6 +14,8 @@ import type { ReactNode } from "react";
  *   *italic* / _italic_  — italic
  *   ~~strikethrough~~    — strikethrough
  *   # / ## / ### heading — heading (Discord supports up to h3 in embeds)
+ *   - item / * item     — unordered list
+ *   1. item              — ordered list
  */
 
 // ── Inline parsing ──────────────────────────────────────────────────────
@@ -222,6 +224,40 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
             <div key={qi}>{ql ? renderInline(ql) : <br />}</div>
           ))}
         </div>,
+      );
+      continue;
+    }
+
+    // Unordered list: - item or * item (collect consecutive lines)
+    if (/^[-*]\s+/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^[-*]\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^[-*]\s+/, ""));
+        i++;
+      }
+      blocks.push(
+        <ul key={blocks.length} className="my-0.5 list-disc pl-6">
+          {items.map((item, j) => (
+            <li key={j}>{renderInline(item)}</li>
+          ))}
+        </ul>,
+      );
+      continue;
+    }
+
+    // Ordered list: 1. item, 2. item, etc. (collect consecutive lines)
+    if (/^\d+\.\s+/.test(line)) {
+      const items: string[] = [];
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
+        items.push(lines[i].replace(/^\d+\.\s+/, ""));
+        i++;
+      }
+      blocks.push(
+        <ol key={blocks.length} className="my-0.5 list-decimal pl-6">
+          {items.map((item, j) => (
+            <li key={j}>{renderInline(item)}</li>
+          ))}
+        </ol>,
       );
       continue;
     }
