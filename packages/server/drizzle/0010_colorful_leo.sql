@@ -1,0 +1,1 @@
+ALTER TABLE "discord_guild_member_leave" DROP CONSTRAINT "discord_guild_member_leave_discord_id_unique";

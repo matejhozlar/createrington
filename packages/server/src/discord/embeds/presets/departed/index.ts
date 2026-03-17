@@ -57,6 +57,29 @@ export const DepartedEmbedPresets = {
   },
 
   /**
+   * Updated embed when a departed member returns to the server
+   */
+  returned(info: {
+    minecraftUsername: string;
+    departedAt: Date;
+    returnedAt: Date;
+  }) {
+    const departedTimestamp = Math.floor(info.departedAt.getTime() / 1000);
+    const returnedTimestamp = Math.floor(info.returnedAt.getTime() / 1000);
+
+    return createEmbed()
+      .title("Member Returned")
+      .description(
+        `**${info.minecraftUsername}** has rejoined the server. Scheduled deletion has been cancelled.`,
+      )
+      .color(EmbedColors.Info)
+      .field("Departed", `<t:${departedTimestamp}:R>`, true)
+      .field("Returned", `<t:${returnedTimestamp}:F>`, true)
+      .footer("Departure record cancelled")
+      .timestamp();
+  },
+
+  /**
    * Updated embed after automatic deletion (30 days)
    */
   autoDeleted(info: {
