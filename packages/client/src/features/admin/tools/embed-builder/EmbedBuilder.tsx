@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Download, Pencil, X } from "lucide-react";
+import { Send, Download, Pencil, X, Link2, Unlink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import type { EmbedData } from "@createrington/shared/api/embed";
@@ -39,10 +39,20 @@ export function EmbedBuilder() {
   const [channelId, setChannelId] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [loadMessageId, setLoadMessageId] = useState("");
+  const [activePreset, setActivePreset] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const utils = trpc.useUtils();
   const sendEmbed = trpc.admin.embeds.send.useMutation();
   const editEmbed = trpc.admin.embeds.edit.useMutation();
+  const unlinkMessage = trpc.admin.embeds.presets.links.delete.useMutation();
+
+  const linksQuery = trpc.admin.embeds.presets.links.list.useQuery(
+    { presetId: activePreset?.id ?? 0 },
+    { enabled: !!activePreset },
+  );
 
   const hasContent = data.title || data.description || data.fields.length > 0;
   const isEditing = !!editingMessageId;
@@ -65,11 +75,17 @@ export function EmbedBuilder() {
           channelId,
           messageId: editingMessageId,
           embed: data,
+          presetId: activePreset?.id,
         });
         toast.success("Embed updated successfully");
       } else {
-        const result = await sendEmbed.mutateAsync({ channelId, embed: data });
+        const result = await sendEmbed.mutateAsync({
+          channelId,
+          embed: data,
+          presetId: activePreset?.id,
+        });
         setEditingMessageId(result.messageId ?? null);
+        if (activePreset) linksQuery.refetch();
         toast.success("Embed sent successfully");
       }
     } catch (err) {
@@ -106,6 +122,7 @@ export function EmbedBuilder() {
 
   function handleClearEdit() {
     setEditingMessageId(null);
+    setActivePreset(null);
     setData({ ...DEFAULT_EMBED });
   }
 
@@ -188,7 +205,12 @@ export function EmbedBuilder() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <PresetManager currentData={data} onLoad={handleLoad} />
+            <PresetManager
+              currentData={data}
+              onLoad={handleLoad}
+              activePreset={activePreset}
+              onActivePresetChange={setActivePreset}
+            />
             <Button
               onClick={handleSend}
               disabled={isPending || !hasContent || !channelId}
@@ -232,6 +254,59 @@ export function EmbedBuilder() {
                 Load
               </Button>
             </div>
+
+            {/* Linked messages */}
+            {activePreset && linksQuery.data?.links.length ? (
+              <div className="rounded-lg border border-border p-3">
+                <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                  <Link2 className="size-3" />
+                  Linked Messages ({linksQuery.data.links.length})
+                </div>
+                <div className="space-y-1">
+                  {linksQuery.data.links.map((link) => (
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs hover:bg-accent"
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 cursor-pointer text-left font-mono text-muted-foreground"
+                        onClick={async () => {
+                          setChannelId(link.channelId);
+                          setEditingMessageId(link.messageId);
+                          try {
+                            const result =
+                              await utils.admin.embeds.fetchMessage.fetch({
+                                channelId: link.channelId,
+                                messageId: link.messageId,
+                              });
+                            handleLoad(result as EmbedData);
+                            toast.success("Linked message loaded");
+                          } catch {
+                            toast.error("Failed to load linked message");
+                          }
+                        }}
+                      >
+                        {link.messageId}
+                      </button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="size-6 shrink-0 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
+                        onClick={async () => {
+                          await unlinkMessage.mutateAsync({ id: link.id });
+                          linksQuery.refetch();
+                          toast.success("Message unlinked");
+                        }}
+                      >
+                        <Unlink className="size-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <EmbedForm data={data} onChange={setData} />
           </div>

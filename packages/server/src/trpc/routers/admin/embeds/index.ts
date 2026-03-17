@@ -63,6 +63,7 @@ export const embedsRouter = router({
       z.object({
         channelId: z.string().min(1),
         embed: embedDataSchema,
+        presetId: z.number().int().positive().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -114,6 +115,14 @@ export const embedsRouter = router({
         throw trpcError.internal(result.error ?? "Failed to send embed");
       }
 
+      if (input.presetId && result.messageId) {
+        await Q.discord.embed.preset.message.create({
+          presetId: input.presetId,
+          channelId: input.channelId,
+          messageId: result.messageId,
+        });
+      }
+
       return { messageId: result.messageId };
     }),
 
@@ -124,6 +133,7 @@ export const embedsRouter = router({
         channelId: z.string().min(1),
         messageId: z.string().min(1),
         embed: embedDataSchema,
+        presetId: z.number().int().positive().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -174,6 +184,13 @@ export const embedsRouter = router({
 
       if (!result.success) {
         throw trpcError.internal(result.error ?? "Failed to edit embed");
+      }
+
+      if (input.presetId) {
+        await Q.discord.embed.preset.update(
+          { id: input.presetId },
+          { data: input.embed as EmbedData as Record<string, unknown> },
+        );
       }
 
       return { messageId: result.messageId };
@@ -344,5 +361,34 @@ export const embedsRouter = router({
 
         return { message: "Preset deleted" };
       }),
+
+    links: router({
+      list: adminProcedure
+        .meta({ description: "List linked messages for a preset." })
+        .input(z.object({ presetId: z.number().int().positive() }))
+        .query(async ({ input }) => {
+          const links = await Q.discord.embed.preset.message
+            .where({ presetId: input.presetId })
+            .orderBy("createdAt", "desc")
+            .all();
+          return { links };
+        }),
+
+      delete: adminProcedure
+        .meta({ description: "Unlink a message from a preset." })
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ input }) => {
+          const link = await Q.discord.embed.preset.message.find({
+            id: input.id,
+          });
+          if (!link) {
+            throw trpcError.notFound("Link not found");
+          }
+
+          await Q.discord.embed.preset.message.delete({ id: input.id });
+
+          return { message: "Link removed" };
+        }),
+    }),
   }),
 });

@@ -25,6 +25,7 @@ export { CryptoWatchlistQueries } from "./crypto/watchlist";
 export { DiscordAutoMessageQueries } from "./discord/auto/message";
 export { DiscordAutoMessageConfigQueries } from "./discord/auto/message/config";
 export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
+export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
 export { FaqEntryQueries } from "./faq/entry";

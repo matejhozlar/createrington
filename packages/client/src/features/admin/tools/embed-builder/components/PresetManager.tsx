@@ -17,18 +17,21 @@ import { Loading } from "@/components/loading-spinner";
 interface PresetManagerProps {
   currentData: EmbedData;
   onLoad: (data: EmbedData) => void;
+  activePreset: { id: number; name: string } | null;
+  onActivePresetChange: (preset: { id: number; name: string } | null) => void;
 }
 
-export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
+export function PresetManager({
+  currentData,
+  onLoad,
+  activePreset,
+  onActivePresetChange,
+}: PresetManagerProps) {
   const toast = useToastActions();
   const [saveOpen, setSaveOpen] = useState(false);
   const [loadOpen, setLoadOpen] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [search, setSearch] = useState("");
-  const [activePreset, setActivePreset] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
 
   const presetsQuery = trpc.admin.embeds.presets.list.useQuery(
     { search: search || undefined, limit: 50 },
@@ -69,7 +72,7 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
       await deletePreset.mutateAsync({ id });
       toast.success(`Preset "${name}" deleted`);
       if (activePreset?.id === id) {
-        setActivePreset(null);
+        onActivePresetChange(null);
       }
       presetsQuery.refetch();
     } catch {
@@ -189,7 +192,7 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
                       className="flex-1 cursor-pointer text-left"
                       onClick={() => {
                         onLoad(preset.data as EmbedData);
-                        setActivePreset({
+                        onActivePresetChange({
                           id: preset.id,
                           name: preset.name,
                         });
