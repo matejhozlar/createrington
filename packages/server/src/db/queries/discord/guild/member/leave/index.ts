@@ -52,9 +52,7 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
   /**
    * Finds the active (non-deleted) departure record for a given Discord user
    */
-  async findActive(
-    discordId: string,
-  ): Promise<{
+  async findActive(discordId: string): Promise<{
     id: number;
     discordId: string;
     minecraftUuid: string;

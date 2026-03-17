@@ -54,8 +54,9 @@ export async function execute(
 
     // Cancel any active departure record so the 30-day deletion doesn't fire
     try {
-      const activeDeparture =
-        await Q.discord.guild.member.leave.findActive(member.user.id);
+      const activeDeparture = await Q.discord.guild.member.leave.findActive(
+        member.user.id,
+      );
 
       if (activeDeparture) {
         await Q.discord.guild.member.leave.update(
