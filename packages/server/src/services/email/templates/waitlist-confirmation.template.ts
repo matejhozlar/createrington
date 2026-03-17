@@ -96,7 +96,7 @@ export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConf
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                             <tr>
                               <td align="center" style="border-radius: 10px; background-color: #5865F2;">
-                                <a href="https://discord.gg/7PAptNgqk2" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                                <a href="https://discord.gg/mtF6MDHj4Z" target="_blank" style="display: inline-block; padding: 14px 28px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">
                                   Join our Discord
                                 </a>
                               </td>
@@ -145,7 +145,7 @@ We'll notify you via email as soon as a spot opens up.
 What happens next?
 When a spot becomes available, we'll send you an invitation email with a verification token and instructions on how to join.
 
-Join our Discord: https://discord.gg/7PAptNgqk2
+Join our Discord: https://discord.gg/mtF6MDHj4Z
 
 ---
 Createrington - Minecraft Create Server

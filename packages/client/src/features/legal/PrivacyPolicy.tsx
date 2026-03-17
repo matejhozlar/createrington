@@ -198,7 +198,7 @@ const sections = [
           </a>{" "}
           or through our{" "}
           <a
-            href="https://discord.gg/createrington"
+            href="https://discord.gg/mtF6MDHj4Z"
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline"
@@ -264,7 +264,7 @@ const sections = [
         </a>{" "}
         or through our{" "}
         <a
-          href="https://discord.gg/createrington"
+          href="https://discord.gg/mtF6MDHj4Z"
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline"
