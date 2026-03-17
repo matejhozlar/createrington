@@ -1,3 +1,4 @@
+import { ChangelogEmbedPresets } from "./changelog";
 import { CommandEmbedPresets } from "./commands";
 import { CommonEmbedPresets } from "./common";
 import { ConfirmationEmbedPresets } from "./confirmation";
@@ -14,6 +15,7 @@ import { WaitlistEmbedPresets } from "./waitlist";
 /** Aggregated embed presets namespace — common presets are spread at the top level, domain presets are nested */
 export const EmbedPresets = {
   ...CommonEmbedPresets,
+  changelog: ChangelogEmbedPresets,
   commands: CommandEmbedPresets,
   crypto: CryptoEmbedPresets,
   waitlist: WaitlistEmbedPresets,

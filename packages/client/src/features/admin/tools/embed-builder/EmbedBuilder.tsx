@@ -8,7 +8,8 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Send, Download, Pencil, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import type { EmbedData } from "@createrington/shared/api/embed";
@@ -36,10 +37,15 @@ export function EmbedBuilder() {
   const toast = useToastActions();
   const [data, setData] = useState<EmbedData>({ ...DEFAULT_EMBED });
   const [channelId, setChannelId] = useState("");
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [loadMessageId, setLoadMessageId] = useState("");
 
+  const utils = trpc.useUtils();
   const sendEmbed = trpc.admin.embeds.send.useMutation();
+  const editEmbed = trpc.admin.embeds.edit.useMutation();
 
   const hasContent = data.title || data.description || data.fields.length > 0;
+  const isEditing = !!editingMessageId;
 
   async function handleSend() {
     if (!channelId) {
@@ -54,11 +60,53 @@ export function EmbedBuilder() {
     }
 
     try {
-      await sendEmbed.mutateAsync({ channelId, embed: data });
-      toast.success("Embed sent successfully");
+      if (isEditing) {
+        await editEmbed.mutateAsync({
+          channelId,
+          messageId: editingMessageId,
+          embed: data,
+        });
+        toast.success("Embed updated successfully");
+      } else {
+        const result = await sendEmbed.mutateAsync({ channelId, embed: data });
+        setEditingMessageId(result.messageId ?? null);
+        toast.success("Embed sent successfully");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send embed");
     }
+  }
+
+  async function handleLoadMessage() {
+    if (!channelId) {
+      toast.error("Please select a channel first");
+      return;
+    }
+    if (!loadMessageId.trim()) {
+      toast.error("Please enter a message ID");
+      return;
+    }
+
+    try {
+      const result = await utils.admin.embeds.fetchMessage.fetch({
+        channelId,
+        messageId: loadMessageId.trim(),
+      });
+
+      handleLoad(result as EmbedData);
+      setEditingMessageId(loadMessageId.trim());
+      setLoadMessageId("");
+      toast.success("Message loaded");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load message",
+      );
+    }
+  }
+
+  function handleClearEdit() {
+    setEditingMessageId(null);
+    setData({ ...DEFAULT_EMBED });
   }
 
   function handleLoad(loaded: EmbedData) {
@@ -97,6 +145,8 @@ export function EmbedBuilder() {
     });
   }
 
+  const isPending = sendEmbed.isPending || editEmbed.isPending;
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       {/* Header */}
@@ -121,16 +171,40 @@ export function EmbedBuilder() {
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Title bar */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold">Embed Builder</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">Embed Builder</h1>
+            {isEditing && (
+              <div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                <Pencil className="size-3" />
+                Editing: {editingMessageId}
+                <button
+                  type="button"
+                  onClick={handleClearEdit}
+                  className="ml-1 rounded hover:bg-primary/20"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <PresetManager currentData={data} onLoad={handleLoad} />
             <Button
               onClick={handleSend}
-              disabled={sendEmbed.isPending || !hasContent || !channelId}
+              disabled={isPending || !hasContent || !channelId}
               className="cursor-pointer"
             >
-              <Send className="mr-1.5 size-4" />
-              {sendEmbed.isPending ? "Sending..." : "Send"}
+              {isEditing ? (
+                <>
+                  <Pencil className="mr-1.5 size-4" />
+                  {isPending ? "Updating..." : "Update"}
+                </>
+              ) : (
+                <>
+                  <Send className="mr-1.5 size-4" />
+                  {isPending ? "Sending..." : "Send"}
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -140,6 +214,25 @@ export function EmbedBuilder() {
           {/* Form column */}
           <div className="space-y-4">
             <ChannelSelector value={channelId} onChange={setChannelId} />
+
+            {/* Load existing message */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Message ID to load..."
+                value={loadMessageId}
+                onChange={(e) => setLoadMessageId(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={handleLoadMessage}
+                disabled={!channelId || !loadMessageId.trim()}
+                className="shrink-0"
+              >
+                <Download className="mr-1.5 size-4" />
+                Load
+              </Button>
+            </div>
+
             <EmbedForm data={data} onChange={setData} />
           </div>
 

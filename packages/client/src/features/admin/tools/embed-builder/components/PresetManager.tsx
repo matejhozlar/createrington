@@ -25,22 +25,37 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
   const [loadOpen, setLoadOpen] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [search, setSearch] = useState("");
+  const [activePreset, setActivePreset] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const presetsQuery = trpc.admin.embeds.presets.list.useQuery(
     { search: search || undefined, limit: 50 },
     { enabled: loadOpen },
   );
 
+  const utils = trpc.useUtils();
   const createPreset = trpc.admin.embeds.presets.create.useMutation();
+  const updatePreset = trpc.admin.embeds.presets.update.useMutation();
   const deletePreset = trpc.admin.embeds.presets.delete.useMutation();
 
-  async function handleSave() {
+  function handleOpenSave() {
+    if (activePreset) {
+      setPresetName(activePreset.name);
+    }
+    setSaveOpen(true);
+  }
+
+  async function handleSaveAsNew() {
     if (!presetName.trim()) return;
+
     try {
       await createPreset.mutateAsync({
         name: presetName.trim(),
         data: currentData,
       });
+      utils.admin.embeds.presets.list.invalidate();
       toast.success(`Preset "${presetName}" saved`);
       setSaveOpen(false);
       setPresetName("");
@@ -53,11 +68,16 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
     try {
       await deletePreset.mutateAsync({ id });
       toast.success(`Preset "${name}" deleted`);
+      if (activePreset?.id === id) {
+        setActivePreset(null);
+      }
       presetsQuery.refetch();
     } catch {
       toast.error("Failed to delete preset");
     }
   }
+
+  const isSaving = createPreset.isPending || updatePreset.isPending;
 
   return (
     <>
@@ -76,7 +96,7 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setSaveOpen(true)}
+          onClick={handleOpenSave}
           className="cursor-pointer"
         >
           <Save className="mr-1.5 size-3.5" />
@@ -94,15 +114,44 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
             placeholder="Preset name"
             value={presetName}
             onChange={(e) => setPresetName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSave()}
+            onKeyDown={(e) => e.key === "Enter" && handleSaveAsNew()}
           />
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
+            {activePreset && (
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await updatePreset.mutateAsync({
+                      id: activePreset.id,
+                      data: currentData,
+                    });
+                    utils.admin.embeds.presets.list.invalidate();
+                    toast.success(`Preset "${activePreset.name}" updated`);
+                    setSaveOpen(false);
+                    setPresetName("");
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to update preset",
+                    );
+                  }
+                }}
+                disabled={isSaving}
+                className="cursor-pointer"
+              >
+                {updatePreset.isPending
+                  ? "Updating..."
+                  : `Update "${activePreset.name}"`}
+              </Button>
+            )}
             <Button
-              onClick={handleSave}
-              disabled={!presetName.trim() || createPreset.isPending}
+              onClick={handleSaveAsNew}
+              disabled={!presetName.trim() || isSaving}
               className="cursor-pointer"
             >
-              {createPreset.isPending ? "Saving..." : "Save"}
+              {createPreset.isPending ? "Saving..." : "Save as New"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -140,6 +189,10 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
                       className="flex-1 cursor-pointer text-left"
                       onClick={() => {
                         onLoad(preset.data as EmbedData);
+                        setActivePreset({
+                          id: preset.id,
+                          name: preset.name,
+                        });
                         setLoadOpen(false);
                         toast.success(`Loaded "${preset.name}"`);
                       }}
