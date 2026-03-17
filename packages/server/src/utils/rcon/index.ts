@@ -333,19 +333,6 @@ export class MinecraftRconManager {
       });
     }
 
-    // Load Test server
-    if (config.servers?.test?.rcon && config.servers.test.id) {
-      this.serverConfigs.set(config.servers.test.id, {
-        id: config.servers.test.id,
-        name: config.servers.test.name,
-        rcon: {
-          host: config.servers.test.rcon.host,
-          port: config.servers.test.rcon.port,
-          password: config.servers.test.rcon.password,
-        },
-      });
-    }
-
     logger.info(
       `Loaded RCON configs for ${this.serverConfigs.size} server(s):`,
       Array.from(this.serverConfigs.values()).map((s) => `${s.id} (${s.name})`),
@@ -805,7 +792,6 @@ export class MinecraftRconManager {
 
   /**
    * Bans a player on multiple servers
-   * Logs failures on test server but throws for production servers
    */
   public async banMultiple(
     serverIds: ServerId[],
@@ -824,55 +810,12 @@ export class MinecraftRconManager {
       `ban ${playerName}${reasonArg}`,
     );
 
-    // Check results and handle failures
-    const failures: Array<{
-      serverId: ServerId;
-      serverName: string;
-      error: Error;
-    }> = [];
-
-    for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
-
-      if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to ban ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to ban ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
-      } else {
-        logger.info(`[${serverName}] Successfully banned ${playerName}`);
-      }
-    }
-
-    // Throw if any non-test servers failed
-    if (failures.length > 0) {
-      const failureDetails = failures
-        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
-        .join(", ");
-      throw new Error(`Ban failed for ${playerName} on: ${failureDetails}`);
-    }
-
+    this.checkMultiServerResults(results, "ban", playerName);
     return results;
   }
 
   /**
    * Bans a player on all servers
-   * Logs failures on test server but throws for production servers
    */
   public async banAll(
     playerName: string,
@@ -887,55 +830,12 @@ export class MinecraftRconManager {
     const reasonArg = reason ? ` ${reason}` : "";
     const results = await this.sendAll(`ban ${playerName}${reasonArg}`);
 
-    // Check results and handle failures
-    const failures: Array<{
-      serverId: ServerId;
-      serverName: string;
-      error: Error;
-    }> = [];
-
-    for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
-
-      if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to ban ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to ban ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
-      } else {
-        logger.info(`[${serverName}] Successfully banned ${playerName}`);
-      }
-    }
-
-    // Throw if any non-test servers failed
-    if (failures.length > 0) {
-      const failureDetails = failures
-        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
-        .join(", ");
-      throw new Error(`Ban failed for ${playerName} on: ${failureDetails}`);
-    }
-
+    this.checkMultiServerResults(results, "ban", playerName);
     return results;
   }
 
   /**
    * Pardons (unbans) a player on multiple servers
-   * Logs failures on test server but throws for production servers
    */
   public async pardonMultiple(
     serverIds: ServerId[],
@@ -952,55 +852,12 @@ export class MinecraftRconManager {
       `pardon ${playerName}`,
     );
 
-    // Check results and handle failures
-    const failures: Array<{
-      serverId: ServerId;
-      serverName: string;
-      error: Error;
-    }> = [];
-
-    for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
-
-      if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to pardon ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to pardon ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
-      } else {
-        logger.info(`[${serverName}] Successfully pardoned ${playerName}`);
-      }
-    }
-
-    // Throw if any non-test servers failed
-    if (failures.length > 0) {
-      const failureDetails = failures
-        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
-        .join(", ");
-      throw new Error(`Pardon failed for ${playerName} on: ${failureDetails}`);
-    }
-
+    this.checkMultiServerResults(results, "pardon", playerName);
     return results;
   }
 
   /**
    * Pardons (unbans) a player on all servers
-   * Logs failures on test server but throws for production servers
    */
   public async pardonAll(
     playerName: string,
@@ -1013,55 +870,12 @@ export class MinecraftRconManager {
 
     const results = await this.sendAll(`pardon ${playerName}`);
 
-    // Check results and handle failures
-    const failures: Array<{
-      serverId: ServerId;
-      serverName: string;
-      error: Error;
-    }> = [];
-
-    for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
-
-      if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to pardon ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to pardon ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
-      } else {
-        logger.info(`[${serverName}] Successfully pardoned ${playerName}`);
-      }
-    }
-
-    // Throw if any non-test servers failed
-    if (failures.length > 0) {
-      const failureDetails = failures
-        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
-        .join(", ");
-      throw new Error(`Pardon failed for ${playerName} on: ${failureDetails}`);
-    }
-
+    this.checkMultiServerResults(results, "pardon", playerName);
     return results;
   }
 
   /**
    * Whitelists a player on multiple servers
-   * Logs failures on test server but throws for production servers
    */
   public async whitelistMultiple(
     serverIds: ServerId[],
@@ -1079,59 +893,12 @@ export class MinecraftRconManager {
       `whitelist ${action} ${playerName}`,
     );
 
-    // Check results and handle failures
-    const failures: Array<{
-      serverId: ServerId;
-      serverName: string;
-      error: Error;
-    }> = [];
-
-    for (const [serverId, result] of results.entries()) {
-      const serverInfo = this.serverConfigs.get(serverId);
-      const serverName = serverInfo?.name || `Server ${serverId}`;
-
-      if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to whitelist ${action} ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to whitelist ${action} ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
-      } else {
-        logger.info(
-          `[${serverName}] Successfully whitelisted ${action} ${playerName}`,
-        );
-      }
-    }
-
-    // Throw if any non-test servers failed
-    if (failures.length > 0) {
-      const failureDetails = failures
-        .map((f) => `${f.serverName} (ID: ${f.serverId})`)
-        .join(", ");
-      throw new Error(
-        `Whitelist ${action} failed for ${playerName} on: ${failureDetails}`,
-      );
-    }
-
+    this.checkMultiServerResults(results, `whitelist ${action}`, playerName);
     return results;
   }
 
   /**
    * Whitelists a player on all servers
-   * Logs failures on test server but throws for production servers
    */
   public async whitelistAll(
     action: WhitelistAction.ADD | WhitelistAction.REMOVE,
@@ -1145,7 +912,21 @@ export class MinecraftRconManager {
 
     const results = await this.sendAll(`whitelist ${action} ${playerName}`);
 
-    // Check results and handle failures
+    this.checkMultiServerResults(results, `whitelist ${action}`, playerName);
+    return results;
+  }
+
+  /**
+   * Checks multi-server operation results and throws if any server failed
+   */
+  private checkMultiServerResults(
+    results: Map<
+      ServerId,
+      { success: boolean; response?: string; error?: Error }
+    >,
+    operation: string,
+    playerName: string,
+  ): void {
     const failures: Array<{
       serverId: ServerId;
       serverName: string;
@@ -1157,42 +938,26 @@ export class MinecraftRconManager {
       const serverName = serverInfo?.name || `Server ${serverId}`;
 
       if (!result.success) {
-        // Test server (id: 2) - just log the error
-        if (serverId === 2) {
-          logger.warn(
-            `[${serverName}] Failed to whitelist ${action} ${playerName} (ignored):`,
-            result.error,
-          );
-        } else {
-          // Production servers - collect failure to throw
-          logger.error(
-            `[${serverName}] Failed to whitelist ${action} ${playerName}:`,
-            result.error,
-          );
-          failures.push({
-            serverId,
-            serverName,
-            error: result.error!,
-          });
-        }
+        logger.error(
+          `[${serverName}] Failed to ${operation} ${playerName}:`,
+          result.error,
+        );
+        failures.push({ serverId, serverName, error: result.error! });
       } else {
         logger.info(
-          `[${serverName}] Successfully whitelisted ${action} ${playerName}`,
+          `[${serverName}] Successfully ${operation} ${playerName}`,
         );
       }
     }
 
-    // Throw if any non-test servers failed
     if (failures.length > 0) {
       const failureDetails = failures
         .map((f) => `${f.serverName} (ID: ${f.serverId})`)
         .join(", ");
       throw new Error(
-        `Whitelist ${action} failed for ${playerName} on: ${failureDetails}`,
+        `${operation} failed for ${playerName} on: ${failureDetails}`,
       );
     }
-
-    return results;
   }
 }
 

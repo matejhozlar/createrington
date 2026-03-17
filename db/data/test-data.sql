@@ -49,8 +49,7 @@ ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
 -- ============================================================================
 
 INSERT INTO server (name, identifier, created_at) VALUES
-('Cogs SMP', 'cogs', NOW() - INTERVAL '6 months'),
-('Test Server', 'test', NOW() - INTERVAL '3 months');
+('Cogs SMP', 'cogs', NOW() - INTERVAL '6 months');
 
 -- ============================================================================
 -- PLAYERS

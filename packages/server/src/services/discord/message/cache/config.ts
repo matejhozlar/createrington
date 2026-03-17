@@ -14,12 +14,6 @@ export const MESSAGE_CACHE_CONFIG: MessageCacheServiceConfig = {
       channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,
       maxMessages: 100,
     },
-    // {
-    //   serverId: config.servers.test.id,
-    //   channelId: Discord.Channels.TEST_MINECRAFT_CHAT,
-    //   maxMessages: 100,
-    // },
-    // Add more servers
   ],
   loadHistoryOnStartup: true,
   botConfig: {

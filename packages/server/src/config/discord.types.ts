@@ -72,11 +72,6 @@ interface ChannelConfig {
     readonly minecraftChat: string;
   };
 
-  readonly testServer: {
-    readonly chat: string;
-    readonly minecraftChat: string;
-  };
-
   readonly dev: {
     readonly createringtonKubejs: string;
     readonly createrington: string;
@@ -102,7 +97,6 @@ interface CategoriesConfig {
   readonly serverStats: string;
   readonly textChannels: string;
   readonly cogsAndSteam: string;
-  readonly testServer: string;
   readonly administration: string;
   readonly dev: string;
   readonly crypto: string;
