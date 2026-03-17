@@ -3,11 +3,21 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import type { MarketEventType } from "@/services/crypto/events/event-definitions";
+import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
+import { trpcError } from "@/trpc/utils";
 
 /** Admin crypto router — token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
+  availableMemecoins: adminProcedure
+    .meta({ description: "List memecoin catalog entries not already in the DB" })
+    .query(async () => {
+      const existing = await Q.crypto.token.where({}).all();
+      const usedSymbols = new Set(existing.map((t) => t.symbol));
+      return MEMECOIN_CATALOG.filter((m) => !usedSymbols.has(m.symbol));
+    }),
+
   createToken: adminProcedure
-    .meta({ description: "Create a new token (seasonal, event, or manual)" })
+    .meta({ description: "Create a new memecoin or seasonal token" })
     .input(
       z.object({
         name: z.string().min(1).max(50),
@@ -17,7 +27,7 @@ export const adminCryptoRouter = router({
           .max(10)
           .transform((s) => s.toUpperCase()),
         description: z.string().max(500).optional(),
-        category: z.enum(["stable", "blue_chip", "memecoin", "seasonal"]),
+        category: z.enum(["memecoin", "seasonal"]),
         totalSupply: z.number().int().positive(),
         price: z.number().positive(),
         floorPrice: z.number().positive().optional(),
@@ -25,6 +35,17 @@ export const adminCryptoRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      if (input.category === "memecoin") {
+        const catalogEntry = MEMECOIN_CATALOG.find(
+          (m) => m.symbol === input.symbol,
+        );
+        if (!catalogEntry) {
+          throw trpcError.badRequest(
+            `Symbol ${input.symbol} is not in the memecoin catalog`,
+          );
+        }
+      }
+
       const service = await getService(Services.CRYPTO_MARKET_SERVICE);
 
       const token = await service.createToken({
