@@ -117,6 +117,114 @@ export const embedsRouter = router({
       return { messageId: result.messageId };
     }),
 
+  edit: adminProcedure
+    .meta({ description: "Edit an existing embed message." })
+    .input(
+      z.object({
+        channelId: z.string().min(1),
+        messageId: z.string().min(1),
+        embed: embedDataSchema,
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const { channelId, messageId } = input;
+      const data = input.embed as EmbedData;
+
+      if (!data.title && !data.description && data.fields.length === 0) {
+        throw trpcError.badRequest(
+          "Embed must have at least a title, description, or one field.",
+        );
+      }
+
+      const embed = new EmbedBuilder();
+
+      if (data.title) embed.setTitle(data.title);
+      if (data.description) embed.setDescription(data.description);
+      if (data.color !== undefined) embed.setColor(data.color);
+      if (data.url) embed.setURL(data.url);
+      if (data.footer) embed.setFooter({ text: data.footer });
+      if (data.author) {
+        embed.setAuthor({
+          name: data.author,
+          url: data.authorUrl || undefined,
+          iconURL: data.authorIconUrl || undefined,
+        });
+      }
+      if (data.thumbnailUrl) embed.setThumbnail(data.thumbnailUrl);
+      if (data.imageUrl) embed.setImage(data.imageUrl);
+      if (data.timestamp) embed.setTimestamp();
+      if (data.fields.length > 0) {
+        embed.addFields(
+          data.fields.map((f) => ({
+            name: f.name,
+            value: f.value,
+            inline: f.inline,
+          })),
+        );
+      }
+
+      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
+      const messageService = DiscordMessageService.getInstance(webBot);
+
+      const result = await messageService.edit({
+        channelId,
+        messageId,
+        embeds: embed,
+      });
+
+      if (!result.success) {
+        throw trpcError.internal(result.error ?? "Failed to edit embed");
+      }
+
+      return { messageId: result.messageId };
+    }),
+
+  fetchMessage: adminProcedure
+    .meta({ description: "Fetch an embed message from a channel." })
+    .input(
+      z.object({
+        channelId: z.string().min(1),
+        messageId: z.string().min(1),
+      }),
+    )
+    .query(async ({ input }) => {
+      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
+      const messageService = DiscordMessageService.getInstance(webBot);
+
+      const result = await messageService.fetchMessage({
+        channelId: input.channelId,
+        messageId: input.messageId,
+      });
+
+      if (!result.success) {
+        throw trpcError.notFound(result.error);
+      }
+
+      const embed = result.message.embeds[0];
+      if (!embed) {
+        throw trpcError.notFound("Message has no embeds");
+      }
+
+      return {
+        title: embed.title ?? undefined,
+        description: embed.description ?? undefined,
+        color: embed.color ?? undefined,
+        url: embed.url ?? undefined,
+        footer: embed.footer?.text ?? undefined,
+        author: embed.author?.name ?? undefined,
+        authorUrl: embed.author?.url ?? undefined,
+        authorIconUrl: embed.author?.iconURL ?? undefined,
+        thumbnailUrl: embed.thumbnail?.url ?? undefined,
+        imageUrl: embed.image?.url ?? undefined,
+        timestamp: !!embed.timestamp,
+        fields: embed.fields.map((f) => ({
+          name: f.name,
+          value: f.value,
+          inline: f.inline ?? false,
+        })),
+      };
+    }),
+
   presets: router({
     list: adminProcedure
       .meta({ description: "List embed presets with search." })
