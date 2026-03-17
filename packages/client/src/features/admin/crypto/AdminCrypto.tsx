@@ -293,7 +293,10 @@ function CreateTokenDialog() {
           {isMemecoin ? (
             <div className="space-y-1.5">
               <Label>Memecoin</Label>
-              <Select value={selectedSymbol} onValueChange={handleCatalogSelect}>
+              <Select
+                value={selectedSymbol}
+                onValueChange={handleCatalogSelect}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a memecoin..." />
                 </SelectTrigger>
@@ -301,7 +304,9 @@ function CreateTokenDialog() {
                   {catalog.map((m) => (
                     <SelectItem key={m.symbol} value={m.symbol}>
                       {m.name}{" "}
-                      <span className="text-muted-foreground">({m.symbol})</span>
+                      <span className="text-muted-foreground">
+                        ({m.symbol})
+                      </span>
                     </SelectItem>
                   ))}
                   {catalog.length === 0 && (

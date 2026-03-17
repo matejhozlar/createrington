@@ -17,7 +17,9 @@ function serializeToken(token: Record<string, unknown>) {
 /** Admin crypto router — token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
   availableMemecoins: adminProcedure
-    .meta({ description: "List memecoin catalog entries not already in the DB" })
+    .meta({
+      description: "List memecoin catalog entries not already in the DB",
+    })
     .query(async () => {
       const existing = await Q.crypto.token.where({}).all();
       const usedSymbols = new Set(existing.map((t) => t.symbol));
