@@ -7,7 +7,7 @@ import { ForbiddenError } from "./error-handler";
  */
 const ALLOWED_IPS = {
   development: ["127.0.0.1", "::1", "localhost"],
-  production: [config.app.auth.allowedServerIps.local],
+  production: [config.servers.cogs.ip],
 };
 
 /**
