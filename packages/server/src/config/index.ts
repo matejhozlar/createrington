@@ -163,7 +163,7 @@ const config = {
             textColor: "#FFFFFF",
             secondaryTextColor: "#99AA5B",
             backgroundImageURL:
-              "https://market-assets.create-rington.com/welcome/welcome.png",
+              "https://market-assets.create-rington.com/welcome/welcome.webp",
           },
         },
         autoRole: {
