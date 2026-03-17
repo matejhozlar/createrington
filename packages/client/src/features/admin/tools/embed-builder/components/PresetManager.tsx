@@ -60,9 +60,7 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
       setSaveOpen(false);
       setPresetName("");
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save preset",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to save preset");
     }
   }
 
@@ -110,9 +108,7 @@ export function PresetManager({ currentData, onLoad }: PresetManagerProps) {
       <Dialog open={saveOpen} onOpenChange={setSaveOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              Save Preset
-            </DialogTitle>
+            <DialogTitle>Save Preset</DialogTitle>
           </DialogHeader>
           <Input
             placeholder="Preset name"

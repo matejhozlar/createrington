@@ -73,9 +73,7 @@ export function EmbedBuilder() {
         toast.success("Embed sent successfully");
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to send embed",
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to send embed");
     }
   }
 

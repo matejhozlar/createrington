@@ -92,7 +92,9 @@ export function ModpackChangelog() {
               icon="🆕"
               mods={added}
               onAdd={(mod) => setAdded((prev) => [...prev, mod])}
-              onRemove={(i) => setAdded((prev) => prev.filter((_, j) => j !== i))}
+              onRemove={(i) =>
+                setAdded((prev) => prev.filter((_, j) => j !== i))
+              }
             />
 
             <ModSection
@@ -131,33 +133,23 @@ export function ModpackChangelog() {
             <div className="rounded-md border border-border bg-[#2b2d31] p-4">
               <div className="border-l-4 border-blue-500 pl-4">
                 <h3 className="text-base font-semibold text-white">
-                  Createrington: Cogs & Steam{" "}
-                  {version || "..."} Modpack Update
+                  Createrington: Cogs & Steam {version || "..."} Modpack Update
                 </h3>
                 <p className="mt-1 text-sm text-gray-300">
-                  A new version of the modpack is now available! Please update to{" "}
-                  <strong>{version || "..."}</strong> to receive the latest
+                  A new version of the modpack is now available! Please update
+                  to <strong>{version || "..."}</strong> to receive the latest
                   improvements and fixes.
                 </p>
 
                 <div className="mt-3 space-y-3">
                   {added.length > 0 && (
-                    <PreviewField
-                      title="🆕 New Mods"
-                      mods={added}
-                    />
+                    <PreviewField title="🆕 New Mods" mods={added} />
                   )}
                   {removed.length > 0 && (
-                    <PreviewField
-                      title="🗑️ Removed Mods"
-                      mods={removed}
-                    />
+                    <PreviewField title="🗑️ Removed Mods" mods={removed} />
                   )}
                   {updated.length > 0 && (
-                    <PreviewField
-                      title="⬆️ Updated Mods"
-                      mods={updated}
-                    />
+                    <PreviewField title="⬆️ Updated Mods" mods={updated} />
                   )}
 
                   <div>

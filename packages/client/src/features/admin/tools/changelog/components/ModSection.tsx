@@ -88,23 +88,30 @@ export function ModSection({
                 No mods found
               </div>
             )}
-            {searchQuery.data?.mods.map((mod: { id: number; name: string; url: string; thumbnailUrl?: string }) => (
-              <button
-                key={mod.id}
-                type="button"
-                onClick={() => handleSelect(mod)}
-                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
-              >
-                {mod.thumbnailUrl && (
-                  <img
-                    src={mod.thumbnailUrl}
-                    alt=""
-                    className="h-8 w-8 rounded"
-                  />
-                )}
-                <span className="truncate">{mod.name}</span>
-              </button>
-            ))}
+            {searchQuery.data?.mods.map(
+              (mod: {
+                id: number;
+                name: string;
+                url: string;
+                thumbnailUrl?: string;
+              }) => (
+                <button
+                  key={mod.id}
+                  type="button"
+                  onClick={() => handleSelect(mod)}
+                  className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
+                >
+                  {mod.thumbnailUrl && (
+                    <img
+                      src={mod.thumbnailUrl}
+                      alt=""
+                      className="h-8 w-8 rounded"
+                    />
+                  )}
+                  <span className="truncate">{mod.name}</span>
+                </button>
+              ),
+            )}
           </div>
         )}
       </div>

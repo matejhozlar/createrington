@@ -6,11 +6,7 @@ import { DiscordMessageService } from "@/services/discord/message/message.servic
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { searchMods } from "@/services/curseforge";
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import config from "@/config";
 
 const changelogModSchema = z.object({
@@ -37,44 +33,42 @@ export const changelogRouter = router({
       return { mods: results };
     }),
 
-  send: adminProcedure
-    .input(sendChangelogInput)
-    .mutation(async ({ input }) => {
-      const { version, added, removed, updated } = input;
+  send: adminProcedure.input(sendChangelogInput).mutation(async ({ input }) => {
+    const { version, added, removed, updated } = input;
 
-      if (added.length === 0 && removed.length === 0 && updated.length === 0) {
-        throw trpcError.badRequest(
-          "Changelog must have at least one mod in added, removed, or updated.",
-        );
-      }
-
-      const embed = EmbedPresets.changelog.modpackUpdate({
-        version,
-        added,
-        removed,
-        updated,
-      });
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setLabel("Download Update")
-          .setStyle(ButtonStyle.Link)
-          .setURL(config.meta.links.modpack),
+    if (added.length === 0 && removed.length === 0 && updated.length === 0) {
+      throw trpcError.badRequest(
+        "Changelog must have at least one mod in added, removed, or updated.",
       );
+    }
 
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+    const embed = EmbedPresets.changelog.modpackUpdate({
+      version,
+      added,
+      removed,
+      updated,
+    });
 
-      const result = await messageService.send({
-        channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
-        embeds: embed.build(),
-        components: [row],
-      });
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel("Download Update")
+        .setStyle(ButtonStyle.Link)
+        .setURL(config.meta.links.modpack),
+    );
 
-      if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to send changelog");
-      }
+    const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
+    const messageService = DiscordMessageService.getInstance(webBot);
 
-      return { messageId: result.messageId };
-    }),
+    const result = await messageService.send({
+      channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+      embeds: embed.build(),
+      components: [row],
+    });
+
+    if (!result.success) {
+      throw trpcError.internal(result.error ?? "Failed to send changelog");
+    }
+
+    return { messageId: result.messageId };
+  }),
 });

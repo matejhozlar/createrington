@@ -20,9 +20,7 @@ function formatModList(mods: ChangelogMod[]): string {
 export const ChangelogEmbedPresets = {
   modpackUpdate(data: ChangelogData) {
     const embed = createEmbed()
-      .title(
-        `Createrington: Cogs & Steam ${data.version} Modpack Update`,
-      )
+      .title(`Createrington: Cogs & Steam ${data.version} Modpack Update`)
       .description(
         `A new version of the modpack is now available! Please update to **${data.version}** to receive the latest improvements and fixes.`,
       )
