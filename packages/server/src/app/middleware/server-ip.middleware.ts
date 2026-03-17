@@ -21,7 +21,7 @@ function getClientIp(req: Request): string {
   if (forwardedFor) {
     const ips = Array.isArray(forwardedFor)
       ? forwardedFor[0]
-      : forwardedFor.split(".")[0];
+      : forwardedFor.split(",")[0];
     return ips.trim();
   }
 
