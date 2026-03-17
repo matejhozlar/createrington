@@ -49,6 +49,12 @@ router.post(
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.withdraw),
 );
 
+// GET /api/currency/history — paginated transaction history
+router.get(
+  "/history",
+  ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.getHistory),
+);
+
 // GET /api/currency/top — leaderboard of top 10 balances
 router.get(
   "/top",

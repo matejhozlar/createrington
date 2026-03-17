@@ -1,4 +1,5 @@
 import type { Pool, PoolClient } from "pg";
+import { DiscordAutoQueries } from "@/db/queries/discord/auto";
 import { DiscordEmbedQueries } from "@/db/queries/discord/embed";
 import { DiscordGuildQueries } from "@/db/queries/discord/guild";
 
@@ -72,6 +73,28 @@ export class DiscordQueries {
    * @param db - Database pool or client to use for all child queries
    */
   constructor(protected db: Pool | PoolClient) {}
+
+  /** Private backing field for lazy-loaded discord_auto queries */
+  private _auto?: DiscordAutoQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for discord_auto
+   *
+   * Returns a DiscordAutoQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton DiscordAutoQueries instance
+   */
+  get auto(): DiscordAutoQueries {
+    if (!this._auto) {
+      this._auto = this.getOrCreateChild<DiscordAutoQueries>(
+        "auto",
+        DiscordAutoQueries,
+      );
+    }
+    return this._auto;
+  }
 
   /** Private backing field for lazy-loaded discord_embed queries */
   private _embed?: DiscordEmbedQueries;
