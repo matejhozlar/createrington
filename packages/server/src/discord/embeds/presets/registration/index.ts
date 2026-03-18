@@ -2,6 +2,7 @@ import { ButtonBuilder, ButtonStyle } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
 import { ProgressEmbedPresets } from "../progress";
+import { Discord } from "@/discord/constants";
 
 export const RegistrationEmbedPresets = {
   /**
@@ -26,15 +27,32 @@ export const RegistrationEmbedPresets = {
    * Creates a successful registration embed with close button
    */
   userSuccess(username: string, uuid: string) {
+    const ch = Discord.Channels;
+    const m = ch.mention.bind(ch);
+
+    const channels = [
+      m(ch.createringtonOfficial.DOWNLOAD),
+      m(ch.createringtonOfficial.RULES),
+      m(ch.createringtonOfficial.ROLES),
+      m(ch.createringtonOfficial.ANNOUNCEMENTS),
+      m(ch.general.COMMANDS),
+      m(ch.createringtonOfficial.SUPPORT),
+    ].join("  ");
+
     const embed = createEmbed()
       .title("✅ Registration Complete!")
       .description(
-        `You've been successfully registered and whitelisted as **${username}**.\n\nWelcome aboard! 🚂`,
+        `Welcome to Createrington, **${username}**! You've been whitelisted and you're ready to play.\n\n` +
+          `**Getting started**\n` +
+          `1. Check out the ${m(ch.createringtonOfficial.RULES)} before jumping in\n` +
+          `2. Pick your ${m(ch.createringtonOfficial.ROLES)} to customize your experience\n` +
+          `3. Download the modpack in ${m(ch.createringtonOfficial.DOWNLOAD)}\n` +
+          `4. Join the server and have fun!\n\n` +
+          `**Useful channels**\n${channels}`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("UUID", `\`${uuid}\``, true)
-      .color(EmbedColors.Success)
-      .footer("You can now join the server!");
+      .color(EmbedColors.Success);
 
     const closeButton = new ButtonBuilder()
       .setCustomId("registration:close")
