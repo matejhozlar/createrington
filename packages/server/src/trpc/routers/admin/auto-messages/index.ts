@@ -8,6 +8,7 @@ import config from "@/config";
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
 
+/** Admin auto-messages router — channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category." })

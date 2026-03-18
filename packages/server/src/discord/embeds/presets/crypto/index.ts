@@ -96,9 +96,11 @@ export interface AlertCreatedData {
   alertId: string;
 }
 
+/** Embed presets for crypto system notifications and command responses */
 export const CryptoEmbedPresets = {
   // --- Notifications ---
 
+  /** Announces a newly listed token available for trading */
   newListing(data: NewListingData) {
     return createEmbed()
       .title("New Token Listed!")
@@ -111,6 +113,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Announces an upcoming IPO with price, supply, and timing details */
   ipoAnnouncement(data: IpoAnnouncementData) {
     return createEmbed()
       .title("IPO Launch!")
@@ -126,6 +129,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Announces completion of an IPO with final sale stats */
   ipoResult(data: IpoResultData) {
     return createEmbed()
       .title("IPO Complete!")
@@ -140,6 +144,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Notifies that a token has crashed to zero and will be delisted */
   crash(name: string, symbol: string, lastPrice: string) {
     return createEmbed()
       .title("Token Crashed!")
@@ -151,6 +156,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Alerts when a player makes a large trade that qualifies as whale activity */
   whaleAlert(
     playerName: string,
     action: string,
@@ -167,6 +173,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Broadcasts a named market event with severity-mapped color */
   marketEvent(
     name: string,
     description: string,
@@ -185,6 +192,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Posts the weekly market summary report with key trading metrics */
   weeklyReport(data: WeeklyReportData) {
     return createEmbed()
       .title("Weekly Market Report")
@@ -201,6 +209,7 @@ export const CryptoEmbedPresets = {
 
   // --- Command Responses ---
 
+  /** Confirms a successful token purchase or IPO entry */
   buy(data: BuyData) {
     const embed = createEmbed()
       .title(data.isIpo ? "IPO Buy" : "Crypto Buy")
@@ -219,6 +228,7 @@ export const CryptoEmbedPresets = {
     return embed.timestamp();
   },
 
+  /** Confirms a successful token sale with price, fee, and revenue */
   sell(data: SellData) {
     return createEmbed()
       .title("Crypto Sell")
@@ -230,6 +240,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Shown when a player's portfolio has no current holdings */
   portfolioEmpty(realizedPnl: string) {
     return createEmbed()
       .title("Crypto Portfolio")
@@ -239,6 +250,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Displays a player's active holdings with total value and P&L summary */
   portfolio(data: PortfolioData) {
     return createEmbed()
       .title("Crypto Portfolio")
@@ -250,6 +262,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Shown when the crypto leaderboard has no entries yet */
   leaderboardEmpty() {
     return createEmbed()
       .title("Crypto Leaderboard")
@@ -257,6 +270,7 @@ export const CryptoEmbedPresets = {
       .description("No trading activity yet.");
   },
 
+  /** Displays a ranked crypto leaderboard for the specified metric */
   leaderboard(typeLabel: string, lines: string) {
     return createEmbed()
       .title(`Crypto Leaderboard — ${typeLabel}`)
@@ -265,6 +279,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Displays an overview of current market activity (cap, volume, tokens, traders) */
   marketSummary(data: MarketSummaryData) {
     return createEmbed()
       .title("Crypto Market Summary")
@@ -277,6 +292,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Displays a token price chart image as a Discord attachment embed */
   chart(tokenName: string, symbol: string, filename: string) {
     return createEmbed()
       .title(`${tokenName} (${symbol})`)
@@ -284,6 +300,7 @@ export const CryptoEmbedPresets = {
       .image(`attachment://${filename}`);
   },
 
+  /** Text-only fallback shown when the chart screenshot is unavailable */
   chartFallback(data: ChartFallbackData) {
     return createEmbed()
       .title(`${data.tokenName} (${data.symbol})`)
@@ -294,6 +311,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Confirms a new price alert was created with direction, target, and current price */
   alertCreated(data: AlertCreatedData) {
     return createEmbed()
       .title("Price Alert Created")
@@ -306,6 +324,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Confirms a price alert was successfully removed by ID */
   alertRemoved(alertId: number) {
     return createEmbed()
       .title("Price Alert Removed")
@@ -314,6 +333,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Notifies a player that their price alert condition has been met */
   priceAlertTriggered(data: {
     symbol: string;
     direction: string;
@@ -331,6 +351,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Displays a player's active price alerts with current token prices */
   alertList(lines: string) {
     return createEmbed()
       .title("Price Alerts")
@@ -339,6 +360,7 @@ export const CryptoEmbedPresets = {
       .timestamp();
   },
 
+  /** Shown when a player has no active price alerts */
   alertListEmpty() {
     return createEmbed()
       .title("Price Alerts")

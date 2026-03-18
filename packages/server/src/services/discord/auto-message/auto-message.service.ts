@@ -2,6 +2,18 @@ import { Q } from "@/db";
 import type { DiscordMessageService } from "../message/message.service";
 import type { DiscordAutoMessageConfig } from "@createrington/shared/db/discord_auto_message_config.types";
 
+/**
+ * Auto-Message Service
+ *
+ * Manages scheduled, rotating messages sent to Discord channels:
+ * - Loads enabled auto-message configs from the database on startup
+ * - Maintains per-config interval timers that fire message sends
+ * - Supports sequential and random rotation modes across message sets
+ * - Resolves template variables (e.g. `{memberCount}`) before sending
+ * - Allows individual configs to be started, stopped, or restarted at runtime
+ *
+ * NOTE: Requires a DiscordMessageService instance for the actual send calls
+ */
 export class AutoMessageService {
   private timers: Map<number, NodeJS.Timeout> = new Map();
 
@@ -11,11 +23,13 @@ export class AutoMessageService {
   // LIFECYCLE
   // ==========================================================================
 
+  /** Initializes the service by loading and starting all enabled configs */
   async initialize(): Promise<void> {
     await this.loadAndStartAll();
     logger.info("AutoMessageService initialized");
   }
 
+  /** Stops all active timers and clears internal state */
   async shutdown(): Promise<void> {
     for (const [configId, timer] of this.timers) {
       clearInterval(timer);
@@ -29,6 +43,11 @@ export class AutoMessageService {
   // CONFIG MANAGEMENT
   // ==========================================================================
 
+  /**
+   * Loads all enabled auto-message configs and starts their timers
+   *
+   * @returns Promise resolving when all timers are started
+   */
   async loadAndStartAll(): Promise<void> {
     const configs = await Q.discord.auto.message.config
       .where({ enabled: true })
@@ -41,12 +60,26 @@ export class AutoMessageService {
     logger.info(`Started ${configs.length} auto-message timer(s)`);
   }
 
+  /**
+   * Starts the timer for a single config by ID
+   *
+   * Does nothing if the config does not exist or is not enabled.
+   *
+   * @param configId - Database ID of the auto-message config to start
+   */
   async startConfig(configId: number): Promise<void> {
     const config = await Q.discord.auto.message.config.get({ id: configId });
     if (!config || !config.enabled) return;
     this.startTimer(config);
   }
 
+  /**
+   * Stops the active timer for a single config
+   *
+   * Does nothing if no timer is currently running for the given config.
+   *
+   * @param configId - Database ID of the auto-message config to stop
+   */
   stopConfig(configId: number): void {
     const timer = this.timers.get(configId);
     if (timer) {
@@ -56,6 +89,14 @@ export class AutoMessageService {
     }
   }
 
+  /**
+   * Restarts the timer for a single config
+   *
+   * Stops any existing timer before re-fetching the config and starting fresh.
+   * Useful when a config's interval or enabled state has changed.
+   *
+   * @param configId - Database ID of the auto-message config to restart
+   */
   async restartConfig(configId: number): Promise<void> {
     this.stopConfig(configId);
     await this.startConfig(configId);
@@ -65,6 +106,15 @@ export class AutoMessageService {
   // PRIVATE
   // ==========================================================================
 
+  /**
+   * Creates and registers the interval timer for a config
+   *
+   * Stops any previously running timer for the same config before starting a
+   * new one. The interval fires `sendNextMessage` at the configured frequency.
+   *
+   * @param config - The auto-message config to schedule
+   * @private
+   */
   private startTimer(config: DiscordAutoMessageConfig): void {
     this.stopConfig(config.id);
 
@@ -85,6 +135,17 @@ export class AutoMessageService {
     );
   }
 
+  /**
+   * Selects and sends the next message for a config
+   *
+   * Re-fetches the config on each call so that runtime changes (disable,
+   * interval update) take effect immediately. Picks the next message using
+   * the configured rotation mode (sequential or random), resolves any template
+   * variables in the content, then delegates to DiscordMessageService.
+   *
+   * @param configId - Database ID of the auto-message config to process
+   * @private
+   */
   private async sendNextMessage(configId: number): Promise<void> {
     const config = await Q.discord.auto.message.config.get({ id: configId });
     if (!config || !config.enabled) {

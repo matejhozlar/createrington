@@ -1,3 +1,4 @@
+/** A Minecraft player identified by UUID and username */
 export interface MinecraftPlayer {
   uuid: string;
   username: string;
@@ -20,15 +21,18 @@ export interface SessionMetadata {
   ipAddress?: string;
 }
 
+/** In-memory state of a currently active player session */
 export interface ActiveSession {
   uuid: string;
   username: string;
   serverId: number;
   sessionStart: Date;
+  /** Database session ID — set by the repository after persisting the session */
   sessionId?: number;
   metadata?: SessionMetadata;
 }
 
+/** Event emitted when a player's session ends — carries duration and DB reference */
 export interface SessionEndEvent {
   sessionId: number;
   uuid: string;
@@ -39,6 +43,7 @@ export interface SessionEndEvent {
   secondsPlayed: number;
 }
 
+/** Event emitted when a player's session begins */
 export interface SessionStartEvent {
   uuid: string;
   username: string;
@@ -47,16 +52,22 @@ export interface SessionStartEvent {
   metadata?: SessionMetadata;
 }
 
+/** Configuration for a single PlaytimeService instance */
 export interface PlaytimeServiceConfig {
   serverIp: string;
   serverPort: number;
   serverId: number;
+  /** Interval in ms between polling cycles (used for recovery sync) */
   pollIntervalMs?: number;
+  /** Timeout in ms for server status queries */
   statusTimeoutMs?: number;
+  /** Delay in ms before the first status check on startup */
   initialDelayMs?: number;
+  /** Maximum number of recovery sync attempts before giving up */
   maxSyncRetries?: number;
 }
 
+/** Point-in-time snapshot of a Minecraft server's player list */
 export interface ServerStatusSnapshot {
   onlinePlayers: MinecraftPlayer[];
   playerCount: number;
@@ -93,6 +104,7 @@ export interface ModPlayerLeaveData {
   timestamp?: Date;
 }
 
+/** Lifecycle state of a tracked Minecraft server */
 export enum ServerState {
   UNKNOWN = "unknown",
   ONLINE = "online",

@@ -182,9 +182,9 @@ const isValidateOnly = process.argv.includes("--validate-only");
 /**
  * Validates environment variables against the defined schema
  *
- * This function parses process.env and ensures all required environment variables
- * are present and vallid according to the schema. If validation fails, it logs
- * detailed error messages and exists the process
+ * Parses process.env and ensures all required environment variables are present
+ * and valid according to the schema. If validation fails, it logs detailed error
+ * messages and exits the process.
  *
  * @returns Validated and type-safe environment configuration object
  * @throws Exits process with code 1 if validation fails

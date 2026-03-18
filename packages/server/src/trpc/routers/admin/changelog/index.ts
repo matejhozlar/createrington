@@ -21,8 +21,10 @@ const sendChangelogInput = z.object({
   updated: z.array(changelogModSchema),
 });
 
+/** Admin changelog router — CurseForge mod search and modpack update announcements. */
 export const changelogRouter = router({
   searchMods: adminProcedure
+    .meta({ description: "Search CurseForge for mods by query string. Requires the CurseForge API key to be configured." })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
       if (!config.curseforge.apiKey) {
@@ -33,7 +35,9 @@ export const changelogRouter = router({
       return { mods: results };
     }),
 
-  send: adminProcedure.input(sendChangelogInput).mutation(async ({ input }) => {
+  send: adminProcedure
+    .meta({ description: "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated." })
+    .input(sendChangelogInput).mutation(async ({ input }) => {
     const { version, added, removed, updated } = input;
 
     if (added.length === 0 && removed.length === 0 && updated.length === 0) {

@@ -538,6 +538,7 @@ export class MinecraftRconManager {
     }
   }
 
+  /** Stops the cleanup interval, disconnects all servers, and resets the singleton */
   public async shutdown(): Promise<void> {
     this.stopCleanup();
     await this.disconnectAll();
@@ -614,10 +615,18 @@ export class MinecraftRconManager {
   // CONVENIENCE METHODS (single server operations)
   // ============================================================================
 
+  /** Sets the in-game time on a server */
   public async time(serverId: ServerId, time: TimeValue): Promise<string> {
     return this.send(serverId, `time set ${this.timeToString(time)}`);
   }
 
+  /**
+   * Sets the weather on a server
+   *
+   * @param serverId - Target server
+   * @param weather - Weather type to set
+   * @param duration - Optional duration in seconds
+   */
   public async weather(
     serverId: ServerId,
     weather: MinecraftWeather,
@@ -627,6 +636,7 @@ export class MinecraftRconManager {
     return this.send(serverId, `weather ${weather}${durationArg}`);
   }
 
+  /** Sets the difficulty on a server */
   public async difficulty(
     serverId: ServerId,
     difficulty: MinecraftDifficulty,
@@ -634,10 +644,18 @@ export class MinecraftRconManager {
     return this.send(serverId, `difficulty ${difficulty}`);
   }
 
+  /** Returns the online player list from a server */
   public async list(serverId: ServerId): Promise<string> {
     return this.send(serverId, "list");
   }
 
+  /**
+   * Kicks a player from a server
+   *
+   * @param serverId - Target server
+   * @param playerName - Player to kick
+   * @param reason - Optional kick reason shown to the player
+   */
   public async kick(
     serverId: ServerId,
     playerName: string,
@@ -650,6 +668,13 @@ export class MinecraftRconManager {
     return this.send(serverId, `kick ${playerName}${reasonArg}`);
   }
 
+  /**
+   * Bans a player on a single server
+   *
+   * @param serverId - Target server
+   * @param playerName - Player to ban
+   * @param reason - Optional ban reason
+   */
   public async ban(
     serverId: ServerId,
     playerName: string,
@@ -666,6 +691,7 @@ export class MinecraftRconManager {
     return this.send(serverId, `ban ${playerName}${reasonArg}`);
   }
 
+  /** Pardons (unbans) a player on a single server */
   public async pardon(serverId: ServerId, playerName: string): Promise<string> {
     if (!playerName || playerName.trim().length === 0) {
       throw new RconCommandError(
@@ -677,6 +703,7 @@ export class MinecraftRconManager {
     return this.send(serverId, `pardon ${playerName}`);
   }
 
+  /** Sets a player's game mode on a server */
   public async gamemode(
     serverId: ServerId,
     playerName: string,
@@ -692,6 +719,14 @@ export class MinecraftRconManager {
     return this.send(serverId, `gamemode ${gameMode} ${playerName}`);
   }
 
+  /**
+   * Gives a player an item on a server
+   *
+   * @param serverId - Target server
+   * @param playerName - Recipient player name
+   * @param item - Item ID (namespaced, e.g. "minecraft:diamond")
+   * @param amount - Quantity to give (default: 1)
+   */
   public async give(
     serverId: ServerId,
     playerName: string,
@@ -711,6 +746,13 @@ export class MinecraftRconManager {
     return this.send(serverId, `give ${playerName} ${item} ${amount}`);
   }
 
+  /**
+   * Teleports a player to another player or coordinates on a server
+   *
+   * @param serverId - Target server
+   * @param playerName - Player to teleport
+   * @param destination - Target player name or {x, y, z} coordinates
+   */
   public async tp(
     serverId: ServerId,
     playerName: string,
@@ -730,14 +772,23 @@ export class MinecraftRconManager {
     return this.send(serverId, `tp ${playerName} ${destinationStr}`);
   }
 
+  /** Triggers a world save on a server (`save-all`) */
   public async saveAll(serverId: ServerId): Promise<string> {
     return this.send(serverId, "save-all");
   }
 
+  /** Gracefully stops a server */
   public async stop(serverId: ServerId): Promise<string> {
     return this.send(serverId, "stop");
   }
 
+  /**
+   * Manages the whitelist on a server (add, remove, list, on, off, reload)
+   *
+   * @param serverId - Target server
+   * @param action - Whitelist action to perform
+   * @param playerName - Required for ADD and REMOVE actions
+   */
   public async whitelist(
     serverId: ServerId,
     action: WhitelistAction,
