@@ -13,6 +13,9 @@ import {
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { CharCount } from "@/features/admin/components/CharCount";
+import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
+import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 
 type FaqEntry = RouterOutput["admin"]["faq"]["list"]["entries"][number];
 type MatchMode = "keywords" | "regex";
@@ -33,6 +36,7 @@ export function EditFaqModal({
   const toast = useToastActions();
   const updateEntry = trpc.admin.faq.update.useMutation();
 
+  const mentionResolver = useMentionResolver();
   const responseRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState(entry.title);
   const [matchMode, setMatchMode] = useState<MatchMode>(
@@ -174,10 +178,23 @@ export function EditFaqModal({
               rows={4}
               className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <FieldDescription>
-              Supports Discord markdown: **bold**, *italic*, `code`,
-              [links](url)
-            </FieldDescription>
+            <div className="flex items-center justify-between">
+              <FieldDescription>
+                Supports Discord markdown and mentions
+              </FieldDescription>
+              <CharCount value={response} max={2000} />
+            </div>
+            {response.trim() && (
+              <div
+                className="rounded-md p-3 text-sm"
+                style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
+              >
+                <DiscordMarkdown
+                  text={response}
+                  mentionResolver={mentionResolver}
+                />
+              </div>
+            )}
           </Field>
 
           <div className="flex items-end gap-4">

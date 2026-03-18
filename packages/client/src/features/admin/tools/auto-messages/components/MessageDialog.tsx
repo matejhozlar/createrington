@@ -12,6 +12,9 @@ import {
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { CharCount } from "@/features/admin/components/CharCount";
+import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
+import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -37,6 +40,7 @@ export function MessageDialog({
   const createMutation = trpc.admin.autoMessages.messages.create.useMutation();
   const updateMutation = trpc.admin.autoMessages.messages.update.useMutation();
 
+  const mentionResolver = useMentionResolver();
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState(message?.content ?? "");
   const [enabled, setEnabled] = useState(message?.enabled ?? true);
@@ -112,9 +116,23 @@ export function MessageDialog({
               maxLength={2000}
               className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <FieldDescription>
-              {content.length}/2000 — supports Discord markdown
-            </FieldDescription>
+            <div className="flex items-center justify-between">
+              <FieldDescription>
+                Supports Discord markdown and mentions
+              </FieldDescription>
+              <CharCount value={content} max={2000} />
+            </div>
+            {content.trim() && (
+              <div
+                className="rounded-md p-3 text-sm"
+                style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
+              >
+                <DiscordMarkdown
+                  text={content}
+                  mentionResolver={mentionResolver}
+                />
+              </div>
+            )}
           </Field>
 
           <label className="flex cursor-pointer items-center gap-2">
