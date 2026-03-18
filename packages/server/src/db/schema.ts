@@ -307,6 +307,25 @@ export const discordGuildMemberLeave = pgTable(
   ],
 );
 
+// --- discord_command_usage ---
+
+export const discordCommandUsage = pgTable(
+  "discord_command_usage",
+  {
+    id: serial("id").primaryKey(),
+    commandName: varchar("command_name", { length: 100 }).notNull(),
+    discordId: varchar("discord_id", { length: 50 }).notNull(),
+    success: boolean("success").notNull(),
+    executedAt: timestamp("executed_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_discord_command_usage_command").on(table.commandName),
+    index("idx_discord_command_usage_executed_at").on(table.executedAt),
+  ],
+);
+
 // --- discord_auto_message_config ---
 
 export const discordAutoMessageConfig = pgTable("discord_auto_message_config", {

@@ -26,4 +26,15 @@ export const dashboardRouter = router({
         recentActions,
       };
     }),
+
+  commandStats: adminProcedure
+    .meta({ description: "Get top slash command usage statistics." })
+    .query(async () => {
+      const [topCommands, totalToday] = await Promise.all([
+        Q.discord.command.usage.topCommands(10),
+        Q.discord.command.usage.countToday(),
+      ]);
+
+      return { topCommands, totalToday };
+    }),
 });
