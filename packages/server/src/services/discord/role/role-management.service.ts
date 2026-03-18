@@ -313,7 +313,7 @@ export class RoleManagementService {
             assigned = true;
 
             roleNotificationService
-              .sendTopPlayerAnnouncement({
+              .sendNotification({
                 discordId: topPlayer.discordId,
                 username: topPlayer.minecraftUsername,
                 role: rule,
@@ -430,7 +430,7 @@ export class RoleManagementService {
             assigned = true;
 
             roleNotificationService
-              .sendTopPlayerAnnouncement({
+              .sendNotification({
                 discordId: topPlayer.discordId,
                 username: topEntry.playerName,
                 role: rule,

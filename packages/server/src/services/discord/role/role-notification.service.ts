@@ -110,41 +110,6 @@ export class RoleNotificationService {
     }
   }
 
-  /**
-   * Sends a special announcement for top player achievements
-   *
-   * @param notification - Role assignment notification for the top player
-   * @returns Promise resolving when announcement is sent
-   */
-  async sendTopPlayerAnnouncement(
-    notification: RoleAssignmentNotification,
-  ): Promise<void> {
-    const config = getNotificationConfig(notification.role.roleId);
-    const channelId = config.channelId;
-
-    if (!channelId) {
-      return;
-    }
-
-    try {
-      const embed = EmbedPresets.roleAssignment.topPlayerAnnouncement(
-        notification.discordId,
-        notification.username,
-        notification.role.label,
-        notification.currentValue,
-        notification.role.conditionType,
-      );
-
-      await Discord.Messages.send({
-        channelId,
-        embeds: embed.build(),
-      });
-
-      logger.info(`Sent top player announcement for ${notification.username}`);
-    } catch (error) {
-      logger.error("Failed to send top player announcement:", error);
-    }
-  }
 }
 
 export const roleNotificationService = new RoleNotificationService();
