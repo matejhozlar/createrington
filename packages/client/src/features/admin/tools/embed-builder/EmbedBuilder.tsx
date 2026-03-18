@@ -12,10 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Send, Download, Pencil, X, Link2, Unlink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import type { EmbedData } from "@createrington/shared/api/embed";
+import type { EmbedData, EmbedBot } from "@createrington/shared/api/embed";
 import { EmbedForm } from "./components/EmbedForm";
 import { EmbedPreview } from "./components/EmbedPreview";
 import { ChannelSelector } from "./components/ChannelSelector";
+import { BotSelector } from "./components/BotSelector";
 import { PresetManager } from "./components/PresetManager";
 
 const DEFAULT_EMBED: EmbedData = {
@@ -36,6 +37,7 @@ const DEFAULT_EMBED: EmbedData = {
 export function EmbedBuilder() {
   const toast = useToastActions();
   const [data, setData] = useState<EmbedData>({ ...DEFAULT_EMBED });
+  const [bot, setBot] = useState<EmbedBot>("main");
   const [channelId, setChannelId] = useState("");
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [loadMessageId, setLoadMessageId] = useState("");
@@ -76,6 +78,7 @@ export function EmbedBuilder() {
           messageId: editingMessageId,
           embed: data,
           presetId: activePreset?.id,
+          bot,
         });
         toast.success("Embed updated successfully");
       } else {
@@ -83,6 +86,7 @@ export function EmbedBuilder() {
           channelId,
           embed: data,
           presetId: activePreset?.id,
+          bot,
         });
         setEditingMessageId(result.messageId ?? null);
         if (activePreset) linksQuery.refetch();
@@ -107,6 +111,7 @@ export function EmbedBuilder() {
       const result = await utils.admin.embeds.fetchMessage.fetch({
         channelId,
         messageId: loadMessageId.trim(),
+        bot,
       });
 
       handleLoad(result as EmbedData);
@@ -235,7 +240,10 @@ export function EmbedBuilder() {
         <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
           {/* Form column */}
           <div className="space-y-4">
-            <ChannelSelector value={channelId} onChange={setChannelId} />
+            <div className="grid grid-cols-[1fr_auto] gap-4">
+              <ChannelSelector value={channelId} onChange={setChannelId} />
+              <BotSelector value={bot} onChange={setBot} />
+            </div>
 
             {/* Load existing message */}
             <div className="flex gap-2">
@@ -279,6 +287,7 @@ export function EmbedBuilder() {
                               await utils.admin.embeds.fetchMessage.fetch({
                                 channelId: link.channelId,
                                 messageId: link.messageId,
+                                bot,
                               });
                             handleLoad(result as EmbedData);
                             toast.success("Linked message loaded");
