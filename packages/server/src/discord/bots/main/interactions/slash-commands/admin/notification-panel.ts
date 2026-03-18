@@ -18,7 +18,15 @@ import { getEnabledNotifications } from "../../../config/notification-selection"
 export const data = new SlashCommandBuilder()
   .setName("notification-panel")
   .setDescription("Create or update the notification selection panel")
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addStringOption((opt) =>
+    opt
+      .setName("message_id")
+      .setDescription(
+        "Message ID of an existing panel to update (sends new if omitted)",
+      )
+      .setRequired(false),
+  );
 
 /**
  * Permission configuration for the notification-panel command
@@ -106,24 +114,56 @@ export async function execute(
       rows.push(row);
     }
 
-    await interaction.channel.send({
-      embeds: [embed.build()],
-      components: rows,
-    });
+    const messageId = interaction.options.getString("message_id");
+    const payload = { embeds: [embed.build()], components: rows };
 
-    const successEmbed = EmbedPresets.success(
-      "Panel Created",
-      `Notification selection panel has been created with ${enabledNotifications.length} notification(s)`,
-    );
+    if (messageId) {
+      const existing = await interaction.channel.messages
+        .fetch(messageId)
+        .catch(() => null);
 
-    await interaction.reply({
-      embeds: [successEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
+      if (!existing) {
+        const errEmbed = EmbedPresets.error(
+          "Message Not Found",
+          `Could not find message with ID \`${messageId}\` in this channel.`,
+        );
+        await interaction.reply({
+          embeds: [errEmbed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
 
-    logger.info(
-      `${interaction.user.tag} created notification selection panel with ${enabledNotifications.length} notification(s)`,
-    );
+      await existing.edit(payload);
+
+      const successEmbed = EmbedPresets.success(
+        "Panel Updated",
+        `Notification selection panel has been updated with ${enabledNotifications.length} notification(s)`,
+      );
+      await interaction.reply({
+        embeds: [successEmbed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+
+      logger.info(
+        `${interaction.user.tag} updated notification selection panel (${messageId}) with ${enabledNotifications.length} notification(s)`,
+      );
+    } else {
+      await interaction.channel.send(payload);
+
+      const successEmbed = EmbedPresets.success(
+        "Panel Created",
+        `Notification selection panel has been created with ${enabledNotifications.length} notification(s)`,
+      );
+      await interaction.reply({
+        embeds: [successEmbed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+
+      logger.info(
+        `${interaction.user.tag} created notification selection panel with ${enabledNotifications.length} notification(s)`,
+      );
+    }
   } catch (error) {
     logger.error("/notification-panel failed:", error);
 

@@ -22,6 +22,8 @@ function formatValue(value: number, conditionType: RoleConditionType): string {
       return formatPlaytime(value);
     case RoleConditionType.BALANCE:
       return `${formatBalance(value)}`;
+    case RoleConditionType.TOP_CRYPTO_NETWORTH:
+      return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     case RoleConditionType.SERVER_AGE:
       return `${formatDaysCount(value)} ${value > 0 ? "ago" : ""}`;
     default:
@@ -73,11 +75,7 @@ export const RoleAssignmentEmbedPresets = {
       config.customMessage || getCongratulatoryMessage(isMilestone);
 
     const embed = createEmbed()
-      .title(
-        isMilestone
-          ? `${emoji} MILESTONE ACHIEVEMENT ${emoji}`
-          : `${emoji} Rank Up!`,
-      )
+      .title(`${emoji} Rank Up!`)
       .color(isMilestone ? EmbedColors.Premium : EmbedColors.Success)
       .description(
         `${Discord.Users.mention(
@@ -97,6 +95,14 @@ export const RoleAssignmentEmbedPresets = {
     } else if (notification.role.conditionType === RoleConditionType.BALANCE) {
       embed.field(
         "Current Balance",
+        formatValue(notification.currentValue, notification.role.conditionType),
+        true,
+      );
+    } else if (
+      notification.role.conditionType === RoleConditionType.TOP_CRYPTO_NETWORTH
+    ) {
+      embed.field(
+        "Portfolio Value",
         formatValue(notification.currentValue, notification.role.conditionType),
         true,
       );
@@ -123,7 +129,7 @@ export const RoleAssignmentEmbedPresets = {
   multipleRankUps(notifications: RoleAssignmentNotification[]) {
     const firstNotification = notifications[0];
     const embed = createEmbed()
-      .title("🎉 Multiple Achievements Unlocked!")
+      .title("🎉 Multiple Rank Ups!")
       .color(EmbedColors.Success)
       .description(
         `${Discord.Users.mention(
@@ -140,46 +146,6 @@ export const RoleAssignmentEmbedPresets = {
       .join("\n");
 
     embed.field("New Roles", rolesList, false);
-
-    embed.timestamp();
-
-    return embed;
-  },
-
-  /**
-   * Creates a special embed for the top player annoucement
-   *
-   * @param discordId - Discord user ID of the top player
-   * @param username - Username of the top player
-   * @param roleLabel - Label of the role earned
-   * @param value - The value that made them #1 (playtime, balance, etc.)
-   * @param conditionType - Type of condition
-   * @returns Discord embed builder
-   */
-  topPlayerAnnouncement(
-    discordId: string,
-    username: string,
-    roleLabel: string,
-    value: number,
-    conditionType: RoleConditionType,
-  ) {
-    const embed = createEmbed()
-      .title("👑 NEW #1 PLAYER 👑")
-      .color(EmbedColors.Premium)
-      .description(
-        `${Discord.Users.mention(
-          discordId,
-        )} has claimed the top spot and earned the title of **${roleLabel}**!`,
-      );
-
-    if (
-      conditionType === RoleConditionType.PLAYTIME ||
-      conditionType === RoleConditionType.TOP_PLAYTIME
-    ) {
-      embed.field("Total Playtime", formatPlaytime(value), true);
-    } else if (conditionType === RoleConditionType.BALANCE) {
-      embed.field("Total Balance", `$${value.toLocaleString()}`, true);
-    }
 
     embed.timestamp();
 

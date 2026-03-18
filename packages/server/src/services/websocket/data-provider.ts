@@ -10,10 +10,13 @@ import type {
 import type { CachedMessage } from "../discord/message/cache";
 
 /**
- * Data provider for WebSocket service
+ * WebSocket Data Provider
  *
- * Responsible for gathering current state from various services
- * and formatting it for WebSocket transmission
+ * Aggregates current runtime state for WebSocket transmission:
+ * - Server status (online/offline, player count) for all or a single server
+ * - Active player lists from PlaytimeManagerService sessions
+ * - Recent message history from MessageCacheService
+ * - Combined initial-data payloads for newly connected clients
  */
 export class WebSocketDataProvider {
   constructor(

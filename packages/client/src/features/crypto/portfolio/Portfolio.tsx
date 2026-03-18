@@ -320,7 +320,10 @@ export function Portfolio() {
                         className="size-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: a.fill }}
                       />
-                      <span className="text-muted-foreground truncate">
+                      <span
+                        className="text-muted-foreground truncate"
+                        title={a.name}
+                      >
                         {a.name}
                       </span>
                       <span className="text-muted-foreground font-mono">

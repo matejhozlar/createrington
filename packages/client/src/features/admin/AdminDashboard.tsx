@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Shield,
   Activity,
+  Terminal,
 } from "lucide-react";
 
 function formatRelativeDate(dateStr: string): string {
@@ -78,6 +79,7 @@ export const AdminDashboard: React.FC = () => {
     orderBy: "performedAt",
     orderDirection: "desc",
   });
+  const commandStatsQuery = trpc.admin.dashboard.commandStats.useQuery();
 
   const isLoading =
     profileQuery.isLoading ||
@@ -249,8 +251,8 @@ export const AdminDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Two-column: Recent Bans + Recent Activity */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        {/* Three-column: Recent Bans + Recent Activity + Top Commands */}
+        <div className="grid gap-4 lg:grid-cols-3">
           {/* Recent Bans */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -375,6 +377,54 @@ export const AdminDashboard: React.FC = () => {
                       {i < recentLogs.length - 1 && <Separator />}
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top Commands */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Terminal className="size-4 text-muted-foreground" />
+                Top Commands
+              </CardTitle>
+              <CardDescription>
+                {commandStatsQuery.data?.totalToday ?? 0} executions today
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {commandStatsQuery.isLoading ? (
+                <Loading size="small" text="Loading stats..." />
+              ) : !commandStatsQuery.data?.topCommands.length ? (
+                <p className="py-4 text-center text-sm text-muted-foreground">
+                  No command usage yet
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {commandStatsQuery.data.topCommands.map((cmd) => {
+                    const maxCount =
+                      commandStatsQuery.data!.topCommands[0]!.count;
+                    const pct = maxCount > 0 ? (cmd.count / maxCount) * 100 : 0;
+                    return (
+                      <div key={cmd.commandName} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="font-medium">
+                            /{cmd.commandName}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {cmd.count}
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-muted">
+                          <div
+                            className="h-2 rounded-full bg-sidebar-primary"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

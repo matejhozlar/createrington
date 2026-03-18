@@ -9,6 +9,7 @@ import type {
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
+import { Q } from "@/db";
 
 import { requireAdmin } from "@/discord/utils/admin-guard";
 import type { CommandModule } from "../../common/loaders/command-loader";
@@ -232,6 +233,7 @@ async function handleChatCommands(
     }
   }
 
+  let success = true;
   try {
     await command.execute(interaction);
 
@@ -243,6 +245,7 @@ async function handleChatCommands(
       });
     }
   } catch (error) {
+    success = false;
     logger.error(`Error executing command ${interaction.commandName}:`, error);
 
     const replyMethod =
@@ -255,6 +258,14 @@ async function handleChatCommands(
       flags: MessageFlags.Ephemeral,
     });
   }
+
+  Q.discord.command.usage
+    .create({
+      commandName: interaction.commandName,
+      discordId: interaction.user.id,
+      success,
+    })
+    .catch((err) => logger.error("Failed to log command usage:", err));
 }
 
 /**

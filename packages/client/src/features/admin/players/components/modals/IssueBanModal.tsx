@@ -149,8 +149,9 @@ export function IssueBanModal({
               size="icon"
               onClick={handleClose}
               className="cursor-pointer"
+              aria-label="Close"
             >
-              <X className="size-4 cursor-pointer" />
+              <X className="size-4" />
             </Button>
           </div>
 

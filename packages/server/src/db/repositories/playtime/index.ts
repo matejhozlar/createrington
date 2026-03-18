@@ -27,7 +27,8 @@ import type { SessionEndEvent, SessionStartEvent } from "@/services/playtime";
  * - Playtime statistics retrieval
  * - Coordinates multiple query classes
  *
- * This is the layer that listens to PlaytimeService events
+ * NOTE: This repository listens to PlaytimeService events to drive all
+ * session tracking — connect it via connectToService() during bootstrap
  */
 export class PlaytimeRepository {
   constructor() {}

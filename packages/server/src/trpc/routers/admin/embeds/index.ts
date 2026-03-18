@@ -51,6 +51,7 @@ function buildDiscordEmbed(data: EmbedData): EmbedBuilder {
 }
 
 const channels = config.discord.guild.channels;
+const roles = config.discord.guild.roles;
 const categories = config.discord.guild.categories;
 const colors = config.discord.embeds.colors;
 
@@ -84,6 +85,14 @@ export const embedsRouter = router({
       }
 
       return grouped;
+    }),
+
+  roles: adminProcedure
+    .meta({ description: "Get all Discord roles." })
+    .query(() => {
+      return Object.entries(roles as unknown as Record<string, string>).map(
+        ([name, id]) => ({ name, id }),
+      );
     }),
 
   colors: adminProcedure
