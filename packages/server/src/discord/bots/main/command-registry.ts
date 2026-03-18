@@ -21,7 +21,6 @@ export const commandRegistry: Record<string, CommandEnv> = {
   playtime: "prod",
   seen: "prod",
   skin: "prod",
-  coinflip: "prod",
   compare: "prod",
   status: "prod",
   history: "prod",
@@ -31,6 +30,7 @@ export const commandRegistry: Record<string, CommandEnv> = {
 
   // Admin
   leaderboard: "prod",
+  "notification-panel": "prod",
   ticket: "prod",
   cooldown: "prod",
   purge: "prod",
