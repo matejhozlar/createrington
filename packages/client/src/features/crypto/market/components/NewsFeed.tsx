@@ -9,7 +9,7 @@ import { timeAgo } from "../../format";
 const SEVERITY_DOT: Record<string, string> = {
   info: "bg-muted-foreground/30",
   warning: "bg-primary/60",
-  critical: "bg-red-400",
+  critical: "bg-destructive",
 };
 
 export function NewsFeed() {

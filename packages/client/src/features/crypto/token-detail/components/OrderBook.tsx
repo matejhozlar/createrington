@@ -17,7 +17,7 @@ const ORDER_TYPE_LABELS: Record<string, string> = {
 
 const ORDER_TYPE_COLORS: Record<string, string> = {
   limit_buy: "text-emerald-400",
-  limit_sell: "text-red-400",
+  limit_sell: "text-destructive",
   stop_loss: "text-amber-400",
   take_profit: "text-blue-400",
 };
@@ -102,7 +102,7 @@ export function OrderBook() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-red-400"
+                className="size-7 text-muted-foreground hover:text-destructive"
                 onClick={() => cancelMutation.mutate({ orderId: order.id })}
                 disabled={cancelMutation.isPending}
               >

@@ -489,7 +489,7 @@ function Avatar({
         <span
           className={cn(
             "absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background",
-            isOnline ? "bg-green-500" : "bg-red-500",
+            isOnline ? "bg-green-500" : "bg-destructive",
           )}
         />
       )}
@@ -1469,7 +1469,7 @@ export function ServerChat() {
               </>
             ) : (
               <>
-                <span className="mr-2 inline-block size-2 rounded-full bg-red-500"></span>
+                <span className="mr-2 inline-block size-2 rounded-full bg-destructive"></span>
                 Offline
               </>
             )}
@@ -1499,7 +1499,7 @@ export function ServerChat() {
               "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
               isConnected
                 ? "bg-green-500/20 text-green-500"
-                : "bg-red-500/20 text-red-500",
+                : "bg-destructive/20 text-destructive",
             )}
           >
             <span className="size-2 rounded-full bg-current"></span>

@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
  *   __underline__        — underline
  *   *italic* / _italic_  — italic
  *   ~~strikethrough~~    — strikethrough
+ *   ||spoiler||          — spoiler (revealed text)
  *   # / ## / ### heading — heading (Discord supports up to h3 in embeds)
  *   - item / * item     — unordered list
  *   1. item              — ordered list
@@ -28,6 +29,7 @@ type InlineToken =
   | { type: "underline"; content: string }
   | { type: "italic"; content: string }
   | { type: "strikethrough"; content: string }
+  | { type: "spoiler"; content: string }
   | { type: "code"; content: string }
   | { type: "link"; text: string; url: string };
 
@@ -67,6 +69,10 @@ const INLINE_RULES: Array<{
   {
     pattern: /^~~(.+?)~~/s,
     parse: (m) => ({ type: "strikethrough", content: m[1] }),
+  },
+  {
+    pattern: /^\|\|(.+?)\|\|/s,
+    parse: (m) => ({ type: "spoiler", content: m[1] }),
   },
 ];
 
@@ -144,6 +150,16 @@ function renderInline(text: string): ReactNode[] {
         return <em key={i}>{renderInline(token.content)}</em>;
       case "strikethrough":
         return <s key={i}>{renderInline(token.content)}</s>;
+      case "spoiler":
+        return (
+          <span
+            key={i}
+            className="cursor-pointer rounded px-0.5"
+            style={{ backgroundColor: "#1E1F22" }}
+          >
+            {renderInline(token.content)}
+          </span>
+        );
     }
   });
 }

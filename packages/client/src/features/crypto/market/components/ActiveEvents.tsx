@@ -75,26 +75,26 @@ function EventBanner({
         "flex items-center gap-3 rounded-lg border px-4 py-2.5",
         isBullish
           ? "border-primary/20 bg-primary/[0.04]"
-          : "border-red-500/20 bg-red-500/[0.04]",
+          : "border-destructive/20 bg-destructive/[0.04]",
       )}
     >
       <Icon
         className={cn(
           "size-4 shrink-0",
-          isBullish ? "text-primary" : "text-red-400",
+          isBullish ? "text-primary" : "text-destructive",
         )}
       />
       <div className="flex-1 min-w-0 flex items-center gap-2">
         <span
           className={cn(
             "size-1.5 rounded-full animate-pulse shrink-0",
-            isBullish ? "bg-primary" : "bg-red-400",
+            isBullish ? "bg-primary" : "bg-destructive",
           )}
         />
         <span
           className={cn(
             "font-medium text-sm",
-            isBullish ? "text-primary" : "text-red-400",
+            isBullish ? "text-primary" : "text-destructive",
           )}
         >
           {event.name}

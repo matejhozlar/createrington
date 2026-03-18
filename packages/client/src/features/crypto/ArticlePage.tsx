@@ -82,10 +82,10 @@ const SEVERITY_CONFIG: Record<
   },
   critical: {
     label: "Critical Alert",
-    dot: "bg-red-400",
-    badge: "bg-red-500/10 text-red-400 ring-red-500/20",
-    accent: "border-l-red-400/40",
-    headerGlow: "from-red-500/[0.05] to-transparent",
+    dot: "bg-destructive",
+    badge: "bg-destructive/10 text-destructive ring-destructive/20",
+    accent: "border-l-destructive/40",
+    headerGlow: "from-destructive/[0.05] to-transparent",
   },
 };
 
@@ -182,7 +182,7 @@ function MarketStatsBar({ articleData }: { articleData: ArticleData }) {
       icon: up >= down ? TrendingUp : TrendingDown,
       label: "Breadth",
       value: `${up} up / ${down} down`,
-      color: up >= down ? "text-emerald-400" : "text-red-400",
+      color: up >= down ? "text-emerald-400" : "text-destructive",
     });
   }
 
@@ -235,7 +235,7 @@ function RecentTradesTimeline({ trades }: { trades: ArticleRecentTrade[] }) {
               {isBuy ? (
                 <ArrowUpRight className="size-3.5 text-emerald-400 shrink-0" />
               ) : (
-                <ArrowDownRight className="size-3.5 text-red-400 shrink-0" />
+                <ArrowDownRight className="size-3.5 text-destructive shrink-0" />
               )}
               <span className="font-medium truncate min-w-0">{trade.name}</span>
               <span
@@ -243,7 +243,7 @@ function RecentTradesTimeline({ trades }: { trades: ArticleRecentTrade[] }) {
                   "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
                   isBuy
                     ? "bg-emerald-500/10 text-emerald-400"
-                    : "bg-red-500/10 text-red-400",
+                    : "bg-destructive/10 text-destructive",
                 )}
               >
                 {trade.type}

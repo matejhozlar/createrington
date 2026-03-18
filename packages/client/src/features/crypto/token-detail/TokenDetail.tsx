@@ -173,7 +173,7 @@ export function TokenDetail() {
                     "inline-flex items-center gap-1 mt-1 rounded-full px-2.5 py-0.5 text-sm font-mono tabular-nums font-medium",
                     change24h > 0
                       ? "text-emerald-400 bg-emerald-500/10"
-                      : "text-red-400 bg-red-500/10",
+                      : "text-destructive bg-destructive/10",
                   )}
                 >
                   {change24h > 0 ? (

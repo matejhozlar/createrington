@@ -128,17 +128,17 @@ export function Portfolio() {
       label: "Unrealized P&L",
       value: `${pnlIsPositive ? "+" : ""}$${Number(data.unrealizedPnl).toFixed(2)}`,
       sub: `${data.unrealizedPnlPercent}%`,
-      iconBg: pnlIsPositive ? "bg-emerald-500/10" : "bg-red-500/10",
-      iconColor: pnlIsPositive ? "text-emerald-400" : "text-red-400",
-      valueColor: pnlIsPositive ? "text-emerald-400" : "text-red-400",
+      iconBg: pnlIsPositive ? "bg-emerald-500/10" : "bg-destructive/10",
+      iconColor: pnlIsPositive ? "text-emerald-400" : "text-destructive",
+      valueColor: pnlIsPositive ? "text-emerald-400" : "text-destructive",
     },
     {
       icon: realizedPnlPositive ? TrendingUp : TrendingDown,
       label: "Realized P&L",
       value: `${realizedPnlPositive ? "+" : ""}$${realizedPnl.toFixed(2)}`,
-      iconBg: realizedPnlPositive ? "bg-emerald-500/10" : "bg-red-500/10",
-      iconColor: realizedPnlPositive ? "text-emerald-400" : "text-red-400",
-      valueColor: realizedPnlPositive ? "text-emerald-400" : "text-red-400",
+      iconBg: realizedPnlPositive ? "bg-emerald-500/10" : "bg-destructive/10",
+      iconColor: realizedPnlPositive ? "text-emerald-400" : "text-destructive",
+      valueColor: realizedPnlPositive ? "text-emerald-400" : "text-destructive",
     },
   ];
 
@@ -423,7 +423,9 @@ export function Portfolio() {
                         <TableCell
                           className={cn(
                             "text-right font-mono tabular-nums font-medium",
-                            pnlPositive ? "text-emerald-400" : "text-red-400",
+                            pnlPositive
+                              ? "text-emerald-400"
+                              : "text-destructive",
                           )}
                         >
                           {pnlPositive ? "+" : ""}

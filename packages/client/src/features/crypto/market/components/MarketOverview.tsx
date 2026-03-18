@@ -71,7 +71,7 @@ export function MarketOverview() {
             <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
               Top Loser
             </span>
-            <span className="text-sm font-bold font-mono tabular-nums text-red-400">
+            <span className="text-sm font-bold font-mono tabular-nums text-destructive">
               {overview.topLoser.symbol}{" "}
               {overview.topLoser.change24h.toFixed(1)}%
             </span>

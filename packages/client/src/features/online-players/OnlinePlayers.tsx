@@ -222,7 +222,7 @@ export const OnlinePlayers: React.FC = () => {
         <div className="relative max-w-7xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
             <Badge
-              className={`gap-1.5 px-3 py-1 text-sm ${isOnline ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}
+              className={`gap-1.5 px-3 py-1 text-sm ${isOnline ? "bg-green-500/20 text-green-400 border-green-500/30" : "bg-destructive/20 text-destructive border-destructive/30"}`}
               variant="outline"
             >
               {isOnline ? (

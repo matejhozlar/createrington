@@ -398,7 +398,7 @@ export function TradePanel({
               className={cn(
                 "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
                 tab === "sell"
-                  ? "bg-red-500 text-white shadow-sm"
+                  ? "bg-destructive text-white shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
               onClick={() => setTab("sell")}
@@ -512,7 +512,7 @@ export function TradePanel({
             "w-full h-11 font-semibold",
             tab === "buy"
               ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-              : "bg-red-500 hover:bg-red-600 text-white",
+              : "bg-destructive hover:bg-destructive/90 text-white",
           )}
           onClick={handleTrade}
           disabled={
@@ -563,10 +563,10 @@ export function TradePanel({
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
+                variant={tab === "buy" ? "default" : "destructive"}
                 className={cn(
-                  tab === "buy"
-                    ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                    : "bg-red-500 hover:bg-red-600 text-white",
+                  tab === "buy" &&
+                    "bg-emerald-500 hover:bg-emerald-600 text-white",
                 )}
                 onClick={executeMarketTrade}
               >
