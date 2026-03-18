@@ -57,7 +57,7 @@ export function AnimatedNumber({
       className={cn(
         "transition-colors duration-700",
         flash === "up" && "!text-emerald-400",
-        flash === "down" && "!text-red-400",
+        flash === "down" && "!text-destructive",
         className,
       )}
     >

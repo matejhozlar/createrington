@@ -93,7 +93,7 @@ export function TradeHistory() {
                       key={tx.id}
                       className={cn(
                         "border-b border-border/30 last:border-0 relative",
-                        isBuy ? "bg-emerald-500/[0.02]" : "bg-red-500/[0.02]",
+                        isBuy ? "bg-emerald-500/[0.02]" : "bg-destructive/[0.02]",
                       )}
                     >
                       <TableCell className="text-sm text-muted-foreground">
@@ -114,7 +114,7 @@ export function TradeHistory() {
                             "text-xs",
                             isBuy
                               ? "text-emerald-400 border-emerald-500/20 bg-emerald-500/5"
-                              : "text-red-400 border-red-500/20 bg-red-500/5",
+                              : "text-destructive border-destructive/20 bg-destructive/5",
                           )}
                         >
                           {tx.type.toUpperCase()}
@@ -139,7 +139,7 @@ export function TradeHistory() {
                               "font-medium",
                               Number(tx.realizedPnl) >= 0
                                 ? "text-emerald-400"
-                                : "text-red-400",
+                                : "text-destructive",
                             )}
                           >
                             {Number(tx.realizedPnl) >= 0 ? "+" : ""}$

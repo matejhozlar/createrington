@@ -75,7 +75,7 @@ export function CryptoHeader() {
               <div
                 className={cn(
                   "flex items-center gap-0.5 text-xs font-mono font-semibold tabular-nums",
-                  isPositive ? "text-emerald-400" : "text-red-400",
+                  isPositive ? "text-emerald-400" : "text-destructive",
                 )}
               >
                 {isPositive ? (

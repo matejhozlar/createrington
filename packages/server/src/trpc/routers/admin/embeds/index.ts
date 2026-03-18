@@ -19,6 +19,37 @@ function getMessageService(bot: "main" | "web" = "main") {
   return DiscordMessageService.getInstance(client);
 }
 
+function buildDiscordEmbed(data: EmbedData): EmbedBuilder {
+  const embed = new EmbedBuilder();
+
+  if (data.title) embed.setTitle(data.title);
+  if (data.description) embed.setDescription(data.description);
+  if (data.color !== undefined) embed.setColor(data.color);
+  if (data.url) embed.setURL(data.url);
+  if (data.footer) embed.setFooter({ text: data.footer });
+  if (data.author) {
+    embed.setAuthor({
+      name: data.author,
+      url: data.authorUrl || undefined,
+      iconURL: data.authorIconUrl || undefined,
+    });
+  }
+  if (data.thumbnailUrl) embed.setThumbnail(data.thumbnailUrl);
+  if (data.imageUrl) embed.setImage(data.imageUrl);
+  if (data.timestamp) embed.setTimestamp();
+  if (data.fields.length > 0) {
+    embed.addFields(
+      data.fields.map((f) => ({
+        name: f.name,
+        value: f.value,
+        inline: f.inline,
+      })),
+    );
+  }
+
+  return embed;
+}
+
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
 const colors = config.discord.embeds.colors;
@@ -85,33 +116,7 @@ export const embedsRouter = router({
         );
       }
 
-      const embed = new EmbedBuilder();
-
-      if (data.title) embed.setTitle(data.title);
-      if (data.description) embed.setDescription(data.description);
-      if (data.color !== undefined) embed.setColor(data.color);
-      if (data.url) embed.setURL(data.url);
-      if (data.footer) embed.setFooter({ text: data.footer });
-      if (data.author) {
-        embed.setAuthor({
-          name: data.author,
-          url: data.authorUrl || undefined,
-          iconURL: data.authorIconUrl || undefined,
-        });
-      }
-      if (data.thumbnailUrl) embed.setThumbnail(data.thumbnailUrl);
-      if (data.imageUrl) embed.setImage(data.imageUrl);
-      if (data.timestamp) embed.setTimestamp();
-      if (data.fields.length > 0) {
-        embed.addFields(
-          data.fields.map((f) => ({
-            name: f.name,
-            value: f.value,
-            inline: f.inline,
-          })),
-        );
-      }
-
+      const embed = buildDiscordEmbed(data);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.send({
@@ -155,33 +160,7 @@ export const embedsRouter = router({
         );
       }
 
-      const embed = new EmbedBuilder();
-
-      if (data.title) embed.setTitle(data.title);
-      if (data.description) embed.setDescription(data.description);
-      if (data.color !== undefined) embed.setColor(data.color);
-      if (data.url) embed.setURL(data.url);
-      if (data.footer) embed.setFooter({ text: data.footer });
-      if (data.author) {
-        embed.setAuthor({
-          name: data.author,
-          url: data.authorUrl || undefined,
-          iconURL: data.authorIconUrl || undefined,
-        });
-      }
-      if (data.thumbnailUrl) embed.setThumbnail(data.thumbnailUrl);
-      if (data.imageUrl) embed.setImage(data.imageUrl);
-      if (data.timestamp) embed.setTimestamp();
-      if (data.fields.length > 0) {
-        embed.addFields(
-          data.fields.map((f) => ({
-            name: f.name,
-            value: f.value,
-            inline: f.inline,
-          })),
-        );
-      }
-
+      const embed = buildDiscordEmbed(data);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
@@ -198,6 +177,104 @@ export const embedsRouter = router({
         await Q.discord.embed.preset.update(
           { id: input.presetId },
           { data: input.embed as EmbedData as Record<string, unknown> },
+        );
+      }
+
+      return { messageId: result.messageId };
+    }),
+
+  updateAll: adminProcedure
+    .meta({
+      description:
+        "Update a preset and all its linked messages at once.",
+    })
+    .input(
+      z.object({
+        presetId: z.number().int().positive(),
+        embed: embedDataSchema,
+        bot: embedBotSchema.default("main"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const data = input.embed as EmbedData;
+
+      if (!data.title && !data.description && data.fields.length === 0) {
+        throw trpcError.badRequest(
+          "Embed must have at least a title, description, or one field.",
+        );
+      }
+
+      await Q.discord.embed.preset.update(
+        { id: input.presetId },
+        { data: data as Record<string, unknown> },
+      );
+
+      const links = await Q.discord.embed.preset.message
+        .where({ presetId: input.presetId })
+        .all();
+
+      const embed = buildDiscordEmbed(data);
+      const messageService = getMessageService(input.bot);
+
+      let updated = 0;
+      const errors: string[] = [];
+
+      for (const link of links) {
+        const result = await messageService.edit({
+          channelId: link.channelId,
+          messageId: link.messageId,
+          embeds: embed,
+        });
+
+        if (result.success) {
+          updated++;
+        } else {
+          errors.push(
+            `${link.messageId}: ${result.error ?? "Unknown error"}`,
+          );
+        }
+      }
+
+      return { updated, failed: errors.length, errors };
+    }),
+
+  updateLink: adminProcedure
+    .meta({ description: "Update a single linked message with current embed data." })
+    .input(
+      z.object({
+        linkId: z.number().int().positive(),
+        embed: embedDataSchema,
+        bot: embedBotSchema.default("main"),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const data = input.embed as EmbedData;
+
+      if (!data.title && !data.description && data.fields.length === 0) {
+        throw trpcError.badRequest(
+          "Embed must have at least a title, description, or one field.",
+        );
+      }
+
+      const link = await Q.discord.embed.preset.message.find({
+        id: input.linkId,
+      });
+      if (!link) {
+        throw trpcError.notFound("Link not found");
+      }
+
+      const embed = buildDiscordEmbed(data);
+      const messageService = getMessageService(input.bot);
+
+      const result = await messageService.edit({
+        channelId: link.channelId,
+        messageId: link.messageId,
+        embeds: embed,
+      });
+
+      if (!result.success) {
+        throw trpcError.internal(
+          result.error ?? "Failed to update linked message",
         );
       }
 

@@ -38,6 +38,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -140,7 +151,7 @@ const EVENT_TYPES = [
 const SEVERITY_COLORS: Record<string, string> = {
   info: "bg-blue-500/10 text-blue-400 border-blue-500/20",
   warning: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  critical: "bg-red-500/10 text-red-400 border-red-500/20",
+  critical: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
 // ---------------------------------------------------------------------------
@@ -825,7 +836,7 @@ export function AdminCrypto() {
                                 "font-mono tabular-nums text-sm",
                                 token.change24h > 0
                                   ? "text-emerald-400"
-                                  : "text-red-400",
+                                  : "text-destructive",
                               )}
                             >
                               {token.change24h > 0 ? "+" : ""}
@@ -863,23 +874,40 @@ export function AdminCrypto() {
                         </TableCell>
                         <TableCell className="text-right">
                           {isActive && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => {
-                                if (
-                                  window.confirm(
-                                    `Delist ${token.symbol}? All holdings will be auto-sold at current price.`,
-                                  )
-                                ) {
-                                  delistMutation.mutate({ id: token.id });
-                                }
-                              }}
-                              disabled={delistMutation.isPending}
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="size-7 text-muted-foreground hover:text-destructive"
+                                  disabled={delistMutation.isPending}
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent size="sm">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Delist {token.symbol}
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    All holdings will be auto-sold at current
+                                    price. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    variant="destructive"
+                                    onClick={() =>
+                                      delistMutation.mutate({ id: token.id })
+                                    }
+                                  >
+                                    Delist
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </TableCell>
                       </TableRow>

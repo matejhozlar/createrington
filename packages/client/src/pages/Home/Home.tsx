@@ -288,11 +288,11 @@ export const Home: React.FC = () => {
               />
 
               <Badge
-                className={`bg-zinc-900/70 text-lg px-2 sm:px-4 py-2 gap-2 shadow-md ${server?.online ? "text-green-500" : "text-red-500"}`}
+                className={`bg-zinc-900/70 text-lg px-2 sm:px-4 py-2 gap-2 shadow-md ${server?.online ? "text-green-500" : "text-destructive"}`}
                 variant={"outline"}
               >
                 <span
-                  className={`size-4 rounded-full ${server?.online ? "bg-green-500 animate-pulse" : "bg-red-600"}`}
+                  className={`size-4 rounded-full ${server?.online ? "bg-green-500 animate-pulse" : "bg-destructive"}`}
                 />
                 <span className="hidden sm:inline">
                   {server?.online ? "Online" : "Offline"}

@@ -123,7 +123,7 @@ export function TokenList() {
                 {/* Status icon */}
                 <div className="w-4 shrink-0 flex justify-center">
                   {isCrashed ? (
-                    <Skull className="size-3.5 text-red-500/70" />
+                    <Skull className="size-3.5 text-destructive/70" />
                   ) : isIpo ? (
                     <Rocket className="size-3.5 text-primary animate-pulse" />
                   ) : hasEvent ? (
@@ -155,7 +155,7 @@ export function TokenList() {
                       change24h > 0
                         ? "text-emerald-400"
                         : change24h < 0
-                          ? "text-red-400"
+                          ? "text-destructive"
                           : "text-muted-foreground",
                     )}
                   >
@@ -171,7 +171,7 @@ export function TokenList() {
                     change24h > 0
                       ? "text-emerald-400"
                       : change24h < 0
-                        ? "text-red-400"
+                        ? "text-destructive"
                         : "text-muted-foreground",
                   )}
                 >

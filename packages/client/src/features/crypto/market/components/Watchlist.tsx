@@ -96,7 +96,7 @@ export function Watchlist() {
                             change24h > 0
                               ? "text-emerald-400"
                               : change24h < 0
-                                ? "text-red-400"
+                                ? "text-destructive"
                                 : "text-muted-foreground",
                           )}
                         >
@@ -109,7 +109,7 @@ export function Watchlist() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-6 text-muted-foreground/50 hover:text-red-400"
+                      className="size-6 text-muted-foreground/50 hover:text-destructive"
                       disabled={removeMutation.isPending}
                       onClick={(e) => {
                         e.stopPropagation();
