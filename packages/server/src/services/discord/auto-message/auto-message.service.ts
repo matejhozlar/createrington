@@ -118,9 +118,13 @@ export class AutoMessageService {
       message = messages[Math.floor(Math.random() * messages.length)];
     }
 
+    const resolvedContent = await this.resolveTemplateVariables(
+      message.content,
+    );
+
     const result = await this.messageService.send({
       channelId: config.channelId,
-      content: message.content,
+      content: resolvedContent,
     });
 
     if (result.success) {
@@ -132,5 +136,24 @@ export class AutoMessageService {
         `Failed to send auto-message to channel ${config.channelId}: ${result.error}`,
       );
     }
+  }
+
+  /**
+   * Resolves template variables in message content.
+   *
+   * Supported variables:
+   * - `{memberCount}` — total registered player count
+   */
+  private async resolveTemplateVariables(content: string): Promise<string> {
+    if (!content.includes("{")) return content;
+
+    let result = content;
+
+    if (result.includes("{memberCount}")) {
+      const count = await Q.player.where({}).count();
+      result = result.replaceAll("{memberCount}", count.toString());
+    }
+
+    return result;
   }
 }
