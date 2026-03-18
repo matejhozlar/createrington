@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AtSign, Hash, Shield } from "lucide-react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
 function formatName(key: string): string {
@@ -28,6 +29,8 @@ interface MentionPickerProps {
 }
 
 export function MentionPicker({ onInsert }: MentionPickerProps) {
+  const [tooltipOpen, setTooltipOpen] = useState(false);
+
   const channelsQuery = trpc.admin.embeds.channels.useQuery();
   const rolesQuery = trpc.admin.embeds.roles.useQuery();
 
@@ -35,15 +38,20 @@ export function MentionPicker({ onInsert }: MentionPickerProps) {
   const roles = rolesQuery.data ?? [];
 
   return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
+    <DropdownMenu onOpenChange={(open) => { if (open) setTooltipOpen(false); }}>
+      <Tooltip open={tooltipOpen}>
+        <TooltipTrigger
+          asChild
+          onMouseEnter={() => setTooltipOpen(true)}
+          onMouseLeave={() => setTooltipOpen(false)}
+        >
           <DropdownMenuTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="size-7 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+              aria-label="Insert mention"
             >
               <AtSign className="size-3.5" />
             </Button>
