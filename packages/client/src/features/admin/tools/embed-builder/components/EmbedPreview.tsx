@@ -1,4 +1,5 @@
 import type { EmbedData } from "@createrington/shared/api/embed";
+import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "./DiscordMarkdown";
 
 function numberToHex(color: number): string {
@@ -10,6 +11,8 @@ interface EmbedPreviewProps {
 }
 
 export function EmbedPreview({ data }: EmbedPreviewProps) {
+  const mentionResolver = useMentionResolver();
+
   const hasContent =
     data.title || data.description || data.fields.length > 0 || data.imageUrl;
   const borderColor =
@@ -116,7 +119,10 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
             {/* Description */}
             {data.description && (
               <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                <DiscordMarkdown text={data.description} />
+                <DiscordMarkdown
+                  mentionResolver={mentionResolver}
+                  text={data.description}
+                />
               </div>
             )}
 
@@ -138,10 +144,16 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
                     }}
                   >
                     <div className="text-xs font-semibold text-white">
-                      <DiscordMarkdown text={field.name} />
+                      <DiscordMarkdown
+                        mentionResolver={mentionResolver}
+                        text={field.name}
+                      />
                     </div>
                     <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                      <DiscordMarkdown text={field.value} />
+                      <DiscordMarkdown
+                        mentionResolver={mentionResolver}
+                        text={field.value}
+                      />
                     </div>
                   </div>
                 ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { CharCount } from "@/features/admin/components/CharCount";
+import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
+import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
 
 type MatchMode = "keywords" | "regex";
 
@@ -29,6 +33,8 @@ export function CreateFaqModal({
   const toast = useToastActions();
   const createEntry = trpc.admin.faq.create.useMutation();
 
+  const mentionResolver = useMentionResolver();
+  const responseRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState("");
   const [matchMode, setMatchMode] = useState<MatchMode>("keywords");
   const [pattern, setPattern] = useState("");
@@ -147,8 +153,28 @@ export function CreateFaqModal({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="faq-response">Response</FieldLabel>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor="faq-response">Response</FieldLabel>
+              <MentionPicker
+                onInsert={(mention) => {
+                  const el = responseRef.current;
+                  const pos = el?.selectionStart ?? response.length;
+                  const next =
+                    response.slice(0, pos) + mention + response.slice(pos);
+                  setResponse(next);
+                  requestAnimationFrame(() => {
+                    if (el) {
+                      const newPos = pos + mention.length;
+                      el.selectionStart = newPos;
+                      el.selectionEnd = newPos;
+                      el.focus();
+                    }
+                  });
+                }}
+              />
+            </div>
             <textarea
+              ref={responseRef}
               id="faq-response"
               value={response}
               onChange={(e) => setResponse(e.target.value)}
@@ -156,10 +182,23 @@ export function CreateFaqModal({
               rows={4}
               className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             />
-            <FieldDescription>
-              Supports Discord markdown: **bold**, *italic*, `code`,
-              [links](url)
-            </FieldDescription>
+            <div className="flex items-center justify-between">
+              <FieldDescription>
+                Supports Discord markdown and mentions
+              </FieldDescription>
+              <CharCount value={response} max={2000} />
+            </div>
+            {response.trim() && (
+              <div
+                className="rounded-md p-3 text-sm"
+                style={{ backgroundColor: "#313338", color: "#DBDEE1" }}
+              >
+                <DiscordMarkdown
+                  text={response}
+                  mentionResolver={mentionResolver}
+                />
+              </div>
+            )}
           </Field>
 
           <div className="flex items-end gap-4">

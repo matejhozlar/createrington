@@ -30,7 +30,7 @@ export function EditorPanel({ builder }: EditorPanelProps) {
       </div>
 
       {/* Content area — form scrolls, preview stays fixed */}
-      <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_1fr]">
+      <div className="grid min-h-0 flex-1 gap-4 p-4 md:grid-cols-[1fr_1fr]">
         {/* Form column — only this scrolls */}
         <div className="min-h-0 space-y-4 overflow-y-auto">
           <EmbedForm data={externalData} onChange={setEmbedData} />

@@ -18,7 +18,15 @@ import { getEnabledServers } from "../../../config/server-selection";
 export const data = new SlashCommandBuilder()
   .setName("server-panel")
   .setDescription("Create or update the server selection panel")
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+  .addStringOption((opt) =>
+    opt
+      .setName("message_id")
+      .setDescription(
+        "Message ID of an existing panel to update (sends new if omitted)",
+      )
+      .setRequired(false),
+  );
 
 /**
  * Permission configuration for the server-panel command
@@ -106,24 +114,56 @@ export async function execute(
       rows.push(row);
     }
 
-    await interaction.channel.send({
-      embeds: [embed.build()],
-      components: rows,
-    });
+    const messageId = interaction.options.getString("message_id");
+    const payload = { embeds: [embed.build()], components: rows };
 
-    const successEmbed = EmbedPresets.success(
-      "Panel Created",
-      `Server selection panel has been created with ${enabledServers.length} server(s)`,
-    );
+    if (messageId) {
+      const existing = await interaction.channel.messages
+        .fetch(messageId)
+        .catch(() => null);
 
-    await interaction.reply({
-      embeds: [successEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
+      if (!existing) {
+        const errEmbed = EmbedPresets.error(
+          "Message Not Found",
+          `Could not find message with ID \`${messageId}\` in this channel.`,
+        );
+        await interaction.reply({
+          embeds: [errEmbed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
 
-    logger.info(
-      `${interaction.user.tag} created server selection panel with ${enabledServers.length} server(s)`,
-    );
+      await existing.edit(payload);
+
+      const successEmbed = EmbedPresets.success(
+        "Panel Updated",
+        `Server selection panel has been updated with ${enabledServers.length} server(s)`,
+      );
+      await interaction.reply({
+        embeds: [successEmbed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+
+      logger.info(
+        `${interaction.user.tag} updated server selection panel (${messageId}) with ${enabledServers.length} server(s)`,
+      );
+    } else {
+      await interaction.channel.send(payload);
+
+      const successEmbed = EmbedPresets.success(
+        "Panel Created",
+        `Server selection panel has been created with ${enabledServers.length} server(s)`,
+      );
+      await interaction.reply({
+        embeds: [successEmbed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+
+      logger.info(
+        `${interaction.user.tag} created server selection panel with ${enabledServers.length} server(s)`,
+      );
+    }
   } catch (error) {
     logger.error("/server-panel failed:", error);
 

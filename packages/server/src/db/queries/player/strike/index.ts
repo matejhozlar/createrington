@@ -352,6 +352,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
    *
    * @param severity - The severity to get strikes by
    * @param activeOnly - Whether to include only active strikes
+   * @returns Promise resolving to an array of player strikes matching the given severity
    */
   async getBySeverity(
     severity: 1 | 2 | 3 | 4 | 5,

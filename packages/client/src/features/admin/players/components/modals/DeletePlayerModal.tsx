@@ -101,6 +101,7 @@ export function DeletePlayerModal({
               size="icon"
               onClick={onClose}
               className="cursor-pointer"
+              aria-label="Close"
             >
               <X className="size-4" />
             </Button>

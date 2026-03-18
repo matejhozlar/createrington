@@ -1,4 +1,9 @@
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Link2, RefreshCw, Unlink } from "lucide-react";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 
@@ -52,27 +57,39 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                 <span className="font-mono">{link.messageId}</span>
               </span>
               <div className="flex shrink-0 gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
-                  disabled={updateLinkPending}
-                  onClick={() => handleUpdateLink(link.id)}
-                  title="Update this message"
-                >
-                  <RefreshCw className="size-3" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => handleUnlink(link.id)}
-                  title="Unlink this message"
-                >
-                  <Unlink className="size-3" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+                      disabled={updateLinkPending}
+                      onClick={() => handleUpdateLink(link.id)}
+                    >
+                      <RefreshCw className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    Update this message
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleUnlink(link.id)}
+                    >
+                      <Unlink className="size-3" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    Unlink this message
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           );

@@ -6,17 +6,23 @@ import { Discord } from "@/discord/constants";
 export const FaqEmbedPresets = {
   /** Pinned welcome embed with useful channel links for the questions channel */
   welcomeMessage() {
+    const ch = Discord.Channels;
+    const m = ch.mention.bind(ch);
+
+    const channels = [
+      m(ch.createringtonOfficial.SUPPORT),
+      m(ch.createringtonOfficial.RULES),
+      m(ch.general.COMMANDS),
+      m(ch.createringtonOfficial.ANNOUNCEMENTS),
+      m(ch.createringtonOfficial.DOWNLOAD),
+      m(ch.createringtonOfficial.ROLES),
+    ].join("  ");
+
     return createEmbed()
       .title("Welcome to Questions!")
       .description(
-        [
-          "Have a question? Just type it here and we'll try to help!",
-          "",
-          "**Useful channels:**",
-          `- ${Discord.Channels.mention(Discord.Channels.createringtonOfficial.SUPPORT)} — for support tickets`,
-          `- ${Discord.Channels.mention(Discord.Channels.createringtonOfficial.RULES)} — server rules`,
-          `- ${Discord.Channels.mention(Discord.Channels.general.COMMANDS)} — bot commands`,
-        ].join("\n"),
+        "Have a question? Just type it here and we'll try to help!\n\n" +
+          `**Useful channels**\n${channels}`,
       )
       .color(EmbedColors.Info);
   },

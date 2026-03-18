@@ -13,11 +13,13 @@ export interface ChangelogData {
   updated: ChangelogMod[];
 }
 
+/** Converts a list of mods into a markdown bullet list of linked mod names */
 function formatModList(mods: ChangelogMod[]): string {
   return mods.map((m) => `- [${m.name}](${m.url})`).join("\n");
 }
 
 export const ChangelogEmbedPresets = {
+  /** Creates a modpack update announcement embed with added, removed, and updated mod lists */
   modpackUpdate(data: ChangelogData) {
     const embed = createEmbed()
       .title(`Createrington: Cogs & Steam ${data.version} Modpack Update`)

@@ -24,6 +24,7 @@ export { CryptoTreasuryQueries } from "./crypto/treasury";
 export { CryptoWatchlistQueries } from "./crypto/watchlist";
 export { DiscordAutoMessageQueries } from "./discord/auto/message";
 export { DiscordAutoMessageConfigQueries } from "./discord/auto/message/config";
+export { DiscordCommandUsageQueries } from "./discord/command/usage";
 export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
 export { DiscordEmbedPresetCategoryQueries } from "./discord/embed/preset/category";
 export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message";

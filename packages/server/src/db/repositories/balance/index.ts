@@ -275,6 +275,7 @@ export class BalanceRepository {
    * @param reason - Transaction reason
    * @param type - Type of transaction
    * @param metadata - Additional context
+   * @param txOverride - Optional outer transaction context; if provided the operation joins it instead of creating its own
    * @returns Promise resolving to the new balance
    *
    * @example
@@ -286,7 +287,6 @@ export class BalanceRepository {
     reason: string,
     type: BalanceTransactionType,
     metadata?: Record<string, unknown>,
-    /** Optional outer transaction context; if provided the operation joins it instead of creating its own */
     txOverride?: DatabaseQueries,
   ): Promise<number> {
     if (amount <= 0) {
@@ -336,6 +336,7 @@ export class BalanceRepository {
    * @param reason - Transaction reason
    * @param type - Type of transaction
    * @param metadata - Additional context
+   * @param txOverride - Optional outer transaction context; if provided the operation joins it instead of creating its own
    * @returns Promise resolving to new balance
    * @throws Error if insufficient balance
    *
@@ -348,7 +349,6 @@ export class BalanceRepository {
     reason: string,
     type: BalanceTransactionType,
     metadata?: Record<string, unknown>,
-    /** Optional outer transaction context; if provided the operation joins it instead of creating its own */
     txOverride?: DatabaseQueries,
   ): Promise<number> {
     if (amount <= 0) {

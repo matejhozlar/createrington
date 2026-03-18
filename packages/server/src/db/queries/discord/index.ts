@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { DiscordAutoQueries } from "@/db/queries/discord/auto";
+import { DiscordCommandQueries } from "@/db/queries/discord/command";
 import { DiscordEmbedQueries } from "@/db/queries/discord/embed";
 import { DiscordGuildQueries } from "@/db/queries/discord/guild";
 
@@ -94,6 +95,28 @@ export class DiscordQueries {
       );
     }
     return this._auto;
+  }
+
+  /** Private backing field for lazy-loaded discord_command queries */
+  private _command?: DiscordCommandQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for discord_command
+   *
+   * Returns a DiscordCommandQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton DiscordCommandQueries instance
+   */
+  get command(): DiscordCommandQueries {
+    if (!this._command) {
+      this._command = this.getOrCreateChild<DiscordCommandQueries>(
+        "command",
+        DiscordCommandQueries,
+      );
+    }
+    return this._command;
   }
 
   /** Private backing field for lazy-loaded discord_embed queries */

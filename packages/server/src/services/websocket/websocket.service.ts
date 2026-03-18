@@ -21,28 +21,16 @@ import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
 
 /**
- * Improved WebSocket service for real-time communication
+ * WebSocket Service
  *
- * Architecture:
- * - Subscription-based: Clients explicitly subscribe to data streams
- * - Room-based broadcasting: Server-specific and global rooms
- * - Initial data loading: Clients can request current state
- * - Type-safe events: All payloads are strongly typed
- * - Easy to expand: Add new subscription types easily
+ * Manages real-time communication between the server and web clients:
+ * - Subscription-based rooms for server status, players, messages, and crypto
+ * - Broadcasts live updates from PlaytimeService and MessageCacheService
+ * - Serves initial state snapshots on demand via REQUEST_INITIAL_DATA
+ * - Tracks connected clients and room memberships for stats
  *
- * Features:
- * - Real-time server status updates
- * - Online player tracking
- * - Message broadcasting from Discord
- * - Flexible subscription model (global or server-specific)
- * - Client can request initial data on demand
- *
- * Usage flow:
- * 1. Client connects
- * 2. Client requests initial data (optional)
- * 3. Client subscribes to data streams (status, players, messages)
- * 4. Server broadcasts updates to subscribed rooms
- * 5. Client unsubscribes or disconnects
+ * NOTE: Call initialize() with MessageCacheService and PlaytimeManagerService
+ * after construction to enable event-driven broadcasting
  */
 export class WebSocketService {
   private io: SocketIOServer;
@@ -73,10 +61,11 @@ export class WebSocketService {
   // ==========================================================================
 
   /**
-   * Initialize the WebSocket service
+   * Initializes the service by wiring up data providers and service event listeners
    *
    * @param messageCacheService - Message cache service for Discord messages
    * @param playtimeManagerService - Playtime manager for player tracking
+   * @returns Promise that resolves when initialization is complete
    */
   async initialize(
     messageCacheService: MessageCacheService,
@@ -103,7 +92,7 @@ export class WebSocketService {
   // ==========================================================================
 
   /**
-   * Set up Socket.IO connection handlers
+   * Registers Socket.IO connection, subscription, and error handlers on the server
    *
    * @private
    */
@@ -153,11 +142,14 @@ export class WebSocketService {
   }
 
   /**
-   * Handle subscription request from client
+   * Joins the client socket to the rooms matching the requested subscription type
+   *
+   * Sends a confirmation event back to the client on success or failure.
+   * For CRYPTO_MARKET subscriptions, also pushes an immediate price snapshot.
    *
    * @param socket - Client socket
    * @param request - Subscription request
-   * @param callback - Acknowledgment callback
+   * @param callback - Optional acknowledgment callback
    *
    * @private
    */
@@ -240,8 +232,9 @@ export class WebSocketService {
   }
 
   /**
-   * Sends the current crypto market state to a newly subscribed client.
-   * Includes all active token prices and the market overview.
+   * Pushes the current crypto market state (all token prices + overview) to a single client
+   *
+   * @param socket - The client socket to send the snapshot to
    * @private
    */
   private async sendCryptoInitialSnapshot(socket: Socket): Promise<void> {
@@ -258,11 +251,11 @@ export class WebSocketService {
   }
 
   /**
-   * Handle unsubscription request from client
+   * Removes the client socket from the rooms matching the requested subscription type
    *
    * @param socket - Client socket
    * @param request - Unsubscription request
-   * @param callback - Acknowledgment callback
+   * @param callback - Optional acknowledgment callback
    *
    * @private
    */
@@ -322,11 +315,14 @@ export class WebSocketService {
   }
 
   /**
-   * Handle initial data request from client
+   * Responds to a client request for current state (servers, players, messages)
+   *
+   * If a serverId is present in the request, returns server-scoped data;
+   * otherwise returns the combined state for all servers.
    *
    * @param socket - Client socket
    * @param request - Initial data request
-   * @param callback - Callback to send data
+   * @param callback - Optional callback to deliver the payload
    *
    * @private
    */
@@ -385,7 +381,8 @@ export class WebSocketService {
   // ==========================================================================
 
   /**
-   * Connect to external services and listen for events
+   * Subscribes to events from MessageCacheService and PlaytimeManagerService
+   * and wires them to the corresponding broadcast methods
    *
    * @param messageCacheService - Message cache service
    * @param playtimeManagerService - Playtime manager service
@@ -439,10 +436,12 @@ export class WebSocketService {
   // ==========================================================================
 
   /**
-   * Broadcast server status update
+   * Broadcasts a server online/offline status update to all subscribed clients
    *
    * @param serverId - Server ID
-   * @param online - Whether server is online
+   * @param online - Whether the server is online
+   *
+   * @private
    */
   private async broadcastServerStatusUpdate(
     serverId: number,
@@ -479,10 +478,10 @@ export class WebSocketService {
   }
 
   /**
-   * Broadcast player join event
+   * Broadcasts a player join event and triggers a server status update
    *
    * @param serverId - Server ID
-   * @param event - Session start event
+   * @param event - Session start event from PlaytimeService
    *
    * @private
    */
@@ -522,10 +521,10 @@ export class WebSocketService {
   }
 
   /**
-   * Broadcast player leave event
+   * Broadcasts a player leave event and triggers a server status update
    *
    * @param serverId - Server ID
-   * @param event - Session end event
+   * @param event - Session end event from PlaytimeService
    *
    * @private
    */
@@ -562,12 +561,12 @@ export class WebSocketService {
   }
 
   /**
-   * Broadcast message update
+   * Broadcasts a Discord message create, update, or delete event
    *
    * @param serverId - Server ID
-   * @param type - Update type (new, update, delete)
-   * @param message - Message data (for new/update)
-   * @param messageId - Message ID (for delete)
+   * @param type - Update type: "new", "update", or "delete"
+   * @param message - Full message data (for new/update events)
+   * @param messageId - Message ID (for delete events)
    *
    * @private
    */
@@ -605,7 +604,9 @@ export class WebSocketService {
   // ==========================================================================
 
   /**
-   * Get service statistics
+   * Returns runtime statistics including connected client count, room sizes, and uptime
+   *
+   * @returns Current WebSocketStats snapshot
    */
   async getStats(): Promise<WebSocketStats> {
     const rooms: Record<string, number> = {};
@@ -647,7 +648,9 @@ export class WebSocketService {
   }
 
   /**
-   * Close the WebSocket service
+   * Closes the Socket.IO server and clears all tracked client state
+   *
+   * @returns Promise that resolves when the server has been shut down
    */
   async close(): Promise<void> {
     if (!this.isInitialized) {
@@ -662,10 +665,12 @@ export class WebSocketService {
   }
 
   /**
-   * Manually broadcast a player sync for a server
-   * Useful for recovery or debugging
+   * Emits a full player sync for a server to all subscribed clients
    *
-   * @param serverId - Server ID
+   * Useful for recovery or debugging — sends the complete current player list
+   * rather than incremental join/leave events.
+   *
+   * @param serverId - Server ID to sync players for
    */
   async broadcastPlayerSync(serverId: number): Promise<void> {
     const players = await this.dataProvider.getServerPlayers(serverId);
@@ -691,7 +696,7 @@ export class WebSocketService {
   }
 
   /**
-   * Generic broadcast to a named room
+   * Broadcasts an arbitrary event and payload to all clients in a named room
    *
    * @param room - Room name to broadcast to
    * @param event - Socket event name

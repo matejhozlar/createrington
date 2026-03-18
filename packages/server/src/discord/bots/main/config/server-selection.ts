@@ -31,6 +31,14 @@ export const SERVER_CONFIGS: ServerConfig[] = [
     emoji: "⚙️",
     enabled: true,
   },
+  {
+    id: 99,
+    label: "Tester",
+    description: "Get access to the public testing forum",
+    roleId: Discord.Roles.TESTER,
+    emoji: "🧪",
+    enabled: true,
+  },
 ];
 
 /**

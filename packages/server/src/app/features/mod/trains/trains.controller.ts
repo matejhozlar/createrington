@@ -25,6 +25,14 @@ interface TrainCrashPayload {
   backwardsDriver?: { uuid: string; name?: string };
 }
 
+/**
+ * Trains Controller
+ *
+ * Handles train crash events reported by the Create: Trains Minecraft mod:
+ * - Validates the incoming crash payload
+ * - Resolves player display names (with Discord mentions where available)
+ * - Sends a formatted notification embed to the Cogs & Steam notifications channel
+ */
 export class TrainsController {
   /**
    * POST /api/trains/crash

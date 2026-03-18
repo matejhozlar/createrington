@@ -187,6 +187,7 @@ class DailyFolderLogger {
     }, 60 * 1000);
   }
 
+  /** Logs a debug-level message (written to debug.log in dev only) */
   public debug(...args: unknown[]): void {
     const filename = this.getCallerFile();
     (this.logger as winston.Logger).debug({
@@ -195,6 +196,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** Logs an error-level message (written to both server.log and errors.log) */
   public error(...args: unknown[]): void {
     const filename = this.getCallerFile();
     (this.logger as winston.Logger).error({
@@ -203,6 +205,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** Logs a warn-level message */
   public warn(...args: unknown[]): void {
     const filename = this.getCallerFile();
     (this.logger as winston.Logger).warn({
@@ -211,6 +214,7 @@ class DailyFolderLogger {
     });
   }
 
+  /** Logs an info-level message */
   public info(...args: unknown[]): void {
     const filename = this.getCallerFile();
     (this.logger as winston.Logger).info({
@@ -219,6 +223,12 @@ class DailyFolderLogger {
     });
   }
 
+  /**
+   * Logs a message at an arbitrary Winston level
+   *
+   * @param level - Winston log level (e.g. "info", "warn", "error", "debug")
+   * @param args - Values to format and log
+   */
   public log(level: string, ...args: unknown[]): void {
     const filename = this.getCallerFile();
     (this.logger as winston.Logger).log(level, {

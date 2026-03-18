@@ -7,16 +7,10 @@ import messageRoutes from "./user/message/message.routes";
 import renderRoutes from "./render/render.routes";
 import trainRoutes from "./mod/trains/trains.routes";
 
-/**
- * Register all API routes
- *
- * @param app - Express application instance
- */
+/** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
-  // API prefix
   const API_PREFIX = "/api";
 
-  // Register route modules
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
