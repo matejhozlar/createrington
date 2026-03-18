@@ -43,7 +43,7 @@ export const guides: Guide[] = [
                 copy
               </li>
               <li>
-                <strong>At least 4 GB of RAM</strong> allocated to Minecraft
+                <strong>At least 8 GB of RAM</strong> allocated to Minecraft
               </li>
               <li>
                 <strong>A Discord account</strong> — required for registration
