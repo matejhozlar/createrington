@@ -124,10 +124,7 @@ function tokeniseInline(text: string): InlineToken[] {
   return tokens;
 }
 
-function renderInline(
-  text: string,
-  resolver?: MentionResolver,
-): ReactNode[] {
+function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
   return tokeniseInline(text).map((token, i) => {
     switch (token.type) {
       case "text":
@@ -162,9 +159,7 @@ function renderInline(
           </strong>
         );
       case "bold":
-        return (
-          <strong key={i}>{renderInline(token.content, resolver)}</strong>
-        );
+        return <strong key={i}>{renderInline(token.content, resolver)}</strong>;
       case "underline":
         return <u key={i}>{renderInline(token.content, resolver)}</u>;
       case "italic":
@@ -187,7 +182,10 @@ function renderInline(
           <span
             key={i}
             className="rounded px-0.5 font-medium"
-            style={{ backgroundColor: "rgba(88, 101, 242, 0.3)", color: "#C9CDFB" }}
+            style={{
+              backgroundColor: "rgba(88, 101, 242, 0.3)",
+              color: "#C9CDFB",
+            }}
           >
             #{name ?? token.id}
           </span>
@@ -199,7 +197,10 @@ function renderInline(
           <span
             key={i}
             className="rounded px-0.5 font-medium"
-            style={{ backgroundColor: "rgba(88, 101, 242, 0.3)", color: "#C9CDFB" }}
+            style={{
+              backgroundColor: "rgba(88, 101, 242, 0.3)",
+              color: "#C9CDFB",
+            }}
           >
             @{name ?? token.id}
           </span>
@@ -216,7 +217,10 @@ interface DiscordMarkdownProps {
   mentionResolver?: MentionResolver;
 }
 
-export function DiscordMarkdown({ text, mentionResolver }: DiscordMarkdownProps) {
+export function DiscordMarkdown({
+  text,
+  mentionResolver,
+}: DiscordMarkdownProps) {
   const lines = text.split("\n");
   const blocks: ReactNode[] = [];
   let i = 0;
@@ -284,7 +288,9 @@ export function DiscordMarkdown({ text, mentionResolver }: DiscordMarkdownProps)
           style={{ borderLeft: "3px solid #4E5058" }}
         >
           {quoteLines.map((ql, qi) => (
-            <div key={qi}>{ql ? renderInline(ql, mentionResolver) : <br />}</div>
+            <div key={qi}>
+              {ql ? renderInline(ql, mentionResolver) : <br />}
+            </div>
           ))}
         </div>,
       );
@@ -377,7 +383,9 @@ export function DiscordMarkdown({ text, mentionResolver }: DiscordMarkdownProps)
     }
 
     // Normal line with inline markdown
-    blocks.push(<div key={blocks.length}>{renderInline(line, mentionResolver)}</div>);
+    blocks.push(
+      <div key={blocks.length}>{renderInline(line, mentionResolver)}</div>,
+    );
     i++;
   }
 

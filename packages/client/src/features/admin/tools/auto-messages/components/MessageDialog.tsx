@@ -118,8 +118,8 @@ export function MessageDialog({
             />
             <div className="flex items-center justify-between">
               <FieldDescription>
-                Supports Discord markdown, mentions, and variables:
-                {" "}<code className="text-[11px]">{"{memberCount}"}</code>
+                Supports Discord markdown, mentions, and variables:{" "}
+                <code className="text-[11px]">{"{memberCount}"}</code>
               </FieldDescription>
               <CharCount value={content} max={2000} />
             </div>

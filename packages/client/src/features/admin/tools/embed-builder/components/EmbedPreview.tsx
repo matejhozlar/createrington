@@ -119,7 +119,10 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
             {/* Description */}
             {data.description && (
               <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                <DiscordMarkdown mentionResolver={mentionResolver} text={data.description} />
+                <DiscordMarkdown
+                  mentionResolver={mentionResolver}
+                  text={data.description}
+                />
               </div>
             )}
 
@@ -141,10 +144,16 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
                     }}
                   >
                     <div className="text-xs font-semibold text-white">
-                      <DiscordMarkdown mentionResolver={mentionResolver} text={field.name} />
+                      <DiscordMarkdown
+                        mentionResolver={mentionResolver}
+                        text={field.name}
+                      />
                     </div>
                     <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                      <DiscordMarkdown mentionResolver={mentionResolver} text={field.value} />
+                      <DiscordMarkdown
+                        mentionResolver={mentionResolver}
+                        text={field.value}
+                      />
                     </div>
                   </div>
                 ))}

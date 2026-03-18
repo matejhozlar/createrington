@@ -54,7 +54,9 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
     const value = fields[index]?.value ?? "";
     const pos = el?.selectionStart ?? value.length;
     const newValue = value.slice(0, pos) + mention + value.slice(pos);
-    onChange(fields.map((f, i) => (i === index ? { ...f, value: newValue } : f)));
+    onChange(
+      fields.map((f, i) => (i === index ? { ...f, value: newValue } : f)),
+    );
 
     requestAnimationFrame(() => {
       if (el) {

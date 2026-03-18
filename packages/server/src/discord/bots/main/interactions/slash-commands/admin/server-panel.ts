@@ -22,7 +22,9 @@ export const data = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("message_id")
-      .setDescription("Message ID of an existing panel to update (sends new if omitted)")
+      .setDescription(
+        "Message ID of an existing panel to update (sends new if omitted)",
+      )
       .setRequired(false),
   );
 

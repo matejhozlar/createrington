@@ -24,7 +24,10 @@ const sendChangelogInput = z.object({
 /** Admin changelog router — CurseForge mod search and modpack update announcements. */
 export const changelogRouter = router({
   searchMods: adminProcedure
-    .meta({ description: "Search CurseForge for mods by query string. Requires the CurseForge API key to be configured." })
+    .meta({
+      description:
+        "Search CurseForge for mods by query string. Requires the CurseForge API key to be configured.",
+    })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
       if (!config.curseforge.apiKey) {
@@ -36,43 +39,47 @@ export const changelogRouter = router({
     }),
 
   send: adminProcedure
-    .meta({ description: "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated." })
-    .input(sendChangelogInput).mutation(async ({ input }) => {
-    const { version, added, removed, updated } = input;
+    .meta({
+      description:
+        "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated.",
+    })
+    .input(sendChangelogInput)
+    .mutation(async ({ input }) => {
+      const { version, added, removed, updated } = input;
 
-    if (added.length === 0 && removed.length === 0 && updated.length === 0) {
-      throw trpcError.badRequest(
-        "Changelog must have at least one mod in added, removed, or updated.",
+      if (added.length === 0 && removed.length === 0 && updated.length === 0) {
+        throw trpcError.badRequest(
+          "Changelog must have at least one mod in added, removed, or updated.",
+        );
+      }
+
+      const embed = EmbedPresets.changelog.modpackUpdate({
+        version,
+        added,
+        removed,
+        updated,
+      });
+
+      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setLabel("Download Update")
+          .setStyle(ButtonStyle.Link)
+          .setURL(config.meta.links.modpack),
       );
-    }
 
-    const embed = EmbedPresets.changelog.modpackUpdate({
-      version,
-      added,
-      removed,
-      updated,
-    });
+      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
+      const messageService = DiscordMessageService.getInstance(webBot);
 
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setLabel("Download Update")
-        .setStyle(ButtonStyle.Link)
-        .setURL(config.meta.links.modpack),
-    );
+      const result = await messageService.send({
+        channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+        embeds: embed.build(),
+        components: [row],
+      });
 
-    const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-    const messageService = DiscordMessageService.getInstance(webBot);
+      if (!result.success) {
+        throw trpcError.internal(result.error ?? "Failed to send changelog");
+      }
 
-    const result = await messageService.send({
-      channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
-      embeds: embed.build(),
-      components: [row],
-    });
-
-    if (!result.success) {
-      throw trpcError.internal(result.error ?? "Failed to send changelog");
-    }
-
-    return { messageId: result.messageId };
-  }),
+      return { messageId: result.messageId };
+    }),
 });

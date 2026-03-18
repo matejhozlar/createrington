@@ -409,7 +409,9 @@ export const AdminDashboard: React.FC = () => {
                     return (
                       <div key={cmd.commandName} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="font-medium">/{cmd.commandName}</span>
+                          <span className="font-medium">
+                            /{cmd.commandName}
+                          </span>
                           <span className="text-muted-foreground">
                             {cmd.count}
                           </span>

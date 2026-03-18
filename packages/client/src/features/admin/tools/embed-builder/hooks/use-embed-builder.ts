@@ -138,9 +138,7 @@ export function useEmbedBuilder() {
       ? normalizeLoadedEmbed(draft.current.data)
       : { ...DEFAULT_EMBED },
   );
-  const [bot, setBot] = useState<EmbedBot>(
-    () => draft.current?.bot ?? "main",
-  );
+  const [bot, setBot] = useState<EmbedBot>(() => draft.current?.bot ?? "main");
   const [channelId, setChannelId] = useState(
     () => draft.current?.channelId ?? "",
   );
@@ -157,9 +155,7 @@ export function useEmbedBuilder() {
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
-    draft.current?.activePreset
-      ? JSON.stringify(draft.current.data)
-      : "",
+    draft.current?.activePreset ? JSON.stringify(draft.current.data) : "",
   );
 
   const isDirty = useMemo(() => {
@@ -199,7 +195,15 @@ export function useEmbedBuilder() {
       }
     }, 500);
     return () => window.clearTimeout(id);
-  }, [data, presetName, bot, channelId, activePreset, selectedCategoryId, hasContent]);
+  }, [
+    data,
+    presetName,
+    bot,
+    channelId,
+    activePreset,
+    selectedCategoryId,
+    hasContent,
+  ]);
 
   // --- Queries ---
   const utils = trpc.useUtils();

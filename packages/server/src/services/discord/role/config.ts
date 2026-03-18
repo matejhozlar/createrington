@@ -350,8 +350,7 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
     enabled: true,
     emoji: "💰",
     isMilestone: true,
-    customMessage:
-      "has dominated the crypto markets and earned the title of",
+    customMessage: "has dominated the crypto markets and earned the title of",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

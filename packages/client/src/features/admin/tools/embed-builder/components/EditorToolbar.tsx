@@ -90,7 +90,9 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
 
       toast.success("Embed imported from clipboard");
     } catch {
-      toast.error("Failed to import — make sure you have valid embed JSON in your clipboard");
+      toast.error(
+        "Failed to import — make sure you have valid embed JSON in your clipboard",
+      );
     }
   }
   const categories = categoriesQuery.data ?? [];
@@ -125,7 +127,9 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
           <div className="min-w-0 flex-1 space-y-2">
             <Label>Preset Name</Label>
             <Input
-              placeholder={activePreset ? activePreset.name : "Unnamed embed..."}
+              placeholder={
+                activePreset ? activePreset.name : "Unnamed embed..."
+              }
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
             />

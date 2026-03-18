@@ -437,7 +437,9 @@ export function PresetSidebar({
                   key={preset.id}
                   preset={preset}
                   isActive={activePreset?.id === preset.id}
-                  onLoad={() => guardUnsaved(() => loadPresetAndNavigate(preset))}
+                  onLoad={() =>
+                    guardUnsaved(() => loadPresetAndNavigate(preset))
+                  }
                   onDelete={() =>
                     setDeleteTarget({
                       id: preset.id,

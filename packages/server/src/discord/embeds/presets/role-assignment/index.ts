@@ -99,8 +99,7 @@ export const RoleAssignmentEmbedPresets = {
         true,
       );
     } else if (
-      notification.role.conditionType ===
-      RoleConditionType.TOP_CRYPTO_NETWORTH
+      notification.role.conditionType === RoleConditionType.TOP_CRYPTO_NETWORTH
     ) {
       embed.field(
         "Portfolio Value",
@@ -152,5 +151,4 @@ export const RoleAssignmentEmbedPresets = {
 
     return embed;
   },
-
 };

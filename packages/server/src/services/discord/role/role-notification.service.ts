@@ -109,7 +109,6 @@ export class RoleNotificationService {
       logger.error("Failed to send multiple role notifications:", error);
     }
   }
-
 }
 
 export const roleNotificationService = new RoleNotificationService();
