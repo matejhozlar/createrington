@@ -15,6 +15,7 @@ export interface EmbedDataInternal extends Omit<EmbedData, "fields"> {
 export interface ActivePreset {
   id: number;
   name: string;
+  categoryId: number | null;
 }
 
 const DEFAULT_EMBED: EmbedDataInternal = {
@@ -88,6 +89,7 @@ export function useEmbedBuilder() {
   const [activePreset, setActivePreset] = useState<ActivePreset | null>(null);
   const [presetName, setPresetName] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
@@ -102,10 +104,12 @@ export function useEmbedBuilder() {
   // --- Queries ---
   const utils = trpc.useUtils();
 
-  const presetsQuery = trpc.admin.embeds.presets.list.useQuery({
-    search: debouncedSearch || undefined,
-    limit: 50,
-  });
+  const categoriesQuery = trpc.admin.embeds.presets.categories.list.useQuery();
+
+  const presetsQuery = trpc.admin.embeds.presets.list.useQuery(
+    { search: debouncedSearch || undefined, limit: 50 },
+    { enabled: !!debouncedSearch },
+  );
 
   const linksQuery = trpc.admin.embeds.presets.links.list.useQuery(
     { presetId: activePreset?.id ?? 0 },
@@ -132,6 +136,15 @@ export function useEmbedBuilder() {
   const unlinkMutation = trpc.admin.embeds.presets.links.delete.useMutation();
   const updateAllMutation = trpc.admin.embeds.updateAll.useMutation();
   const updateLinkMutation = trpc.admin.embeds.updateLink.useMutation();
+
+  const createCategoryMutation =
+    trpc.admin.embeds.presets.categories.create.useMutation();
+  const updateCategoryMutation =
+    trpc.admin.embeds.presets.categories.update.useMutation();
+  const deleteCategoryMutation =
+    trpc.admin.embeds.presets.categories.delete.useMutation();
+  const setCategoryMutation =
+    trpc.admin.embeds.presets.setCategory.useMutation();
 
   const isPending =
     sendEmbed.isPending ||
@@ -164,7 +177,7 @@ export function useEmbedBuilder() {
   );
 
   // --- Handlers ---
-  const handleSend = useCallback(async () => {
+  const handleSend = useCallback(async (opts?: { linkToPreset?: boolean }) => {
     if (!channelId) {
       toast.error("Please select a target channel");
       return;
@@ -174,14 +187,16 @@ export function useEmbedBuilder() {
       return;
     }
 
+    const shouldLink = opts?.linkToPreset ?? true;
+
     try {
       const result = await sendEmbed.mutateAsync({
         channelId,
         embed: toExternalData(data),
-        presetId: activePreset?.id,
+        presetId: shouldLink ? activePreset?.id : undefined,
         bot,
       });
-      if (activePreset) linksQuery.refetch();
+      if (activePreset && shouldLink) linksQuery.refetch();
       toast.success(`Embed sent${result.messageId ? ` (${result.messageId})` : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send embed");
@@ -203,7 +218,7 @@ export function useEmbedBuilder() {
         await updatePreset.mutateAsync(updates);
         setLastSavedSnapshot(JSON.stringify(embedData));
         if (updates.name) {
-          setActivePreset({ ...activePreset, name: updates.name });
+          setActivePreset({ ...activePreset, name: updates.name, categoryId: activePreset.categoryId });
         }
         utils.admin.embeds.presets.list.invalidate();
         toast.success(`Preset "${updates.name ?? activePreset.name}" updated`);
@@ -219,9 +234,11 @@ export function useEmbedBuilder() {
         await createPreset.mutateAsync({
           name: presetName.trim(),
           data: embedData,
+          categoryId: selectedCategoryId,
         });
         setLastSavedSnapshot(JSON.stringify(embedData));
         utils.admin.embeds.presets.list.invalidate();
+        utils.admin.embeds.presets.categories.list.invalidate();
         // Reload the preset list and find the newly created preset to set it as active
         const refreshed = await utils.admin.embeds.presets.list.fetch({
           search: undefined,
@@ -231,21 +248,22 @@ export function useEmbedBuilder() {
           (p) => p.name === presetName.trim(),
         );
         if (created) {
-          setActivePreset({ id: created.id, name: created.name });
+          setActivePreset({ id: created.id, name: created.name, categoryId: created.categoryId ?? null });
         }
         toast.success(`Preset "${presetName.trim()}" created`);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to save preset");
       }
     }
-  }, [data, activePreset, presetName, updatePreset, createPreset, utils, toast]);
+  }, [data, activePreset, presetName, selectedCategoryId, updatePreset, createPreset, utils, toast]);
 
   const handleLoadPreset = useCallback(
-    (preset: { id: number; name: string; data: unknown }) => {
+    (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => {
       const normalized = normalizeLoadedEmbed(preset.data as EmbedData);
       setData(normalized);
-      setActivePreset({ id: preset.id, name: preset.name });
+      setActivePreset({ id: preset.id, name: preset.name, categoryId: preset.categoryId ?? null });
       setPresetName(preset.name);
+      setSelectedCategoryId(preset.categoryId ?? null);
       setLastSavedSnapshot(JSON.stringify(toExternalData(normalized)));
       toast.success(`Loaded "${preset.name}"`);
     },
@@ -257,6 +275,7 @@ export function useEmbedBuilder() {
     setActivePreset(null);
     setPresetName("");
     setChannelId("");
+    setSelectedCategoryId(null);
     setLastSavedSnapshot("");
   }, []);
 
@@ -314,6 +333,43 @@ export function useEmbedBuilder() {
     [unlinkMutation, linksQuery, toast],
   );
 
+  const handleDuplicatePreset = useCallback(
+    async (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => {
+      const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
+      let copyName = `${baseName} (copy)`;
+
+      // Check for existing copies and increment
+      const existing = await utils.admin.embeds.presets.list.fetch({
+        search: baseName,
+        limit: 50,
+      });
+      const copyNames = new Set(existing.presets.map((p) => p.name));
+      if (copyNames.has(copyName)) {
+        let n = 2;
+        while (copyNames.has(`${baseName} (copy ${n})`)) n++;
+        copyName = `${baseName} (copy ${n})`;
+      }
+
+      try {
+        await createPreset.mutateAsync({
+          name: copyName,
+          data: toExternalData(
+            normalizeLoadedEmbed(preset.data as EmbedData),
+          ),
+          categoryId: preset.categoryId ?? null,
+        });
+        utils.admin.embeds.presets.list.invalidate();
+        utils.admin.embeds.presets.categories.list.invalidate();
+        toast.success(`Duplicated as "${copyName}"`);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to duplicate preset",
+        );
+      }
+    },
+    [createPreset, utils, toast],
+  );
+
   const handleDeletePreset = useCallback(
     async (id: number, name: string) => {
       try {
@@ -323,11 +379,74 @@ export function useEmbedBuilder() {
           handleNewEmbed();
         }
         utils.admin.embeds.presets.list.invalidate();
+        utils.admin.embeds.presets.categories.list.invalidate();
       } catch {
         toast.error("Failed to delete preset");
       }
     },
     [deletePresetMutation, activePreset, handleNewEmbed, utils, toast],
+  );
+
+  const handleCreateCategory = useCallback(
+    async (name: string) => {
+      try {
+        await createCategoryMutation.mutateAsync({ name });
+        utils.admin.embeds.presets.categories.list.invalidate();
+        toast.success(`Category "${name}" created`);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to create category");
+      }
+    },
+    [createCategoryMutation, utils, toast],
+  );
+
+  const handleUpdateCategory = useCallback(
+    async (id: number, updates: { name?: string; sortOrder?: number }) => {
+      try {
+        await updateCategoryMutation.mutateAsync({ id, ...updates });
+        utils.admin.embeds.presets.categories.list.invalidate();
+        toast.success("Category updated");
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to update category");
+      }
+    },
+    [updateCategoryMutation, utils, toast],
+  );
+
+  const handleDeleteCategory = useCallback(
+    async (id: number, name: string) => {
+      try {
+        await deleteCategoryMutation.mutateAsync({ id });
+        utils.admin.embeds.presets.categories.list.invalidate();
+        utils.admin.embeds.presets.list.invalidate();
+        if (activePreset?.categoryId === id) {
+          setActivePreset({ ...activePreset, categoryId: null });
+          setSelectedCategoryId(null);
+        }
+        toast.success(`Category "${name}" deleted`);
+      } catch {
+        toast.error("Failed to delete category");
+      }
+    },
+    [deleteCategoryMutation, activePreset, utils, toast],
+  );
+
+  const handleSetPresetCategory = useCallback(
+    async (presetId: number, categoryId: number | null) => {
+      try {
+        await setCategoryMutation.mutateAsync({ presetId, categoryId });
+        utils.admin.embeds.presets.list.invalidate();
+        utils.admin.embeds.presets.categories.list.invalidate();
+        if (activePreset?.id === presetId) {
+          setActivePreset({ ...activePreset, categoryId });
+          setSelectedCategoryId(categoryId);
+        }
+        toast.success("Preset moved");
+      } catch {
+        toast.error("Failed to move preset");
+      }
+    },
+    [setCategoryMutation, activePreset, utils, toast],
   );
 
   return {
@@ -343,11 +462,14 @@ export function useEmbedBuilder() {
     setPresetName,
     search,
     setSearch,
+    selectedCategoryId,
+    setSelectedCategoryId,
     isDirty,
     hasContent,
     isPending,
 
     // Queries
+    categoriesQuery,
     presetsQuery,
     linksQuery,
     channelMap,
@@ -361,6 +483,11 @@ export function useEmbedBuilder() {
     handleUpdateLink,
     handleUnlink,
     handleDeletePreset,
+    handleDuplicatePreset,
+    handleCreateCategory,
+    handleUpdateCategory,
+    handleDeleteCategory,
+    handleSetPresetCategory,
 
     // Mutation state
     updateAllPending: updateAllMutation.isPending,

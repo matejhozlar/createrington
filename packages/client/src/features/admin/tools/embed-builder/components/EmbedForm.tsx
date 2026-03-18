@@ -13,6 +13,24 @@ import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
 import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
 
+function CharCount({ value, max }: { value: string | undefined; max: number }) {
+  const len = value?.length ?? 0;
+  if (len === 0) return null;
+  const warn = len > max * 0.9;
+  const over = len > max;
+  return (
+    <span
+      className={cn(
+        "text-[11px] tabular-nums text-muted-foreground",
+        warn && !over && "text-yellow-500",
+        over && "text-destructive",
+      )}
+    >
+      {len}/{max}
+    </span>
+  );
+}
+
 interface EmbedFormProps {
   data: EmbedData;
   onChange: (data: EmbedData) => void;
@@ -55,7 +73,10 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       <Section title="Body" defaultOpen>
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Title</Label>
+            <div className="flex items-center justify-between">
+              <Label>Title</Label>
+              <CharCount value={data.title} max={256} />
+            </div>
             <Input
               placeholder="Embed title"
               value={data.title ?? ""}
@@ -64,7 +85,10 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label>Description</Label>
+            <div className="flex items-center justify-between">
+              <Label>Description</Label>
+              <CharCount value={data.description} max={4096} />
+            </div>
             <textarea
               placeholder="Embed description"
               value={data.description ?? ""}
@@ -95,7 +119,10 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       <Section title="Author">
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Author Name</Label>
+            <div className="flex items-center justify-between">
+              <Label>Author Name</Label>
+              <CharCount value={data.author} max={256} />
+            </div>
             <Input
               placeholder="Author name"
               value={data.author ?? ""}
@@ -164,7 +191,10 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       <Section title="Footer">
         <div className="space-y-3">
           <div className="space-y-2">
-            <Label>Footer Text</Label>
+            <div className="flex items-center justify-between">
+              <Label>Footer Text</Label>
+              <CharCount value={data.footer} max={2048} />
+            </div>
             <Input
               placeholder="Footer text"
               value={data.footer ?? ""}

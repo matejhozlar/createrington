@@ -1,9 +1,9 @@
 /**
  * Barrel export for all actual query classes
- *
+ * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- *
+ * 
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
  */
@@ -25,6 +25,7 @@ export { CryptoWatchlistQueries } from "./crypto/watchlist";
 export { DiscordAutoMessageQueries } from "./discord/auto/message";
 export { DiscordAutoMessageConfigQueries } from "./discord/auto/message/config";
 export { DiscordEmbedPresetQueries } from "./discord/embed/preset";
+export { DiscordEmbedPresetCategoryQueries } from "./discord/embed/preset/category";
 export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";

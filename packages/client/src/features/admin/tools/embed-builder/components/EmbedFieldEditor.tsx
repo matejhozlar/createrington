@@ -3,7 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { EmbedField } from "@createrington/shared/api/embed";
+
+function CharCount({ value, max }: { value: string; max: number }) {
+  const len = value.length;
+  if (len === 0) return null;
+  const warn = len > max * 0.9;
+  const over = len > max;
+  return (
+    <span
+      className={cn(
+        "text-[11px] tabular-nums text-muted-foreground",
+        warn && !over && "text-yellow-500",
+        over && "text-destructive",
+      )}
+    >
+      {len}/{max}
+    </span>
+  );
+}
 
 interface EmbedFieldInternal extends EmbedField {
   _id: string;
@@ -109,18 +128,30 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                 </div>
               </div>
 
-              <Input
-                placeholder="Field name"
-                value={field.name}
-                onChange={(e) => updateField(i, { name: e.target.value })}
-              />
-              <textarea
-                placeholder="Field value"
-                value={field.value}
-                onChange={(e) => updateField(i, { value: e.target.value })}
-                rows={2}
-                className="border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
-              />
+              <div className="space-y-1">
+                <Input
+                  placeholder="Field name"
+                  value={field.name}
+                  onChange={(e) => updateField(i, { name: e.target.value })}
+                  maxLength={256}
+                />
+                <div className="flex justify-end">
+                  <CharCount value={field.name} max={256} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <textarea
+                  placeholder="Field value"
+                  value={field.value}
+                  onChange={(e) => updateField(i, { value: e.target.value })}
+                  rows={2}
+                  maxLength={1024}
+                  className="border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+                />
+                <div className="flex justify-end">
+                  <CharCount value={field.value} max={1024} />
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <Checkbox
                   id={`field-inline-${key}`}

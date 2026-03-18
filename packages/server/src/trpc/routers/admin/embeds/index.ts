@@ -329,23 +329,30 @@ export const embedsRouter = router({
 
   presets: router({
     list: adminProcedure
-      .meta({ description: "List embed presets with search." })
+      .meta({ description: "List embed presets with optional search or category filter." })
       .input(
         z.object({
           search: z.string().optional(),
+          categoryId: z
+            .union([z.number().int().positive(), z.literal("uncategorized")])
+            .optional(),
           ...paginationInput(),
         }),
       )
       .query(async ({ input }) => {
         let query = Q.discord.embed.preset.where({});
+        let countQuery = Q.discord.embed.preset.where({});
 
         if (input.search) {
           query = query.where({ name: { $ilike: `%${input.search}%` } });
-        }
-
-        const countQuery = Q.discord.embed.preset.where({});
-        if (input.search) {
-          countQuery.where({ name: { $ilike: `%${input.search}%` } });
+          countQuery = countQuery.where({ name: { $ilike: `%${input.search}%` } });
+        } else if (input.categoryId !== undefined) {
+          const filter =
+            input.categoryId === "uncategorized"
+              ? { categoryId: { $exists: false } }
+              : { categoryId: input.categoryId };
+          query = query.where(filter);
+          countQuery = countQuery.where(filter);
         }
 
         const [presets, total] = await Promise.all([
@@ -381,6 +388,7 @@ export const embedsRouter = router({
         z.object({
           name: z.string().min(1).max(100),
           data: embedDataSchema,
+          categoryId: z.number().int().positive().nullish(),
         }),
       )
       .mutation(async ({ input, ctx }) => {
@@ -395,6 +403,7 @@ export const embedsRouter = router({
           name: input.name,
           data: input.data as EmbedData as Record<string, unknown>,
           createdBy: ctx.user.minecraftUsername,
+          categoryId: input.categoryId ?? undefined,
         });
 
         return { message: "Preset created" };
@@ -446,6 +455,127 @@ export const embedsRouter = router({
 
         return { message: "Preset deleted" };
       }),
+
+    setCategory: adminProcedure
+      .meta({ description: "Move a preset into a category (or uncategorized)." })
+      .input(
+        z.object({
+          presetId: z.number().int().positive(),
+          categoryId: z.number().int().positive().nullable(),
+        }),
+      )
+      .mutation(async ({ input }) => {
+        const preset = await Q.discord.embed.preset.find({ id: input.presetId });
+        if (!preset) {
+          throw trpcError.notFound("Preset not found");
+        }
+
+        await Q.discord.embed.preset.update(
+          { id: input.presetId },
+          { categoryId: input.categoryId },
+        );
+
+        return { message: "Preset category updated" };
+      }),
+
+    categories: router({
+      list: adminProcedure
+        .meta({ description: "List all preset categories with preset counts." })
+        .query(async () => {
+          const cats = await Q.discord.embed.preset.category
+            .where({})
+            .orderBy("sortOrder", "asc")
+            .all();
+
+          const counts = await Promise.all(
+            cats.map((cat) =>
+              Q.discord.embed.preset.where({ categoryId: cat.id }).count(),
+            ),
+          );
+
+          return cats.map((cat, i) => ({
+            ...cat,
+            presetCount: counts[i],
+          }));
+        }),
+
+      create: adminProcedure
+        .meta({ description: "Create a new preset category." })
+        .input(z.object({ name: z.string().min(1).max(100) }))
+        .mutation(async ({ input }) => {
+          const existing = await Q.discord.embed.preset.category.find({
+            name: input.name,
+          });
+          if (existing) {
+            throw trpcError.conflict("A category with that name already exists");
+          }
+
+          const maxSort = await Q.discord.embed.preset.category
+            .where({})
+            .orderBy("sortOrder", "desc")
+            .limit(1)
+            .all();
+          const nextSort = maxSort.length > 0 ? maxSort[0].sortOrder + 1 : 0;
+
+          await Q.discord.embed.preset.category.create({
+            name: input.name,
+            sortOrder: nextSort,
+          });
+
+          return { message: "Category created" };
+        }),
+
+      update: adminProcedure
+        .meta({ description: "Update a preset category." })
+        .input(
+          z.object({
+            id: z.number().int().positive(),
+            name: z.string().min(1).max(100).optional(),
+            sortOrder: z.number().int().optional(),
+          }),
+        )
+        .mutation(async ({ input }) => {
+          const existing = await Q.discord.embed.preset.category.find({
+            id: input.id,
+          });
+          if (!existing) {
+            throw trpcError.notFound("Category not found");
+          }
+
+          if (input.name && input.name !== existing.name) {
+            const nameConflict = await Q.discord.embed.preset.category.find({
+              name: input.name,
+            });
+            if (nameConflict) {
+              throw trpcError.conflict("A category with that name already exists");
+            }
+          }
+
+          const updates: Record<string, unknown> = {};
+          if (input.name !== undefined) updates.name = input.name;
+          if (input.sortOrder !== undefined) updates.sortOrder = input.sortOrder;
+
+          await Q.discord.embed.preset.category.update({ id: input.id }, updates);
+
+          return { message: "Category updated" };
+        }),
+
+      delete: adminProcedure
+        .meta({ description: "Delete a preset category (presets become uncategorized)." })
+        .input(z.object({ id: z.number().int().positive() }))
+        .mutation(async ({ input }) => {
+          const existing = await Q.discord.embed.preset.category.find({
+            id: input.id,
+          });
+          if (!existing) {
+            throw trpcError.notFound("Category not found");
+          }
+
+          await Q.discord.embed.preset.category.delete({ id: input.id });
+
+          return { message: "Category deleted" };
+        }),
+    }),
 
     links: router({
       list: adminProcedure

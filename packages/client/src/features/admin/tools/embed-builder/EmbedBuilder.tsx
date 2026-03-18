@@ -14,7 +14,7 @@ export function EmbedBuilder() {
   const builder = useEmbedBuilder();
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
         <Breadcrumb>
@@ -35,7 +35,7 @@ export function EmbedBuilder() {
       </header>
 
       {/* Sidebar + Editor layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex h-[calc(100svh-4rem)] overflow-hidden">
         <PresetSidebar builder={builder} />
         <EditorPanel builder={builder} />
       </div>

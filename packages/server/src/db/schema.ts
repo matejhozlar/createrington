@@ -203,6 +203,23 @@ export const authSession = pgTable(
   ],
 );
 
+// --- discord_embed_preset_category ---
+
+export const discordEmbedPresetCategory = pgTable(
+  "discord_embed_preset_category",
+  {
+    id: serial("id").primaryKey(),
+    name: varchar("name", { length: 100 }).notNull().unique(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
 // --- discord_embed_preset ---
 
 export const discordEmbedPreset = pgTable("discord_embed_preset", {
@@ -210,6 +227,10 @@ export const discordEmbedPreset = pgTable("discord_embed_preset", {
   name: varchar("name", { length: 100 }).notNull().unique(),
   data: jsonb("data").notNull(),
   createdBy: varchar("created_by", { length: 100 }).notNull(),
+  categoryId: integer("category_id").references(
+    () => discordEmbedPresetCategory.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

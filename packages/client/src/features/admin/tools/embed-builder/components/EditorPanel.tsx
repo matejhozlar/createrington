@@ -19,18 +19,22 @@ export function EditorPanel({ builder }: EditorPanelProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-      <EditorToolbar builder={builder} />
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Toolbar — pinned at top */}
+      <div className="shrink-0 p-4 pb-0">
+        <EditorToolbar builder={builder} />
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        {/* Form column */}
-        <div className="space-y-4">
+      {/* Content area — form scrolls, preview stays fixed */}
+      <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[1fr_1fr]">
+        {/* Form column — only this scrolls */}
+        <div className="min-h-0 space-y-4 overflow-y-auto">
           <EmbedForm data={externalData} onChange={setEmbedData} />
           {activePreset && <LinkedMessages builder={builder} />}
         </div>
 
-        {/* Preview column */}
-        <div className="lg:sticky lg:top-4 lg:self-start">
+        {/* Preview column — fixed in place, scrolls independently if needed */}
+        <div className="min-h-0 overflow-y-auto">
           <div className="space-y-2">
             <h2 className="text-sm font-medium text-muted-foreground">
               Preview
