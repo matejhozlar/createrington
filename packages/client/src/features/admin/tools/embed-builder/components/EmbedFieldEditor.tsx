@@ -10,7 +10,7 @@ import {
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef } from "react";
-import { MentionPicker } from "./MentionPicker";
+import { MentionPicker } from "@/features/admin/components/MentionPicker";
 import type { EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string; max: number }) {

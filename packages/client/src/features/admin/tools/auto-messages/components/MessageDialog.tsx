@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { MentionPicker } from "@/features/admin/components/MentionPicker";
 
 type Message =
   RouterOutput["admin"]["autoMessages"]["configs"]["get"]["messages"][number];
@@ -36,6 +37,7 @@ export function MessageDialog({
   const createMutation = trpc.admin.autoMessages.messages.create.useMutation();
   const updateMutation = trpc.admin.autoMessages.messages.update.useMutation();
 
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const [content, setContent] = useState(message?.content ?? "");
   const [enabled, setEnabled] = useState(message?.enabled ?? true);
 
@@ -80,8 +82,28 @@ export function MessageDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field>
-            <FieldLabel htmlFor="msg-content">Message</FieldLabel>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor="msg-content">Message</FieldLabel>
+              <MentionPicker
+                onInsert={(mention) => {
+                  const el = contentRef.current;
+                  const pos = el?.selectionStart ?? content.length;
+                  const next =
+                    content.slice(0, pos) + mention + content.slice(pos);
+                  setContent(next);
+                  requestAnimationFrame(() => {
+                    if (el) {
+                      const newPos = pos + mention.length;
+                      el.selectionStart = newPos;
+                      el.selectionEnd = newPos;
+                      el.focus();
+                    }
+                  });
+                }}
+              />
+            </div>
             <textarea
+              ref={contentRef}
               id="msg-content"
               value={content}
               onChange={(e) => setContent(e.target.value)}

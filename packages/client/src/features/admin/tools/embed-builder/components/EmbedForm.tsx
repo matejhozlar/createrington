@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
-import { MentionPicker } from "./MentionPicker";
+import { MentionPicker } from "@/features/admin/components/MentionPicker";
 import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {

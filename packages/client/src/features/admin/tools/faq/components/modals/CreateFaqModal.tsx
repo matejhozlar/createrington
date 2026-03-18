@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel, FieldDescription } from "@/components/ui/field";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+import { MentionPicker } from "@/features/admin/components/MentionPicker";
 
 type MatchMode = "keywords" | "regex";
 
@@ -29,6 +30,7 @@ export function CreateFaqModal({
   const toast = useToastActions();
   const createEntry = trpc.admin.faq.create.useMutation();
 
+  const responseRef = useRef<HTMLTextAreaElement>(null);
   const [title, setTitle] = useState("");
   const [matchMode, setMatchMode] = useState<MatchMode>("keywords");
   const [pattern, setPattern] = useState("");
@@ -147,8 +149,28 @@ export function CreateFaqModal({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="faq-response">Response</FieldLabel>
+            <div className="flex items-center gap-1">
+              <FieldLabel htmlFor="faq-response">Response</FieldLabel>
+              <MentionPicker
+                onInsert={(mention) => {
+                  const el = responseRef.current;
+                  const pos = el?.selectionStart ?? response.length;
+                  const next =
+                    response.slice(0, pos) + mention + response.slice(pos);
+                  setResponse(next);
+                  requestAnimationFrame(() => {
+                    if (el) {
+                      const newPos = pos + mention.length;
+                      el.selectionStart = newPos;
+                      el.selectionEnd = newPos;
+                      el.focus();
+                    }
+                  });
+                }}
+              />
+            </div>
             <textarea
+              ref={responseRef}
               id="faq-response"
               value={response}
               onChange={(e) => setResponse(e.target.value)}
