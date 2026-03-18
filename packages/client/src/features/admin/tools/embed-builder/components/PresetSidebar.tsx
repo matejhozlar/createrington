@@ -44,6 +44,8 @@ import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 
 interface PresetSidebarProps {
   builder: UseEmbedBuilder;
+  className?: string;
+  onNavigate?: () => void;
 }
 
 interface PresetItemProps {
@@ -261,7 +263,11 @@ function CategorySection({
   );
 }
 
-export function PresetSidebar({ builder }: PresetSidebarProps) {
+export function PresetSidebar({
+  builder,
+  className,
+  onNavigate,
+}: PresetSidebarProps) {
   const {
     search,
     setSearch,
@@ -311,6 +317,16 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
     }
   }
 
+  function loadPresetAndNavigate(preset: {
+    id: number;
+    name: string;
+    data: unknown;
+    categoryId?: number | null;
+  }) {
+    handleLoadPreset(preset);
+    onNavigate?.();
+  }
+
   const uncategorizedQuery = trpc.admin.embeds.presets.list.useQuery(
     { categoryId: "uncategorized", limit: 1 },
     { enabled: !isSearching },
@@ -319,7 +335,12 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
     uncategorizedQuery.data?.pagination.total ?? 0;
 
   return (
-    <div className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
+    <div
+      className={cn(
+        "flex w-64 shrink-0 flex-col border-r border-border bg-card",
+        className,
+      )}
+    >
       <div className="flex flex-col gap-2 p-3">
         <div className="flex gap-1.5">
           <Button
@@ -416,7 +437,7 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
                   key={preset.id}
                   preset={preset}
                   isActive={activePreset?.id === preset.id}
-                  onLoad={() => guardUnsaved(() => handleLoadPreset(preset))}
+                  onLoad={() => guardUnsaved(() => loadPresetAndNavigate(preset))}
                   onDelete={() =>
                     setDeleteTarget({
                       id: preset.id,
@@ -448,7 +469,7 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
                     presetCount={cat.presetCount}
                     activePresetId={activePreset?.id}
                     guardUnsaved={guardUnsaved}
-                    onLoadPreset={handleLoadPreset}
+                    onLoadPreset={loadPresetAndNavigate}
                     onDeletePreset={(id, name) =>
                       setDeleteTarget({ id, name, type: "preset" })
                     }
@@ -474,7 +495,7 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
                   presetCount={uncategorizedPresetCount}
                   activePresetId={activePreset?.id}
                   guardUnsaved={guardUnsaved}
-                  onLoadPreset={handleLoadPreset}
+                  onLoadPreset={loadPresetAndNavigate}
                   onDeletePreset={(id, name) =>
                     setDeleteTarget({ id, name, type: "preset" })
                   }

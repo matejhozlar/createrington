@@ -119,98 +119,107 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
 
   return (
     <>
-      <div className="flex items-end gap-3">
-        <div className="flex-1 space-y-2">
-          <Label>Preset Name</Label>
-          <Input
-            placeholder={activePreset ? activePreset.name : "Unnamed embed..."}
-            value={presetName}
-            onChange={(e) => setPresetName(e.target.value)}
-          />
-        </div>
-        <div className="w-40 space-y-2">
-          <Label>Category</Label>
-          <Select
-            value={selectedCategoryId?.toString() ?? "none"}
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Uncategorized" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Uncategorized</SelectItem>
-              {categories.map((cat) => (
-                <SelectItem key={cat.id} value={cat.id.toString()}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex shrink-0 gap-1">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleCopyJson}
-                disabled={!hasContent}
-                variant="ghost"
-                size="icon"
-                className="cursor-pointer text-muted-foreground"
-              >
-                <Copy className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Copy as JSON</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleImportJson}
-                variant="ghost"
-                size="icon"
-                className="cursor-pointer text-muted-foreground"
-              >
-                <Upload className="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              Import from clipboard
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={handleSave}
-              disabled={saveDisabled}
-              className="shrink-0 cursor-pointer"
-              variant="outline"
+      <div className="space-y-3">
+        {/* Row 1: Name + Category */}
+        <div className="flex items-end gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <Label>Preset Name</Label>
+            <Input
+              placeholder={activePreset ? activePreset.name : "Unnamed embed..."}
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+            />
+          </div>
+          <div className="w-32 shrink-0 space-y-2 sm:w-40">
+            <Label>Category</Label>
+            <Select
+              value={selectedCategoryId?.toString() ?? "none"}
+              onValueChange={handleCategoryChange}
             >
-              <Save className="mr-1.5 size-4" />
-              {saveLabel}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            {activePreset
-              ? "Save changes to this preset"
-              : "Save as a new preset"}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              onClick={() => setSendOpen(true)}
-              disabled={!hasContent}
-              className="shrink-0 cursor-pointer"
-            >
-              <Send className="mr-1.5 size-4" />
-              Send
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            Send embed to a Discord channel
-          </TooltipContent>
-        </Tooltip>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Uncategorized" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Uncategorized</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id.toString()}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Row 2: Actions */}
+        <div className="flex items-center gap-1">
+          <div className="flex gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleCopyJson}
+                  disabled={!hasContent}
+                  variant="ghost"
+                  size="icon"
+                  className="cursor-pointer text-muted-foreground"
+                >
+                  <Copy className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Copy as JSON</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleImportJson}
+                  variant="ghost"
+                  size="icon"
+                  className="cursor-pointer text-muted-foreground"
+                >
+                  <Upload className="size-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Import from clipboard
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleSave}
+                  disabled={saveDisabled}
+                  className="shrink-0 cursor-pointer"
+                  variant="outline"
+                >
+                  <Save className="mr-1.5 size-4" />
+                  {saveLabel}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {activePreset
+                  ? "Save changes to this preset"
+                  : "Save as a new preset"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={() => setSendOpen(true)}
+                  disabled={!hasContent}
+                  className="shrink-0 cursor-pointer"
+                >
+                  <Send className="mr-1.5 size-4" />
+                  Send
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Send embed to a Discord channel
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
       </div>
 
       <SendModal open={sendOpen} onOpenChange={setSendOpen} builder={builder} />
