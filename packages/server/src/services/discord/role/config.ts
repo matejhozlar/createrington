@@ -5,6 +5,7 @@ import type {
   RoleNotificationConfig,
   ServerAgeRoleRule,
   TopPlaytimeRoleRule,
+  TopCryptoNetworthRoleRule,
 } from "./types";
 import { RoleConditionType, RoleCheckInterval } from "./types";
 
@@ -169,6 +170,31 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
 ];
 
 /**
+ * Top crypto networth role configuration (competitive, rank-based)
+ *
+ * Only one player holds this role at a time — the player with the highest
+ * total crypto portfolio value. Checked daily.
+ */
+export const TOP_CRYPTO_NETWORTH_ROLES: TopCryptoNetworthRoleRule[] = [
+  {
+    roleId: Discord.Roles.CRYPTO_BARON,
+    checkInterval: RoleCheckInterval.DAILY,
+    label: "Crypto Baron",
+    conditionType: RoleConditionType.TOP_CRYPTO_NETWORTH,
+    enabled: true,
+  },
+];
+
+/**
+ * Gets top crypto networth role rules (competitive, rank-based)
+ *
+ * @returns Array of top crypto networth role rules
+ */
+export function getTopCryptoNetworthRoleRules(): TopCryptoNetworthRoleRule[] {
+  return TOP_CRYPTO_NETWORTH_ROLES.filter((rule) => rule.enabled !== false);
+}
+
+/**
  * Gets all role assignment rules
  *
  * @returns Array of all configured role rules
@@ -318,6 +344,14 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
     emoji: "👑",
     isMilestone: true,
     customMessage: "has claimed the top spot and earned the legendary title of",
+  },
+
+  [Discord.Roles.CRYPTO_BARON]: {
+    enabled: true,
+    emoji: "💰",
+    isMilestone: true,
+    customMessage:
+      "has dominated the crypto markets and earned the title of",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

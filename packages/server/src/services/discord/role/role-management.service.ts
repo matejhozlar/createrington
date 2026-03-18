@@ -6,9 +6,11 @@ import {
   getDailyRoleRules,
   getRealtimeRoleRules,
   getTopPlaytimeRoleRules,
+  getTopCryptoNetworthRoleRules,
 } from "./config";
 import { RoleConditionType } from "./types";
-import type { TopPlaytimeRoleRule } from "./types";
+import type { TopPlaytimeRoleRule, TopCryptoNetworthRoleRule } from "./types";
+import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
@@ -220,6 +222,14 @@ export class RoleManagementService {
         if (result.removed) totalRemovals++;
       }
 
+      // Top crypto networth roles (competitive, rank-based — only one holder at a time)
+      const topCryptoRules = getTopCryptoNetworthRoleRules();
+      for (const rule of topCryptoRules) {
+        const result = await this.processTopCryptoNetworthRole(rule);
+        if (result.assigned) totalAssignments++;
+        if (result.removed) totalRemovals++;
+      }
+
       logger.info(
         `Daily role check complete: ${totalAssignments} role(s) assigned, ${totalRemovals} role(s) removed`,
       );
@@ -330,6 +340,126 @@ export class RoleManagementService {
       return { assigned, removed };
     } catch (error) {
       logger.error("Failed to process top playtime role:", error);
+      return { assigned: false, removed: false };
+    }
+  }
+
+  // ==========================================================================
+  // TOP CRYPTO NETWORTH (COMPETITIVE)
+  // ==========================================================================
+
+  /**
+   * Processes a competitive top-crypto-networth role
+   *
+   * Finds the #1 player by total crypto portfolio value, removes the role
+   * from any current holder(s), and assigns it to the new leader.
+   *
+   * @param rule - The top crypto networth role rule
+   * @returns Object indicating whether the role was assigned/removed
+   *
+   * @private
+   */
+  private async processTopCryptoNetworthRole(
+    rule: TopCryptoNetworthRoleRule,
+  ): Promise<{ assigned: boolean; removed: boolean }> {
+    try {
+      const leaderboard = await getLeaderboard("networth", 1);
+
+      if (leaderboard.length === 0) {
+        logger.warn("No players found for top crypto networth role check");
+        return { assigned: false, removed: false };
+      }
+
+      const topEntry = leaderboard[0];
+      const topPlayer = await Q.player.find({
+        minecraftUuid: topEntry.playerUuid,
+      });
+
+      if (!topPlayer) {
+        logger.warn(
+          `No player record found for top crypto player UUID ${topEntry.playerUuid}`,
+        );
+        return { assigned: false, removed: false };
+      }
+
+      const guild = await this.client.guilds.fetch(config.discord.guild.id);
+
+      // Find all members who currently have the role
+      const membersWithRole = guild.members.cache.filter((m) =>
+        RoleManager.has(m, rule.roleId),
+      );
+
+      // Check if the top player already holds the role
+      const topPlayerHasRole = membersWithRole.some(
+        (m) => m.id === topPlayer.discordId,
+      );
+
+      if (topPlayerHasRole && membersWithRole.size === 1) {
+        logger.debug(
+          `Top crypto networth role "${rule.label}" already held by ${topEntry.playerName}`,
+        );
+        return { assigned: false, removed: false };
+      }
+
+      // Remove the role from all current holders
+      let removed = false;
+      for (const [, member] of membersWithRole) {
+        if (member.id !== topPlayer.discordId) {
+          await RoleManager.remove(
+            member,
+            rule.roleId,
+            `No longer the #1 player by crypto portfolio value`,
+          );
+          removed = true;
+        }
+      }
+
+      // Assign the role to the new top player
+      let assigned = false;
+      if (!topPlayerHasRole) {
+        try {
+          const topMember = await guild.members.fetch(topPlayer.discordId);
+          const portfolioValue = parseFloat(topEntry.value);
+          const result = await RoleManager.assign(
+            topMember,
+            rule.roleId,
+            `#1 player by crypto portfolio value ($${topEntry.value})`,
+          );
+
+          if (result) {
+            assigned = true;
+
+            roleNotificationService
+              .sendTopPlayerAnnouncement({
+                discordId: topPlayer.discordId,
+                username: topEntry.playerName,
+                role: rule,
+                currentValue: portfolioValue,
+                requiredValue: 0,
+                timestamp: new Date(),
+              })
+              .catch((error) => {
+                logger.error(
+                  "Failed to send crypto baron announcement:",
+                  error,
+                );
+              });
+
+            logger.info(
+              `Assigned top crypto networth role "${rule.label}" to ${topEntry.playerName}`,
+            );
+          }
+        } catch (error) {
+          logger.error(
+            `Failed to assign top crypto networth role to ${topPlayer.discordId}:`,
+            error,
+          );
+        }
+      }
+
+      return { assigned, removed };
+    } catch (error) {
+      logger.error("Failed to process top crypto networth role:", error);
       return { assigned: false, removed: false };
     }
   }

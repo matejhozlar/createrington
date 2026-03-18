@@ -22,6 +22,8 @@ function formatValue(value: number, conditionType: RoleConditionType): string {
       return formatPlaytime(value);
     case RoleConditionType.BALANCE:
       return `${formatBalance(value)}`;
+    case RoleConditionType.TOP_CRYPTO_NETWORTH:
+      return `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     case RoleConditionType.SERVER_AGE:
       return `${formatDaysCount(value)} ${value > 0 ? "ago" : ""}`;
     default:
@@ -97,6 +99,15 @@ export const RoleAssignmentEmbedPresets = {
     } else if (notification.role.conditionType === RoleConditionType.BALANCE) {
       embed.field(
         "Current Balance",
+        formatValue(notification.currentValue, notification.role.conditionType),
+        true,
+      );
+    } else if (
+      notification.role.conditionType ===
+      RoleConditionType.TOP_CRYPTO_NETWORTH
+    ) {
+      embed.field(
+        "Portfolio Value",
         formatValue(notification.currentValue, notification.role.conditionType),
         true,
       );
@@ -179,6 +190,12 @@ export const RoleAssignmentEmbedPresets = {
       embed.field("Total Playtime", formatPlaytime(value), true);
     } else if (conditionType === RoleConditionType.BALANCE) {
       embed.field("Total Balance", `$${value.toLocaleString()}`, true);
+    } else if (conditionType === RoleConditionType.TOP_CRYPTO_NETWORTH) {
+      embed.field(
+        "Portfolio Value",
+        `$${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        true,
+      );
     }
 
     embed.timestamp();
