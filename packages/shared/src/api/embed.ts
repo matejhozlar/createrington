@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const embedBotSchema = z.enum(["main", "web"]);
+export type EmbedBot = z.infer<typeof embedBotSchema>;
+
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
   value: z.string().min(1).max(1024),

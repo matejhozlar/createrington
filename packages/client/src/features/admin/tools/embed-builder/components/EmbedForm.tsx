@@ -54,7 +54,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       {/* Body */}
       <Section title="Body" defaultOpen>
         <div className="space-y-3">
-          <div>
+          <div className="space-y-2">
             <Label>Title</Label>
             <Input
               placeholder="Embed title"
@@ -63,7 +63,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
               maxLength={256}
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Description</Label>
             <textarea
               placeholder="Embed description"
@@ -76,7 +76,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
               className="border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>URL (title becomes a link)</Label>
             <Input
               placeholder="https://..."
@@ -94,7 +94,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       {/* Author */}
       <Section title="Author">
         <div className="space-y-3">
-          <div>
+          <div className="space-y-2">
             <Label>Author Name</Label>
             <Input
               placeholder="Author name"
@@ -103,7 +103,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
               maxLength={256}
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Author URL</Label>
             <Input
               placeholder="https://..."
@@ -113,7 +113,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
               }
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Author Icon URL</Label>
             <Input
               placeholder="https://..."
@@ -137,7 +137,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       {/* Images */}
       <Section title="Images">
         <div className="space-y-3">
-          <div>
+          <div className="space-y-2">
             <Label>Thumbnail URL</Label>
             <Input
               placeholder="https://..."
@@ -147,7 +147,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
               }
             />
           </div>
-          <div>
+          <div className="space-y-2">
             <Label>Image URL</Label>
             <Input
               placeholder="https://..."
@@ -163,7 +163,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       {/* Footer */}
       <Section title="Footer">
         <div className="space-y-3">
-          <div>
+          <div className="space-y-2">
             <Label>Footer Text</Label>
             <Input
               placeholder="Footer text"

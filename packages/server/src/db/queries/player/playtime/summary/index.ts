@@ -1,6 +1,13 @@
 import type { Pool, PoolClient } from "pg";
 import { PlayerPlaytimeSummaryBaseQueries } from "@/generated/db/player_playtime_summary.queries";
 
+export type GlobalLeaderboardEntry = {
+  discordId: string;
+  minecraftUsername: string;
+  playerMinecraftUuid: string;
+  totalSeconds: number;
+};
+
 export type LeaderboardEntry = {
   id: number;
   playerMinecraftUuid: string;
@@ -331,6 +338,45 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       return { byServer, total };
     } catch (error) {
       logger.error("Failed to get total hours breakdown:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Retrieves the global playtime leaderboard aggregated across all servers
+   *
+   * Sums total_seconds across all servers per player, joins with the player
+   * table for discord_id and minecraft_username.
+   *
+   * @param limit - Maximum number of entries to return (default: 1)
+   * @returns Array of global leaderboard entries sorted by total playtime descending
+   */
+  async getGlobalLeaderboard(
+    limit: number = 1,
+  ): Promise<GlobalLeaderboardEntry[]> {
+    const query = `
+      SELECT
+        p.discord_id,
+        p.minecraft_username,
+        s.player_minecraft_uuid,
+        SUM(s.total_seconds)::bigint AS total_seconds
+      FROM ${this.table} s
+      JOIN player p ON p.minecraft_uuid = s.player_minecraft_uuid
+      GROUP BY p.discord_id, p.minecraft_username, s.player_minecraft_uuid
+      ORDER BY total_seconds DESC
+      LIMIT $1`;
+
+    try {
+      const result = await this.db.query(query, [limit]);
+
+      return result.rows.map((row) => ({
+        discordId: row.discord_id,
+        minecraftUsername: row.minecraft_username,
+        playerMinecraftUuid: row.player_minecraft_uuid,
+        totalSeconds: Number(row.total_seconds),
+      }));
+    } catch (error) {
+      logger.error("Failed to get global leaderboard:", error);
       throw error;
     }
   }

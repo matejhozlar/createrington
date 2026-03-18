@@ -18,6 +18,7 @@ import { formatBalance, formatDaysCount, formatPlaytime } from "@/utils/format";
 function formatValue(value: number, conditionType: RoleConditionType): string {
   switch (conditionType) {
     case RoleConditionType.PLAYTIME:
+    case RoleConditionType.TOP_PLAYTIME:
       return formatPlaytime(value);
     case RoleConditionType.BALANCE:
       return `${formatBalance(value)}`;
@@ -84,7 +85,10 @@ export const RoleAssignmentEmbedPresets = {
         )} ${congratsMessage}\n\n` + `**${notification.role.label}**`,
       );
 
-    if (notification.role.conditionType === RoleConditionType.PLAYTIME) {
+    if (
+      notification.role.conditionType === RoleConditionType.PLAYTIME ||
+      notification.role.conditionType === RoleConditionType.TOP_PLAYTIME
+    ) {
       embed.field(
         "Total Playtime",
         formatValue(notification.currentValue, notification.role.conditionType),
@@ -168,7 +172,10 @@ export const RoleAssignmentEmbedPresets = {
         )} has claimed the top spot and earned the title of **${roleLabel}**!`,
       );
 
-    if (conditionType === RoleConditionType.PLAYTIME) {
+    if (
+      conditionType === RoleConditionType.PLAYTIME ||
+      conditionType === RoleConditionType.TOP_PLAYTIME
+    ) {
       embed.field("Total Playtime", formatPlaytime(value), true);
     } else if (conditionType === RoleConditionType.BALANCE) {
       embed.field("Total Balance", `$${value.toLocaleString()}`, true);

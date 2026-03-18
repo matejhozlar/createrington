@@ -19,6 +19,7 @@ export enum RoleConditionType {
   PLAYTIME = "playtime",
   BALANCE = "balance",
   SERVER_AGE = "server_age",
+  TOP_PLAYTIME = "top_playtime",
   CUSTOM = "custom",
 }
 
@@ -72,12 +73,23 @@ export interface ServerAgeRoleRule extends RoleAssignmentRule {
 }
 
 /**
+ * Top playtime-based role assignment rule (competitive, rank-based)
+ *
+ * Assigned to the single player with the most total playtime across all servers.
+ * Only one player holds this role at a time.
+ */
+export interface TopPlaytimeRoleRule extends RoleAssignmentRule {
+  conditionType: RoleConditionType.TOP_PLAYTIME;
+}
+
+/**
  * Union type of all possible rule types
  */
 export type AnyRoleRule =
   | PlaytimeRoleRule
   | BalanceRoleRule
-  | ServerAgeRoleRule;
+  | ServerAgeRoleRule
+  | TopPlaytimeRoleRule;
 
 /**
  * Result of checking a player's eligibility for a role
