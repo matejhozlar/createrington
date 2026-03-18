@@ -1,3 +1,4 @@
+import config from "@/config";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -80,6 +81,8 @@ export class FaqService {
    * @returns Promise resolving when handling is complete
    */
   async handleMessage(message: Message): Promise<void> {
+    if (config.envMode.isDev) return;
+
     const matched = this.matchPattern(message.content);
 
     if (matched) {
@@ -149,6 +152,8 @@ export class FaqService {
    * @returns Promise resolving when the welcome message is reposted
    */
   async repostWelcomeMessage(): Promise<void> {
+    if (config.envMode.isDev) return;
+
     try {
       const existing = await Q.faq.welcome.message.find({
         channelId: this.channelId,
