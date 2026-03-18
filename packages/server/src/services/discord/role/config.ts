@@ -4,6 +4,7 @@ import type {
   PlaytimeRoleRule,
   RoleNotificationConfig,
   ServerAgeRoleRule,
+  TopPlaytimeRoleRule,
 } from "./types";
 import { RoleConditionType, RoleCheckInterval } from "./types";
 
@@ -152,6 +153,22 @@ export const SERVER_AGE_ROLE_HIERARCHY: ServerAgeRoleRule[] = [
 ];
 
 /**
+ * Top playtime role configuration (competitive, rank-based)
+ *
+ * Only one player holds this role at a time — the player with the most
+ * total playtime across all servers. Checked daily.
+ */
+export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
+  {
+    roleId: Discord.Roles.THE_SLEEPLESS,
+    checkInterval: RoleCheckInterval.DAILY,
+    label: "The Sleepless",
+    conditionType: RoleConditionType.TOP_PLAYTIME,
+    enabled: true,
+  },
+];
+
+/**
  * Gets all role assignment rules
  *
  * @returns Array of all configured role rules
@@ -183,6 +200,15 @@ export function getDailyRoleRules(): AnyRoleRule[] {
   return getAllRoleRules().filter(
     (rule) => rule.checkInterval === RoleCheckInterval.DAILY,
   );
+}
+
+/**
+ * Gets top playtime role rules (competitive, rank-based)
+ *
+ * @returns Array of top playtime role rules
+ */
+export function getTopPlaytimeRoleRules(): TopPlaytimeRoleRule[] {
+  return TOP_PLAYTIME_ROLES.filter((rule) => rule.enabled !== false);
 }
 
 /**
@@ -285,6 +311,13 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
     isMilestone: true,
     customMessage:
       "has reached the pinnacle of automation mastery and earned the legendary title of",
+  },
+
+  [Discord.Roles.THE_SLEEPLESS]: {
+    enabled: true,
+    emoji: "👑",
+    isMilestone: true,
+    customMessage: "has claimed the top spot and earned the legendary title of",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,

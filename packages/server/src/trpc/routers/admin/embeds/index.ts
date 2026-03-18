@@ -8,8 +8,16 @@ import { EmbedBuilder } from "discord.js";
 import config from "@/config";
 import {
   embedDataSchema,
+  embedBotSchema,
   type EmbedData,
 } from "@createrington/shared/api/embed";
+
+function getMessageService(bot: "main" | "web" = "main") {
+  const serviceKey =
+    bot === "main" ? Services.DISCORD_MAIN_BOT : Services.DISCORD_WEB_BOT;
+  const client = getServiceSync(serviceKey);
+  return DiscordMessageService.getInstance(client);
+}
 
 const channels = config.discord.guild.channels;
 const categories = config.discord.guild.categories;
@@ -64,6 +72,7 @@ export const embedsRouter = router({
         channelId: z.string().min(1),
         embed: embedDataSchema,
         presetId: z.number().int().positive().optional(),
+        bot: embedBotSchema.default("main"),
       }),
     )
     .mutation(async ({ input }) => {
@@ -103,8 +112,7 @@ export const embedsRouter = router({
         );
       }
 
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+      const messageService = getMessageService(input.bot);
 
       const result = await messageService.send({
         channelId,
@@ -134,6 +142,7 @@ export const embedsRouter = router({
         messageId: z.string().min(1),
         embed: embedDataSchema,
         presetId: z.number().int().positive().optional(),
+        bot: embedBotSchema.default("main"),
       }),
     )
     .mutation(async ({ input }) => {
@@ -173,8 +182,7 @@ export const embedsRouter = router({
         );
       }
 
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+      const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
         channelId,
@@ -202,11 +210,11 @@ export const embedsRouter = router({
       z.object({
         channelId: z.string().min(1),
         messageId: z.string().min(1),
+        bot: embedBotSchema.default("main"),
       }),
     )
     .query(async ({ input }) => {
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+      const messageService = getMessageService(input.bot);
 
       const result = await messageService.fetchMessage({
         channelId: input.channelId,
