@@ -22,6 +22,11 @@ import type { ReactNode } from "react";
 
 // ── Inline parsing ──────────────────────────────────────────────────────
 
+export interface MentionResolver {
+  channels: Map<string, string>;
+  roles: Map<string, string>;
+}
+
 type InlineToken =
   | { type: "text"; content: string }
   | { type: "bold_italic"; content: string }
@@ -31,13 +36,24 @@ type InlineToken =
   | { type: "strikethrough"; content: string }
   | { type: "spoiler"; content: string }
   | { type: "code"; content: string }
-  | { type: "link"; text: string; url: string };
+  | { type: "link"; text: string; url: string }
+  | { type: "channel_mention"; id: string }
+  | { type: "role_mention"; id: string };
 
 const INLINE_RULES: Array<{
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => InlineToken;
 }> = [
   // Order matters — more specific patterns first
+  // Discord mentions: <#channelId>, <@&roleId>
+  {
+    pattern: /^<#(\d+)>/,
+    parse: (m) => ({ type: "channel_mention", id: m[1] }),
+  },
+  {
+    pattern: /^<@&(\d+)>/,
+    parse: (m) => ({ type: "role_mention", id: m[1] }),
+  },
   {
     pattern: /^`([^`]+?)`/,
     parse: (m) => ({ type: "code", content: m[1] }),
@@ -108,7 +124,10 @@ function tokeniseInline(text: string): InlineToken[] {
   return tokens;
 }
 
-function renderInline(text: string): ReactNode[] {
+function renderInline(
+  text: string,
+  resolver?: MentionResolver,
+): ReactNode[] {
   return tokeniseInline(text).map((token, i) => {
     switch (token.type) {
       case "text":
@@ -139,17 +158,19 @@ function renderInline(text: string): ReactNode[] {
       case "bold_italic":
         return (
           <strong key={i}>
-            <em>{renderInline(token.content)}</em>
+            <em>{renderInline(token.content, resolver)}</em>
           </strong>
         );
       case "bold":
-        return <strong key={i}>{renderInline(token.content)}</strong>;
+        return (
+          <strong key={i}>{renderInline(token.content, resolver)}</strong>
+        );
       case "underline":
-        return <u key={i}>{renderInline(token.content)}</u>;
+        return <u key={i}>{renderInline(token.content, resolver)}</u>;
       case "italic":
-        return <em key={i}>{renderInline(token.content)}</em>;
+        return <em key={i}>{renderInline(token.content, resolver)}</em>;
       case "strikethrough":
-        return <s key={i}>{renderInline(token.content)}</s>;
+        return <s key={i}>{renderInline(token.content, resolver)}</s>;
       case "spoiler":
         return (
           <span
@@ -157,9 +178,33 @@ function renderInline(text: string): ReactNode[] {
             className="cursor-pointer rounded px-0.5"
             style={{ backgroundColor: "#1E1F22" }}
           >
-            {renderInline(token.content)}
+            {renderInline(token.content, resolver)}
           </span>
         );
+      case "channel_mention": {
+        const name = resolver?.channels.get(token.id);
+        return (
+          <span
+            key={i}
+            className="rounded px-0.5 font-medium"
+            style={{ backgroundColor: "rgba(88, 101, 242, 0.3)", color: "#C9CDFB" }}
+          >
+            #{name ?? token.id}
+          </span>
+        );
+      }
+      case "role_mention": {
+        const name = resolver?.roles.get(token.id);
+        return (
+          <span
+            key={i}
+            className="rounded px-0.5 font-medium"
+            style={{ backgroundColor: "rgba(88, 101, 242, 0.3)", color: "#C9CDFB" }}
+          >
+            @{name ?? token.id}
+          </span>
+        );
+      }
     }
   });
 }
@@ -168,9 +213,10 @@ function renderInline(text: string): ReactNode[] {
 
 interface DiscordMarkdownProps {
   text: string;
+  mentionResolver?: MentionResolver;
 }
 
-export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
+export function DiscordMarkdown({ text, mentionResolver }: DiscordMarkdownProps) {
   const lines = text.split("\n");
   const blocks: ReactNode[] = [];
   let i = 0;
@@ -214,7 +260,7 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
           key={blocks.length}
           className={`${sizes[level - 1]} mt-1 text-white`}
         >
-          {renderInline(content)}
+          {renderInline(content, mentionResolver)}
         </div>,
       );
       i++;
@@ -238,7 +284,7 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
           style={{ borderLeft: "3px solid #4E5058" }}
         >
           {quoteLines.map((ql, qi) => (
-            <div key={qi}>{ql ? renderInline(ql) : <br />}</div>
+            <div key={qi}>{ql ? renderInline(ql, mentionResolver) : <br />}</div>
           ))}
         </div>,
       );
@@ -269,11 +315,11 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
         <ul key={blocks.length} className="my-0.5 list-disc pl-6">
           {items.map((item, j) => (
             <li key={j}>
-              {renderInline(item.text)}
+              {renderInline(item.text, mentionResolver)}
               {item.subItems.length > 0 && (
                 <ul className="my-0.5 list-disc pl-6">
                   {item.subItems.map((sub, k) => (
-                    <li key={k}>{renderInline(sub)}</li>
+                    <li key={k}>{renderInline(sub, mentionResolver)}</li>
                   ))}
                 </ul>
               )}
@@ -308,11 +354,11 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
         <ol key={blocks.length} className="my-0.5 list-decimal pl-6">
           {items.map((item, j) => (
             <li key={j}>
-              {renderInline(item.text)}
+              {renderInline(item.text, mentionResolver)}
               {item.subItems.length > 0 && (
                 <ul className="my-0.5 list-disc pl-6">
                   {item.subItems.map((sub, k) => (
-                    <li key={k}>{renderInline(sub)}</li>
+                    <li key={k}>{renderInline(sub, mentionResolver)}</li>
                   ))}
                 </ul>
               )}
@@ -331,7 +377,7 @@ export function DiscordMarkdown({ text }: DiscordMarkdownProps) {
     }
 
     // Normal line with inline markdown
-    blocks.push(<div key={blocks.length}>{renderInline(line)}</div>);
+    blocks.push(<div key={blocks.length}>{renderInline(line, mentionResolver)}</div>);
     i++;
   }
 

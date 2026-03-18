@@ -9,6 +9,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
+import { MentionPicker } from "./MentionPicker";
 import type { EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string; max: number }) {
@@ -45,6 +47,25 @@ function hasId(field: EmbedField): field is EmbedFieldInternal {
 }
 
 export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
+  const valueRefs = useRef<Map<number, HTMLTextAreaElement>>(new Map());
+
+  function insertMentionAtCursor(index: number, mention: string) {
+    const el = valueRefs.current.get(index);
+    const value = fields[index]?.value ?? "";
+    const pos = el?.selectionStart ?? value.length;
+    const newValue = value.slice(0, pos) + mention + value.slice(pos);
+    onChange(fields.map((f, i) => (i === index ? { ...f, value: newValue } : f)));
+
+    requestAnimationFrame(() => {
+      if (el) {
+        const newPos = pos + mention.length;
+        el.selectionStart = newPos;
+        el.selectionEnd = newPos;
+        el.focus();
+      }
+    });
+  }
+
   function addField() {
     if (fields.length >= 25) return;
     onChange([
@@ -167,7 +188,17 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                 </div>
               </div>
               <div className="space-y-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">Value</span>
+                  <MentionPicker
+                    onInsert={(mention) => insertMentionAtCursor(i, mention)}
+                  />
+                </div>
                 <textarea
+                  ref={(el) => {
+                    if (el) valueRefs.current.set(i, el);
+                    else valueRefs.current.delete(i);
+                  }}
                   placeholder="Field value"
                   value={field.value}
                   onChange={(e) => updateField(i, { value: e.target.value })}

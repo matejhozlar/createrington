@@ -8,9 +8,10 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
+import { MentionPicker } from "./MentionPicker";
 import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {
@@ -63,8 +64,33 @@ function Section({
 }
 
 export function EmbedForm({ data, onChange }: EmbedFormProps) {
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
   function update(updates: Partial<EmbedData>) {
     onChange({ ...data, ...updates });
+  }
+
+  function insertAtCursor(
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    currentValue: string | undefined,
+    mention: string,
+    field: keyof EmbedData,
+  ) {
+    const el = ref.current;
+    const value = currentValue ?? "";
+    const pos = el?.selectionStart ?? value.length;
+    const newValue = value.slice(0, pos) + mention + value.slice(pos);
+    update({ [field]: newValue || undefined });
+
+    // Restore cursor position after React re-render
+    requestAnimationFrame(() => {
+      if (el) {
+        const newPos = pos + mention.length;
+        el.selectionStart = newPos;
+        el.selectionEnd = newPos;
+        el.focus();
+      }
+    });
   }
 
   return (
@@ -86,10 +112,23 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Description</Label>
+              <div className="flex items-center gap-1">
+                <Label>Description</Label>
+                <MentionPicker
+                  onInsert={(mention) =>
+                    insertAtCursor(
+                      descriptionRef,
+                      data.description,
+                      mention,
+                      "description",
+                    )
+                  }
+                />
+              </div>
               <CharCount value={data.description} max={4096} />
             </div>
             <textarea
+              ref={descriptionRef}
               placeholder="Embed description"
               value={data.description ?? ""}
               onChange={(e) =>

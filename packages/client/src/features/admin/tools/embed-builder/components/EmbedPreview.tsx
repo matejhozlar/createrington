@@ -1,5 +1,7 @@
+import { useMemo } from "react";
+import { trpc } from "@/lib/trpc";
 import type { EmbedData } from "@createrington/shared/api/embed";
-import { DiscordMarkdown } from "./DiscordMarkdown";
+import { DiscordMarkdown, type MentionResolver } from "./DiscordMarkdown";
 
 function numberToHex(color: number): string {
   return `#${color.toString(16).padStart(6, "0")}`;
@@ -9,7 +11,31 @@ interface EmbedPreviewProps {
   data: EmbedData;
 }
 
+function formatName(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
 export function EmbedPreview({ data }: EmbedPreviewProps) {
+  const channelsQuery = trpc.admin.embeds.channels.useQuery();
+  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+
+  const mentionResolver = useMemo<MentionResolver>(() => {
+    const channels = new Map<string, string>();
+    for (const group of channelsQuery.data ?? []) {
+      for (const ch of group.channels) {
+        channels.set(ch.id, formatName(ch.name));
+      }
+    }
+    const roles = new Map<string, string>();
+    for (const role of rolesQuery.data ?? []) {
+      roles.set(role.id, formatName(role.name));
+    }
+    return { channels, roles };
+  }, [channelsQuery.data, rolesQuery.data]);
+
   const hasContent =
     data.title || data.description || data.fields.length > 0 || data.imageUrl;
   const borderColor =
@@ -116,7 +142,7 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
             {/* Description */}
             {data.description && (
               <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                <DiscordMarkdown text={data.description} />
+                <DiscordMarkdown mentionResolver={mentionResolver} text={data.description} />
               </div>
             )}
 
@@ -138,10 +164,10 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
                     }}
                   >
                     <div className="text-xs font-semibold text-white">
-                      <DiscordMarkdown text={field.name} />
+                      <DiscordMarkdown mentionResolver={mentionResolver} text={field.name} />
                     </div>
                     <div className="text-sm" style={{ color: "#DBDEE1" }}>
-                      <DiscordMarkdown text={field.value} />
+                      <DiscordMarkdown mentionResolver={mentionResolver} text={field.value} />
                     </div>
                   </div>
                 ))}
