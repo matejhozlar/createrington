@@ -142,7 +142,7 @@ export function PriceAlerts() {
                   </SelectItem>
                   <SelectItem value="below">
                     <span className="flex items-center gap-1">
-                      <ArrowDown className="size-3 text-red-500" />
+                      <ArrowDown className="size-3 text-destructive" />
                       Below
                     </span>
                   </SelectItem>
@@ -182,7 +182,7 @@ export function PriceAlerts() {
                       "flex items-center gap-1 text-xs font-medium",
                       alert.direction === "above"
                         ? "text-emerald-400"
-                        : "text-red-400",
+                        : "text-destructive",
                     )}
                   >
                     {alert.direction === "above" ? (
@@ -204,7 +204,7 @@ export function PriceAlerts() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-7 text-muted-foreground hover:text-red-500"
+                  className="size-7 text-muted-foreground hover:text-destructive"
                   onClick={() => deleteMutation.mutate({ alertId: alert.id })}
                   disabled={deleteMutation.isPending}
                 >

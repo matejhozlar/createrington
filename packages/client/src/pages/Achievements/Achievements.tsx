@@ -39,7 +39,7 @@ const CATEGORY_META: Record<
   { label: string; icon: React.ElementType; color: string }
 > = {
   mining: { label: "Mining", icon: Pickaxe, color: "text-amber-400" },
-  combat: { label: "Combat", icon: Sword, color: "text-red-400" },
+  combat: { label: "Combat", icon: Sword, color: "text-destructive" },
   exploration: {
     label: "Exploration",
     icon: Compass,

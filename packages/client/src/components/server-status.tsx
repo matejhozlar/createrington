@@ -74,7 +74,7 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
         <div
           className={cn("size-3 shrink-0 rounded-full", {
             "bg-green-500 shadow shadow-green-500 animate-pulse": server.online,
-            "bg-red-500 shadow shadow-red-500": !server.online,
+            "bg-destructive shadow shadow-destructive": !server.online,
             "size-4": isCollapsed,
           })}
         />
@@ -84,7 +84,7 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
           <span
             className={cn("text-base font-semibold", {
               "text-green-500": server.online,
-              "text-red-500": !server.online,
+              "text-destructive": !server.online,
             })}
           >
             {server.online ? "Online" : "Offline"}
