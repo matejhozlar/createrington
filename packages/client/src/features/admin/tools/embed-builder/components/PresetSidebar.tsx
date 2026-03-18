@@ -18,6 +18,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -80,32 +85,40 @@ function PresetItem({
         </p>
       </button>
       <div className="flex shrink-0 gap-0.5 opacity-0 group-hover:opacity-100">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDuplicate();
-          }}
-          title="Duplicate"
-        >
-          <Copy className="size-3" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          title="Delete"
-        >
-          <Trash2 className="size-3" />
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDuplicate();
+              }}
+            >
+              <Copy className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Duplicate</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              <Trash2 className="size-3" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Delete</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );
@@ -184,15 +197,20 @@ function CategorySection({
         </CollapsibleTrigger>
         {!isUncategorized && (onRenameCategory || onDeleteCategory) && (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="size-6 shrink-0 cursor-pointer p-0 text-muted-foreground"
-              >
-                <MoreHorizontal className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="size-6 shrink-0 cursor-pointer p-0 text-muted-foreground"
+                  >
+                    <MoreHorizontal className="size-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="right">Category options</TooltipContent>
+            </Tooltip>
             <DropdownMenuContent align="end">
               {onRenameCategory && (
                 <DropdownMenuItem onClick={onRenameCategory}>
@@ -313,18 +331,22 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
             <Plus className="mr-1.5 size-3.5" />
             New Embed
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="cursor-pointer px-2"
-            onClick={() => {
-              setShowNewCategory(true);
-              setNewCategoryName("");
-            }}
-            title="New Category"
-          >
-            <FolderPlus className="size-3.5" />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer px-2"
+                onClick={() => {
+                  setShowNewCategory(true);
+                  setNewCategoryName("");
+                }}
+              >
+                <FolderPlus className="size-3.5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">New Category</TooltipContent>
+          </Tooltip>
         </div>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />

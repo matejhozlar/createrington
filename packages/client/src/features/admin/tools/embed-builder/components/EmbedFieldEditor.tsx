@@ -2,6 +2,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { EmbedField } from "@createrington/shared/api/embed";
@@ -103,35 +108,50 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                   Field {i + 1}
                 </span>
                 <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveField(i, -1)}
-                    disabled={i === 0}
-                    className="size-7 cursor-pointer p-0"
-                  >
-                    <ArrowUp className="size-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => moveField(i, 1)}
-                    disabled={i === fields.length - 1}
-                    className="size-7 cursor-pointer p-0"
-                  >
-                    <ArrowDown className="size-3.5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeField(i)}
-                    className="size-7 cursor-pointer p-0 text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => moveField(i, -1)}
+                        disabled={i === 0}
+                        className="size-7 cursor-pointer p-0"
+                      >
+                        <ArrowUp className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Move up</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => moveField(i, 1)}
+                        disabled={i === fields.length - 1}
+                        className="size-7 cursor-pointer p-0"
+                      >
+                        <ArrowDown className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Move down</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeField(i)}
+                        className="size-7 cursor-pointer p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Remove field</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
