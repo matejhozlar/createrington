@@ -185,8 +185,7 @@ export const embedsRouter = router({
 
   updateAll: adminProcedure
     .meta({
-      description:
-        "Update a preset and all its linked messages at once.",
+      description: "Update a preset and all its linked messages at once.",
     })
     .input(
       z.object({
@@ -229,9 +228,7 @@ export const embedsRouter = router({
         if (result.success) {
           updated++;
         } else {
-          errors.push(
-            `${link.messageId}: ${result.error ?? "Unknown error"}`,
-          );
+          errors.push(`${link.messageId}: ${result.error ?? "Unknown error"}`);
         }
       }
 
@@ -239,7 +236,9 @@ export const embedsRouter = router({
     }),
 
   updateLink: adminProcedure
-    .meta({ description: "Update a single linked message with current embed data." })
+    .meta({
+      description: "Update a single linked message with current embed data.",
+    })
     .input(
       z.object({
         linkId: z.number().int().positive(),
@@ -329,7 +328,10 @@ export const embedsRouter = router({
 
   presets: router({
     list: adminProcedure
-      .meta({ description: "List embed presets with optional search or category filter." })
+      .meta({
+        description:
+          "List embed presets with optional search or category filter.",
+      })
       .input(
         z.object({
           search: z.string().optional(),
@@ -345,7 +347,9 @@ export const embedsRouter = router({
 
         if (input.search) {
           query = query.where({ name: { $ilike: `%${input.search}%` } });
-          countQuery = countQuery.where({ name: { $ilike: `%${input.search}%` } });
+          countQuery = countQuery.where({
+            name: { $ilike: `%${input.search}%` },
+          });
         } else if (input.categoryId !== undefined) {
           const filter =
             input.categoryId === "uncategorized"
@@ -457,7 +461,9 @@ export const embedsRouter = router({
       }),
 
     setCategory: adminProcedure
-      .meta({ description: "Move a preset into a category (or uncategorized)." })
+      .meta({
+        description: "Move a preset into a category (or uncategorized).",
+      })
       .input(
         z.object({
           presetId: z.number().int().positive(),
@@ -465,7 +471,9 @@ export const embedsRouter = router({
         }),
       )
       .mutation(async ({ input }) => {
-        const preset = await Q.discord.embed.preset.find({ id: input.presetId });
+        const preset = await Q.discord.embed.preset.find({
+          id: input.presetId,
+        });
         if (!preset) {
           throw trpcError.notFound("Preset not found");
         }
@@ -507,7 +515,9 @@ export const embedsRouter = router({
             name: input.name,
           });
           if (existing) {
-            throw trpcError.conflict("A category with that name already exists");
+            throw trpcError.conflict(
+              "A category with that name already exists",
+            );
           }
 
           const maxSort = await Q.discord.embed.preset.category
@@ -547,21 +557,30 @@ export const embedsRouter = router({
               name: input.name,
             });
             if (nameConflict) {
-              throw trpcError.conflict("A category with that name already exists");
+              throw trpcError.conflict(
+                "A category with that name already exists",
+              );
             }
           }
 
           const updates: Record<string, unknown> = {};
           if (input.name !== undefined) updates.name = input.name;
-          if (input.sortOrder !== undefined) updates.sortOrder = input.sortOrder;
+          if (input.sortOrder !== undefined)
+            updates.sortOrder = input.sortOrder;
 
-          await Q.discord.embed.preset.category.update({ id: input.id }, updates);
+          await Q.discord.embed.preset.category.update(
+            { id: input.id },
+            updates,
+          );
 
           return { message: "Category updated" };
         }),
 
       delete: adminProcedure
-        .meta({ description: "Delete a preset category (presets become uncategorized)." })
+        .meta({
+          description:
+            "Delete a preset category (presets become uncategorized).",
+        })
         .input(z.object({ id: z.number().int().positive() }))
         .mutation(async ({ input }) => {
           const existing = await Q.discord.embed.preset.category.find({

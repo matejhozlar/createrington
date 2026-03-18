@@ -93,7 +93,9 @@ export function TradeHistory() {
                       key={tx.id}
                       className={cn(
                         "border-b border-border/30 last:border-0 relative",
-                        isBuy ? "bg-emerald-500/[0.02]" : "bg-destructive/[0.02]",
+                        isBuy
+                          ? "bg-emerald-500/[0.02]"
+                          : "bg-destructive/[0.02]",
                       )}
                     >
                       <TableCell className="text-sm text-muted-foreground">

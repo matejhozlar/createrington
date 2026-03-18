@@ -24,7 +24,16 @@ import {
 } from "@/components/ui/collapsible";
 import { trpc } from "@/lib/trpc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Search, ChevronRight, MoreHorizontal, FolderPlus, Pencil, Copy } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Search,
+  ChevronRight,
+  MoreHorizontal,
+  FolderPlus,
+  Pencil,
+  Copy,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 
@@ -33,14 +42,26 @@ interface PresetSidebarProps {
 }
 
 interface PresetItemProps {
-  preset: { id: number; name: string; createdBy: string; data: unknown; categoryId?: number | null };
+  preset: {
+    id: number;
+    name: string;
+    createdBy: string;
+    data: unknown;
+    categoryId?: number | null;
+  };
   isActive: boolean;
   onLoad: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }
 
-function PresetItem({ preset, isActive, onLoad, onDelete, onDuplicate }: PresetItemProps) {
+function PresetItem({
+  preset,
+  isActive,
+  onLoad,
+  onDelete,
+  onDuplicate,
+}: PresetItemProps) {
   return (
     <div
       className={cn(
@@ -96,9 +117,19 @@ interface CategorySectionProps {
   presetCount: number;
   activePresetId: number | undefined;
   guardUnsaved: (action: () => void) => void;
-  onLoadPreset: (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => void;
+  onLoadPreset: (preset: {
+    id: number;
+    name: string;
+    data: unknown;
+    categoryId?: number | null;
+  }) => void;
   onDeletePreset: (id: number, name: string) => void;
-  onDuplicatePreset: (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => void;
+  onDuplicatePreset: (preset: {
+    id: number;
+    name: string;
+    data: unknown;
+    categoryId?: number | null;
+  }) => void;
   onRenameCategory?: () => void;
   onDeleteCategory?: () => void;
 }
@@ -191,7 +222,9 @@ function CategorySection({
               <Skeleton className="h-8 w-3/4" />
             </div>
           ) : presets.length === 0 ? (
-            <p className="px-2 py-2 text-xs text-muted-foreground">No presets</p>
+            <p className="px-2 py-2 text-xs text-muted-foreground">
+              No presets
+            </p>
           ) : (
             presets.map((preset) => (
               <PresetItem
@@ -264,7 +297,8 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
     { categoryId: "uncategorized", limit: 1 },
     { enabled: !isSearching },
   );
-  const uncategorizedPresetCount = uncategorizedQuery.data?.pagination.total ?? 0;
+  const uncategorizedPresetCount =
+    uncategorizedQuery.data?.pagination.total ?? 0;
 
   return (
     <div className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
@@ -360,11 +394,13 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
                   key={preset.id}
                   preset={preset}
                   isActive={activePreset?.id === preset.id}
-                  onLoad={() =>
-                    guardUnsaved(() => handleLoadPreset(preset))
-                  }
+                  onLoad={() => guardUnsaved(() => handleLoadPreset(preset))}
                   onDelete={() =>
-                    setDeleteTarget({ id: preset.id, name: preset.name, type: "preset" })
+                    setDeleteTarget({
+                      id: preset.id,
+                      name: preset.name,
+                      type: "preset",
+                    })
                   }
                   onDuplicate={() => handleDuplicatePreset(preset)}
                 />
@@ -400,7 +436,11 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
                       setRenameName(cat.name);
                     }}
                     onDeleteCategory={() =>
-                      setDeleteTarget({ id: cat.id, name: cat.name, type: "category" })
+                      setDeleteTarget({
+                        id: cat.id,
+                        name: cat.name,
+                        type: "category",
+                      })
                     }
                   />
                 ))}
@@ -468,8 +508,9 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
             <AlertDialogDescription>
               {deleteTarget?.type === "category" ? (
                 <>
-                  Are you sure you want to delete the category &ldquo;{deleteTarget?.name}&rdquo;?
-                  Presets in this category will become uncategorized.
+                  Are you sure you want to delete the category &ldquo;
+                  {deleteTarget?.name}&rdquo;? Presets in this category will
+                  become uncategorized.
                 </>
               ) : (
                 <>
@@ -521,7 +562,9 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
               onChange={(e) => setRenameName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && renameName.trim() && renameTarget) {
-                  handleUpdateCategory(renameTarget.id, { name: renameName.trim() });
+                  handleUpdateCategory(renameTarget.id, {
+                    name: renameName.trim(),
+                  });
                   setRenameTarget(null);
                 }
               }}
@@ -530,10 +573,14 @@ export function PresetSidebar({ builder }: PresetSidebarProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!renameName.trim() || renameName.trim() === renameTarget?.name}
+              disabled={
+                !renameName.trim() || renameName.trim() === renameTarget?.name
+              }
               onClick={() => {
                 if (renameTarget && renameName.trim()) {
-                  handleUpdateCategory(renameTarget.id, { name: renameName.trim() });
+                  handleUpdateCategory(renameTarget.id, {
+                    name: renameName.trim(),
+                  });
                 }
                 setRenameTarget(null);
               }}

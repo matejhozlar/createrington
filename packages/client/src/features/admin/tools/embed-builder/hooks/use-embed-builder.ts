@@ -2,7 +2,11 @@ import { useState, useCallback, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import type { EmbedData, EmbedBot, EmbedField } from "@createrington/shared/api/embed";
+import type {
+  EmbedData,
+  EmbedBot,
+  EmbedField,
+} from "@createrington/shared/api/embed";
 
 export interface EmbedFieldInternal extends EmbedField {
   _id: string;
@@ -38,7 +42,11 @@ function assignFieldIds(fields: EmbedField[]): EmbedFieldInternal[] {
 }
 
 function stripFieldIds(fields: EmbedFieldInternal[]): EmbedField[] {
-  return fields.map((f) => ({ name: f.name, value: f.value, inline: f.inline }));
+  return fields.map((f) => ({
+    name: f.name,
+    value: f.value,
+    inline: f.inline,
+  }));
 }
 
 function toExternalData(data: EmbedDataInternal): EmbedData {
@@ -89,7 +97,9 @@ export function useEmbedBuilder() {
   const [activePreset, setActivePreset] = useState<ActivePreset | null>(null);
   const [presetName, setPresetName] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    null,
+  );
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
@@ -99,7 +109,11 @@ export function useEmbedBuilder() {
     return JSON.stringify(toExternalData(data)) !== lastSavedSnapshot;
   }, [data, activePreset, lastSavedSnapshot]);
 
-  const hasContent = !!(data.title || data.description || data.fields.length > 0);
+  const hasContent = !!(
+    data.title ||
+    data.description ||
+    data.fields.length > 0
+  );
 
   // --- Queries ---
   const utils = trpc.useUtils();
@@ -147,16 +161,15 @@ export function useEmbedBuilder() {
     trpc.admin.embeds.presets.setCategory.useMutation();
 
   const isPending =
-    sendEmbed.isPending ||
-    createPreset.isPending ||
-    updatePreset.isPending;
+    sendEmbed.isPending || createPreset.isPending || updatePreset.isPending;
 
   // --- Data setter that works with internal type ---
   const setEmbedData = useCallback(
     (updater: EmbedData | ((prev: EmbedData) => EmbedData)) => {
       setData((prev) => {
         const prevExternal = toExternalData(prev);
-        const next = typeof updater === "function" ? updater(prevExternal) : updater;
+        const next =
+          typeof updater === "function" ? updater(prevExternal) : updater;
         // Preserve _ids on fields that match by index (for edits that don't change field count)
         const fields: EmbedFieldInternal[] = next.fields.map((f, i) => {
           const existing = prev.fields[i];
@@ -168,7 +181,13 @@ export function useEmbedBuilder() {
           ) {
             return existing;
           }
-          return { ...f, _id: (f as EmbedFieldInternal)._id ?? existing?._id ?? crypto.randomUUID() };
+          return {
+            ...f,
+            _id:
+              (f as EmbedFieldInternal)._id ??
+              existing?._id ??
+              crypto.randomUUID(),
+          };
         });
         return { ...next, fields };
       });
@@ -177,31 +196,49 @@ export function useEmbedBuilder() {
   );
 
   // --- Handlers ---
-  const handleSend = useCallback(async (opts?: { linkToPreset?: boolean }) => {
-    if (!channelId) {
-      toast.error("Please select a target channel");
-      return;
-    }
-    if (!hasContent) {
-      toast.error("Embed must have a title, description, or at least one field");
-      return;
-    }
+  const handleSend = useCallback(
+    async (opts?: { linkToPreset?: boolean }) => {
+      if (!channelId) {
+        toast.error("Please select a target channel");
+        return;
+      }
+      if (!hasContent) {
+        toast.error(
+          "Embed must have a title, description, or at least one field",
+        );
+        return;
+      }
 
-    const shouldLink = opts?.linkToPreset ?? true;
+      const shouldLink = opts?.linkToPreset ?? true;
 
-    try {
-      const result = await sendEmbed.mutateAsync({
-        channelId,
-        embed: toExternalData(data),
-        presetId: shouldLink ? activePreset?.id : undefined,
-        bot,
-      });
-      if (activePreset && shouldLink) linksQuery.refetch();
-      toast.success(`Embed sent${result.messageId ? ` (${result.messageId})` : ""}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send embed");
-    }
-  }, [channelId, hasContent, data, activePreset, bot, sendEmbed, linksQuery, toast]);
+      try {
+        const result = await sendEmbed.mutateAsync({
+          channelId,
+          embed: toExternalData(data),
+          presetId: shouldLink ? activePreset?.id : undefined,
+          bot,
+        });
+        if (activePreset && shouldLink) linksQuery.refetch();
+        toast.success(
+          `Embed sent${result.messageId ? ` (${result.messageId})` : ""}`,
+        );
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to send embed",
+        );
+      }
+    },
+    [
+      channelId,
+      hasContent,
+      data,
+      activePreset,
+      bot,
+      sendEmbed,
+      linksQuery,
+      toast,
+    ],
+  );
 
   const handleSave = useCallback(async () => {
     const embedData = toExternalData(data);
@@ -218,12 +255,18 @@ export function useEmbedBuilder() {
         await updatePreset.mutateAsync(updates);
         setLastSavedSnapshot(JSON.stringify(embedData));
         if (updates.name) {
-          setActivePreset({ ...activePreset, name: updates.name, categoryId: activePreset.categoryId });
+          setActivePreset({
+            ...activePreset,
+            name: updates.name,
+            categoryId: activePreset.categoryId,
+          });
         }
         utils.admin.embeds.presets.list.invalidate();
         toast.success(`Preset "${updates.name ?? activePreset.name}" updated`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to update preset");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to update preset",
+        );
       }
     } else {
       if (!presetName.trim()) {
@@ -248,20 +291,44 @@ export function useEmbedBuilder() {
           (p) => p.name === presetName.trim(),
         );
         if (created) {
-          setActivePreset({ id: created.id, name: created.name, categoryId: created.categoryId ?? null });
+          setActivePreset({
+            id: created.id,
+            name: created.name,
+            categoryId: created.categoryId ?? null,
+          });
         }
         toast.success(`Preset "${presetName.trim()}" created`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to save preset");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to save preset",
+        );
       }
     }
-  }, [data, activePreset, presetName, selectedCategoryId, updatePreset, createPreset, utils, toast]);
+  }, [
+    data,
+    activePreset,
+    presetName,
+    selectedCategoryId,
+    updatePreset,
+    createPreset,
+    utils,
+    toast,
+  ]);
 
   const handleLoadPreset = useCallback(
-    (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => {
+    (preset: {
+      id: number;
+      name: string;
+      data: unknown;
+      categoryId?: number | null;
+    }) => {
       const normalized = normalizeLoadedEmbed(preset.data as EmbedData);
       setData(normalized);
-      setActivePreset({ id: preset.id, name: preset.name, categoryId: preset.categoryId ?? null });
+      setActivePreset({
+        id: preset.id,
+        name: preset.name,
+        categoryId: preset.categoryId ?? null,
+      });
       setPresetName(preset.name);
       setSelectedCategoryId(preset.categoryId ?? null);
       setLastSavedSnapshot(JSON.stringify(toExternalData(normalized)));
@@ -295,7 +362,9 @@ export function useEmbedBuilder() {
           "Partial update",
         );
       } else {
-        toast.success(`Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`);
+        toast.success(
+          `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
+        );
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update all");
@@ -334,7 +403,12 @@ export function useEmbedBuilder() {
   );
 
   const handleDuplicatePreset = useCallback(
-    async (preset: { id: number; name: string; data: unknown; categoryId?: number | null }) => {
+    async (preset: {
+      id: number;
+      name: string;
+      data: unknown;
+      categoryId?: number | null;
+    }) => {
       const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
       let copyName = `${baseName} (copy)`;
 
@@ -353,9 +427,7 @@ export function useEmbedBuilder() {
       try {
         await createPreset.mutateAsync({
           name: copyName,
-          data: toExternalData(
-            normalizeLoadedEmbed(preset.data as EmbedData),
-          ),
+          data: toExternalData(normalizeLoadedEmbed(preset.data as EmbedData)),
           categoryId: preset.categoryId ?? null,
         });
         utils.admin.embeds.presets.list.invalidate();
@@ -394,7 +466,9 @@ export function useEmbedBuilder() {
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Category "${name}" created`);
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to create category");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to create category",
+        );
       }
     },
     [createCategoryMutation, utils, toast],
@@ -407,7 +481,9 @@ export function useEmbedBuilder() {
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success("Category updated");
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to update category");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to update category",
+        );
       }
     },
     [updateCategoryMutation, utils, toast],

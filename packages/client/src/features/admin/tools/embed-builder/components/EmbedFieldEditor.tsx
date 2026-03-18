@@ -34,7 +34,9 @@ interface EmbedFieldEditorProps {
 }
 
 function hasId(field: EmbedField): field is EmbedFieldInternal {
-  return "_id" in field && typeof (field as EmbedFieldInternal)._id === "string";
+  return (
+    "_id" in field && typeof (field as EmbedFieldInternal)._id === "string"
+  );
 }
 
 export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
@@ -42,7 +44,12 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
     if (fields.length >= 25) return;
     onChange([
       ...fields,
-      { name: "", value: "", inline: false, _id: crypto.randomUUID() } as EmbedField,
+      {
+        name: "",
+        value: "",
+        inline: false,
+        _id: crypto.randomUUID(),
+      } as EmbedField,
     ]);
   }
 

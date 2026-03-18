@@ -15,7 +15,11 @@ export function EditorPanel({ builder }: EditorPanelProps) {
   // EmbedForm expects EmbedData (without _id), so we strip internal fields
   const externalData: EmbedData = {
     ...data,
-    fields: data.fields.map((f) => ({ name: f.name, value: f.value, inline: f.inline })),
+    fields: data.fields.map((f) => ({
+      name: f.name,
+      value: f.value,
+      inline: f.inline,
+    })),
   };
 
   return (

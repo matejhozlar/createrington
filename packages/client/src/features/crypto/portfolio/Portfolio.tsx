@@ -423,7 +423,9 @@ export function Portfolio() {
                         <TableCell
                           className={cn(
                             "text-right font-mono tabular-nums font-medium",
-                            pnlPositive ? "text-emerald-400" : "text-destructive",
+                            pnlPositive
+                              ? "text-emerald-400"
+                              : "text-destructive",
                           )}
                         >
                           {pnlPositive ? "+" : ""}
