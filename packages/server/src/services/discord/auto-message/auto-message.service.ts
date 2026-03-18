@@ -150,7 +150,7 @@ export class AutoMessageService {
     let result = content;
 
     if (result.includes("{memberCount}")) {
-      const count = await Q.player.where({}).count();
+      const count = await Q.player.count();
       result = result.replaceAll("{memberCount}", count.toString());
     }
 
