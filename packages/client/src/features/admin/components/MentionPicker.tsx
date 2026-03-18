@@ -35,14 +35,12 @@ export function MentionPicker({ onInsert }: MentionPickerProps) {
   const channelsQuery = trpc.admin.embeds.channels.useQuery();
   const rolesQuery = trpc.admin.embeds.roles.useQuery();
 
-  const channelGroups = channelsQuery.data ?? [];
-  const roles = rolesQuery.data ?? [];
-
   const query = search.toLowerCase();
 
   const filteredChannelGroups = useMemo(() => {
-    if (!query) return channelGroups;
-    return channelGroups
+    const groups = channelsQuery.data ?? [];
+    if (!query) return groups;
+    return groups
       .map((group) => ({
         ...group,
         channels: group.channels.filter((ch) =>
@@ -50,14 +48,15 @@ export function MentionPicker({ onInsert }: MentionPickerProps) {
         ),
       }))
       .filter((group) => group.channels.length > 0);
-  }, [channelGroups, query]);
+  }, [channelsQuery.data, query]);
 
   const filteredRoles = useMemo(() => {
-    if (!query) return roles;
-    return roles.filter((role) =>
+    const allRoles = rolesQuery.data ?? [];
+    if (!query) return allRoles;
+    return allRoles.filter((role) =>
       formatName(role.name).toLowerCase().includes(query),
     );
-  }, [roles, query]);
+  }, [rolesQuery.data, query]);
 
   const hasResults =
     filteredChannelGroups.length > 0 || filteredRoles.length > 0;
