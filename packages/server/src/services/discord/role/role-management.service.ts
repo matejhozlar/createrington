@@ -312,10 +312,7 @@ export class RoleManagementService {
                 timestamp: new Date(),
               })
               .catch((error) => {
-                logger.error(
-                  "Failed to send top player announcement:",
-                  error,
-                );
+                logger.error("Failed to send top player announcement:", error);
               });
 
             logger.info(

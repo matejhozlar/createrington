@@ -317,8 +317,7 @@ export const ROLE_NOTIFICATION_CONFIGS: Record<
     enabled: true,
     emoji: "👑",
     isMilestone: true,
-    customMessage:
-      "has claimed the top spot and earned the legendary title of",
+    customMessage: "has claimed the top spot and earned the legendary title of",
   },
 
   ...SERVER_AGE_NOTIFICATION_CONFIGS,
