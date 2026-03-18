@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -53,6 +53,47 @@ function toExternalData(data: EmbedDataInternal): EmbedData {
   return { ...data, fields: stripFieldIds(data.fields) };
 }
 
+// --- Draft persistence ---
+
+const DRAFT_KEY = "embed-builder-draft";
+
+interface DraftState {
+  data: EmbedData;
+  presetName: string;
+  bot: EmbedBot;
+  channelId: string;
+  activePreset: ActivePreset | null;
+  selectedCategoryId: number | null;
+}
+
+function loadDraft(): DraftState | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as DraftState;
+    if (!parsed || typeof parsed !== "object" || !parsed.data) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(state: DraftState): void {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
+  } catch {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
+function clearDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Silently ignore
+  }
+}
+
 function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
   const raw = loaded as Record<string, unknown>;
 
@@ -90,19 +131,36 @@ function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
 export function useEmbedBuilder() {
   const toast = useToastActions();
 
-  // --- State ---
-  const [data, setData] = useState<EmbedDataInternal>({ ...DEFAULT_EMBED });
-  const [bot, setBot] = useState<EmbedBot>("main");
-  const [channelId, setChannelId] = useState("");
-  const [activePreset, setActivePreset] = useState<ActivePreset | null>(null);
-  const [presetName, setPresetName] = useState("");
+  // --- State (initialized from draft if available) ---
+  const draft = useRef(loadDraft());
+  const [data, setData] = useState<EmbedDataInternal>(() =>
+    draft.current
+      ? normalizeLoadedEmbed(draft.current.data)
+      : { ...DEFAULT_EMBED },
+  );
+  const [bot, setBot] = useState<EmbedBot>(
+    () => draft.current?.bot ?? "main",
+  );
+  const [channelId, setChannelId] = useState(
+    () => draft.current?.channelId ?? "",
+  );
+  const [activePreset, setActivePreset] = useState<ActivePreset | null>(
+    () => draft.current?.activePreset ?? null,
+  );
+  const [presetName, setPresetName] = useState(
+    () => draft.current?.presetName ?? "",
+  );
   const [search, setSearch] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    null,
+    () => draft.current?.selectedCategoryId ?? null,
   );
 
   const debouncedSearch = useDebouncedValue(search, 300);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState("");
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
+    draft.current?.activePreset
+      ? JSON.stringify(draft.current.data)
+      : "",
+  );
 
   const isDirty = useMemo(() => {
     if (!activePreset) return false;
@@ -114,6 +172,34 @@ export function useEmbedBuilder() {
     data.description ||
     data.fields.length > 0
   );
+
+  // --- Notify on draft restore ---
+  useEffect(() => {
+    if (draft.current) {
+      toast.info("Draft restored from your last session");
+      draft.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Auto-save draft to localStorage (debounced) ---
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      if (hasContent || activePreset) {
+        saveDraft({
+          data: toExternalData(data),
+          presetName,
+          bot,
+          channelId,
+          activePreset,
+          selectedCategoryId,
+        });
+      } else {
+        clearDraft();
+      }
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [data, presetName, bot, channelId, activePreset, selectedCategoryId, hasContent]);
 
   // --- Queries ---
   const utils = trpc.useUtils();
@@ -254,6 +340,7 @@ export function useEmbedBuilder() {
         }
         await updatePreset.mutateAsync(updates);
         setLastSavedSnapshot(JSON.stringify(embedData));
+        clearDraft();
         if (updates.name) {
           setActivePreset({
             ...activePreset,
@@ -280,6 +367,7 @@ export function useEmbedBuilder() {
           categoryId: selectedCategoryId,
         });
         setLastSavedSnapshot(JSON.stringify(embedData));
+        clearDraft();
         utils.admin.embeds.presets.list.invalidate();
         utils.admin.embeds.presets.categories.list.invalidate();
         // Reload the preset list and find the newly created preset to set it as active
@@ -344,6 +432,7 @@ export function useEmbedBuilder() {
     setChannelId("");
     setSelectedCategoryId(null);
     setLastSavedSnapshot("");
+    clearDraft();
   }, []);
 
   const handleUpdateAll = useCallback(async () => {
