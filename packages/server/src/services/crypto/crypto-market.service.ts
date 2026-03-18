@@ -1269,17 +1269,26 @@ export class CryptoMarketService {
 
   /** @private Automatically spawns a new IPO memecoin on a recurring schedule */
   private startIpoSpawnScheduler(): void {
+    // Immediate check on startup so deploys don't indefinitely delay spawns
+    this.trySpawnIpo().catch((err) =>
+      logger.error("Initial IPO spawn check failed:", err),
+    );
+
     this.ipoSpawnInterval = setInterval(async () => {
-      try {
-        // Only spawn if there isn't already an active IPO
-        const activeIpo = await this.getActiveIpo();
-        if (!activeIpo) {
-          await this.spawnIpoMemecoin();
-        }
-      } catch (err) {
-        logger.error("IPO spawn scheduler failed:", err);
-      }
+      await this.trySpawnIpo();
     }, CRYPTO_CONFIG.IPO_SPAWN_INTERVAL_MS);
+  }
+
+  /** @private Attempts to spawn an IPO memecoin if none is active */
+  private async trySpawnIpo(): Promise<void> {
+    try {
+      const activeIpo = await this.getActiveIpo();
+      if (!activeIpo) {
+        await this.spawnIpoMemecoin();
+      }
+    } catch (err) {
+      logger.error("IPO spawn scheduler failed:", err);
+    }
   }
 
   /**
