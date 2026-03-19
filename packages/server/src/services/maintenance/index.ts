@@ -12,8 +12,11 @@ const WHITELIST_BACKUP = "whitelist.json.bak";
  */
 function isSftpAllowed(): boolean {
   try {
-    const host = new URL(config.meta.links.website).hostname;
-    return !host.startsWith("dev.");
+    const url = new URL(config.meta.links.website);
+    const host = url.hostname;
+    if (host === "127.0.0.1" || host === "localhost") return false;
+    if (host.startsWith("dev.")) return false;
+    return true;
   } catch {
     return false;
   }
