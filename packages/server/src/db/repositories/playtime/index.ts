@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { Q, waitlistRepo } from "@/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
 import type {
   PlayerHourlyPattern,
@@ -99,6 +99,20 @@ export class PlaytimeRepository {
           currentServerId: event.serverId,
         },
       );
+
+      // Mark "Joined Minecraft" onboarding step on first-ever session
+      if (player.discordId) {
+        try {
+          const entry = await Q.waitlist.entry.find({
+            discordId: player.discordId,
+          });
+          if (entry && !entry.joinedMinecraft) {
+            await waitlistRepo.markJoinedMinecraft(player.discordId);
+          }
+        } catch {
+          // No waitlist entry for this player — skip
+        }
+      }
 
       logger.info(
         `Session started: ${event.username} (${event.uuid}) - ID: ${session.id}`,
