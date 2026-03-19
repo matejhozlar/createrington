@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, R } from "@/db";
 import { getService, Services } from "@/services";
+import { maintenanceService } from "@/services/maintenance";
 import { MINECRAFT_SERVERS, getServerById } from "@/services/playtime/config";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
 import {
@@ -208,5 +209,54 @@ export const adminServersRouter = router({
         sessions,
         pagination: buildPagination(input.page, input.limit, total),
       };
+    }),
+
+  maintenanceStatus: adminProcedure
+    .meta({ description: "Get maintenance mode status for a server" })
+    .input(z.object({ serverId: z.coerce.number().int().positive() }))
+    .query(({ input }) => {
+      return { enabled: maintenanceService.isInMaintenance(input.serverId) };
+    }),
+
+  toggleMaintenance: adminProcedure
+    .meta({
+      description:
+        "Toggle maintenance mode for a server. Renames the whitelist file via SFTP and reloads via RCON.",
+    })
+    .input(
+      z.object({
+        serverId: z.coerce.number().int().positive(),
+        enabled: z.boolean(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const serverConfig = getServerById(input.serverId);
+      if (!serverConfig) {
+        throw trpcError.badRequest(
+          `Server with id ${input.serverId} not found`,
+        );
+      }
+
+      try {
+        if (input.enabled) {
+          await maintenanceService.enable(input.serverId);
+        } else {
+          await maintenanceService.disable(input.serverId);
+        }
+      } catch (err) {
+        throw trpcError.internal(
+          err instanceof Error ? err.message : "Failed to toggle maintenance",
+        );
+      }
+
+      // Broadcast updated server status via WebSocket
+      try {
+        const ws = await getService(Services.WEBSOCKET_SERVICE);
+        await ws.triggerServerStatusUpdate(input.serverId);
+      } catch {
+        // Non-critical — UI will catch up on next poll
+      }
+
+      return { enabled: input.enabled };
     }),
 });

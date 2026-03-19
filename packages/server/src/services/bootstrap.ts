@@ -30,6 +30,7 @@ import { CryptoMarketService } from "./crypto";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
+import { maintenanceService } from "./maintenance";
 
 /**
  * Registers all application services with the shared container
@@ -432,6 +433,17 @@ export async function initializeServices(): Promise<void> {
   const total = Object.keys(states).length;
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
+
+  // Initialize maintenance service (checks SFTP for backup files)
+  if (!config.envMode.isDev) {
+    maintenanceService
+      .initialize([config.servers.cogs.id])
+      .catch((err) =>
+        logger.warn(`Maintenance service init failed: ${err}`),
+      );
+  } else {
+    logger.info("Skipping maintenance SFTP check in development mode");
+  }
 }
 
 /**

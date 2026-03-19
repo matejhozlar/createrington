@@ -1,5 +1,6 @@
 import type { MessageCacheService } from "../discord/message/cache";
 import type { PlaytimeManagerService } from "../playtime/playtime-manager.service";
+import { maintenanceService } from "../maintenance";
 import { MINECRAFT_SERVERS } from "../playtime/config";
 import type {
   InitialDataPayload,
@@ -59,6 +60,7 @@ export class WebSocketDataProvider {
       serverId,
       serverName: config.name,
       online: isOnline,
+      maintenance: maintenanceService.isInMaintenance(serverId),
       playerCount: activeSessions.length,
       maxPlayers: config.maxPlayers,
       lastUpdate: new Date(),
