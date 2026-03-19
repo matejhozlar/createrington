@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 
 const STORAGE_PREFIX = "guide-progress:";
 
@@ -12,17 +12,17 @@ export function useGuideProgress(slug: string) {
     }
   });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${slug}`, String(currentStep));
-    } catch {
-      // storage full or unavailable
-    }
-  }, [slug, currentStep]);
-
-  const setCurrentStep = useCallback((step: number) => {
-    setCurrentStepState(step);
-  }, []);
+  const setCurrentStep = useCallback(
+    (step: number) => {
+      setCurrentStepState(step);
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}${slug}`, String(step));
+      } catch {
+        // storage full or unavailable
+      }
+    },
+    [slug],
+  );
 
   const clearProgress = useCallback(() => {
     try {
@@ -30,7 +30,6 @@ export function useGuideProgress(slug: string) {
     } catch {
       // ignore
     }
-    setCurrentStepState(0);
   }, [slug]);
 
   return { currentStep, setCurrentStep, clearProgress } as const;

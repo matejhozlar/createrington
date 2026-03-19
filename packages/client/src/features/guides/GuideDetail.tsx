@@ -25,8 +25,8 @@ export const GuideDetail = () => {
   const step = guide.steps[currentStep];
 
   const handleFinish = () => {
-    clearProgress();
     navigate("/guides");
+    clearProgress();
   };
 
   return (
