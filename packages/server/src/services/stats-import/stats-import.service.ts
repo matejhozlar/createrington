@@ -75,9 +75,7 @@ export class StatsImportService {
     // Run initial import in the background — don't block server startup
     Promise.allSettled(
       this.configs.map((cfg) => this.importServerStats(cfg.serverId)),
-    ).catch((error) =>
-      logger.error("Initial stats import failed:", error),
-    );
+    ).catch((error) => logger.error("Initial stats import failed:", error));
 
     // Subscribe to session events to detect player count changes
     for (const cfg of this.configs) {
