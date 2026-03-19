@@ -225,8 +225,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              In the CurseForge app, go to <strong>My Modpacks</strong>{" "}
-              and click on <strong>Createrington</strong>.
+              In the CurseForge app, go to <strong>My Modpacks</strong> and
+              click on <strong>Createrington</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
@@ -242,16 +242,14 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Click the <strong>three-dot menu</strong> next to the Play
-              button and select <strong>Profile Options</strong>.
+              Click the <strong>three-dot menu</strong> next to the Play button
+              and select <strong>Profile Options</strong>.
             </p>
             <p className="mt-4">
               Make sure the{" "}
-              <strong>
-                Allow content management for this profile
-              </strong>{" "}
-              checkbox is <strong>unchecked</strong>. If it's checked,
-              uncheck it and click <strong>Done</strong>.
+              <strong>Allow content management for this profile</strong>{" "}
+              checkbox is <strong>unchecked</strong>. If it's checked, uncheck
+              it and click <strong>Done</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-content-management.webp"
@@ -259,10 +257,10 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-4">
-              The <strong>Change Version</strong> option only appears
-              when content management is disabled. If you've added
-              custom mods, you'll need to disable content management
-              first, update, and then re-enable it.
+              The <strong>Change Version</strong> option only appears when
+              content management is disabled. If you've added custom mods,
+              you'll need to disable content management first, update, and then
+              re-enable it.
             </p>
           </>
         ),
@@ -273,9 +271,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Click the <strong>three-dot menu</strong> again — you'll
-              now see <strong>Change Version</strong> at the top of the
-              menu. Click it.
+              Click the <strong>three-dot menu</strong> again — you'll now see{" "}
+              <strong>Change Version</strong> at the top of the menu. Click it.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-change-version-button.webp"
@@ -283,9 +280,8 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-4">
-              Select the latest version from the list and confirm.
-              CurseForge will download and apply the update
-              automatically.
+              Select the latest version from the list and confirm. CurseForge
+              will download and apply the update automatically.
             </p>
           </>
         ),
@@ -296,8 +292,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Once the update is complete, click <strong>Play</strong>{" "}
-              to launch the modpack with the latest version.
+              Once the update is complete, click <strong>Play</strong> to launch
+              the modpack with the latest version.
             </p>
           </>
         ),

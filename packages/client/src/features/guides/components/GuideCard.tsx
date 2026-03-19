@@ -31,7 +31,10 @@ export function GuideCard({ guide }: GuideCardProps) {
                     className="max-w-24 max-h-24 shadow-md"
                   />
                 ) : (
-                  <guide.imageIcon className="size-16 text-white drop-shadow-lg" strokeWidth={1.5} />
+                  <guide.imageIcon
+                    className="size-16 text-white drop-shadow-lg"
+                    strokeWidth={1.5}
+                  />
                 )}
               </div>
             )}
