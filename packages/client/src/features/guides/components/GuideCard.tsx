@@ -1,11 +1,9 @@
 import { Link } from "react-router-dom";
-import { Clock } from "lucide-react";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardContent,
 } from "@/components/ui/card";
 import type { Guide } from "../data";
 
@@ -14,28 +12,35 @@ type GuideCardProps = {
 };
 
 export function GuideCard({ guide }: GuideCardProps) {
-  const Icon = guide.icon;
-
   return (
     <Link to={`/guides/${guide.slug}`}>
-      <Card className="h-full transition-colors hover:border-primary/50">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-10 rounded-full bg-primary/10">
-              <Icon className="size-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <CardTitle>{guide.title}</CardTitle>
-            </div>
+      <Card className="h-full overflow-hidden border-border pt-0">
+        <div className="p-2">
+          <div className="relative aspect-video">
+            <div
+              className="absolute inset-0 bg-cover bg-center rounded-lg"
+              style={{ backgroundImage: `url('${guide.image}')` }}
+            />
+            <div className="absolute inset-0 bg-black/70 rounded-lg" />
+            {guide.imageIcon && (
+              <div className="absolute top-2 left-2">
+                <img
+                  src={guide.imageIcon}
+                  alt={guide.title}
+                  className="max-w-24 max-h-24 shadow-md"
+                />
+              </div>
+            )}
           </div>
-          <CardDescription>{guide.description}</CardDescription>
+        </div>
+
+        <CardHeader>
+          <CardTitle className="text-xl">{guide.title}</CardTitle>
+
+          <CardDescription className="text-base">
+            {guide.description}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="size-3" />
-            ~{guide.estimatedMinutes} min
-          </span>
-        </CardContent>
       </Card>
     </Link>
   );

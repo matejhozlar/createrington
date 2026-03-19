@@ -17,6 +17,8 @@ type Guide = {
   description: string;
   icon: LucideIcon;
   category: GuideCategory;
+  image?: string;
+  imageIcon?: string;
   estimatedMinutes: number;
   steps: GuideStep[];
 };
@@ -39,6 +41,8 @@ export const guides: Guide[] = [
       "Your first steps on the server — key locations, basic mechanics, and helpful tips.",
     icon: Compass,
     category: "getting-started",
+    image: "/assets/hero/gondola-station.webp",
+    imageIcon: "/assets/logo/logo.png",
     estimatedMinutes: 5,
     steps: [
       {
@@ -140,6 +144,8 @@ export const guides: Guide[] = [
       "Get the CurseForge app and install the Createrington modpack.",
     icon: Download,
     category: "getting-started",
+    image: "/assets/guides/download/curseforgeapp-game.webp",
+    imageIcon: "/assets/logo/curseforge.webp",
     estimatedMinutes: 10,
     steps: [
       {
@@ -277,6 +283,8 @@ export const guides: Guide[] = [
       "Import a modpack manually into CurseForge from a downloaded file.",
     icon: FolderInput,
     category: "modpacks",
+    image: "/assets/guides/download/curseforge-hero.webp",
+    imageIcon: "/assets/logo/curseforge.webp",
     estimatedMinutes: 5,
     steps: [
       {
@@ -339,6 +347,8 @@ export const guides: Guide[] = [
       "Add extra mods to your modpack installation in CurseForge.",
     icon: Puzzle,
     category: "modpacks",
+    image: "/assets/features/modpack.webp",
+    imageIcon: "/assets/logo/curseforge.webp",
     estimatedMinutes: 5,
     steps: [
       {
@@ -400,6 +410,8 @@ export const guides: Guide[] = [
     description: "Learn the most useful Discord bot commands for the server.",
     icon: MessageSquare,
     category: "discord",
+    image: "/assets/guides/download/discord-hero.webp",
+    imageIcon: "/assets/logo/discord.webp",
     estimatedMinutes: 5,
     steps: [
       {
