@@ -12,7 +12,7 @@ import { StepNavigation } from "./components/StepNavigation";
 export const GuideDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const contentRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLButtonElement>(null);
   const guide = guides.find((g) => g.slug === slug);
 
   const { currentStep, setCurrentStep, clearProgress } = useGuideProgress(
