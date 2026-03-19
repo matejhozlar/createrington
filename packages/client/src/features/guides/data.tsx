@@ -28,7 +28,7 @@ type Guide = {
   icon: LucideIcon;
   category: GuideCategory;
   image?: string;
-  imageIcon?: string;
+  imageIcon?: string | LucideIcon;
   estimatedMinutes: number;
   steps: GuideStep[];
 };
@@ -64,7 +64,7 @@ export const guides: Guide[] = [
     icon: Download,
     category: "getting-started",
     image: "/assets/guides/download/curseforgeapp-game.webp",
-    imageIcon: "/assets/logo/logo.png",
+    imageIcon: Download,
     estimatedMinutes: 10,
     steps: [
       {
@@ -216,7 +216,7 @@ export const guides: Guide[] = [
     icon: RefreshCw,
     category: "getting-started",
     image: "/assets/guides/download/curseforgeapp-game.webp",
-    imageIcon: "/assets/logo/logo.png",
+    imageIcon: RefreshCw,
     estimatedMinutes: 5,
     steps: [
       {
