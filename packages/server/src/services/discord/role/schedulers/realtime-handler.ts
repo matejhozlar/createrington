@@ -27,9 +27,9 @@ export class RealtimeRoleHandler {
    * @private
    */
   private setupListeners(): void {
-    this.playtimeService.on("sessionEnd", async (event) => {
+    this.playtimeService.on("sessionAggregated", async (event) => {
       logger.debug(
-        `Session ended for ${event.username}, checking role eligibility`,
+        `Session aggregated for ${event.username}, checking role eligibility`,
       );
 
       try {
