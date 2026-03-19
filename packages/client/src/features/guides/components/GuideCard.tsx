@@ -24,11 +24,18 @@ export function GuideCard({ guide }: GuideCardProps) {
             <div className="absolute inset-0 bg-black/70 rounded-lg" />
             {guide.imageIcon && (
               <div className="absolute top-2 left-2">
-                <img
-                  src={guide.imageIcon}
-                  alt={guide.title}
-                  className="max-w-24 max-h-24 shadow-md"
-                />
+                {typeof guide.imageIcon === "string" ? (
+                  <img
+                    src={guide.imageIcon}
+                    alt={guide.title}
+                    className="max-w-24 max-h-24 shadow-md"
+                  />
+                ) : (
+                  <guide.imageIcon
+                    className="size-16 text-white drop-shadow-lg"
+                    strokeWidth={1.5}
+                  />
+                )}
               </div>
             )}
           </div>

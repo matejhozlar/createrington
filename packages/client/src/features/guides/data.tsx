@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Download,
+  RefreshCw,
   FolderInput,
   Puzzle,
   MessageSquare,
@@ -27,7 +28,7 @@ type Guide = {
   icon: LucideIcon;
   category: GuideCategory;
   image?: string;
-  imageIcon?: string;
+  imageIcon?: string | LucideIcon;
   estimatedMinutes: number;
   steps: GuideStep[];
 };
@@ -63,7 +64,7 @@ export const guides: Guide[] = [
     icon: Download,
     category: "getting-started",
     image: "/assets/guides/download/curseforgeapp-game.webp",
-    imageIcon: "/assets/logo/logo.png",
+    imageIcon: Download,
     estimatedMinutes: 10,
     steps: [
       {
@@ -201,6 +202,98 @@ export const guides: Guide[] = [
             <p className="mt-3">
               Click <strong>Join Server</strong> and you're in! Make sure you've
               completed the registration process on Discord first.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: "update-modpack",
+    title: "Update the Modpack",
+    description:
+      "How to update the Createrington modpack to the latest version.",
+    icon: RefreshCw,
+    category: "getting-started",
+    image: "/assets/guides/download/curseforgeapp-game.webp",
+    imageIcon: RefreshCw,
+    estimatedMinutes: 5,
+    steps: [
+      {
+        title: "Open the Createrington modpack",
+        description: "Find the modpack in CurseForge.",
+        content: (
+          <>
+            <p>
+              In the CurseForge app, go to <strong>My Modpacks</strong> and
+              click on <strong>Createrington</strong>.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
+              alt="Createrington modpack page in CurseForge"
+              className="mt-4 rounded-lg border border-border"
+            />
+          </>
+        ),
+      },
+      {
+        title: "Check Content Management",
+        description: "Make sure content management is disabled.",
+        content: (
+          <>
+            <p>
+              Click the <strong>three-dot menu</strong> next to the Play button
+              and select <strong>Profile Options</strong>.
+            </p>
+            <p className="mt-4">
+              Make sure the{" "}
+              <strong>Allow content management for this profile</strong>{" "}
+              checkbox is <strong>unchecked</strong>. If it's checked, uncheck
+              it and click <strong>Done</strong>.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-content-management.webp"
+              alt="CurseForge Profile Options with content management disabled"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              The <strong>Change Version</strong> option only appears when
+              content management is disabled. If you've added custom mods,
+              you'll need to disable content management first, update, and then
+              re-enable it.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Change Version",
+        description: "Select the latest modpack version.",
+        content: (
+          <>
+            <p>
+              Click the <strong>three-dot menu</strong> again — you'll now see{" "}
+              <strong>Change Version</strong> at the top of the menu. Click it.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-change-version-button.webp"
+              alt="CurseForge three-dot menu with Change Version option"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              Select the latest version from the list and confirm. CurseForge
+              will download and apply the update automatically.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Launch & Play",
+        description: "Start the updated modpack.",
+        content: (
+          <>
+            <p>
+              Once the update is complete, click <strong>Play</strong> to launch
+              the modpack with the latest version.
             </p>
           </>
         ),

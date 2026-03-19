@@ -1,7 +1,5 @@
 import { useRef, useCallback } from "react";
-import { useParams, useNavigate, Navigate, Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { guides } from "./data";
 import { useGuideProgress } from "./hooks/use-guide-progress";
@@ -12,7 +10,7 @@ import { StepNavigation } from "./components/StepNavigation";
 export const GuideDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const contentRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const guide = guides.find((g) => g.slug === slug);
 
   const { currentStep, setCurrentStep, clearProgress } = useGuideProgress(
@@ -22,7 +20,11 @@ export const GuideDetail = () => {
   const goToStep = useCallback(
     (step: number) => {
       setCurrentStep(step);
-      contentRef.current?.scrollIntoView({ behavior: "instant" });
+      const el = contentRef.current;
+      if (el) {
+        const top = el.getBoundingClientRect().top + window.scrollY - 50;
+        window.scrollTo({ top, behavior: "instant" });
+      }
     },
     [setCurrentStep],
   );
@@ -47,20 +49,7 @@ export const GuideDetail = () => {
       />
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
-        <div className="max-w-7xl mx-auto">
-          <Button
-            ref={contentRef}
-            variant="ghost"
-            size="sm"
-            asChild
-            className="mb-4"
-          >
-            <Link to="/guides">
-              <ArrowLeft className="size-4" />
-              Back to Guides
-            </Link>
-          </Button>
-
+        <div className="max-w-7xl mx-auto" ref={contentRef}>
           <StepIndicator
             steps={guide.steps}
             currentStep={currentStep}
