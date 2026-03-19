@@ -3,6 +3,7 @@
 import * as React from "react";
 import {
   AlertCircle,
+  BookOpen,
   FileText,
   Home,
   LayoutDashboard,
@@ -120,6 +121,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Rules",
         url: "/rules",
         icon: AlertCircle,
+      },
+      {
+        title: "Guides",
+        url: "/guides",
+        icon: BookOpen,
       },
     ],
   };

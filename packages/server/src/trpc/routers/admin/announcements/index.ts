@@ -73,8 +73,8 @@ export const announcementsRouter = router({
           .setURL(config.meta.links.modpack),
       );
 
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
+      const messageService = DiscordMessageService.getInstance(mainBot);
 
       const result = await messageService.send({
         channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
@@ -102,8 +102,8 @@ export const announcementsRouter = router({
         estimatedMinutes: input.estimatedMinutes,
       });
 
-      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
-      const messageService = DiscordMessageService.getInstance(webBot);
+      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
+      const messageService = DiscordMessageService.getInstance(mainBot);
 
       const result = await messageService.send({
         channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,

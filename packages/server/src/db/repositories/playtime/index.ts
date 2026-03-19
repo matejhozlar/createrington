@@ -696,6 +696,7 @@ export class PlaytimeRepository {
     service.on("sessionEnd", async (event) => {
       try {
         await this.endSession(event);
+        service.emit("sessionAggregated", event);
       } catch (error) {
         logger.error(
           `Failed to handle sessionEnd event for server ${serverId}:`,

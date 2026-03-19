@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
@@ -6,7 +6,14 @@ import { useCryptoData } from "@/contexts/crypto-data";
 import { Loading } from "@/components/loading-spinner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skull, Rocket, TrendingUp, TrendingDown, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  Skull,
+  Rocket,
+  TrendingUp,
+  TrendingDown,
+  Star,
+} from "lucide-react";
 import { TradePanel } from "./components/TradePanel";
 import { PriceChart } from "./components/PriceChart";
 import { TokenDistribution } from "./components/TokenDistribution";
@@ -97,6 +104,14 @@ export function TokenDetail() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-7xl mx-auto w-full space-y-5">
+        <Link
+          to="/crypto"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="size-3" />
+          Back to overview
+        </Link>
+
         {/* Token info */}
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

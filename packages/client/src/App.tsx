@@ -61,6 +61,8 @@ import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
+import { GuideList } from "./features/guides/GuideList";
+import { GuideDetail } from "./features/guides/GuideDetail";
 import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
 import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
@@ -137,6 +139,8 @@ function AppContent() {
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/team" element={<Team />} />
+        <Route path="/guides" element={<GuideList />} />
+        <Route path="/guides/:slug" element={<GuideDetail />} />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />

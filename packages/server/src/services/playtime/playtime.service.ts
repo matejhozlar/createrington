@@ -19,6 +19,7 @@ import {
 export interface PlaytimeServiceEvents {
   sessionStart: (event: SessionStartEvent) => void;
   sessionEnd: (event: SessionEndEvent) => void;
+  sessionAggregated: (event: SessionEndEvent) => void;
   statusUpdate: (snapshot: ServerStatusSnapshot) => void;
   error: (error: Error) => void;
   serverShutdown: (serverId: number) => void;
