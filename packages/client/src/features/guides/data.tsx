@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -5,7 +6,7 @@ import {
   FolderInput,
   Puzzle,
   MessageSquare,
-  Compass,
+  // Compass, // TODO: re-enable when Getting Started guide is added back
   TriangleAlert,
 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
