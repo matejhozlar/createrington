@@ -1,3 +1,4 @@
+import { useRef, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,19 @@ import { StepNavigation } from "./components/StepNavigation";
 export const GuideDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const contentRef = useRef<HTMLDivElement>(null);
   const guide = guides.find((g) => g.slug === slug);
 
   const { currentStep, setCurrentStep, clearProgress } = useGuideProgress(
     slug ?? "",
+  );
+
+  const goToStep = useCallback(
+    (step: number) => {
+      setCurrentStep(step);
+      contentRef.current?.scrollIntoView({ behavior: "instant" });
+    },
+    [setCurrentStep],
   );
 
   if (!guide) {
@@ -39,7 +49,7 @@ export const GuideDetail = () => {
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto">
-          <Button variant="ghost" size="sm" asChild className="mb-4">
+          <Button ref={contentRef} variant="ghost" size="sm" asChild className="mb-4">
             <Link to="/guides">
               <ArrowLeft className="size-4" />
               Back to Guides
@@ -49,14 +59,14 @@ export const GuideDetail = () => {
           <StepIndicator
             steps={guide.steps}
             currentStep={currentStep}
-            onStepClick={setCurrentStep}
+            onStepClick={goToStep}
           />
 
           <div className="flex gap-8">
             <StepSidebar
               steps={guide.steps}
               currentStep={currentStep}
-              onStepClick={setCurrentStep}
+              onStepClick={goToStep}
             />
 
             <div className="flex-1 min-w-0 max-w-3xl">
@@ -74,8 +84,8 @@ export const GuideDetail = () => {
               <StepNavigation
                 currentStep={currentStep}
                 totalSteps={guide.steps.length}
-                onPrev={() => setCurrentStep(currentStep - 1)}
-                onNext={() => setCurrentStep(currentStep + 1)}
+                onPrev={() => goToStep(currentStep - 1)}
+                onNext={() => goToStep(currentStep + 1)}
                 onFinish={handleFinish}
               />
             </div>
