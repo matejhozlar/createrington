@@ -81,9 +81,9 @@ export class RoleManagementService {
     serverId: number,
     playtimeService: PlaytimeService,
   ): void {
-    playtimeService.on("sessionEnd", async (event) => {
+    playtimeService.on("sessionAggregated", async (event) => {
       logger.debug(
-        `Session ended for ${event.username}, checking role eligibility`,
+        `Session aggregated for ${event.username}, checking role eligibility`,
       );
 
       try {
