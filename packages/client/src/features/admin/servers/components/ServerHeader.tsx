@@ -16,6 +16,7 @@ interface ServerHeaderProps {
   ip: string;
   port: number;
   isOnline: boolean;
+  isMaintenance: boolean;
   onNavigateBack: () => void;
 }
 
@@ -24,8 +25,15 @@ export function ServerHeader({
   ip,
   port,
   isOnline,
+  isMaintenance,
   onNavigateBack,
 }: ServerHeaderProps) {
+  const statusLabel = isMaintenance
+    ? "Maintenance"
+    : isOnline
+      ? "Online"
+      : "Offline";
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
@@ -63,13 +71,21 @@ export function ServerHeader({
           <div
             className={cn(
               "flex size-14 items-center justify-center rounded-lg",
-              isOnline ? "bg-green-500/10" : "bg-muted-foreground/10",
+              isMaintenance
+                ? "bg-amber-500/10"
+                : isOnline
+                  ? "bg-green-500/10"
+                  : "bg-muted-foreground/10",
             )}
           >
             <Server
               className={cn(
                 "size-7",
-                isOnline ? "text-green-500" : "text-muted-foreground",
+                isMaintenance
+                  ? "text-amber-500"
+                  : isOnline
+                    ? "text-green-500"
+                    : "text-muted-foreground",
               )}
             />
           </div>
@@ -77,13 +93,16 @@ export function ServerHeader({
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{serverName}</h1>
               <Badge
-                variant={isOnline ? "default" : "outline"}
+                variant={isOnline || isMaintenance ? "default" : "outline"}
                 className={cn(
-                  isOnline &&
+                  isMaintenance &&
+                    "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30",
+                  !isMaintenance &&
+                    isOnline &&
                     "bg-green-500/20 text-green-500 hover:bg-green-500/30",
                 )}
               >
-                {isOnline ? "Online" : "Offline"}
+                {statusLabel}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">

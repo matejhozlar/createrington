@@ -156,8 +156,16 @@ export function AdminServers() {
               {servers.map((server) => {
                 const liveData = getServer(server.serverId);
                 const isOnline = liveData?.online ?? server.status === "online";
+                const isMaintenance =
+                  liveData?.maintenance ?? server.maintenance ?? false;
                 const livePlayerCount =
                   liveData?.playerCount ?? server.playerCount;
+
+                const statusLabel = isMaintenance
+                  ? "Maintenance"
+                  : isOnline
+                    ? "Online"
+                    : "Offline";
 
                 return (
                   <Card
@@ -173,17 +181,21 @@ export function AdminServers() {
                           <div
                             className={cn(
                               "flex size-10 items-center justify-center rounded-lg",
-                              isOnline
-                                ? "bg-green-500/10"
-                                : "bg-muted-foreground/10",
+                              isMaintenance
+                                ? "bg-amber-500/10"
+                                : isOnline
+                                  ? "bg-green-500/10"
+                                  : "bg-muted-foreground/10",
                             )}
                           >
                             <Server
                               className={cn(
                                 "size-5",
-                                isOnline
-                                  ? "text-green-500"
-                                  : "text-muted-foreground",
+                                isMaintenance
+                                  ? "text-amber-500"
+                                  : isOnline
+                                    ? "text-green-500"
+                                    : "text-muted-foreground",
                               )}
                             />
                           </div>
@@ -195,13 +207,18 @@ export function AdminServers() {
                           </div>
                         </div>
                         <Badge
-                          variant={isOnline ? "default" : "outline"}
+                          variant={
+                            isOnline || isMaintenance ? "default" : "outline"
+                          }
                           className={cn(
-                            isOnline &&
+                            isMaintenance &&
+                              "bg-amber-500/20 text-amber-500 hover:bg-amber-500/30",
+                            !isMaintenance &&
+                              isOnline &&
                               "bg-green-500/20 text-green-500 hover:bg-green-500/30",
                           )}
                         >
-                          {isOnline ? "Online" : "Offline"}
+                          {statusLabel}
                         </Badge>
                       </div>
 
@@ -217,7 +234,11 @@ export function AdminServers() {
                           <div
                             className={cn(
                               "h-full rounded-full transition-all",
-                              isOnline ? "bg-green-500" : "bg-muted-foreground",
+                              isMaintenance
+                                ? "bg-amber-500"
+                                : isOnline
+                                  ? "bg-green-500"
+                                  : "bg-muted-foreground",
                             )}
                             style={{
                               width: `${Math.min((livePlayerCount / server.maxPlayers) * 100, 100)}%`,

@@ -1,6 +1,6 @@
 import { router } from "@/trpc/trpc";
 import { autoMessagesRouter } from "./auto-messages";
-import { changelogRouter } from "./changelog";
+import { announcementsRouter } from "./announcements";
 import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { embedsRouter } from "./embeds";
@@ -11,10 +11,10 @@ import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 
-/** Admin-only router — auto-messages, changelog, crypto, dashboard, embeds, FAQ, logs, metrics, players, servers, waitlists. */
+/** Admin-only router — announcements, auto-messages, crypto, dashboard, embeds, FAQ, logs, metrics, players, servers, waitlists. */
 export const adminRouter = router({
   autoMessages: autoMessagesRouter,
-  changelog: changelogRouter,
+  announcements: announcementsRouter,
   crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   embeds: embedsRouter,

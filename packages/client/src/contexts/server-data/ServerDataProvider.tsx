@@ -123,6 +123,7 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
           serverId: payload.serverId,
           serverName: existing?.serverName || `Server ${payload.serverId}`,
           online: payload.online,
+          maintenance: payload.maintenance,
           playerCount: payload.playerCount,
           maxPlayers: payload.maxPlayers,
           lastUpdate:

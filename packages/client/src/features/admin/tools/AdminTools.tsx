@@ -9,8 +9,8 @@ import {
 } from "@/components/ui/breadcrumb";
 import {
   Coins,
+  Megaphone,
   MessageCircleQuestion,
-  Package,
   Paintbrush,
   Timer,
 } from "lucide-react";
@@ -38,11 +38,11 @@ const tools = [
     href: "/admin/tools/auto-messages",
   },
   {
-    title: "Modpack Changelog",
+    title: "Announcements",
     description:
-      "Compose and send modpack update changelogs to the Discord notifications channel.",
-    icon: Package,
-    href: "/admin/tools/changelog",
+      "Send modpack changelogs and maintenance announcements to the Discord announcements channel.",
+    icon: Megaphone,
+    href: "/admin/tools/announcements",
   },
   {
     title: "Crypto Market",

@@ -30,7 +30,7 @@ export function ModSection({
   const containerRef = useRef<HTMLDivElement>(null);
   const debouncedQuery = useDebouncedValue(query);
 
-  const searchQuery = trpc.admin.changelog.searchMods.useQuery(
+  const searchQuery = trpc.admin.announcements.searchMods.useQuery(
     { query: debouncedQuery },
     { enabled: debouncedQuery.length >= 2 },
   );

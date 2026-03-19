@@ -454,6 +454,7 @@ export class WebSocketService {
       const payload: ServerStatusUpdatePayload = {
         serverId,
         online,
+        maintenance: status.maintenance,
         playerCount: status.playerCount,
         maxPlayers: status.maxPlayers,
         timestamp: new Date(),
@@ -672,6 +673,15 @@ export class WebSocketService {
    *
    * @param serverId - Server ID to sync players for
    */
+  /**
+   * Triggers a server status broadcast to all subscribed clients.
+   * Used when external state (e.g. maintenance mode) changes.
+   */
+  async triggerServerStatusUpdate(serverId: number): Promise<void> {
+    const status = await this.dataProvider.getServerStatus(serverId);
+    await this.broadcastServerStatusUpdate(serverId, status.online);
+  }
+
   async broadcastPlayerSync(serverId: number): Promise<void> {
     const players = await this.dataProvider.getServerPlayers(serverId);
 
