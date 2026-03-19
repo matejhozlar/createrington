@@ -232,9 +232,9 @@ export const guides: Guide[] = [
               <TriangleAlert />
               <AlertTitle>Safety Warning</AlertTitle>
               <AlertDescription>
-                Only import modpack files from sources you trust. Files
-                from unknown sources could contain malicious content. We
-                recommend only using files provided by our team.
+                Only import modpack files from sources you trust. Files from
+                unknown sources could contain malicious content. We recommend
+                only using files provided by our team.
               </AlertDescription>
             </Alert>
           </>
@@ -262,9 +262,7 @@ export const guides: Guide[] = [
         description: "Use a .zip file or a profile code.",
         content: (
           <>
-            <p>
-              In the Import Profile dialog, you'll see two options:
-            </p>
+            <p>In the Import Profile dialog, you'll see two options:</p>
             <img
               src="/assets/guides/download/curseforgeapp-import-menu.webp"
               alt="CurseForge import profile dialog"
@@ -273,18 +271,17 @@ export const guides: Guide[] = [
             <ul className="list-disc pl-6 space-y-1 mt-4">
               <li>
                 <strong>Import Profile .zip</strong> — click{" "}
-                <strong>Choose .zip file</strong> and select the modpack
-                file you downloaded
+                <strong>Choose .zip file</strong> and select the modpack file
+                you downloaded
               </li>
               <li>
-                <strong>Use Profile Code</strong> — if you received a
-                code instead, paste it into the text field and click{" "}
+                <strong>Use Profile Code</strong> — if you received a code
+                instead, paste it into the text field and click{" "}
                 <strong>Import</strong>. Codes are valid for 7 days
               </li>
             </ul>
             <p className="mt-4">
-              CurseForge will extract and install the modpack
-              automatically.
+              CurseForge will extract and install the modpack automatically.
             </p>
           </>
         ),
@@ -320,8 +317,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              In the CurseForge app, go to <strong>My Modpacks</strong>{" "}
-              and click on <strong>Createrington</strong>.
+              In the CurseForge app, go to <strong>My Modpacks</strong> and
+              click on <strong>Createrington</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
@@ -337,8 +334,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Click the <strong>three-dot menu</strong> next to the Play
-              button and select <strong>Profile Options</strong>.
+              Click the <strong>three-dot menu</strong> next to the Play button
+              and select <strong>Profile Options</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-profile-options-button.webp"
@@ -356,8 +353,8 @@ export const guides: Guide[] = [
             <p>
               In the Profile Options dialog, check the{" "}
               <strong>Allow content management for this profile</strong>{" "}
-              checkbox under <strong>Content Management</strong>, then
-              click <strong>Done</strong>.
+              checkbox under <strong>Content Management</strong>, then click{" "}
+              <strong>Done</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforge-app-profile-properties-content-management.webp"
@@ -374,8 +371,8 @@ export const guides: Guide[] = [
           <>
             <p>
               Go back to the modpack page and click the{" "}
-              <strong>+ Add Content</strong> button. Use the search bar
-              to find the mod you want to add.
+              <strong>+ Add Content</strong> button. Use the search bar to find
+              the mod you want to add.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-add-content-button.webp"
@@ -388,13 +385,12 @@ export const guides: Guide[] = [
               dependencies.
             </p>
             <p className="mt-4">
-              Make sure to only add <strong>client-side</strong> mods
-              (e.g. shaders, minimaps, HUD tweaks). Server-side or
-              incompatible mods will prevent you from joining the server.
+              Make sure to only add <strong>client-side</strong> mods (e.g.
+              shaders, minimaps, HUD tweaks). Server-side or incompatible mods
+              will prevent you from joining the server.
             </p>
             <p className="mt-4">
-              You can also remove mods you no longer want from the same
-              menu.
+              You can also remove mods you no longer want from the same menu.
             </p>
           </>
         ),
@@ -405,9 +401,9 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Launch the modpack to verify the new mod loads correctly.
-              If you experience issues, remove the mod you added from
-              the <strong>+ Add Content</strong> menu and try again.
+              Launch the modpack to verify the new mod loads correctly. If you
+              experience issues, remove the mod you added from the{" "}
+              <strong>+ Add Content</strong> menu and try again.
             </p>
           </>
         ),
@@ -441,8 +437,8 @@ export const guides: Guide[] = [
               <CopyBlock label="Claim daily reward" value="/daily" />
             </p>
             <p className="mt-2">
-              Claim a free reward once per day. The bot will show you
-              when your next claim is available.
+              Claim a free reward once per day. The bot will show you when your
+              next claim is available.
             </p>
             <img
               src="/assets/guides/commands/daily.webp"
@@ -450,14 +446,10 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-6">
-              <CopyBlock
-                label="Send money"
-                value="/pay @user [amount]"
-              />
+              <CopyBlock label="Send money" value="/pay @user [amount]" />
             </p>
             <p className="mt-2">
-              Transfer money to another player. You can optionally add
-              a note.
+              Transfer money to another player. You can optionally add a note.
             </p>
             <img
               src="/assets/guides/commands/pay.webp"
@@ -465,14 +457,11 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-6">
-              <CopyBlock
-                label="Transaction history"
-                value="/history"
-              />
+              <CopyBlock label="Transaction history" value="/history" />
             </p>
             <p className="mt-2">
-              View your last 10 transactions — transfers, rewards,
-              crypto trades, and more.
+              View your last 10 transactions — transfers, rewards, crypto
+              trades, and more.
             </p>
             <img
               src="/assets/guides/commands/history.webp"
@@ -491,8 +480,8 @@ export const guides: Guide[] = [
               <CopyBlock label="Check playtime" value="/playtime" />
             </p>
             <p className="mt-2">
-              See your total playtime, session count, and per-server
-              breakdown. Mention another player to check theirs.
+              See your total playtime, session count, and per-server breakdown.
+              Mention another player to check theirs.
             </p>
             <img
               src="/assets/guides/commands/playtime.webp"
@@ -506,8 +495,8 @@ export const guides: Guide[] = [
               />
             </p>
             <p className="mt-2">
-              Side-by-side comparison of balance, playtime, sessions,
-              and join date between two players.
+              Side-by-side comparison of balance, playtime, sessions, and join
+              date between two players.
             </p>
             <img
               src="/assets/guides/commands/compare.webp"

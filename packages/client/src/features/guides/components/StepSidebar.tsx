@@ -35,8 +35,10 @@ export function StepSidebar({
                 <span
                   className={cn(
                     "flex items-center justify-center size-6 rounded-full text-xs shrink-0 border",
-                    isCurrent && "border-primary bg-primary text-primary-foreground",
-                    isCompleted && "border-primary/50 bg-primary/10 text-primary",
+                    isCurrent &&
+                      "border-primary bg-primary text-primary-foreground",
+                    isCompleted &&
+                      "border-primary/50 bg-primary/10 text-primary",
                     !isCurrent && !isCompleted && "border-muted-foreground/30",
                   )}
                 >

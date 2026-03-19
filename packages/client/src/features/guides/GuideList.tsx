@@ -14,9 +14,7 @@ export const GuideList = () => {
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto space-y-10">
           {GUIDE_SECTIONS.map(({ category, title }) => {
-            const sectionGuides = guides.filter(
-              (g) => g.category === category,
-            );
+            const sectionGuides = guides.filter((g) => g.category === category);
             if (sectionGuides.length === 0) return null;
 
             return (
