@@ -239,7 +239,14 @@ export const adminServersRouter = router({
 
       try {
         if (input.enabled) {
-          await maintenanceService.enable(input.serverId);
+          // Get online player usernames to kick
+          const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
+          const service = manager.getService(input.serverId);
+          const onlinePlayers = (service?.getActiveSessions() ?? []).map(
+            (s) => s.username,
+          );
+
+          await maintenanceService.enable(input.serverId, onlinePlayers);
         } else {
           await maintenanceService.disable(input.serverId);
         }
