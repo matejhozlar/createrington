@@ -1,12 +1,4 @@
 import { useState } from "react";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send } from "lucide-react";
@@ -27,7 +19,7 @@ export function ModpackChangelog() {
   const [removed, setRemoved] = useState<Mod[]>([]);
   const [updated, setUpdated] = useState<Mod[]>([]);
 
-  const sendMutation = trpc.admin.changelog.send.useMutation({
+  const sendMutation = trpc.admin.announcements.sendChangelog.useMutation({
     onSuccess: () => {
       toast.success("Changelog sent to Discord!");
       setVersion("");
@@ -50,29 +42,7 @@ export function ModpackChangelog() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Modpack Changelog</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
-
-      <div className="flex flex-1 flex-col gap-6 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Modpack Changelog</h1>
-
-        <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
           {/* Form */}
           <div className="space-y-6">
             <div className="space-y-2">
@@ -172,8 +142,6 @@ export function ModpackChangelog() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
     </div>
   );
 }
