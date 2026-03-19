@@ -12,8 +12,11 @@ const WHITELIST_BACKUP = "whitelist.json.bak";
  */
 function isSftpAllowed(): boolean {
   try {
-    const host = new URL(config.meta.links.website).hostname;
-    return !host.startsWith("dev.");
+    const url = new URL(config.meta.links.website);
+    const host = url.hostname;
+    if (host === "127.0.0.1" || host === "localhost") return false;
+    if (host.startsWith("dev.")) return false;
+    return true;
   } catch {
     return false;
   }
@@ -89,8 +92,14 @@ class MaintenanceService {
     }
   }
 
-  /** Enable maintenance mode for a server */
-  async enable(serverId: number): Promise<void> {
+  /**
+   * Enable maintenance mode for a server.
+   * Optionally kicks all online players after clearing the whitelist.
+   *
+   * @param serverId - Server ID
+   * @param onlinePlayers - Usernames of currently online players to kick
+   */
+  async enable(serverId: number, onlinePlayers: string[] = []): Promise<void> {
     if (!isSftpAllowed()) {
       throw new Error(
         "Maintenance mode is only available on the production site",
@@ -126,8 +135,19 @@ class MaintenanceService {
     const rcon = MinecraftRconManager.getInstance();
     await rcon.whitelist(serverId, WhitelistAction.RELOAD);
 
+    // Kick all online players
+    for (const username of onlinePlayers) {
+      try {
+        await rcon.kick(serverId, username, "Server entering maintenance mode");
+      } catch (err) {
+        logger.warn(`Failed to kick ${username} on server ${serverId}: ${err}`);
+      }
+    }
+
     this.maintenanceServers.add(serverId);
-    logger.info(`Maintenance mode enabled for server ${serverId}`);
+    logger.info(
+      `Maintenance mode enabled for server ${serverId} (kicked ${onlinePlayers.length} players)`,
+    );
   }
 
   /** Disable maintenance mode for a server */
