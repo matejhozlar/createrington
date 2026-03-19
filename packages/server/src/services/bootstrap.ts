@@ -438,9 +438,7 @@ export async function initializeServices(): Promise<void> {
   if (!config.envMode.isDev) {
     maintenanceService
       .initialize([config.servers.cogs.id])
-      .catch((err) =>
-        logger.warn(`Maintenance service init failed: ${err}`),
-      );
+      .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
   } else {
     logger.info("Skipping maintenance SFTP check in development mode");
   }

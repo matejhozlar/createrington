@@ -206,9 +206,7 @@ export function MaintenanceAnnouncement() {
             </div>
 
             <div className="mt-3 border-t border-gray-600 pt-2">
-              <p className="text-xs text-gray-400">
-                Thanks for your patience!
-              </p>
+              <p className="text-xs text-gray-400">Thanks for your patience!</p>
             </div>
           </div>
         </div>

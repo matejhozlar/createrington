@@ -68,9 +68,7 @@ class MaintenanceService {
     this.initialized = true;
 
     if (!isSftpAllowed()) {
-      logger.info(
-        "Maintenance SFTP check skipped — not the production site",
-      );
+      logger.info("Maintenance SFTP check skipped — not the production site");
       return;
     }
 

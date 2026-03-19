@@ -94,8 +94,7 @@ export function MaintenanceToggle({
             size="sm"
             className={cn(
               "cursor-pointer",
-              isMaintenance &&
-                "bg-amber-500 text-white hover:bg-amber-600",
+              isMaintenance && "bg-amber-500 text-white hover:bg-amber-600",
             )}
           >
             {isMaintenance ? "Disable" : "Enable"}
