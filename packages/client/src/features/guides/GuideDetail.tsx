@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Navigate, Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
@@ -28,8 +28,7 @@ export const GuideDetail = () => {
   );
 
   if (!guide) {
-    navigate("/guides", { replace: true });
-    return null;
+    return <Navigate to="/guides" replace />;
   }
 
   const step = guide.steps[currentStep];
