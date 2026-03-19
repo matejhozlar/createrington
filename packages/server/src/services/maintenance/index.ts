@@ -127,11 +127,14 @@ class MaintenanceService {
 
       // Rename whitelist.json → whitelist.json.bak
       await sftp.rename(whitelistPath, backupPath);
+
+      // Write an empty whitelist so Minecraft has a valid file to reload
+      await sftp.put(Buffer.from("[]"), whitelistPath);
     } finally {
       await sftp.end();
     }
 
-    // RCON: reload whitelist (Minecraft will create an empty whitelist.json)
+    // RCON: reload whitelist from the now-empty file
     const rcon = MinecraftRconManager.getInstance();
     await rcon.whitelist(serverId, WhitelistAction.RELOAD);
 
