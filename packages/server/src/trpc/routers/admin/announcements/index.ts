@@ -21,8 +21,14 @@ const sendChangelogInput = z.object({
   updated: z.array(changelogModSchema),
 });
 
-/** Admin changelog router — CurseForge mod search and modpack update announcements. */
-export const changelogRouter = router({
+const sendMaintenanceInput = z.object({
+  type: z.enum(["maintenance", "modpack_update"]),
+  startsAt: z.string().datetime({ offset: true }),
+  estimatedMinutes: z.number().int().min(1).max(10080),
+});
+
+/** Admin announcements router — modpack changelogs and maintenance announcements. */
+export const announcementsRouter = router({
   searchMods: adminProcedure
     .meta({
       description:
@@ -38,7 +44,7 @@ export const changelogRouter = router({
       return { mods: results };
     }),
 
-  send: adminProcedure
+  sendChangelog: adminProcedure
     .meta({
       description:
         "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated.",
@@ -53,7 +59,7 @@ export const changelogRouter = router({
         );
       }
 
-      const embed = EmbedPresets.changelog.modpackUpdate({
+      const embed = EmbedPresets.announcements.modpackUpdate({
         version,
         added,
         removed,
@@ -78,6 +84,36 @@ export const changelogRouter = router({
 
       if (!result.success) {
         throw trpcError.internal(result.error ?? "Failed to send changelog");
+      }
+
+      return { messageId: result.messageId };
+    }),
+
+  sendMaintenance: adminProcedure
+    .meta({
+      description:
+        "Build and send a maintenance announcement embed to the announcements channel.",
+    })
+    .input(sendMaintenanceInput)
+    .mutation(async ({ input }) => {
+      const embed = EmbedPresets.announcements.maintenance({
+        type: input.type,
+        startsAt: new Date(input.startsAt),
+        estimatedMinutes: input.estimatedMinutes,
+      });
+
+      const webBot = getServiceSync(Services.DISCORD_WEB_BOT);
+      const messageService = DiscordMessageService.getInstance(webBot);
+
+      const result = await messageService.send({
+        channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+        embeds: embed.build(),
+      });
+
+      if (!result.success) {
+        throw trpcError.internal(
+          result.error ?? "Failed to send maintenance announcement",
+        );
       }
 
       return { messageId: result.messageId };

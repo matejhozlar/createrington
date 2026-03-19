@@ -60,6 +60,7 @@ function ServerStatus({
 interface ServerStatusSingleProps {
   server: {
     online: boolean;
+    maintenance: boolean;
     playerCount: number;
     maxPlayers: number;
   };
@@ -67,14 +68,24 @@ interface ServerStatusSingleProps {
 }
 
 function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
+  const statusLabel = server.maintenance
+    ? "Maintenance"
+    : server.online
+      ? "Online"
+      : "Offline";
+
   return (
     <>
       <div className="flex items-center min-h-6 gap-3">
         {/* Indicator Light */}
         <div
           className={cn("size-3 shrink-0 rounded-full", {
-            "bg-green-500 shadow shadow-green-500 animate-pulse": server.online,
-            "bg-destructive shadow shadow-destructive": !server.online,
+            "bg-amber-500 shadow shadow-amber-500 animate-pulse":
+              server.maintenance,
+            "bg-green-500 shadow shadow-green-500 animate-pulse":
+              !server.maintenance && server.online,
+            "bg-destructive shadow shadow-destructive":
+              !server.maintenance && !server.online,
             "size-4": isCollapsed,
           })}
         />
@@ -83,17 +94,18 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
         {!isCollapsed && (
           <span
             className={cn("text-base font-semibold", {
-              "text-green-500": server.online,
-              "text-destructive": !server.online,
+              "text-amber-500": server.maintenance,
+              "text-green-500": !server.maintenance && server.online,
+              "text-destructive": !server.maintenance && !server.online,
             })}
           >
-            {server.online ? "Online" : "Offline"}
+            {statusLabel}
           </span>
         )}
       </div>
 
       {/* Player Count */}
-      {server.online && (
+      {server.online && !server.maintenance && (
         <div
           className={cn(
             "min-h-6 text-base whitespace-nowrap font-medium text-muted-foreground",

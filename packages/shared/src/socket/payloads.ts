@@ -8,6 +8,7 @@ export interface ServerStatus {
   serverId: number;
   serverName: string;
   online: boolean;
+  maintenance: boolean;
   playerCount: number;
   maxPlayers: number;
   lastUpdate: Date | string;
@@ -51,6 +52,7 @@ export interface ServerInitialDataPayload {
 export interface ServerStatusUpdatePayload {
   serverId: number;
   online: boolean;
+  maintenance: boolean;
   playerCount: number;
   maxPlayers: number;
   timestamp: Date | string;

@@ -1,6 +1,7 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
 import { PlaytimeService, type ActiveSession } from "@/services/playtime";
+import { maintenanceService } from "@/services/maintenance";
 import { getServerById, MINECRAFT_SERVERS } from "@/services/playtime/config";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
@@ -34,6 +35,7 @@ export interface ServerStatus {
   port: number;
   maxPlayers: number;
   status: "online" | "offline" | "unknown";
+  maintenance: boolean;
   playerCount: number;
   players: PlayerInfo[];
   lastChecked: Date;
@@ -79,6 +81,7 @@ export function buildServerStatus(
       port: serverConfig.port,
       maxPlayers: serverConfig.maxPlayers,
       status: "unknown",
+      maintenance: maintenanceService.isInMaintenance(id),
       playerCount: 0,
       players: [],
       lastChecked: new Date(),
@@ -99,6 +102,7 @@ export function buildServerStatus(
     port: serverConfig.port,
     maxPlayers: serverConfig.maxPlayers,
     status: isOnline ? "online" : "offline",
+    maintenance: maintenanceService.isInMaintenance(id),
     playerCount: players.length,
     players,
     lastChecked: new Date(),

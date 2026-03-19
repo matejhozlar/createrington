@@ -11,6 +11,7 @@ import { ServerTabs, type ServerTabType } from "./components/ServerTabs";
 import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
 import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
+import { MaintenanceToggle } from "./components/MaintenanceToggle";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +58,8 @@ export function AdminServerDetail() {
 
   const liveData = getServer(serverId);
   const isOnline = liveData?.online ?? serverData.server.status === "online";
+  const isMaintenance =
+    liveData?.maintenance ?? serverData.server.maintenance ?? false;
   const livePlayerCount =
     liveData?.playerCount ?? serverData.server.playerCount;
 
@@ -67,6 +70,7 @@ export function AdminServerDetail() {
         ip={serverData.server.ip}
         port={serverData.server.port}
         isOnline={isOnline}
+        isMaintenance={isMaintenance}
         onNavigateBack={() => navigate("/admin/servers")}
       />
 
@@ -77,6 +81,8 @@ export function AdminServerDetail() {
         totalHours={serverData.stats.totalHours}
         avgSessionSeconds={serverData.stats.avgSessionSeconds}
       />
+
+      <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
 
       <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
