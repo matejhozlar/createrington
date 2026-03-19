@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Download, MessageSquare, Compass } from "lucide-react";
+import { Download, FolderInput, Puzzle, MessageSquare, Compass } from "lucide-react";
 import { CopyBlock } from "./components/CopyBlock";
 
 type GuideStep = {
@@ -9,199 +9,36 @@ type GuideStep = {
   content: ReactNode;
 };
 
+type GuideCategory = "getting-started" | "modpacks" | "discord";
+
 type Guide = {
   slug: string;
   title: string;
   description: string;
   icon: LucideIcon;
-  difficulty: "beginner" | "intermediate" | "advanced";
+  category: GuideCategory;
   estimatedMinutes: number;
   steps: GuideStep[];
 };
 
-export type { Guide, GuideStep };
+export type { Guide, GuideStep, GuideCategory };
+
+const GUIDE_SECTIONS: { category: GuideCategory; title: string }[] = [
+  { category: "getting-started", title: "Getting Started" },
+  { category: "modpacks", title: "Modpacks" },
+  { category: "discord", title: "Discord" },
+];
+
+export { GUIDE_SECTIONS };
 
 export const guides: Guide[] = [
-  {
-    slug: "download-install",
-    title: "Download & Install",
-    description:
-      "Get the modpack installed and connect to the server for the first time.",
-    icon: Download,
-    difficulty: "beginner",
-    estimatedMinutes: 10,
-    steps: [
-      {
-        title: "Requirements",
-        description: "What you need before getting started.",
-        content: (
-          <>
-            <p>Before installing the modpack, make sure you have:</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>
-                <strong>Minecraft Java Edition</strong> — a valid, purchased
-                copy
-              </li>
-              <li>
-                <strong>At least 8 GB of RAM</strong> allocated to Minecraft
-              </li>
-              <li>
-                <strong>A Discord account</strong> — required for registration
-                and community access
-              </li>
-            </ul>
-          </>
-        ),
-      },
-      {
-        title: "Download Launcher",
-        description: "Download and install the modpack launcher.",
-        content: (
-          <>
-            <p>
-              We recommend using <strong>Prism Launcher</strong> or the{" "}
-              <strong>CurseForge App</strong> to manage your modpack
-              installation.
-            </p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>Download your preferred launcher from its official website</li>
-              <li>Install it and sign in with your Minecraft account</li>
-            </ul>
-          </>
-        ),
-      },
-      {
-        title: "Install Modpack",
-        description: "Add the Createrington modpack to your launcher.",
-        content: (
-          <>
-            <p>
-              Search for <strong>Createrington</strong> in your launcher's
-              modpack browser, then click <strong>Install</strong>.
-            </p>
-            <p className="mt-2">
-              The modpack will automatically download all required mods and
-              configure the correct Minecraft version.
-            </p>
-          </>
-        ),
-      },
-      {
-        title: "Configure Settings",
-        description: "Optimize your game settings for the best experience.",
-        content: (
-          <>
-            <p>Before connecting, we recommend adjusting these settings:</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>
-                <strong>RAM allocation:</strong> set to 4–6 GB in your launcher
-                settings
-              </li>
-              <li>
-                <strong>Render distance:</strong> 8–12 chunks for best
-                performance
-              </li>
-              <li>
-                <strong>Shaders:</strong> optional — disable if you experience
-                lag
-              </li>
-            </ul>
-          </>
-        ),
-      },
-      {
-        title: "Connect to Server",
-        description: "Join the Createrington server.",
-        content: (
-          <>
-            <p>Add the server to your Minecraft server list:</p>
-            <div className="mt-3">
-              <CopyBlock label="Server Address" value="play.create-rington.com" />
-            </div>
-            <p className="mt-3">
-              Click <strong>Join Server</strong> and you're in! Make sure you've
-              completed the registration process on Discord first.
-            </p>
-          </>
-        ),
-      },
-    ],
-  },
-  {
-    slug: "discord-commands",
-    title: "Discord Commands",
-    description:
-      "Learn the most useful Discord bot commands for the server.",
-    icon: MessageSquare,
-    difficulty: "beginner",
-    estimatedMinutes: 5,
-    steps: [
-      {
-        title: "Getting Started",
-        description: "How to use commands in Discord.",
-        content: (
-          <>
-            <p>
-              All bot commands use Discord's <strong>slash command</strong>{" "}
-              system. Type <code className="bg-muted px-1.5 py-0.5 rounded text-sm">/</code>{" "}
-              in any bot channel to see available commands.
-            </p>
-            <p className="mt-2">
-              Commands are organized by category. Most commands work in the
-              designated bot channels.
-            </p>
-          </>
-        ),
-      },
-      {
-        title: "Economy Commands",
-        description: "Check your balance, send money, and more.",
-        content: (
-          <>
-            <p>Manage your in-game economy through Discord:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="Check balance" value="/balance" />
-              <CopyBlock label="Send money" value="/pay @user [amount]" />
-              <CopyBlock label="View leaderboard" value="/leaderboard" />
-            </div>
-          </>
-        ),
-      },
-      {
-        title: "Social Commands",
-        description: "Interact with other players.",
-        content: (
-          <>
-            <p>Connect with the community:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="View profile" value="/profile" />
-              <CopyBlock label="Check playtime" value="/playtime" />
-            </div>
-          </>
-        ),
-      },
-      {
-        title: "Utility Commands",
-        description: "Helpful tools and information.",
-        content: (
-          <>
-            <p>Useful commands for everyday gameplay:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="Server status" value="/status" />
-              <CopyBlock label="Open a ticket" value="/ticket" />
-            </div>
-          </>
-        ),
-      },
-    ],
-  },
   {
     slug: "getting-started",
     title: "Getting Started",
     description:
       "Your first steps on the server — key locations, basic mechanics, and helpful tips.",
     icon: Compass,
-    difficulty: "beginner",
+    category: "getting-started",
     estimatedMinutes: 5,
     steps: [
       {
@@ -287,9 +124,339 @@ export const guides: Guide[] = [
               </li>
               <li>Explore the train network to discover different districts</li>
               <li>
-                Check the website for your profile stats, leaderboards, and more
+                Check the website for your profile stats, leaderboards, and
+                more
               </li>
             </ul>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: "install-modpack",
+    title: "Install the Modpack",
+    description:
+      "Get the CurseForge app and install the Createrington modpack.",
+    icon: Download,
+    category: "getting-started",
+    estimatedMinutes: 10,
+    steps: [
+      {
+        title: "Requirements",
+        description: "What you need before getting started.",
+        content: (
+          <>
+            <p>Before installing the modpack, make sure you have:</p>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>
+                <strong>Minecraft Java Edition</strong> — a valid, purchased
+                copy
+              </li>
+              <li>
+                <strong>At least 8 GB of RAM</strong> — the modpack needs this
+                to run smoothly
+              </li>
+              <li>
+                <strong>A Discord account</strong> — required for registration
+                and community access
+              </li>
+            </ul>
+          </>
+        ),
+      },
+      {
+        title: "Get CurseForge App",
+        description: "Download the CurseForge app from the official website.",
+        content: (
+          <>
+            <p>
+              Head to{" "}
+              <a
+                href="https://www.curseforge.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2 hover:text-primary/80"
+              >
+                curseforge.com
+              </a>{" "}
+              and click the{" "}
+              <strong>Get CurseForge App</strong> button in the top right
+              corner.
+            </p>
+            <img
+              src="/assets/guides/download/curseforge-homepage.webp"
+              alt="CurseForge homepage with Get CurseForge App button highlighted"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              On the download page, click{" "}
+              <strong>Download Standalone</strong> to get the CurseForge app
+              without Overwolf.
+            </p>
+            <img
+              src="/assets/guides/download/curseforge-download.webp"
+              alt="CurseForge download page with Standalone option"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              Run the installer and follow the on-screen instructions to
+              complete the setup.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Select Minecraft",
+        description: "Choose Minecraft: Java Edition in the CurseForge app.",
+        content: (
+          <>
+            <p>
+              Open the CurseForge app. You'll see a{" "}
+              <strong>Choose a Game</strong> screen — click on{" "}
+              <strong>Minecraft</strong>.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-game.webp"
+              alt="CurseForge app game selection screen with Minecraft highlighted"
+              className="mt-4 rounded-lg border border-border"
+            />
+          </>
+        ),
+      },
+      {
+        title: "Find the Modpack",
+        description: "Search for Createrington in the modpack browser.",
+        content: (
+          <>
+            <p>
+              Once in the Minecraft section, use the search bar at the top to
+              search for <strong>Createrington</strong>.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-search.webp"
+              alt="CurseForge app Minecraft section with search bar"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              Click on the <strong>Createrington</strong> modpack and hit{" "}
+              <strong>Install</strong>. The app will automatically download all
+              required mods and configure the correct Minecraft version.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Connect to Server",
+        description: "Join the Createrington server.",
+        content: (
+          <>
+            <p>
+              Once the modpack is installed, launch it from CurseForge. In
+              Minecraft, go to <strong>Multiplayer</strong> and add the server:
+            </p>
+            <div className="mt-3">
+              <CopyBlock
+                label="Server Address"
+                value="play.create-rington.com"
+              />
+            </div>
+            <p className="mt-3">
+              Click <strong>Join Server</strong> and you're in! Make sure you've
+              completed the registration process on Discord first.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: "import-modpack",
+    title: "How to Import Modpacks",
+    description:
+      "Import a modpack manually into CurseForge from a downloaded file.",
+    icon: FolderInput,
+    category: "modpacks",
+    estimatedMinutes: 5,
+    steps: [
+      {
+        title: "Download the Modpack File",
+        description: "Get the modpack .zip file.",
+        content: (
+          <>
+            <p>
+              If you received a modpack as a <strong>.zip</strong> file (e.g.
+              from Discord or a direct download link), save it somewhere you
+              can easily find it.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Open CurseForge",
+        description: "Navigate to the import screen.",
+        content: (
+          <>
+            <p>
+              Open the CurseForge app and make sure you're in the{" "}
+              <strong>Minecraft</strong> section.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Import the File",
+        description: "Use CurseForge's import feature to load the modpack.",
+        content: (
+          <>
+            <p>
+              Click the <strong>Import</strong> button and select the{" "}
+              <strong>.zip</strong> file you downloaded. CurseForge will
+              extract and install the modpack automatically.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Launch & Play",
+        description: "Start the imported modpack.",
+        content: (
+          <>
+            <p>
+              Once the import is complete, the modpack will appear in your{" "}
+              <strong>My Modpacks</strong> list. Click <strong>Play</strong> to
+              launch it.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: "add-custom-mods",
+    title: "How to Add Custom Mods",
+    description:
+      "Add extra mods to your modpack installation in CurseForge.",
+    icon: Puzzle,
+    category: "modpacks",
+    estimatedMinutes: 5,
+    steps: [
+      {
+        title: "Open Your Modpack",
+        description: "Find the modpack you want to modify.",
+        content: (
+          <>
+            <p>
+              In the CurseForge app, go to <strong>My Modpacks</strong> and
+              click on the modpack you want to add mods to.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Browse Mods",
+        description: "Search for mods to add.",
+        content: (
+          <>
+            <p>
+              Click the <strong>Add More Content</strong> button to browse
+              available mods. Use the search bar to find specific mods by
+              name.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Install a Mod",
+        description: "Add the mod to your modpack.",
+        content: (
+          <>
+            <p>
+              Click <strong>Install</strong> next to the mod you want.
+              CurseForge will automatically download it and any required
+              dependencies.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Verify & Launch",
+        description: "Make sure everything works.",
+        content: (
+          <>
+            <p>
+              Launch the modpack to verify the new mod loads correctly. If
+              you experience issues, you can remove the mod from the same
+              menu.
+            </p>
+          </>
+        ),
+      },
+    ],
+  },
+  {
+    slug: "discord-commands",
+    title: "Discord Commands",
+    description: "Learn the most useful Discord bot commands for the server.",
+    icon: MessageSquare,
+    category: "discord",
+    estimatedMinutes: 5,
+    steps: [
+      {
+        title: "Getting Started",
+        description: "How to use commands in Discord.",
+        content: (
+          <>
+            <p>
+              All bot commands use Discord's <strong>slash command</strong>{" "}
+              system. Type{" "}
+              <code className="bg-muted px-1.5 py-0.5 rounded text-sm">/</code>{" "}
+              in any bot channel to see available commands.
+            </p>
+            <p className="mt-2">
+              Commands are organized by category. Most commands work in the
+              designated bot channels.
+            </p>
+          </>
+        ),
+      },
+      {
+        title: "Economy Commands",
+        description: "Check your balance, send money, and more.",
+        content: (
+          <>
+            <p>Manage your in-game economy through Discord:</p>
+            <div className="flex flex-col gap-2 mt-3">
+              <CopyBlock label="Check balance" value="/balance" />
+              <CopyBlock label="Send money" value="/pay @user [amount]" />
+              <CopyBlock label="View leaderboard" value="/leaderboard" />
+            </div>
+          </>
+        ),
+      },
+      {
+        title: "Social Commands",
+        description: "Interact with other players.",
+        content: (
+          <>
+            <p>Connect with the community:</p>
+            <div className="flex flex-col gap-2 mt-3">
+              <CopyBlock label="View profile" value="/profile" />
+              <CopyBlock label="Check playtime" value="/playtime" />
+            </div>
+          </>
+        ),
+      },
+      {
+        title: "Utility Commands",
+        description: "Helpful tools and information.",
+        content: (
+          <>
+            <p>Useful commands for everyday gameplay:</p>
+            <div className="flex flex-col gap-2 mt-3">
+              <CopyBlock label="Server status" value="/status" />
+              <CopyBlock label="Open a ticket" value="/ticket" />
+            </div>
           </>
         ),
       },

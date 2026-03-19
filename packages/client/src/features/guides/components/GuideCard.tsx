@@ -7,15 +7,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import type { Guide } from "../data";
-
-const DIFFICULTY_STYLES = {
-  beginner: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  intermediate: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  advanced: "bg-red-500/10 text-red-400 border-red-500/20",
-} as const;
 
 type GuideCardProps = {
   guide: Guide;
@@ -29,7 +21,7 @@ export function GuideCard({ guide }: GuideCardProps) {
       <Card className="h-full transition-colors hover:border-primary/50">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center size-10 rounded-lg bg-primary/10">
+            <div className="flex items-center justify-center size-10 rounded-full bg-primary/10">
               <Icon className="size-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
@@ -39,20 +31,10 @@ export function GuideCard({ guide }: GuideCardProps) {
           <CardDescription>{guide.description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-2">
-            <Badge
-              className={cn(
-                "border text-xs capitalize",
-                DIFFICULTY_STYLES[guide.difficulty],
-              )}
-            >
-              {guide.difficulty}
-            </Badge>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="size-3" />
-              ~{guide.estimatedMinutes} min
-            </span>
-          </div>
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock className="size-3" />
+            ~{guide.estimatedMinutes} min
+          </span>
         </CardContent>
       </Card>
     </Link>
