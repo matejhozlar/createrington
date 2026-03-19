@@ -42,7 +42,7 @@ export const guides: Guide[] = [
     icon: Compass,
     category: "getting-started",
     image: "/assets/hero/gondola-station.webp",
-    imageIcon: "/assets/logo/logo.png",
+    imageIcon: "/assets/features/player-heads.webp",
     estimatedMinutes: 5,
     steps: [
       {
@@ -145,7 +145,7 @@ export const guides: Guide[] = [
     icon: Download,
     category: "getting-started",
     image: "/assets/guides/download/curseforgeapp-game.webp",
-    imageIcon: "/assets/logo/curseforge.webp",
+    imageIcon: "/assets/logo/logo.png",
     estimatedMinutes: 10,
     steps: [
       {
@@ -348,7 +348,7 @@ export const guides: Guide[] = [
     icon: Puzzle,
     category: "modpacks",
     image: "/assets/features/modpack.webp",
-    imageIcon: "/assets/logo/curseforge.webp",
+    imageIcon: "/assets/features/cogwheel.webp",
     estimatedMinutes: 5,
     steps: [
       {
