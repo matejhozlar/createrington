@@ -1,4 +1,6 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/page-header";
 import { guides } from "./data";
 import { useGuideProgress } from "./hooks/use-guide-progress";
@@ -37,6 +39,13 @@ export const GuideDetail = () => {
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto">
+          <Button variant="ghost" size="sm" asChild className="mb-4">
+            <Link to="/guides">
+              <ArrowLeft className="size-4" />
+              Back to Guides
+            </Link>
+          </Button>
+
           <StepIndicator
             steps={guide.steps}
             currentStep={currentStep}

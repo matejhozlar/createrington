@@ -42,108 +42,18 @@ const GUIDE_SECTIONS: { category: GuideCategory; title: string }[] = [
 export { GUIDE_SECTIONS };
 
 export const guides: Guide[] = [
-  {
-    slug: "getting-started",
-    title: "Getting Started",
-    description:
-      "Your first steps on the server — key locations, basic mechanics, and helpful tips.",
-    icon: Compass,
-    category: "getting-started",
-    image: "/assets/hero/gondola-station.webp",
-    imageIcon: "/assets/features/player-heads.webp",
-    estimatedMinutes: 5,
-    steps: [
-      {
-        title: "Welcome",
-        description: "What to expect when you first join.",
-        content: (
-          <>
-            <p>
-              Welcome to <strong>Createrington</strong>! When you first join,
-              you'll spawn at the central hub. From there you can explore the
-              city, claim a plot, and start building.
-            </p>
-            <p className="mt-2">
-              Take a moment to read the signs at spawn — they contain useful
-              information about the server.
-            </p>
-          </>
-        ),
-      },
-      {
-        title: "Key Locations",
-        description: "Important places you should know about.",
-        content: (
-          <>
-            <p>Here are the key locations to get familiar with:</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>
-                <strong>Spawn Hub</strong> — the central area with portals and
-                information boards
-              </li>
-              <li>
-                <strong>Train Station</strong> — fast travel between districts
-              </li>
-              <li>
-                <strong>Marketplace</strong> — buy and sell items with other
-                players
-              </li>
-              <li>
-                <strong>Plot World</strong> — claim your own building plot
-              </li>
-            </ul>
-          </>
-        ),
-      },
-      {
-        title: "Basic Mechanics",
-        description: "Core gameplay systems you'll use every day.",
-        content: (
-          <>
-            <p>Createrington uses several custom mechanics:</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>
-                <strong>Economy</strong> — earn money by playing, trading, and
-                completing tasks
-              </li>
-              <li>
-                <strong>Create Mod</strong> — build mechanical contraptions,
-                trains, and automation
-              </li>
-              <li>
-                <strong>Plots</strong> — claim land to protect your builds
-              </li>
-              <li>
-                <strong>Trains</strong> — use the rail network to travel across
-                the map
-              </li>
-            </ul>
-          </>
-        ),
-      },
-      {
-        title: "Tips & Tricks",
-        description: "Helpful advice from experienced players.",
-        content: (
-          <>
-            <p>A few tips to get the most out of your experience:</p>
-            <ul className="list-disc pl-6 space-y-1 mt-2">
-              <li>
-                Join the Discord server to stay up-to-date with announcements
-              </li>
-              <li>
-                Don't be afraid to ask for help — the community is friendly
-              </li>
-              <li>Explore the train network to discover different districts</li>
-              <li>
-                Check the website for your profile stats, leaderboards, and more
-              </li>
-            </ul>
-          </>
-        ),
-      },
-    ],
-  },
+  // TODO: Fill in "Getting Started" guide with real server info
+  // {
+  //   slug: "getting-started",
+  //   title: "Getting Started",
+  //   description: "Your first steps on the server — key locations, basic mechanics, and helpful tips.",
+  //   icon: Compass,
+  //   category: "getting-started",
+  //   image: "/assets/hero/gondola-station.webp",
+  //   imageIcon: "/assets/features/player-heads.webp",
+  //   estimatedMinutes: 5,
+  //   steps: [...],
+  // },
   {
     slug: "install-modpack",
     title: "Install the Modpack",
@@ -404,38 +314,86 @@ export const guides: Guide[] = [
     estimatedMinutes: 5,
     steps: [
       {
-        title: "Open Your Modpack",
-        description: "Find the modpack you want to modify.",
+        title: "Open the Createrington modpack",
+        description: "Find the modpack in CurseForge.",
         content: (
           <>
             <p>
-              In the CurseForge app, go to <strong>My Modpacks</strong> and
-              click on the modpack you want to add mods to.
+              In the CurseForge app, go to <strong>My Modpacks</strong>{" "}
+              and click on <strong>Createrington</strong>.
             </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
+              alt="Createrington modpack page in CurseForge"
+              className="mt-4 rounded-lg border border-border"
+            />
           </>
         ),
       },
       {
-        title: "Browse Mods",
-        description: "Search for mods to add.",
+        title: "Open Profile Options",
+        description: "Access the modpack settings.",
         content: (
           <>
             <p>
-              Click the <strong>Add More Content</strong> button to browse
-              available mods. Use the search bar to find specific mods by name.
+              Click the <strong>three-dot menu</strong> next to the Play
+              button and select <strong>Profile Options</strong>.
             </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-profile-options-button.webp"
+              alt="CurseForge three-dot menu with Profile Options highlighted"
+              className="mt-4 rounded-lg border border-border"
+            />
           </>
         ),
       },
       {
-        title: "Install a Mod",
-        description: "Add the mod to your modpack.",
+        title: "Allow Content Management",
+        description: "Enable adding mods to the modpack.",
         content: (
           <>
             <p>
+              In the Profile Options dialog, check the{" "}
+              <strong>Allow content management for this profile</strong>{" "}
+              checkbox under <strong>Content Management</strong>, then
+              click <strong>Done</strong>.
+            </p>
+            <img
+              src="/assets/guides/download/curseforge-app-profile-properties-content-management.webp"
+              alt="CurseForge Profile Options with Allow content management checkbox"
+              className="mt-4 rounded-lg border border-border"
+            />
+          </>
+        ),
+      },
+      {
+        title: "Add Content",
+        description: "Browse and install mods.",
+        content: (
+          <>
+            <p>
+              Go back to the modpack page and click the{" "}
+              <strong>+ Add Content</strong> button. Use the search bar
+              to find the mod you want to add.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-add-content-button.webp"
+              alt="CurseForge modpack page with Add Content button"
+              className="mt-4 rounded-lg"
+            />
+            <p className="mt-4">
               Click <strong>Install</strong> next to the mod you want.
               CurseForge will automatically download it and any required
               dependencies.
+            </p>
+            <p className="mt-4">
+              Make sure to only add <strong>client-side</strong> mods
+              (e.g. shaders, minimaps, HUD tweaks). Server-side or
+              incompatible mods will prevent you from joining the server.
+            </p>
+            <p className="mt-4">
+              You can also remove mods you no longer want from the same
+              menu.
             </p>
           </>
         ),
@@ -446,8 +404,9 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Launch the modpack to verify the new mod loads correctly. If you
-              experience issues, you can remove the mod from the same menu.
+              Launch the modpack to verify the new mod loads correctly.
+              If you experience issues, remove the mod you added from
+              the <strong>+ Add Content</strong> menu and try again.
             </p>
           </>
         ),
@@ -465,60 +424,95 @@ export const guides: Guide[] = [
     estimatedMinutes: 5,
     steps: [
       {
-        title: "Getting Started",
-        description: "How to use commands in Discord.",
+        title: "Economy",
+        description: "Manage your in-game money through Discord.",
         content: (
           <>
             <p>
-              All bot commands use Discord's <strong>slash command</strong>{" "}
-              system. Type{" "}
-              <code className="bg-muted px-1.5 py-0.5 rounded text-sm">/</code>{" "}
-              in any bot channel to see available commands.
+              <CopyBlock label="Check balance" value="/money" />
+            </p>
+            <img
+              src="/assets/guides/commands/money.webp"
+              alt="/money command showing your balance"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-6">
+              <CopyBlock label="Claim daily reward" value="/daily" />
             </p>
             <p className="mt-2">
-              Commands are organized by category. Most commands work in the
-              designated bot channels.
+              Claim a free reward once per day. The bot will show you
+              when your next claim is available.
             </p>
+            <img
+              src="/assets/guides/commands/daily.webp"
+              alt="/daily command showing reward claimed"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-6">
+              <CopyBlock
+                label="Send money"
+                value="/pay @user [amount]"
+              />
+            </p>
+            <p className="mt-2">
+              Transfer money to another player. You can optionally add
+              a note.
+            </p>
+            <img
+              src="/assets/guides/commands/pay.webp"
+              alt="/pay command showing transfer complete"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-6">
+              <CopyBlock
+                label="Transaction history"
+                value="/history"
+              />
+            </p>
+            <p className="mt-2">
+              View your last 10 transactions — transfers, rewards,
+              crypto trades, and more.
+            </p>
+            <img
+              src="/assets/guides/commands/history.webp"
+              alt="/history command showing transaction list"
+              className="mt-4 rounded-lg border border-border"
+            />
           </>
         ),
       },
       {
-        title: "Economy Commands",
-        description: "Check your balance, send money, and more.",
+        title: "Player Info",
+        description: "Check stats and compare with other players.",
         content: (
           <>
-            <p>Manage your in-game economy through Discord:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="Check balance" value="/balance" />
-              <CopyBlock label="Send money" value="/pay @user [amount]" />
-              <CopyBlock label="View leaderboard" value="/leaderboard" />
-            </div>
-          </>
-        ),
-      },
-      {
-        title: "Social Commands",
-        description: "Interact with other players.",
-        content: (
-          <>
-            <p>Connect with the community:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="View profile" value="/profile" />
+            <p>
               <CopyBlock label="Check playtime" value="/playtime" />
-            </div>
-          </>
-        ),
-      },
-      {
-        title: "Utility Commands",
-        description: "Helpful tools and information.",
-        content: (
-          <>
-            <p>Useful commands for everyday gameplay:</p>
-            <div className="flex flex-col gap-2 mt-3">
-              <CopyBlock label="Server status" value="/status" />
-              <CopyBlock label="Open a ticket" value="/ticket" />
-            </div>
+            </p>
+            <p className="mt-2">
+              See your total playtime, session count, and per-server
+              breakdown. Mention another player to check theirs.
+            </p>
+            <img
+              src="/assets/guides/commands/playtime.webp"
+              alt="/playtime command showing playtime stats"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-6">
+              <CopyBlock
+                label="Compare players"
+                value="/compare @player1 @player2"
+              />
+            </p>
+            <p className="mt-2">
+              Side-by-side comparison of balance, playtime, sessions,
+              and join date between two players.
+            </p>
+            <img
+              src="/assets/guides/commands/compare.webp"
+              alt="/compare command showing player comparison"
+              className="mt-4 rounded-lg border border-border"
+            />
           </>
         ),
       },
