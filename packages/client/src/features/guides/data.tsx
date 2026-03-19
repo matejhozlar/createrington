@@ -1,6 +1,14 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Download, FolderInput, Puzzle, MessageSquare, Compass } from "lucide-react";
+import {
+  Download,
+  FolderInput,
+  Puzzle,
+  MessageSquare,
+  Compass,
+  TriangleAlert,
+} from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { CopyBlock } from "./components/CopyBlock";
 
 type GuideStep = {
@@ -128,8 +136,7 @@ export const guides: Guide[] = [
               </li>
               <li>Explore the train network to discover different districts</li>
               <li>
-                Check the website for your profile stats, leaderboards, and
-                more
+                Check the website for your profile stats, leaderboards, and more
               </li>
             </ul>
           </>
@@ -160,7 +167,7 @@ export const guides: Guide[] = [
                 copy
               </li>
               <li>
-                <strong>At least 8 GB of RAM</strong> — the modpack needs this
+                <strong>At least 6 GB of RAM</strong> — the modpack needs this
                 to run smoothly
               </li>
               <li>
@@ -186,9 +193,8 @@ export const guides: Guide[] = [
               >
                 curseforge.com
               </a>{" "}
-              and click the{" "}
-              <strong>Get CurseForge App</strong> button in the top right
-              corner.
+              and click the <strong>Get CurseForge App</strong> button in the
+              top right corner.
             </p>
             <img
               src="/assets/guides/download/curseforge-homepage.webp"
@@ -196,13 +202,23 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-4">
-              On the download page, click{" "}
-              <strong>Download Standalone</strong> to get the CurseForge app
-              without Overwolf.
+              On the download page, you'll see two options — either one works,
+              pick whichever you prefer:
             </p>
+            <ul className="list-disc pl-6 space-y-1 mt-2">
+              <li>
+                <strong>Download On Overwolf</strong> — installs CurseForge as
+                part of the Overwolf platform, which includes an in-game
+                overlay, automatic updates, and additional gaming tools
+              </li>
+              <li>
+                <strong>Download Standalone</strong> — a lighter install with
+                just the CurseForge app itself, no extra software
+              </li>
+            </ul>
             <img
               src="/assets/guides/download/curseforge-download.webp"
-              alt="CurseForge download page with Standalone option"
+              alt="CurseForge download page with Overwolf and Standalone options"
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-4">
@@ -236,8 +252,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Once in the Minecraft section, use the search bar at the top to
-              search for <strong>Createrington</strong>.
+              Once in the Minecraft section, click <strong>Browse</strong> and
+              use the search bar to search for <strong>Createrington</strong>.
             </p>
             <img
               src="/assets/guides/download/curseforgeapp-search.webp"
@@ -245,9 +261,18 @@ export const guides: Guide[] = [
               className="mt-4 rounded-lg border border-border"
             />
             <p className="mt-4">
-              Click on the <strong>Createrington</strong> modpack and hit{" "}
-              <strong>Install</strong>. The app will automatically download all
-              required mods and configure the correct Minecraft version.
+              You'll see <strong>Createrington: Cogs & Steam</strong> in the
+              results. Click the green <strong>Install</strong> button to
+              download the modpack.
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-modpack.webp"
+              alt="Createrington modpack in CurseForge search results with Install button"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <p className="mt-4">
+              The app will automatically download all required mods and
+              configure the correct Minecraft version.
             </p>
           </>
         ),
@@ -258,15 +283,10 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Once the modpack is installed, launch it from CurseForge. In
-              Minecraft, go to <strong>Multiplayer</strong> and add the server:
+              Once the modpack is installed, launch it from CurseForge. Go to{" "}
+              <strong>Multiplayer</strong> — the server is already in your
+              server list.
             </p>
-            <div className="mt-3">
-              <CopyBlock
-                label="Server Address"
-                value="play.create-rington.com"
-              />
-            </div>
             <p className="mt-3">
               Click <strong>Join Server</strong> and you're in! Make sure you've
               completed the registration process on Discord first.
@@ -288,39 +308,72 @@ export const guides: Guide[] = [
     estimatedMinutes: 5,
     steps: [
       {
-        title: "Download the Modpack File",
-        description: "Get the modpack .zip file.",
+        title: "Get the Modpack File",
+        description: "Download the .zip file you want to import.",
         content: (
           <>
             <p>
-              If you received a modpack as a <strong>.zip</strong> file (e.g.
-              from Discord or a direct download link), save it somewhere you
-              can easily find it.
+              If you received a modpack as a <strong>.zip</strong> file from our
+              team (e.g. via Discord or a direct download link), save it
+              somewhere you can easily find it.
             </p>
+            <Alert className="mt-4 border-amber-900 bg-amber-950 text-amber-50">
+              <TriangleAlert />
+              <AlertTitle>Safety Warning</AlertTitle>
+              <AlertDescription>
+                Only import modpack files from sources you trust. Files
+                from unknown sources could contain malicious content. We
+                recommend only using files provided by our team.
+              </AlertDescription>
+            </Alert>
           </>
         ),
       },
       {
-        title: "Open CurseForge",
-        description: "Navigate to the import screen.",
+        title: "Click Import",
+        description: "Open the import dialog in CurseForge.",
         content: (
           <>
             <p>
-              Open the CurseForge app and make sure you're in the{" "}
-              <strong>Minecraft</strong> section.
+              Open the CurseForge app, go to the <strong>Minecraft</strong>{" "}
+              section, and click the <strong>Import</strong> button at the top.
             </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-import-button.webp"
+              alt="CurseForge app with Import button highlighted"
+              className="mt-4 rounded-lg border border-border"
+            />
           </>
         ),
       },
       {
-        title: "Import the File",
-        description: "Use CurseForge's import feature to load the modpack.",
+        title: "Import the Modpack",
+        description: "Use a .zip file or a profile code.",
         content: (
           <>
             <p>
-              Click the <strong>Import</strong> button and select the{" "}
-              <strong>.zip</strong> file you downloaded. CurseForge will
-              extract and install the modpack automatically.
+              In the Import Profile dialog, you'll see two options:
+            </p>
+            <img
+              src="/assets/guides/download/curseforgeapp-import-menu.webp"
+              alt="CurseForge import profile dialog"
+              className="mt-4 rounded-lg border border-border"
+            />
+            <ul className="list-disc pl-6 space-y-1 mt-4">
+              <li>
+                <strong>Import Profile .zip</strong> — click{" "}
+                <strong>Choose .zip file</strong> and select the modpack
+                file you downloaded
+              </li>
+              <li>
+                <strong>Use Profile Code</strong> — if you received a
+                code instead, paste it into the text field and click{" "}
+                <strong>Import</strong>. Codes are valid for 7 days
+              </li>
+            </ul>
+            <p className="mt-4">
+              CurseForge will extract and install the modpack
+              automatically.
             </p>
           </>
         ),
@@ -343,8 +396,7 @@ export const guides: Guide[] = [
   {
     slug: "add-custom-mods",
     title: "How to Add Custom Mods",
-    description:
-      "Add extra mods to your modpack installation in CurseForge.",
+    description: "Add extra mods to your modpack installation in CurseForge.",
     icon: Puzzle,
     category: "modpacks",
     image: "/assets/features/modpack.webp",
@@ -370,8 +422,7 @@ export const guides: Guide[] = [
           <>
             <p>
               Click the <strong>Add More Content</strong> button to browse
-              available mods. Use the search bar to find specific mods by
-              name.
+              available mods. Use the search bar to find specific mods by name.
             </p>
           </>
         ),
@@ -395,9 +446,8 @@ export const guides: Guide[] = [
         content: (
           <>
             <p>
-              Launch the modpack to verify the new mod loads correctly. If
-              you experience issues, you can remove the mod from the same
-              menu.
+              Launch the modpack to verify the new mod loads correctly. If you
+              experience issues, you can remove the mod from the same menu.
             </p>
           </>
         ),
