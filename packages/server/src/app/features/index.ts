@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import config from "@/config";
 import authRoutes from "./auth/auth.routes";
 import skinRoutes from "./skin/skin.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
@@ -6,6 +7,7 @@ import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
 import renderRoutes from "./render/render.routes";
 import trainRoutes from "./mod/trains/trains.routes";
+import internalPresenceRoutes from "./internal/presence/presence.routes";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -18,6 +20,12 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/render`, renderRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
+
+  // Internal cross-environment routes (only active when sync secret is set)
+  if (config.sync.secret) {
+    app.use(`${API_PREFIX}/internal/presence`, internalPresenceRoutes);
+    logger.info("Internal sync routes registered");
+  }
 
   logger.info("API routes registered");
 }
