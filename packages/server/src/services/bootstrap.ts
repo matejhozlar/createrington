@@ -422,9 +422,7 @@ export function registerServices(): void {
           forwarder.connectToService(playtimeService, serverId);
         }
 
-        logger.info(
-          `Playtime forwarder active → ${config.sync.targetUrl}`,
-        );
+        logger.info(`Playtime forwarder active → ${config.sync.targetUrl}`);
       }
     }
   });
