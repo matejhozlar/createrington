@@ -17,7 +17,8 @@ export const transactionsRouter = router({
       const identifier = parsePlayerId(input.id);
 
       const player = await Q.player.find(identifier);
-      if (!player) return { items: [], pagination: buildPagination(0, input.limit, 0) };
+      if (!player)
+        return { items: [], pagination: buildPagination(0, input.limit, 0) };
 
       const [transactions, total] = await Promise.all([
         Q.player.balance.transaction.findAll(
@@ -44,6 +45,9 @@ export const transactionsRouter = router({
         createdAt: tx.createdAt.toISOString(),
       }));
 
-      return { items, pagination: buildPagination(input.page, input.limit, total) };
+      return {
+        items,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
     }),
 });

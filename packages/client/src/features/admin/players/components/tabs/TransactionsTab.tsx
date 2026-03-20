@@ -23,7 +23,11 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
   const limit = 20;
 
   const { data, isLoading, error, refetch } =
-    trpc.admin.players.transactions.list.useQuery({ id: playerId, page, limit });
+    trpc.admin.players.transactions.list.useQuery({
+      id: playerId,
+      page,
+      limit,
+    });
 
   const items = data?.items ?? [];
   const total = data?.pagination.total ?? 0;
@@ -106,10 +110,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
                         {new Date(tx.createdAt).toLocaleString()}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className="text-xs"
-                        >
+                        <Badge variant="outline" className="text-xs">
                           {tx.transactionType}
                         </Badge>
                       </TableCell>
