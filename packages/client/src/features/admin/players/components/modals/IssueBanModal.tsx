@@ -100,8 +100,7 @@ export function IssueBanModal({
 
       onSuccess();
       onClose();
-    } catch (err) {
-      console.error("Failed to issue ban:", err);
+    } catch {
       toast.error("Failed to issue ban");
     }
   };

@@ -170,7 +170,9 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
             </PaginationItem>
 
             {getPaginationItems().map((item, index) => (
-              <PaginationItem key={index}>
+              <PaginationItem
+                key={item === "ellipsis" ? `ellipsis-${index}` : item}
+              >
                 {item === "ellipsis" ? (
                   <PaginationEllipsis />
                 ) : (

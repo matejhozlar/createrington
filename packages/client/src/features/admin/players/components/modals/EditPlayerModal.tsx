@@ -141,7 +141,6 @@ export function EditPlayerModal({
       onClose();
       onSuccess();
     } catch (err) {
-      console.error("Failed to update player:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to update player",
       );

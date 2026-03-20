@@ -43,8 +43,7 @@ export function UnbanModal({
       setReason("");
       onSuccess();
       onClose();
-    } catch (err) {
-      console.error("Failed to unban player:", err);
+    } catch {
       toast.error("Failed to unban player");
     }
   };

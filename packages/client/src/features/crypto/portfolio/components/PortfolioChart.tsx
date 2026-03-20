@@ -19,6 +19,10 @@ export function PortfolioChart() {
     { enabled: !!user },
   );
 
+  const { data: portfolio } = trpc.user.crypto.portfolio.useQuery(undefined, {
+    enabled: !!user,
+  });
+
   useEffect(() => {
     if (!chartContainerRef.current || !data || data.length === 0) return;
 
@@ -65,6 +69,20 @@ export function PortfolioChart() {
       value: Number(d.totalValue),
     }));
 
+    // Append current portfolio value as today's data point
+    if (portfolio) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const todayTs = Math.floor(now.getTime() / 1000) as unknown as Time;
+      const lastPoint = areaData[areaData.length - 1];
+
+      if (!lastPoint || lastPoint.time !== todayTs) {
+        areaData.push({ time: todayTs, value: Number(portfolio.totalValue) });
+      } else {
+        lastPoint.value = Number(portfolio.totalValue);
+      }
+    }
+
     series.setData(areaData);
     chart.timeScale().fitContent();
 
@@ -81,7 +99,7 @@ export function PortfolioChart() {
       resizeObserver.disconnect();
       chart.remove();
     };
-  }, [data]);
+  }, [data, portfolio]);
 
   return (
     <Card className="overflow-hidden">

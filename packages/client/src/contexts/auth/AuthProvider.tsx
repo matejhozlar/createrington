@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       setError("Failed to connect to authentication server");
-      console.error("Login error:", error);
+      if (import.meta.env.DEV) console.error("Login error:", error);
     }
   }, []);
 
@@ -96,7 +96,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(
         error instanceof Error ? error.message : "Authentication failed",
       );
-      console.error("Callback error:", error);
+      if (import.meta.env.DEV) console.error("Callback error:", error);
 
       // Redirect to home with error
       window.location.href = "/?error=auth_failed";
@@ -116,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         credentials: "include",
       });
     } catch (error) {
-      console.error("Logout error:", error);
+      if (import.meta.env.DEV) console.error("Logout error:", error);
     } finally {
       setAccessToken(null);
       localStorage.removeItem("auth_token"); // clean up legacy
@@ -141,7 +141,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } catch (error) {
-      console.error("Logout-all error:", error);
+      if (import.meta.env.DEV) console.error("Logout-all error:", error);
     } finally {
       setAccessToken(null);
       setUser(null);
@@ -168,7 +168,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(null);
       }
     } catch (error) {
-      console.error("Silent refresh error:", error);
+      if (import.meta.env.DEV) console.error("Silent refresh error:", error);
       setAccessToken(null);
       setUser(null);
     }

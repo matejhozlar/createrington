@@ -44,8 +44,7 @@ export function BalanceAdjustModal({
       setReason("");
       onClose();
       onSuccess();
-    } catch (err) {
-      console.error("Failed to adjust balance:", err);
+    } catch {
       toast.error("Failed to adjust balance");
     }
   };

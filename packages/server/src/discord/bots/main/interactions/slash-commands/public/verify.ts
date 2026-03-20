@@ -132,7 +132,7 @@ export async function execute(
 
     await interaction.reply({
       content:
-        "✅ Token verified! You may now use `/register <mc_name>` to join the server.",
+        "✅ Token verified! You may now use `/register <mc_name>` to link your Minecraft account and get whitelisted on the server. Replace `<mc_name>` with your Minecraft username (e.g. `/register Steve`).",
     });
   } catch (error) {
     logger.error("/verify failed:", error);
