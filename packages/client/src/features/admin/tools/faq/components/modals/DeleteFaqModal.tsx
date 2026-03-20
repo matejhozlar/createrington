@@ -34,8 +34,7 @@ export function DeleteFaqModal({
       await deleteEntry.mutateAsync({ id: entry.id });
       toast.success("FAQ entry deleted");
       onSuccess();
-    } catch (err) {
-      console.error("Failed to delete FAQ entry:", err);
+    } catch {
       toast.error("Failed to delete FAQ entry");
     }
   };

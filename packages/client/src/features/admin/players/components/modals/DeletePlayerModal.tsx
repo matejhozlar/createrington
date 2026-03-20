@@ -66,8 +66,7 @@ export function DeletePlayerModal({
       setShowConfirmDialog(false);
       setConfirmText("");
       onSuccess();
-    } catch (err) {
-      console.error("Failed to delete player:", err);
+    } catch {
       toast.error("Failed to delete player");
     } finally {
       onClose();

@@ -92,7 +92,7 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
         setServers(serverMap);
       }
     } catch (err) {
-      console.error("Failed to load initial server data:", err);
+      if (import.meta.env.DEV) console.error("Failed to load initial server data:", err);
       setError(
         err instanceof Error ? err : new Error("Failed to load server data"),
       );
@@ -159,7 +159,7 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
 
       setIsSubscribed(true);
     } catch (err) {
-      console.error("Failed to subscribe to server updates:", err);
+      if (import.meta.env.DEV) console.error("Failed to subscribe to server updates:", err);
       setError(
         err instanceof Error
           ? err
@@ -183,7 +183,7 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
 
       setIsSubscribed(false);
     } catch (err) {
-      console.error("Failed to unsubscribe from server updates:", err);
+      if (import.meta.env.DEV) console.error("Failed to unsubscribe from server updates:", err);
     }
   }, [unsubscribe, serverIds]);
 

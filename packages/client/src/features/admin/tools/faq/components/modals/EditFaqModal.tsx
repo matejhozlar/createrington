@@ -77,8 +77,7 @@ export function EditFaqModal({
 
       toast.success("FAQ entry updated");
       onSuccess();
-    } catch (err) {
-      console.error("Failed to update FAQ entry:", err);
+    } catch {
       toast.error("Failed to update FAQ entry");
     }
   };

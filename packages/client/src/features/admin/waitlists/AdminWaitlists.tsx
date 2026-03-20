@@ -149,8 +149,7 @@ export function AdminWaitlists() {
       try {
         await navigator.clipboard.writeText(email);
         toast.info("Email copied to clipboard");
-      } catch (err) {
-        console.error("Failed to copy email:", err);
+      } catch {
         toast.error("Failed to copy email");
       }
     },
@@ -703,7 +702,7 @@ export function AdminWaitlists() {
                   </PaginationItem>
 
                   {getPaginationItems().map((item, index) => (
-                    <PaginationItem key={index}>
+                    <PaginationItem key={item === "ellipsis" ? `ellipsis-${index}` : item}>
                       {item === "ellipsis" ? (
                         <PaginationEllipsis />
                       ) : (

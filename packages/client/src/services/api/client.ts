@@ -137,14 +137,18 @@ class ApiClient {
     }
 
     if (!envApiUrl) {
-      console.warn(
-        "[API Client] Production mode but VITE_API_URL not set. API calls may fail.",
-      );
+      if (import.meta.env.DEV) {
+        console.warn(
+          "[API Client] Production mode but VITE_API_URL not set. API calls may fail.",
+        );
+      }
     }
 
-    console.log(
-      `[API Client] Production mode: API URL = ${envApiUrl || "not set"}`,
-    );
+    if (import.meta.env.DEV) {
+      console.log(
+        `[API Client] Production mode: API URL = ${envApiUrl || "not set"}`,
+      );
+    }
 
     return envApiUrl || "";
   }

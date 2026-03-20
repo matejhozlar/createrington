@@ -97,7 +97,7 @@ export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
         setPlayers(playerMap);
       }
     } catch (err) {
-      console.error("Failed to load initial player data:", err);
+      if (import.meta.env.DEV) console.error("Failed to load initial player data:", err);
       setError(
         err instanceof Error ? err : new Error("Failed to load player data"),
       );
@@ -214,7 +214,7 @@ export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
 
       setIsSubscribed(true);
     } catch (err) {
-      console.error("Failed to subscribe to player updates:", err);
+      if (import.meta.env.DEV) console.error("Failed to subscribe to player updates:", err);
       setError(
         err instanceof Error
           ? err
@@ -238,7 +238,7 @@ export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
 
       setIsSubscribed(false);
     } catch (err) {
-      console.error("Failed to unsubscribe from player updates:", err);
+      if (import.meta.env.DEV) console.error("Failed to unsubscribe from player updates:", err);
     }
   }, [unsubscribe, serverIds]);
 

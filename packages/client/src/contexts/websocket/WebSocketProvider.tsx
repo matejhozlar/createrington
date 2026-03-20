@@ -85,7 +85,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
         try {
           callback(data);
         } catch (err) {
-          console.error(`Error in event listener for ${event}:`, err);
+          if (import.meta.env.DEV) console.error(`Error in event listener for ${event}:`, err);
         }
       });
     }
@@ -153,7 +153,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
   const emit = useCallback(
     (event: string, data?: unknown, callback?: (response: unknown) => void) => {
       if (!socket?.connected) {
-        console.warn("Cannot emit: WebSocket not connected");
+        if (import.meta.env.DEV) console.warn("Cannot emit: WebSocket not connected");
         return false;
       }
 
@@ -177,7 +177,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
    */
   const handleReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-      console.error("Max reconnection attempts reached");
+      if (import.meta.env.DEV) console.error("Max reconnection attempts reached");
       setConnectionState("error");
       setError(new Error("Failed to reconnect after multiple attempts"));
       return;
@@ -190,9 +190,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     const delay = reconnectDelay * Math.pow(2, reconnectAttemptsRef.current);
     reconnectAttemptsRef.current++;
 
-    console.log(
-      `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
-    );
+    if (import.meta.env.DEV) {
+      console.log(
+        `Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`,
+      );
+    }
 
     setConnectionState("reconnecting");
     setStats((prev) => ({
@@ -211,14 +213,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
    */
   const connect = useCallback(() => {
     if (socket?.connected) {
-      console.warn("WebSocket already connected");
+      if (import.meta.env.DEV) console.warn("WebSocket already connected");
       return;
     }
 
     const serverUrl = config.url || window.location.origin;
     const path = config.path || "/socket.io";
 
-    console.log("Connecting to WebSocket server:", serverUrl);
+    if (import.meta.env.DEV) console.log("Connecting to WebSocket server:", serverUrl);
     setConnectionState("connecting");
     setError(null);
 
@@ -234,7 +236,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
     // Connection successful
     newSocket.on("connect", () => {
-      console.log("WebSocket connected:", newSocket.id);
+      if (import.meta.env.DEV) console.log("WebSocket connected:", newSocket.id);
       setConnectionState("connected");
       setError(null);
       reconnectAttemptsRef.current = 0;
@@ -250,7 +252,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
     // Connection error
     newSocket.on("connect_error", (err) => {
-      console.error("WebSocket connection error:", err);
+      if (import.meta.env.DEV) console.error("WebSocket connection error:", err);
       setError(err);
       setConnectionState("error");
       handleReconnect();
@@ -258,7 +260,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
     // Disconnection
     newSocket.on("disconnect", (reason) => {
-      console.log("WebSocket disconnected:", reason);
+      if (import.meta.env.DEV) console.log("WebSocket disconnected:", reason);
       setConnectionState("disconnected");
       setStats((prev) => ({
         ...prev,
@@ -276,7 +278,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
     // Generic error
     newSocket.on("error", (err) => {
-      console.error("WebSocket error:", err);
+      if (import.meta.env.DEV) console.error("WebSocket error:", err);
       setError(err);
       emitToListeners("error", err);
     });
@@ -358,12 +360,14 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
           "subscribe" as SocketEvent,
           { type, serverId },
           (response: { success: boolean; error?: string }) => {
-            if (response.success) {
-              console.log(
-                `Subscribed to ${type}${serverId ? ` (server ${serverId})` : ""}`,
-              );
-            } else {
-              console.error(`Failed to subscribe to ${type}:`, response.error);
+            if (import.meta.env.DEV) {
+              if (response.success) {
+                console.log(
+                  `Subscribed to ${type}${serverId ? ` (server ${serverId})` : ""}`,
+                );
+              } else {
+                console.error(`Failed to subscribe to ${type}:`, response.error);
+              }
             }
             resolve(response);
           },
@@ -391,15 +395,17 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
           "unsubscribe" as SocketEvent,
           { type, serverId },
           (response: { success: boolean; error?: string }) => {
-            if (response.success) {
-              console.log(
-                `Unsubscribed from ${type}${serverId ? ` (server ${serverId})` : ""}`,
-              );
-            } else {
-              console.error(
-                `Failed to unsubscribe from ${type}:`,
-                response.error,
-              );
+            if (import.meta.env.DEV) {
+              if (response.success) {
+                console.log(
+                  `Unsubscribed from ${type}${serverId ? ` (server ${serverId})` : ""}`,
+                );
+              } else {
+                console.error(
+                  `Failed to unsubscribe from ${type}:`,
+                  response.error,
+                );
+              }
             }
             resolve(response);
           },
@@ -419,7 +425,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     ): Promise<InitialDataPayload | ServerInitialDataPayload | null> => {
       return new Promise((resolve) => {
         if (!socket?.connected) {
-          console.warn("Cannot request initial data: Not connected");
+          if (import.meta.env.DEV) console.warn("Cannot request initial data: Not connected");
           resolve(null);
           return;
         }
@@ -432,9 +438,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
             messageLimit: options?.messageLimit ?? 50,
           },
           (data: InitialDataPayload | ServerInitialDataPayload) => {
-            console.log(
-              `Received initial data${serverId ? ` for server ${serverId}` : ""}`,
-            );
+            if (import.meta.env.DEV) {
+              console.log(
+                `Received initial data${serverId ? ` for server ${serverId}` : ""}`,
+              );
+            }
             resolve(data);
           },
         );

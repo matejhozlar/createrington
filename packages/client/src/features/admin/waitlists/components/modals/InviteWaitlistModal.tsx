@@ -39,8 +39,7 @@ export function InviteWaitlistModal({
       setReason("");
       onClose();
       onSuccess();
-    } catch (err) {
-      console.error("Failed to invite waitlist entry:", err);
+    } catch {
       toast.error("Failed to invite waitlist entry");
     }
   };

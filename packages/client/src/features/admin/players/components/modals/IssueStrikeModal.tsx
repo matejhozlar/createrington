@@ -53,8 +53,7 @@ export function IssueStrikeModal({
       setSeverity(1);
       onClose();
       onSuccess();
-    } catch (err) {
-      console.error("Failed to issue strike:", err);
+    } catch {
       toast.error("Failed to issue strike");
     }
   };

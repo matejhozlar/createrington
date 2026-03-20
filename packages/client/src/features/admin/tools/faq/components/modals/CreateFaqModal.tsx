@@ -81,8 +81,7 @@ export function CreateFaqModal({
       toast.success("FAQ entry created");
       resetForm();
       onSuccess();
-    } catch (err) {
-      console.error("Failed to create FAQ entry:", err);
+    } catch {
       toast.error("Failed to create FAQ entry");
     }
   };
