@@ -41,8 +41,7 @@ export function RemoveStrikeModal({
       setReason("");
       onClose();
       onSuccess();
-    } catch (err) {
-      console.error("Failed to remove strike:", err);
+    } catch {
       toast.error("Failed to remove strike");
     }
   };

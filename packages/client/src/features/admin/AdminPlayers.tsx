@@ -185,8 +185,7 @@ export function AdminPlayers() {
       try {
         await navigator.clipboard.writeText(discordId);
         toast.info("Discord ID copied to clipboard");
-      } catch (err) {
-        console.error("Failed to copy Discord ID:", err);
+      } catch {
         toast.error("Failed to copy Discord ID");
       }
     },
@@ -662,7 +661,9 @@ export function AdminPlayers() {
                   </PaginationItem>
 
                   {getPaginationItems().map((item, index) => (
-                    <PaginationItem key={index}>
+                    <PaginationItem
+                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                    >
                       {item === "ellipsis" ? (
                         <PaginationEllipsis />
                       ) : (

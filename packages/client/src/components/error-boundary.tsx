@@ -26,7 +26,7 @@ export class ErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("[ErrorBoundary]", error, errorInfo);
+    if (import.meta.env.DEV) console.error("[ErrorBoundary]", error, errorInfo);
   }
 
   private handleReset = () => {

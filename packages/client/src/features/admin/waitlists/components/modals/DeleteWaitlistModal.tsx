@@ -66,8 +66,7 @@ export function DeleteWaitlistModal({
       setShowConfirmDialog(false);
       setConfirmText("");
       onSuccess();
-    } catch (err) {
-      console.error("Failed to delete waitlist entry:", err);
+    } catch {
       toast.error("Failed to delete waitlist entry");
     } finally {
       onClose();
