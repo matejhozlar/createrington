@@ -13,6 +13,7 @@ import { TicketsTab } from "./components/tabs/TicketsTab";
 import { StrikesTab } from "./components/tabs/StrikesTab";
 import { BansTab } from "./components/tabs/BansTab";
 import { AuditTab } from "./components/tabs/AuditTab";
+import { TransactionsTab } from "./components/tabs/TransactionsTab";
 import { BalanceAdjustModal } from "./components/modals/BalanceAdjustModal";
 import { IssueStrikeModal } from "./components/modals/IssueStrikeModal";
 import { IssueBanModal } from "./components/modals/IssueBanModal";
@@ -28,6 +29,7 @@ type TabType =
   | "tickets"
   | "strikes"
   | "bans"
+  | "transactions"
   | "audit";
 
 export function AdminPlayerDetail() {
@@ -160,6 +162,8 @@ export function AdminPlayerDetail() {
             onUnban={openUnbanModal}
           />
         )}
+
+        {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
 
         {activeTab === "audit" && <AuditTab playerId={id!} />}
       </div>

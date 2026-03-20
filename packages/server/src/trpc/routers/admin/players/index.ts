@@ -7,8 +7,9 @@ import { sessionsRouter } from "./sessions";
 import { playtimeRouter } from "./playtime";
 import { ticketsRouter } from "./tickets";
 import { auditRouter } from "./audit";
+import { transactionsRouter } from "./transactions";
 
-/** Composite admin players router — CRUD, balance, strikes, bans, sessions, playtime, tickets, audit. */
+/** Composite admin players router — CRUD, balance, strikes, bans, sessions, playtime, tickets, audit, transactions. */
 export const adminPlayersRouter = router({
   players: playersRouter,
   balance: balanceRouter,
@@ -18,4 +19,5 @@ export const adminPlayersRouter = router({
   playtime: playtimeRouter,
   tickets: ticketsRouter,
   audit: auditRouter,
+  transactions: transactionsRouter,
 });

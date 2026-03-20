@@ -205,6 +205,11 @@ const config = {
     playerLimit: env.PLAYER_LIMIT,
   },
 
+  sync: {
+    targetUrl: env.PLAYTIME_SYNC_TARGET_URL,
+    secret: env.PLAYTIME_SYNC_SECRET,
+  },
+
   ai: {
     openai: {
       apiKey: env.OPENAI_API_KEY,
