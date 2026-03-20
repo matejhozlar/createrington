@@ -285,7 +285,8 @@ export function CommandDocs() {
 
   const sortedCategories = [...grouped.keys()].sort(
     (a, b) =>
-      CATEGORY_ORDER.indexOf(a as any) - CATEGORY_ORDER.indexOf(b as any),
+      CATEGORY_ORDER.indexOf(a as (typeof CATEGORY_ORDER)[number]) -
+      CATEGORY_ORDER.indexOf(b as (typeof CATEGORY_ORDER)[number]),
   );
 
   return (
