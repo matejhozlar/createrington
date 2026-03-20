@@ -148,6 +148,7 @@ export function TradePanel({
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
     utils.public.crypto.tokenDistribution.invalidate({ symbol });
+    utils.user.crypto.ipoAllocation.invalidate({ symbol });
   };
 
   const buyMutation = trpc.user.crypto.buy.useMutation({
