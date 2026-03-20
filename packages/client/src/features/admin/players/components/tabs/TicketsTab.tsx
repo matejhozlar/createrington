@@ -191,7 +191,9 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                 </PaginationItem>
 
                 {getPaginationItems().map((item, index) => (
-                  <PaginationItem key={item === "ellipsis" ? `ellipsis-${index}` : item}>
+                  <PaginationItem
+                    key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                  >
                     {item === "ellipsis" ? (
                       <PaginationEllipsis />
                     ) : (

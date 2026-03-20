@@ -73,7 +73,8 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
       await subscribe("crypto:market" as SubscriptionType);
       setIsSubscribed(true);
     } catch (err) {
-      if (import.meta.env.DEV) console.error("Failed to subscribe to crypto updates:", err);
+      if (import.meta.env.DEV)
+        console.error("Failed to subscribe to crypto updates:", err);
     }
   }, [subscribe]);
 
@@ -83,7 +84,8 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
       await unsubscribe("crypto:market" as SubscriptionType);
       setIsSubscribed(false);
     } catch (err) {
-      if (import.meta.env.DEV) console.error("Failed to unsubscribe from crypto updates:", err);
+      if (import.meta.env.DEV)
+        console.error("Failed to unsubscribe from crypto updates:", err);
     }
   }, [unsubscribe]);
 
@@ -99,7 +101,10 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
     if (isConnected && autoSubscribe) {
       subscribe("crypto:market" as SubscriptionType).then(
         () => setIsSubscribed(true),
-        (err) => { if (import.meta.env.DEV) console.error("Failed to subscribe to crypto updates:", err); },
+        (err) => {
+          if (import.meta.env.DEV)
+            console.error("Failed to subscribe to crypto updates:", err);
+        },
       );
     }
   }, [isConnected, autoSubscribe, subscribe]);
