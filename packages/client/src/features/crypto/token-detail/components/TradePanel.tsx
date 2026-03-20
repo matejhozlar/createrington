@@ -147,6 +147,7 @@ export function TradePanel({
     utils.user.crypto.tradeHistory.invalidate();
     utils.public.crypto.list.invalidate();
     utils.public.crypto.get.invalidate({ symbol });
+    utils.public.crypto.tokenDistribution.invalidate({ symbol });
   };
 
   const buyMutation = trpc.user.crypto.buy.useMutation({

@@ -6,6 +6,7 @@ type TabType =
   | "tickets"
   | "strikes"
   | "bans"
+  | "transactions"
   | "audit";
 
 interface PlayerTabsProps {
@@ -20,6 +21,7 @@ export function PlayerTabs({ activeTab, onTabChange }: PlayerTabsProps) {
     { id: "tickets", label: "Tickets" },
     { id: "strikes", label: "Strikes" },
     { id: "bans", label: "Bans" },
+    { id: "transactions", label: "Transactions" },
     { id: "audit", label: "Audit Log" },
   ];
 
