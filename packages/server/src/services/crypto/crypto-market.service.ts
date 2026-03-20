@@ -842,45 +842,54 @@ export class CryptoMarketService {
     const now = new Date();
     // Round to current minute
     now.setSeconds(0, 0);
-    const minuteStart = new Date(now.getTime() - 60_000);
+
+    // Look back 5 minutes (matching the aggregation interval) so that
+    // slower-ticking tokens (stablecoins every 10min, blue-chips every 1h)
+    // still produce minute snapshots from their ticks.
+    const lookbackMinutes = 5;
 
     for (const token of tokens) {
-      const ticks = await Q.crypto.price.snapshot
-        .where({
-          tokenId: token.id,
-          interval: "tick",
-          recordedAt: { $gte: minuteStart, $lt: now },
-        })
-        .orderBy("recordedAt", "asc")
-        .all();
+      for (let m = lookbackMinutes; m >= 1; m--) {
+        const bucketStart = new Date(now.getTime() - m * 60_000);
+        const bucketEnd = new Date(bucketStart.getTime() + 60_000);
 
-      if (ticks.length === 0) continue;
+        const ticks = await Q.crypto.price.snapshot
+          .where({
+            tokenId: token.id,
+            interval: "tick",
+            recordedAt: { $gte: bucketStart, $lt: bucketEnd },
+          })
+          .orderBy("recordedAt", "asc")
+          .all();
 
-      const open = ticks[0].openPrice;
-      const close = ticks[ticks.length - 1].closePrice;
-      const high = ticks.reduce(
-        (max, t) => (Number(t.highPrice) > Number(max) ? t.highPrice : max),
-        ticks[0].highPrice,
-      );
-      const low = ticks.reduce(
-        (min, t) => (Number(t.lowPrice) < Number(min) ? t.lowPrice : min),
-        ticks[0].lowPrice,
-      );
-      const volume = ticks.reduce((sum, t) => sum + t.volume, 0n);
+        if (ticks.length === 0) continue;
 
-      try {
-        await Q.crypto.price.snapshot.create({
-          tokenId: token.id,
-          interval: "minute",
-          openPrice: open,
-          highPrice: high,
-          lowPrice: low,
-          closePrice: close,
-          volume,
-          recordedAt: minuteStart,
-        });
-      } catch {
-        // Ignore duplicate (unique constraint on token+interval+recordedAt)
+        const open = ticks[0].openPrice;
+        const close = ticks[ticks.length - 1].closePrice;
+        const high = ticks.reduce(
+          (max, t) => (Number(t.highPrice) > Number(max) ? t.highPrice : max),
+          ticks[0].highPrice,
+        );
+        const low = ticks.reduce(
+          (min, t) => (Number(t.lowPrice) < Number(min) ? t.lowPrice : min),
+          ticks[0].lowPrice,
+        );
+        const volume = ticks.reduce((sum, t) => sum + t.volume, 0n);
+
+        try {
+          await Q.crypto.price.snapshot.create({
+            tokenId: token.id,
+            interval: "minute",
+            openPrice: open,
+            highPrice: high,
+            lowPrice: low,
+            closePrice: close,
+            volume,
+            recordedAt: bucketStart,
+          });
+        } catch {
+          // Ignore duplicate (unique constraint on token+interval+recordedAt)
+        }
       }
     }
 

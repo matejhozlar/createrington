@@ -497,30 +497,28 @@ export async function recordTickSnapshot(
   update: PriceUpdate,
   volume: bigint = 0n,
 ): Promise<void> {
-  const price = update.newPrice;
   const now = new Date();
   // Round to nearest 30s boundary
   now.setMilliseconds(0);
   now.setSeconds(now.getSeconds() - (now.getSeconds() % 30));
 
-  await Q.crypto.price.snapshot.upsert(
-    {
-      tokenId: update.tokenId,
-      interval: "tick",
-      openPrice: update.oldPrice,
-      highPrice:
-        Number(update.newPrice) > Number(update.oldPrice)
-          ? update.newPrice
-          : update.oldPrice,
-      lowPrice:
-        Number(update.newPrice) < Number(update.oldPrice)
-          ? update.newPrice
-          : update.oldPrice,
-      closePrice: price,
-      volume,
-      recordedAt: now,
-    },
-    ["tokenId", "interval", "recordedAt"],
-    ["closePrice"],
-  );
+  const high =
+    Number(update.newPrice) > Number(update.oldPrice)
+      ? update.newPrice
+      : update.oldPrice;
+  const low =
+    Number(update.newPrice) < Number(update.oldPrice)
+      ? update.newPrice
+      : update.oldPrice;
+
+  await Q.crypto.price.snapshot.upsertOhlcv({
+    tokenId: update.tokenId,
+    interval: "tick",
+    openPrice: update.oldPrice,
+    highPrice: high,
+    lowPrice: low,
+    closePrice: update.newPrice,
+    volume,
+    recordedAt: now,
+  });
 }
