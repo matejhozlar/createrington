@@ -47,6 +47,7 @@ import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages"
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
+import { CommandDocs } from "./features/admin/tools/command-docs/CommandDocs";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -287,6 +288,7 @@ function AppContent() {
                     element={<Announcements />}
                   />
                   <Route path="tools/crypto" element={<AdminCrypto />} />
+                  <Route path="tools/command-docs" element={<CommandDocs />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>

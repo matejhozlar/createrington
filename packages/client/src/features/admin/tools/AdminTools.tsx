@@ -12,6 +12,7 @@ import {
   Megaphone,
   MessageCircleQuestion,
   Paintbrush,
+  Terminal,
   Timer,
 } from "lucide-react";
 
@@ -50,6 +51,13 @@ const tools = [
       "Manage tokens, trigger market events, view treasury stats, and monitor the in-game crypto economy.",
     icon: Coins,
     href: "/admin/tools/crypto",
+  },
+  {
+    title: "Command Docs",
+    description:
+      "Auto-generated reference of all Discord slash commands with options, permissions, and cooldowns.",
+    icon: Terminal,
+    href: "/admin/tools/command-docs",
   },
 ];
 

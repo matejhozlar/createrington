@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Generate types and deploy commands
+      - name: Generate types, command docs, and deploy commands
         run: |
           set -a
           source /opt/createrington-dev/.env
@@ -34,6 +34,7 @@ jobs:
           export DB_HOST=infra-postgres
           export DB_PORT=5432
           pnpm generate:ci
+          pnpm generate-command-docs:json
           pnpm deploy-commands
 
       - name: Build
