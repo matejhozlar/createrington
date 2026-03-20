@@ -70,7 +70,10 @@ const CATEGORY_META: Record<string, { label: string; color: string }> = {
 function PermissionBadge({ command }: { command: CommandData }) {
   if (command.permissions?.requireOwner) {
     return (
-      <Badge variant="outline" className="gap-1 border-amber-500/30 text-amber-400">
+      <Badge
+        variant="outline"
+        className="gap-1 border-amber-500/30 text-amber-400"
+      >
         <Crown className="size-3" />
         Owner
       </Badge>
@@ -86,7 +89,10 @@ function PermissionBadge({ command }: { command: CommandData }) {
   }
   if (command.defaultMemberPermissions) {
     return (
-      <Badge variant="outline" className="gap-1 border-orange-500/30 text-orange-400">
+      <Badge
+        variant="outline"
+        className="gap-1 border-orange-500/30 text-orange-400"
+      >
         <Shield className="size-3" />
         Discord Admin
       </Badge>
@@ -98,7 +104,10 @@ function PermissionBadge({ command }: { command: CommandData }) {
 function CooldownBadge({ cooldown }: { cooldown?: CommandData["cooldown"] }) {
   if (!cooldown) return null;
   return (
-    <Badge variant="outline" className="gap-1 border-border text-muted-foreground">
+    <Badge
+      variant="outline"
+      className="gap-1 border-border text-muted-foreground"
+    >
       <Clock className="size-3" />
       {cooldown.duration}s
     </Badge>
@@ -107,7 +116,10 @@ function CooldownBadge({ cooldown }: { cooldown?: CommandData["cooldown"] }) {
 
 function formatOptionType(opt: CommandOption): string {
   const base = OPTION_TYPE_LABELS[opt.type] ?? `Type(${opt.type})`;
-  if ((opt.type === 4 || opt.type === 10) && (opt.min_value != null || opt.max_value != null)) {
+  if (
+    (opt.type === 4 || opt.type === 10) &&
+    (opt.min_value != null || opt.max_value != null)
+  ) {
     const parts: string[] = [];
     if (opt.min_value != null) parts.push(`${opt.min_value}`);
     if (opt.max_value != null) parts.push(`${opt.max_value}`);
@@ -138,7 +150,13 @@ function OptionRow({ option }: { option: CommandOption }) {
   );
 }
 
-function SubcommandBlock({ sub, prefix }: { sub: CommandOption; prefix?: string }) {
+function SubcommandBlock({
+  sub,
+  prefix,
+}: {
+  sub: CommandOption;
+  prefix?: string;
+}) {
   const label = prefix ? `${prefix} ${sub.name}` : sub.name;
   const opts = (sub.options ?? []).filter((o) => o.type !== 1 && o.type !== 2);
 
@@ -162,8 +180,12 @@ function SubcommandBlock({ sub, prefix }: { sub: CommandOption; prefix?: string 
 function CommandCard({ command }: { command: CommandData }) {
   const [expanded, setExpanded] = useState(false);
 
-  const subcommands = command.options.filter((o) => o.type === 1 || o.type === 2);
-  const topLevelOptions = command.options.filter((o) => o.type !== 1 && o.type !== 2);
+  const subcommands = command.options.filter(
+    (o) => o.type === 1 || o.type === 2,
+  );
+  const topLevelOptions = command.options.filter(
+    (o) => o.type !== 1 && o.type !== 2,
+  );
   const hasDetails = subcommands.length > 0 || topLevelOptions.length > 0;
 
   return (
@@ -187,8 +209,12 @@ function CommandCard({ command }: { command: CommandData }) {
         )}
 
         <div className="flex flex-1 items-center gap-3">
-          <code className="text-sm font-bold text-primary">/{command.name}</code>
-          <span className="text-sm text-muted-foreground">{command.description}</span>
+          <code className="text-sm font-bold text-primary">
+            /{command.name}
+          </code>
+          <span className="text-sm text-muted-foreground">
+            {command.description}
+          </span>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -235,7 +261,8 @@ export function CommandDocs() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  if (isLoading) return <Loading mode="fullscreen" text="Loading commands..." />;
+  if (isLoading)
+    return <Loading mode="fullscreen" text="Loading commands..." />;
 
   const payload = data as CommandsPayload | undefined;
   const allCommands = (payload?.commands ?? []) as CommandData[];
@@ -257,7 +284,8 @@ export function CommandDocs() {
   }
 
   const sortedCategories = [...grouped.keys()].sort(
-    (a, b) => CATEGORY_ORDER.indexOf(a as any) - CATEGORY_ORDER.indexOf(b as any),
+    (a, b) =>
+      CATEGORY_ORDER.indexOf(a as any) - CATEGORY_ORDER.indexOf(b as any),
   );
 
   return (
@@ -287,7 +315,11 @@ export function CommandDocs() {
             <p className="text-sm text-muted-foreground">
               {allCommands.length} commands registered
               {payload?.generatedAt && (
-                <> · Generated {new Date(payload.generatedAt).toLocaleDateString()}</>
+                <>
+                  {" "}
+                  · Generated{" "}
+                  {new Date(payload.generatedAt).toLocaleDateString()}
+                </>
               )}
             </p>
           </div>
@@ -319,13 +351,17 @@ export function CommandDocs() {
             </button>
             {CATEGORY_ORDER.map((cat) => {
               const meta = CATEGORY_META[cat];
-              const count = allCommands.filter((c) => c.category === cat).length;
+              const count = allCommands.filter(
+                (c) => c.category === cat,
+              ).length;
               if (count === 0) return null;
               return (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setCategoryFilter(categoryFilter === cat ? null : cat)}
+                  onClick={() =>
+                    setCategoryFilter(categoryFilter === cat ? null : cat)
+                  }
                   className={cn(
                     "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
                     categoryFilter === cat
@@ -342,7 +378,9 @@ export function CommandDocs() {
 
         {sortedCategories.length === 0 ? (
           <div className="flex flex-1 items-center justify-center">
-            <p className="text-muted-foreground">No commands match your search.</p>
+            <p className="text-muted-foreground">
+              No commands match your search.
+            </p>
           </div>
         ) : (
           <div className="flex flex-col gap-6">
@@ -356,7 +394,9 @@ export function CommandDocs() {
               return (
                 <section key={category}>
                   <div className="mb-3 flex items-center gap-2">
-                    <h2 className="text-lg font-semibold">{meta.label} Commands</h2>
+                    <h2 className="text-lg font-semibold">
+                      {meta.label} Commands
+                    </h2>
                     <Badge variant="secondary" className="text-xs">
                       {cmds.length}
                     </Badge>
