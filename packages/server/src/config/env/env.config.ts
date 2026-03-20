@@ -135,6 +135,13 @@ const envSchema = z.object({
   PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
   PUPPETEER_BASE_URL: z.string().url().optional(),
 
+  // Playtime sync (cross-environment forwarding)
+  PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
+  PLAYTIME_SYNC_SECRET: z
+    .string()
+    .min(32, "Playtime sync secret must be at least 32 characters")
+    .optional(),
+
   // CurseForge
   CURSEFORGE_API_KEY: z.string().min(1).optional(),
 
