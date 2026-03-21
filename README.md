@@ -7,11 +7,10 @@
 ![Discord](https://img.shields.io/badge/Discord-Integration-7289DA?logo=discord&logoColor=white)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-5E7C16?logo=minecraft&logoColor=white)
 ![tRPC](https://img.shields.io/badge/tRPC-v11-2596BE?logo=trpc&logoColor=white)
-![Stripe](https://img.shields.io/badge/Stripe-Payments-635BFF?logo=stripe&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-PostgreSQL-2496ED?logo=docker&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-Monorepo-F69220?logo=pnpm&logoColor=white)
 
-Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, **Stripe-powered donations**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
+Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
 
 - **Live:** [create-rington.com](https://create-rington.com)
 - **Dev:** [dev.create-rington.com](https://dev.create-rington.com)
@@ -51,7 +50,7 @@ Createrington is a **complete ecosystem** linking Minecraft gameplay to Discord 
 
 ### Discord OAuth & Verified Registration
 
-Players log in via Discord OAuth. The server issues a short-lived JWT and a 30-day HTTP-only refresh token. Account verification links a Discord identity to a Minecraft UUID, gating access to protected features like trading and donations.
+Players log in via Discord OAuth. The server issues a short-lived JWT and a 30-day HTTP-only refresh token. Account verification links a Discord identity to a Minecraft UUID, gating access to protected features like trading.
 
 ### Real-Time Chat Bridge
 
@@ -68,10 +67,6 @@ A fully simulated exchange with three token tiers (memecoins, stablecoins, blue-
 ### Waitlist & Application System
 
 Prospective players apply via the website. Admins review, approve, or decline applications from the admin dashboard. Approved players receive Discord notifications and are automatically whitelisted.
-
-### Stripe-Powered Donations
-
-One-time and recurring monthly donations via Stripe Checkout. Webhook processing grants in-game perks and supporter roles automatically upon successful payment.
 
 ### Interactive World Map
 
@@ -128,10 +123,6 @@ OpenAI generates in-character market news articles for the crypto economy, publi
 ### Admin Crypto Panel
 
 ![Admin Crypto Token Management](screenshots/admin-crypto.png)
-
-### Donation Page
-
-![Donation Page](screenshots/donate.png)
 
 ---
 
@@ -202,7 +193,6 @@ import type { AppRouter } from "@createrington/server/trpc";
 | Database | PostgreSQL 15 (Docker), Drizzle ORM, drizzle-kit |
 | Real-time | Socket.io (server + client) |
 | Auth | Discord OAuth, JWT (access token) + HTTP-only cookie (refresh) |
-| Payments | Stripe (Checkout Sessions, webhook processing) |
 | Discord | Discord.js v14 (two bot instances) |
 | Charts | Recharts, lightweight-charts (TradingView-style) |
 | AI | OpenAI API (market news generation) |
@@ -222,7 +212,6 @@ import type { AppRouter } from "@createrington/server/trpc";
 - [pnpm](https://pnpm.io/) v9+
 - [Docker](https://www.docker.com/) (for PostgreSQL)
 - Discord application with a bot token and OAuth2 credentials
-- Stripe account (for donations)
 - Minecraft server with RCON enabled
 
 ### Cloning & Installing
@@ -253,8 +242,6 @@ Key variables:
 | `DISCORD_CLIENT_ID` | Discord application client ID |
 | `DISCORD_CLIENT_SECRET` | Discord application client secret |
 | `DISCORD_GUILD_ID` | Your Discord server (guild) ID |
-| `STRIPE_SECRET_KEY` | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `OPENAI_API_KEY` | OpenAI API key (for market news) |
 | `RCON_HOST` | Minecraft server RCON host |
 | `RCON_PORT` | Minecraft server RCON port |
@@ -392,7 +379,6 @@ The API surface is split between **tRPC procedures** (primary, type-safe) and a 
 | `account` | `get`, `update`, `getPlaytime`, `getStats` | Profile, settings, playtime |
 | `achievements` | `list`, `get` | Achievement progress |
 | `crypto` | `getPortfolio`, `getHoldings`, `trade`, `placeOrder`, `cancelOrder`, `getOrders`, `getTransactions`, `getAlerts`, `createAlert`, `deleteAlert`, `getWatchlist`, `addToWatchlist`, `removeFromWatchlist` | Trading, orders, portfolio, alerts |
-| `donations` | `createCheckoutSession`, `list` | Stripe checkout, donation history |
 
 #### Admin (requires admin flag)
 
@@ -403,7 +389,6 @@ The API surface is split between **tRPC procedures** (primary, type-safe) and a 
 | `servers` | `list`, `get` | Server details |
 | `waitlist` | `list`, `approve`, `decline` | Application review |
 | `crypto` | `listTokens`, `createToken`, `updateToken`, `deleteToken`, `overridePrice`, `triggerEvent` | Token management |
-| `donations` | `list` | Donation tracking |
 | `embeds` | `list`, `get`, `create`, `update`, `delete` | Discord embed presets |
 | `autoMessages` | `list`, `create`, `update`, `delete` | Scheduled Discord messages |
 | `announcements` | `send` | In-game broadcast announcements |
@@ -419,7 +404,6 @@ The API surface is split between **tRPC procedures** (primary, type-safe) and a 
 | GET | `/auth/discord` | Initiate Discord OAuth flow |
 | GET | `/auth/discord/callback` | OAuth callback, issues JWT |
 | POST | `/auth/refresh` | Refresh access token |
-| POST | `/webhooks/stripe` | Stripe webhook receiver |
 | GET | `/api/players` | Live player list (used by Minecraft plugin) |
 | POST | `/api/verify` | Minecraft login token verification |
 
@@ -474,7 +458,6 @@ Key services registered in the DI container (`packages/server/src/services/conta
 | `LEADERBOARD_SERVICE` | Playtime and economy leaderboard aggregation |
 | `PLAYER_BAN_SERVICE` | Temporary and permanent ban management |
 | `CRYPTO_MARKET_SERVICE` | Price ticks, order matching, market events, IPOs |
-| `DONATION_SERVICE` | Stripe webhook processing and perk fulfillment |
 
 Services with async lifecycle (Discord bots, WebSocket, etc.) are accessed via `getService<T>(Services.KEY)`. Stateless singletons are imported directly.
 
@@ -551,7 +534,6 @@ The admin panel (accessible at `/admin`) provides complete control over the comm
 
 - View and manage all crypto tokens (create, update, delete, override price)
 - Trigger market events manually (crash, new listing, IPO)
-- View donation history and Stripe payment records
 
 ### Discord Tools
 
@@ -613,6 +595,7 @@ Slash commands are defined in `packages/server/src/discord/commands/` and deploy
 
 - [**Createrington Currency**](https://github.com/matejhozlar/createrington-currency) — Minecraft mod providing in-game currency integration with this platform
 - [**Createrington: Cogs & Steam**](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam) — The official Minecraft modpack
+- [**mc-server**](https://github.com/matejhozlar/mc-page) — The original predecessor to this project; a single-package Node.js + React implementation of the Createrington portal before the rewrite into this TypeScript monorepo
 
 ---
 
