@@ -32,6 +32,7 @@ import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
 import { maintenanceService } from "./maintenance";
 import { PlaytimeForwarderService } from "./playtime/forwarder.service";
+import { DonationService } from "./donation/donation.service";
 
 /**
  * Registers all application services with the shared container
@@ -310,6 +311,15 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
+  );
+
+  container.register(
+    Services.DONATION_SERVICE,
+    async (c) => {
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+      return new DonationService(mainBot);
+    },
+    { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
 
   // =========================================================================
