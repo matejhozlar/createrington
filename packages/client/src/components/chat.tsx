@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { mcHeadsAvatar } from "@/lib/external-urls";
 import { useParams } from "react-router-dom";
 import { useWebSocket } from "@/contexts/websocket";
 import { useServerData } from "@/contexts/server-data";
@@ -998,7 +999,7 @@ function PlayerRow({
   /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
 }) {
-  const avatarUrl = `https://mc-heads.net/avatar/${uuid}`;
+  const avatarUrl = mcHeadsAvatar(uuid);
   const [broken, setBroken] = useState(false);
 
   const start =

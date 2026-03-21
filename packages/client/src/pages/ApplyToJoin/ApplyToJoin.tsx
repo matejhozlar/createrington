@@ -1,4 +1,5 @@
 import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
+import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
@@ -135,7 +136,7 @@ export function ApplyToJoin() {
 
             <Button asChild className="w-full">
               <a
-                href="https://discord.gg/mtF6MDHj4Z"
+                href={DISCORD_INVITE_URL}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -163,7 +164,7 @@ export function ApplyToJoin() {
 
           <Button asChild variant="outline" className="w-full">
             <a
-              href="https://discord.gg/mtF6MDHj4Z"
+              href={DISCORD_INVITE_URL}
               target="_blank"
               rel="noopener noreferrer"
             >

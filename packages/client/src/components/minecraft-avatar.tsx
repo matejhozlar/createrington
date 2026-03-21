@@ -1,6 +1,7 @@
 "use client";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { mcHeadsAvatar } from "@/lib/external-urls";
 
 interface MinecraftAvatarProps {
   username: string;
@@ -15,7 +16,7 @@ export function MinecraftAvatar({
   size = 32,
   className = "",
 }: MinecraftAvatarProps) {
-  const avatarUrl = uuid ? `https://mc-heads.net/avatar/${uuid}` : undefined;
+  const avatarUrl = uuid ? mcHeadsAvatar(uuid) : undefined;
 
   const avatarFallbackLetter = username.trim().charAt(0).toUpperCase();
 
