@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { mcHeadsBody } from "@/lib/external-urls";
 import { useSearchParams } from "react-router-dom";
 
 interface PlayerData {
@@ -163,7 +164,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-1" />
             <img
-              src={`https://mc-heads.net/body/${left.uuid}`}
+              src={mcHeadsBody(left.uuid)}
               alt={left.username}
               className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
@@ -212,7 +213,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-5" />
             <img
-              src={`https://mc-heads.net/body/${right.uuid}`}
+              src={mcHeadsBody(right.uuid)}
               alt={right.username}
               className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"

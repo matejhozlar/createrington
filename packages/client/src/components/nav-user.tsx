@@ -1,6 +1,7 @@
 "use client";
 
 import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from "lucide-react";
+import { mcHeadsAvatar } from "@/lib/external-urls";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -69,9 +70,8 @@ export function NavUser({ user }: { user: User }) {
     logout();
   };
 
-  // Fetch the player's Minecraft avatar from mc-heads.net using their UUID
   const crafatarAvatarUrl = user.minecraftUuid
-    ? `https://mc-heads.net/avatar/${user.minecraftUuid}`
+    ? mcHeadsAvatar(user.minecraftUuid)
     : undefined;
 
   // Prefer the Minecraft username for the fallback initial; fall back to Discord username
