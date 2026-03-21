@@ -458,6 +458,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
    */
   private parseEmbeds(embeds: Embed[]): ParsedEmbed[] {
     return embeds.map((embed) => ({
+      type: embed.data?.type || undefined,
       title: this.stripBackticks(embed.title),
       description: this.stripBackticks(embed.description),
       url: embed.url || undefined,
@@ -486,6 +487,13 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
             url: embed.image.url,
             width: embed.image.width || undefined,
             height: embed.image.height || undefined,
+          }
+        : undefined,
+      video: embed.video
+        ? {
+            url: embed.video.url,
+            width: embed.video.width || undefined,
+            height: embed.video.height || undefined,
           }
         : undefined,
       thumbnail: embed.thumbnail
