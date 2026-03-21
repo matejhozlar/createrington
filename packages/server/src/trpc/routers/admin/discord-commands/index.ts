@@ -9,6 +9,7 @@ const JSON_PATH = path.join(
   "..",
   "..",
   "..",
+  "..",
   "config",
   "discord-commands.json",
 );
