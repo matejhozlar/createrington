@@ -48,6 +48,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
+ * Permission configuration for the leaderboard command
+ * Requires administrator privileges to execute
+ */
+export const permissions = {
+  requireAdmin: true,
+};
+
+/**
  * Executes the cooldown management command
  *
  * Handles three subcommands:

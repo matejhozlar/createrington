@@ -26,7 +26,7 @@ export const data = new SlashCommandBuilder()
  * Requires admin privileges to execute
  */
 export const permissions = {
-  requireAdmin: true,
+  requireOwner: true,
 };
 
 /**
