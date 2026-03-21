@@ -237,6 +237,11 @@ const config = {
     baseUrl: env.PUPPETEER_BASE_URL,
   },
 
+  stripe: {
+    secretKey: env.STRIPE_SECRET_KEY,
+    webhookSecret: env.STRIPE_WEBHOOK_SECRET,
+  },
+
   economy: {
     reward: {
       daily: 50,

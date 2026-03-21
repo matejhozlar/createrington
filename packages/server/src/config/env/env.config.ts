@@ -149,6 +149,12 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
   OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
+  // Stripe
+  STRIPE_SECRET_KEY: z.string().min(1, "Stripe secret key is required"),
+  STRIPE_WEBHOOK_SECRET: z
+    .string()
+    .min(1, "Stripe webhook secret is required"),
+
   // Email
   EMAIL_HOST: z
     .string()

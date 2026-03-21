@@ -108,6 +108,8 @@ export const playtimeRepo = new repositories.PlaytimeRepository();
 
 export const balanceRepo = new repositories.BalanceRepository();
 
+export const donationRepo = new repositories.DonationRepository();
+
 export const playerStrikeRepo = new repositories.PlayerStrikeRepository();
 
 export const playerSessionRepo = new repositories.PlayerSessionRepository();
@@ -125,6 +127,7 @@ export const R = {
   waitlistRepo,
   playtimeRepo,
   balanceRepo,
+  donationRepo,
   playerRepo,
   playerAuditRepo,
   playerBalanceRepo,
