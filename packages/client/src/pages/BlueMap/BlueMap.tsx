@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { MapPinOff } from "lucide-react";
 
-const BLUEMAP_URL = "https://create-rington.com/bluemap";
+const BLUEMAP_URL = import.meta.env.VITE_BLUEMAP_URL as string;
 
 export function BlueMap() {
   const location = useLocation();
