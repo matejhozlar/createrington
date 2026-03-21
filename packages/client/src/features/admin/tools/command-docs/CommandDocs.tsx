@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Search,
-  Shield,
   ShieldAlert,
   Crown,
   Clock,
@@ -84,17 +83,6 @@ function PermissionBadge({ command }: { command: CommandData }) {
       <Badge variant="outline" className="gap-1 border-red-500/30 text-red-400">
         <ShieldAlert className="size-3" />
         Admin
-      </Badge>
-    );
-  }
-  if (command.defaultMemberPermissions) {
-    return (
-      <Badge
-        variant="outline"
-        className="gap-1 border-orange-500/30 text-orange-400"
-      >
-        <Shield className="size-3" />
-        Discord Admin
       </Badge>
     );
   }

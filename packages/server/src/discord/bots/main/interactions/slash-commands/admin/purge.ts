@@ -30,6 +30,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
+ * Permission configuration for the purge command
+ * Requires admin privileges to execute
+ */
+export const permissions = {
+  requireAdmin: true,
+};
+
+/**
  * Executes the purge command to bulk delete messages from a channel
  *
  * @param interaction - The chat input command interaction

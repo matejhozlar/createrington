@@ -23,6 +23,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
+ * Permission configuration for the username command
+ * Requires admin privileges to execute
+ */
+export const permissions = {
+  requireAdmin: true,
+};
+
+/**
  * Executes the username command to retrieve and display user's Minecraft username
  *
  * Process:

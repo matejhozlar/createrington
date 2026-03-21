@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-03-20T14:43:11.906Z",
+  "generatedAt": "2026-03-21T17:00:00.000Z",
   "commands": [
     {
       "name": "cooldown",
@@ -40,6 +40,9 @@
         }
       ],
       "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
       "env": "prod"
     },
     {
@@ -111,6 +114,9 @@
         }
       ],
       "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
       "env": "prod"
     },
     {
@@ -152,6 +158,9 @@
         }
       ],
       "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
       "env": "prod"
     },
     {
@@ -208,6 +217,27 @@
       "category": "admin",
       "options": [],
       "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "username",
+      "description": "Retrieve user's Minecraft username",
+      "category": "admin",
+      "options": [
+        {
+          "name": "user",
+          "description": "User to retrieve username for",
+          "required": true,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
       "env": "prod"
     },
     {
@@ -627,21 +657,6 @@
         "type": "user",
         "message": "Please wait before checking status again!"
       },
-      "env": "prod"
-    },
-    {
-      "name": "username",
-      "description": "Retrieve user's Minecraft username",
-      "category": "user",
-      "options": [
-        {
-          "name": "user",
-          "description": "User to retrieve username for",
-          "required": true,
-          "type": 6
-        }
-      ],
-      "defaultMemberPermissions": "8",
       "env": "prod"
     },
     {
