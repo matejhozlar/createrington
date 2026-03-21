@@ -54,6 +54,7 @@ export interface CachedMessage {
  * Parsed embed for web <-> Discord
  */
 export interface ParsedEmbed {
+  type?: string;
   title?: string;
   description?: string;
   url?: string;
@@ -74,6 +75,11 @@ export interface ParsedEmbed {
     inline?: boolean;
   }>;
   image?: {
+    url: string;
+    width?: number;
+    height?: number;
+  };
+  video?: {
     url: string;
     width?: number;
     height?: number;

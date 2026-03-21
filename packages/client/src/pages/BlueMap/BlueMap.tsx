@@ -3,11 +3,13 @@
 // Currently hardcoded to create-rington.com/bluemap.
 
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { MapPinOff } from "lucide-react";
 
 const BLUEMAP_URL = "https://create-rington.com/bluemap";
 
 export function BlueMap() {
+  const location = useLocation();
   const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
     "loading",
   );
@@ -71,7 +73,7 @@ export function BlueMap() {
   return (
     <div className="flex h-full w-full flex-1">
       <iframe
-        src={BLUEMAP_URL}
+        src={`${BLUEMAP_URL}/${location.hash}`}
         title="BlueMap Viewer"
         className="h-full w-full flex-1 border-none"
       />

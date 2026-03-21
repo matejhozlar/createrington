@@ -35,6 +35,35 @@ import { messagesApi } from "@/services/api/user/messages";
 // Types & Helpers
 // ============================================================================
 
+const XAERO_WAYPOINT_REGEX =
+  /xaero-waypoint:([^:]+):[^:]*:(-?\d+|~):(-?\d+|~):(-?\d+|~):[^:]*:[^:]*:[^:]*:(Internal-[\w-]+)/g;
+
+function transformWaypoints(text: string): string {
+  return text.replace(
+    XAERO_WAYPOINT_REGEX,
+    (_, name, x, y, z, dimensionId: string) => {
+      let world = "world";
+      let badge = "🌍";
+
+      if (dimensionId.includes("nether")) {
+        world = "world_the_nether";
+        badge = "🔴";
+      } else if (dimensionId.includes("end")) {
+        world = "world_the_end";
+        badge = "🟣";
+      }
+
+      const safeX = x === "~" ? "0" : x;
+      const safeY = y === "~" ? "64" : y;
+      const safeZ = z === "~" ? "0" : z;
+
+      const url = `/blue-map#${world}:${safeX}:${safeY}:${safeZ}:1500:0:0:0:0:perspective`;
+
+      return `${badge} [${name} (${safeX}, ${safeY}, ${safeZ})](${url})`;
+    },
+  );
+}
+
 interface SourceConfig {
   label: string;
   color: string;
@@ -718,7 +747,9 @@ function MessageRow({
         )}
 
         {message.content && (
-          <ChatMarkdown variant="body">{message.content}</ChatMarkdown>
+          <ChatMarkdown variant="body">
+            {transformWaypoints(message.content)}
+          </ChatMarkdown>
         )}
 
         {imageAttachments.length > 0 && (
@@ -738,106 +769,144 @@ function MessageRow({
           </span>
         )}
 
-        {message.embeds.map((embed, i) => (
-          <div
-            key={i}
-            className="mt-2 overflow-hidden rounded-lg border border-border bg-card/60 p-3"
-            style={{
-              borderLeftWidth: "3px",
-              borderLeftColor:
-                embed.color !== undefined
-                  ? `#${embed.color.toString(16).padStart(6, "0")}`
-                  : "var(--sidebar-primary)",
-            }}
-          >
-            {embed.author && (
-              <div className="mb-1 flex items-center gap-1.5">
-                {embed.author.iconUrl && (
+        {message.embeds.map((embed, i) => {
+          const isMedia =
+            embed.type === "gifv" ||
+            embed.type === "image" ||
+            embed.type === "video";
+
+          if (isMedia) {
+            const mediaUrl =
+              embed.video?.url || embed.image?.url || embed.thumbnail?.url;
+            if (!mediaUrl) return null;
+
+            const isVideo = !!embed.video?.url;
+            return isVideo ? (
+              <video
+                key={i}
+                src={mediaUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="mt-2 max-h-64 max-w-sm rounded"
+                onLoadedData={onImageLoad}
+              />
+            ) : (
+              <img
+                key={i}
+                src={mediaUrl}
+                alt={embed.title || ""}
+                className="mt-2 max-h-64 max-w-sm rounded object-contain"
+                onLoad={onImageLoad}
+              />
+            );
+          }
+
+          return (
+            <div
+              key={i}
+              className="mt-2 overflow-hidden rounded-lg border border-border bg-card/60 p-3"
+              style={{
+                borderLeftWidth: "3px",
+                borderLeftColor:
+                  embed.color !== undefined
+                    ? `#${embed.color.toString(16).padStart(6, "0")}`
+                    : "var(--sidebar-primary)",
+              }}
+            >
+              {embed.author && (
+                <div className="mb-1 flex items-center gap-1.5">
+                  {embed.author.iconUrl && (
+                    <img
+                      src={embed.author.iconUrl}
+                      alt=""
+                      className="size-5 rounded-full object-cover"
+                    />
+                  )}
+                  <span className="text-sm font-semibold text-foreground">
+                    {embed.author.url ? (
+                      <a
+                        href={embed.author.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:underline"
+                      >
+                        {embed.author.name}
+                      </a>
+                    ) : (
+                      embed.author.name
+                    )}
+                  </span>
+                </div>
+              )}
+
+              <div className="flex gap-4">
+                <div className="min-w-0 flex-1">
+                  {embed.title && (
+                    <ChatMarkdown variant="embed-title">
+                      {embed.title}
+                    </ChatMarkdown>
+                  )}
+                  {embed.description && (
+                    <div className={embed.title ? "mt-1" : ""}>
+                      <ChatMarkdown variant="embed-body">
+                        {embed.description}
+                      </ChatMarkdown>
+                    </div>
+                  )}
+
+                  {embed.fields && embed.fields.length > 0 && (
+                    <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
+                      {embed.fields.map((field, j) => (
+                        <div
+                          key={j}
+                          className={field.inline ? "" : "col-span-3"}
+                        >
+                          <div className="text-xs font-semibold text-foreground">
+                            {field.name}
+                          </div>
+                          <ChatMarkdown variant="embed-body">
+                            {field.value}
+                          </ChatMarkdown>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {embed.thumbnail && (
                   <img
-                    src={embed.author.iconUrl}
+                    src={embed.thumbnail.url}
                     alt=""
-                    className="size-5 rounded-full object-cover"
+                    className="size-16 shrink-0 rounded object-cover"
                   />
                 )}
-                <span className="text-sm font-semibold text-foreground">
-                  {embed.author.url ? (
-                    <a
-                      href={embed.author.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline"
-                    >
-                      {embed.author.name}
-                    </a>
-                  ) : (
-                    embed.author.name
-                  )}
-                </span>
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <div className="min-w-0 flex-1">
-                {embed.title && (
-                  <ChatMarkdown variant="embed-title">
-                    {embed.title}
-                  </ChatMarkdown>
-                )}
-                {embed.description && (
-                  <div className={embed.title ? "mt-1" : ""}>
-                    <ChatMarkdown variant="embed-body">
-                      {embed.description}
-                    </ChatMarkdown>
-                  </div>
-                )}
-
-                {embed.fields && embed.fields.length > 0 && (
-                  <div className="mt-2 grid grid-cols-3 gap-x-2 gap-y-1.5">
-                    {embed.fields.map((field, j) => (
-                      <div key={j} className={field.inline ? "" : "col-span-3"}>
-                        <div className="text-xs font-semibold text-foreground">
-                          {field.name}
-                        </div>
-                        <ChatMarkdown variant="embed-body">
-                          {field.value}
-                        </ChatMarkdown>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              {embed.thumbnail && (
+              {embed.image && (
                 <img
-                  src={embed.thumbnail.url}
+                  src={embed.image.url}
                   alt=""
-                  className="size-16 shrink-0 rounded object-cover"
+                  className="mt-2 max-h-64 max-w-sm rounded object-contain"
                 />
               )}
+
+              {embed.footer && (
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                  {embed.footer.iconUrl && (
+                    <img
+                      src={embed.footer.iconUrl}
+                      alt=""
+                      className="size-4 rounded-full"
+                    />
+                  )}
+                  <span>{embed.footer.text}</span>
+                </div>
+              )}
             </div>
-
-            {embed.image && (
-              <img
-                src={embed.image.url}
-                alt=""
-                className="mt-2 max-h-64 max-w-sm rounded object-contain"
-              />
-            )}
-
-            {embed.footer && (
-              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
-                {embed.footer.iconUrl && (
-                  <img
-                    src={embed.footer.iconUrl}
-                    alt=""
-                    className="size-4 rounded-full"
-                  />
-                )}
-                <span>{embed.footer.text}</span>
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {fullscreenImage && (
