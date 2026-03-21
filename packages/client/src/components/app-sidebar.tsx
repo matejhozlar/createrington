@@ -5,6 +5,7 @@ import {
   AlertCircle,
   BookOpen,
   FileText,
+  Heart,
   Home,
   LayoutDashboard,
   Map,
@@ -74,6 +75,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         icon: Wrench,
       },
       {
+        title: "Donations",
+        url: "/admin/donations",
+        icon: Heart,
+      },
+      {
         title: "Logs",
         url: "/admin/logs",
         icon: FileText,
@@ -126,6 +132,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Guides",
         url: "/guides",
         icon: BookOpen,
+      },
+      {
+        title: "Donate",
+        url: "/donate",
+        icon: Heart,
+        requiresAuth: true,
       },
     ],
   };
