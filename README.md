@@ -87,39 +87,39 @@ OpenAI generates in-character market news articles for the crypto economy, publi
 
 ### Homepage
 
-![Homepage](screenshots/homepage.png)
+![Homepage](screenshots/homepage.webp)
 
 ### Crypto Market
 
-![Crypto Market Overview](screenshots/crypto-market.png)
+![Crypto Market Overview](screenshots/crypto-market.webp)
 
 ### Token Price Chart
 
-![Token Chart with Candlesticks](screenshots/crypto-chart.png)
+![Token Chart with Candlesticks](screenshots/crypto-chart.webp)
 
 ### Crypto Portfolio
 
-![Player Portfolio](screenshots/crypto-portfolio.png)
+![Player Portfolio](screenshots/crypto-portfolio.webp)
 
 ### Live Player List
 
-![Online Players](screenshots/online-players.png)
+![Online Players](screenshots/online-players.webp)
 
 ### Web Chat
 
-![In-Browser Chat Bridge](screenshots/web-chat.png)
+![In-Browser Chat Bridge](screenshots/web-chat.webp)
 
 ### Admin Dashboard
 
-![Admin Dashboard Overview](screenshots/admin-dashboard.png)
+![Admin Dashboard Overview](screenshots/admin-dashboard.webp)
 
 ### Admin Player Management
 
-![Admin Player Management](screenshots/admin-players.png)
+![Admin Player Management](screenshots/admin-players.webp)
 
 ### Admin Crypto Panel
 
-![Admin Crypto Token Management](screenshots/admin-crypto.png)
+![Admin Crypto Token Management](screenshots/admin-crypto.webp)
 
 ---
 
@@ -138,7 +138,6 @@ createrington/
 ├── db/
 │   ├── docker-compose.yml
 │   └── data/test-data.sql
-├── docs/                 # Discord slash command docs
 └── scripts/              # Build helpers
 ```
 
@@ -572,7 +571,7 @@ Two bot instances serve different roles:
 
 ### Slash Commands
 
-Slash commands are defined in `packages/server/src/discord/commands/` and deployed via `pnpm deploy-commands`. See `docs/discord-commands.md` for the full auto-generated command reference.
+Slash commands are defined in `packages/server/src/discord/commands/` and deployed via `pnpm deploy-commands`.
 
 ---
 
