@@ -13,8 +13,6 @@
 Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
 
 - **Live:** [create-rington.com](https://create-rington.com)
-- **Discord:** [discord.gg/mtF6MDHj4Z](https://discord.gg/mtF6MDHj4Z)
-- **Modpack:** [Createrington: Cogs & Steam on CurseForge](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam)
 
 ## Project Goals
 
