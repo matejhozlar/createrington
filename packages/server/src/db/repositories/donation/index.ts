@@ -54,6 +54,11 @@ export class DonationRepository {
     );
   }
 
+  async count(): Promise<number> {
+    const all = await Q.donation.findAll({});
+    return all.length;
+  }
+
   async getStats(): Promise<{
     totalRaisedCents: number;
     donorCount: number;

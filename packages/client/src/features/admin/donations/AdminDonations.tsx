@@ -7,10 +7,22 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -19,17 +31,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Heart,
-  Users,
-  Euro,
-  Search,
-} from "lucide-react";
+import { Heart, Users, Euro, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Loading } from "@/components/loading-spinner";
 
 type Donation = RouterOutput["admin"]["donations"]["list"]["donations"][number];
 
@@ -69,32 +75,6 @@ function formatDate(iso: string) {
 }
 
 // =============================================================================
-// Stat card
-// =============================================================================
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-}) {
-  return (
-    <div className="flex items-center gap-4 rounded-xl border bg-card p-4">
-      <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10">
-        <Icon className="size-5 text-primary" />
-      </div>
-      <div>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        <p className="text-2xl font-semibold">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
 // Main component
 // =============================================================================
 
@@ -115,167 +95,194 @@ export function AdminDonations() {
   const pagination = listQuery.data?.pagination;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Donations</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="flex flex-1 flex-col gap-4">
+      {/* Header */}
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Donations</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
 
-      <div>
-        <h1 className="text-2xl font-semibold">Donations</h1>
-        <p className="text-sm text-muted-foreground">
-          Overview of all supporter donations
-        </p>
-      </div>
-
-      <Separator />
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          icon={Euro}
-          label="Total raised"
-          value={stats ? formatAmount(stats.totalRaisedCents, "EUR") : "—"}
-        />
-        <StatCard
-          icon={Users}
-          label="Unique donors"
-          value={stats?.donorCount ?? "—"}
-        />
-        <StatCard
-          icon={Heart}
-          label="Total donations"
-          value={stats?.donationCount ?? "—"}
-        />
-      </div>
-
-      <Separator />
-
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder="Filter by Discord ID..."
-            value={discordIdInput}
-            onChange={(e) => {
-              setDiscordIdInput(e.target.value);
-              setPage(0);
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-xl border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Discord</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Role</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listQuery.isLoading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-muted-foreground py-10"
-                >
-                  Loading...
-                </TableCell>
-              </TableRow>
-            ) : donations.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="text-center text-muted-foreground py-10"
-                >
-                  No donations found
-                </TableCell>
-              </TableRow>
-            ) : (
-              donations.map((d: Donation) => (
-                <TableRow key={d.id}>
-                  <TableCell className="font-mono text-sm">{d.id}</TableCell>
-                  <TableCell className="font-mono text-xs text-muted-foreground">
-                    {d.playerDiscordId}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {TYPE_LABELS[d.type] ?? d.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-semibold">
-                    {formatAmount(d.amountCents, d.currency)}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
-                        STATUS_STYLES[d.status] ?? STATUS_STYLES.pending,
-                      )}
-                    >
-                      {d.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(d.createdAt)}
-                  </TableCell>
-                  <TableCell>
-                    {d.supporterRoleGranted ? (
-                      <Heart className="size-4 text-primary" />
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination */}
-      {pagination && (
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">Page {page + 1}</span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-            >
-              <ChevronLeft className="size-4" />
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!pagination.hasNextPage}
-            >
-              Next
-              <ChevronRight className="size-4" />
-            </Button>
+      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+        {/* Stats */}
+        {statsQuery.isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loading size="medium" text="Loading statistics..." />
           </div>
-        </div>
-      )}
+        ) : stats ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Total Raised</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {formatAmount(stats.totalRaisedCents, "EUR")}
+                  </CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
+                  <Euro className="size-6 text-sidebar-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Unique Donors</CardDescription>
+                  <CardTitle className="text-2xl">{stats.donorCount}</CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
+                  <Users className="size-6 text-chart-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Total Donations</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {stats.donationCount}
+                  </CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
+                  <Heart className="size-6 text-chart-3" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+
+        {/* Donations Table */}
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle className="flex items-center justify-between">
+              Donations
+              {pagination?.total != null ? ` (${pagination.total})` : ""}
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  className="pl-9 text-sm font-normal"
+                  placeholder="Filter by Discord ID..."
+                  value={discordIdInput}
+                  onChange={(e) => {
+                    setDiscordIdInput(e.target.value);
+                    setPage(0);
+                  }}
+                />
+              </div>
+            </CardTitle>
+          </CardHeader>
+
+          {listQuery.isLoading ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <Loading size="medium" text="Loading donations..." />
+            </CardContent>
+          ) : donations.length === 0 ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <div className="text-center">
+                <Heart className="mx-auto size-12 text-muted-foreground" />
+                <p className="mt-2 text-muted-foreground">No donations found</p>
+              </div>
+            </CardContent>
+          ) : (
+            <>
+              <CardContent className="px-0">
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
+                    <TableRow>
+                      <TableHead className="px-4">ID</TableHead>
+                      <TableHead className="px-4">Discord</TableHead>
+                      <TableHead className="px-4">Type</TableHead>
+                      <TableHead className="px-4">Amount</TableHead>
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {donations.map((d: Donation) => (
+                      <TableRow key={d.id}>
+                        <TableCell className="px-4 font-mono text-sm">
+                          {d.id}
+                        </TableCell>
+                        <TableCell className="px-4 font-mono text-xs text-muted-foreground">
+                          {d.playerDiscordId}
+                        </TableCell>
+                        <TableCell className="px-4">
+                          <Badge variant="outline" className="text-xs">
+                            {TYPE_LABELS[d.type] ?? d.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-4 font-semibold">
+                          {formatAmount(d.amountCents, d.currency)}
+                        </TableCell>
+                        <TableCell className="px-4">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium capitalize",
+                              STATUS_STYLES[d.status] ?? STATUS_STYLES.pending,
+                            )}
+                          >
+                            {d.status}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 text-muted-foreground text-sm">
+                          {formatDate(d.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+
+              {pagination && (
+                <CardFooter className="flex items-center justify-between border-t">
+                  <span className="text-sm text-muted-foreground">
+                    Showing {page * pagination.limit + 1}–
+                    {Math.min((page + 1) * pagination.limit, pagination.total)}{" "}
+                    of {pagination.total}
+                  </span>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (page > 0) setPage((p) => p - 1);
+                        }}
+                        className={cn(
+                          page === 0 && "pointer-events-none opacity-50",
+                        )}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (pagination.hasNextPage) setPage((p) => p + 1);
+                        }}
+                        className={cn(
+                          !pagination.hasNextPage &&
+                            "pointer-events-none opacity-50",
+                        )}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </CardFooter>
+              )}
+            </>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
