@@ -133,12 +133,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/guides",
         icon: BookOpen,
       },
-      {
-        title: "Donate",
-        url: "/donate",
-        icon: Heart,
-        requiresAuth: true,
-      },
     ],
   };
 

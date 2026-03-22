@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import type { Client } from "discord.js";
 import config from "@/config";
 import { donationRepo } from "@/db";
+import { DiscordRolesNamespace as DiscordRoles } from "@/discord/constants/roles";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import type { DonationType } from "@createrington/shared/db";
 
@@ -135,13 +136,9 @@ export class DonationService {
    * Silently skips if the role is not configured or the member is not found.
    */
   private async grantSupporterRole(discordId: string): Promise<void> {
-    const roles = config.discord.guild.roles as unknown as Record<string, string>;
-    const supporterRoleId: string | undefined =
-      roles["supporter"] ?? roles["donor"];
-
-    if (!supporterRoleId) {
+    if (!DiscordRoles.SUPPORTER) {
       logger.warn(
-        "No 'supporter' or 'donor' role configured — skipping role assignment",
+        "No 'SUPPORTER' role configured — skipping role assignment",
       );
       return;
     }
@@ -163,7 +160,7 @@ export class DonationService {
         return;
       }
 
-      await RoleManager.assign(member, supporterRoleId, "Donation supporter");
+      await RoleManager.assign(member, DiscordRoles.SUPPORTER, "Donation supporter");
     } catch (error) {
       logger.error(
         `Failed to grant supporter role to ${discordId}:`,

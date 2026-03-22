@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from "lucide-react";
+import { BadgeCheck, ChevronsUpDown, Heart, LogOut, Settings } from "lucide-react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -134,6 +134,13 @@ export function NavUser({ user }: { user: User }) {
                 </NavLink>
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuItem asChild>
+              <NavLink to="/donate" className="cursor-pointer">
+                <Heart />
+                Donate
+              </NavLink>
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
 

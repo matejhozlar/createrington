@@ -1,8 +1,7 @@
 import { useState } from "react";
-import { Heart, Repeat, Zap, Star } from "lucide-react";
+import { Heart, Repeat, Zap } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -13,34 +12,12 @@ import { useToastActions } from "@/hooks/use-toast";
 // =============================================================================
 
 const DONATION_TIERS = [
-  {
-    amountCents: 500,
-    label: "€5",
-    description: "Buy me a coffee",
-    icon: Zap,
-    popular: false,
-  },
-  {
-    amountCents: 1000,
-    label: "€10",
-    description: "Support the server",
-    icon: Heart,
-    popular: false,
-  },
-  {
-    amountCents: 2000,
-    label: "€20",
-    description: "Keep the lights on",
-    icon: Star,
-    popular: true,
-  },
-  {
-    amountCents: 5000,
-    label: "€50",
-    description: "Champion supporter",
-    icon: Star,
-    popular: false,
-  },
+  { amountCents: 300, label: "€3" },
+  { amountCents: 500, label: "€5" },
+  { amountCents: 1000, label: "€10" },
+  { amountCents: 1500, label: "€15" },
+  { amountCents: 2000, label: "€20" },
+  { amountCents: 5000, label: "€50" },
 ] as const;
 
 const PERKS = [
@@ -57,7 +34,9 @@ export function Donate() {
   const toast = useToastActions();
 
   const [type, setType] = useState<"one_time" | "monthly">("one_time");
-  const [selectedCents, setSelectedCents] = useState<number>(2000);
+  const [selectedCents, setSelectedCents] = useState<number>(500);
+  const [isCustom, setIsCustom] = useState(false);
+  const [customValue, setCustomValue] = useState("");
 
   const createCheckout = trpc.user.donations.createCheckout.useMutation({
     onSuccess: ({ url }) => {
@@ -68,8 +47,15 @@ export function Donate() {
     },
   });
 
+  const donationCents = isCustom ? Math.round(Number(customValue) * 100) : selectedCents;
+  const isValidAmount = donationCents >= 100 && donationCents <= 100_000;
+
   function handleDonate() {
-    createCheckout.mutate({ type, amountCents: selectedCents });
+    if (!isValidAmount) {
+      toast.error("Invalid amount", "Please enter an amount between €1 and €1,000");
+      return;
+    }
+    createCheckout.mutate({ type, amountCents: donationCents });
   }
 
   return (
@@ -77,6 +63,8 @@ export function Donate() {
       <PageHeader
         title="Support Createrington"
         description="Help keep the server running and make it even better for everyone."
+        imageSrc="/assets/hero/gondola-station.webp"
+        imageAlt="Createrington gondola station"
       />
 
       <div className="max-w-2xl mx-auto px-5 pb-16 space-y-10">
@@ -111,42 +99,65 @@ export function Donate() {
         </div>
 
         {/* Amount tiers */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           {DONATION_TIERS.map((tier) => {
-            const Icon = tier.icon;
-            const isSelected = selectedCents === tier.amountCents;
+            const isSelected = !isCustom && selectedCents === tier.amountCents;
             return (
               <button
                 key={tier.amountCents}
                 type="button"
-                onClick={() => setSelectedCents(tier.amountCents)}
+                onClick={() => {
+                  setIsCustom(false);
+                  setSelectedCents(tier.amountCents);
+                }}
                 className={cn(
-                  "relative flex flex-col items-start gap-1 p-4 rounded-xl border text-left transition-all",
+                  "flex items-center justify-center p-4 rounded-xl border text-xl font-semibold transition-all",
                   isSelected
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border hover:border-primary/50 bg-card",
+                    ? "border-primary bg-primary/5 ring-1 ring-primary text-foreground"
+                    : "border-border hover:border-primary/50 bg-card text-muted-foreground",
                 )}
               >
-                {tier.popular && (
-                  <Badge className="absolute top-3 right-3 text-xs" variant="secondary">
-                    Popular
-                  </Badge>
-                )}
-                <Icon
-                  className={cn(
-                    "size-5",
-                    isSelected ? "text-primary" : "text-muted-foreground",
-                  )}
-                />
-                <span className="text-xl font-semibold">{tier.label}</span>
-                <span className="text-sm text-muted-foreground">
-                  {tier.description}
-                  {type === "monthly" ? "/mo" : ""}
-                </span>
+                {tier.label}{type === "monthly" ? "/mo" : ""}
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={() => setIsCustom(true)}
+            className={cn(
+              "flex items-center justify-center p-4 rounded-xl border text-xl font-semibold transition-all col-span-3",
+              isCustom
+                ? "border-primary bg-primary/5 ring-1 ring-primary text-foreground"
+                : "border-border hover:border-primary/50 bg-card text-muted-foreground",
+            )}
+          >
+            Custom amount
+          </button>
         </div>
+
+        {isCustom && (
+          <div className="flex items-center gap-3">
+            <span className="text-xl font-semibold">€</span>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              step={1}
+              value={customValue}
+              onChange={(e) => {
+                setCustomValue(e.target.value);
+                const cents = Math.round(Number(e.target.value) * 100);
+                if (cents >= 100 && cents <= 100_000) setSelectedCents(cents);
+              }}
+              placeholder="Enter amount (1–1,000)"
+              className="flex-1 rounded-xl border border-border bg-card px-4 py-3 text-xl font-semibold outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+            />
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground text-center">
+          Prices shown in EUR. Your local currency equivalent will be shown at checkout.
+        </p>
 
         <Separator />
 
@@ -169,11 +180,11 @@ export function Donate() {
           size="lg"
           className="w-full"
           onClick={handleDonate}
-          disabled={createCheckout.isPending}
+          disabled={createCheckout.isPending || (isCustom && !isValidAmount)}
         >
           {createCheckout.isPending
             ? "Redirecting to Stripe..."
-            : `Donate €${(selectedCents / 100).toFixed(2)}${type === "monthly" ? "/mo" : ""}`}
+            : `Donate €${(donationCents / 100).toFixed(2)}${type === "monthly" ? "/mo" : ""}`}
         </Button>
 
         <p className="text-center text-xs text-muted-foreground">
