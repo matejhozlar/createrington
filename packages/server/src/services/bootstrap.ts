@@ -32,6 +32,7 @@ import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
 import { maintenanceService } from "./maintenance";
 import { PlaytimeForwarderService } from "./playtime/forwarder.service";
+import { DonationService } from "./donation/donation.service";
 
 /**
  * Registers all application services with the shared container
@@ -311,6 +312,19 @@ export function registerServices(): void {
     },
     { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
   );
+
+  if (config.stripe.enabled) {
+    container.register(
+      Services.DONATION_SERVICE,
+      async (c) => {
+        const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+        return new DonationService(mainBot);
+      },
+      { dependencies: [Services.DISCORD_MAIN_BOT] },
+    );
+  } else {
+    logger.warn("Stripe keys not configured — donation service disabled");
+  }
 
   // =========================================================================
   // COMMUNICATION SERVICES

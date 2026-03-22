@@ -47,6 +47,7 @@ import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages"
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
+import { AdminDonations } from "./features/admin/donations/AdminDonations";
 import { CommandDocs } from "./features/admin/tools/command-docs/CommandDocs";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
@@ -54,6 +55,9 @@ import { Rules } from "./features/rules/Rules";
 import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
 import { TermsOfService } from "./features/legal/TermsOfService";
 import { Team } from "./features/team/Team";
+import { Donate } from "./features/donate/Donate";
+import { DonationSuccess } from "./features/donate/DonationSuccess";
+import { DonationCancel } from "./features/donate/DonationCancel";
 import { BlueMap } from "./pages/BlueMap/BlueMap";
 import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
 import { Achievements } from "./pages/Achievements/Achievements";
@@ -143,6 +147,16 @@ function AppContent() {
         <Route path="/guides" element={<GuideList />} />
         <Route path="/guides/:slug" element={<GuideDetail />} />
         <Route path="/apply-to-join" element={<ApplyToJoin />} />
+        <Route
+          path="/donate"
+          element={
+            <ProtectedRoute>
+              <Donate />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/donate/success" element={<DonationSuccess />} />
+        <Route path="/donate/cancel" element={<DonationCancel />} />
         <Route path="/blue-map" element={<BlueMap />} />
         <Route path="/online-players" element={<OnlinePlayers />} />
         <Route path="/crypto" element={<CryptoLayout />}>
@@ -287,6 +301,7 @@ function AppContent() {
                     path="tools/announcements"
                     element={<Announcements />}
                   />
+                  <Route path="donations" element={<AdminDonations />} />
                   <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="tools/command-docs" element={<CommandDocs />} />
                   <Route path="logs" element={<AdminLogs />} />

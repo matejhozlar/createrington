@@ -30,6 +30,7 @@ interface MemberRolesConfig {
   readonly newcomer: string;
   readonly tester: string;
   readonly cogsAndSteam: string;
+  readonly supporter: string;
   readonly verified: string;
   readonly cogsAndSteamnotifications: string;
   readonly cryptonotifications: string;
