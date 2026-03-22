@@ -62,15 +62,17 @@ export function PortfolioChart() {
       lineWidth: 2,
     });
 
-    const areaData: AreaData<Time>[] = data.map((d) => ({
-      time: Math.floor(
-        new Date(d.recordedAt).getTime() / 1000,
-      ) as unknown as Time,
-      value: Number(d.totalValue),
-    }));
+    const areaData: AreaData<Time>[] = data
+      .filter((d) => d.totalValue != null && !isNaN(Number(d.totalValue)))
+      .map((d) => ({
+        time: Math.floor(
+          new Date(d.recordedAt).getTime() / 1000,
+        ) as unknown as Time,
+        value: Number(d.totalValue),
+      }));
 
     // Append current portfolio value as today's data point
-    if (portfolio) {
+    if (portfolio && portfolio.totalValue != null && !isNaN(Number(portfolio.totalValue))) {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       const todayTs = Math.floor(now.getTime() / 1000) as unknown as Time;
