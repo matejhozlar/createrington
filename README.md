@@ -13,7 +13,6 @@
 Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
 
 - **Live:** [create-rington.com](https://create-rington.com)
-- **Dev:** [dev.create-rington.com](https://dev.create-rington.com)
 - **Discord:** [discord.gg/mtF6MDHj4Z](https://discord.gg/mtF6MDHj4Z)
 - **Modpack:** [Createrington: Cogs & Steam on CurseForge](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam)
 
@@ -185,22 +184,22 @@ import type { AppRouter } from "@createrington/server/trpc";
   <img src="https://skillicons.dev/icons?i=nodejs,ts,react,postgres,express,discord,docker,vite,tailwind" />
 </p>
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, Tailwind CSS v4, Shadcn/ui, Radix UI |
-| Backend | Node.js 22, Express 5, TypeScript |
-| API | tRPC v11, REST (Express routes) |
-| Database | PostgreSQL 15 (Docker), Drizzle ORM, drizzle-kit |
-| Real-time | Socket.io (server + client) |
-| Auth | Discord OAuth, JWT (access token) + HTTP-only cookie (refresh) |
-| Discord | Discord.js v14 (two bot instances) |
-| Charts | Recharts, lightweight-charts (TradingView-style) |
-| AI | OpenAI API (market news generation) |
-| Email | Nodemailer (SMTP) |
-| Rendering | Puppeteer + Canvas (image generation) |
-| Maps | BlueMap (Minecraft world map) |
-| Monorepo | pnpm workspaces |
-| Testing | Vitest (unit + integration) |
+| Layer     | Technology                                                     |
+| --------- | -------------------------------------------------------------- |
+| Frontend  | React 18, Vite, Tailwind CSS v4, Shadcn/ui, Radix UI           |
+| Backend   | Node.js 22, Express 5, TypeScript                              |
+| API       | tRPC v11, REST (Express routes)                                |
+| Database  | PostgreSQL 15 (Docker), Drizzle ORM, drizzle-kit               |
+| Real-time | Socket.io (server + client)                                    |
+| Auth      | Discord OAuth, JWT (access token) + HTTP-only cookie (refresh) |
+| Discord   | Discord.js v14 (two bot instances)                             |
+| Charts    | Recharts, lightweight-charts (TradingView-style)               |
+| AI        | OpenAI API (market news generation)                            |
+| Email     | Nodemailer (SMTP)                                              |
+| Rendering | Puppeteer + Canvas (image generation)                          |
+| Maps      | BlueMap (Minecraft world map)                                  |
+| Monorepo  | pnpm workspaces                                                |
+| Testing   | Vitest (unit + integration)                                    |
 
 ---
 
@@ -232,24 +231,24 @@ cp packages/server/.env.example packages/server/.env
 
 Key variables:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string (e.g. `postgres://user:pass@localhost:5433/createrington`) |
-| `JWT_SECRET` | Secret for signing access tokens |
-| `JWT_REFRESH_SECRET` | Secret for signing refresh tokens |
-| `DISCORD_MAIN_TOKEN` | Main bot token |
-| `DISCORD_WEB_TOKEN` | Web/OAuth bot token |
-| `DISCORD_CLIENT_ID` | Discord application client ID |
-| `DISCORD_CLIENT_SECRET` | Discord application client secret |
-| `DISCORD_GUILD_ID` | Your Discord server (guild) ID |
-| `OPENAI_API_KEY` | OpenAI API key (for market news) |
-| `RCON_HOST` | Minecraft server RCON host |
-| `RCON_PORT` | Minecraft server RCON port |
-| `RCON_PASSWORD` | Minecraft server RCON password |
-| `SMTP_HOST` | SMTP server host |
-| `SMTP_USER` | SMTP username |
-| `SMTP_PASS` | SMTP password |
-| `WEBSITE_URL` | Public website URL (e.g. `https://create-rington.com`) |
+| Variable                | Description                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | PostgreSQL connection string (e.g. `postgres://user:pass@localhost:5433/createrington`) |
+| `JWT_SECRET`            | Secret for signing access tokens                                                        |
+| `JWT_REFRESH_SECRET`    | Secret for signing refresh tokens                                                       |
+| `DISCORD_MAIN_TOKEN`    | Main bot token                                                                          |
+| `DISCORD_WEB_TOKEN`     | Web/OAuth bot token                                                                     |
+| `DISCORD_CLIENT_ID`     | Discord application client ID                                                           |
+| `DISCORD_CLIENT_SECRET` | Discord application client secret                                                       |
+| `DISCORD_GUILD_ID`      | Your Discord server (guild) ID                                                          |
+| `OPENAI_API_KEY`        | OpenAI API key (for market news)                                                        |
+| `RCON_HOST`             | Minecraft server RCON host                                                              |
+| `RCON_PORT`             | Minecraft server RCON port                                                              |
+| `RCON_PASSWORD`         | Minecraft server RCON password                                                          |
+| `SMTP_HOST`             | SMTP server host                                                                        |
+| `SMTP_USER`             | SMTP username                                                                           |
+| `SMTP_PASS`             | SMTP password                                                                           |
+| `WEBSITE_URL`           | Public website URL (e.g. `https://create-rington.com`)                                  |
 
 ### Database Setup
 
@@ -319,40 +318,40 @@ The build pipeline runs: `tsc` → `tsc-alias` (resolve path aliases) → `post-
 
 ### Root
 
-| Script | Description |
-|---|---|
-| `pnpm dev` | Start all dev processes concurrently |
-| `pnpm build` | Full production build pipeline |
-| `pnpm start` | Run the production server |
-| `pnpm typecheck` | Type-check all workspaces |
-| `pnpm lint` | Lint all workspaces |
-| `pnpm generate` | Regenerate DB types + query classes, then typecheck |
-| `pnpm generate:ci` | Same as `generate` but skips typecheck |
-| `pnpm test` | Run server tests in watch mode |
-| `pnpm test:unit` | Unit tests only |
-| `pnpm test:integration` | Integration tests only |
+| Script                  | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| `pnpm dev`              | Start all dev processes concurrently                |
+| `pnpm build`            | Full production build pipeline                      |
+| `pnpm start`            | Run the production server                           |
+| `pnpm typecheck`        | Type-check all workspaces                           |
+| `pnpm lint`             | Lint all workspaces                                 |
+| `pnpm generate`         | Regenerate DB types + query classes, then typecheck |
+| `pnpm generate:ci`      | Same as `generate` but skips typecheck              |
+| `pnpm test`             | Run server tests in watch mode                      |
+| `pnpm test:unit`        | Unit tests only                                     |
+| `pnpm test:integration` | Integration tests only                              |
 
 ### Database
 
-| Script | Description |
-|---|---|
-| `pnpm db:up` | Start PostgreSQL Docker container (port 5433) |
-| `pnpm db:down` | Stop the container |
-| `pnpm db:reset` | Wipe DB, run migrations, seed test data |
-| `pnpm db:seed` | Load test data only |
-| `pnpm db:shell` | Open a `psql` shell inside the container |
+| Script             | Description                                        |
+| ------------------ | -------------------------------------------------- |
+| `pnpm db:up`       | Start PostgreSQL Docker container (port 5433)      |
+| `pnpm db:down`     | Stop the container                                 |
+| `pnpm db:reset`    | Wipe DB, run migrations, seed test data            |
+| `pnpm db:seed`     | Load test data only                                |
+| `pnpm db:shell`    | Open a `psql` shell inside the container           |
 | `pnpm db:generate` | Generate Drizzle migration SQL from schema changes |
-| `pnpm db:migrate` | Apply pending migrations to the running database |
-| `pnpm db:destroy` | Remove container, images, and volumes |
-| `pnpm db:logs` | Tail PostgreSQL container logs |
-| `pnpm pgadmin` | Start pgAdmin container |
+| `pnpm db:migrate`  | Apply pending migrations to the running database   |
+| `pnpm db:destroy`  | Remove container, images, and volumes              |
+| `pnpm db:logs`     | Tail PostgreSQL container logs                     |
+| `pnpm pgadmin`     | Start pgAdmin container                            |
 
 ### Discord
 
-| Script | Description |
-|---|---|
-| `pnpm scrape-discord` | Regenerate `discord-entities.json` (roles, channels, categories) |
-| `pnpm deploy-commands` | Deploy Discord slash commands to the configured guild |
+| Script                 | Description                                                      |
+| ---------------------- | ---------------------------------------------------------------- |
+| `pnpm scrape-discord`  | Regenerate `discord-entities.json` (roles, channels, categories) |
+| `pnpm deploy-commands` | Deploy Discord slash commands to the configured guild            |
 
 ---
 
@@ -364,48 +363,48 @@ The API surface is split between **tRPC procedures** (primary, type-safe) and a 
 
 #### Public (no auth required)
 
-| Namespace | Procedures | Description |
-|---|---|---|
-| `servers` | `list`, `get` | Server status, player counts |
-| `players` | `list`, `get`, `getByServer` | Player stats, online status, ranks |
-| `waitlists` | `apply` | Submit a join application |
-| `metrics` | `summary`, `activity` | Public community metrics |
-| `crypto` | `listTokens`, `getToken`, `getPriceHistory`, `getMarketEvents`, `getNews`, `getLeaderboard` | Market data, charts, news |
+| Namespace   | Procedures                                                                                  | Description                        |
+| ----------- | ------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `servers`   | `list`, `get`                                                                               | Server status, player counts       |
+| `players`   | `list`, `get`, `getByServer`                                                                | Player stats, online status, ranks |
+| `waitlists` | `apply`                                                                                     | Submit a join application          |
+| `metrics`   | `summary`, `activity`                                                                       | Public community metrics           |
+| `crypto`    | `listTokens`, `getToken`, `getPriceHistory`, `getMarketEvents`, `getNews`, `getLeaderboard` | Market data, charts, news          |
 
 #### User (requires verified account)
 
-| Namespace | Procedures | Description |
-|---|---|---|
-| `account` | `get`, `update`, `getPlaytime`, `getStats` | Profile, settings, playtime |
-| `achievements` | `list`, `get` | Achievement progress |
-| `crypto` | `getPortfolio`, `getHoldings`, `trade`, `placeOrder`, `cancelOrder`, `getOrders`, `getTransactions`, `getAlerts`, `createAlert`, `deleteAlert`, `getWatchlist`, `addToWatchlist`, `removeFromWatchlist` | Trading, orders, portfolio, alerts |
+| Namespace      | Procedures                                                                                                                                                                                              | Description                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `account`      | `get`, `update`, `getPlaytime`, `getStats`                                                                                                                                                              | Profile, settings, playtime        |
+| `achievements` | `list`, `get`                                                                                                                                                                                           | Achievement progress               |
+| `crypto`       | `getPortfolio`, `getHoldings`, `trade`, `placeOrder`, `cancelOrder`, `getOrders`, `getTransactions`, `getAlerts`, `createAlert`, `deleteAlert`, `getWatchlist`, `addToWatchlist`, `removeFromWatchlist` | Trading, orders, portfolio, alerts |
 
 #### Admin (requires admin flag)
 
-| Namespace | Procedures | Description |
-|---|---|---|
-| `dashboard` | `getMetrics`, `getCharts` | KPIs, activity summaries |
-| `players` | `list`, `get`, `ban`, `unban`, `adjustBalance`, `issueStrike`, `getAuditLog` | Full player management |
-| `servers` | `list`, `get` | Server details |
-| `waitlist` | `list`, `approve`, `decline` | Application review |
-| `crypto` | `listTokens`, `createToken`, `updateToken`, `deleteToken`, `overridePrice`, `triggerEvent` | Token management |
-| `embeds` | `list`, `get`, `create`, `update`, `delete` | Discord embed presets |
-| `autoMessages` | `list`, `create`, `update`, `delete` | Scheduled Discord messages |
-| `announcements` | `send` | In-game broadcast announcements |
-| `faq` | `list`, `create`, `update`, `delete` | Knowledge base editor |
-| `logs` | `list` | Admin action audit trail |
-| `discordCommands` | `list` | Slash command introspection |
-| `metrics` | `growth`, `economy`, `moderation` | Advanced analytics |
+| Namespace         | Procedures                                                                                 | Description                     |
+| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------- |
+| `dashboard`       | `getMetrics`, `getCharts`                                                                  | KPIs, activity summaries        |
+| `players`         | `list`, `get`, `ban`, `unban`, `adjustBalance`, `issueStrike`, `getAuditLog`               | Full player management          |
+| `servers`         | `list`, `get`                                                                              | Server details                  |
+| `waitlist`        | `list`, `approve`, `decline`                                                               | Application review              |
+| `crypto`          | `listTokens`, `createToken`, `updateToken`, `deleteToken`, `overridePrice`, `triggerEvent` | Token management                |
+| `embeds`          | `list`, `get`, `create`, `update`, `delete`                                                | Discord embed presets           |
+| `autoMessages`    | `list`, `create`, `update`, `delete`                                                       | Scheduled Discord messages      |
+| `announcements`   | `send`                                                                                     | In-game broadcast announcements |
+| `faq`             | `list`, `create`, `update`, `delete`                                                       | Knowledge base editor           |
+| `logs`            | `list`                                                                                     | Admin action audit trail        |
+| `discordCommands` | `list`                                                                                     | Slash command introspection     |
+| `metrics`         | `growth`, `economy`, `moderation`                                                          | Advanced analytics              |
 
 ### REST Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/auth/discord` | Initiate Discord OAuth flow |
-| GET | `/auth/discord/callback` | OAuth callback, issues JWT |
-| POST | `/auth/refresh` | Refresh access token |
-| GET | `/api/players` | Live player list (used by Minecraft plugin) |
-| POST | `/api/verify` | Minecraft login token verification |
+| Method | Endpoint                 | Description                                 |
+| ------ | ------------------------ | ------------------------------------------- |
+| GET    | `/auth/discord`          | Initiate Discord OAuth flow                 |
+| GET    | `/auth/discord/callback` | OAuth callback, issues JWT                  |
+| POST   | `/auth/refresh`          | Refresh access token                        |
+| GET    | `/api/players`           | Live player list (used by Minecraft plugin) |
+| POST   | `/api/verify`            | Minecraft login token verification          |
 
 ---
 
@@ -415,29 +414,29 @@ The server uses Socket.io with a subscription model. Clients subscribe to specif
 
 ### Subscription Types
 
-| Type | Description |
-|---|---|
-| `SERVER_STATUS` | Server health and player counts |
-| `PLAYERS` | Player online/offline status changes |
-| `MESSAGES` | In-game chat relay |
+| Type            | Description                              |
+| --------------- | ---------------------------------------- |
+| `SERVER_STATUS` | Server health and player counts          |
+| `PLAYERS`       | Player online/offline status changes     |
+| `MESSAGES`      | In-game chat relay                       |
 | `CRYPTO_MARKET` | Price ticks, orders, market events, news |
-| `ALL` | All streams |
+| `ALL`           | All streams                              |
 
 ### Events
 
-| Event | Direction | Description |
-|---|---|---|
-| `SUBSCRIBE` | Client → Server | Subscribe to a data stream |
-| `UNSUBSCRIBE` | Client → Server | Unsubscribe from a stream |
-| `REQUEST_INITIAL_DATA` | Client → Server | Request bulk current state |
-| `INITIAL_DATA` | Server → Client | Bulk state response |
-| `UPDATE_SERVER_STATUS` | Server → Client | Server player count / health update |
-| `UPDATE_PLAYERS` | Server → Client | Player list update |
-| `UPDATE_MESSAGE` | Server → Client | New in-game/Discord chat message |
-| `UPDATE_CRYPTO_PRICES` | Server → Client | Price tick for all tokens |
-| `UPDATE_CRYPTO_ORDER` | Server → Client | Personal order fill or cancellation |
-| `CRYPTO_MARKET_EVENT` | Server → Client | Major event (crash, IPO, new listing) |
-| `CRYPTO_NEWS` | Server → Client | New AI-generated news article |
+| Event                  | Direction       | Description                           |
+| ---------------------- | --------------- | ------------------------------------- |
+| `SUBSCRIBE`            | Client → Server | Subscribe to a data stream            |
+| `UNSUBSCRIBE`          | Client → Server | Unsubscribe from a stream             |
+| `REQUEST_INITIAL_DATA` | Client → Server | Request bulk current state            |
+| `INITIAL_DATA`         | Server → Client | Bulk state response                   |
+| `UPDATE_SERVER_STATUS` | Server → Client | Server player count / health update   |
+| `UPDATE_PLAYERS`       | Server → Client | Player list update                    |
+| `UPDATE_MESSAGE`       | Server → Client | New in-game/Discord chat message      |
+| `UPDATE_CRYPTO_PRICES` | Server → Client | Price tick for all tokens             |
+| `UPDATE_CRYPTO_ORDER`  | Server → Client | Personal order fill or cancellation   |
+| `CRYPTO_MARKET_EVENT`  | Server → Client | Major event (crash, IPO, new listing) |
+| `CRYPTO_NEWS`          | Server → Client | New AI-generated news article         |
 
 ---
 
@@ -445,19 +444,19 @@ The server uses Socket.io with a subscription model. Clients subscribe to specif
 
 Key services registered in the DI container (`packages/server/src/services/container.ts`):
 
-| Service Key | Description |
-|---|---|
-| `DATABASE` | Drizzle ORM connection pool |
-| `HTTP_SERVER` | Express application instance |
-| `DISCORD_MAIN_BOT` | Main Discord bot (commands, events, leaderboards) |
-| `DISCORD_WEB_BOT` | Web Discord bot (OAuth, role assignments) |
-| `WEBSOCKET_SERVICE` | Socket.io server + subscription room manager |
-| `MESSAGE_CACHE` | Discord message cache for webhook deduplication |
+| Service Key                | Description                                        |
+| -------------------------- | -------------------------------------------------- |
+| `DATABASE`                 | Drizzle ORM connection pool                        |
+| `HTTP_SERVER`              | Express application instance                       |
+| `DISCORD_MAIN_BOT`         | Main Discord bot (commands, events, leaderboards)  |
+| `DISCORD_WEB_BOT`          | Web Discord bot (OAuth, role assignments)          |
+| `WEBSOCKET_SERVICE`        | Socket.io server + subscription room manager       |
+| `MESSAGE_CACHE`            | Discord message cache for webhook deduplication    |
 | `PLAYTIME_MANAGER_SERVICE` | Session tracking and online status synchronization |
-| `TICKET_SERVICE` | Support ticket lifecycle management |
-| `LEADERBOARD_SERVICE` | Playtime and economy leaderboard aggregation |
-| `PLAYER_BAN_SERVICE` | Temporary and permanent ban management |
-| `CRYPTO_MARKET_SERVICE` | Price ticks, order matching, market events, IPOs |
+| `TICKET_SERVICE`           | Support ticket lifecycle management                |
+| `LEADERBOARD_SERVICE`      | Playtime and economy leaderboard aggregation       |
+| `PLAYER_BAN_SERVICE`       | Temporary and permanent ban management             |
+| `CRYPTO_MARKET_SERVICE`    | Price ticks, order matching, market events, IPOs   |
 
 Services with async lifecycle (Discord bots, WebSocket, etc.) are accessed via `getService<T>(Services.KEY)`. Stateless singletons are imported directly.
 
@@ -469,11 +468,11 @@ The in-game economy is a fully simulated exchange with realistic market dynamics
 
 ### Token Tiers
 
-| Tier | Description |
-|---|---|
-| **Memecoins** | Highly volatile; periodically spawned and can crash to zero |
-| **Stablecoins** | Pegged to €1, used as a base currency for the economy |
-| **Blue-chips** | Mean-reverting, less volatile, behave like blue-chip stocks |
+| Tier            | Description                                                 |
+| --------------- | ----------------------------------------------------------- |
+| **Memecoins**   | Highly volatile; periodically spawned and can crash to zero |
+| **Stablecoins** | Pegged to €1, used as a base currency for the economy       |
+| **Blue-chips**  | Mean-reverting, less volatile, behave like blue-chip stocks |
 
 ### Trading Features
 
