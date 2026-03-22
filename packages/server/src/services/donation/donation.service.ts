@@ -137,9 +137,7 @@ export class DonationService {
    */
   private async grantSupporterRole(discordId: string): Promise<void> {
     if (!DiscordRoles.SUPPORTER) {
-      logger.warn(
-        "No 'SUPPORTER' role configured — skipping role assignment",
-      );
+      logger.warn("No 'SUPPORTER' role configured — skipping role assignment");
       return;
     }
 
@@ -160,12 +158,13 @@ export class DonationService {
         return;
       }
 
-      await RoleManager.assign(member, DiscordRoles.SUPPORTER, "Donation supporter");
-    } catch (error) {
-      logger.error(
-        `Failed to grant supporter role to ${discordId}:`,
-        error,
+      await RoleManager.assign(
+        member,
+        DiscordRoles.SUPPORTER,
+        "Donation supporter",
       );
+    } catch (error) {
+      logger.error(`Failed to grant supporter role to ${discordId}:`, error);
     }
   }
 

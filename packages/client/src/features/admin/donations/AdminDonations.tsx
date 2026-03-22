@@ -143,11 +143,7 @@ export function AdminDonations() {
         <StatCard
           icon={Euro}
           label="Total raised"
-          value={
-            stats
-              ? formatAmount(stats.totalRaisedCents, "EUR")
-              : "—"
-          }
+          value={stats ? formatAmount(stats.totalRaisedCents, "EUR") : "—"}
         />
         <StatCard
           icon={Users}
@@ -196,13 +192,19 @@ export function AdminDonations() {
           <TableBody>
             {listQuery.isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                <TableCell
+                  colSpan={7}
+                  className="text-center text-muted-foreground py-10"
+                >
                   Loading...
                 </TableCell>
               </TableRow>
             ) : donations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
+                <TableCell
+                  colSpan={7}
+                  className="text-center text-muted-foreground py-10"
+                >
                   No donations found
                 </TableCell>
               </TableRow>
@@ -251,9 +253,7 @@ export function AdminDonations() {
       {/* Pagination */}
       {pagination && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            Page {page + 1}
-          </span>
+          <span className="text-sm text-muted-foreground">Page {page + 1}</span>
           <div className="flex gap-2">
             <Button
               variant="outline"

@@ -21,13 +21,22 @@ export const userDonationsRouter = router({
         amountCents: z
           .number()
           .int()
-          .min(MIN_AMOUNT_CENTS, `Minimum donation is €${MIN_AMOUNT_CENTS / 100}`)
-          .max(MAX_AMOUNT_CENTS, `Maximum donation is €${MAX_AMOUNT_CENTS / 100}`),
+          .min(
+            MIN_AMOUNT_CENTS,
+            `Minimum donation is €${MIN_AMOUNT_CENTS / 100}`,
+          )
+          .max(
+            MAX_AMOUNT_CENTS,
+            `Maximum donation is €${MAX_AMOUNT_CENTS / 100}`,
+          ),
       }),
     )
     .mutation(async ({ input, ctx }) => {
       if (!config.stripe.enabled) {
-        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Donations are not available at this time" });
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Donations are not available at this time",
+        });
       }
       const donationService = await getService(Services.DONATION_SERVICE);
       const baseUrl = config.meta.links.website;
@@ -45,7 +54,8 @@ export const userDonationsRouter = router({
 
   history: userProcedure
     .meta({
-      description: "Get the authenticated user's donation history, most recent first.",
+      description:
+        "Get the authenticated user's donation history, most recent first.",
     })
     .query(async ({ ctx }) => {
       const donations = await donationRepo.findByDiscordId(ctx.user.discordId);

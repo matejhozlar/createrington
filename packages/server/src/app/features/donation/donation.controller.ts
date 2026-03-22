@@ -48,15 +48,11 @@ export class DonationController {
     try {
       switch (event.type) {
         case "checkout.session.completed":
-          await donationService.handleSessionCompleted(
-            event.data.object,
-          );
+          await donationService.handleSessionCompleted(event.data.object);
           break;
 
         case "customer.subscription.deleted":
-          await donationService.handleSubscriptionDeleted(
-            event.data.object,
-          );
+          await donationService.handleSubscriptionDeleted(event.data.object);
           break;
 
         default:

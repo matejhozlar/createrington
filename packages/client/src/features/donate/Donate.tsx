@@ -47,12 +47,17 @@ export function Donate() {
     },
   });
 
-  const donationCents = isCustom ? Math.round(Number(customValue) * 100) : selectedCents;
+  const donationCents = isCustom
+    ? Math.round(Number(customValue) * 100)
+    : selectedCents;
   const isValidAmount = donationCents >= 100 && donationCents <= 100_000;
 
   function handleDonate() {
     if (!isValidAmount) {
-      toast.error("Invalid amount", "Please enter an amount between €1 and €1,000");
+      toast.error(
+        "Invalid amount",
+        "Please enter an amount between €1 and €1,000",
+      );
       return;
     }
     createCheckout.mutate({ type, amountCents: donationCents });
@@ -117,7 +122,8 @@ export function Donate() {
                     : "border-border hover:border-primary/50 bg-card text-muted-foreground",
                 )}
               >
-                {tier.label}{type === "monthly" ? "/mo" : ""}
+                {tier.label}
+                {type === "monthly" ? "/mo" : ""}
               </button>
             );
           })}
@@ -156,7 +162,8 @@ export function Donate() {
         )}
 
         <p className="text-xs text-muted-foreground text-center">
-          Prices shown in EUR. Your local currency equivalent will be shown at checkout.
+          Prices shown in EUR. Your local currency equivalent will be shown at
+          checkout.
         </p>
 
         <Separator />

@@ -87,7 +87,6 @@ interface ChannelConfig {
     readonly createrington: string;
     readonly createringtonCurrency: string;
   };
-
 }
 
 interface CategoriesConfig {
