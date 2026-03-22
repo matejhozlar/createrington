@@ -47,7 +47,7 @@ Createrington is a **complete ecosystem** linking Minecraft gameplay to Discord 
 
 ### Discord OAuth & Verified Registration
 
-Players log in via Discord OAuth. The server issues a short-lived JWT and a 30-day HTTP-only refresh token. Account verification links a Discord identity to a Minecraft UUID, gating access to protected features like trading.
+Players log in via Discord OAuth. Account verification links a Discord identity to a Minecraft UUID, gating access to protected features like trading.
 
 ### Real-Time Chat Bridge
 
