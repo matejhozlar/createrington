@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { PageHeader } from "../../components/page-header";
 import { Separator } from "../../components/ui/separator";
+import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 
 const sections = [
   {
@@ -198,7 +199,7 @@ const sections = [
           </a>{" "}
           or through our{" "}
           <a
-            href="https://discord.gg/mtF6MDHj4Z"
+            href={DISCORD_INVITE_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline"
@@ -264,7 +265,7 @@ const sections = [
         </a>{" "}
         or through our{" "}
         <a
-          href="https://discord.gg/mtF6MDHj4Z"
+          href={DISCORD_INVITE_URL}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline"

@@ -25,10 +25,10 @@ export const commandRegistry: Record<string, CommandEnv> = {
   status: "prod",
   history: "prod",
   list: "prod",
-  username: "prod",
   crypto: "prod",
 
   // Admin
+  username: "prod",
   leaderboard: "prod",
   "notification-panel": "prod",
   ticket: "prod",

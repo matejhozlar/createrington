@@ -22,6 +22,14 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 /**
+ * Permission configuration for the ticket-panel command
+ * Requires admin privileges to execute
+ */
+export const permissions = {
+  requireOwner: true,
+};
+
+/**
  * Executes the ticket-panel command to create a ticket support panel
  *
  * Process:

@@ -26,6 +26,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
+ * Permission configuration for the message command
+ * Requires admin privileges to execute
+ */
+export const permissions = {
+  requireAdmin: true,
+};
+
+/**
  * Executes the message command to send a bot message to the channel
  *
  * Process:

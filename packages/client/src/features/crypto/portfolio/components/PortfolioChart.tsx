@@ -62,25 +62,33 @@ export function PortfolioChart() {
       lineWidth: 2,
     });
 
-    const areaData: AreaData<Time>[] = data.map((d) => ({
-      time: Math.floor(
-        new Date(d.recordedAt).getTime() / 1000,
-      ) as unknown as Time,
-      value: Number(d.totalValue),
-    }));
+    // Deduplicate by date (keep last snapshot per day), filter invalid values
+    const byDate = new Map<string, number>();
+    for (const d of data) {
+      const val = Number(d.totalValue);
+      if (!isFinite(val)) continue;
+      byDate.set(d.recordedAt.slice(0, 10), val);
+    }
 
     // Append current portfolio value as today's data point
     if (portfolio) {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      const todayTs = Math.floor(now.getTime() / 1000) as unknown as Time;
-      const lastPoint = areaData[areaData.length - 1];
-
-      if (!lastPoint || lastPoint.time !== todayTs) {
-        areaData.push({ time: todayTs, value: Number(portfolio.totalValue) });
-      } else {
-        lastPoint.value = Number(portfolio.totalValue);
+      const val = Number(portfolio.totalValue);
+      if (isFinite(val)) {
+        const today = new Date().toISOString().slice(0, 10);
+        byDate.set(today, val);
       }
+    }
+
+    const areaData: AreaData<Time>[] = [...byDate.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, value]) => ({
+        time: date as unknown as Time,
+        value,
+      }));
+
+    if (areaData.length === 0) {
+      chart.remove();
+      return;
     }
 
     series.setData(areaData);

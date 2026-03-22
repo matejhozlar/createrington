@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import config from "@/config";
 import authRoutes from "./auth/auth.routes";
+import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
@@ -14,6 +15,7 @@ export function registerRoutes(app: Express): void {
   const API_PREFIX = "/api";
 
   app.use(`${API_PREFIX}/auth`, authRoutes);
+  app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);

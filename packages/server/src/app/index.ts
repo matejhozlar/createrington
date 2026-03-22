@@ -24,6 +24,10 @@ export function createApp(): Express {
   if (config.envMode.isProd) {
     app.set("trust proxy", 1);
   }
+
+  // Stripe webhook requires raw body for signature verification — mount before express.json()
+  app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
+
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());

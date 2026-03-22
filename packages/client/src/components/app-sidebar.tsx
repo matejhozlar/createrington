@@ -5,6 +5,7 @@ import {
   AlertCircle,
   BookOpen,
   FileText,
+  Heart,
   Home,
   LayoutDashboard,
   Map,
@@ -72,6 +73,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Tools",
         url: "/admin/tools",
         icon: Wrench,
+      },
+      {
+        title: "Donations",
+        url: "/admin/donations",
+        icon: Heart,
       },
       {
         title: "Logs",

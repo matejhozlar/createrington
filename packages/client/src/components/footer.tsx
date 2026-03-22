@@ -51,6 +51,13 @@ export const Footer = () => {
               >
                 Team
               </NavLink>
+
+              <NavLink
+                to="/guides"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Guides
+              </NavLink>
             </nav>
           </div>
 
@@ -77,6 +84,13 @@ export const Footer = () => {
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 Players
+              </NavLink>
+
+              <NavLink
+                to="/donate"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Donate
               </NavLink>
             </nav>
           </div>

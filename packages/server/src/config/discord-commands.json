@@ -1,0 +1,703 @@
+{
+  "generatedAt": "2026-03-21T17:00:00.000Z",
+  "commands": [
+    {
+      "name": "cooldown",
+      "description": "Manage command cooldowns",
+      "category": "admin",
+      "options": [
+        {
+          "type": 1,
+          "name": "reset",
+          "description": "Reset cooldown for a user",
+          "options": [
+            {
+              "name": "user",
+              "description": "User to reset cooldowns for",
+              "required": true,
+              "type": 6
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "reset-command",
+          "description": "Reset all cooldowns for a specific command",
+          "options": [
+            {
+              "type": 3,
+              "name": "command",
+              "description": "Command name to reset",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "stats",
+          "description": "View cooldown statistics",
+          "options": []
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "leaderboard",
+      "description": "Manage leaderboards",
+      "category": "admin",
+      "options": [
+        {
+          "type": 1,
+          "name": "create",
+          "description": "Create or update leaderboard",
+          "options": [
+            {
+              "type": 3,
+              "choices": [
+                {
+                  "name": "Playtime",
+                  "value": "playtime"
+                }
+              ],
+              "name": "type",
+              "description": "Leaderboard type",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "refresh",
+          "description": "Manually refresh leaderboard",
+          "options": [
+            {
+              "type": 3,
+              "choices": [
+                {
+                  "name": "Playtime",
+                  "value": "playtime"
+                }
+              ],
+              "name": "type",
+              "description": "Leaderboard type",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "refresh-all",
+          "description": "Refresh all leaderboards",
+          "options": []
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "message",
+      "description": "Send a custom message to this channel (owner only)",
+      "category": "admin",
+      "options": [
+        {
+          "type": 3,
+          "name": "content",
+          "description": "The message to send",
+          "required": true
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "notification-panel",
+      "description": "Create or update the notification selection panel",
+      "category": "admin",
+      "options": [
+        {
+          "type": 3,
+          "name": "message_id",
+          "description": "Message ID of an existing panel to update (sends new if omitted)",
+          "required": false
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireOwner": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "purge",
+      "description": "Purge up to 100 recent messages",
+      "category": "admin",
+      "options": [
+        {
+          "max_value": 100,
+          "min_value": 1,
+          "type": 4,
+          "name": "count",
+          "description": "Number of messages to purge (1-100)",
+          "required": true
+        },
+        {
+          "name": "user",
+          "description": "Only purge messages from this user",
+          "required": false,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "server-panel",
+      "description": "Create or update the server selection panel",
+      "category": "admin",
+      "options": [
+        {
+          "type": 3,
+          "name": "message_id",
+          "description": "Message ID of an existing panel to update (sends new if omitted)",
+          "required": false
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireOwner": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "ticket",
+      "description": "Manage tickets",
+      "category": "admin",
+      "options": [
+        {
+          "type": 1,
+          "name": "open",
+          "description": "Open a ticket for a user",
+          "options": [
+            {
+              "name": "user",
+              "description": "Discord user",
+              "required": true,
+              "type": 6
+            }
+          ]
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before using the ticket command again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "ticket-panel",
+      "description": "Create or refresh the ticket panel",
+      "category": "admin",
+      "options": [],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "username",
+      "description": "Retrieve user's Minecraft username",
+      "category": "admin",
+      "options": [
+        {
+          "name": "user",
+          "description": "User to retrieve username for",
+          "required": true,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": "8",
+      "permissions": {
+        "requireAdmin": true
+      },
+      "env": "prod"
+    },
+    {
+      "name": "compare",
+      "description": "Compare stats between two players",
+      "category": "user",
+      "options": [
+        {
+          "name": "player1",
+          "description": "First player",
+          "required": true,
+          "type": 6
+        },
+        {
+          "name": "player2",
+          "description": "Second player (defaults to you)",
+          "required": false,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before comparing again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "crypto",
+      "description": "Trade crypto tokens",
+      "category": "user",
+      "options": [
+        {
+          "type": 1,
+          "name": "buy",
+          "description": "Buy crypto tokens",
+          "options": [
+            {
+              "type": 3,
+              "name": "symbol",
+              "description": "Token symbol (e.g. FLF)",
+              "required": true
+            },
+            {
+              "min_value": 1,
+              "type": 4,
+              "name": "amount",
+              "description": "Number of tokens to buy",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "sell",
+          "description": "Sell crypto tokens",
+          "options": [
+            {
+              "type": 3,
+              "name": "symbol",
+              "description": "Token symbol (e.g. FLF)",
+              "required": true
+            },
+            {
+              "min_value": 1,
+              "type": 4,
+              "name": "amount",
+              "description": "Number of tokens to sell",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "portfolio",
+          "description": "View your crypto portfolio",
+          "options": []
+        },
+        {
+          "type": 1,
+          "name": "leaderboard",
+          "description": "View the crypto trading leaderboard",
+          "options": [
+            {
+              "type": 3,
+              "choices": [
+                {
+                  "name": "Net Worth",
+                  "value": "networth"
+                },
+                {
+                  "name": "Realized P&L",
+                  "value": "pnl"
+                },
+                {
+                  "name": "Trade Volume",
+                  "value": "volume"
+                }
+              ],
+              "name": "type",
+              "description": "Leaderboard ranking type",
+              "required": false
+            }
+          ]
+        },
+        {
+          "type": 1,
+          "name": "market",
+          "description": "View market summary and stats",
+          "options": []
+        },
+        {
+          "type": 1,
+          "name": "chart",
+          "description": "View a token's price chart",
+          "options": [
+            {
+              "type": 3,
+              "name": "symbol",
+              "description": "Token symbol (e.g. FLF)",
+              "required": true
+            },
+            {
+              "type": 3,
+              "choices": [
+                {
+                  "name": "Live",
+                  "value": "tick"
+                },
+                {
+                  "name": "1 Minute",
+                  "value": "minute"
+                },
+                {
+                  "name": "1 Hour",
+                  "value": "hourly"
+                },
+                {
+                  "name": "1 Day",
+                  "value": "daily"
+                }
+              ],
+              "name": "interval",
+              "description": "Chart time interval",
+              "required": false
+            }
+          ]
+        },
+        {
+          "type": 2,
+          "name": "alert",
+          "description": "Manage price alerts",
+          "options": [
+            {
+              "type": 1,
+              "name": "add",
+              "description": "Create a price alert",
+              "options": [
+                {
+                  "type": 3,
+                  "name": "symbol",
+                  "description": "Token symbol (e.g. FLF)",
+                  "required": true
+                },
+                {
+                  "min_value": 0.000001,
+                  "type": 10,
+                  "name": "price",
+                  "description": "Target price to trigger the alert",
+                  "required": true
+                },
+                {
+                  "type": 3,
+                  "choices": [
+                    {
+                      "name": "Above",
+                      "value": "above"
+                    },
+                    {
+                      "name": "Below",
+                      "value": "below"
+                    }
+                  ],
+                  "name": "direction",
+                  "description": "Alert when price goes above or below target",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "type": 1,
+              "name": "remove",
+              "description": "Remove a price alert",
+              "options": [
+                {
+                  "type": 4,
+                  "name": "id",
+                  "description": "Alert ID to remove",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "type": 1,
+              "name": "list",
+              "description": "List your active price alerts",
+              "options": []
+            }
+          ]
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before trading again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "daily",
+      "description": "Claim your daily reward",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 10,
+        "type": "user",
+        "message": "Please wait before trying to claim your daily reward again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "history",
+      "description": "View your recent balance transactions",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking history again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "list",
+      "description": "List players on a server",
+      "category": "user",
+      "options": [
+        {
+          "type": 3,
+          "choices": [
+            {
+              "name": "Cogs & Steam",
+              "value": "1"
+            }
+          ],
+          "name": "server",
+          "description": "Server to fetch players from",
+          "required": true
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "env": "prod"
+    },
+    {
+      "name": "lottery",
+      "description": "Start or join a lottery",
+      "category": "user",
+      "options": [
+        {
+          "min_value": 10,
+          "type": 10,
+          "name": "amount",
+          "description": "Amount to enter with",
+          "required": true
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before using the lottery command again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "money",
+      "description": "Check your current balance",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking your balance again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "pay",
+      "description": "Send money to another player",
+      "category": "user",
+      "options": [
+        {
+          "name": "recipient",
+          "description": "The player to send money to",
+          "required": true,
+          "type": 6
+        },
+        {
+          "min_value": 0.001,
+          "type": 10,
+          "name": "amount",
+          "description": "Amount to send (e.g., 10)",
+          "required": true
+        },
+        {
+          "type": 3,
+          "name": "note",
+          "description": "Optional note for the transfer",
+          "required": false,
+          "max_length": 200
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 3,
+        "type": "user",
+        "message": "Please wait before sending money again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "ping",
+      "description": "Check bot latency",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking ping again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "playtime",
+      "description": "Check playtime of a user",
+      "category": "user",
+      "options": [
+        {
+          "name": "user",
+          "description": "User to check the playtime for",
+          "required": false,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking playtime again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "seen",
+      "description": "Check when a player was last online",
+      "category": "user",
+      "options": [
+        {
+          "name": "user",
+          "description": "User to check",
+          "required": false,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "skin",
+      "description": "Display a player's Minecraft skin",
+      "category": "user",
+      "options": [
+        {
+          "name": "user",
+          "description": "User to check",
+          "required": false,
+          "type": 6
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 5,
+        "type": "user",
+        "message": "Please wait before checking skins again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "status",
+      "description": "Show game server status and online player counts",
+      "category": "user",
+      "options": [],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 10,
+        "type": "user",
+        "message": "Please wait before checking status again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "register",
+      "description": "Register to Createrington",
+      "category": "public",
+      "options": [
+        {
+          "type": 3,
+          "name": "mc_name",
+          "description": "Your exact Minecraft username (case doesn't matter)",
+          "required": true
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 60,
+        "type": "user",
+        "message": "Please wait before trying to register again!"
+      },
+      "env": "prod"
+    },
+    {
+      "name": "verify",
+      "description": "Verify your token from the email invitation",
+      "category": "public",
+      "options": [
+        {
+          "type": 3,
+          "name": "token",
+          "description": "Your unique verification token",
+          "required": true
+        }
+      ],
+      "defaultMemberPermissions": null,
+      "cooldown": {
+        "duration": 60,
+        "type": "user",
+        "message": "Please wait before trying to verify again!"
+      },
+      "env": "prod"
+    }
+  ]
+}

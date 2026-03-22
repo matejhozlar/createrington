@@ -30,6 +30,7 @@ export { DiscordEmbedPresetCategoryQueries } from "./discord/embed/preset/catego
 export { DiscordEmbedPresetMessageQueries } from "./discord/embed/preset/message";
 export { DiscordGuildMemberJoinQueries } from "./discord/guild/member/join";
 export { DiscordGuildMemberLeaveQueries } from "./discord/guild/member/leave";
+export { DonationQueries } from "./donation";
 export { FaqEntryQueries } from "./faq/entry";
 export { FaqWelcomeMessageQueries } from "./faq/welcome/message";
 export { LeaderboardMessageQueries } from "./leaderboard/message";

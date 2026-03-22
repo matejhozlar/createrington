@@ -20,6 +20,7 @@ import type { PuppeteerService } from "./puppeteer";
 import type { CryptoMarketService } from "./crypto";
 import type { AiService } from "./ai";
 import type { AutoMessageService } from "./discord/auto-message";
+import type { DonationService } from "./donation/donation.service";
 
 /**
  * Service lifecycle states
@@ -436,6 +437,7 @@ export const Services = {
   CRYPTO_MARKET_SERVICE: "crypto.marketService",
   AI_SERVICE: "infra.aiService",
   AUTO_MESSAGE_SERVICE: "discord.autoMessageService",
+  DONATION_SERVICE: "donation.service",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -467,4 +469,5 @@ export interface ServiceTypeMap {
   [Services.CRYPTO_MARKET_SERVICE]: CryptoMarketService;
   [Services.AI_SERVICE]: AiService;
   [Services.AUTO_MESSAGE_SERVICE]: AutoMessageService;
+  [Services.DONATION_SERVICE]: DonationService;
 }
