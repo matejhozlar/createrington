@@ -32,7 +32,10 @@ export const adminDonationsRouter = router({
       const limit = input.limit;
       const offset = input.page * input.limit;
 
-      const all = await donationRepo.listAll({ limit: limit + 1, offset });
+      const [all, total] = await Promise.all([
+        donationRepo.listAll({ limit: limit + 1, offset }),
+        donationRepo.count(),
+      ]);
 
       const filtered = input.status
         ? all.filter((d) => d.status === input.status)
@@ -63,6 +66,7 @@ export const adminDonationsRouter = router({
           page: input.page,
           limit,
           hasNextPage,
+          total,
         },
       };
     }),
