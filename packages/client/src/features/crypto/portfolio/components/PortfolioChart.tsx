@@ -72,7 +72,11 @@ export function PortfolioChart() {
       }));
 
     // Append current portfolio value as today's data point
-    if (portfolio && portfolio.totalValue != null && !isNaN(Number(portfolio.totalValue))) {
+    if (
+      portfolio &&
+      portfolio.totalValue != null &&
+      !isNaN(Number(portfolio.totalValue))
+    ) {
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       const todayTs = Math.floor(now.getTime() / 1000) as unknown as Time;
