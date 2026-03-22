@@ -53,10 +53,10 @@ export const Footer = () => {
               </NavLink>
 
               <NavLink
-                to="/donate"
+                to="/guides"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Donate
+                Guides
               </NavLink>
             </nav>
           </div>
@@ -87,10 +87,10 @@ export const Footer = () => {
               </NavLink>
 
               <NavLink
-                to="/guides"
+                to="/donate"
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Guides
+                Donate
               </NavLink>
             </nav>
           </div>
