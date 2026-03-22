@@ -313,14 +313,18 @@ export function registerServices(): void {
     { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
   );
 
-  container.register(
-    Services.DONATION_SERVICE,
-    async (c) => {
-      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
-      return new DonationService(mainBot);
-    },
-    { dependencies: [Services.DISCORD_MAIN_BOT] },
-  );
+  if (config.stripe.enabled) {
+    container.register(
+      Services.DONATION_SERVICE,
+      async (c) => {
+        const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+        return new DonationService(mainBot);
+      },
+      { dependencies: [Services.DISCORD_MAIN_BOT] },
+    );
+  } else {
+    logger.warn("Stripe keys not configured — donation service disabled");
+  }
 
   // =========================================================================
   // COMMUNICATION SERVICES

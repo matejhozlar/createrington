@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import config from "@/config";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 
@@ -17,6 +18,11 @@ export class DonationController {
    * Verifies the signature, then delegates to DonationService.
    */
   static async handleWebhook(req: Request, res: Response): Promise<void> {
+    if (!config.stripe.enabled) {
+      res.status(503).json({ error: "Donation service not configured" });
+      return;
+    }
+
     const signature = req.headers["stripe-signature"] as string | undefined;
 
     if (!signature) {

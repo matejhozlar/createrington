@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, userProcedure } from "@/trpc/trpc";
 import { donationRepo } from "@/db";
 import { getService, Services } from "@/services";
@@ -25,6 +26,9 @@ export const userDonationsRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      if (!config.stripe.enabled) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Donations are not available at this time" });
+      }
       const donationService = await getService(Services.DONATION_SERVICE);
       const baseUrl = config.meta.links.website;
 
