@@ -137,9 +137,7 @@ export function AdminDonations() {
               <CardContent className="flex items-start justify-between">
                 <div>
                   <CardDescription>Unique Donors</CardDescription>
-                  <CardTitle className="text-2xl">
-                    {stats.donorCount}
-                  </CardTitle>
+                  <CardTitle className="text-2xl">{stats.donorCount}</CardTitle>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
                   <Users className="size-6 text-chart-2" />
@@ -167,7 +165,8 @@ export function AdminDonations() {
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
             <CardTitle className="flex items-center justify-between">
-              Donations{pagination?.total != null ? ` (${pagination.total})` : ""}
+              Donations
+              {pagination?.total != null ? ` (${pagination.total})` : ""}
               <div className="relative w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
@@ -247,7 +246,9 @@ export function AdminDonations() {
               {pagination && (
                 <CardFooter className="flex items-center justify-between border-t">
                   <span className="text-sm text-muted-foreground">
-                    Showing {page * pagination.limit + 1}–{Math.min((page + 1) * pagination.limit, pagination.total)} of {pagination.total}
+                    Showing {page * pagination.limit + 1}–
+                    {Math.min((page + 1) * pagination.limit, pagination.total)}{" "}
+                    of {pagination.total}
                   </span>
                   <PaginationContent>
                     <PaginationItem>
