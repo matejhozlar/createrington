@@ -7,8 +7,6 @@
 ![Discord](https://img.shields.io/badge/Discord-Integration-7289DA?logo=discord&logoColor=white)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-5E7C16?logo=minecraft&logoColor=white)
 ![tRPC](https://img.shields.io/badge/tRPC-v11-2596BE?logo=trpc&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-PostgreSQL-2496ED?logo=docker&logoColor=white)
-![pnpm](https://img.shields.io/badge/pnpm-Monorepo-F69220?logo=pnpm&logoColor=white)
 
 Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
 
