@@ -22,7 +22,6 @@ interface PlayerDataProviderProps {
   serverIds?: number[];
 }
 
-
 /**
  * Player Data Provider
  *

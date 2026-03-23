@@ -25,7 +25,6 @@ interface WebSocketProviderProps {
   config?: WebSocketConfig;
 }
 
-
 /**
  * WebSocket Provider
  *

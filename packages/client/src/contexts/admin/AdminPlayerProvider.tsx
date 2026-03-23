@@ -9,9 +9,7 @@ interface AdminPlayerProviderProps {
   children: React.ReactNode;
 }
 
-export function AdminPlayerProvider({
-  children,
-}: AdminPlayerProviderProps) {
+export function AdminPlayerProvider({ children }: AdminPlayerProviderProps) {
   const { servers } = useServerData();
   const { players: onlinePlayers, isPlayerOnline: checkOnline } =
     usePlayerData();

@@ -22,7 +22,6 @@ interface ServerDataProviderProps {
   serverIds?: number[];
 }
 
-
 /**
  * Server Data Provider
  *

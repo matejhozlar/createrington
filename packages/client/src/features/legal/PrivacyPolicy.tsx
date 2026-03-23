@@ -326,4 +326,4 @@ export function PrivacyPolicy() {
       </section>
     </div>
   );
-};
+}

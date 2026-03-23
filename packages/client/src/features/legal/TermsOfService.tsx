@@ -313,4 +313,4 @@ export function TermsOfService() {
       </section>
     </div>
   );
-};
+}

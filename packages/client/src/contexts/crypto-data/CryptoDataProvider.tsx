@@ -19,7 +19,6 @@ interface CryptoDataProviderProps {
   autoSubscribe?: boolean;
 }
 
-
 /**
  * Crypto Data Provider
  *

@@ -96,4 +96,4 @@ export function Rules() {
       </section>
     </div>
   );
-};
+}
