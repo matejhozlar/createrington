@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { FaqService } from "@/services/discord/faq";
@@ -47,7 +48,7 @@ export const faqRouter = router({
       }
 
       if (input.search) {
-        query = query.where({ title: { $ilike: `%${input.search}%` } });
+        query = query.where({ title: { $ilike: `%${escapeLike(input.search)}%` } });
       }
 
       const countQuery = Q.faq.entry.where({});
@@ -55,7 +56,7 @@ export const faqRouter = router({
         countQuery.where({ enabled: input.enabled });
       }
       if (input.search) {
-        countQuery.where({ title: { $ilike: `%${input.search}%` } });
+        countQuery.where({ title: { $ilike: `%${escapeLike(input.search)}%` } });
       }
 
       const [entries, total] = await Promise.all([

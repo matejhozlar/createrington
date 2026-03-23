@@ -122,6 +122,17 @@ export function formatZodError(error: ZodError<unknown>): {
   return { message, fieldErrors };
 }
 
+const SENSITIVE_KEYS = /^(password|secret|token|api_?key|authorization|cookie)$/i;
+
+function redactSensitive(obj: unknown): unknown {
+  if (!obj || typeof obj !== "object") return obj;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    result[key] = SENSITIVE_KEYS.test(key) ? "[REDACTED]" : value;
+  }
+  return result;
+}
+
 /**
  * Centralized error handling middleware
  *
@@ -188,9 +199,9 @@ export function errorHandler(
       stack: err.stack,
       path: req.path,
       method: req.method,
-      body: req.body,
+      body: redactSensitive(req.body),
       params: req.params,
-      query: req.query,
+      query: redactSensitive(req.query),
     });
   } else {
     logger.warn("Client Error:", {

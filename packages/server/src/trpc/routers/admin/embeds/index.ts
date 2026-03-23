@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
@@ -355,9 +356,9 @@ export const embedsRouter = router({
         let countQuery = Q.discord.embed.preset.where({});
 
         if (input.search) {
-          query = query.where({ name: { $ilike: `%${input.search}%` } });
+          query = query.where({ name: { $ilike: `%${escapeLike(input.search)}%` } });
           countQuery = countQuery.where({
-            name: { $ilike: `%${input.search}%` },
+            name: { $ilike: `%${escapeLike(input.search)}%` },
           });
         } else if (input.categoryId !== undefined) {
           const filter =

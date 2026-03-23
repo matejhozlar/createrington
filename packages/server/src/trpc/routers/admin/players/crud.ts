@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { Q } from "@/db";
+import { escapeLike } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import {
   parsePlayerId,
@@ -51,7 +52,7 @@ export const playersRouter = router({
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
         filters.minecraftUsername = {
-          $ilike: `%${input.minecraftUsername}%`,
+          $ilike: `%${escapeLike(input.minecraftUsername)}%`,
         };
       }
       if (input.online !== undefined) filters.online = input.online;

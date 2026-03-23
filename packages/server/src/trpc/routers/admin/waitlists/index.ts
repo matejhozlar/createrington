@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { waitlistRepo } from "@/db";
+import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { WaitlistEntryFilters } from "@createrington/shared/db";
 
@@ -46,9 +47,9 @@ export const waitlistsRouter = router({
       const filters: WaitlistEntryFilters = {};
 
       if (input.status) filters.status = input.status;
-      if (input.email) filters.email = { $ilike: `%${input.email}%` };
+      if (input.email) filters.email = { $ilike: `%${escapeLike(input.email)}%` };
       if (input.discordName) {
-        filters.discordName = { $ilike: `%${input.discordName}%` };
+        filters.discordName = { $ilike: `%${escapeLike(input.discordName)}%` };
       }
       if (input.discordId) filters.discordId = input.discordId;
       if (input.verified !== undefined) filters.verified = input.verified;
