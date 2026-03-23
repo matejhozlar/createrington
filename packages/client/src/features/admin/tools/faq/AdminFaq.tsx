@@ -9,6 +9,13 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
@@ -19,6 +26,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -77,7 +92,7 @@ export function AdminFaq() {
     entry: FaqEntry | null;
   }>({ open: false, entry: null });
 
-  const debouncedSearch = useDebouncedValue(searchQuery, 500);
+  const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
   const repostWelcome = trpc.admin.faq.repostWelcome.useMutation();
 
@@ -237,70 +252,75 @@ export function AdminFaq() {
         </div>
 
         {/* Filters & Search */}
-        <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground" />
-            <h3 className="font-semibold">Filters</h3>
-          </div>
+        <Card className="gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="size-4 text-muted-foreground" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
 
-          <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
-            <div className="relative flex-1 min-w-48">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by title..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+              <Select
+                value={enabledFilter}
+                onValueChange={(v) => {
+                  setEnabledFilter(v as EnabledFilter);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entries</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select
-              value={enabledFilter}
-              onValueChange={(v) => {
-                setEnabledFilter(v as EnabledFilter);
-                setPage(0);
-              }}
-            >
-              <SelectTrigger className="min-w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Entries</SelectItem>
-                <SelectItem value="enabled">Enabled</SelectItem>
-                <SelectItem value="disabled">Disabled</SelectItem>
-              </SelectContent>
-            </Select>
-          </form>
-        </div>
+              <Button type="submit" className="min-w-[85px]">
+                Search
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* FAQ Table */}
-        <div className="flex flex-1 flex-col gap-4 rounded-lg border border-border bg-card">
-          <div className="border-b border-border p-4">
-            <h2 className="font-semibold">
-              FAQ Entries ({total.toLocaleString()})
-            </h2>
-          </div>
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle>FAQ Entries ({total.toLocaleString()})</CardTitle>
+          </CardHeader>
 
           {loading ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <Loading size="medium" text="Loading FAQ entries..." />
-            </div>
+            </CardContent>
           ) : error ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
                 <Button
                   onClick={() => entriesQuery.refetch()}
-                  className="mt-4 cursor-pointer"
+                  className="mt-4"
                   variant="outline"
                 >
                   Try Again
                 </Button>
               </div>
-            </div>
+            </CardContent>
           ) : entries.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <MessageCircleQuestion className="mx-auto size-12 text-muted-foreground" />
                 <p className="mt-2 text-muted-foreground">
@@ -314,76 +334,65 @@ export function AdminFaq() {
                   Create First Entry
                 </Button>
               </div>
-            </div>
+            </CardContent>
           ) : (
             <>
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-sidebar-accent/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        ID
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("title")}
-                      >
-                        <div className="flex items-center">
+              <CardContent className="px-0">
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
+                    <TableRow>
+                      <TableHead className="px-4">ID</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("title")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Title
                           {renderSortIcon("title")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Mode
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Pattern
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("priority")}
-                      >
-                        <div className="flex items-center">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4">Mode</TableHead>
+                      <TableHead className="px-4">Pattern</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("priority")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Priority
                           {renderSortIcon("priority")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Status
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("createdAt")}
-                      >
-                        <div className="flex items-center">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("createdAt")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Created
                           {renderSortIcon("createdAt")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {entries.map((entry) => (
-                      <tr
-                        key={entry.id}
-                        className="transition-colors hover:bg-sidebar-accent/30"
-                      >
-                        <td className="px-4 py-3">
+                      <TableRow key={entry.id}>
+                        <TableCell className="px-4">
                           <p className="font-mono text-sm">#{entry.id}</p>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <p className="font-medium">{entry.title}</p>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <Badge variant="outline" className="text-xs">
                             {entry.matchMode === "regex" ? "Regex" : "Keywords"}
                           </Badge>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <p
                             className={cn(
                               "max-w-[200px] truncate text-xs text-muted-foreground",
@@ -393,11 +402,11 @@ export function AdminFaq() {
                           >
                             {entry.pattern}
                           </p>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <p className="text-sm">{entry.priority}</p>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <Badge
                             variant="outline"
                             className={
@@ -408,13 +417,13 @@ export function AdminFaq() {
                           >
                             {entry.enabled ? "Enabled" : "Disabled"}
                           </Badge>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4">
                           <p className="text-sm text-muted-foreground">
                             {new Date(entry.createdAt).toLocaleDateString()}
                           </p>
-                        </td>
-                        <td className="px-4 py-3">
+                        </TableCell>
+                        <TableCell className="px-4 text-right">
                           <div className="flex justify-end gap-2">
                             <Button
                               size="sm"
@@ -437,78 +446,73 @@ export function AdminFaq() {
                               <Trash2 className="size-4" />
                             </Button>
                           </div>
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
 
               {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center border-t border-border p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Showing {page * limit + 1}-
-                    {Math.min((page + 1) * limit, total)} of {total} entries
-                  </p>
+              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
+                <p className="text-sm text-muted-foreground">
+                  Showing {page * limit + 1}-
+                  {Math.min((page + 1) * limit, total)} of {total} entries
+                </p>
 
-                  <PaginationContent className="ml-auto flex-nowrap justify-end">
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (page > 0) handlePageChange(page - 1);
-                        }}
-                        className={cn(
-                          page === 0 && "pointer-events-none opacity-50",
-                          "cursor-pointer",
-                        )}
-                      />
+                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 0) handlePageChange(page - 1);
+                      }}
+                      className={cn(
+                        page === 0 && "pointer-events-none opacity-50",
+                      )}
+                    />
+                  </PaginationItem>
+
+                  {getPaginationItems().map((item, index) => (
+                    <PaginationItem
+                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                    >
+                      {item === "ellipsis" ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(item);
+                          }}
+                          isActive={page === item}
+                        >
+                          {item + 1}
+                        </PaginationLink>
+                      )}
                     </PaginationItem>
+                  ))}
 
-                    {getPaginationItems().map((item, index) => (
-                      <PaginationItem
-                        key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                      >
-                        {item === "ellipsis" ? (
-                          <PaginationEllipsis />
-                        ) : (
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              handlePageChange(item);
-                            }}
-                            isActive={page === item}
-                            className="cursor-pointer"
-                          >
-                            {item + 1}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
-                    ))}
-
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (page < totalPages - 1) handlePageChange(page + 1);
-                        }}
-                        className={cn(
-                          page >= totalPages - 1 &&
-                            "pointer-events-none opacity-50",
-                          "cursor-pointer",
-                        )}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </div>
-              )}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages - 1) handlePageChange(page + 1);
+                      }}
+                      className={cn(
+                        page >= totalPages - 1 &&
+                          "pointer-events-none opacity-50",
+                      )}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </CardFooter>
             </>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Modals */}
