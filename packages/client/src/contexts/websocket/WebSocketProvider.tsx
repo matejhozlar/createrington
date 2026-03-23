@@ -37,10 +37,10 @@ interface WebSocketProviderProps {
  * - Graceful error handling
  * - Cleanup on unmount
  */
-export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
+export function WebSocketProvider({
   children,
   config = {},
-}) => {
+}: WebSocketProviderProps) {
   // Socket instance (in state for context value)
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -536,4 +536,4 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
 
   // eslint-disable-next-line react-hooks/refs -- False positive: value contains state/callbacks, not refs
   return React.createElement(WebSocketContext.Provider, { value }, children);
-};
+}

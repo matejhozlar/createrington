@@ -278,7 +278,7 @@ const sections = [
   },
 ];
 
-export const PrivacyPolicy: React.FC = () => {
+export function PrivacyPolicy() {
   return (
     <div>
       <PageHeader
@@ -326,4 +326,4 @@ export const PrivacyPolicy: React.FC = () => {
       </section>
     </div>
   );
-};
+}

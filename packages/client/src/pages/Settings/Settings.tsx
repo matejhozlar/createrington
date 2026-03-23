@@ -1,3 +1,4 @@
+import type React from "react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
@@ -435,7 +436,7 @@ function DangerZone() {
 }
 
 /** Account Settings page — combines account info, active sessions, and danger zone actions */
-export const Settings: React.FC = () => {
+export function Settings() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">
       <div className="max-w-3xl mx-auto w-full space-y-5">
@@ -447,4 +448,4 @@ export const Settings: React.FC = () => {
       </div>
     </div>
   );
-};
+}

@@ -40,7 +40,7 @@ const rules = {
   ],
 };
 
-export const Rules: React.FC = () => {
+export function Rules() {
   return (
     <div>
       <PageHeader
@@ -96,4 +96,4 @@ export const Rules: React.FC = () => {
       </section>
     </div>
   );
-};
+}
