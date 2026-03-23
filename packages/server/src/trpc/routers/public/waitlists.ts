@@ -17,7 +17,7 @@ export const waitlistsRouter = router({
   create: publicProcedure
     .meta({
       description:
-        "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and returns a token. In waitlist mode, requires email and goes to pending.",
+        "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and returns a token. In waitlist mode, requires email and goes to pending",
     })
     .input(
       z.object({

@@ -9,7 +9,7 @@ export const accountRouter = router({
   me: userProcedure
     .meta({
       description:
-        "Get the authenticated user's account info including linked Minecraft profile and creation date.",
+        "Get the authenticated user's account info including linked Minecraft profile and creation date",
     })
     .query(async ({ ctx }) => {
       const player = await Q.player.find({ discordId: ctx.user.discordId });
@@ -30,7 +30,7 @@ export const accountRouter = router({
   sessions: userProcedure
     .meta({
       description:
-        "List all active (non-revoked, non-expired) sessions for the authenticated user.",
+        "List all active (non-revoked, non-expired) sessions for the authenticated user",
     })
     .query(async ({ ctx }) => {
       const sessions = await Q.auth.session.getActiveSessions(
@@ -50,7 +50,7 @@ export const accountRouter = router({
   revokeSession: userProcedure
     .meta({
       description:
-        "Revoke a specific session by ID. Only sessions belonging to the authenticated user can be revoked.",
+        "Revoke a specific session by ID. Only sessions belonging to the authenticated user can be revoked",
     })
     .input(z.object({ id: z.number() }))
     .mutation(async ({ ctx, input }) => {
@@ -73,7 +73,7 @@ export const accountRouter = router({
   exportData: userProcedure
     .meta({
       description:
-        "Export all personal data as a single JSON object, covering playtime, balance, moderation history, crypto, and more.",
+        "Export all personal data as a single JSON object, covering playtime, balance, moderation history, crypto, and more",
     })
     .query(async ({ ctx }) => {
       const { discordId, minecraftUuid } = ctx.user;
@@ -201,7 +201,7 @@ export const accountRouter = router({
   deleteAccount: userProcedure
     .meta({
       description:
-        "Permanently delete the account and all associated data, then kick the user from Discord. Requires typing a confirmation phrase.",
+        "Permanently delete the account and all associated data, then kick the user from Discord. Requires typing a confirmation phrase",
     })
     .input(
       z.object({

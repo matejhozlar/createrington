@@ -18,7 +18,7 @@ export const waitlistsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List waitlist entries with filtering by status, email, Discord name/ID, verified/registered status, plus pagination and sorting.",
+        "List waitlist entries with filtering by status, email, Discord name/ID, verified/registered status, plus pagination and sorting",
     })
     .input(
       z.object({
@@ -84,7 +84,7 @@ export const waitlistsRouter = router({
     }),
 
   invite: adminProcedure
-    .meta({ description: "Manually invite/accept a waitlist entry." })
+    .meta({ description: "Manually invite/accept a waitlist entry" })
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -101,7 +101,7 @@ export const waitlistsRouter = router({
     }),
 
   delete: adminProcedure
-    .meta({ description: "Delete a waitlist entry with a reason for audit." })
+    .meta({ description: "Delete a waitlist entry with a reason for audit" })
     .input(
       z.object({
         id: z.number().int().positive(),

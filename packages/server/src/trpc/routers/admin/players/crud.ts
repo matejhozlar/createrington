@@ -25,7 +25,7 @@ export const playersRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List players with filtering, pagination, sorting, and optional strike/ban count enrichment.",
+        "List players with filtering, pagination, sorting, and optional strike/ban count enrichment",
     })
     .input(
       z.object({
@@ -151,7 +151,7 @@ export const playersRouter = router({
   get: adminProcedure
     .meta({
       description:
-        "Get comprehensive player details including balance, playtime, tickets, waitlist, strikes, and bans.",
+        "Get comprehensive player details including balance, playtime, tickets, waitlist, strikes, and bans",
     })
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ input }) => {

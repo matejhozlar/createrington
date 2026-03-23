@@ -13,7 +13,7 @@ export const userDonationsRouter = router({
   createCheckout: userProcedure
     .meta({
       description:
-        "Create a Stripe checkout session for a one-time or monthly donation. Returns the Stripe-hosted checkout URL.",
+        "Create a Stripe checkout session for a one-time or monthly donation. Returns the Stripe-hosted checkout URL",
     })
     .input(
       z.object({
@@ -55,7 +55,7 @@ export const userDonationsRouter = router({
   history: userProcedure
     .meta({
       description:
-        "Get the authenticated user's donation history, most recent first.",
+        "Get the authenticated user's donation history, most recent first",
     })
     .query(async ({ ctx }) => {
       const donations = await donationRepo.findByDiscordId(ctx.user.discordId);

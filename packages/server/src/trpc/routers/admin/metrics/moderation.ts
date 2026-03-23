@@ -6,7 +6,7 @@ import { dateRangeInput } from "./schemas";
 /** Admin moderation metrics — bans, strikes, tickets, moderator leaderboard */
 export const moderationMetricsRouter = router({
   getBansByPeriod: adminProcedure
-    .meta({ description: "Get ban counts grouped by time period." })
+    .meta({ description: "Get ban counts grouped by time period" })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getBansByPeriod(
@@ -19,7 +19,7 @@ export const moderationMetricsRouter = router({
   getStrikesByPeriod: adminProcedure
     .meta({
       description:
-        "Get strike counts grouped by time period with classification breakdown.",
+        "Get strike counts grouped by time period with classification breakdown",
     })
     .input(dateRangeInput)
     .query(async ({ input }) => {
@@ -31,7 +31,7 @@ export const moderationMetricsRouter = router({
     }),
 
   getStrikeSeverityDistribution: adminProcedure
-    .meta({ description: "Get severity distribution for active strikes." })
+    .meta({ description: "Get severity distribution for active strikes" })
     .query(async () => {
       return await metricsService.moderation.getStrikeSeverityDistribution();
     }),
@@ -39,14 +39,14 @@ export const moderationMetricsRouter = router({
   getTicketOverview: adminProcedure
     .meta({
       description:
-        "Get ticket overview: total, open, closed, average resolution time.",
+        "Get ticket overview: total, open, closed, average resolution time",
     })
     .query(async () => {
       return await metricsService.moderation.getTicketOverview();
     }),
 
   getTicketVolume: adminProcedure
-    .meta({ description: "Get ticket volume grouped by time period." })
+    .meta({ description: "Get ticket volume grouped by time period" })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.moderation.getTicketVolume(
@@ -57,7 +57,7 @@ export const moderationMetricsRouter = router({
     }),
 
   getTopModerators: adminProcedure
-    .meta({ description: "Get top moderators ranked by ban count." })
+    .meta({ description: "Get top moderators ranked by ban count" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {
       return await metricsService.moderation.getTopModerators(input.limit);

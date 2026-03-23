@@ -8,20 +8,20 @@ export const economyMetricsRouter = router({
   getOverview: adminProcedure
     .meta({
       description:
-        "Get economy overview: total balance, player count, average balance.",
+        "Get economy overview: total balance, player count, average balance",
     })
     .query(async () => {
       return await metricsService.economy.getOverview();
     }),
 
   getDistribution: adminProcedure
-    .meta({ description: "Get balance distribution across predefined ranges." })
+    .meta({ description: "Get balance distribution across predefined ranges" })
     .query(async () => {
       return await metricsService.economy.getDistribution();
     }),
 
   getTransactionVolume: adminProcedure
-    .meta({ description: "Get transaction volume grouped by time period." })
+    .meta({ description: "Get transaction volume grouped by time period" })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.economy.getTransactionVolume(
@@ -32,7 +32,7 @@ export const economyMetricsRouter = router({
     }),
 
   getTopBalances: adminProcedure
-    .meta({ description: "Get top players by balance." })
+    .meta({ description: "Get top players by balance" })
     .input(z.object({ limit: z.number().int().min(1).max(100).default(10) }))
     .query(async ({ input }) => {
       return await metricsService.economy.getTopBalances(input.limit);

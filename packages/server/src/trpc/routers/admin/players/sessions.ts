@@ -8,7 +8,7 @@ export const sessionsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Get paginated session history for a player, optionally filtered by server.",
+        "Get paginated session history for a player, optionally filtered by server",
     })
     .input(
       z.object({

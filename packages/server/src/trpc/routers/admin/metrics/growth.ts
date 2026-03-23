@@ -5,13 +5,13 @@ import { dateRangeInput } from "./schemas";
 /** Admin growth metrics — registrations, waitlist funnel, Discord member trends */
 export const growthMetricsRouter = router({
   getOverview: adminProcedure
-    .meta({ description: "Get growth overview with total player count." })
+    .meta({ description: "Get growth overview with total player count" })
     .query(async () => {
       return await metricsService.growth.getOverview();
     }),
 
   getRegistrations: adminProcedure
-    .meta({ description: "Get player registrations grouped by time period." })
+    .meta({ description: "Get player registrations grouped by time period" })
     .input(dateRangeInput)
     .query(async ({ input }) => {
       return await metricsService.growth.getRegistrations(
@@ -22,7 +22,7 @@ export const growthMetricsRouter = router({
     }),
 
   getWaitlistFunnel: adminProcedure
-    .meta({ description: "Get waitlist funnel statistics." })
+    .meta({ description: "Get waitlist funnel statistics" })
     .query(async () => {
       return await metricsService.growth.getWaitlistFunnel();
     }),
