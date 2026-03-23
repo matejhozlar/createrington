@@ -317,6 +317,7 @@ export const adminServersRouter = router({
     .input(
       z.object({
         serverId: z.coerce.number().int().positive(),
+        type: z.enum(["maintenance", "modpack_update"]).default("maintenance"),
         scheduledAt: z.string().datetime({ offset: true }),
         estimatedMinutes: z.number().int().min(1).max(10080),
       }),
@@ -358,7 +359,7 @@ export const adminServersRouter = router({
       // Send initial Discord announcement via web bot
       try {
         const embed = EmbedPresets.announcements.maintenance({
-          type: "maintenance",
+          type: input.type,
           startsAt: scheduledAt,
           estimatedMinutes: input.estimatedMinutes,
         });

@@ -49,16 +49,16 @@ export class MaintenanceScheduler {
             `(starts in ${Math.round(msUntil / 60000)} min)`,
         );
       } else if (msUntil > -5 * 60 * 1000) {
-        // Missed by less than 5 minutes — activate immediately
+        // Missed by less than 5 minutes  - activate immediately
         logger.warn(
-          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 1000)}s — activating now`,
+          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 1000)}s, activating now`,
         );
         this.activeSchedules.set(schedule.serverId, schedule);
         await this.activateMaintenance(schedule);
       } else {
-        // Missed by more than 5 minutes — cancel
+        // Missed by more than 5 minutes  - cancel
         logger.warn(
-          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 60000)} min — cancelling`,
+          `Scheduled maintenance #${schedule.id} was missed by ${Math.round(-msUntil / 60000)} min, canceling`,
         );
         await Q.server.maintenance.schedule.update(
           { id: schedule.id },
@@ -250,7 +250,7 @@ export class MaintenanceScheduler {
         ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
         : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
 
-    const message = `⚠️ Server maintenance in ${label}. Players will be kicked when maintenance begins.`;
+    const message = `[!] Server maintenance in ${label}. Players will be kicked when maintenance begins.`;
 
     const result = await this.messageService.send({
       channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,

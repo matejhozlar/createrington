@@ -39,7 +39,7 @@ export function BalanceAdjustModal({
         reason,
       });
 
-      toast.success(`Balance adjusted successfully!`);
+      toast.success(`Balance adjusted successfully`);
       setAmount("");
       setReason("");
       onClose();

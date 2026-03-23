@@ -76,7 +76,7 @@ export function MaintenanceAnnouncement() {
 
   const sendMutation = trpc.admin.announcements.sendMaintenance.useMutation({
     onSuccess: () => {
-      toast.success("Maintenance announcement sent to Discord!");
+      toast.success("Maintenance announcement sent to Discord");
       setStartsAt("");
       setEstimatedMinutes("");
     },

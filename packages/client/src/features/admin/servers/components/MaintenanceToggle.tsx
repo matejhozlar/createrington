@@ -23,6 +23,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CalendarClock, Clock, Wrench, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -54,6 +61,9 @@ export function MaintenanceToggle({
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [announceEnd, setAnnounceEnd] = useState(true);
+  const [maintenanceType, setMaintenanceType] = useState<
+    "maintenance" | "modpack_update"
+  >("maintenance");
   const [scheduledAt, setScheduledAt] = useState("");
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const utils = trpc.useUtils();
@@ -81,9 +91,7 @@ export function MaintenanceToggle({
   const toggleMutation = trpc.admin.servers.toggleMaintenance.useMutation({
     onSuccess: (data) => {
       toast.success(
-        data.enabled
-          ? "Maintenance mode enabled — whitelist cleared"
-          : "Maintenance mode disabled — whitelist restored",
+        data.enabled ? "Maintenance mode enabled" : "Maintenance mode disabled",
       );
       invalidate();
     },
@@ -128,6 +136,7 @@ export function MaintenanceToggle({
     const date = new Date(scheduledAt);
     scheduleMutation.mutate({
       serverId,
+      type: maintenanceType,
       scheduledAt: date.toISOString(),
       estimatedMinutes,
     });
@@ -209,7 +218,7 @@ export function MaintenanceToggle({
               <span className="font-semibold text-amber-500">Active</span>
             </p>
             <p className="text-xs text-muted-foreground">
-              Whitelist is cleared — only ops can join
+              Whitelist is cleared
             </p>
           </div>
         </div>
@@ -312,6 +321,27 @@ export function MaintenanceToggle({
             </TabsList>
 
             <TabsContent value="schedule" className="mt-4 space-y-4">
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  value={maintenanceType}
+                  onValueChange={(v) =>
+                    setMaintenanceType(v as "maintenance" | "modpack_update")
+                  }
+                >
+                  <SelectTrigger className="cursor-pointer">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="maintenance">
+                      Server Maintenance
+                    </SelectItem>
+                    <SelectItem value="modpack_update">
+                      Modpack & Server Update
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="scheduled-at">Start Date & Time</Label>
                 <Input

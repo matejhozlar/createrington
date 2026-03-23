@@ -37,7 +37,7 @@ export function RemoveStrikeModal({
         reason: reason.trim(),
       });
 
-      toast.success("Strike removed successfully!");
+      toast.success("Strike removed successfully");
       setReason("");
       onClose();
       onSuccess();
