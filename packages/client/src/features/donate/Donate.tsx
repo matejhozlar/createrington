@@ -40,6 +40,7 @@ export function Donate() {
 
   const createCheckout = trpc.user.donations.createCheckout.useMutation({
     onSuccess: ({ url }) => {
+      if (!new URL(url).hostname.endsWith("stripe.com")) return;
       window.location.href = url;
     },
     onError: (err) => {

@@ -6,6 +6,11 @@ import { refreshTokenService } from "@/services/auth/token/refresh-token.service
 import { sessionService } from "@/services/auth/session/session.service";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
+import crypto from "node:crypto";
+
+/** In-memory store for OAuth state tokens (state → expiry timestamp) */
+const pendingStates = new Map<string, number>();
+const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Authentication controller
@@ -20,7 +25,16 @@ export class AuthController {
    * Returns Discord OAuth authorization URL
    */
   static async getAuthUrl(req: Request, res: Response): Promise<void> {
-    const state = Math.random().toString(36).substring(7);
+    const state = crypto.randomBytes(32).toString("hex");
+
+    // Store state server-side with expiry
+    pendingStates.set(state, Date.now() + STATE_TTL_MS);
+
+    // Cleanup expired states
+    for (const [key, expiry] of pendingStates) {
+      if (expiry < Date.now()) pendingStates.delete(key);
+    }
+
     const authUrl = discordOAuth.generateAuthUrl(state);
 
     res.json({
@@ -43,10 +57,20 @@ export class AuthController {
     req: Request,
     res: Response,
   ): Promise<void> {
-    const { code, _state } = req.body;
+    const { code, state } = req.body;
 
     if (!code) {
       throw new BadRequestError("Authorization code is required");
+    }
+
+    // Validate CSRF state parameter
+    if (!state || !pendingStates.has(state)) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+    const expiry = pendingStates.get(state)!;
+    pendingStates.delete(state); // One-time use
+    if (expiry < Date.now()) {
+      throw new BadRequestError("Invalid or expired state parameter");
     }
 
     try {

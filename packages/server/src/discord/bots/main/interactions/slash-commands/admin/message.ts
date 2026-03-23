@@ -1,10 +1,7 @@
-import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
-import { RoleManager } from "@/discord/utils/roles/role-manager";
 import {
   type ChatInputCommandInteraction,
-  GuildMember,
   MessageFlags,
   PermissionFlagsBits,
   SlashCommandBuilder,
@@ -16,7 +13,7 @@ import {
  */
 export const data = new SlashCommandBuilder()
   .setName("message")
-  .setDescription("Send a custom message to this channel (owner only)")
+  .setDescription("Send a custom message to this channel")
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addStringOption((option) =>
     option
@@ -37,26 +34,15 @@ export const permissions = {
  * Executes the message command to send a bot message to the channel
  *
  * Process:
- * 1. Verify the interaction member has the Owner role
- * 2. Send the provided content as a bot message in the current channel
- * 3. Reply with an ephemeral confirmation
+ * 1. Send the provided content as a bot message in the current channel
+ * 2. Reply with an ephemeral confirmation
  *
  * @param interaction - The chat input command interaction
  */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
-  const member = interaction.member as GuildMember;
   const content = interaction.options.getString("content", true);
-
-  if (RoleManager.has(member, Discord.Roles.OWNER)) {
-    const embed = EmbedPresets.error("Interaction Failed");
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
-    return;
-  }
 
   try {
     if (isSendableChannel(interaction.channel)) {
