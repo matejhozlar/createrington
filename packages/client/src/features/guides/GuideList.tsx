@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/page-header";
 import { guides, GUIDE_SECTIONS } from "./data";
 import { GuideCard } from "./components/GuideCard";
 
-export const GuideList = () => {
+export function GuideList() {
   return (
     <div>
       <PageHeader
@@ -34,4 +34,4 @@ export const GuideList = () => {
       </section>
     </div>
   );
-};
+}
