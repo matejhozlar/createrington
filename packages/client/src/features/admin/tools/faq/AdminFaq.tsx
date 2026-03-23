@@ -375,9 +375,7 @@ export function AdminFaq() {
                           {renderSortIcon("createdAt")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 text-right">
-                        Actions
-                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

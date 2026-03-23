@@ -443,9 +443,7 @@ export function AdminWaitlists() {
         {/* Waitlist Table */}
         <Card className="gap-0">
           <CardHeader className="border-b gap-0">
-            <CardTitle>
-              Waitlist Entries ({total.toLocaleString()})
-            </CardTitle>
+            <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
           </CardHeader>
 
           {loading ? (
@@ -513,9 +511,7 @@ export function AdminWaitlists() {
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 text-right">
-                        Actions
-                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

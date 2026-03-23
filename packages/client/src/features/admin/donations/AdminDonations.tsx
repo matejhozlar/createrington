@@ -116,7 +116,9 @@ export function AdminDonations() {
   const donations = filteredDonations;
   const pagination = listQuery.data?.pagination;
   const total = pagination?.total ?? 0;
-  const totalPages = pagination ? Math.ceil(pagination.total / pagination.limit) : 0;
+  const totalPages = pagination
+    ? Math.ceil(pagination.total / pagination.limit)
+    : 0;
   const error = listQuery.error?.message ?? null;
 
   const handlePageChange = useCallback((newPage: number) => {
@@ -370,8 +372,8 @@ export function AdminDonations() {
 
               <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
                 <p className="text-sm text-muted-foreground">
-                  Showing {page * 20 + 1}-
-                  {Math.min((page + 1) * 20, total)} of {total} donations
+                  Showing {page * 20 + 1}-{Math.min((page + 1) * 20, total)} of{" "}
+                  {total} donations
                 </p>
 
                 <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">

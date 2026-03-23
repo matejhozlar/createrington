@@ -235,9 +235,7 @@ export function TradeHistory() {
                     e.preventDefault();
                     if (page > 0) handlePageChange(page - 1);
                   }}
-                  className={cn(
-                    page === 0 && "pointer-events-none opacity-50",
-                  )}
+                  className={cn(page === 0 && "pointer-events-none opacity-50")}
                 />
               </PaginationItem>
 
@@ -270,8 +268,7 @@ export function TradeHistory() {
                     if (page < totalPages - 1) handlePageChange(page + 1);
                   }}
                   className={cn(
-                    page >= totalPages - 1 &&
-                      "pointer-events-none opacity-50",
+                    page >= totalPages - 1 && "pointer-events-none opacity-50",
                   )}
                 />
               </PaginationItem>
