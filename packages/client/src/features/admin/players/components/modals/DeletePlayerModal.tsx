@@ -62,7 +62,7 @@ export function DeletePlayerModal({
         reason: reason.trim(),
       });
 
-      toast.success("Player deleted successfully");
+      toast.success("Player deleted");
       setShowConfirmDialog(false);
       setConfirmText("");
       onSuccess();

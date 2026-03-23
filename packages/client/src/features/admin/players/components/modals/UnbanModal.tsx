@@ -37,7 +37,7 @@ export function UnbanModal({
         reason: reason.trim(),
       });
 
-      toast.success("Ban lifted successfully");
+      toast.success("Ban lifted");
 
       // Reset form
       setReason("");
