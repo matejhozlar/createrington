@@ -118,7 +118,6 @@ export function AdminLogs() {
     setPage(newPage);
   }, []);
 
-
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
     setPage(0);

@@ -120,7 +120,6 @@ export function AdminWaitlists() {
     setPage(newPage);
   }, []);
 
-
   /**
    * Handle column sort
    */
@@ -398,7 +397,13 @@ export function AdminWaitlists() {
             </Select>
 
             <Select
-              value={verifiedFilter === undefined ? "all" : verifiedFilter ? "verified" : "unverified"}
+              value={
+                verifiedFilter === undefined
+                  ? "all"
+                  : verifiedFilter
+                    ? "verified"
+                    : "unverified"
+              }
               onValueChange={(v) => {
                 setVerifiedFilter(v === "all" ? undefined : v === "verified");
                 setPage(0);

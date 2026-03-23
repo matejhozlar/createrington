@@ -138,7 +138,6 @@ export function AdminPlayers() {
     setPage(newPage);
   }, []);
 
-
   /**
    * Handle column sort
    */
@@ -375,7 +374,13 @@ export function AdminPlayers() {
               </div>
 
               <Select
-                value={onlineFilter === undefined ? "all" : onlineFilter ? "online" : "offline"}
+                value={
+                  onlineFilter === undefined
+                    ? "all"
+                    : onlineFilter
+                      ? "online"
+                      : "offline"
+                }
                 onValueChange={(v) => {
                   setOnlineFilter(v === "all" ? undefined : v === "online");
                   setPage(0);
