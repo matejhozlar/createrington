@@ -30,7 +30,7 @@ export class CurrencyController {
       throw new BadRequestError("uuid and name are required");
     }
 
-    const token = jwt.sign({ uuid, name }, JWT_SECRET, { expiresIn: "10m" });
+    const token = jwt.sign({ uuid, name }, JWT_SECRET, { algorithm: "HS256", expiresIn: "10m" });
 
     res.json({ token });
   }

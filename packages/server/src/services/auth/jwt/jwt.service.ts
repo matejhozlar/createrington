@@ -49,6 +49,7 @@ export class JWTService {
     }
 
     const token = jwt.sign(payload, this.secret, {
+      algorithm: "HS256",
       expiresIn: this.expiresIn as SignOptions["expiresIn"],
     });
 
@@ -76,6 +77,7 @@ export class JWTService {
     }
 
     return jwt.sign(tokenPayload, this.secret, {
+      algorithm: "HS256",
       expiresIn: this.expiresIn as SignOptions["expiresIn"],
     });
   }
@@ -87,7 +89,9 @@ export class JWTService {
    */
   verify(token: string): JWTPayload {
     try {
-      const decoded = jwt.verify(token, this.secret) as JWTPayload;
+      const decoded = jwt.verify(token, this.secret, {
+        algorithms: ["HS256"],
+      }) as JWTPayload;
       return decoded;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
