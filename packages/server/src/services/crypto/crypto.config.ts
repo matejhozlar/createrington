@@ -44,7 +44,7 @@ export const CRYPTO_CONFIG = {
   // Stablecoin Pricing (flat amounts, not percentages)
   STABLECOIN_FLOOR_PRICE: 1.0,
   STABLECOIN_INFLATION_PER_PLAYER: 0.00035, // flat $ per player per tick
-  STABLECOIN_DECAY_RATE: 0.0001, // flat $ decay when no players online
+  STABLECOIN_DECAY_RATE: 0.00025, // flat $ decay when no players online
 
   // Blue-Chip Pricing
   BLUECHIP_SENSITIVITY: 0.01, // metric delta multiplier
