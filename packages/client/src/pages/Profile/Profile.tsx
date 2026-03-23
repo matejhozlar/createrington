@@ -1,5 +1,3 @@
-import React from "react";
-
-export const Profile: React.FC = () => {
+export function Profile() {
   return <div>Profile</div>;
-};
+}

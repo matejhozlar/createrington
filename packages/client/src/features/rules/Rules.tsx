@@ -40,7 +40,7 @@ const rules = {
   ],
 };
 
-export const Rules: React.FC = () => {
+export function Rules() {
   return (
     <div>
       <PageHeader

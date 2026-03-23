@@ -265,7 +265,7 @@ const sections = [
   },
 ];
 
-export const TermsOfService: React.FC = () => {
+export function TermsOfService() {
   return (
     <div>
       <PageHeader

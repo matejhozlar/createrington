@@ -22,6 +22,7 @@ interface PlayerDataProviderProps {
   serverIds?: number[];
 }
 
+
 /**
  * Player Data Provider
  *
@@ -35,11 +36,11 @@ interface PlayerDataProviderProps {
  * - Session tracking
  * - Computed statistics
  */
-export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
+export function PlayerDataProvider({
   children,
   autoSubscribe = true,
   serverIds,
-}) => {
+}: PlayerDataProviderProps) {
   // Get WebSocket context directly to avoid circular dependency
   const websocketContext = useContext(WebSocketContext);
 
@@ -427,4 +428,4 @@ export const PlayerDataProvider: React.FC<PlayerDataProviderProps> = ({
   };
 
   return React.createElement(PlayerDataContext.Provider, { value }, children);
-};
+}

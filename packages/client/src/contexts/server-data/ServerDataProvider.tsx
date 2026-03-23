@@ -22,6 +22,7 @@ interface ServerDataProviderProps {
   serverIds?: number[];
 }
 
+
 /**
  * Server Data Provider
  *
@@ -34,11 +35,11 @@ interface ServerDataProviderProps {
  * - Server filtering
  * - Computed statistics
  */
-export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
+export function ServerDataProvider({
   children,
   autoSubscribe = true,
   serverIds,
-}) => {
+}: ServerDataProviderProps) {
   // Get WebSocket context directly to avoid circular dependency
   const websocketContext = useContext(WebSocketContext);
 
@@ -326,4 +327,4 @@ export const ServerDataProvider: React.FC<ServerDataProviderProps> = ({
   };
 
   return React.createElement(ServerDataContext.Provider, { value }, children);
-};
+}

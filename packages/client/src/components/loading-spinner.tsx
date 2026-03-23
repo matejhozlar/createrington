@@ -1,5 +1,3 @@
-import React from "react";
-
 export interface LoadingProps {
   /** Display mode - fullscreen, overlay, or inline */
   mode?: "fullscreen" | "overlay" | "inline";
@@ -31,14 +29,14 @@ const modeClasses = {
  * Loading component with animated spinner
  * Can be used as fullscreen loader, overlay, or inline
  */
-export const Loading: React.FC<LoadingProps> = ({
+export function Loading({
   mode = "inline",
   size = "medium",
   text = "Loading...",
   subtext,
   showProgress = false,
   className,
-}) => {
+}: LoadingProps) {
   const isInline = mode === "inline";
 
   return (
@@ -81,25 +79,31 @@ export const Loading: React.FC<LoadingProps> = ({
       </div>
     </div>
   );
-};
+}
 
 /**
  * Simple spinner for inline use
  */
-export const LoadingSpinner: React.FC<{
+export function LoadingSpinner({
+  size = "small",
+  className,
+}: {
   size?: "small" | "medium" | "large";
   className?: string;
-}> = ({ size = "small", className }) => {
+}) {
   return <Loading mode="inline" size={size} text="" className={className} />;
-};
+}
 
 /**
  * Fullscreen loading overlay
  */
-export const LoadingScreen: React.FC<{
+export function LoadingScreen({
+  text = "Loading...",
+  subtext,
+}: {
   text?: string;
   subtext?: string;
-}> = ({ text = "Loading...", subtext }) => {
+}) {
   return (
     <Loading
       mode="fullscreen"
@@ -109,4 +113,4 @@ export const LoadingScreen: React.FC<{
       showProgress
     />
   );
-};
+}

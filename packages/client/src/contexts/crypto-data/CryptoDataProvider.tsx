@@ -19,6 +19,7 @@ interface CryptoDataProviderProps {
   autoSubscribe?: boolean;
 }
 
+
 /**
  * Crypto Data Provider
  *
@@ -33,10 +34,10 @@ interface CryptoDataProviderProps {
  *
  * NOTE: Must be rendered inside WebSocketProvider — throws if the context is missing
  */
-export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
+export function CryptoDataProvider({
   children,
   autoSubscribe = true,
-}) => {
+}: CryptoDataProviderProps) {
   const websocketContext = useContext(WebSocketContext);
 
   if (!websocketContext) {
@@ -190,4 +191,4 @@ export const CryptoDataProvider: React.FC<CryptoDataProviderProps> = ({
   };
 
   return React.createElement(CryptoDataContext.Provider, { value }, children);
-};
+}

@@ -1,4 +1,5 @@
-import React, { useCallback } from "react";
+import type React from "react";
+import { useCallback } from "react";
 import { useServerData } from "@/contexts/server-data";
 import { usePlayerData } from "@/contexts/player-data";
 import { AdminPlayerContextType } from "./types";
@@ -8,9 +9,9 @@ interface AdminPlayerProviderProps {
   children: React.ReactNode;
 }
 
-export const AdminPlayerProvider: React.FC<AdminPlayerProviderProps> = ({
+export function AdminPlayerProvider({
   children,
-}) => {
+}: AdminPlayerProviderProps) {
   const { servers } = useServerData();
   const { players: onlinePlayers, isPlayerOnline: checkOnline } =
     usePlayerData();
@@ -49,4 +50,4 @@ export const AdminPlayerProvider: React.FC<AdminPlayerProviderProps> = ({
       {children}
     </AdminPlayersContext.Provider>
   );
-};
+}

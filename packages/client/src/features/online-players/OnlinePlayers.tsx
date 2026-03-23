@@ -58,7 +58,7 @@ function getSessionSeconds(player: PlayerData): number {
 }
 
 /** Live-ticking session timer for a single player */
-const SessionTimer: React.FC<{ player: PlayerData }> = ({ player }) => {
+function SessionTimer({ player }: { player: PlayerData }) {
   const [seconds, setSeconds] = useState(() => getSessionSeconds(player));
 
   useEffect(() => {
@@ -80,14 +80,19 @@ const SessionTimer: React.FC<{ player: PlayerData }> = ({ player }) => {
       </TooltipContent>
     </Tooltip>
   );
-};
+}
 
 /** Stat card used in the overview strip */
-const StatBlock: React.FC<{
+function StatBlock({
+  icon,
+  value,
+  label,
+}: {
   icon: React.ReactNode;
   value: React.ReactNode;
   label: string;
-}> = ({ icon, value, label }) => (
+}) {
+  return (
   <div className="flex items-center gap-3">
     <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
       {icon}
@@ -99,13 +104,11 @@ const StatBlock: React.FC<{
       <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
     </div>
   </div>
-);
+  );
+}
 
 /** Individual player card */
-const PlayerCard: React.FC<{
-  player: PlayerData;
-  index: number;
-}> = ({ player, index }) => {
+function PlayerCard({ player, index }: { player: PlayerData; index: number }) {
   return (
     <div
       className="group relative flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:bg-card/80"
@@ -143,9 +146,9 @@ const PlayerCard: React.FC<{
       </div>
     </div>
   );
-};
+}
 
-export const OnlinePlayers: React.FC = () => {
+export function OnlinePlayers() {
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
 

@@ -1,7 +1,6 @@
-import React from "react";
 import { useParams } from "react-router-dom";
 
-export const ServerDetail: React.FC = () => {
+export function ServerDetail() {
   const { serverId } = useParams();
 
   return (
@@ -10,4 +9,4 @@ export const ServerDetail: React.FC = () => {
       <p>Server detail page coming soon...</p>
     </div>
   );
-};
+}
