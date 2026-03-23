@@ -1429,9 +1429,9 @@ export const cryptoMarketEvent = pgTable(
     description: text("description"),
     article: text("article"),
     tokenId: integer("token_id").references(() => cryptoToken.id, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
+      onUpdate: "cascade",
+      onDelete: "cascade",
+    }),
     severity: cryptoEventSeverityEnum("severity").notNull().default("info"),
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
     activeUntil: timestamp("active_until", { withTimezone: true }),
