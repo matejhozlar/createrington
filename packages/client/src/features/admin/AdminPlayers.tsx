@@ -39,6 +39,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   Users,
@@ -48,9 +55,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  AlertTriangle,
-  Ban,
-  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
@@ -134,30 +138,6 @@ export function AdminPlayers() {
     setPage(newPage);
   }, []);
 
-  /**
-   * Toggle online filter
-   */
-  const toggleOnlineFilter = useCallback(() => {
-    setOnlineFilter((prev) => {
-      if (prev === undefined) return true;
-      if (prev === true) return false;
-      return undefined;
-    });
-    setPage(0);
-  }, []);
-
-  /**
-   * Cycle through violation filters
-   */
-  const cycleViolationFilter = useCallback(() => {
-    setViolationFilter((prev) => {
-      if (prev === "all") return "any";
-      if (prev === "any") return "strikes";
-      if (prev === "strikes") return "bans";
-      return "all";
-    });
-    setPage(0);
-  }, []);
 
   /**
    * Handle column sort
@@ -271,40 +251,7 @@ export function AdminPlayers() {
     return { count: totalCount, color: "yellow" as const, hasIssues: true };
   }, []);
 
-  /**
-   * Get violation filter button content
-   */
-  const getViolationFilterContent = useCallback(() => {
-    switch (violationFilter) {
-      case "all":
-        return {
-          icon: <Filter className="size-4" />,
-          text: "All Players",
-          variant: "outline" as const,
-        };
-      case "any":
-        return {
-          icon: <ShieldAlert className="size-4" />,
-          text: "Any Violations",
-          variant: "destructive" as const,
-        };
-      case "strikes":
-        return {
-          icon: <AlertTriangle className="size-4" />,
-          text: "With Strikes",
-          variant: "default" as const,
-        };
-      case "bans":
-        return {
-          icon: <Ban className="size-4" />,
-          text: "With Bans",
-          variant: "destructive" as const,
-        };
-    }
-  }, [violationFilter]);
-
   const navigate = useNavigate();
-  const violationContent = getViolationFilterContent();
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -427,28 +374,40 @@ export function AdminPlayers() {
                 />
               </div>
 
-              <Button
-                type="button"
-                variant={onlineFilter === undefined ? "outline" : "default"}
-                onClick={toggleOnlineFilter}
-                className="min-w-[85px]"
+              <Select
+                value={onlineFilter === undefined ? "all" : onlineFilter ? "online" : "offline"}
+                onValueChange={(v) => {
+                  setOnlineFilter(v === "all" ? undefined : v === "online");
+                  setPage(0);
+                }}
               >
-                {onlineFilter === undefined
-                  ? "All"
-                  : onlineFilter
-                    ? "Online"
-                    : "Offline"}
-              </Button>
+                <SelectTrigger className="min-w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="online">Online</SelectItem>
+                  <SelectItem value="offline">Offline</SelectItem>
+                </SelectContent>
+              </Select>
 
-              <Button
-                type="button"
-                variant={violationContent.variant}
-                onClick={cycleViolationFilter}
-                className="min-w-[140px] gap-2"
+              <Select
+                value={violationFilter}
+                onValueChange={(v) => {
+                  setViolationFilter(v as ViolationFilter);
+                  setPage(0);
+                }}
               >
-                {violationContent.icon}
-                {violationContent.text}
-              </Button>
+                <SelectTrigger className="min-w-[160px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Players</SelectItem>
+                  <SelectItem value="any">Any Violations</SelectItem>
+                  <SelectItem value="strikes">With Strikes</SelectItem>
+                  <SelectItem value="bans">With Bans</SelectItem>
+                </SelectContent>
+              </Select>
 
               <Button type="submit" className="min-w-[85px]">
                 Search

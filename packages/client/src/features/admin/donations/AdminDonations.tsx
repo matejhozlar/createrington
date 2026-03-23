@@ -24,6 +24,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -31,13 +38,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Heart, Users, Euro, Search } from "lucide-react";
+import { Heart, Users, Euro, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Loading } from "@/components/loading-spinner";
 
 type Donation = RouterOutput["admin"]["donations"]["list"]["donations"][number];
+type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
+type DonationType = "one_time" | "monthly";
 
 // =============================================================================
 // Static data
@@ -81,6 +90,10 @@ function formatDate(iso: string) {
 export function AdminDonations() {
   const [page, setPage] = useState(0);
   const [discordIdInput, setDiscordIdInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
+    "all",
+  );
+  const [typeFilter, setTypeFilter] = useState<DonationType | "all">("all");
   const debouncedDiscordId = useDebouncedValue(discordIdInput, 600);
 
   const statsQuery = trpc.admin.donations.stats.useQuery();
@@ -88,10 +101,16 @@ export function AdminDonations() {
     page,
     limit: 20,
     discordId: debouncedDiscordId || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
+  const filteredDonations =
+    typeFilter === "all"
+      ? (listQuery.data?.donations ?? [])
+      : (listQuery.data?.donations ?? []).filter((d) => d.type === typeFilter);
+
   const stats = statsQuery.data;
-  const donations = listQuery.data?.donations ?? [];
+  const donations = filteredDonations;
   const pagination = listQuery.data?.pagination;
 
   return (
@@ -161,24 +180,75 @@ export function AdminDonations() {
           </div>
         ) : null}
 
-        {/* Donations Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle className="flex items-center justify-between">
-              Donations
-              {pagination?.total != null ? ` (${pagination.total})` : ""}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        {/* Filters */}
+        <Card className="gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="size-4 text-muted-foreground" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9 text-sm font-normal"
-                  placeholder="Filter by Discord ID..."
+                  type="text"
+                  placeholder="Search by Discord ID..."
                   value={discordIdInput}
                   onChange={(e) => {
                     setDiscordIdInput(e.target.value);
                     setPage(0);
                   }}
+                  className="pl-9"
                 />
               </div>
+
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as DonationStatus | "all");
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="refunded">Refunded</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={typeFilter}
+                onValueChange={(v) => {
+                  setTypeFilter(v as DonationType | "all");
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="one_time">One-time</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Donations Table */}
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle>
+              Donations
+              {pagination?.total != null ? ` (${pagination.total})` : ""}
             </CardTitle>
           </CardHeader>
 

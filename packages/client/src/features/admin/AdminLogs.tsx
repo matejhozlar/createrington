@@ -43,6 +43,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   FileText,
@@ -111,25 +118,6 @@ export function AdminLogs() {
     setPage(newPage);
   }, []);
 
-  const cycleActionType = useCallback(() => {
-    setActionTypeFilter((prev) => {
-      if (prev === undefined) return ACTION_TYPES[0];
-      const idx = ACTION_TYPES.indexOf(prev);
-      if (idx === -1 || idx >= ACTION_TYPES.length - 1) return undefined;
-      return ACTION_TYPES[idx + 1];
-    });
-    setPage(0);
-  }, []);
-
-  const cycleTableName = useCallback(() => {
-    setTableNameFilter((prev) => {
-      if (prev === undefined) return TABLE_NAMES[0];
-      const idx = TABLE_NAMES.indexOf(prev);
-      if (idx === -1 || idx >= TABLE_NAMES.length - 1) return undefined;
-      return TABLE_NAMES[idx + 1];
-    });
-    setPage(0);
-  }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchQuery(value);
@@ -234,23 +222,45 @@ export function AdminLogs() {
                 />
               </div>
 
-              <Button
-                type="button"
-                variant={actionTypeFilter === undefined ? "outline" : "default"}
-                onClick={cycleActionType}
-                className="min-w-[100px]"
+              <Select
+                value={actionTypeFilter ?? "all"}
+                onValueChange={(v) => {
+                  setActionTypeFilter(v === "all" ? undefined : v);
+                  setPage(0);
+                }}
               >
-                {actionTypeFilter ?? "All Actions"}
-              </Button>
+                <SelectTrigger className="min-w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  {ACTION_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-              <Button
-                type="button"
-                variant={tableNameFilter === undefined ? "outline" : "default"}
-                onClick={cycleTableName}
-                className="min-w-[120px]"
+              <Select
+                value={tableNameFilter ?? "all"}
+                onValueChange={(v) => {
+                  setTableNameFilter(v === "all" ? undefined : v);
+                  setPage(0);
+                }}
               >
-                {tableNameFilter ?? "All Tables"}
-              </Button>
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tables</SelectItem>
+                  {TABLE_NAMES.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <Button type="submit" className="min-w-[85px]">
                 Search
