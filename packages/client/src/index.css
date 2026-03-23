@@ -179,6 +179,38 @@
 .animate-new-message {
 }
 
+/* Sidebar status dot: green pulse → amber pulse when maintenance is scheduled */
+@keyframes maintenance-pulse {
+  0% {
+    background-color: oklch(0.723 0.219 149.579); /* green-500 */
+    box-shadow: 0 0 4px oklch(0.723 0.219 149.579);
+    opacity: 1;
+  }
+  25% {
+    background-color: oklch(0.723 0.219 149.579);
+    box-shadow: 0 0 4px oklch(0.723 0.219 149.579);
+    opacity: 0.5;
+  }
+  50% {
+    background-color: oklch(0.769 0.188 70.08); /* amber-500 */
+    box-shadow: 0 0 4px oklch(0.769 0.188 70.08);
+    opacity: 1;
+  }
+  75% {
+    background-color: oklch(0.769 0.188 70.08);
+    box-shadow: 0 0 4px oklch(0.769 0.188 70.08);
+    opacity: 0.5;
+  }
+  100% {
+    background-color: oklch(0.723 0.219 149.579);
+    box-shadow: 0 0 4px oklch(0.723 0.219 149.579);
+    opacity: 1;
+  }
+}
+.animate-maintenance-pulse {
+  animation: maintenance-pulse 4s ease-in-out infinite;
+}
+
 /* Team page staggered entrance */
 @keyframes fade-in-up {
   from {

@@ -32,7 +32,7 @@ import {
   SidebarTrigger,
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
-import { MaintenanceBanner } from "./components/maintenance-banner";
+
 import { ServerChat } from "./components/chat";
 import { AdminLogs } from "./features/admin/AdminLogs";
 import { AdminServers } from "./features/admin/AdminServers";
@@ -120,7 +120,6 @@ function AppLayout() {
         </div>
         {!hideFooter && <Footer />}
       </SidebarInset>
-      <MaintenanceBanner />
     </>
   );
 }
