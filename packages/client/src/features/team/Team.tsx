@@ -1,7 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { TeamPodium } from "./components/TeamPodium";
 
-export const Team = () => {
+export function Team() {
   return (
     <div>
       <PageHeader
@@ -26,4 +26,4 @@ export const Team = () => {
       </section>
     </div>
   );
-};
+}

@@ -7,7 +7,7 @@ import { StepSidebar } from "./components/StepSidebar";
 import { StepIndicator } from "./components/StepIndicator";
 import { StepNavigation } from "./components/StepNavigation";
 
-export const GuideDetail = () => {
+export function GuideDetail() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
@@ -88,4 +88,4 @@ export const GuideDetail = () => {
       </section>
     </div>
   );
-};
+}
