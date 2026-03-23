@@ -250,7 +250,7 @@ export class MaintenanceScheduler {
         ? `${Math.floor(minutesBefore / 60)} hour${minutesBefore >= 120 ? "s" : ""}`
         : `${minutesBefore} minute${minutesBefore !== 1 ? "s" : ""}`;
 
-    const message = `[!] Server maintenance in ${label}. Players will be kicked when maintenance begins.`;
+    const message = `Server maintenance in ${label}. Players will be kicked when maintenance begins.`;
 
     const result = await this.messageService.send({
       channelId: Discord.Channels.cogsAndSteam.MINECRAFT_CHAT,

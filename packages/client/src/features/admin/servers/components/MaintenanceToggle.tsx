@@ -60,7 +60,7 @@ export function MaintenanceToggle({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [disableDialogOpen, setDisableDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [announceEnd, setAnnounceEnd] = useState(true);
+  const [announceEnd, setAnnounceEnd] = useState(false);
   const [maintenanceType, setMaintenanceType] = useState<
     "maintenance" | "modpack_update"
   >("maintenance");

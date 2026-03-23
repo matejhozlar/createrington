@@ -6,6 +6,8 @@ import { useServerData } from "@/contexts/server-data";
 import { useSidebar } from "@/components/ui/sidebar";
 import { Loading } from "./loading-spinner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCountdown } from "@/hooks/use-countdown";
+import type { ScheduledMaintenance } from "@createrington/shared/socket";
 
 function ServerStatus({
   className,
@@ -61,6 +63,7 @@ interface ServerStatusSingleProps {
   server: {
     online: boolean;
     maintenance: boolean;
+    scheduledMaintenance: ScheduledMaintenance | null;
     playerCount: number;
     maxPlayers: number;
   };
@@ -68,11 +71,18 @@ interface ServerStatusSingleProps {
 }
 
 function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
+  const hasSchedule = server.scheduledMaintenance?.status === "scheduled";
+  const countdown = useCountdown(
+    hasSchedule ? server.scheduledMaintenance!.scheduledAt : null,
+  );
+
   const statusLabel = server.maintenance
     ? "Maintenance"
-    : server.online
-      ? "Online"
-      : "Offline";
+    : hasSchedule && countdown && countdown !== "Ended"
+      ? `Maintenance in ${countdown}`
+      : server.online
+        ? "Online"
+        : "Offline";
 
   return (
     <>
@@ -82,8 +92,10 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
           className={cn("size-3 shrink-0 rounded-full", {
             "bg-amber-500 shadow shadow-amber-500 animate-pulse":
               server.maintenance,
+            "animate-maintenance-pulse shadow":
+              !server.maintenance && hasSchedule && server.online,
             "bg-green-500 shadow shadow-green-500 animate-pulse":
-              !server.maintenance && server.online,
+              !server.maintenance && !hasSchedule && server.online,
             "bg-destructive shadow shadow-destructive":
               !server.maintenance && !server.online,
             "size-4": isCollapsed,
@@ -93,9 +105,10 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
         {/* Status Title */}
         {!isCollapsed && (
           <span
-            className={cn("text-base font-semibold", {
-              "text-amber-500": server.maintenance,
-              "text-green-500": !server.maintenance && server.online,
+            className={cn("text-base font-semibold whitespace-nowrap", {
+              "text-amber-500": server.maintenance || hasSchedule,
+              "text-green-500":
+                !server.maintenance && !hasSchedule && server.online,
               "text-destructive": !server.maintenance && !server.online,
             })}
           >
