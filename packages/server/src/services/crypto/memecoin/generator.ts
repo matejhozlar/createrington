@@ -166,76 +166,9 @@ export async function cleanupCrashedTokens(): Promise<number> {
   let cleaned = 0;
   for (const token of crashed) {
     if (token.crashedAt && token.crashedAt <= cutoff) {
-      const holdings = await Q.crypto.holding
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const holding of holdings) {
-        await Q.crypto.holding.delete({ id: holding.id });
-      }
-
-      // Clean up transactions
-      const transactions = await Q.crypto.transaction
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const tx of transactions) {
-        await Q.crypto.transaction.delete({ id: tx.id });
-      }
-
-      // Clean up orders
-      const orders = await Q.crypto.order
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const order of orders) {
-        await Q.crypto.order.delete({ id: order.id });
-      }
-
-      // Clean up cost basis lots
-      const costBasisLots = await Q.crypto.cost.basis
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const lot of costBasisLots) {
-        await Q.crypto.cost.basis.delete({ id: lot.id });
-      }
-
-      // Clean up watchlist entries
-      const watchlistEntries = await Q.crypto.watchlist
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const entry of watchlistEntries) {
-        await Q.crypto.watchlist.delete({ id: entry.id });
-      }
-
-      // Clean up price alerts
-      const alerts = await Q.crypto.price.alert
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const alert of alerts) {
-        await Q.crypto.price.alert.delete({ id: alert.id });
-      }
-
-      const snapshots = await Q.crypto.price.snapshot
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const snapshot of snapshots) {
-        await Q.crypto.price.snapshot.delete({ id: snapshot.id });
-      }
-
-      // Clean up market events
-      const events = await Q.crypto.market.event
-        .where({ tokenId: token.id })
-        .all();
-
-      for (const event of events) {
-        await Q.crypto.market.event.delete({ id: event.id });
-      }
-
+      // All related tables have ON DELETE CASCADE, so this single
+      // delete removes holdings, transactions, orders, cost basis,
+      // watchlist entries, alerts, snapshots, and market events.
       await Q.crypto.token.delete({ id: token.id });
       cleaned++;
 
