@@ -48,7 +48,7 @@ export function IssueStrikeModal({
         severity,
       });
 
-      toast.success("Strike issued successfully!");
+      toast.success("Strike issued successfully");
       setDescription("");
       setSeverity(1);
       onClose();

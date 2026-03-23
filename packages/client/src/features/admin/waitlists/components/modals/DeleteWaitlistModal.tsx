@@ -62,7 +62,7 @@ export function DeleteWaitlistModal({
         reason: reason.trim(),
       });
 
-      toast.success("Waitlist entry deleted successfully!");
+      toast.success("Waitlist entry deleted successfully");
       setShowConfirmDialog(false);
       setConfirmText("");
       onSuccess();
