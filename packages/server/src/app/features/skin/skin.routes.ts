@@ -26,7 +26,9 @@ router.get(
 
     for (const buildUrl of SKIN_SOURCES) {
       try {
-        const response = await fetch(buildUrl(uuid));
+        const response = await fetch(buildUrl(uuid), {
+          signal: AbortSignal.timeout(5000),
+        });
         if (response.ok) {
           const buffer = Buffer.from(await response.arrayBuffer());
           res.setHeader("Content-Type", "image/png");

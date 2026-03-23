@@ -243,7 +243,7 @@ export class DiscordOAuthService {
     const role = await this.getAuthRole(discordUser.id);
 
     if (role === AuthRole.UNVERIFIED) {
-      throw new Error("User is not registered");
+      throw new Error("Authentication failed");
     }
 
     const player = await Q.player.get({ discordId: discordUser.id });
