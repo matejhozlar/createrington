@@ -11,7 +11,7 @@ type TeamMemberCardProps = {
   index: number;
   total: number;
   onClick: () => void;
-}
+};
 
 const AUTO_RESET_MS = 6000;
 
