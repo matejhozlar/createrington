@@ -9,6 +9,8 @@ import {
   buildServerStatus,
   type ServerStatus,
 } from "@/trpc/routers/public/servers";
+import { Discord } from "@/discord/constants";
+import { EmbedPresets } from "@/discord/embeds";
 
 /** Admin servers router — server list with stats, detail view, activity, heatmap, and sessions. */
 export const adminServersRouter = router({
@@ -215,7 +217,20 @@ export const adminServersRouter = router({
     .meta({ description: "Get maintenance mode status for a server" })
     .input(z.object({ serverId: z.coerce.number().int().positive() }))
     .query(({ input }) => {
-      return { enabled: maintenanceService.isInMaintenance(input.serverId) };
+      const schedule = maintenanceService.getScheduledMaintenance(
+        input.serverId,
+      );
+      return {
+        enabled: maintenanceService.isInMaintenance(input.serverId),
+        schedule: schedule
+          ? {
+              id: schedule.id,
+              scheduledAt: schedule.scheduledAt.toISOString(),
+              estimatedMinutes: schedule.estimatedMinutes,
+              status: schedule.status as "scheduled" | "active",
+            }
+          : null,
+      };
     }),
 
   toggleMaintenance: adminProcedure
@@ -227,6 +242,7 @@ export const adminServersRouter = router({
       z.object({
         serverId: z.coerce.number().int().positive(),
         enabled: z.boolean(),
+        announce: z.boolean().optional().default(false),
       }),
     )
     .mutation(async ({ input }) => {
@@ -239,6 +255,14 @@ export const adminServersRouter = router({
 
       try {
         if (input.enabled) {
+          // Cancel any pending schedule before instant activation
+          const pending = maintenanceService.getScheduledMaintenance(
+            input.serverId,
+          );
+          if (pending?.status === "scheduled") {
+            await maintenanceService.cancelScheduledMaintenance(input.serverId);
+          }
+
           // Get online player usernames to kick
           const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
           const service = manager.getService(input.serverId);
@@ -249,6 +273,24 @@ export const adminServersRouter = router({
           await maintenanceService.enable(input.serverId, onlinePlayers);
         } else {
           await maintenanceService.disable(input.serverId);
+
+          // Send "maintenance ended" announcement if requested
+          if (input.announce) {
+            try {
+              const embed = EmbedPresets.announcements.maintenanceEnded();
+              const webMessageService = await getService(
+                Services.WEB_MESSAGE_SERVICE,
+              );
+              await webMessageService.send({
+                channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+                embeds: embed.build(),
+              });
+            } catch (err) {
+              logger.warn(
+                `Failed to send maintenance ended announcement: ${err}`,
+              );
+            }
+          }
         }
       } catch (err) {
         throw trpcError.internal(
@@ -265,5 +307,112 @@ export const adminServersRouter = router({
       }
 
       return { enabled: input.enabled };
+    }),
+
+  scheduleMaintenance: adminProcedure
+    .meta({
+      description:
+        "Schedule maintenance for a future time. Sends initial Discord announcement and sets up warning timers.",
+    })
+    .input(
+      z.object({
+        serverId: z.coerce.number().int().positive(),
+        scheduledAt: z.string().datetime({ offset: true }),
+        estimatedMinutes: z.number().int().min(1).max(10080),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const serverConfig = getServerById(input.serverId);
+      if (!serverConfig) {
+        throw trpcError.badRequest(
+          `Server with id ${input.serverId} not found`,
+        );
+      }
+
+      const scheduledAt = new Date(input.scheduledAt);
+      if (scheduledAt.getTime() <= Date.now()) {
+        throw trpcError.badRequest("Scheduled time must be in the future");
+      }
+
+      // Check for existing scheduled/active maintenance
+      const existing = maintenanceService.getScheduledMaintenance(
+        input.serverId,
+      );
+      if (existing) {
+        throw trpcError.badRequest(
+          `Server already has ${existing.status} maintenance (schedule #${existing.id})`,
+        );
+      }
+
+      if (maintenanceService.isInMaintenance(input.serverId)) {
+        throw trpcError.badRequest("Server is already in maintenance mode");
+      }
+
+      const schedule = await maintenanceService.scheduleMaintenance({
+        serverId: input.serverId,
+        scheduledAt,
+        estimatedMinutes: input.estimatedMinutes,
+        scheduledByDiscordId: ctx.user.discordId,
+      });
+
+      // Send initial Discord announcement via web bot
+      try {
+        const embed = EmbedPresets.announcements.maintenance({
+          type: "maintenance",
+          startsAt: scheduledAt,
+          estimatedMinutes: input.estimatedMinutes,
+        });
+
+        const webMessageService = await getService(
+          Services.WEB_MESSAGE_SERVICE,
+        );
+        await webMessageService.send({
+          channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+          embeds: embed.build(),
+        });
+      } catch (err) {
+        logger.warn(`Failed to send maintenance announcement: ${err}`);
+      }
+
+      // Broadcast server status update
+      try {
+        const ws = await getService(Services.WEBSOCKET_SERVICE);
+        await ws.triggerServerStatusUpdate(input.serverId);
+      } catch {
+        // Non-critical
+      }
+
+      return {
+        id: schedule.id,
+        scheduledAt: schedule.scheduledAt.toISOString(),
+      };
+    }),
+
+  cancelScheduledMaintenance: adminProcedure
+    .meta({
+      description: "Cancel a pending scheduled maintenance for a server.",
+    })
+    .input(z.object({ serverId: z.coerce.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const schedule = maintenanceService.getScheduledMaintenance(
+        input.serverId,
+      );
+      if (!schedule || schedule.status !== "scheduled") {
+        throw trpcError.badRequest(
+          "No pending scheduled maintenance for this server",
+        );
+      }
+
+      await maintenanceService.cancelScheduledMaintenance(input.serverId);
+
+      // Broadcast server status update
+      try {
+        const ws = await getService(Services.WEBSOCKET_SERVICE);
+        await ws.triggerServerStatusUpdate(input.serverId);
+      } catch {
+        // Non-critical
+      }
+
+      return { cancelled: true };
     }),
 });
