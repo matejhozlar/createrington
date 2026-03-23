@@ -46,7 +46,7 @@ export class WebSocketService {
   ) {
     this.io = new SocketIOServer(httpServer, {
       cors: config.cors || {
-        origin: "*",
+        origin: false,
         credentials: true,
       },
       path: config.path || "/socket.io",

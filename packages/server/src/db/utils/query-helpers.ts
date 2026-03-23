@@ -20,6 +20,16 @@ export function createNotFoundError(
 }
 
 /**
+ * Escapes SQL LIKE/ILIKE wildcard characters in user input
+ *
+ * Prevents users from injecting `%` (match any) or `_` (match one)
+ * wildcards into search queries.
+ */
+export function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, "\\$&");
+}
+
+/**
  * Extracts the first key-value pair from a criteria object
  * Useful for discriminated union types
  */

@@ -9,6 +9,14 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
@@ -20,6 +28,21 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Filter,
@@ -111,18 +134,6 @@ export function AdminWaitlists() {
    */
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
-  }, []);
-
-  /**
-   * Toggle verified filter
-   */
-  const toggleVerifiedFilter = useCallback(() => {
-    setVerifiedFilter((prev) => {
-      if (prev === undefined) return true;
-      if (prev === true) return false;
-      return undefined;
-    });
-    setPage(0);
   }, []);
 
   /**
@@ -293,271 +304,234 @@ export function AdminWaitlists() {
           </div>
         ) : stats ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {/* Total Entries */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Entries</p>
-                  <p className="text-2xl font-semibold">{stats.total}</p>
+                  <CardDescription>Total Entries</CardDescription>
+                  <CardTitle className="text-2xl">{stats.total}</CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.pending} pending approval
+                  </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
                   <Users className="size-6 text-sidebar-primary" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.pending} pending approval
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Accepted */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Accepted</p>
-                  <p className="text-2xl font-semibold">
+                  <CardDescription>Accepted</CardDescription>
+                  <CardTitle className="text-2xl">
                     {stats.accepted + stats.autoAccepted}
+                  </CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.autoAccepted} auto-accepted &middot;{" "}
+                    {stats.joinedMinecraft} joined Minecraft
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
                   <UserCheck className="size-6 text-chart-2" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.autoAccepted} auto-accepted · {stats.joinedMinecraft}{" "}
-                joined Minecraft
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* New This Week */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">New This Week</p>
-                  <p className="text-2xl font-semibold">
+                  <CardDescription>New This Week</CardDescription>
+                  <CardTitle className="text-2xl">
                     {stats.submitted.thisWeek}
+                  </CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.submitted.today} today
                   </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
                   <UserPlus className="size-6 text-chart-3" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.submitted.today} today
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Verified */}
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
+            <Card>
+              <CardContent className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Verified</p>
-                  <p className="text-2xl font-semibold">{stats.verified}</p>
+                  <CardDescription>Verified</CardDescription>
+                  <CardTitle className="text-2xl">{stats.verified}</CardTitle>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {stats.registered} registered
+                  </p>
                 </div>
                 <div className="flex size-12 items-center justify-center rounded-full bg-chart-4/10">
                   <Clock className="size-6 text-chart-4" />
                 </div>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {stats.registered} registered
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         ) : null}
 
         {/* Filters & Search */}
-        <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-muted-foreground" />
-            <h3 className="font-semibold">Filters</h3>
-          </div>
+        <Card className="gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="size-4 text-muted-foreground" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by email or Discord name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
 
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by email or Discord name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as StatusFilter);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                  <SelectItem value="auto_accepted">Auto-Accepted</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={statusFilter === "all" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("all");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                All
-              </Button>
-              <Button
-                type="button"
-                variant={statusFilter === "pending" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("pending");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                Pending
-              </Button>
-              <Button
-                type="button"
-                variant={statusFilter === "accepted" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("accepted");
-                  setPage(0);
-                }}
-                className="min-w-[90px] cursor-pointer"
-              >
-                Accepted
-              </Button>
-              <Button
-                type="button"
-                variant={
-                  statusFilter === "auto_accepted" ? "default" : "outline"
+              <Select
+                value={
+                  verifiedFilter === undefined
+                    ? "all"
+                    : verifiedFilter
+                      ? "verified"
+                      : "unverified"
                 }
-                size="default"
-                onClick={() => {
-                  setStatusFilter("auto_accepted");
+                onValueChange={(v) => {
+                  setVerifiedFilter(v === "all" ? undefined : v === "verified");
                   setPage(0);
                 }}
-                className="min-w-[110px] cursor-pointer"
               >
-                Auto-Accepted
+                <SelectTrigger className="min-w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Verification</SelectItem>
+                  <SelectItem value="verified">Verified</SelectItem>
+                  <SelectItem value="unverified">Unverified</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button type="submit" className="min-w-[85px]">
+                Search
               </Button>
-            </div>
-
-            <Button
-              type="button"
-              variant={verifiedFilter === undefined ? "outline" : "default"}
-              size="default"
-              onClick={toggleVerifiedFilter}
-              className="min-w-[90px] cursor-pointer"
-            >
-              {verifiedFilter === undefined
-                ? "All"
-                : verifiedFilter
-                  ? "Verified"
-                  : "Unverified"}
-            </Button>
-
-            <Button type="submit" className="min-w-[85px]">
-              Search
-            </Button>
-          </form>
-        </div>
+            </form>
+          </CardContent>
+        </Card>
 
         {/* Waitlist Table */}
-        <div className="flex flex-1 flex-col gap-4 rounded-lg border border-border bg-card">
-          <div className="border-b border-border p-4">
-            <h2 className="font-semibold">
-              Waitlist Entries ({total.toLocaleString()})
-            </h2>
-          </div>
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle>Waitlist Entries ({total.toLocaleString()})</CardTitle>
+          </CardHeader>
 
           {loading ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <Loading size="medium" text="Loading waitlist entries..." />
-            </div>
+            </CardContent>
           ) : error ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <p className="text-destructive">{error}</p>
                 <Button
                   onClick={() => entriesQuery.refetch()}
-                  className="mt-4 cursor-pointer"
+                  className="mt-4"
                   variant="outline"
                 >
                   Try Again
                 </Button>
               </div>
-            </div>
+            </CardContent>
           ) : entries.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center py-12">
+            <CardContent className="flex flex-1 items-center justify-center py-12">
               <div className="text-center">
                 <Users className="mx-auto size-12 text-muted-foreground" />
                 <p className="mt-2 text-muted-foreground">
                   No waitlist entries found
                 </p>
               </div>
-            </div>
+            </CardContent>
           ) : (
             <>
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="border-b border-border bg-sidebar-accent/50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        ID
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("email")}
-                      >
-                        <div className="flex items-center">
+              <CardContent className="px-0">
+                <Table>
+                  <TableHeader className="bg-sidebar-accent/50">
+                    <TableRow>
+                      <TableHead className="px-4">ID</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("email")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Email
                           {renderSortIcon("email")}
-                        </div>
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("discordName")}
-                      >
-                        <div className="flex items-center">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("discordName")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Discord Name
                           {renderSortIcon("discordName")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Status
-                      </th>
-                      <th className="px-4 py-3 text-left text-sm font-medium">
-                        Progress
-                      </th>
-                      <th
-                        className="cursor-pointer select-none px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent/80"
-                        onClick={() => handleSort("submittedAt")}
-                      >
-                        <div className="flex items-center">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4">Status</TableHead>
+                      <TableHead className="px-4">Progress</TableHead>
+                      <TableHead className="px-4">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("submittedAt")}
+                          className="inline-flex items-center gap-1 text-sm font-medium"
+                        >
                           Submitted
                           {renderSortIcon("submittedAt")}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-right text-sm font-medium">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
+                        </button>
+                      </TableHead>
+                      <TableHead className="px-4 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {entries.map((entry) => {
                       const isPending = entry.status === "pending";
                       const isAccepted = entry.status === "accepted";
                       const isAutoAccepted = entry.status === "auto_accepted";
 
                       return (
-                        <tr
-                          key={entry.id}
-                          className="transition-colors hover:bg-sidebar-accent/30"
-                        >
-                          <td className="px-4 py-3">
+                        <TableRow key={entry.id}>
+                          <TableCell className="px-4">
                             <p className="font-mono text-sm">#{entry.id}</p>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             {entry.email ? (
                               <button
                                 onClick={() => handleCopyEmail(entry.email!)}
                                 className="cursor-pointer text-sm transition-colors hover:text-foreground"
                                 title="Click to copy"
+                                type="button"
                               >
                                 <div className="flex items-center gap-2">
                                   <Mail className="size-4 text-muted-foreground" />
@@ -569,16 +543,16 @@ export function AdminWaitlists() {
                                 -
                               </span>
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <p className="font-medium">{entry.discordName}</p>
                             {entry.discordId && (
                               <p className="text-xs text-muted-foreground">
                                 ID: {entry.discordId}
                               </p>
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <Badge
                               variant={
                                 getStatusBadgeStyle(entry.status).variant
@@ -589,8 +563,8 @@ export function AdminWaitlists() {
                             >
                               {entry.status}
                             </Badge>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <div className="flex flex-wrap gap-1">
                               {entry.joinedDiscord && (
                                 <Badge
@@ -625,8 +599,8 @@ export function AdminWaitlists() {
                                 </Badge>
                               )}
                             </div>
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4">
                             <p className="text-sm text-muted-foreground">
                               {new Date(entry.submittedAt).toLocaleDateString()}
                             </p>
@@ -638,8 +612,8 @@ export function AdminWaitlists() {
                                 ).toLocaleDateString()}
                               </p>
                             )}
-                          </td>
-                          <td className="px-4 py-3">
+                          </TableCell>
+                          <TableCell className="px-4 text-right">
                             <div className="flex justify-end gap-2">
                               {isPending && (
                                 <Button
@@ -671,22 +645,22 @@ export function AdminWaitlists() {
                                 <Trash2 className="size-4" />
                               </Button>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
-              </div>
+                  </TableBody>
+                </Table>
+              </CardContent>
 
               {/* Pagination */}
-              <div className="flex items-center border-t border-border p-4">
+              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
                 <p className="text-sm text-muted-foreground">
                   Showing {page * limit + 1}-
                   {Math.min((page + 1) * limit, total)} of {total} entries
                 </p>
 
-                <PaginationContent className="ml-auto flex-nowrap justify-end">
+                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
                   <PaginationItem>
                     <PaginationPrevious
                       href="#"
@@ -696,7 +670,6 @@ export function AdminWaitlists() {
                       }}
                       className={cn(
                         page === 0 && "pointer-events-none opacity-50",
-                        "cursor-pointer",
                       )}
                     />
                   </PaginationItem>
@@ -715,7 +688,6 @@ export function AdminWaitlists() {
                             handlePageChange(item);
                           }}
                           isActive={page === item}
-                          className="cursor-pointer"
                         >
                           {item + 1}
                         </PaginationLink>
@@ -733,15 +705,14 @@ export function AdminWaitlists() {
                       className={cn(
                         page >= totalPages - 1 &&
                           "pointer-events-none opacity-50",
-                        "cursor-pointer",
                       )}
                     />
                   </PaginationItem>
                 </PaginationContent>
-              </div>
+              </CardFooter>
             </>
           )}
-        </div>
+        </Card>
       </div>
 
       {/* Modals */}

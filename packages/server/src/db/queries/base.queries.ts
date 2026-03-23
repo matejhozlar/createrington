@@ -1198,7 +1198,8 @@ export abstract class BaseQueries<
 
     if (options?.orderBy) {
       const orderColumn = this.getColumnName(options.orderBy as string);
-      query += ` ORDER BY ${orderColumn} ${options.orderDirection || "asc"}`;
+      const dir = options.orderDirection === "desc" ? "DESC" : "ASC";
+      query += ` ORDER BY ${orderColumn} ${dir}`;
     }
 
     if (options?.limit) {

@@ -87,7 +87,9 @@ export class MessageController {
         throw new BadRequestError("Image must be maximum of 10MB");
       }
 
-      const ext = file.originalname.split(".").pop() ?? "png";
+      const SAFE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
+      const rawExt = file.originalname.split(".").pop()?.toLowerCase() ?? "png";
+      const ext = SAFE_EXTS.has(rawExt) ? rawExt : "png";
       const safeName = `image.${ext}`;
 
       attachment = new AttachmentBuilder(file.buffer, { name: safeName });

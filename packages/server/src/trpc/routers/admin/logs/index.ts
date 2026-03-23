@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
@@ -28,13 +29,13 @@ export const logsRouter = router({
       const filters: AdminLogActionFilters = {};
 
       if (input.search) {
-        filters.targetPlayerName = { $ilike: `%${input.search}%` };
+        filters.targetPlayerName = { $ilike: `%${escapeLike(input.search)}%` };
       }
       if (input.actionType) filters.actionType = input.actionType;
       if (input.tableName) filters.tableName = input.tableName;
       if (input.adminUsername) {
         filters.adminUsername = {
-          $ilike: `%${input.adminUsername}%`,
+          $ilike: `%${escapeLike(input.adminUsername)}%`,
         };
       }
 

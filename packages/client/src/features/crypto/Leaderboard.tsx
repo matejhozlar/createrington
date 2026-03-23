@@ -2,6 +2,7 @@ import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -11,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Crown, Medal } from "lucide-react";
+import { Crown, Medal, Trophy } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 
 type LeaderboardType = "networth" | "pnl" | "volume";
@@ -54,19 +55,29 @@ function formatValue(value: string | number) {
 }
 
 function LeaderboardTable({ type }: { type: LeaderboardType }) {
-  const { data, isLoading } = trpc.public.crypto.leaderboard.useQuery(
-    { type },
-    { staleTime: 5 * 60_000, refetchOnWindowFocus: false },
-  );
+  const { data, isLoading, error, refetch } =
+    trpc.public.crypto.leaderboard.useQuery(
+      { type },
+      { staleTime: 5 * 60_000, refetchOnWindowFocus: false },
+    );
 
   if (isLoading) {
     return (
-      <Loading
-        mode="inline"
-        size="large"
-        text="Loading leaderboard..."
-        className="py-12"
-      />
+      <div className="flex items-center justify-center py-12">
+        <Loading size="medium" text="Loading leaderboard..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Trophy className="size-12 text-muted-foreground mb-4" />
+        <p className="text-destructive">{error.message}</p>
+        <Button onClick={() => refetch()} className="mt-4" variant="outline">
+          Try Again
+        </Button>
+      </div>
     );
   }
 

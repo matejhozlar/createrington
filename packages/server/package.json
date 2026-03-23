@@ -84,6 +84,7 @@
     "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "minecraft-server-util": "^5.4.4",
     "multer": "^2.0.2",
@@ -91,10 +92,10 @@
     "openai": "^6.27.0",
     "pg": "^8.16.3",
     "puppeteer-core": "^24.38.0",
-    "stripe": "^20.4.1",
     "rcon-client": "^4.2.5",
     "socket.io": "^4.8.3",
     "ssh2-sftp-client": "^12.0.1",
+    "stripe": "^20.4.1",
     "winston": "^3.18.3",
     "zod": "^4.1.13"
   }

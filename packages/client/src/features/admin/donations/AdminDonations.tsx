@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -17,12 +17,22 @@ import {
 } from "@/components/ui/card";
 import {
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
+  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -31,13 +41,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Heart, Users, Euro, Search } from "lucide-react";
+import { Heart, Users, Euro, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Loading } from "@/components/loading-spinner";
 
 type Donation = RouterOutput["admin"]["donations"]["list"]["donations"][number];
+type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
+type DonationType = "one_time" | "monthly";
 
 // =============================================================================
 // Static data
@@ -81,18 +93,69 @@ function formatDate(iso: string) {
 export function AdminDonations() {
   const [page, setPage] = useState(0);
   const [discordIdInput, setDiscordIdInput] = useState("");
-  const debouncedDiscordId = useDebouncedValue(discordIdInput, 600);
+  const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
+    "all",
+  );
+  const [typeFilter, setTypeFilter] = useState<DonationType | "all">("all");
+  const debouncedDiscordId = useDebouncedValue(discordIdInput, 1000);
 
   const statsQuery = trpc.admin.donations.stats.useQuery();
   const listQuery = trpc.admin.donations.list.useQuery({
     page,
     limit: 20,
     discordId: debouncedDiscordId || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
+  const filteredDonations =
+    typeFilter === "all"
+      ? (listQuery.data?.donations ?? [])
+      : (listQuery.data?.donations ?? []).filter((d) => d.type === typeFilter);
+
   const stats = statsQuery.data;
-  const donations = listQuery.data?.donations ?? [];
+  const donations = filteredDonations;
   const pagination = listQuery.data?.pagination;
+  const total = pagination?.total ?? 0;
+  const totalPages = pagination
+    ? Math.ceil(pagination.total / pagination.limit)
+    : 0;
+  const error = listQuery.error?.message ?? null;
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setPage(newPage);
+  }, []);
+
+  const getPaginationItems = useCallback(() => {
+    const items: (number | "ellipsis")[] = [];
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, i) => i);
+    }
+
+    items.push(0);
+
+    if (page <= 2) {
+      items.push(1, 2, 3);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    } else if (page >= totalPages - 3) {
+      items.push("ellipsis");
+      items.push(
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+      );
+    } else {
+      items.push("ellipsis");
+      items.push(page - 1, page, page + 1);
+      items.push("ellipsis");
+      items.push(totalPages - 1);
+    }
+
+    return items;
+  }, [page, totalPages]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -161,30 +224,94 @@ export function AdminDonations() {
           </div>
         ) : null}
 
-        {/* Donations Table */}
-        <Card className="gap-0">
-          <CardHeader className="border-b gap-0">
-            <CardTitle className="flex items-center justify-between">
-              Donations
-              {pagination?.total != null ? ` (${pagination.total})` : ""}
-              <div className="relative w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+        {/* Filters */}
+        <Card className="gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Filter className="size-4 text-muted-foreground" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              <div className="relative flex-1 min-w-48">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  className="pl-9 text-sm font-normal"
-                  placeholder="Filter by Discord ID..."
+                  type="text"
+                  placeholder="Search by Discord ID..."
                   value={discordIdInput}
                   onChange={(e) => {
                     setDiscordIdInput(e.target.value);
                     setPage(0);
                   }}
+                  className="pl-9"
                 />
               </div>
+
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as DonationStatus | "all");
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="refunded">Refunded</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={typeFilter}
+                onValueChange={(v) => {
+                  setTypeFilter(v as DonationType | "all");
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[130px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="one_time">One-time</SelectItem>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Donations Table */}
+        <Card className="gap-0">
+          <CardHeader className="border-b gap-0">
+            <CardTitle>
+              Donations
+              {pagination?.total != null ? ` (${pagination.total})` : ""}
             </CardTitle>
           </CardHeader>
 
           {listQuery.isLoading ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
               <Loading size="medium" text="Loading donations..." />
+            </CardContent>
+          ) : error ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <div className="text-center">
+                <p className="text-destructive">{error}</p>
+                <Button
+                  onClick={() => listQuery.refetch()}
+                  className="mt-4"
+                  variant="outline"
+                >
+                  Try Again
+                </Button>
+              </div>
             </CardContent>
           ) : donations.length === 0 ? (
             <CardContent className="flex flex-1 items-center justify-center py-12">
@@ -243,42 +370,62 @@ export function AdminDonations() {
                 </Table>
               </CardContent>
 
-              {pagination && (
-                <CardFooter className="flex items-center justify-between border-t">
-                  <span className="text-sm text-muted-foreground">
-                    Showing {page * pagination.limit + 1}–
-                    {Math.min((page + 1) * pagination.limit, pagination.total)}{" "}
-                    of {pagination.total}
-                  </span>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (page > 0) setPage((p) => p - 1);
-                        }}
-                        className={cn(
-                          page === 0 && "pointer-events-none opacity-50",
-                        )}
-                      />
+              <CardFooter className="flex-col gap-3 border-t sm:flex-row sm:flex-wrap sm:items-center">
+                <p className="text-sm text-muted-foreground">
+                  Showing {page * 20 + 1}-{Math.min((page + 1) * 20, total)} of{" "}
+                  {total} donations
+                </p>
+
+                <PaginationContent className="justify-baseline sm:ml-auto sm:justify-end">
+                  <PaginationItem>
+                    <PaginationPrevious
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page > 0) handlePageChange(page - 1);
+                      }}
+                      className={cn(
+                        page === 0 && "pointer-events-none opacity-50",
+                      )}
+                    />
+                  </PaginationItem>
+
+                  {getPaginationItems().map((item, index) => (
+                    <PaginationItem
+                      key={item === "ellipsis" ? `ellipsis-${index}` : item}
+                    >
+                      {item === "ellipsis" ? (
+                        <PaginationEllipsis />
+                      ) : (
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(item);
+                          }}
+                          isActive={page === item}
+                        >
+                          {item + 1}
+                        </PaginationLink>
+                      )}
                     </PaginationItem>
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (pagination.hasNextPage) setPage((p) => p + 1);
-                        }}
-                        className={cn(
-                          !pagination.hasNextPage &&
-                            "pointer-events-none opacity-50",
-                        )}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </CardFooter>
-              )}
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (page < totalPages - 1) handlePageChange(page + 1);
+                      }}
+                      className={cn(
+                        page >= totalPages - 1 &&
+                          "pointer-events-none opacity-50",
+                      )}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </CardFooter>
             </>
           )}
         </Card>
