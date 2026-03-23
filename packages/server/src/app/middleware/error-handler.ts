@@ -122,7 +122,8 @@ export function formatZodError(error: ZodError<unknown>): {
   return { message, fieldErrors };
 }
 
-const SENSITIVE_KEYS = /^(password|secret|token|api_?key|authorization|cookie)$/i;
+const SENSITIVE_KEYS =
+  /^(password|secret|token|api_?key|authorization|cookie)$/i;
 
 function redactSensitive(obj: unknown): unknown {
   if (!obj || typeof obj !== "object") return obj;

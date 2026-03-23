@@ -356,7 +356,9 @@ export const embedsRouter = router({
         let countQuery = Q.discord.embed.preset.where({});
 
         if (input.search) {
-          query = query.where({ name: { $ilike: `%${escapeLike(input.search)}%` } });
+          query = query.where({
+            name: { $ilike: `%${escapeLike(input.search)}%` },
+          });
           countQuery = countQuery.where({
             name: { $ilike: `%${escapeLike(input.search)}%` },
           });

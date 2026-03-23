@@ -48,7 +48,9 @@ export const faqRouter = router({
       }
 
       if (input.search) {
-        query = query.where({ title: { $ilike: `%${escapeLike(input.search)}%` } });
+        query = query.where({
+          title: { $ilike: `%${escapeLike(input.search)}%` },
+        });
       }
 
       const countQuery = Q.faq.entry.where({});
@@ -56,7 +58,9 @@ export const faqRouter = router({
         countQuery.where({ enabled: input.enabled });
       }
       if (input.search) {
-        countQuery.where({ title: { $ilike: `%${escapeLike(input.search)}%` } });
+        countQuery.where({
+          title: { $ilike: `%${escapeLike(input.search)}%` },
+        });
       }
 
       const [entries, total] = await Promise.all([

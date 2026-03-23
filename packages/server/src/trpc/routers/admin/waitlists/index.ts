@@ -47,7 +47,8 @@ export const waitlistsRouter = router({
       const filters: WaitlistEntryFilters = {};
 
       if (input.status) filters.status = input.status;
-      if (input.email) filters.email = { $ilike: `%${escapeLike(input.email)}%` };
+      if (input.email)
+        filters.email = { $ilike: `%${escapeLike(input.email)}%` };
       if (input.discordName) {
         filters.discordName = { $ilike: `%${escapeLike(input.discordName)}%` };
       }

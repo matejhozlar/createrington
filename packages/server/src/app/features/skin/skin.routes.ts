@@ -5,7 +5,8 @@ import type { Request, Response } from "express";
 const router = Router();
 
 /** Matches a Minecraft UUID (with/without dashes) or a valid username (3-16 alphanumeric/underscore) */
-const MC_IDENTIFIER_RE = /^([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}|[a-zA-Z0-9_]{3,16})$/;
+const MC_IDENTIFIER_RE =
+  /^([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}|[a-zA-Z0-9_]{3,16})$/;
 
 /** External skin APIs tried in order until one succeeds */
 const SKIN_SOURCES = [
