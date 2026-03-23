@@ -3,6 +3,7 @@ import { usePlayerData } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading } from "@/components/loading-spinner";
 import {
@@ -148,7 +149,12 @@ export const OnlinePlayers: React.FC = () => {
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
 
-  const { getServerPlayers, loading: playersLoading } = usePlayerData();
+  const {
+    getServerPlayers,
+    loading: playersLoading,
+    error: playersError,
+    refresh,
+  } = usePlayerData();
   const { servers } = useServerData();
   const server = servers.find((s) => s.serverId === serverId);
 
@@ -294,6 +300,18 @@ export const OnlinePlayers: React.FC = () => {
           {playersLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loading size="medium" text="Loading players..." />
+            </div>
+          ) : playersError ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Users className="size-12 text-muted-foreground mb-4" />
+              <p className="text-destructive">{playersError.message}</p>
+              <Button
+                onClick={() => refresh()}
+                className="mt-4"
+                variant="outline"
+              >
+                Try Again
+              </Button>
             </div>
           ) : sortedPlayers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
