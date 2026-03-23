@@ -260,9 +260,7 @@ export const adminServersRouter = router({
             input.serverId,
           );
           if (pending?.status === "scheduled") {
-            await maintenanceService.cancelScheduledMaintenance(
-              input.serverId,
-            );
+            await maintenanceService.cancelScheduledMaintenance(input.serverId);
           }
 
           // Get online player usernames to kick
@@ -284,12 +282,13 @@ export const adminServersRouter = router({
                 Services.WEB_MESSAGE_SERVICE,
               );
               await webMessageService.send({
-                channelId:
-                  Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+                channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
                 embeds: embed.build(),
               });
             } catch (err) {
-              logger.warn(`Failed to send maintenance ended announcement: ${err}`);
+              logger.warn(
+                `Failed to send maintenance ended announcement: ${err}`,
+              );
             }
           }
         }

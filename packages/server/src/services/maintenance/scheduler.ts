@@ -262,9 +262,7 @@ export class MaintenanceScheduler {
         `Sent ${minutesBefore}min maintenance warning for schedule #${schedule.id}`,
       );
     } else {
-      logger.error(
-        `Failed to send maintenance warning: ${result.error}`,
-      );
+      logger.error(`Failed to send maintenance warning: ${result.error}`);
     }
   }
 

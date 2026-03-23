@@ -241,7 +241,10 @@ export function MaintenanceToggle({
                     setAnnounceEnd(checked === true)
                   }
                 />
-                <Label htmlFor="announce-end" className="text-sm cursor-pointer">
+                <Label
+                  htmlFor="announce-end"
+                  className="text-sm cursor-pointer"
+                >
                   Send &quot;maintenance ended&quot; announcement to Discord
                 </Label>
               </div>

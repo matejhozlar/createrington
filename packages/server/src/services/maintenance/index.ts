@@ -69,10 +69,7 @@ function getBasePath(serverId: number): string {
 async function renameFile(from: string, to: string): Promise<void> {
   const localPath = getLocalPath();
   if (localPath) {
-    await fs.rename(
-      path.join(localPath, from),
-      path.join(localPath, to),
-    );
+    await fs.rename(path.join(localPath, from), path.join(localPath, to));
   } else {
     const sftpConfig = getSftpConfig(config.servers.cogs.id);
     const basePath = getBasePath(config.servers.cogs.id);
@@ -195,9 +192,7 @@ export class MaintenanceService {
   }
 
   /** Return the current scheduled/active maintenance for a server, or null */
-  getScheduledMaintenance(
-    serverId: number,
-  ): ServerMaintenanceSchedule | null {
+  getScheduledMaintenance(serverId: number): ServerMaintenanceSchedule | null {
     return this.scheduler?.getSchedule(serverId) ?? null;
   }
 
