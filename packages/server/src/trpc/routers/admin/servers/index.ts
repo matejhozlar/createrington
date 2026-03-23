@@ -236,7 +236,7 @@ export const adminServersRouter = router({
   toggleMaintenance: adminProcedure
     .meta({
       description:
-        "Toggle maintenance mode for a server. Renames the whitelist file via SFTP and reloads via RCON.",
+        "Toggle maintenance mode for a server. Renames the whitelist file via SFTP and reloads via RCON",
     })
     .input(
       z.object({
@@ -312,7 +312,7 @@ export const adminServersRouter = router({
   scheduleMaintenance: adminProcedure
     .meta({
       description:
-        "Schedule maintenance for a future time. Sends initial Discord announcement and sets up warning timers.",
+        "Schedule maintenance for a future time. Sends initial Discord announcement and sets up warning timers",
     })
     .input(
       z.object({

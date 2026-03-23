@@ -11,7 +11,7 @@ const categories = config.discord.guild.categories;
 /** Admin auto-messages router — channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
   channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category." })
+    .meta({ description: "Get all text channels grouped by category" })
     .query(() => {
       const grouped: Array<{
         category: string;
@@ -42,7 +42,7 @@ export const autoMessagesRouter = router({
 
   configs: router({
     list: adminProcedure
-      .meta({ description: "List all auto-message configs." })
+      .meta({ description: "List all auto-message configs" })
       .query(async () => {
         const configs = await Q.discord.auto.message.config
           .where({})
@@ -62,7 +62,7 @@ export const autoMessagesRouter = router({
       }),
 
     get: adminProcedure
-      .meta({ description: "Get a single auto-message config with messages." })
+      .meta({ description: "Get a single auto-message config with messages" })
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ input }) => {
         const config = await Q.discord.auto.message.config.find({
@@ -79,7 +79,7 @@ export const autoMessagesRouter = router({
       }),
 
     create: adminProcedure
-      .meta({ description: "Create a new auto-message config." })
+      .meta({ description: "Create a new auto-message config" })
       .input(
         z.object({
           name: z.string().min(1).max(100),
@@ -107,7 +107,7 @@ export const autoMessagesRouter = router({
       }),
 
     update: adminProcedure
-      .meta({ description: "Update an auto-message config." })
+      .meta({ description: "Update an auto-message config" })
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -134,7 +134,7 @@ export const autoMessagesRouter = router({
       }),
 
     delete: adminProcedure
-      .meta({ description: "Delete an auto-message config." })
+      .meta({ description: "Delete an auto-message config" })
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const existing = await Q.discord.auto.message.config.find({
@@ -153,7 +153,7 @@ export const autoMessagesRouter = router({
 
   messages: router({
     create: adminProcedure
-      .meta({ description: "Add a message to a config." })
+      .meta({ description: "Add a message to a config" })
       .input(
         z.object({
           configId: z.number().int().positive(),
@@ -179,7 +179,7 @@ export const autoMessagesRouter = router({
       }),
 
     update: adminProcedure
-      .meta({ description: "Update a message." })
+      .meta({ description: "Update a message" })
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -199,7 +199,7 @@ export const autoMessagesRouter = router({
       }),
 
     delete: adminProcedure
-      .meta({ description: "Delete a message." })
+      .meta({ description: "Delete a message" })
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const existing = await Q.discord.auto.message.find({ id: input.id });
@@ -211,7 +211,7 @@ export const autoMessagesRouter = router({
       }),
 
     reorder: adminProcedure
-      .meta({ description: "Bulk update sort order for messages." })
+      .meta({ description: "Bulk update sort order for messages" })
       .input(
         z.object({
           items: z.array(

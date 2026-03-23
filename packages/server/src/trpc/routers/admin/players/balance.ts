@@ -42,7 +42,7 @@ export const balanceRouter = router({
   adjust: adminProcedure
     .meta({
       description:
-        "Adjust a player's balance. Positive amount adds, negative subtracts.",
+        "Adjust a player's balance. Positive amount adds, negative subtracts",
     })
     .input(
       z.object({

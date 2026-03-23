@@ -5,7 +5,7 @@ import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_a
 /** Admin dashboard router — profile data and recent action statistics. */
 export const dashboardRouter = router({
   profile: adminProcedure
-    .meta({ description: "Get admin profile data for the dashboard." })
+    .meta({ description: "Get admin profile data for the dashboard" })
     .query(async ({ ctx }) => {
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -28,7 +28,7 @@ export const dashboardRouter = router({
     }),
 
   commandStats: adminProcedure
-    .meta({ description: "Get top slash command usage statistics." })
+    .meta({ description: "Get top slash command usage statistics" })
     .query(async () => {
       const [topCommands, totalToday] = await Promise.all([
         Q.discord.command.usage.topCommands(10),

@@ -8,7 +8,7 @@ export const achievementsRouter = router({
   getProgress: userProcedure
     .meta({
       description:
-        "Get achievement progress for the authenticated player on a server.",
+        "Get achievement progress for the authenticated player on a server",
     })
     .input(
       z.object({
@@ -61,7 +61,7 @@ export const achievementsRouter = router({
   claimAll: userProcedure
     .meta({
       description:
-        "Claim all unclaimed completed achievements for the authenticated player.",
+        "Claim all unclaimed completed achievements for the authenticated player",
     })
     .input(
       z.object({
