@@ -455,6 +455,7 @@ export class WebSocketService {
         serverId,
         online,
         maintenance: status.maintenance,
+        scheduledMaintenance: status.scheduledMaintenance,
         playerCount: status.playerCount,
         maxPlayers: status.maxPlayers,
         timestamp: new Date(),

@@ -32,6 +32,7 @@ import {
   SidebarTrigger,
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
+import { MaintenanceBanner } from "./components/maintenance-banner";
 import { ServerChat } from "./components/chat";
 import { AdminLogs } from "./features/admin/AdminLogs";
 import { AdminServers } from "./features/admin/AdminServers";
@@ -114,6 +115,7 @@ function AppLayout() {
           <SidebarTrigger />
           <Logo />
         </div>
+        <MaintenanceBanner />
         <div className="flex flex-1 flex-col gap-4">
           <Outlet />
         </div>

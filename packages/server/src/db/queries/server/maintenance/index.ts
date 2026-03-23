@@ -1,22 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { CryptoPortfolioSnapshotQueries } from "@/db/queries/crypto/portfolio/snapshot";
+import { ServerMaintenanceScheduleQueries } from "@/db/queries/server/maintenance/schedule";
 
 /**
- * Namespace queries for crypto_portfolio
+ * Namespace queries for server_maintenance
  * 
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'crypto_portfolio_' prefix.
+ * access to child tables that share the 'server_maintenance_' prefix.
  * 
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all CryptoPortfolioQueries instances using same connection
+ * - Shared across all ServerMaintenanceQueries instances using same connection
  * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class CryptoPortfolioQueries {
+export class ServerMaintenanceQueries {
   /**
    * Static singleton registry for child query instances
    * 
@@ -24,7 +24,7 @@ export class CryptoPortfolioQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "crypto_portfolio.actions")
+   * - Keys are fully qualified (e.g., "server_maintenance.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -43,7 +43,7 @@ export class CryptoPortfolioQueries {
    * @returns Cached or newly created child query instance
    * 
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "crypto_portfolio.actions")
+   * - Cache key is prefixed with namespace (e.g., "server_maintenance.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -52,12 +52,12 @@ export class CryptoPortfolioQueries {
     QueryClass: new (db: Pool | PoolClient) => T
   ): T {
     // Initialize cache for this connection if not exists
-    if (!CryptoPortfolioQueries.queryInstances.has(this.db)) {
-      CryptoPortfolioQueries.queryInstances.set(this.db, new Map());
+    if (!ServerMaintenanceQueries.queryInstances.has(this.db)) {
+      ServerMaintenanceQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = CryptoPortfolioQueries.queryInstances.get(this.db)!;
-    const fullKey = `crypto_portfolio.${key}`;
+    const cache = ServerMaintenanceQueries.queryInstances.get(this.db)!;
+    const fullKey = `server_maintenance.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -72,22 +72,22 @@ export class CryptoPortfolioQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded crypto_portfolio_snapshot queries */
-  private _snapshot?: CryptoPortfolioSnapshotQueries;
+  /** Private backing field for lazy-loaded server_maintenance_schedule queries */
+  private _schedule?: ServerMaintenanceScheduleQueries;
 
   /**
-   * Lazy-loaded singleton accessor for crypto_portfolio_snapshot
+   * Lazy-loaded singleton accessor for server_maintenance_schedule
    * 
-   * Returns a CryptoPortfolioSnapshotQueries instance that shares this namespace's
+   * Returns a ServerMaintenanceScheduleQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    * 
-   * @returns Singleton CryptoPortfolioSnapshotQueries instance
+   * @returns Singleton ServerMaintenanceScheduleQueries instance
    */
-  get snapshot(): CryptoPortfolioSnapshotQueries {
-    if (!this._snapshot) {
-      this._snapshot = this.getOrCreateChild<CryptoPortfolioSnapshotQueries>('snapshot', CryptoPortfolioSnapshotQueries);
+  get schedule(): ServerMaintenanceScheduleQueries {
+    if (!this._schedule) {
+      this._schedule = this.getOrCreateChild<ServerMaintenanceScheduleQueries>('schedule', ServerMaintenanceScheduleQueries);
     }
-    return this._snapshot;
+    return this._schedule;
   }
 }

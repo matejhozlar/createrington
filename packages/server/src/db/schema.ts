@@ -1419,3 +1419,33 @@ export const cryptoMarketEvent = pgTable(
     index("idx_crypto_market_event_recent").on(table.createdAt.desc()),
   ],
 );
+
+// --- server maintenance schedule ---
+
+export const serverMaintenanceSchedule = pgTable(
+  "server_maintenance_schedule",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id),
+    status: text("status").notNull().default("scheduled"),
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }).notNull(),
+    estimatedMinutes: integer("estimated_minutes").notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    scheduledByDiscordId: text("scheduled_by_discord_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_server_maintenance_schedule_server_status").on(
+      table.serverId,
+      table.status,
+    ),
+  ],
+);

@@ -31,6 +31,7 @@ import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
 import { maintenanceService } from "./maintenance";
+import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { PlaytimeForwarderService } from "./playtime/forwarder.service";
 import { DonationService } from "./donation/donation.service";
 
@@ -474,6 +475,20 @@ export async function initializeServices(): Promise<void> {
       .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
   } else {
     logger.info("Skipping maintenance SFTP check in development mode");
+  }
+
+  // Initialize maintenance scheduler (loads pending schedules, sets up timers)
+  try {
+    const webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
+    const scheduler = new MaintenanceScheduler(
+      maintenanceService,
+      webMessageService,
+    );
+    await scheduler.initialize();
+    maintenanceService.setScheduler(scheduler);
+    logger.info("Maintenance scheduler initialized");
+  } catch (err) {
+    logger.warn(`Maintenance scheduler init failed: ${err}`);
   }
 }
 

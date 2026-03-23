@@ -1,6 +1,8 @@
 import SftpClient from "ssh2-sftp-client";
 import config from "@/config";
 import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
+import type { MaintenanceScheduler } from "./scheduler";
+import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 
 const WHITELIST_FILE = "whitelist.json";
 const WHITELIST_BACKUP = "whitelist.json.bak";
@@ -53,9 +55,40 @@ function getBasePath(serverId: number): string {
  * Persistence: the existence of `whitelist.json.bak` on the game server IS the source
  * of truth. An in-memory Set caches this to avoid SFTP calls on every status check.
  */
-class MaintenanceService {
+export class MaintenanceService {
   private maintenanceServers = new Set<number>();
   private initialized = false;
+  private scheduler: MaintenanceScheduler | null = null;
+
+  /** Wire the scheduler after both are constructed (avoids circular dep) */
+  setScheduler(scheduler: MaintenanceScheduler): void {
+    this.scheduler = scheduler;
+  }
+
+  /** Return the current scheduled/active maintenance for a server, or null */
+  getScheduledMaintenance(
+    serverId: number,
+  ): ServerMaintenanceSchedule | null {
+    return this.scheduler?.getSchedule(serverId) ?? null;
+  }
+
+  /** Cancel a pending scheduled maintenance for a server */
+  async cancelScheduledMaintenance(serverId: number): Promise<void> {
+    await this.scheduler?.cancel(serverId);
+  }
+
+  /** Schedule maintenance for a server */
+  async scheduleMaintenance(opts: {
+    serverId: number;
+    scheduledAt: Date;
+    estimatedMinutes: number;
+    scheduledByDiscordId: string;
+  }): Promise<ServerMaintenanceSchedule> {
+    if (!this.scheduler) {
+      throw new Error("Maintenance scheduler not initialized");
+    }
+    return this.scheduler.schedule(opts);
+  }
 
   /** Check in-memory cache for maintenance state */
   isInMaintenance(serverId: number): boolean {
@@ -197,6 +230,12 @@ class MaintenanceService {
     await rcon.whitelist(serverId, WhitelistAction.RELOAD);
 
     this.maintenanceServers.delete(serverId);
+
+    // Mark any active schedule row as completed
+    if (this.scheduler) {
+      await this.scheduler.markCompleted(serverId);
+    }
+
     logger.info(`Maintenance mode disabled for server ${serverId}`);
   }
 
