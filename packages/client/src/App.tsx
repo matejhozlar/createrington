@@ -115,12 +115,12 @@ function AppLayout() {
           <SidebarTrigger />
           <Logo />
         </div>
-        <MaintenanceBanner />
         <div className="flex flex-1 flex-col gap-4">
           <Outlet />
         </div>
         {!hideFooter && <Footer />}
       </SidebarInset>
+      <MaintenanceBanner />
     </>
   );
 }

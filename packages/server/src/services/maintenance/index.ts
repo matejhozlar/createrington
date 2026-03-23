@@ -51,7 +51,7 @@ function getSftpConfig(serverId: number) {
 /** Resolves the SFTP base path (parent of the stats directory) for a server */
 function getBasePath(serverId: number): string {
   const sftpConfig = getSftpConfig(serverId);
-  // statsPath is something like "./world/stats" — base is two levels up, i.e. "."
+  // statsPath is something like "./world/stats"  - base is two levels up, i.e. "."
   // We just use "." since whitelist.json is at the Minecraft server root
   const parts = sftpConfig.statsPath.split("/");
   // Remove "world/stats" (or similar) to get the root
@@ -62,7 +62,7 @@ function getBasePath(serverId: number): string {
 }
 
 // =============================================================================
-// Filesystem adapters — local or SFTP, selected by config
+// Filesystem adapters  - local or SFTP, selected by config
 // =============================================================================
 
 /** Renames a file by path, using the local filesystem or SFTP depending on config */
@@ -229,7 +229,7 @@ export class MaintenanceService {
 
     if (!isMaintenanceAllowed()) {
       logger.info(
-        "Maintenance check skipped — no local path configured and SFTP not allowed",
+        "Maintenance check skipped, no local path configured and SFTP not allowed",
       );
       return;
     }
