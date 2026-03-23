@@ -468,14 +468,10 @@ export async function initializeServices(): Promise<void> {
 
   logger.info(`✓ Service initialization complete: ${ready}/${total} ready`);
 
-  // Initialize maintenance service (checks SFTP for backup files)
-  if (!config.envMode.isDev) {
-    maintenanceService
-      .initialize([config.servers.cogs.id])
-      .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
-  } else {
-    logger.info("Skipping maintenance SFTP check in development mode");
-  }
+  // Initialize maintenance service (checks for backup files via local path or SFTP)
+  maintenanceService
+    .initialize([config.servers.cogs.id])
+    .catch((err) => logger.warn(`Maintenance service init failed: ${err}`));
 
   // Initialize maintenance scheduler (loads pending schedules, sets up timers)
   try {

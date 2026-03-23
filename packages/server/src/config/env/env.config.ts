@@ -149,6 +149,11 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
   OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
+  // Maintenance
+  // When set, the maintenance service uses local filesystem operations instead of SFTP.
+  // Point to the Minecraft server data directory (e.g., /opt/infrastructure/mc-test/data).
+  MAINTENANCE_LOCAL_PATH: z.string().min(1).optional(),
+
   // Stripe (optional — donation features are disabled when not configured)
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
