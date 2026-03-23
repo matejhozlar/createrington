@@ -1069,7 +1069,10 @@ export const cryptoHolding = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     totalCostBasis: numeric("total_cost_basis", { precision: 20, scale: 8 })
       .notNull()
@@ -1107,7 +1110,10 @@ export const cryptoTransaction = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     type: cryptoTradeTypeEnum("type").notNull(),
     trigger: cryptoTradeTriggerEnum("trigger").notNull().default("market"),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
@@ -1143,7 +1149,10 @@ export const cryptoPriceSnapshot = pgTable(
     id: serial("id").primaryKey(),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     interval: cryptoPriceIntervalEnum("interval").notNull(),
     openPrice: numeric("open_price", { precision: 20, scale: 8 }).notNull(),
     highPrice: numeric("high_price", { precision: 20, scale: 8 }).notNull(),
@@ -1183,7 +1192,10 @@ export const cryptoOrder = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     type: cryptoOrderTypeEnum("type").notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     targetPrice: numeric("target_price", { precision: 20, scale: 8 }).notNull(),
@@ -1227,7 +1239,10 @@ export const cryptoCostBasis = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     amountRemaining: bigint("amount_remaining", { mode: "bigint" }).notNull(),
     pricePerUnit: numeric("price_per_unit", {
       precision: 20,
@@ -1277,7 +1292,10 @@ export const cryptoPriceAlert = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     targetPrice: numeric("target_price", { precision: 20, scale: 8 }).notNull(),
     direction: cryptoAlertDirectionEnum("direction").notNull(),
     triggered: boolean("triggered").notNull().default(false),
@@ -1308,7 +1326,10 @@ export const cryptoWatchlist = pgTable(
       }),
     tokenId: integer("token_id")
       .notNull()
-      .references(() => cryptoToken.id),
+      .references(() => cryptoToken.id, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -1407,7 +1428,10 @@ export const cryptoMarketEvent = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     article: text("article"),
-    tokenId: integer("token_id").references(() => cryptoToken.id),
+    tokenId: integer("token_id").references(() => cryptoToken.id, {
+      onUpdate: "cascade",
+      onDelete: "cascade",
+    }),
     severity: cryptoEventSeverityEnum("severity").notNull().default("info"),
     metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
     activeUntil: timestamp("active_until", { withTimezone: true }),
