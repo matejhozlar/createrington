@@ -21,6 +21,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   Users,
@@ -111,18 +118,6 @@ export function AdminWaitlists() {
    */
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
-  }, []);
-
-  /**
-   * Toggle verified filter
-   */
-  const toggleVerifiedFilter = useCallback(() => {
-    setVerifiedFilter((prev) => {
-      if (prev === undefined) return true;
-      if (prev === true) return false;
-      return undefined;
-    });
-    setPage(0);
   }, []);
 
   /**
@@ -371,8 +366,8 @@ export function AdminWaitlists() {
             <h3 className="font-semibold">Filters</h3>
           </div>
 
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-48">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
@@ -383,72 +378,46 @@ export function AdminWaitlists() {
               />
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={statusFilter === "all" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("all");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                All
-              </Button>
-              <Button
-                type="button"
-                variant={statusFilter === "pending" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("pending");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                Pending
-              </Button>
-              <Button
-                type="button"
-                variant={statusFilter === "accepted" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setStatusFilter("accepted");
-                  setPage(0);
-                }}
-                className="min-w-[90px] cursor-pointer"
-              >
-                Accepted
-              </Button>
-              <Button
-                type="button"
-                variant={
-                  statusFilter === "auto_accepted" ? "default" : "outline"
-                }
-                size="default"
-                onClick={() => {
-                  setStatusFilter("auto_accepted");
-                  setPage(0);
-                }}
-                className="min-w-[110px] cursor-pointer"
-              >
-                Auto-Accepted
-              </Button>
-            </div>
-
-            <Button
-              type="button"
-              variant={verifiedFilter === undefined ? "outline" : "default"}
-              size="default"
-              onClick={toggleVerifiedFilter}
-              className="min-w-[90px] cursor-pointer"
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => {
+                setStatusFilter(v as StatusFilter);
+                setPage(0);
+              }}
             >
-              {verifiedFilter === undefined
-                ? "All"
-                : verifiedFilter
-                  ? "Verified"
-                  : "Unverified"}
-            </Button>
+              <SelectTrigger className="min-w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="auto_accepted">Auto-Accepted</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={
+                verifiedFilter === undefined
+                  ? "all"
+                  : verifiedFilter
+                    ? "verified"
+                    : "unverified"
+              }
+              onValueChange={(v) => {
+                setVerifiedFilter(v === "all" ? undefined : v === "verified");
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="min-w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Verification</SelectItem>
+                <SelectItem value="verified">Verified</SelectItem>
+                <SelectItem value="unverified">Unverified</SelectItem>
+              </SelectContent>
+            </Select>
 
             <Button type="submit" className="min-w-[85px]">
               Search

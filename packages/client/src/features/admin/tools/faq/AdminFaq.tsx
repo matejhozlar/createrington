@@ -20,6 +20,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   MessageCircleQuestion,
@@ -236,8 +243,8 @@ export function AdminFaq() {
             <h3 className="font-semibold">Filters</h3>
           </div>
 
-          <form onSubmit={handleSearch} className="flex gap-2">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex flex-wrap gap-2">
+            <div className="relative flex-1 min-w-48">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
@@ -248,44 +255,22 @@ export function AdminFaq() {
               />
             </div>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={enabledFilter === "all" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setEnabledFilter("all");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                All
-              </Button>
-              <Button
-                type="button"
-                variant={enabledFilter === "enabled" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setEnabledFilter("enabled");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                Enabled
-              </Button>
-              <Button
-                type="button"
-                variant={enabledFilter === "disabled" ? "default" : "outline"}
-                size="default"
-                onClick={() => {
-                  setEnabledFilter("disabled");
-                  setPage(0);
-                }}
-                className="min-w-[85px] cursor-pointer"
-              >
-                Disabled
-              </Button>
-            </div>
+            <Select
+              value={enabledFilter}
+              onValueChange={(v) => {
+                setEnabledFilter(v as EnabledFilter);
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="min-w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Entries</SelectItem>
+                <SelectItem value="enabled">Enabled</SelectItem>
+                <SelectItem value="disabled">Disabled</SelectItem>
+              </SelectContent>
+            </Select>
           </form>
         </div>
 
