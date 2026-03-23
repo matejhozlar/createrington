@@ -75,8 +75,8 @@ function BannerContent({
             {new Date(scheduledAt).toLocaleString(undefined, {
               dateStyle: "medium",
               timeStyle: "short",
-            })}
-            {" "}for ~{estimatedMinutes} min
+            })}{" "}
+            for ~{estimatedMinutes} min
           </p>
         </div>
       )}
