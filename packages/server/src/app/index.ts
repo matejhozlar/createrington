@@ -14,6 +14,7 @@ import { createContext } from "@/trpc/context";
 import config from "@/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
 import { Status } from "discord.js";
 import { container, Services, getServiceSync } from "@/services";
 // import { poolMonitor } from "@/db";
@@ -28,6 +29,7 @@ export function createApp(): Express {
   // Stripe webhook requires raw body for signature verification — mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
+  app.use(helmet());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(cookieParser());
