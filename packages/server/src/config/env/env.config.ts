@@ -150,8 +150,9 @@ const envSchema = z.object({
   OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
   // Maintenance
-  // When set, the maintenance service uses local filesystem operations instead of SFTP.
-  // Point to the Minecraft server data directory (e.g., /opt/infrastructure/mc-test/data).
+  // Optional local path for direct filesystem access during maintenance (bypasses SFTP).
+  // Set to the Minecraft server data directory (e.g. /opt/infrastructure/mc-test/data).
+  // When absent, the maintenance service falls back to SFTP (production-only).
   MAINTENANCE_LOCAL_PATH: z.string().min(1).optional(),
 
   // Stripe (optional — donation features are disabled when not configured)

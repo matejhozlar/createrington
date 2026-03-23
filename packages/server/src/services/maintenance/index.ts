@@ -65,6 +65,7 @@ function getBasePath(serverId: number): string {
 // Filesystem adapters — local or SFTP, selected by config
 // =============================================================================
 
+/** Renames a file by path, using the local filesystem or SFTP depending on config */
 async function renameFile(from: string, to: string): Promise<void> {
   const localPath = getLocalPath();
   if (localPath) {
@@ -90,6 +91,7 @@ async function renameFile(from: string, to: string): Promise<void> {
   }
 }
 
+/** Writes a file by name, using the local filesystem or SFTP depending on config */
 async function writeFile(name: string, content: string): Promise<void> {
   const localPath = getLocalPath();
   if (localPath) {
@@ -112,6 +114,7 @@ async function writeFile(name: string, content: string): Promise<void> {
   }
 }
 
+/** Deletes a file by name, using the local filesystem or SFTP depending on config */
 async function deleteFile(name: string): Promise<void> {
   const localPath = getLocalPath();
   if (localPath) {
@@ -135,6 +138,7 @@ async function deleteFile(name: string): Promise<void> {
   }
 }
 
+/** Returns true if a file exists, using the local filesystem or SFTP depending on config */
 async function fileExists(name: string): Promise<boolean> {
   const localPath = getLocalPath();
   if (localPath) {

@@ -42,6 +42,7 @@ function formatModList(mods: ChangelogMod[]): string {
   return mods.map((m) => `- [${m.name}](${m.url})`).join("\n");
 }
 
+/** Formats a Date as a Discord timestamp tag (`<t:unix:style>`) */
 function formatDiscordTimestamp(date: Date, style: "f" | "R"): string {
   const timestamp = Math.floor(date.getTime() / 1000);
   return `<t:${timestamp}:${style}>`;

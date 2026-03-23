@@ -667,6 +667,17 @@ export class WebSocketService {
   }
 
   /**
+   * Triggers a server status broadcast to all subscribed clients.
+   * Used when external state (e.g. maintenance mode) changes.
+   *
+   * @param serverId - Server ID whose status should be re-broadcast
+   */
+  async triggerServerStatusUpdate(serverId: number): Promise<void> {
+    const status = await this.dataProvider.getServerStatus(serverId);
+    await this.broadcastServerStatusUpdate(serverId, status.online);
+  }
+
+  /**
    * Emits a full player sync for a server to all subscribed clients
    *
    * Useful for recovery or debugging — sends the complete current player list
@@ -674,15 +685,6 @@ export class WebSocketService {
    *
    * @param serverId - Server ID to sync players for
    */
-  /**
-   * Triggers a server status broadcast to all subscribed clients.
-   * Used when external state (e.g. maintenance mode) changes.
-   */
-  async triggerServerStatusUpdate(serverId: number): Promise<void> {
-    const status = await this.dataProvider.getServerStatus(serverId);
-    await this.broadcastServerStatusUpdate(serverId, status.online);
-  }
-
   async broadcastPlayerSync(serverId: number): Promise<void> {
     const players = await this.dataProvider.getServerPlayers(serverId);
 

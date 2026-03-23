@@ -1420,7 +1420,9 @@ export const cryptoMarketEvent = pgTable(
   ],
 );
 
-// --- server maintenance schedule ---
+// --- server_maintenance_schedule ---
+// Tracks scheduled and in-progress maintenance windows. One row per event;
+// status transitions: scheduled → active → completed | cancelled.
 
 export const serverMaintenanceSchedule = pgTable(
   "server_maintenance_schedule",

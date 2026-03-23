@@ -2,6 +2,7 @@ import { Wrench } from "lucide-react";
 import { useServerData } from "@/contexts/server-data";
 import { useCountdown } from "@/hooks/use-countdown";
 
+/** Renders the countdown banner strip for a given scheduled maintenance time. */
 function BannerContent({ scheduledAt }: { scheduledAt: string }) {
   const countdown = useCountdown(scheduledAt);
 
@@ -25,6 +26,7 @@ function BannerContent({ scheduledAt }: { scheduledAt: string }) {
   );
 }
 
+/** Displays a site-wide banner when any server has a scheduled maintenance window pending. */
 export function MaintenanceBanner() {
   const { servers } = useServerData();
 

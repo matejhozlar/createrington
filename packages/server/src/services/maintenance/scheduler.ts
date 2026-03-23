@@ -168,6 +168,14 @@ export class MaintenanceScheduler {
   // Private
   // ---------------------------------------------------------------------------
 
+  /**
+   * Creates warning and activation setTimeout handles for a schedule row.
+   * Warning timers fire at each interval in WARNING_INTERVALS_MINUTES that
+   * still lies in the future; the activation timer fires at the exact start time.
+   *
+   * @param schedule - The persisted schedule row to set up timers for
+   * @private
+   */
   private setupTimers(schedule: ServerMaintenanceSchedule): void {
     const timers: NodeJS.Timeout[] = [];
     const scheduledMs = schedule.scheduledAt.getTime();
@@ -205,6 +213,12 @@ export class MaintenanceScheduler {
     }
   }
 
+  /**
+   * Clears all warning and activation timers associated with a schedule.
+   *
+   * @param scheduleId - ID of the schedule whose timers should be cleared
+   * @private
+   */
   private clearTimers(scheduleId: number): void {
     const warnings = this.warningTimers.get(scheduleId);
     if (warnings) {
@@ -219,6 +233,14 @@ export class MaintenanceScheduler {
     }
   }
 
+  /**
+   * Sends a plain-text warning message to the Minecraft chat channel
+   * indicating how long until maintenance begins.
+   *
+   * @param schedule - The schedule row the warning is for
+   * @param minutesBefore - How many minutes before start the warning fires
+   * @private
+   */
   private async sendWarning(
     schedule: ServerMaintenanceSchedule,
     minutesBefore: number,
@@ -246,6 +268,15 @@ export class MaintenanceScheduler {
     }
   }
 
+  /**
+   * Activates maintenance mode for the given schedule:
+   * 1. Kicks online players and enables the whitelist swap via MaintenanceService
+   * 2. Updates the DB row to status "active" with a startedAt timestamp
+   * 3. Broadcasts a server status update over WebSocket
+   *
+   * @param schedule - The schedule row to activate
+   * @private
+   */
   private async activateMaintenance(
     schedule: ServerMaintenanceSchedule,
   ): Promise<void> {
