@@ -1,6 +1,19 @@
 import appConfig from "@/config";
 import { Q } from "@/db";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
+
+/** Extract safe error details from Axios errors without leaking secrets */
+function safeAxiosError(error: unknown): object {
+  if (error instanceof AxiosError) {
+    return {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      code: error.code,
+      message: error.message,
+    };
+  }
+  return { message: error instanceof Error ? error.message : String(error) };
+}
 
 /**
  * Discord OAuth token response
@@ -160,7 +173,7 @@ export class DiscordOAuthService {
       logger.info("Successfully exchanged OAuth code for token");
       return response.data;
     } catch (error) {
-      logger.error("Failed to exchange OAuth code:", error);
+      logger.error("Failed to exchange OAuth code:", safeAxiosError(error));
       throw new Error("Failed to exchange authorization code");
     }
   }
@@ -194,7 +207,7 @@ export class DiscordOAuthService {
       );
       return response.data;
     } catch (error) {
-      logger.error("Failed to fetch Discord user:", error);
+      logger.error("Failed to fetch Discord user:", safeAxiosError(error));
       throw new Error("Failed to fetch user information");
     }
   }
@@ -324,7 +337,7 @@ export class DiscordOAuthService {
       logger.info("Successfully refreshed OAuth token");
       return response.data;
     } catch (error) {
-      logger.error("Failed to refresh OAuth token:", error);
+      logger.error("Failed to refresh OAuth token:", safeAxiosError(error));
       throw new Error("Failed to refresh access token");
     }
   }
@@ -356,7 +369,7 @@ export class DiscordOAuthService {
 
       logger.info("Successfully revoked OAuth token");
     } catch (error) {
-      logger.error("Failed to revoke OAuth token:", error);
+      logger.error("Failed to revoke OAuth token:", safeAxiosError(error));
       throw new Error("Failed to revoke token");
     }
   }
