@@ -305,9 +305,11 @@ async function handleCancelClose(
   _ticketId: number,
 ): Promise<void> {
   try {
-    await interaction.message.delete().catch((err) =>
-      logger.error("Failed to delete cancel confirmation message:", err),
-    );
+    await interaction.message
+      .delete()
+      .catch((err) =>
+        logger.error("Failed to delete cancel confirmation message:", err),
+      );
   } catch (error) {
     logger.error("Failed to delete cancel confirmation message:", error);
   }
