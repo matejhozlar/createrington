@@ -115,7 +115,7 @@ export async function execute(
       try {
         await RoleManager.assign(
           member,
-          Discord.Roles.VERIFIED,
+          [Discord.Roles.VERIFIED, Discord.Roles.COGS_AND_STEAM],
           "Returning player - auto-verified on rejoin",
         );
       } catch (error) {

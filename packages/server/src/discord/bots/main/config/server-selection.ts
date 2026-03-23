@@ -29,7 +29,7 @@ export const SERVER_CONFIGS: ServerConfig[] = [
     description: "Create focused server on NeoForge 1.21.1",
     roleId: Discord.Roles.COGS_AND_STEAM,
     emoji: "⚙️",
-    enabled: false,
+    enabled: true,
   },
   {
     id: 99,
