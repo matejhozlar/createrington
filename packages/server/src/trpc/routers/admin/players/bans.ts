@@ -13,7 +13,7 @@ export const bansRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Get all bans for a player with statistics and current ban status.",
+        "Get all bans for a player with statistics and current ban status",
     })
     .input(
       z.object({
@@ -36,7 +36,7 @@ export const bansRouter = router({
   issueTemporary: adminProcedure
     .meta({
       description:
-        "Issue a temporary ban. Bans on all Minecraft servers via RCON and sends a Discord notification.",
+        "Issue a temporary ban. Bans on all Minecraft servers via RCON and sends a Discord notification",
     })
     .input(
       z.object({
@@ -112,7 +112,7 @@ export const bansRouter = router({
   issuePermanent: adminProcedure
     .meta({
       description:
-        "Issue a permanent ban. Removes whitelist, bans on all servers, kicks from Discord, and sends a notification.",
+        "Issue a permanent ban. Removes whitelist, bans on all servers, kicks from Discord, and sends a notification",
     })
     .input(
       z.object({
@@ -216,7 +216,7 @@ export const bansRouter = router({
   unban: adminProcedure
     .meta({
       description:
-        "Unban/pardon a player. Pardons on all Minecraft servers via RCON and sends a Discord notification.",
+        "Unban/pardon a player. Pardons on all Minecraft servers via RCON and sends a Discord notification",
     })
     .input(
       z.object({
@@ -293,7 +293,7 @@ export const bansRouter = router({
   getRecent: adminProcedure
     .meta({
       description:
-        "Get recent bans across all players. Defaults to active-only.",
+        "Get recent bans across all players. Defaults to active-only",
     })
     .input(
       z.object({

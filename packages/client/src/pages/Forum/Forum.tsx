@@ -1,5 +1,3 @@
-import React from "react";
-
-export const Forum: React.FC = () => {
+export function Forum() {
   return <div>forum</div>;
-};
+}

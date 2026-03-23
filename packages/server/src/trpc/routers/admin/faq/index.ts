@@ -30,7 +30,7 @@ function validatePattern(matchMode: string, pattern: string): void {
 /** Admin FAQ router — CRUD for FAQ entries and welcome message management. */
 export const faqRouter = router({
   list: adminProcedure
-    .meta({ description: "List FAQ entries with filtering and pagination." })
+    .meta({ description: "List FAQ entries with filtering and pagination" })
     .input(
       z.object({
         enabled: z.boolean().optional(),
@@ -78,7 +78,7 @@ export const faqRouter = router({
     }),
 
   get: adminProcedure
-    .meta({ description: "Get a single FAQ entry by ID." })
+    .meta({ description: "Get a single FAQ entry by ID" })
     .input(z.object({ id: z.number().int().positive() }))
     .query(async ({ input }) => {
       const entry = await Q.faq.entry.find({ id: input.id });
@@ -91,7 +91,7 @@ export const faqRouter = router({
     }),
 
   create: adminProcedure
-    .meta({ description: "Create a new FAQ entry." })
+    .meta({ description: "Create a new FAQ entry" })
     .input(
       z.object({
         matchMode: matchModeSchema,
@@ -121,7 +121,7 @@ export const faqRouter = router({
     }),
 
   update: adminProcedure
-    .meta({ description: "Update an existing FAQ entry." })
+    .meta({ description: "Update an existing FAQ entry" })
     .input(
       z.object({
         id: z.number().int().positive(),
@@ -153,7 +153,7 @@ export const faqRouter = router({
     }),
 
   delete: adminProcedure
-    .meta({ description: "Delete a FAQ entry." })
+    .meta({ description: "Delete a FAQ entry" })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       const existing = await Q.faq.entry.find({ id: input.id });
@@ -170,7 +170,7 @@ export const faqRouter = router({
     }),
 
   repostWelcome: adminProcedure
-    .meta({ description: "Manually trigger a welcome message repost." })
+    .meta({ description: "Manually trigger a welcome message repost" })
     .mutation(async () => {
       const faqService = container.getSync(Services.FAQ_SERVICE);
       await faqService.repostWelcomeMessage();

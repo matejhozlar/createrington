@@ -32,7 +32,7 @@ export const announcementsRouter = router({
   searchMods: adminProcedure
     .meta({
       description:
-        "Search CurseForge for mods by query string. Requires the CurseForge API key to be configured.",
+        "Search CurseForge for mods by query string. Requires the CurseForge API key to be configured",
     })
     .input(z.object({ query: z.string().min(1).max(100) }))
     .query(async ({ input }) => {
@@ -47,7 +47,7 @@ export const announcementsRouter = router({
   sendChangelog: adminProcedure
     .meta({
       description:
-        "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated.",
+        "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated",
     })
     .input(sendChangelogInput)
     .mutation(async ({ input }) => {
@@ -92,7 +92,7 @@ export const announcementsRouter = router({
   sendMaintenance: adminProcedure
     .meta({
       description:
-        "Build and send a maintenance announcement embed to the announcements channel.",
+        "Build and send a maintenance announcement embed to the announcements channel",
     })
     .input(sendMaintenanceInput)
     .mutation(async ({ input }) => {

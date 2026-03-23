@@ -10,7 +10,7 @@ export const logsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List admin audit log entries with filtering, pagination, and sorting.",
+        "List admin audit log entries with filtering, pagination, and sorting",
     })
     .input(
       z.object({

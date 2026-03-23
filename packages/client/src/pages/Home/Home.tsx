@@ -1,4 +1,4 @@
-import React from "react";
+import { useRef } from "react";
 import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
@@ -35,10 +35,10 @@ import { useServerData } from "@/contexts/server-data";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 
-export const Home: React.FC = () => {
+export function Home() {
   const { user } = useAuth();
 
-  const autoplayPlugin = React.useRef(
+  const autoplayPlugin = useRef(
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
 
@@ -597,4 +597,4 @@ export const Home: React.FC = () => {
       </section>
     </div>
   );
-};
+}

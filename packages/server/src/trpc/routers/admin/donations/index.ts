@@ -8,7 +8,7 @@ export const adminDonationsRouter = router({
   stats: adminProcedure
     .meta({
       description:
-        "Get aggregate donation statistics: total raised, unique donor count, and total donation count.",
+        "Get aggregate donation statistics: total raised, unique donor count, and total donation count",
     })
     .query(async () => {
       return donationRepo.getStats();
@@ -17,7 +17,7 @@ export const adminDonationsRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "List all donations with optional status filter, pagination, and newest-first ordering.",
+        "List all donations with optional status filter, pagination, and newest-first ordering",
     })
     .input(
       z.object({

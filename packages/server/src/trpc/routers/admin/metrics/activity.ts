@@ -31,7 +31,7 @@ export const activityMetricsRouter = router({
     }),
 
   getAverageSessionLength: adminProcedure
-    .meta({ description: "Get average session length in seconds." })
+    .meta({ description: "Get average session length in seconds" })
     .input(
       z.object({
         start: z.iso.datetime().optional(),
@@ -46,7 +46,7 @@ export const activityMetricsRouter = router({
     }),
 
   getNewVsReturning: adminProcedure
-    .meta({ description: "Get new vs returning players per day." })
+    .meta({ description: "Get new vs returning players per day" })
     .input(z.object({ start: z.iso.datetime(), end: z.iso.datetime() }))
     .query(async ({ input }) => {
       return await metricsService.activity.getNewVsReturning(

@@ -35,7 +35,7 @@ export function InviteWaitlistModal({
         reason: reason.trim() || undefined,
       });
 
-      toast.success("Waitlist entry invited successfully!");
+      toast.success("Waitlist entry invited");
       setReason("");
       onClose();
       onSuccess();

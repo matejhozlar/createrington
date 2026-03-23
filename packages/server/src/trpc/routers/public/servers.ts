@@ -114,7 +114,7 @@ export const serversRouter = router({
   list: publicProcedure
     .meta({
       description:
-        "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list.",
+        "Returns all Minecraft servers with their current status, online player list, and a summary of total/online counts. Used on the home page and server list",
     })
     .query(async () => {
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
@@ -153,7 +153,7 @@ export const serversRouter = router({
   get: publicProcedure
     .meta({
       description:
-        "Returns a single Minecraft server's status, player list, and connection info by server ID. Throws BAD_REQUEST if the server ID doesn't exist in config.",
+        "Returns a single Minecraft server's status, player list, and connection info by server ID. Throws BAD_REQUEST if the server ID doesn't exist in config",
     })
     .input(
       z.object({

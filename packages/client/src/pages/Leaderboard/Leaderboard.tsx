@@ -1,5 +1,3 @@
-import React from "react";
-
-export const Leaderboard: React.FC = () => {
+export function Leaderboard() {
   return <div>Leaderboard</div>;
-};
+}

@@ -8,7 +8,7 @@ export const strikesRouter = router({
   list: adminProcedure
     .meta({
       description:
-        "Get all strikes for a player with statistics. Optionally filter to active-only.",
+        "Get all strikes for a player with statistics. Optionally filter to active-only",
     })
     .input(
       z.object({
@@ -28,7 +28,7 @@ export const strikesRouter = router({
     }),
 
   issue: adminProcedure
-    .meta({ description: "Issue a strike to a player." })
+    .meta({ description: "Issue a strike to a player" })
     .input(
       z.object({
         id: z.string().min(1),
@@ -75,7 +75,7 @@ export const strikesRouter = router({
     }),
 
   remove: adminProcedure
-    .meta({ description: "Remove/pardon a strike from a player." })
+    .meta({ description: "Remove/pardon a strike from a player" })
     .input(
       z.object({
         id: z.string().min(1),

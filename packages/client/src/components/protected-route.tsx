@@ -1,4 +1,4 @@
-import React from "react";
+import type React from "react";
 import { useAuth } from "@/contexts/auth/";
 import { Loading } from "./loading-spinner";
 import { NotFound } from "@/pages/not-found";
@@ -10,12 +10,12 @@ interface ProtectedRouteProps {
   fallback?: React.ReactNode;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+export function ProtectedRoute({
   children,
   requiresAuth = true,
   requiresAdmin = false,
   fallback,
-}) => {
+}: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
   // Show loading state
@@ -42,4 +42,4 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   return <>{children}</>;
-};
+}

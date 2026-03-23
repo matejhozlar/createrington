@@ -61,7 +61,7 @@ function formatDate(dateStr: string): string {
   });
 }
 
-export const AdminDashboard: React.FC = () => {
+export function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -537,4 +537,4 @@ export const AdminDashboard: React.FC = () => {
       </div>
     </div>
   );
-};
+}

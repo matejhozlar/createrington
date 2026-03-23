@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { useServerData } from "@/contexts/server-data";
 import { trpc } from "@/lib/trpc";
@@ -64,7 +65,7 @@ const TIER_LABELS = [
   "X",
 ];
 
-export const Achievements: React.FC = () => {
+export function Achievements() {
   const { user } = useAuth();
   const { servers } = useServerData();
   const toast = useToastActions();
@@ -247,7 +248,7 @@ export const Achievements: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 interface AchievementCardProps {
   item: {

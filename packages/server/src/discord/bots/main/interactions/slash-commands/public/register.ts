@@ -243,7 +243,10 @@ export async function execute(
 
     await randomDelay();
     await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
-    await RoleManager.assign(member, Discord.Roles.VERIFIED);
+    await RoleManager.assign(member, [
+      Discord.Roles.VERIFIED,
+      Discord.Roles.COGS_AND_STEAM,
+    ]);
 
     steps[currentStep].completed = true;
 

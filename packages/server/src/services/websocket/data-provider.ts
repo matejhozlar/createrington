@@ -56,11 +56,21 @@ export class WebSocketDataProvider {
 
     const isOnline = playtimeService?.isOnline() ?? false;
 
+    const schedule = maintenanceService.getScheduledMaintenance(serverId);
+
     return {
       serverId,
       serverName: config.name,
       online: isOnline,
       maintenance: maintenanceService.isInMaintenance(serverId),
+      scheduledMaintenance: schedule
+        ? {
+            id: schedule.id,
+            scheduledAt: schedule.scheduledAt.toISOString(),
+            estimatedMinutes: schedule.estimatedMinutes,
+            status: schedule.status as "scheduled" | "active",
+          }
+        : null,
       playerCount: activeSessions.length,
       maxPlayers: config.maxPlayers,
       lastUpdate: new Date(),

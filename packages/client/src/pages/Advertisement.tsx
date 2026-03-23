@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import { toPng } from "html-to-image";
 import { Download } from "lucide-react";
 
@@ -21,7 +21,7 @@ const features = [
   },
 ];
 
-export const Advertisement: React.FC = () => {
+export function Advertisement() {
   const adRef = useRef<HTMLDivElement>(null);
 
   const handleDownload = useCallback(async () => {
@@ -143,4 +143,4 @@ export const Advertisement: React.FC = () => {
       </div>
     </div>
   );
-};
+}

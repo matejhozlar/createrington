@@ -572,7 +572,7 @@ export function AdminCrypto() {
 
   const delistMutation = trpc.admin.crypto.delistToken.useMutation({
     onSuccess: () => {
-      toast.success("Token delisted successfully");
+      toast.success("Token delisted");
       utils.public.crypto.list.invalidate();
       utils.admin.crypto.marketStats.invalidate();
     },

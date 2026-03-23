@@ -15,7 +15,7 @@ export const playersRouter = router({
   get: publicProcedure
     .meta({
       description:
-        "Looks up a single player by Discord ID, Minecraft UUID, or Minecraft username. Returns the full player record or NOT_FOUND.",
+        "Looks up a single player by Discord ID, Minecraft UUID, or Minecraft username. Returns the full player record or NOT_FOUND",
     })
     .input(
       z.object({
@@ -36,7 +36,7 @@ export const playersRouter = router({
   list: publicProcedure
     .meta({
       description:
-        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata.",
+        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata",
     })
     .input(
       z.object({
@@ -86,7 +86,7 @@ export const playersRouter = router({
   count: publicProcedure
     .meta({
       description:
-        "Returns a count of players matching optional filters (online status, server, registration date range, last seen). Used for dashboard metrics.",
+        "Returns a count of players matching optional filters (online status, server, registration date range, last seen). Used for dashboard metrics",
     })
     .input(
       z.object({

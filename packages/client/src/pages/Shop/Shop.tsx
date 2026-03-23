@@ -1,5 +1,3 @@
-import React from "react";
-
-export const Shop: React.FC = () => {
+export function Shop() {
   return <div>Shop</div>;
-};
+}

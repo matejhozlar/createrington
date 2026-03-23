@@ -135,7 +135,7 @@ export function EditPlayerModal({
 
       await updatePlayer.mutateAsync(input);
 
-      toast.success("Player updated successfully");
+      toast.success("Player updated");
       setReason("");
       setShowConfirmDialog(false);
       onClose();

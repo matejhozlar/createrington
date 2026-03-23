@@ -59,7 +59,7 @@ const colors = config.discord.embeds.colors;
 /** Admin embeds router — send Discord embeds, manage embed presets (CRUD). */
 export const embedsRouter = router({
   channels: adminProcedure
-    .meta({ description: "Get all text channels grouped by category." })
+    .meta({ description: "Get all text channels grouped by category" })
     .query(() => {
       const grouped: Array<{
         category: string;
@@ -89,7 +89,7 @@ export const embedsRouter = router({
     }),
 
   roles: adminProcedure
-    .meta({ description: "Get all Discord roles." })
+    .meta({ description: "Get all Discord roles" })
     .query(() => {
       return Object.entries(roles as unknown as Record<string, string>).map(
         ([name, id]) => ({ name, id }),
@@ -97,7 +97,7 @@ export const embedsRouter = router({
     }),
 
   colors: adminProcedure
-    .meta({ description: "Get all available embed colors." })
+    .meta({ description: "Get all available embed colors" })
     .query(() => {
       return Object.entries(colors).map(([name, value]) => ({
         name,
@@ -107,7 +107,7 @@ export const embedsRouter = router({
     }),
 
   send: adminProcedure
-    .meta({ description: "Send an embed to a Discord channel." })
+    .meta({ description: "Send an embed to a Discord channel" })
     .input(
       z.object({
         channelId: z.string().min(1),
@@ -122,7 +122,7 @@ export const embedsRouter = router({
 
       if (!data.title && !data.description && data.fields.length === 0) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field.",
+          "Embed must have at least a title, description, or one field",
         );
       }
 
@@ -150,7 +150,7 @@ export const embedsRouter = router({
     }),
 
   edit: adminProcedure
-    .meta({ description: "Edit an existing embed message." })
+    .meta({ description: "Edit an existing embed message" })
     .input(
       z.object({
         channelId: z.string().min(1),
@@ -166,7 +166,7 @@ export const embedsRouter = router({
 
       if (!data.title && !data.description && data.fields.length === 0) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field.",
+          "Embed must have at least a title, description, or one field",
         );
       }
 
@@ -209,7 +209,7 @@ export const embedsRouter = router({
 
       if (!data.title && !data.description && data.fields.length === 0) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field.",
+          "Embed must have at least a title, description, or one field",
         );
       }
 
@@ -261,7 +261,7 @@ export const embedsRouter = router({
 
       if (!data.title && !data.description && data.fields.length === 0) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field.",
+          "Embed must have at least a title, description, or one field",
         );
       }
 
@@ -291,7 +291,7 @@ export const embedsRouter = router({
     }),
 
   fetchMessage: adminProcedure
-    .meta({ description: "Fetch an embed message from a channel." })
+    .meta({ description: "Fetch an embed message from a channel" })
     .input(
       z.object({
         channelId: z.string().min(1),
@@ -340,7 +340,7 @@ export const embedsRouter = router({
     list: adminProcedure
       .meta({
         description:
-          "List embed presets with optional search or category filter.",
+          "List embed presets with optional search or category filter",
       })
       .input(
         z.object({
@@ -386,7 +386,7 @@ export const embedsRouter = router({
       }),
 
     get: adminProcedure
-      .meta({ description: "Get a single embed preset." })
+      .meta({ description: "Get a single embed preset" })
       .input(z.object({ id: z.number().int().positive() }))
       .query(async ({ input }) => {
         const preset = await Q.discord.embed.preset.find({ id: input.id });
@@ -399,7 +399,7 @@ export const embedsRouter = router({
       }),
 
     create: adminProcedure
-      .meta({ description: "Create a new embed preset." })
+      .meta({ description: "Create a new embed preset" })
       .input(
         z.object({
           name: z.string().min(1).max(100),
@@ -426,7 +426,7 @@ export const embedsRouter = router({
       }),
 
     update: adminProcedure
-      .meta({ description: "Update an existing embed preset." })
+      .meta({ description: "Update an existing embed preset" })
       .input(
         z.object({
           id: z.number().int().positive(),
@@ -459,7 +459,7 @@ export const embedsRouter = router({
       }),
 
     delete: adminProcedure
-      .meta({ description: "Delete an embed preset." })
+      .meta({ description: "Delete an embed preset" })
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(async ({ input }) => {
         const existing = await Q.discord.embed.preset.find({ id: input.id });
@@ -500,7 +500,7 @@ export const embedsRouter = router({
 
     categories: router({
       list: adminProcedure
-        .meta({ description: "List all preset categories with preset counts." })
+        .meta({ description: "List all preset categories with preset counts" })
         .query(async () => {
           const cats = await Q.discord.embed.preset.category
             .where({})
@@ -520,7 +520,7 @@ export const embedsRouter = router({
         }),
 
       create: adminProcedure
-        .meta({ description: "Create a new preset category." })
+        .meta({ description: "Create a new preset category" })
         .input(z.object({ name: z.string().min(1).max(100) }))
         .mutation(async ({ input }) => {
           const existing = await Q.discord.embed.preset.category.find({
@@ -548,7 +548,7 @@ export const embedsRouter = router({
         }),
 
       update: adminProcedure
-        .meta({ description: "Update a preset category." })
+        .meta({ description: "Update a preset category" })
         .input(
           z.object({
             id: z.number().int().positive(),
@@ -591,7 +591,7 @@ export const embedsRouter = router({
       delete: adminProcedure
         .meta({
           description:
-            "Delete a preset category (presets become uncategorized).",
+            "Delete a preset category (presets become uncategorized)",
         })
         .input(z.object({ id: z.number().int().positive() }))
         .mutation(async ({ input }) => {
@@ -610,7 +610,7 @@ export const embedsRouter = router({
 
     links: router({
       list: adminProcedure
-        .meta({ description: "List linked messages for a preset." })
+        .meta({ description: "List linked messages for a preset" })
         .input(z.object({ presetId: z.number().int().positive() }))
         .query(async ({ input }) => {
           const links = await Q.discord.embed.preset.message
@@ -621,7 +621,7 @@ export const embedsRouter = router({
         }),
 
       delete: adminProcedure
-        .meta({ description: "Unlink a message from a preset." })
+        .meta({ description: "Unlink a message from a preset" })
         .input(z.object({ id: z.number().int().positive() }))
         .mutation(async ({ input }) => {
           const link = await Q.discord.embed.preset.message.find({

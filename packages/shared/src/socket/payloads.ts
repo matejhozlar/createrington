@@ -2,6 +2,16 @@ import type { SubscriptionType } from "./events";
 import type { CachedMessage } from "./messages";
 
 /**
+ * Scheduled or active maintenance window
+ */
+export interface ScheduledMaintenance {
+  id: number;
+  scheduledAt: string;
+  estimatedMinutes: number;
+  status: "scheduled" | "active";
+}
+
+/**
  * Server status data
  */
 export interface ServerStatus {
@@ -9,6 +19,7 @@ export interface ServerStatus {
   serverName: string;
   online: boolean;
   maintenance: boolean;
+  scheduledMaintenance: ScheduledMaintenance | null;
   playerCount: number;
   maxPlayers: number;
   lastUpdate: Date | string;
@@ -53,6 +64,7 @@ export interface ServerStatusUpdatePayload {
   serverId: number;
   online: boolean;
   maintenance: boolean;
+  scheduledMaintenance: ScheduledMaintenance | null;
   playerCount: number;
   maxPlayers: number;
   timestamp: Date | string;

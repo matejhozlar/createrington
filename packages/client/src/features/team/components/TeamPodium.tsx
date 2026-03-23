@@ -5,7 +5,7 @@ import { TeamMemberDialog } from "./TeamMemberDialog";
 import type { TeamMember } from "../data";
 import { PODIUM_ORDER } from "../data";
 
-export const TeamPodium = () => {
+export function TeamPodium() {
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const isMobile = useIsMobile();
 
@@ -48,4 +48,4 @@ export const TeamPodium = () => {
       />
     </>
   );
-};
+}

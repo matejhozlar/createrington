@@ -205,6 +205,11 @@ const config = {
     playerLimit: env.PLAYER_LIMIT,
   },
 
+  // null means SFTP is used (production path); a non-null value enables local filesystem ops
+  maintenance: {
+    localPath: env.MAINTENANCE_LOCAL_PATH ?? null,
+  },
+
   sync: {
     targetUrl: env.PLAYTIME_SYNC_TARGET_URL,
     secret: env.PLAYTIME_SYNC_SECRET,

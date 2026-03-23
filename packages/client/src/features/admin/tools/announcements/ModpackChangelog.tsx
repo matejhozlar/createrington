@@ -21,7 +21,7 @@ export function ModpackChangelog() {
 
   const sendMutation = trpc.admin.announcements.sendChangelog.useMutation({
     onSuccess: () => {
-      toast.success("Changelog sent to Discord!");
+      toast.success("Changelog sent to Discord");
       setVersion("");
       setAdded([]);
       setRemoved([]);
