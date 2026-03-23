@@ -174,7 +174,25 @@ export async function cleanupCrashedTokens(): Promise<number> {
         await Q.crypto.holding.delete({ id: holding.id });
       }
 
-      // Clean up cost basis lots for all players
+      // Clean up transactions
+      const transactions = await Q.crypto.transaction
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const tx of transactions) {
+        await Q.crypto.transaction.delete({ id: tx.id });
+      }
+
+      // Clean up orders
+      const orders = await Q.crypto.order
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const order of orders) {
+        await Q.crypto.order.delete({ id: order.id });
+      }
+
+      // Clean up cost basis lots
       const costBasisLots = await Q.crypto.cost.basis
         .where({ tokenId: token.id })
         .all();
@@ -207,6 +225,15 @@ export async function cleanupCrashedTokens(): Promise<number> {
 
       for (const snapshot of snapshots) {
         await Q.crypto.price.snapshot.delete({ id: snapshot.id });
+      }
+
+      // Clean up market events
+      const events = await Q.crypto.market.event
+        .where({ tokenId: token.id })
+        .all();
+
+      for (const event of events) {
+        await Q.crypto.market.event.delete({ id: event.id });
       }
 
       await Q.crypto.token.delete({ id: token.id });
