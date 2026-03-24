@@ -596,10 +596,13 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       const name = this.roleMap.get(id);
       return name ? `@${name}` : match;
     });
-    // Channel mentions: <#123456>
+    // Channel mentions: <#123456> → markdown link to Discord channel
+    const guildId = config.discord.guild.id;
     text = text.replace(/<#(\d+)>/g, (match, id: string) => {
       const name = this.channelMap.get(id);
-      return name ? `#${name}` : match;
+      return name
+        ? `[#${name}](https://discord.com/channels/${guildId}/${id})`
+        : match;
     });
     return text;
   }

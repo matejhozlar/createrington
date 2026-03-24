@@ -80,9 +80,9 @@ const SOURCE_CONFIG: Record<MessageSource, SourceConfig> = {
   },
   [MessageSource.DISCORD]: {
     label: "Discord",
-    color: "text-sidebar-primary",
-    bgColor: "bg-sidebar-primary/10",
-    accentColor: "hsl(var(--sidebar-primary))",
+    color: "text-discord-foreground",
+    bgColor: "bg-discord/10",
+    accentColor: "var(--discord)",
   },
   [MessageSource.MINECRAFT]: {
     label: "Minecraft",
@@ -307,21 +307,39 @@ function ChatMarkdown({
               {children}
             </p>
           ),
-          a: ({ children, href }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "hover:underline",
-                isTitle
-                  ? "text-sidebar-primary font-semibold"
-                  : "text-sidebar-primary",
-              )}
-            >
-              {children}
-            </a>
-          ),
+          a: ({ children, href }) => {
+            const isChannelMention =
+              href?.includes("discord.com/channels/") ?? false;
+
+            if (isChannelMention) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-[3px] bg-discord/15 px-0.5 text-discord-foreground hover:bg-discord/30 hover:text-white"
+                >
+                  {children}
+                </a>
+              );
+            }
+
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "hover:underline",
+                  isTitle
+                    ? "text-sidebar-primary font-semibold"
+                    : "text-sidebar-primary",
+                )}
+              >
+                {children}
+              </a>
+            );
+          },
           code: ({
             inline,
             children,
@@ -947,7 +965,7 @@ function MessageGroup({
             className={cn(
               "rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider border",
               group.source === MessageSource.DISCORD &&
-                "border-sidebar-primary/30 bg-sidebar-primary/10 text-sidebar-primary",
+                "border-discord/30 bg-discord/10 text-discord-foreground",
               group.source === MessageSource.MINECRAFT &&
                 "border-chart-2/30 bg-chart-2/10 text-chart-2",
               group.source === MessageSource.WEB &&

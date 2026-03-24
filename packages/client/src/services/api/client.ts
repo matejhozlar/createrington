@@ -133,7 +133,7 @@ class ApiClient {
       console.log(
         "[API Client] Development mode: Using Vite proxy for /api routes",
       );
-      return envApiUrl || "";
+      return envApiUrl || "/";
     }
 
     if (!envApiUrl) {
