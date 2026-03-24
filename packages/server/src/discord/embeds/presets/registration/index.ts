@@ -53,7 +53,7 @@ export const RegistrationEmbedPresets = {
           `**📖 Guides**\n` +
           `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.\n\n` +
           `**Need help?**\n` +
-          `You can ask anything in this channel. Once you're all set, feel free to close the ticket. Otherwise, it will be closed automatically later.`,
+          `You can ask anything in this channel. Once you're all set, feel free to close it. Otherwise, it will be closed automatically later.`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("UUID", `\`${uuid}\``, true)
