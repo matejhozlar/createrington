@@ -1,3 +1,4 @@
+import config from "@/config";
 import { ButtonBuilder, ButtonStyle } from "discord.js";
 import { EmbedColors } from "../../colors";
 import { createEmbed, DiscordEmbedBuilder } from "../../embed-builder";
@@ -48,7 +49,11 @@ export const RegistrationEmbedPresets = {
           `2. Pick your ${m(ch.createringtonOfficial.ROLES)} to customize your experience\n` +
           `3. Download the modpack in ${m(ch.createringtonOfficial.DOWNLOAD)}\n` +
           `4. Join the server and have fun!\n\n` +
-          `**Useful channels**\n${channels}`,
+          `**Useful channels**\n${channels}\n\n` +
+          `**📖 Guides**\n` +
+          `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.\n\n` +
+          `**Need help?**\n` +
+          `You can ask anything in this channel. Once you're all set, feel free to close the ticket. Otherwise, it will be closed automatically later.`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("UUID", `\`${uuid}\``, true)
