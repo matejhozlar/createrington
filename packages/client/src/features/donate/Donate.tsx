@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Heart, Repeat, Zap, CalendarX, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -26,6 +33,49 @@ const PERKS = [
   "Keep Createrington alive and running",
 ];
 
+const FAQ = [
+  {
+    question: "Where does my money go?",
+    answer:
+      "Your donations go directly towards server hosting costs, infrastructure, and development to keep Createrington running and improving.",
+  },
+  {
+    question: "Can I cancel my subscription?",
+    answer:
+      "Yes, you can cancel your monthly subscription at any time from this page or through Stripe directly via the link in your payment receipt email. Your perks will remain active until the end of the current billing period.",
+  },
+  {
+    question: "Will I get a receipt?",
+    answer:
+      "Yes, Stripe automatically sends a receipt to the email address associated with your payment method after each successful payment.",
+  },
+  {
+    question: "What payment methods are accepted?",
+    answer:
+      "We accept all major credit and debit cards through Stripe, including Visa, Mastercard, and American Express.",
+  },
+  {
+    question: "What currency will I be charged in?",
+    answer:
+      "Prices are listed in EUR. If your card uses a different currency, your bank will convert it at their current exchange rate.",
+  },
+  {
+    question: "Do I get any in-game advantages?",
+    answer:
+      "No. Donations are purely to support the server. You'll receive a Supporter role on Discord as a thank you, but no gameplay advantages.",
+  },
+  {
+    question: "Can I donate anonymously?",
+    answer:
+      "Your Discord account is linked to the donation for role assignment, but your donation details are not shared publicly.",
+  },
+  {
+    question: "What data do you store?",
+    answer:
+      "We store your Discord ID, donation amount, and Stripe session and subscription IDs. All payment details (card number, billing address, etc.) are handled entirely by Stripe — we never see or store them.",
+  },
+];
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -38,7 +88,11 @@ export function Donate() {
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
 
+  const history = trpc.user.donations.history.useQuery();
   const subscription = trpc.user.donations.activeSubscription.useQuery();
+
+  const isSupporter =
+    history.data?.some((d) => d.status === "completed") ?? false;
   const cancelSubscription = trpc.user.donations.cancelSubscription.useMutation(
     {
       onSuccess: () => {
@@ -127,6 +181,18 @@ export function Donate() {
                 period.
               </p>
             )}
+          </div>
+        )}
+
+        {/* Supporter thank you */}
+        {isSupporter && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+            <div className="flex items-center gap-3">
+              <Heart className="size-5 text-primary shrink-0" />
+              <p className="text-sm font-medium text-foreground">
+                Thank you for being a supporter!
+              </p>
+            </div>
           </div>
         )}
 
@@ -255,6 +321,78 @@ export function Donate() {
           Payments are processed securely by Stripe. No card details are stored
           on our servers.
         </p>
+
+        {/* Donation history */}
+        {history.data && history.data.length > 0 && (
+          <>
+            <Separator />
+
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+                Your donation history
+              </h3>
+              <div className="space-y-2">
+                {history.data.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      {d.type === "monthly" ? (
+                        <Repeat className="size-4 text-muted-foreground" />
+                      ) : (
+                        <Zap className="size-4 text-muted-foreground" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          €{(d.amountCents / 100).toFixed(2)}
+                          {d.type === "monthly" ? "/mo" : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(d.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        d.status === "completed" &&
+                          "border-green-500/30 text-green-500",
+                        d.status === "pending" &&
+                          "border-yellow-500/30 text-yellow-500",
+                        d.status === "refunded" &&
+                          "border-blue-500/30 text-blue-500",
+                        d.status === "cancelled" &&
+                          "border-muted-foreground/30 text-muted-foreground",
+                      )}
+                    >
+                      {d.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <Separator />
+
+        {/* FAQ */}
+        <div className="space-y-3">
+          <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            Frequently asked questions
+          </h3>
+          <Accordion type="single" collapsible>
+            {FAQ.map((item, i) => (
+              <AccordionItem key={i} value={`faq-${i}`}>
+                <AccordionTrigger>{item.question}</AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
+                  {item.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
       </div>
     </div>
   );
