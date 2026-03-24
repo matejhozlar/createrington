@@ -23,15 +23,7 @@ function getLocalPath(): string | null {
  * operations to avoid the dev environment accidentally wiping the whitelist.
  */
 function isSftpAllowed(): boolean {
-  try {
-    const url = new URL(config.meta.links.website);
-    const host = url.hostname;
-    if (host === "127.0.0.1" || host === "localhost") return false;
-    if (host.startsWith("dev.")) return false;
-    return true;
-  } catch {
-    return false;
-  }
+  return !config.envMode.isDev && !config.envMode.isDevDeployment;
 }
 
 /** Whether any whitelist operations are possible (local or SFTP) */

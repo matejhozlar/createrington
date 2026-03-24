@@ -14,6 +14,7 @@
  */
 
 import { Q } from "@/db";
+import config from "@/config";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 import { getLeaderboard } from "../analytics/leaderboard";
@@ -742,6 +743,8 @@ export function fireAndForgetArticle(
   severity: string,
   metadata: Record<string, unknown> | null,
 ): void {
+  if (!config.ai.enabled) return;
+
   articleQueue.push({ eventId, title, description, severity, metadata });
   processQueue().catch((err) => {
     logger.warn(`Article queue processing failed: ${err}`);

@@ -71,12 +71,16 @@ export function registerServices(): void {
     return service;
   });
 
-  container.register(Services.AI_SERVICE, () => {
-    return new AiService(
-      config.ai.openai.apiKey,
-      config.ai.openai.defaultModel,
-    );
-  });
+  if (config.ai.enabled) {
+    container.register(Services.AI_SERVICE, () => {
+      return new AiService(
+        config.ai.openai.apiKey,
+        config.ai.openai.defaultModel,
+      );
+    });
+  } else {
+    logger.warn("OpenAI API key not configured — AI service disabled");
+  }
 
   // =========================================================================
   // DISCORD BOTS (no dependencies, can initialize in parallel)
