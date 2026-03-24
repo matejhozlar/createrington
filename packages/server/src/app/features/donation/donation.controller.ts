@@ -51,6 +51,10 @@ export class DonationController {
           await donationService.handleSessionCompleted(event.data.object);
           break;
 
+        case "customer.subscription.updated":
+          await donationService.handleSubscriptionUpdated(event.data.object);
+          break;
+
         case "customer.subscription.deleted":
           await donationService.handleSubscriptionDeleted(event.data.object);
           break;

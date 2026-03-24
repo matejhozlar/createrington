@@ -59,6 +59,19 @@ export class DonationRepository {
     return all.length;
   }
 
+  async findActiveSubscription(discordId: string): Promise<Donation | null> {
+    const donations = await Q.donation.findAll(
+      {
+        playerDiscordId: discordId,
+        type: "monthly",
+        status: "completed",
+      },
+      { orderBy: "createdAt", orderDirection: "desc" },
+    );
+
+    return donations.find((d) => d.stripeSubscriptionId != null) ?? null;
+  }
+
   async getStats(): Promise<{
     totalRaisedCents: number;
     donorCount: number;
