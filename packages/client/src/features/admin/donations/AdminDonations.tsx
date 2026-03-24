@@ -41,7 +41,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Heart, Users, Euro, Search, Filter, Repeat, CalendarX } from "lucide-react";
+import {
+  Heart,
+  Users,
+  Euro,
+  Search,
+  Filter,
+  Repeat,
+  CalendarX,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";

@@ -154,9 +154,7 @@ export class DonationService {
       cancel_at_period_end: false,
     });
 
-    logger.info(
-      `Subscription ${sub.id} reactivated for discord ${discordId}`,
-    );
+    logger.info(`Subscription ${sub.id} reactivated for discord ${discordId}`);
 
     return true;
   }
