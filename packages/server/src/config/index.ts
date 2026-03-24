@@ -217,8 +217,11 @@ const config = {
 
   ai: {
     openai: {
-      apiKey: env.OPENAI_API_KEY,
+      apiKey: env.OPENAI_API_KEY ?? "",
       defaultModel: env.OPENAI_DEFAULT_MODEL,
+    },
+    get enabled() {
+      return Boolean(this.openai.apiKey);
     },
   },
 

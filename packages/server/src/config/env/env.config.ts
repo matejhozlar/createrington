@@ -145,8 +145,8 @@ const envSchema = z.object({
   // CurseForge
   CURSEFORGE_API_KEY: z.string().min(1).optional(),
 
-  // AI (OpenAI)
-  OPENAI_API_KEY: z.string().min(1, "OpenAI API key is required"),
+  // AI (OpenAI) — optional; AI features are disabled when the key is not set
+  OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
   // Maintenance
@@ -248,6 +248,19 @@ export interface envModeConfig {
   readonly isDev: boolean;
   readonly isProd: boolean;
   readonly isTest: boolean;
+  readonly isDevDeployment: boolean;
+}
+
+function checkIsDevDeployment(): boolean {
+  try {
+    const url = new URL(env.WEBSITE_URL);
+    const host = url.hostname;
+    return (
+      host === "127.0.0.1" || host === "localhost" || host.startsWith("dev.")
+    );
+  } catch {
+    return false;
+  }
 }
 
 export const envMode: envModeConfig = {
@@ -266,4 +279,10 @@ export const envMode: envModeConfig = {
    * Used to enable test-specific configuration and mocking
    */
   isTest: env.NODE_ENV === "test",
+  /**
+   * True when WEBSITE_URL points to a dev/local environment
+   * (localhost, 127.0.0.1, or dev.* subdomain).
+   * Used to disable production-only features like AI generation and SFTP.
+   */
+  isDevDeployment: checkIsDevDeployment(),
 } as const;
