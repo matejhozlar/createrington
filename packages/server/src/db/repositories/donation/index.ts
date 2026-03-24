@@ -6,28 +6,6 @@ export class DonationRepository {
     return Q.donation.createAndReturn(data);
   }
 
-  async completeBySessionId(
-    stripeSessionId: string,
-    stripeCustomerId?: string,
-    stripeSubscriptionId?: string,
-  ): Promise<Donation | null> {
-    const donation = await Q.donation.find({ stripeSessionId });
-    if (!donation) return null;
-
-    await Q.donation.update(
-      { stripeSessionId },
-      {
-        status: "completed",
-        completedAt: new Date(),
-        supporterRoleGranted: true,
-        ...(stripeCustomerId && { stripeCustomerId }),
-        ...(stripeSubscriptionId && { stripeSubscriptionId }),
-      },
-    );
-
-    return Q.donation.find({ stripeSessionId });
-  }
-
   async findByDiscordId(discordId: string): Promise<Donation[]> {
     return Q.donation.findAll(
       { playerDiscordId: discordId },
@@ -57,6 +35,31 @@ export class DonationRepository {
   async count(): Promise<number> {
     const all = await Q.donation.findAll({});
     return all.length;
+  }
+
+  async findActiveSubscription(discordId: string): Promise<Donation | null> {
+    const donations = await Q.donation.findAll(
+      {
+        playerDiscordId: discordId,
+        type: "monthly",
+        status: "completed",
+      },
+      { orderBy: "createdAt", orderDirection: "desc" },
+    );
+
+    return donations.find((d) => d.stripeSubscriptionId != null) ?? null;
+  }
+
+  async findAllSubscriptions(): Promise<Donation[]> {
+    const donations = await Q.donation.findAll(
+      {
+        type: "monthly",
+        status: "completed",
+      },
+      { orderBy: "createdAt", orderDirection: "desc" },
+    );
+
+    return donations.filter((d) => d.stripeSubscriptionId != null);
   }
 
   async getStats(): Promise<{

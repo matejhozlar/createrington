@@ -70,6 +70,7 @@ interface ChannelConfig {
   readonly createringtonOfficial: {
     readonly download: string;
     readonly support: string;
+    readonly donate: string;
     readonly announcements: string;
     readonly roles: string;
     readonly rules: string;

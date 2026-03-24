@@ -52,6 +52,71 @@ export const userDonationsRouter = router({
       return { sessionId, url };
     }),
 
+  activeSubscription: userProcedure
+    .meta({
+      description:
+        "Get the user's active monthly subscription details, or null if none",
+    })
+    .query(async ({ ctx }) => {
+      if (!config.stripe.enabled) return null;
+      const donationService = await getService(Services.DONATION_SERVICE);
+      return donationService.getActiveSubscription(ctx.user.discordId);
+    }),
+
+  cancelSubscription: userProcedure
+    .meta({
+      description:
+        "Cancel the user's monthly subscription at the end of the current billing period",
+    })
+    .mutation(async ({ ctx }) => {
+      if (!config.stripe.enabled) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Donations are not available at this time",
+        });
+      }
+      const donationService = await getService(Services.DONATION_SERVICE);
+      const result = await donationService.cancelSubscription(
+        ctx.user.discordId,
+      );
+
+      if (!result) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No active subscription found",
+        });
+      }
+
+      return { cancelAt: result.cancelAt.toISOString() };
+    }),
+
+  reactivateSubscription: userProcedure
+    .meta({
+      description:
+        "Reactivate a cancelled subscription before the billing period ends",
+    })
+    .mutation(async ({ ctx }) => {
+      if (!config.stripe.enabled) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Donations are not available at this time",
+        });
+      }
+      const donationService = await getService(Services.DONATION_SERVICE);
+      const success = await donationService.reactivateSubscription(
+        ctx.user.discordId,
+      );
+
+      if (!success) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No cancelled subscription found to reactivate",
+        });
+      }
+
+      return { success: true };
+    }),
+
   history: userProcedure
     .meta({
       description:

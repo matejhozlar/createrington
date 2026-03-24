@@ -58,16 +58,10 @@ export class DonationService {
       metadata: {
         discordId: opts.discordId,
         type: opts.type,
+        amountCents: String(opts.amountCents),
       },
       success_url: opts.successUrl,
       cancel_url: opts.cancelUrl,
-    });
-
-    await donationRepo.create({
-      playerDiscordId: opts.discordId,
-      type: opts.type,
-      amountCents: opts.amountCents,
-      stripeSessionId: session.id,
     });
 
     logger.info(
@@ -78,40 +72,205 @@ export class DonationService {
   }
 
   // ==========================================================================
+  // SUBSCRIPTION MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Returns the user's active subscription details from Stripe,
+   * or null if they have no active monthly subscription.
+   */
+  async getActiveSubscription(discordId: string): Promise<{
+    subscriptionId: string;
+    amountCents: number;
+    currentPeriodEnd: Date;
+    cancelAtPeriodEnd: boolean;
+  } | null> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return null;
+
+    try {
+      const sub = await this.stripe.subscriptions.retrieve(
+        donation.stripeSubscriptionId,
+        { expand: ["latest_invoice"] },
+      );
+
+      if (sub.status === "canceled") return null;
+
+      const periodEnd = this.getSubscriptionPeriodEnd(sub);
+
+      return {
+        subscriptionId: sub.id,
+        amountCents: donation.amountCents,
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Cancels a user's monthly subscription at the end of the current billing
+   * period. The user keeps their perks until the period ends.
+   */
+  async cancelSubscription(
+    discordId: string,
+  ): Promise<{ cancelAt: Date } | null> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return null;
+
+    const sub = await this.stripe.subscriptions.update(
+      donation.stripeSubscriptionId,
+      { cancel_at_period_end: true },
+    );
+
+    logger.info(
+      `Subscription ${sub.id} set to cancel at period end for discord ${discordId}`,
+    );
+
+    const cancelAt = sub.cancel_at
+      ? new Date(sub.cancel_at * 1000)
+      : this.getSubscriptionPeriodEnd(sub);
+
+    return { cancelAt };
+  }
+
+  /**
+   * Reactivates a previously cancelled subscription by removing
+   * cancel_at_period_end. Only works if the subscription hasn't actually
+   * ended yet.
+   */
+  async reactivateSubscription(discordId: string): Promise<boolean> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return false;
+
+    const sub = await this.stripe.subscriptions.retrieve(
+      donation.stripeSubscriptionId,
+    );
+
+    if (sub.status === "canceled" || !sub.cancel_at_period_end) return false;
+
+    await this.stripe.subscriptions.update(donation.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    logger.info(`Subscription ${sub.id} reactivated for discord ${discordId}`);
+
+    return true;
+  }
+
+  /**
+   * Returns subscription statistics by checking each monthly subscription
+   * against Stripe for its current status.
+   */
+  async getSubscriptionStats(): Promise<{
+    activeCount: number;
+    cancellingCount: number;
+    mrrCents: number;
+  }> {
+    const subscriptions = await donationRepo.findAllSubscriptions();
+
+    let activeCount = 0;
+    let cancellingCount = 0;
+    let mrrCents = 0;
+
+    await Promise.all(
+      subscriptions.map(async (donation) => {
+        try {
+          const sub = await this.stripe.subscriptions.retrieve(
+            donation.stripeSubscriptionId!,
+          );
+
+          if (sub.status === "canceled") return;
+
+          if (sub.cancel_at_period_end) {
+            cancellingCount++;
+          } else {
+            activeCount++;
+            mrrCents += donation.amountCents;
+          }
+        } catch {
+          // Subscription no longer exists in Stripe
+        }
+      }),
+    );
+
+    return { activeCount, cancellingCount, mrrCents };
+  }
+
+  /**
+   * Derives the current period end from a subscription's latest invoice
+   * or cancel_at timestamp. Falls back to billing_cycle_anchor + 30 days.
+   */
+  private getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date {
+    if (sub.cancel_at) {
+      return new Date(sub.cancel_at * 1000);
+    }
+
+    const invoice = sub.latest_invoice;
+    if (invoice && typeof invoice !== "string" && invoice.period_end) {
+      return new Date(invoice.period_end * 1000);
+    }
+
+    // Fallback: approximate from billing cycle anchor
+    const anchor = new Date(sub.billing_cycle_anchor * 1000);
+    const now = new Date();
+    while (anchor <= now) {
+      anchor.setMonth(anchor.getMonth() + 1);
+    }
+    return anchor;
+  }
+
+  // ==========================================================================
   // WEBHOOK HANDLERS
   // ==========================================================================
 
   /**
-   * Handles checkout.session.completed — completes the donation record
+   * Handles checkout.session.completed — creates the donation record
    * and grants the supporter role if possible.
    */
   async handleSessionCompleted(
     session: Stripe.Checkout.Session,
   ): Promise<void> {
     const discordId = session.metadata?.discordId;
-    if (!discordId) {
-      logger.warn(
-        `checkout.session.completed missing discordId metadata: ${session.id}`,
-      );
+    const type = session.metadata?.type as DonationType | undefined;
+    const amountCents = Number(session.metadata?.amountCents);
+
+    if (!discordId || !type || !amountCents) {
+      logger.warn(`checkout.session.completed missing metadata: ${session.id}`);
       return;
     }
 
-    const donation = await donationRepo.completeBySessionId(
-      session.id,
-      session.customer as string | undefined,
-      (session.subscription as string) ?? undefined,
-    );
-
-    if (!donation) {
-      logger.warn(`No pending donation found for session: ${session.id}`);
-      return;
-    }
+    const donation = await donationRepo.create({
+      playerDiscordId: discordId,
+      type,
+      amountCents,
+      stripeSessionId: session.id,
+      stripeCustomerId: (session.customer as string) ?? undefined,
+      stripeSubscriptionId: (session.subscription as string) ?? undefined,
+      status: "completed",
+      completedAt: new Date(),
+      supporterRoleGranted: true,
+    });
 
     logger.info(
       `Donation completed: ${session.id} — €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
     );
 
     await this.grantSupporterRole(discordId);
+  }
+
+  /**
+   * Handles customer.subscription.updated — logs cancel_at_period_end changes.
+   */
+  async handleSubscriptionUpdated(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
+    if (subscription.cancel_at_period_end) {
+      logger.info(
+        `Stripe subscription ${subscription.id} set to cancel at period end (customer: ${subscription.customer})`,
+      );
+    }
   }
 
   /**
