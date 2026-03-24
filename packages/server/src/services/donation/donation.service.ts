@@ -58,16 +58,10 @@ export class DonationService {
       metadata: {
         discordId: opts.discordId,
         type: opts.type,
+        amountCents: String(opts.amountCents),
       },
       success_url: opts.successUrl,
       cancel_url: opts.cancelUrl,
-    });
-
-    await donationRepo.create({
-      playerDiscordId: opts.discordId,
-      type: opts.type,
-      amountCents: opts.amountCents,
-      stripeSessionId: session.id,
     });
 
     logger.info(
@@ -169,30 +163,32 @@ export class DonationService {
   // ==========================================================================
 
   /**
-   * Handles checkout.session.completed — completes the donation record
+   * Handles checkout.session.completed — creates the donation record
    * and grants the supporter role if possible.
    */
   async handleSessionCompleted(
     session: Stripe.Checkout.Session,
   ): Promise<void> {
     const discordId = session.metadata?.discordId;
-    if (!discordId) {
-      logger.warn(
-        `checkout.session.completed missing discordId metadata: ${session.id}`,
-      );
+    const type = session.metadata?.type as DonationType | undefined;
+    const amountCents = Number(session.metadata?.amountCents);
+
+    if (!discordId || !type || !amountCents) {
+      logger.warn(`checkout.session.completed missing metadata: ${session.id}`);
       return;
     }
 
-    const donation = await donationRepo.completeBySessionId(
-      session.id,
-      session.customer as string | undefined,
-      (session.subscription as string) ?? undefined,
-    );
-
-    if (!donation) {
-      logger.warn(`No pending donation found for session: ${session.id}`);
-      return;
-    }
+    const donation = await donationRepo.create({
+      playerDiscordId: discordId,
+      type,
+      amountCents,
+      stripeSessionId: session.id,
+      stripeCustomerId: (session.customer as string) ?? undefined,
+      stripeSubscriptionId: (session.subscription as string) ?? undefined,
+      status: "completed",
+      completedAt: new Date(),
+      supporterRoleGranted: true,
+    });
 
     logger.info(
       `Donation completed: ${session.id} — €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
