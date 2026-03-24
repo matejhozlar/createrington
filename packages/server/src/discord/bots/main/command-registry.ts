@@ -37,4 +37,5 @@ export const commandRegistry: Record<string, CommandEnv> = {
   message: "prod",
   "ticket-panel": "prod",
   "server-panel": "prod",
+  "donate-panel": "prod",
 };

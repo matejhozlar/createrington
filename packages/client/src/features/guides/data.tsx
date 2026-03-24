@@ -215,7 +215,7 @@ export const guides: Guide[] = [
       "How to update the Createrington modpack to the latest version.",
     icon: RefreshCw,
     category: "getting-started",
-    image: "/assets/guides/download/curseforgeapp-game.webp",
+    image: "/assets/guides/download/curseforgeapp-change-version-button.webp",
     imageIcon: RefreshCw,
     estimatedMinutes: 5,
     steps: [
