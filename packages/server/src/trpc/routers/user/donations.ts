@@ -90,6 +90,33 @@ export const userDonationsRouter = router({
       return { cancelAt: result.cancelAt.toISOString() };
     }),
 
+  reactivateSubscription: userProcedure
+    .meta({
+      description:
+        "Reactivate a cancelled subscription before the billing period ends",
+    })
+    .mutation(async ({ ctx }) => {
+      if (!config.stripe.enabled) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Donations are not available at this time",
+        });
+      }
+      const donationService = await getService(Services.DONATION_SERVICE);
+      const success = await donationService.reactivateSubscription(
+        ctx.user.discordId,
+      );
+
+      if (!success) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "No cancelled subscription found to reactivate",
+        });
+      }
+
+      return { success: true };
+    }),
+
   history: userProcedure
     .meta({
       description:

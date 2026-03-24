@@ -50,6 +50,18 @@ export class DonationRepository {
     return donations.find((d) => d.stripeSubscriptionId != null) ?? null;
   }
 
+  async findAllSubscriptions(): Promise<Donation[]> {
+    const donations = await Q.donation.findAll(
+      {
+        type: "monthly",
+        status: "completed",
+      },
+      { orderBy: "createdAt", orderDirection: "desc" },
+    );
+
+    return donations.filter((d) => d.stripeSubscriptionId != null);
+  }
+
   async getStats(): Promise<{
     totalRaisedCents: number;
     donorCount: number;

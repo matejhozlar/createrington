@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { donationRepo } from "@/db";
+import { getService, Services } from "@/services";
+import config from "@/config";
 import { paginationInput } from "@/trpc/utils";
 
 /** Admin donations router — paginated list and aggregate stats. */
@@ -12,6 +14,19 @@ export const adminDonationsRouter = router({
     })
     .query(async () => {
       return donationRepo.getStats();
+    }),
+
+  subscriptionStats: adminProcedure
+    .meta({
+      description:
+        "Get active subscription count, cancelling count, and monthly recurring revenue",
+    })
+    .query(async () => {
+      if (!config.stripe.enabled) {
+        return { activeCount: 0, cancellingCount: 0, mrrCents: 0 };
+      }
+      const donationService = await getService(Services.DONATION_SERVICE);
+      return donationService.getSubscriptionStats();
     }),
 
   list: adminProcedure
