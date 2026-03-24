@@ -38,6 +38,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
           sessionStorage.setItem("oauth_state", data.data.state);
         }
 
+        // Save current path so we can redirect back after login
+        sessionStorage.setItem("oauth_redirect", window.location.pathname);
+
         // Redirect to Discord
         window.location.href = data.data.url;
       } else {
@@ -82,14 +85,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Set user data (map server response shape to User type)
         setUser(data.data.user);
 
-        // Clear OAuth state
+        // Clear OAuth state and get redirect path
         sessionStorage.removeItem("oauth_state");
+        const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
+        sessionStorage.removeItem("oauth_redirect");
 
         // Clean up old localStorage token if present (migration)
         localStorage.removeItem("auth_token");
 
-        // Redirect to home
-        window.location.href = "/";
+        // Redirect to the page the user was on (or home)
+        window.location.href = redirectPath;
       } else {
         throw new Error(data.error?.message || "Authentication failed");
       }

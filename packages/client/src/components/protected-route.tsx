@@ -1,12 +1,14 @@
 import type React from "react";
 import { useAuth } from "@/contexts/auth/";
 import { Loading } from "./loading-spinner";
+import { LoginPrompt } from "./login-prompt";
 import { NotFound } from "@/pages/not-found";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiresAuth?: boolean;
   requiresAdmin?: boolean;
+  promptLogin?: boolean;
   fallback?: React.ReactNode;
 }
 
@@ -14,6 +16,7 @@ export function ProtectedRoute({
   children,
   requiresAuth = true,
   requiresAdmin = false,
+  promptLogin = false,
   fallback,
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
@@ -25,6 +28,9 @@ export function ProtectedRoute({
 
   // Check authentication requirement
   if (requiresAuth && !user) {
+    if (promptLogin) {
+      return <LoginPrompt />;
+    }
     return fallback || <NotFound />;
   }
 
