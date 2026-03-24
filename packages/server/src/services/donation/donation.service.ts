@@ -174,9 +174,7 @@ export class DonationService {
     const amountCents = Number(session.metadata?.amountCents);
 
     if (!discordId || !type || !amountCents) {
-      logger.warn(
-        `checkout.session.completed missing metadata: ${session.id}`,
-      );
+      logger.warn(`checkout.session.completed missing metadata: ${session.id}`);
       return;
     }
 
