@@ -203,7 +203,9 @@ export class CurrencyController {
       return;
     }
 
-    res.json({ message: `You claimed your daily reward of $${result.amount}!` });
+    res.json({
+      message: `You claimed your daily reward of $${result.amount}!`,
+    });
   }
 
   /**
