@@ -151,7 +151,7 @@ function AppContent() {
         <Route
           path="/donate"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute promptLogin>
               <Donate />
             </ProtectedRoute>
           }
