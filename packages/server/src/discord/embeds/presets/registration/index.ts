@@ -42,7 +42,7 @@ export const RegistrationEmbedPresets = {
     const embed = createEmbed()
       .title("✅ Registration Complete!")
       .description(
-        `Welcome to Createrington, **${username}**! You've been whitelisted and you're ready to play.\n\n` +
+        `Welcome to Createrington, **${username}**!\n\n` +
           `**Getting started**\n` +
           `1. Check out the ${m(ch.createringtonOfficial.RULES)} before jumping in\n` +
           `2. Pick your ${m(ch.createringtonOfficial.ROLES)} to customize your experience\n` +
