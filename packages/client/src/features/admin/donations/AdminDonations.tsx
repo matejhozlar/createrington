@@ -41,7 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Heart, Users, Euro, Search, Filter } from "lucide-react";
+import { Heart, Users, Euro, Search, Filter, Repeat, CalendarX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -100,6 +100,7 @@ export function AdminDonations() {
   const debouncedDiscordId = useDebouncedValue(discordIdInput, 1000);
 
   const statsQuery = trpc.admin.donations.stats.useQuery();
+  const subStatsQuery = trpc.admin.donations.subscriptionStats.useQuery();
   const listQuery = trpc.admin.donations.list.useQuery({
     page,
     limit: 20,
@@ -223,6 +224,53 @@ export function AdminDonations() {
             </Card>
           </div>
         ) : null}
+
+        {/* Subscription Stats */}
+        {subStatsQuery.data && (
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Monthly Recurring Revenue</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {formatAmount(subStatsQuery.data.mrrCents, "EUR")}
+                  </CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-sidebar-primary/10">
+                  <Euro className="size-6 text-sidebar-primary" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Active Subscriptions</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {subStatsQuery.data.activeCount}
+                  </CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-chart-2/10">
+                  <Repeat className="size-6 text-chart-2" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="flex items-start justify-between">
+                <div>
+                  <CardDescription>Cancelling</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {subStatsQuery.data.cancellingCount}
+                  </CardTitle>
+                </div>
+                <div className="flex size-12 items-center justify-center rounded-full bg-chart-3/10">
+                  <CalendarX className="size-6 text-chart-3" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Filters */}
         <Card className="gap-2">

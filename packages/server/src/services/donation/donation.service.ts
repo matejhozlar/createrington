@@ -136,6 +136,71 @@ export class DonationService {
   }
 
   /**
+   * Reactivates a previously cancelled subscription by removing
+   * cancel_at_period_end. Only works if the subscription hasn't actually
+   * ended yet.
+   */
+  async reactivateSubscription(discordId: string): Promise<boolean> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return false;
+
+    const sub = await this.stripe.subscriptions.retrieve(
+      donation.stripeSubscriptionId,
+    );
+
+    if (sub.status === "canceled" || !sub.cancel_at_period_end) return false;
+
+    await this.stripe.subscriptions.update(donation.stripeSubscriptionId, {
+      cancel_at_period_end: false,
+    });
+
+    logger.info(
+      `Subscription ${sub.id} reactivated for discord ${discordId}`,
+    );
+
+    return true;
+  }
+
+  /**
+   * Returns subscription statistics by checking each monthly subscription
+   * against Stripe for its current status.
+   */
+  async getSubscriptionStats(): Promise<{
+    activeCount: number;
+    cancellingCount: number;
+    mrrCents: number;
+  }> {
+    const subscriptions = await donationRepo.findAllSubscriptions();
+
+    let activeCount = 0;
+    let cancellingCount = 0;
+    let mrrCents = 0;
+
+    await Promise.all(
+      subscriptions.map(async (donation) => {
+        try {
+          const sub = await this.stripe.subscriptions.retrieve(
+            donation.stripeSubscriptionId!,
+          );
+
+          if (sub.status === "canceled") return;
+
+          if (sub.cancel_at_period_end) {
+            cancellingCount++;
+          } else {
+            activeCount++;
+            mrrCents += donation.amountCents;
+          }
+        } catch {
+          // Subscription no longer exists in Stripe
+        }
+      }),
+    );
+
+    return { activeCount, cancellingCount, mrrCents };
+  }
+
+  /**
    * Derives the current period end from a subscription's latest invoice
    * or cancel_at timestamp. Falls back to billing_cycle_anchor + 30 days.
    */

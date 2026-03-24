@@ -108,6 +108,20 @@ export function Donate() {
     },
   );
 
+  const reactivateSubscription =
+    trpc.user.donations.reactivateSubscription.useMutation({
+      onSuccess: () => {
+        toast.success(
+          "Subscription reactivated",
+          "Your subscription will continue as normal.",
+        );
+        subscription.refetch();
+      },
+      onError: (err) => {
+        toast.error("Failed to reactivate subscription", err.message);
+      },
+    });
+
   const createCheckout = trpc.user.donations.createCheckout.useMutation({
     onSuccess: ({ url }) => {
       if (!new URL(url).hostname.endsWith("stripe.com")) return;
@@ -159,7 +173,21 @@ export function Donate() {
                     : ` — renews on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`}
                 </p>
               </div>
-              {!subscription.data.cancelAtPeriodEnd && (
+              {subscription.data.cancelAtPeriodEnd ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => reactivateSubscription.mutate()}
+                  disabled={reactivateSubscription.isPending}
+                >
+                  {reactivateSubscription.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Repeat className="size-4" />
+                  )}
+                  Reactivate
+                </Button>
+              ) : (
                 <Button
                   variant="outline"
                   size="sm"
@@ -175,12 +203,6 @@ export function Donate() {
                 </Button>
               )}
             </div>
-            {subscription.data.cancelAtPeriodEnd && (
-              <p className="text-xs text-muted-foreground">
-                Your perks will remain active until the end of the billing
-                period.
-              </p>
-            )}
           </div>
         )}
 
