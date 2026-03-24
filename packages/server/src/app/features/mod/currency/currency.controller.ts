@@ -198,7 +198,12 @@ export class CurrencyController {
 
     const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
-    res.json(result);
+    if (!result.success) {
+      res.status(400).json({ message: result.error });
+      return;
+    }
+
+    res.json({ message: `You claimed your daily reward of $${result.amount}!` });
   }
 
   /**
