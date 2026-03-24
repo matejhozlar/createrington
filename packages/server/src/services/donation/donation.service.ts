@@ -78,6 +78,93 @@ export class DonationService {
   }
 
   // ==========================================================================
+  // SUBSCRIPTION MANAGEMENT
+  // ==========================================================================
+
+  /**
+   * Returns the user's active subscription details from Stripe,
+   * or null if they have no active monthly subscription.
+   */
+  async getActiveSubscription(discordId: string): Promise<{
+    subscriptionId: string;
+    amountCents: number;
+    currentPeriodEnd: Date;
+    cancelAtPeriodEnd: boolean;
+  } | null> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return null;
+
+    try {
+      const sub = await this.stripe.subscriptions.retrieve(
+        donation.stripeSubscriptionId,
+        { expand: ["latest_invoice"] },
+      );
+
+      if (sub.status === "canceled") return null;
+
+      const periodEnd = this.getSubscriptionPeriodEnd(sub);
+
+      return {
+        subscriptionId: sub.id,
+        amountCents: donation.amountCents,
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: sub.cancel_at_period_end,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Cancels a user's monthly subscription at the end of the current billing
+   * period. The user keeps their perks until the period ends.
+   */
+  async cancelSubscription(
+    discordId: string,
+  ): Promise<{ cancelAt: Date } | null> {
+    const donation = await donationRepo.findActiveSubscription(discordId);
+    if (!donation?.stripeSubscriptionId) return null;
+
+    const sub = await this.stripe.subscriptions.update(
+      donation.stripeSubscriptionId,
+      { cancel_at_period_end: true },
+    );
+
+    logger.info(
+      `Subscription ${sub.id} set to cancel at period end for discord ${discordId}`,
+    );
+
+    const cancelAt = sub.cancel_at
+      ? new Date(sub.cancel_at * 1000)
+      : this.getSubscriptionPeriodEnd(sub);
+
+    return { cancelAt };
+  }
+
+  /**
+   * Derives the current period end from a subscription's latest invoice
+   * or cancel_at timestamp. Falls back to billing_cycle_anchor + 30 days.
+   */
+  private getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date {
+    if (sub.cancel_at) {
+      return new Date(sub.cancel_at * 1000);
+    }
+
+    const invoice = sub.latest_invoice;
+    if (invoice && typeof invoice !== "string" && invoice.period_end) {
+      return new Date(invoice.period_end * 1000);
+    }
+
+    // Fallback: approximate from billing cycle anchor
+    const anchor = new Date(sub.billing_cycle_anchor * 1000);
+    const now = new Date();
+    while (anchor <= now) {
+      anchor.setMonth(anchor.getMonth() + 1);
+    }
+    return anchor;
+  }
+
+  // ==========================================================================
   // WEBHOOK HANDLERS
   // ==========================================================================
 
@@ -112,6 +199,19 @@ export class DonationService {
     );
 
     await this.grantSupporterRole(discordId);
+  }
+
+  /**
+   * Handles customer.subscription.updated — logs cancel_at_period_end changes.
+   */
+  async handleSubscriptionUpdated(
+    subscription: Stripe.Subscription,
+  ): Promise<void> {
+    if (subscription.cancel_at_period_end) {
+      logger.info(
+        `Stripe subscription ${subscription.id} set to cancel at period end (customer: ${subscription.customer})`,
+      );
+    }
   }
 
   /**

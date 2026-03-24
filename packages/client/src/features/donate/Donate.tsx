@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, Repeat, Zap } from "lucide-react";
+import { Heart, Repeat, Zap, CalendarX, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -38,6 +38,22 @@ export function Donate() {
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState("");
 
+  const subscription = trpc.user.donations.activeSubscription.useQuery();
+  const cancelSubscription = trpc.user.donations.cancelSubscription.useMutation(
+    {
+      onSuccess: () => {
+        toast.success(
+          "Subscription cancelled",
+          "Your subscription will end at the end of the current billing period.",
+        );
+        subscription.refetch();
+      },
+      onError: (err) => {
+        toast.error("Failed to cancel subscription", err.message);
+      },
+    },
+  );
+
   const createCheckout = trpc.user.donations.createCheckout.useMutation({
     onSuccess: ({ url }) => {
       if (!new URL(url).hostname.endsWith("stripe.com")) return;
@@ -74,6 +90,46 @@ export function Donate() {
       />
 
       <div className="max-w-2xl mx-auto px-5 pb-16 space-y-10">
+        {/* Active subscription banner */}
+        {subscription.data && (
+          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm font-medium text-foreground">
+                  Active monthly subscription
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  €{(subscription.data.amountCents / 100).toFixed(2)}/mo
+                  {subscription.data.cancelAtPeriodEnd
+                    ? ` — cancels on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`
+                    : ` — renews on ${new Date(subscription.data.currentPeriodEnd).toLocaleDateString()}`}
+                </p>
+              </div>
+              {!subscription.data.cancelAtPeriodEnd && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => cancelSubscription.mutate()}
+                  disabled={cancelSubscription.isPending}
+                >
+                  {cancelSubscription.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <CalendarX className="size-4" />
+                  )}
+                  Cancel
+                </Button>
+              )}
+            </div>
+            {subscription.data.cancelAtPeriodEnd && (
+              <p className="text-xs text-muted-foreground">
+                Your perks will remain active until the end of the billing
+                period.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Donation type toggle */}
         <div className="flex gap-2 p-1 bg-muted rounded-lg w-fit">
           <button
