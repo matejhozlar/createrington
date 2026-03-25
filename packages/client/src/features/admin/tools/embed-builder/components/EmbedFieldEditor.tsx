@@ -10,7 +10,7 @@ import {
 import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef } from "react";
-import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import type { EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string; max: number }) {
@@ -192,8 +192,8 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
               <div className="space-y-1">
                 <div className="flex items-center gap-1">
                   <span className="text-xs text-muted-foreground">Value</span>
-                  <MentionPicker
-                    onInsert={(mention) => insertMentionAtCursor(i, mention)}
+                  <InsertMenu
+                    onInsert={(text) => insertMentionAtCursor(i, text)}
                   />
                 </div>
                 <textarea

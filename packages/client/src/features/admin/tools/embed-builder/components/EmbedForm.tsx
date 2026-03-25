@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
-import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {
@@ -114,12 +114,12 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <Label>Description</Label>
-                <MentionPicker
-                  onInsert={(mention) =>
+                <InsertMenu
+                  onInsert={(text) =>
                     insertAtCursor(
                       descriptionRef,
                       data.description,
-                      mention,
+                      text,
                       "description",
                     )
                   }
