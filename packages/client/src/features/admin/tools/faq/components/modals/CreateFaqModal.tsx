@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
-import { MentionPicker } from "@/features/admin/components/MentionPicker";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import { CharCount } from "@/features/admin/components/CharCount";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "@/features/admin/tools/embed-builder/components/DiscordMarkdown";
@@ -154,7 +154,7 @@ export function CreateFaqModal({
           <Field>
             <div className="flex items-center gap-1">
               <FieldLabel htmlFor="faq-response">Response</FieldLabel>
-              <MentionPicker
+              <InsertMenu
                 onInsert={(mention) => {
                   const el = responseRef.current;
                   const pos = el?.selectionStart ?? response.length;
