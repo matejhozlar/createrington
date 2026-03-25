@@ -213,11 +213,7 @@ async function scrapeDiscordEntities(): Promise<void> {
         const cleanedName = cleanChannelName(channel.name, categoryKey);
         const channelKey = toCamelCase(cleanedName);
         const channelType =
-          channel.type === 2
-            ? "voice"
-            : channel.type === 15
-              ? "forum"
-              : "text";
+          channel.type === 2 ? "voice" : channel.type === 15 ? "forum" : "text";
 
         entities.channels[categoryKey][channelKey] = channel.id;
 
@@ -227,11 +223,7 @@ async function scrapeDiscordEntities(): Promise<void> {
             ? ` (cleaned from "${channel.name}")`
             : "";
         const icon =
-          channelType === "voice"
-            ? "🔊"
-            : channelType === "forum"
-              ? "💬"
-              : "#";
+          channelType === "voice" ? "🔊" : channelType === "forum" ? "💬" : "#";
         console.log(
           `   ✓ ${icon}${cleanedName} -> ${categoryKey}.${channelKey}${cleanedIndicator}`,
         );

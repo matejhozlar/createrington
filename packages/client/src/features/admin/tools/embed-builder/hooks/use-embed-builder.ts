@@ -302,7 +302,8 @@ export function useEmbedBuilder() {
       }
 
       const shouldLink = opts?.linkToPreset ?? true;
-      const hasActionButtons = data.actionButtons && data.actionButtons.length > 0;
+      const hasActionButtons =
+        data.actionButtons && data.actionButtons.length > 0;
 
       if (hasActionButtons && !activePreset) {
         toast.error(
@@ -312,12 +313,11 @@ export function useEmbedBuilder() {
       }
 
       // Action buttons always need the presetId to encode in their custom ID
-      const presetId =
-        hasActionButtons
-          ? activePreset!.id
-          : shouldLink
-            ? activePreset?.id
-            : undefined;
+      const presetId = hasActionButtons
+        ? activePreset!.id
+        : shouldLink
+          ? activePreset?.id
+          : undefined;
 
       try {
         const result = await sendEmbed.mutateAsync({

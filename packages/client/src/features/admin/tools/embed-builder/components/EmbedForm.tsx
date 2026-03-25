@@ -270,9 +270,7 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
         <ButtonEditor
           buttons={data.buttons}
           actionButtons={data.actionButtons}
-          onChangeButtons={(buttons: EmbedLinkButton[]) =>
-            update({ buttons })
-          }
+          onChangeButtons={(buttons: EmbedLinkButton[]) => update({ buttons })}
           onChangeActionButtons={(actionButtons: EmbedActionButton[]) =>
             update({ actionButtons })
           }

@@ -95,7 +95,6 @@ interface ChannelConfig {
     readonly discussion: string;
     readonly news: string;
   };
-
 }
 
 interface CategoriesConfig {

@@ -115,7 +115,9 @@ async function handleCreateThread(
   try {
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.editReply({ content: "This button only works in a server." });
+      await interaction.editReply({
+        content: "This button only works in a server.",
+      });
       return;
     }
 
@@ -134,12 +136,11 @@ async function handleCreateThread(
     const username = interaction.user.displayName;
 
     // Truncate to 100 chars (Discord thread name limit) after template substitution
-    const threadName = applyTemplate(config.threadName, userId, username).slice(0, 100);
-    const threadMessage = applyTemplate(
-      config.threadMessage,
-      userId,
-      username,
+    const threadName = applyTemplate(config.threadName, userId, username).slice(
+      0,
+      100,
     );
+    const threadMessage = applyTemplate(config.threadMessage, userId, username);
 
     // Create thread in the target channel
     if (
@@ -183,7 +184,8 @@ async function handleCreateThread(
   } catch (error) {
     logger.error("Failed to handle create_thread action:", error);
     await interaction.editReply({
-      content: "Something went wrong while creating the thread. Please try again.",
+      content:
+        "Something went wrong while creating the thread. Please try again.",
     });
   }
 }
