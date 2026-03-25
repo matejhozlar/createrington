@@ -40,6 +40,7 @@ export { PlayerAchievementQueries } from "./player/achievement";
 export { PlayerBalanceQueries } from "./player/balance";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
+export { PlayerInactivityWarningQueries } from "./player/inactivity/warning";
 export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";

@@ -15,6 +15,7 @@ import {
 } from "./discord/message/cache";
 import { TicketService } from "./discord/tickets";
 import { LeaderboardService } from "./discord/leaderboard";
+import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivity-cleanup.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
 import { RotatingStatusService } from "./discord/status";
@@ -202,6 +203,25 @@ export function registerServices(): void {
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
+
+  // Only enabled in dev for now — remove the guard when ready for production
+  if (!config.envMode.isProd) {
+    container.register(
+      Services.INACTIVITY_CLEANUP_SERVICE,
+      async () => {
+        const service = new InactivityCleanupService();
+        await service.initialize();
+        return service;
+      },
+      {
+        dependencies: [
+          Services.DISCORD_MAIN_BOT,
+          Services.MESSAGE_SERVICE,
+          Services.DATABASE,
+        ],
+      },
+    );
+  }
 
   container.register(
     Services.SERVER_STATS_SERVICE,
