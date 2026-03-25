@@ -49,7 +49,11 @@ const INLINE_RULES: Array<{
   // Discord timestamps: <t:UNIX:FORMAT> or <t:UNIX>
   {
     pattern: /^<t:(\d+)(?::([tTdDfFR]))?>/,
-    parse: (m) => ({ type: "timestamp", unix: Number(m[1]), format: m[2] ?? "f" }),
+    parse: (m) => ({
+      type: "timestamp",
+      unix: Number(m[1]),
+      format: m[2] ?? "f",
+    }),
   },
   // Discord mentions: <#channelId>, <@&roleId>
   {
@@ -101,19 +105,45 @@ const INLINE_RULES: Array<{
 function formatDiscordTimestamp(date: Date, format: string): string {
   switch (format) {
     case "t":
-      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
     case "T":
-      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      });
     case "d":
       return date.toLocaleDateString();
     case "D":
-      return date.toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" });
+      return date.toLocaleDateString([], {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     case "f":
-      return date.toLocaleDateString([], { year: "numeric", month: "long", day: "numeric" }) +
-        " " + date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return (
+        date.toLocaleDateString([], {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " " +
+        date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      );
     case "F":
-      return date.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" }) +
-        " " + date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      return (
+        date.toLocaleDateString([], {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " " +
+        date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      );
     case "R": {
       const now = Date.now();
       const diff = date.getTime() - now;
@@ -127,7 +157,8 @@ function formatDiscordTimestamp(date: Date, format: string): string {
       let relative: string;
       if (days > 0) relative = `${days} day${days !== 1 ? "s" : ""}`;
       else if (hours > 0) relative = `${hours} hour${hours !== 1 ? "s" : ""}`;
-      else if (minutes > 0) relative = `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+      else if (minutes > 0)
+        relative = `${minutes} minute${minutes !== 1 ? "s" : ""}`;
       else relative = `${seconds} second${seconds !== 1 ? "s" : ""}`;
 
       return isFuture ? `in ${relative}` : `${relative} ago`;

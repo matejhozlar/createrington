@@ -223,10 +223,9 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
                 </>
               )}
 
-              {filteredChannelGroups.length > 0 &&
-                filteredRoles.length > 0 && (
-                  <div className="my-1 border-t border-border" />
-                )}
+              {filteredChannelGroups.length > 0 && filteredRoles.length > 0 && (
+                <div className="my-1 border-t border-border" />
+              )}
 
               {filteredRoles.length > 0 && (
                 <>

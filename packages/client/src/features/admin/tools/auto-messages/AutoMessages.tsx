@@ -120,7 +120,13 @@ export function AutoMessages() {
     } catch {
       toast.error("Failed to delete message");
     }
-  }, [deleteMessageMutation, toast, detailQuery, configsQuery, deleteMessageConfirm]);
+  }, [
+    deleteMessageMutation,
+    toast,
+    detailQuery,
+    configsQuery,
+    deleteMessageConfirm,
+  ]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -244,7 +250,9 @@ export function AutoMessages() {
                         size="sm"
                         variant="destructive"
                         className="cursor-pointer"
-                        onClick={() => setDeleteConfigConfirm({ open: true, config })}
+                        onClick={() =>
+                          setDeleteConfigConfirm({ open: true, config })
+                        }
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -323,7 +331,12 @@ export function AutoMessages() {
                                   size="sm"
                                   variant="ghost"
                                   className="cursor-pointer size-8 p-0 text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteMessageConfirm({ open: true, id: msg.id })}
+                                  onClick={() =>
+                                    setDeleteMessageConfirm({
+                                      open: true,
+                                      id: msg.id,
+                                    })
+                                  }
                                 >
                                   <Trash2 className="size-3.5" />
                                 </Button>
@@ -407,15 +420,13 @@ export function AutoMessages() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Message</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this message? This action cannot be
-              undone.
+              Are you sure you want to delete this message? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              onClick={() =>
-                setDeleteMessageConfirm({ open: false, id: null })
-              }
+              onClick={() => setDeleteMessageConfirm({ open: false, id: null })}
               className="cursor-pointer"
             >
               Cancel
