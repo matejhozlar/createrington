@@ -1,22 +1,22 @@
 import type { Pool, PoolClient } from "pg";
-import { CryptoPortfolioSnapshotQueries } from "@/db/queries/crypto/portfolio/snapshot";
+import { PlayerInactivityWarningQueries } from "@/db/queries/player/inactivity/warning";
 
 /**
- * Namespace queries for crypto_portfolio
+ * Namespace queries for player_inactivity
  * 
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
- * access to child tables that share the 'crypto_portfolio_' prefix.
+ * access to child tables that share the 'player_inactivity_' prefix.
  * 
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
- * - Shared across all CryptoPortfolioQueries instances using same connection
+ * - Shared across all PlayerInactivityQueries instances using same connection
  * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
-export class CryptoPortfolioQueries {
+export class PlayerInactivityQueries {
   /**
    * Static singleton registry for child query instances
    * 
@@ -24,7 +24,7 @@ export class CryptoPortfolioQueries {
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
    * - Each connection has its own cache map
-   * - Keys are fully qualified (e.g., "crypto_portfolio.actions")
+   * - Keys are fully qualified (e.g., "player_inactivity.actions")
    */
   private static queryInstances = new WeakMap<
     Pool | PoolClient,
@@ -43,7 +43,7 @@ export class CryptoPortfolioQueries {
    * @returns Cached or newly created child query instance
    * 
    * @remarks
-   * - Cache key is prefixed with namespace (e.g., "crypto_portfolio.actions")
+   * - Cache key is prefixed with namespace (e.g., "player_inactivity.actions")
    * - Ensures child shares the same database connection as parent
    * - Type-safe through generic parameter T
    */
@@ -52,12 +52,12 @@ export class CryptoPortfolioQueries {
     QueryClass: new (db: Pool | PoolClient) => T
   ): T {
     // Initialize cache for this connection if not exists
-    if (!CryptoPortfolioQueries.queryInstances.has(this.db)) {
-      CryptoPortfolioQueries.queryInstances.set(this.db, new Map());
+    if (!PlayerInactivityQueries.queryInstances.has(this.db)) {
+      PlayerInactivityQueries.queryInstances.set(this.db, new Map());
     }
 
-    const cache = CryptoPortfolioQueries.queryInstances.get(this.db)!;
-    const fullKey = `crypto_portfolio.${key}`;
+    const cache = PlayerInactivityQueries.queryInstances.get(this.db)!;
+    const fullKey = `player_inactivity.${key}`;
 
     // Create and cache child instance if not exists
     if (!cache.has(fullKey)) {
@@ -72,22 +72,22 @@ export class CryptoPortfolioQueries {
    */
   constructor(protected db: Pool | PoolClient) {}
 
-  /** Private backing field for lazy-loaded crypto_portfolio_snapshot queries */
-  private _snapshot?: CryptoPortfolioSnapshotQueries;
+  /** Private backing field for lazy-loaded player_inactivity_warning queries */
+  private _warning?: PlayerInactivityWarningQueries;
 
   /**
-   * Lazy-loaded singleton accessor for crypto_portfolio_snapshot
+   * Lazy-loaded singleton accessor for player_inactivity_warning
    * 
-   * Returns a CryptoPortfolioSnapshotQueries instance that shares this namespace's
+   * Returns a PlayerInactivityWarningQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
    * 
-   * @returns Singleton CryptoPortfolioSnapshotQueries instance
+   * @returns Singleton PlayerInactivityWarningQueries instance
    */
-  get snapshot(): CryptoPortfolioSnapshotQueries {
-    if (!this._snapshot) {
-      this._snapshot = this.getOrCreateChild<CryptoPortfolioSnapshotQueries>('snapshot', CryptoPortfolioSnapshotQueries);
+  get warning(): PlayerInactivityWarningQueries {
+    if (!this._warning) {
+      this._warning = this.getOrCreateChild<PlayerInactivityWarningQueries>('warning', PlayerInactivityWarningQueries);
     }
-    return this._snapshot;
+    return this._warning;
   }
 }

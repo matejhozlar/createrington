@@ -1,9 +1,9 @@
 /**
  * Barrel export for all actual query classes
- *
+ * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- *
+ * 
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
  */
@@ -40,6 +40,7 @@ export { PlayerAchievementQueries } from "./player/achievement";
 export { PlayerBalanceQueries } from "./player/balance";
 export { PlayerBalanceTransactionQueries } from "./player/balance/transaction";
 export { PlayerBanQueries } from "./player/ban";
+export { PlayerInactivityWarningQueries } from "./player/inactivity/warning";
 export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";
