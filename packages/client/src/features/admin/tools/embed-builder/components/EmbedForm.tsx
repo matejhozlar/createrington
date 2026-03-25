@@ -17,6 +17,7 @@ import type {
   EmbedData,
   EmbedField,
   EmbedLinkButton,
+  EmbedActionButton,
 } from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {
@@ -268,7 +269,13 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
       <Section title="Buttons">
         <ButtonEditor
           buttons={data.buttons}
-          onChange={(buttons: EmbedLinkButton[]) => update({ buttons })}
+          actionButtons={data.actionButtons}
+          onChangeButtons={(buttons: EmbedLinkButton[]) =>
+            update({ buttons })
+          }
+          onChangeActionButtons={(actionButtons: EmbedActionButton[]) =>
+            update({ actionButtons })
+          }
         />
       </Section>
     </div>

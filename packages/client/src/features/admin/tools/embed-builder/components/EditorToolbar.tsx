@@ -93,6 +93,16 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
               emoji: b.emoji ?? undefined,
             }))
           : [],
+        actionButtons: Array.isArray(parsed.actionButtons)
+          ? parsed.actionButtons.map((b) => ({
+              label: b.label ?? "",
+              action: "create_thread" as const,
+              channelId: b.channelId ?? "",
+              threadName: b.threadName ?? "",
+              threadMessage: b.threadMessage ?? "",
+              emoji: b.emoji ?? undefined,
+            }))
+          : [],
       });
 
       toast.success("Embed imported from clipboard");

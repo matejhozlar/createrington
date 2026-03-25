@@ -204,12 +204,13 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
           )}
         </div>
 
-        {/* Link Buttons */}
-        {data.buttons && data.buttons.length > 0 && (
+        {/* Buttons */}
+        {((data.buttons && data.buttons.length > 0) ||
+          (data.actionButtons && data.actionButtons.length > 0)) && (
           <div className="mt-1 flex flex-wrap gap-2">
-            {data.buttons.map((button, i) => (
+            {data.buttons?.map((button, i) => (
               <a
-                key={i}
+                key={`link-${i}`}
                 href={button.url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -220,6 +221,16 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
                 {button.label}
                 <ExternalLink className="size-3.5 opacity-60" />
               </a>
+            ))}
+            {data.actionButtons?.map((button, i) => (
+              <span
+                key={`action-${i}`}
+                className="inline-flex cursor-pointer items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-125"
+                style={{ backgroundColor: "#5865F2" }}
+              >
+                {button.emoji && <span>{button.emoji}</span>}
+                {button.label}
+              </span>
             ))}
           </div>
         )}

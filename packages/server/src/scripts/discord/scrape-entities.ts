@@ -178,10 +178,13 @@ async function scrapeDiscordEntities(): Promise<void> {
     // Group channels by category
     const channelsByCategory = new Map<string, any[]>();
 
-    // Include text (0), voice (2), and announcement (5) channels
+    // Include text (0), voice (2), announcement (5), and forum (15) channels
     const channels = guild.channels.cache.filter(
       (channel) =>
-        channel.type === 0 || channel.type === 2 || channel.type === 5,
+        channel.type === 0 ||
+        channel.type === 2 ||
+        channel.type === 5 ||
+        channel.type === 15,
     );
 
     for (const channel of channels.values()) {
@@ -209,7 +212,12 @@ async function scrapeDiscordEntities(): Promise<void> {
         // Clean the channel name (especially for serverStats)
         const cleanedName = cleanChannelName(channel.name, categoryKey);
         const channelKey = toCamelCase(cleanedName);
-        const channelType = channel.type === 0 ? "text" : "voice";
+        const channelType =
+          channel.type === 2
+            ? "voice"
+            : channel.type === 15
+              ? "forum"
+              : "text";
 
         entities.channels[categoryKey][channelKey] = channel.id;
 
@@ -218,8 +226,14 @@ async function scrapeDiscordEntities(): Promise<void> {
           cleanedName !== channel.name
             ? ` (cleaned from "${channel.name}")`
             : "";
+        const icon =
+          channelType === "voice"
+            ? "🔊"
+            : channelType === "forum"
+              ? "💬"
+              : "#";
         console.log(
-          `   ✓ ${channelType === "voice" ? "🔊" : "#"}${cleanedName} -> ${categoryKey}.${channelKey}${cleanedIndicator}`,
+          `   ✓ ${icon}${cleanedName} -> ${categoryKey}.${channelKey}${cleanedIndicator}`,
         );
       }
     }

@@ -36,6 +36,7 @@ const DEFAULT_EMBED: EmbedDataInternal = {
   imageUrl: undefined,
   timestamp: false,
   buttons: [],
+  actionButtons: [],
 };
 
 function assignFieldIds(fields: EmbedField[]): EmbedFieldInternal[] {
@@ -301,12 +302,28 @@ export function useEmbedBuilder() {
       }
 
       const shouldLink = opts?.linkToPreset ?? true;
+      const hasActionButtons = data.actionButtons && data.actionButtons.length > 0;
+
+      if (hasActionButtons && !activePreset) {
+        toast.error(
+          "Save as a preset first — action buttons need a preset to function.",
+        );
+        return;
+      }
+
+      // Action buttons always need the presetId to encode in their custom ID
+      const presetId =
+        hasActionButtons
+          ? activePreset!.id
+          : shouldLink
+            ? activePreset?.id
+            : undefined;
 
       try {
         const result = await sendEmbed.mutateAsync({
           channelId,
           embed: toExternalData(data),
-          presetId: shouldLink ? activePreset?.id : undefined,
+          presetId,
           bot,
         });
         if (activePreset && shouldLink) linksQuery.refetch();

@@ -56,23 +56,53 @@ function buildDiscordEmbed(data: EmbedData): EmbedBuilder {
   return embed;
 }
 
-function buildLinkButtons(
+function buildButtons(
   data: EmbedData,
+  presetId?: number,
 ): ActionRowBuilder<ButtonBuilder>[] | undefined {
-  if (!data.buttons || data.buttons.length === 0) return undefined;
+  const hasLinkButtons = data.buttons && data.buttons.length > 0;
+  const hasActionButtons = data.actionButtons && data.actionButtons.length > 0;
 
-  const row = new ActionRowBuilder<ButtonBuilder>();
-  for (const btn of data.buttons) {
-    const button = new ButtonBuilder()
-      .setLabel(btn.label)
-      .setURL(btn.url)
-      .setStyle(ButtonStyle.Link);
+  if (!hasLinkButtons && !hasActionButtons) return undefined;
 
-    if (btn.emoji) button.setEmoji(btn.emoji);
-    row.addComponents(button);
+  const totalCount =
+    (data.buttons?.length ?? 0) + (data.actionButtons?.length ?? 0);
+  if (totalCount > 5) {
+    logger.warn(
+      `Embed has ${totalCount} buttons (max 5 per ActionRow), truncating`,
+    );
   }
 
-  return [row];
+  const row = new ActionRowBuilder<ButtonBuilder>();
+
+  // Link buttons
+  if (hasLinkButtons) {
+    for (const btn of data.buttons) {
+      const button = new ButtonBuilder()
+        .setLabel(btn.label)
+        .setURL(btn.url)
+        .setStyle(ButtonStyle.Link);
+
+      if (btn.emoji) button.setEmoji(btn.emoji);
+      row.addComponents(button);
+    }
+  }
+
+  // Action buttons (require a preset to reference)
+  if (hasActionButtons && presetId) {
+    for (let i = 0; i < data.actionButtons.length; i++) {
+      const btn = data.actionButtons[i];
+      const button = new ButtonBuilder()
+        .setLabel(btn.label)
+        .setCustomId(`embed-action:${presetId}:${i}`)
+        .setStyle(ButtonStyle.Primary);
+
+      if (btn.emoji) button.setEmoji(btn.emoji);
+      row.addComponents(button);
+    }
+  }
+
+  return row.components.length > 0 ? [row] : undefined;
 }
 
 const channels = config.discord.guild.channels;
@@ -151,7 +181,7 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
-      const components = buildLinkButtons(data);
+      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.send({
@@ -197,7 +227,7 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
-      const components = buildLinkButtons(data);
+      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
@@ -251,7 +281,7 @@ export const embedsRouter = router({
         .all();
 
       const embed = buildDiscordEmbed(data);
-      const components = buildLinkButtons(data);
+      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
       let updated = 0;
@@ -303,7 +333,7 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
-      const components = buildLinkButtons(data);
+      const components = buildButtons(data, link.presetId);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
