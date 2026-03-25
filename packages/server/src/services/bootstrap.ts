@@ -213,7 +213,13 @@ export function registerServices(): void {
         await service.initialize();
         return service;
       },
-      { dependencies: [Services.DISCORD_MAIN_BOT, Services.MESSAGE_SERVICE, Services.DATABASE] },
+      {
+        dependencies: [
+          Services.DISCORD_MAIN_BOT,
+          Services.MESSAGE_SERVICE,
+          Services.DATABASE,
+        ],
+      },
     );
   }
 

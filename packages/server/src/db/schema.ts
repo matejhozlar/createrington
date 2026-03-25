@@ -875,9 +875,7 @@ export const playerInactivityWarning = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_player_inactivity_warning_uuid").on(
-      table.playerMinecraftUuid,
-    ),
+    index("idx_player_inactivity_warning_uuid").on(table.playerMinecraftUuid),
     index("idx_player_inactivity_warning_active")
       .on(table.warnedAt)
       .where(sql`resolved_at IS NULL AND removed_at IS NULL`),

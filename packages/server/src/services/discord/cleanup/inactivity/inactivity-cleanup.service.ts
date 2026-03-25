@@ -115,9 +115,7 @@ export class InactivityCleanupService {
       return;
     }
 
-    logger.info(
-      `Found ${inactivePlayers.length} inactive player(s) to warn`,
-    );
+    logger.info(`Found ${inactivePlayers.length} inactive player(s) to warn`);
 
     const deadlineDate = new Date(
       Date.now() + this.GRACE_DAYS * 24 * 60 * 60 * 1000,
@@ -203,9 +201,7 @@ export class InactivityCleanupService {
               .fetch(warning.discordId)
               .catch(() => null);
             if (member) {
-              await member.kick(
-                "Inactivity: 60+ days without logging in",
-              );
+              await member.kick("Inactivity: 60+ days without logging in");
               logger.info(
                 `Kicked ${warning.minecraftUsername} from Discord (inactivity)`,
               );
@@ -272,10 +268,7 @@ export class InactivityCleanupService {
           `Sent inactivity removal announcement for ${removedUsernames.length} player(s)`,
         );
       } catch (error) {
-        logger.error(
-          "Failed to send inactivity removal announcement:",
-          error,
-        );
+        logger.error("Failed to send inactivity removal announcement:", error);
       }
     }
   }

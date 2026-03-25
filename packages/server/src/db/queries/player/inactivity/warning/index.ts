@@ -28,9 +28,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * have an active (unresolved, unremoved) warning.
    * Also excludes players created within the inactivity window.
    */
-  async findInactivePlayers(
-    inactiveDays: number,
-  ): Promise<InactivePlayer[]> {
+  async findInactivePlayers(inactiveDays: number): Promise<InactivePlayer[]> {
     const query = `
       SELECT
         p.minecraft_uuid AS minecraft_uuid,
