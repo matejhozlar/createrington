@@ -9,6 +9,21 @@ export const embedFieldSchema = z.object({
   inline: z.boolean().default(false),
 });
 
+export const embedLinkButtonSchema = z.object({
+  label: z.string().min(1).max(80),
+  url: z.string().url(),
+  emoji: z.string().max(32).optional(),
+});
+
+export const embedActionButtonSchema = z.object({
+  label: z.string().min(1).max(80),
+  emoji: z.string().max(32).optional(),
+  action: z.literal("create_thread"),
+  channelId: z.string().min(1),
+  threadName: z.string().min(1).max(100),
+  threadMessage: z.string().min(1).max(2000),
+});
+
 export const embedDataSchema = z.object({
   title: z.string().max(256).optional(),
   description: z.string().max(4096).optional(),
@@ -22,7 +37,11 @@ export const embedDataSchema = z.object({
   thumbnailUrl: z.string().url().optional().or(z.literal("")),
   imageUrl: z.string().url().optional().or(z.literal("")),
   timestamp: z.boolean().default(false),
+  buttons: z.array(embedLinkButtonSchema).max(5).default([]),
+  actionButtons: z.array(embedActionButtonSchema).max(5).default([]),
 });
 
 export type EmbedData = z.infer<typeof embedDataSchema>;
 export type EmbedField = z.infer<typeof embedFieldSchema>;
+export type EmbedLinkButton = z.infer<typeof embedLinkButtonSchema>;
+export type EmbedActionButton = z.infer<typeof embedActionButtonSchema>;
