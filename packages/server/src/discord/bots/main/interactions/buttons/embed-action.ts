@@ -133,7 +133,8 @@ async function handleCreateThread(
     }
 
     const userId = interaction.user.id;
-    const username = interaction.user.displayName;
+    const member = interaction.member as { displayName?: string } | null;
+    const username = member?.displayName ?? interaction.user.displayName;
 
     // Truncate to 100 chars (Discord thread name limit) after template substitution
     const threadName = applyTemplate(config.threadName, userId, username).slice(
