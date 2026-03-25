@@ -132,7 +132,7 @@ export async function execute(
     if (!entry || !entry.verified) {
       steps[currentStep].error = "No verified waitlist entry found";
       throw new Error(
-        "You haven't verified your token yet. Run `/verify <token>` first.",
+        "You haven't verified your token yet. Run `/verify` with your token first.",
       );
     }
 
