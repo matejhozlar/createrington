@@ -1,3 +1,4 @@
+import { ExternalLink } from "lucide-react";
 import type { EmbedData } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
 import { DiscordMarkdown } from "./DiscordMarkdown";
@@ -202,6 +203,26 @@ export function EmbedPreview({ data }: EmbedPreviewProps) {
             </div>
           )}
         </div>
+
+        {/* Link Buttons */}
+        {data.buttons && data.buttons.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-2">
+            {data.buttons.map((button, i) => (
+              <a
+                key={i}
+                href={button.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded px-4 py-2 text-sm font-medium text-white transition-colors hover:brightness-125"
+                style={{ backgroundColor: "#4E5058" }}
+              >
+                {button.emoji && <span>{button.emoji}</span>}
+                {button.label}
+                <ExternalLink className="size-3.5 opacity-60" />
+              </a>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,7 +5,12 @@ import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
-import { EmbedBuilder } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+} from "discord.js";
 import config from "@/config";
 import {
   embedDataSchema,
@@ -49,6 +54,25 @@ function buildDiscordEmbed(data: EmbedData): EmbedBuilder {
   }
 
   return embed;
+}
+
+function buildLinkButtons(
+  data: EmbedData,
+): ActionRowBuilder<ButtonBuilder>[] | undefined {
+  if (!data.buttons || data.buttons.length === 0) return undefined;
+
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  for (const btn of data.buttons) {
+    const button = new ButtonBuilder()
+      .setLabel(btn.label)
+      .setURL(btn.url)
+      .setStyle(ButtonStyle.Link);
+
+    if (btn.emoji) button.setEmoji(btn.emoji);
+    row.addComponents(button);
+  }
+
+  return [row];
 }
 
 const channels = config.discord.guild.channels;
@@ -127,11 +151,13 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
+      const components = buildLinkButtons(data);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.send({
         channelId,
         embeds: embed,
+        components,
       });
 
       if (!result.success) {
@@ -171,12 +197,14 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
+      const components = buildLinkButtons(data);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
         channelId,
         messageId,
         embeds: embed,
+        components,
       });
 
       if (!result.success) {
@@ -223,6 +251,7 @@ export const embedsRouter = router({
         .all();
 
       const embed = buildDiscordEmbed(data);
+      const components = buildLinkButtons(data);
       const messageService = getMessageService(input.bot);
 
       let updated = 0;
@@ -233,6 +262,7 @@ export const embedsRouter = router({
           channelId: link.channelId,
           messageId: link.messageId,
           embeds: embed,
+          components,
         });
 
         if (result.success) {
@@ -273,12 +303,14 @@ export const embedsRouter = router({
       }
 
       const embed = buildDiscordEmbed(data);
+      const components = buildLinkButtons(data);
       const messageService = getMessageService(input.bot);
 
       const result = await messageService.edit({
         channelId: link.channelId,
         messageId: link.messageId,
         embeds: embed,
+        components,
       });
 
       if (!result.success) {

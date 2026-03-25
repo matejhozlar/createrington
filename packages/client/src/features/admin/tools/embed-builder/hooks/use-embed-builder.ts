@@ -35,6 +35,7 @@ const DEFAULT_EMBED: EmbedDataInternal = {
   thumbnailUrl: undefined,
   imageUrl: undefined,
   timestamp: false,
+  buttons: [],
 };
 
 function assignFieldIds(fields: EmbedField[]): EmbedFieldInternal[] {

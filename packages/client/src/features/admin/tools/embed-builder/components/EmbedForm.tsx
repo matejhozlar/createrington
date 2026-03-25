@@ -12,7 +12,12 @@ import { useRef, useState } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
 import { InsertMenu } from "@/features/admin/components/InsertMenu";
-import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
+import { ButtonEditor } from "./ButtonEditor";
+import type {
+  EmbedData,
+  EmbedField,
+  EmbedLinkButton,
+} from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {
   const len = value?.length ?? 0;
@@ -257,6 +262,14 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
             </label>
           </div>
         </div>
+      </Section>
+
+      {/* Buttons */}
+      <Section title="Buttons">
+        <ButtonEditor
+          buttons={data.buttons}
+          onChange={(buttons: EmbedLinkButton[]) => update({ buttons })}
+        />
       </Section>
     </div>
   );
