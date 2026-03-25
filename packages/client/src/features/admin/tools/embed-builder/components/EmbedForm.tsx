@@ -11,8 +11,14 @@ import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { ColorPicker } from "./ColorPicker";
 import { EmbedFieldEditor } from "./EmbedFieldEditor";
-import { MentionPicker } from "@/features/admin/components/MentionPicker";
-import type { EmbedData, EmbedField } from "@createrington/shared/api/embed";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
+import { ButtonEditor } from "./ButtonEditor";
+import type {
+  EmbedData,
+  EmbedField,
+  EmbedLinkButton,
+  EmbedActionButton,
+} from "@createrington/shared/api/embed";
 
 function CharCount({ value, max }: { value: string | undefined; max: number }) {
   const len = value?.length ?? 0;
@@ -114,12 +120,12 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1">
                 <Label>Description</Label>
-                <MentionPicker
-                  onInsert={(mention) =>
+                <InsertMenu
+                  onInsert={(text) =>
                     insertAtCursor(
                       descriptionRef,
                       data.description,
-                      mention,
+                      text,
                       "description",
                     )
                   }
@@ -257,6 +263,18 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
             </label>
           </div>
         </div>
+      </Section>
+
+      {/* Buttons */}
+      <Section title="Buttons">
+        <ButtonEditor
+          buttons={data.buttons}
+          actionButtons={data.actionButtons}
+          onChangeButtons={(buttons: EmbedLinkButton[]) => update({ buttons })}
+          onChangeActionButtons={(actionButtons: EmbedActionButton[]) =>
+            update({ actionButtons })
+          }
+        />
       </Section>
     </div>
   );

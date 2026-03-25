@@ -8,6 +8,16 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,6 +52,15 @@ export function AutoMessages() {
     message: Message | null;
   }>({ open: false, configId: 0, message: null });
 
+  const [deleteConfigConfirm, setDeleteConfigConfirm] = useState<{
+    open: boolean;
+    config: Config | null;
+  }>({ open: false, config: null });
+  const [deleteMessageConfirm, setDeleteMessageConfirm] = useState<{
+    open: boolean;
+    id: number | null;
+  }>({ open: false, id: null });
+
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const configsQuery = trpc.admin.autoMessages.configs.list.useQuery();
@@ -75,33 +94,39 @@ export function AutoMessages() {
     configsQuery.refetch();
   }, [detailQuery, configsQuery]);
 
-  const handleDeleteConfig = useCallback(
-    async (id: number) => {
-      try {
-        await deleteMutation.mutateAsync({ id });
-        toast.success("Config deleted");
-        if (expandedId === id) setExpandedId(null);
-        configsQuery.refetch();
-      } catch {
-        toast.error("Failed to delete config");
-      }
-    },
-    [deleteMutation, toast, configsQuery, expandedId],
-  );
+  const handleDeleteConfig = useCallback(async () => {
+    const id = deleteConfigConfirm.config?.id;
+    if (!id) return;
+    try {
+      await deleteMutation.mutateAsync({ id });
+      toast.success("Config deleted");
+      if (expandedId === id) setExpandedId(null);
+      setDeleteConfigConfirm({ open: false, config: null });
+      configsQuery.refetch();
+    } catch {
+      toast.error("Failed to delete config");
+    }
+  }, [deleteMutation, toast, configsQuery, expandedId, deleteConfigConfirm]);
 
-  const handleDeleteMessage = useCallback(
-    async (id: number) => {
-      try {
-        await deleteMessageMutation.mutateAsync({ id });
-        toast.success("Message deleted");
-        detailQuery.refetch();
-        configsQuery.refetch();
-      } catch {
-        toast.error("Failed to delete message");
-      }
-    },
-    [deleteMessageMutation, toast, detailQuery, configsQuery],
-  );
+  const handleDeleteMessage = useCallback(async () => {
+    const id = deleteMessageConfirm.id;
+    if (!id) return;
+    try {
+      await deleteMessageMutation.mutateAsync({ id });
+      toast.success("Message deleted");
+      setDeleteMessageConfirm({ open: false, id: null });
+      detailQuery.refetch();
+      configsQuery.refetch();
+    } catch {
+      toast.error("Failed to delete message");
+    }
+  }, [
+    deleteMessageMutation,
+    toast,
+    detailQuery,
+    configsQuery,
+    deleteMessageConfirm,
+  ]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -225,7 +250,9 @@ export function AutoMessages() {
                         size="sm"
                         variant="destructive"
                         className="cursor-pointer"
-                        onClick={() => handleDeleteConfig(config.id)}
+                        onClick={() =>
+                          setDeleteConfigConfirm({ open: true, config })
+                        }
                       >
                         <Trash2 className="size-4" />
                       </Button>
@@ -304,7 +331,12 @@ export function AutoMessages() {
                                   size="sm"
                                   variant="ghost"
                                   className="cursor-pointer size-8 p-0 text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteMessage(msg.id)}
+                                  onClick={() =>
+                                    setDeleteMessageConfirm({
+                                      open: true,
+                                      id: msg.id,
+                                    })
+                                  }
                                 >
                                   <Trash2 className="size-3.5" />
                                 </Button>
@@ -341,6 +373,75 @@ export function AutoMessages() {
         configId={messageDialog.configId}
         message={messageDialog.message}
       />
+
+      <AlertDialog
+        open={deleteConfigConfirm.open}
+        onOpenChange={(isOpen) =>
+          !isOpen && setDeleteConfigConfirm({ open: false, config: null })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Config</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this auto-message config? All
+              associated messages will also be deleted. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() =>
+                setDeleteConfigConfirm({ open: false, config: null })
+              }
+              className="cursor-pointer"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={handleDeleteConfig}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteMessageConfirm.open}
+        onOpenChange={(isOpen) =>
+          !isOpen && setDeleteMessageConfirm({ open: false, id: null })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Message</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this message? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setDeleteMessageConfirm({ open: false, id: null })}
+              className="cursor-pointer"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={handleDeleteMessage}
+              disabled={deleteMessageMutation.isPending}
+            >
+              {deleteMessageMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

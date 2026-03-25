@@ -38,13 +38,23 @@ type InlineToken =
   | { type: "code"; content: string }
   | { type: "link"; text: string; url: string }
   | { type: "channel_mention"; id: string }
-  | { type: "role_mention"; id: string };
+  | { type: "role_mention"; id: string }
+  | { type: "timestamp"; unix: number; format: string };
 
 const INLINE_RULES: Array<{
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => InlineToken;
 }> = [
   // Order matters — more specific patterns first
+  // Discord timestamps: <t:UNIX:FORMAT> or <t:UNIX>
+  {
+    pattern: /^<t:(\d+)(?::([tTdDfFR]))?>/,
+    parse: (m) => ({
+      type: "timestamp",
+      unix: Number(m[1]),
+      format: m[2] ?? "f",
+    }),
+  },
   // Discord mentions: <#channelId>, <@&roleId>
   {
     pattern: /^<#(\d+)>/,
@@ -91,6 +101,72 @@ const INLINE_RULES: Array<{
     parse: (m) => ({ type: "spoiler", content: m[1] }),
   },
 ];
+
+function formatDiscordTimestamp(date: Date, format: string): string {
+  switch (format) {
+    case "t":
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    case "T":
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+    case "d":
+      return date.toLocaleDateString();
+    case "D":
+      return date.toLocaleDateString([], {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    case "f":
+      return (
+        date.toLocaleDateString([], {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " " +
+        date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      );
+    case "F":
+      return (
+        date.toLocaleDateString([], {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }) +
+        " " +
+        date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      );
+    case "R": {
+      const now = Date.now();
+      const diff = date.getTime() - now;
+      const absDiff = Math.abs(diff);
+      const seconds = Math.floor(absDiff / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      const isFuture = diff > 0;
+
+      let relative: string;
+      if (days > 0) relative = `${days} day${days !== 1 ? "s" : ""}`;
+      else if (hours > 0) relative = `${hours} hour${hours !== 1 ? "s" : ""}`;
+      else if (minutes > 0)
+        relative = `${minutes} minute${minutes !== 1 ? "s" : ""}`;
+      else relative = `${seconds} second${seconds !== 1 ? "s" : ""}`;
+
+      return isFuture ? `in ${relative}` : `${relative} ago`;
+    }
+    default:
+      return date.toLocaleString();
+  }
+}
 
 function tokeniseInline(text: string): InlineToken[] {
   const tokens: InlineToken[] = [];
@@ -176,6 +252,22 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
             {renderInline(token.content, resolver)}
           </span>
         );
+      case "timestamp": {
+        const date = new Date(token.unix * 1000);
+        const formatted = formatDiscordTimestamp(date, token.format);
+        return (
+          <span
+            key={i}
+            className="rounded px-0.5 font-medium"
+            style={{
+              backgroundColor: "rgba(88, 101, 242, 0.3)",
+              color: "#C9CDFB",
+            }}
+          >
+            {formatted}
+          </span>
+        );
+      }
       case "channel_mention": {
         const name = resolver?.channels.get(token.id);
         return (

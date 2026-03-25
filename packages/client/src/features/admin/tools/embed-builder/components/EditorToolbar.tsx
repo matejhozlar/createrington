@@ -86,6 +86,23 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
               inline: f.inline ?? false,
             }))
           : [],
+        buttons: Array.isArray(parsed.buttons)
+          ? parsed.buttons.map((b) => ({
+              label: b.label ?? "",
+              url: b.url ?? "",
+              emoji: b.emoji ?? undefined,
+            }))
+          : [],
+        actionButtons: Array.isArray(parsed.actionButtons)
+          ? parsed.actionButtons.map((b) => ({
+              label: b.label ?? "",
+              action: "create_thread" as const,
+              channelId: b.channelId ?? "",
+              threadName: b.threadName ?? "",
+              threadMessage: b.threadMessage ?? "",
+              emoji: b.emoji ?? undefined,
+            }))
+          : [],
       });
 
       toast.success("Embed imported from clipboard");

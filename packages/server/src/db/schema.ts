@@ -849,6 +849,39 @@ export const playerStrike = pgTable(
   ],
 );
 
+// --- player_inactivity_warning ---
+
+export const playerInactivityWarning = pgTable(
+  "player_inactivity_warning",
+  {
+    id: serial("id").primaryKey(),
+    playerMinecraftUuid: uuid("player_minecraft_uuid")
+      .notNull()
+      .references(() => player.minecraftUuid, {
+        onUpdate: "cascade",
+        onDelete: "cascade",
+      }),
+    warnedAt: timestamp("warned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    warningMessageId: text("warning_message_id"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    removedAt: timestamp("removed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_player_inactivity_warning_uuid").on(table.playerMinecraftUuid),
+    index("idx_player_inactivity_warning_active")
+      .on(table.warnedAt)
+      .where(sql`resolved_at IS NULL AND removed_at IS NULL`),
+  ],
+);
+
 // --- reward_claim ---
 
 export const rewardClaim = pgTable(
