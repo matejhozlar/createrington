@@ -102,7 +102,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         throw new Error("Failed to remove role");
       }
 
-      const embed = EmbedPresets.success(
+      const embed = EmbedPresets.error(
         "Server Access Removed",
         `You no longer have access to **${serverConfig.label}** channels.\n\n` +
           `Click the button again to rejoin.`,
