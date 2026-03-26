@@ -106,27 +106,11 @@ export function StructurePackDetail() {
 
   const toggleEnabledMutation =
     trpc.admin.structurePacks.toggleEnabled.useMutation({
-      onMutate: async ({ enabled }) => {
-        await utils.admin.structurePacks.get.cancel({ id: packId });
-        const previous = utils.admin.structurePacks.get.getData({ id: packId });
-        if (previous) {
-          utils.admin.structurePacks.get.setData({ id: packId }, {
-            ...previous,
-            enabled,
-          });
-        }
-        return { previous };
-      },
-      onError: (err, _vars, context) => {
-        if (context?.previous) {
-          utils.admin.structurePacks.get.setData({ id: packId }, context.previous);
-        }
-        toast.error(err.message);
-      },
-      onSettled: () => {
+      onSuccess: () => {
         utils.admin.structurePacks.get.invalidate({ id: packId });
         utils.admin.structurePacks.list.invalidate();
       },
+      onError: (err) => toast.error(err.message),
     });
 
   const addModMutation = trpc.admin.structurePacks.addMod.useMutation({
@@ -210,7 +194,7 @@ export function StructurePackDetail() {
               <Checkbox
                 id="enabled"
                 checked={pack.enabled}
-                disabled={pack.isActive || toggleEnabledMutation.isPending}
+                disabled={pack.isActive}
                 onCheckedChange={(checked) =>
                   toggleEnabledMutation.mutate({
                     id: packId,
