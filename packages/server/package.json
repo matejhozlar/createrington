@@ -62,6 +62,8 @@
     "copyfiles": "^2.4.1",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
     "globals": "^16.5.0",
     "ora": "^9.0.0",
     "trpc-ui": "npm:trpc-ui-zod4@^1.1.0",
