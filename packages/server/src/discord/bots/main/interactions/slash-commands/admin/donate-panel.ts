@@ -1,4 +1,5 @@
 import config from "@/config";
+import { Discord } from "@/discord/constants";
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import {
@@ -53,6 +54,7 @@ export async function execute(
         "If you enjoy playing on Createrington, you can help keep the server running by donating.\n\n" +
           "**Donating is completely optional** and does not give you any advantages over other players. " +
           "All donations go directly towards server maintenance and upgrades.\n\n" +
+          `By donating you will get the ${Discord.Roles.mention(Discord.Roles.SUPPORTER)} role.\n` +
           "Thank you for being part of the community!",
       )
       .color(EmbedColors.Info);
