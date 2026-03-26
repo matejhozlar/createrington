@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
@@ -15,7 +13,6 @@ import { MaintenanceToggle } from "./components/MaintenanceToggle";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { getServer } = useServerData();
   const serverId = parseInt(id ?? "0", 10);
 
@@ -41,17 +38,7 @@ export function AdminServerDetail() {
   if (error || !serverData) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive">{error || "Server not found"}</p>
-          <Button
-            onClick={() => navigate("/admin/servers")}
-            className="mt-4 cursor-pointer"
-            variant="outline"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Servers
-          </Button>
-        </div>
+        <p className="text-destructive">{error || "Server not found"}</p>
       </div>
     );
   }
@@ -71,7 +58,6 @@ export function AdminServerDetail() {
         port={serverData.server.port}
         isOnline={isOnline}
         isMaintenance={isMaintenance}
-        onNavigateBack={() => navigate("/admin/servers")}
       />
 
       <ServerStatsCards

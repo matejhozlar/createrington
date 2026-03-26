@@ -149,11 +149,12 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
-  // Maintenance
-  // Optional local path for direct filesystem access during maintenance (bypasses SFTP).
+  // MC Server local path
+  // Optional local path for direct filesystem access (bypasses SFTP).
   // Set to the Minecraft server data directory (e.g. /opt/infrastructure/mc-test/data).
-  // When absent, the maintenance service falls back to SFTP (production-only).
-  MAINTENANCE_LOCAL_PATH: z.string().min(1).optional(),
+  // Used by maintenance service and structure pack rotation.
+  // When absent, these services fall back to SFTP (production-only).
+  MC_SERVER_LOCAL_PATH: z.string().min(1).optional(),
 
   // Stripe (optional — donation features are disabled when not configured)
   STRIPE_SECRET_KEY: z.string().min(1).optional(),

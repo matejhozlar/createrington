@@ -127,6 +127,20 @@
       "when": 1774464758286,
       "tag": "0017_known_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1774545619466,
+      "tag": "0018_round_prism",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1774562954978,
+      "tag": "0019_keen_beast",
+      "breakpoints": true
     }
   ]
 }

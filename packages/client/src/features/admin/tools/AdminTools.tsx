@@ -8,6 +8,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import {
+  Blocks,
   Coins,
   Megaphone,
   MessageCircleQuestion,
@@ -17,6 +18,13 @@ import {
 } from "lucide-react";
 
 const tools = [
+  {
+    title: "Structure Packs",
+    description:
+      "Manage weekly rotating structure packs. Create mod collections from CurseForge and configure the rotation schedule.",
+    icon: Blocks,
+    href: "/admin/tools/structure-packs",
+  },
   {
     title: "FAQ Auto-Responder",
     description:

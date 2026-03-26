@@ -8,6 +8,7 @@ import { setupMainBotHandlers } from "@/discord/bots/main/setup";
 import { webBot } from "@/discord/bots/web/client";
 import { setupWebBotHandlers } from "@/discord/bots/web/setup";
 import { createDiscordMessageService } from "./discord/message";
+import type { DiscordMessageService } from "./discord/message/message.service";
 import { Discord } from "@/discord/constants";
 import {
   MESSAGE_CACHE_CONFIG,
@@ -35,6 +36,8 @@ import { maintenanceService } from "./maintenance";
 import { MaintenanceScheduler } from "./maintenance/scheduler";
 import { PlaytimeForwarderService } from "./playtime/forwarder.service";
 import { DonationService } from "./donation/donation.service";
+import { structurePackService } from "./structure-pack";
+import { StructurePackRotationService } from "./structure-pack/rotation";
 
 /**
  * Registers all application services with the shared container
@@ -509,6 +512,26 @@ export async function initializeServices(): Promise<void> {
     logger.info("Maintenance scheduler initialized");
   } catch (err) {
     logger.warn(`Maintenance scheduler init failed: ${err}`);
+  }
+
+  // Initialize structure pack rotation service
+  try {
+    let webMessageService: DiscordMessageService | null = null;
+    try {
+      webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
+    } catch {
+      // OK — Discord may not be configured
+    }
+    const rotationService = new StructurePackRotationService(
+      structurePackService,
+      webMessageService,
+    );
+    // Register before init so tRPC routes work even if scheduling fails
+    container.register(Services.STRUCTURE_PACK_ROTATION, () => rotationService);
+    await rotationService.initialize();
+    logger.info("Structure pack rotation service initialized");
+  } catch (err) {
+    logger.warn(`Structure pack rotation service init failed: ${err}`);
   }
 }
 
