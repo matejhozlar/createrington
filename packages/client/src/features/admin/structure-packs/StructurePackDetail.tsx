@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -106,7 +107,6 @@ export function StructurePackDetail() {
   const toggleEnabledMutation =
     trpc.admin.structurePacks.toggleEnabled.useMutation({
       onSuccess: () => {
-        toast.success("Pack updated");
         utils.admin.structurePacks.get.invalidate({ id: packId });
         utils.admin.structurePacks.list.invalidate();
       },
@@ -141,17 +141,7 @@ export function StructurePackDetail() {
   if (!pack) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <p className="text-destructive">Pack not found</p>
-          <Button
-            onClick={() => navigate("/admin/tools/structure-packs")}
-            className="mt-4 cursor-pointer"
-            variant="outline"
-          >
-            <ArrowLeft className="size-4" />
-            Back to Structure Packs
-          </Button>
-        </div>
+        <p className="text-destructive">Pack not found</p>
       </div>
     );
   }
@@ -164,7 +154,6 @@ export function StructurePackDetail() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header bar */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
         <Breadcrumb>
           <BreadcrumbList>
@@ -189,62 +178,18 @@ export function StructurePackDetail() {
         </Breadcrumb>
       </header>
 
-      {/* Back button */}
-      <div className="px-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate("/admin/tools/structure-packs")}
-          className="cursor-pointer"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Structure Packs
-        </Button>
-      </div>
-
-      {/* Pack info card */}
-      <div className="mx-4 rounded-lg border border-border bg-card p-6">
+      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+        {/* Pack header */}
         <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{pack.name}</h1>
-              {pack.isActive && (
-                <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                  Active
-                </Badge>
-              )}
-              {pack.enabled && !pack.isActive && (
-                <Badge variant="secondary">In Pool</Badge>
-              )}
-              {!pack.enabled && (
-                <Badge variant="outline" className="text-muted-foreground">
-                  Disabled
-                </Badge>
-              )}
-            </div>
-            {pack.description && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {pack.description}
-              </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold">{pack.name}</h1>
+            {pack.isActive && (
+              <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                Active
+              </Badge>
             )}
           </div>
-          <div className="flex gap-2">
-            {!pack.isActive && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="cursor-pointer"
-                onClick={() =>
-                  toggleEnabledMutation.mutate({
-                    id: packId,
-                    enabled: !pack.enabled,
-                  })
-                }
-                disabled={toggleEnabledMutation.isPending}
-              >
-                {pack.enabled ? "Disable" : "Enable"} for Rotation
-              </Button>
-            )}
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -292,99 +237,121 @@ export function StructurePackDetail() {
             )}
           </div>
         </div>
-      </div>
 
-      {/* Mods Section */}
-      <div className="mx-4 rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="font-semibold">Mods</h2>
-            <p className="text-sm text-muted-foreground">
-              CurseForge mods included in this pack
-            </p>
-          </div>
-          <Button
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => setSearchOpen(true)}
-          >
-            <Plus className="size-4" />
-            Add Mod
-          </Button>
-        </div>
-        {pack.mods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Package className="mb-2 size-8" />
-            <p>No mods added yet</p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Mod</TableHead>
-                <TableHead>File</TableHead>
-                <TableHead className="w-[80px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pack.mods.map((mod) => (
-                <TableRow key={mod.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {mod.thumbnailUrl && (
-                        <img
-                          src={mod.thumbnailUrl}
-                          alt=""
-                          className="size-8 rounded"
-                        />
-                      )}
-                      <div>
-                        <div className="font-medium">{mod.modName}</div>
-                        {mod.modUrl && (
-                          <a
-                            href={mod.modUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            CurseForge
-                            <ExternalLink className="size-3" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {mod.fileName}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="cursor-pointer"
-                      onClick={() =>
-                        removeModMutation.mutate({
-                          packId,
-                          modId: mod.id,
-                        })
-                      }
-                      disabled={removeModMutation.isPending}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        {pack.description && (
+          <p className="text-sm text-muted-foreground">{pack.description}</p>
         )}
-      </div>
 
-      {/* Rotation Config & History */}
-      <div className="mx-4 grid gap-4 pb-4 lg:grid-cols-2">
-        <RotationConfig />
-        <RotationHistory />
+        {/* Enabled checkbox */}
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="enabled"
+            checked={pack.enabled}
+            disabled={pack.isActive || toggleEnabledMutation.isPending}
+            onCheckedChange={(checked) =>
+              toggleEnabledMutation.mutate({
+                id: packId,
+                enabled: checked === true,
+              })
+            }
+          />
+          <Label htmlFor="enabled" className="cursor-pointer text-sm">
+            Enabled for rotation
+          </Label>
+        </div>
+
+        {/* Mods Section */}
+        <div className="rounded-lg border border-border bg-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold">Mods</h2>
+              <p className="text-sm text-muted-foreground">
+                CurseForge mods included in this pack
+              </p>
+            </div>
+            <Button
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Plus className="size-4" />
+              Add Mod
+            </Button>
+          </div>
+          {pack.mods.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Package className="mb-2 size-8" />
+              <p>No mods added yet</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Mod</TableHead>
+                  <TableHead>File</TableHead>
+                  <TableHead className="w-[80px]" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pack.mods.map((mod) => (
+                  <TableRow key={mod.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {mod.thumbnailUrl && (
+                          <img
+                            src={mod.thumbnailUrl}
+                            alt=""
+                            className="size-8 rounded"
+                          />
+                        )}
+                        <div>
+                          <div className="font-medium">{mod.modName}</div>
+                          {mod.modUrl && (
+                            <a
+                              href={mod.modUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              CurseForge
+                              <ExternalLink className="size-3" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {mod.fileName}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="cursor-pointer"
+                        onClick={() =>
+                          removeModMutation.mutate({
+                            packId,
+                            modId: mod.id,
+                          })
+                        }
+                        disabled={removeModMutation.isPending}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        {/* Rotation Config & History */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          <RotationConfig />
+          <RotationHistory />
+        </div>
       </div>
 
       {/* Edit Dialog */}
@@ -423,7 +390,7 @@ export function StructurePackDetail() {
               }
               disabled={!editName.trim() || updateMutation.isPending}
             >
-              <Save className="mr-1 h-3 w-3" />
+              <Save className="mr-1 size-3" />
               Save
             </Button>
           </DialogFooter>
@@ -449,7 +416,7 @@ export function StructurePackDetail() {
           {selectedModId === null ? (
             <div className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   className="pl-9"
                   placeholder="Search CurseForge mods..."
@@ -482,7 +449,7 @@ export function StructurePackDetail() {
                         <img
                           src={mod.thumbnailUrl}
                           alt=""
-                          className="h-10 w-10 rounded"
+                          className="size-10 rounded"
                         />
                       )}
                       <div className="flex-1">
@@ -511,9 +478,10 @@ export function StructurePackDetail() {
               <Button
                 variant="ghost"
                 size="sm"
+                className="cursor-pointer"
                 onClick={() => setSelectedModId(null)}
               >
-                <ArrowLeft className="mr-1 h-3 w-3" />
+                <ArrowLeft className="mr-1 size-3" />
                 Back to search
               </Button>
 
@@ -537,11 +505,16 @@ export function StructurePackDetail() {
                         <div>
                           <div className="font-medium">{file.displayName}</div>
                           <div className="text-xs text-muted-foreground">
-                            {file.fileName} ({(file.fileLength / 1024).toFixed(0)} KB)
+                            {file.fileName} (
+                            {(file.fileLength / 1024).toFixed(0)} KB)
                           </div>
                           <div className="mt-1 flex gap-1">
                             {file.gameVersions.slice(0, 3).map((v) => (
-                              <Badge key={v} variant="outline" className="text-xs">
+                              <Badge
+                                key={v}
+                                variant="outline"
+                                className="text-xs"
+                              >
                                 {v}
                               </Badge>
                             ))}
@@ -549,6 +522,7 @@ export function StructurePackDetail() {
                         </div>
                         <Button
                           size="sm"
+                          className="cursor-pointer"
                           onClick={() => {
                             addModMutation.mutate({
                               packId,
@@ -565,7 +539,7 @@ export function StructurePackDetail() {
                           }}
                           disabled={addModMutation.isPending}
                         >
-                          <Plus className="mr-1 h-3 w-3" />
+                          <Plus className="mr-1 size-3" />
                           Add
                         </Button>
                       </div>

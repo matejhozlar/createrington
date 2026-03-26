@@ -3,16 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import {
-  Blocks,
-  Plus,
-  Package,
-  RotateCw,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { Plus, Package, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -58,7 +50,6 @@ export function AdminStructurePacks() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      {/* Header */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
         <Breadcrumb>
           <BreadcrumbList>
@@ -78,92 +69,85 @@ export function AdminStructurePacks() {
       </header>
 
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Structure Packs</h1>
+          <Button
+            onClick={() => setCreateOpen(true)}
+            className="cursor-pointer"
+          >
+            <Plus className="mr-2 size-4" />
+            New Pack
+          </Button>
+        </div>
+
         {packsQuery.isLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex flex-1 items-center justify-center py-12">
             <Loading size="medium" text="Loading structure packs..." />
           </div>
-        ) : (
-          <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Blocks className="size-5" />
-                <h1 className="text-xl font-semibold">Structure Packs</h1>
-                <Badge variant="secondary">{packs.length}</Badge>
-              </div>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-1 size-4" />
-                New Pack
+        ) : packs.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center py-12">
+            <div className="text-center">
+              <Package className="mx-auto size-12 text-muted-foreground" />
+              <p className="mt-2 text-muted-foreground">
+                No structure packs yet
+              </p>
+              <Button
+                onClick={() => setCreateOpen(true)}
+                className="mt-4 cursor-pointer"
+              >
+                <Plus className="mr-2 size-4" />
+                Create First Pack
               </Button>
             </div>
-
-            {packs.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Package className="mb-4 size-12 text-muted-foreground" />
-                  <p className="text-muted-foreground">
-                    No structure packs yet. Create one to get started.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {packs.map((pack) => (
-                  <Card
-                    key={pack.id}
-                    className="cursor-pointer transition-colors hover:bg-accent/50"
-                    onClick={() =>
-                      navigate(`/admin/tools/structure-packs/${pack.id}`)
-                    }
-                  >
-                    <CardContent className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between">
-                        <p className="font-semibold">{pack.name}</p>
-                        <div className="flex gap-1">
-                          {pack.isActive && (
-                            <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
-                              <CheckCircle2 className="mr-1 size-3" />
-                              Active
-                            </Badge>
-                          )}
-                          {pack.enabled && !pack.isActive && (
-                            <Badge variant="secondary">
-                              <RotateCw className="mr-1 size-3" />
-                              In Pool
-                            </Badge>
-                          )}
-                          {!pack.enabled && (
-                            <Badge
-                              variant="outline"
-                              className="text-muted-foreground"
-                            >
-                              <XCircle className="mr-1 size-3" />
-                              Disabled
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      {pack.description && (
-                        <p className="line-clamp-2 text-sm text-muted-foreground">
-                          {pack.description}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
-                        <span>{pack.mods.length} mod(s)</span>
-                        {pack.lastActivatedAt && (
-                          <span>
-                            Last active:{" "}
-                            {new Date(
-                              pack.lastActivatedAt,
-                            ).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {packs.map((pack) => (
+              <div
+                key={pack.id}
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-sidebar-accent/30"
+                onClick={() =>
+                  navigate(`/admin/tools/structure-packs/${pack.id}`)
+                }
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate font-semibold">{pack.name}</h3>
+                    {pack.isActive && (
+                      <Badge className="bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                        Active
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className={
+                        pack.enabled
+                          ? "border-success bg-success/10 text-success"
+                          : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
+                      }
+                    >
+                      {pack.enabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 text-sm text-muted-foreground">
+                    {pack.description && (
+                      <span className="truncate">{pack.description}</span>
+                    )}
+                    <span>
+                      {pack.mods.length} mod{pack.mods.length !== 1 && "s"}
+                    </span>
+                    {pack.lastActivatedAt && (
+                      <span>
+                        Last active:{" "}
+                        {new Date(pack.lastActivatedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </div>
-            )}
-          </>
+            ))}
+          </div>
         )}
       </div>
 
@@ -195,11 +179,13 @@ export function AdminStructurePacks() {
           <DialogFooter>
             <Button
               variant="outline"
+              className="cursor-pointer"
               onClick={() => setCreateOpen(false)}
             >
               Cancel
             </Button>
             <Button
+              className="cursor-pointer"
               onClick={() =>
                 createMutation.mutate({
                   name,
