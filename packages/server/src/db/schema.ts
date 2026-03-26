@@ -1589,9 +1589,7 @@ export const structurePackRotation = pgTable(
     failureReason: text("failure_reason"),
     weightsSnapshot: jsonb("weights_snapshot"),
   },
-  (table) => [
-    index("idx_structure_pack_rotation_rotated").on(table.rotatedAt),
-  ],
+  (table) => [index("idx_structure_pack_rotation_rotated").on(table.rotatedAt)],
 );
 
 // --- structure_pack_rotation_config ---

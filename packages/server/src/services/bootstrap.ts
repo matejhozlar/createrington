@@ -527,10 +527,7 @@ export async function initializeServices(): Promise<void> {
       webMessageService,
     );
     // Register before init so tRPC routes work even if scheduling fails
-    container.register(
-      Services.STRUCTURE_PACK_ROTATION,
-      () => rotationService,
-    );
+    container.register(Services.STRUCTURE_PACK_ROTATION, () => rotationService);
     await rotationService.initialize();
     logger.info("Structure pack rotation service initialized");
   } catch (err) {

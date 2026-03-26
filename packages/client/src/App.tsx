@@ -290,8 +290,14 @@ function AppContent() {
                   <Route path="players/:id" element={<AdminPlayerDetail />} />
                   <Route path="servers" element={<AdminServers />} />
                   <Route path="servers/:id" element={<AdminServerDetail />} />
-                  <Route path="tools/structure-packs" element={<AdminStructurePacks />} />
-                  <Route path="tools/structure-packs/:id" element={<StructurePackDetail />} />
+                  <Route
+                    path="tools/structure-packs"
+                    element={<AdminStructurePacks />}
+                  />
+                  <Route
+                    path="tools/structure-packs/:id"
+                    element={<StructurePackDetail />}
+                  />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
                   <Route

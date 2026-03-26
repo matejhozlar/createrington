@@ -70,7 +70,13 @@ function dateInTimezone(
     Number(parts.find((p) => p.type === type)?.value ?? 0);
 
   const wallDate = new Date(
-    Date.UTC(get("year"), get("month") - 1, get("day"), get("hour") === 24 ? 0 : get("hour"), get("minute")),
+    Date.UTC(
+      get("year"),
+      get("month") - 1,
+      get("day"),
+      get("hour") === 24 ? 0 : get("hour"),
+      get("minute"),
+    ),
   );
 
   // The difference between our guess and what the timezone produced tells us
@@ -93,7 +99,8 @@ export class StructurePackRotationService {
   // ===========================================================================
 
   async initialize(): Promise<void> {
-    const rotationConfig = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const rotationConfig =
+      await Q.structure.pack.rotation.config.getOrCreateDefault();
     logger.info(
       `Structure pack rotation config: ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rotationConfig.dayOfWeek]} at ${rotationConfig.time} ${rotationConfig.timezone}`,
     );
@@ -101,7 +108,10 @@ export class StructurePackRotationService {
     // Check for missed rotation
     const lastRotation = await this.getLastRotation();
     if (lastRotation) {
-      const missed = this.checkMissedRotation(rotationConfig, lastRotation.rotatedAt);
+      const missed = this.checkMissedRotation(
+        rotationConfig,
+        lastRotation.rotatedAt,
+      );
       if (missed) {
         logger.info("Missed rotation detected, executing now...");
         await this.executeRotation();
@@ -123,7 +133,9 @@ export class StructurePackRotationService {
   // Scheduling
   // ===========================================================================
 
-  private scheduleNextRotation(rotationConfig: StructurePackRotationConfig): void {
+  private scheduleNextRotation(
+    rotationConfig: StructurePackRotationConfig,
+  ): void {
     if (this.nextRotationTimer) {
       clearTimeout(this.nextRotationTimer);
     }
@@ -132,16 +144,25 @@ export class StructurePackRotationService {
     const delayMs = nextTime.getTime() - Date.now();
 
     if (delayMs <= 0) {
-      logger.warn("Computed next rotation time is in the past, scheduling for next week");
+      logger.warn(
+        "Computed next rotation time is in the past, scheduling for next week",
+      );
       const adjusted = new Date(nextTime.getTime() + 7 * 24 * 60 * 60 * 1000);
       const adjustedDelay = adjusted.getTime() - Date.now();
-      this.nextRotationTimer = setTimeout(() => this.executeRotation(), adjustedDelay);
-      logger.info(`Next structure pack rotation scheduled for ${adjusted.toISOString()}`);
+      this.nextRotationTimer = setTimeout(
+        () => this.executeRotation(),
+        adjustedDelay,
+      );
+      logger.info(
+        `Next structure pack rotation scheduled for ${adjusted.toISOString()}`,
+      );
       return;
     }
 
     this.nextRotationTimer = setTimeout(() => this.executeRotation(), delayMs);
-    logger.info(`Next structure pack rotation scheduled for ${nextTime.toISOString()}`);
+    logger.info(
+      `Next structure pack rotation scheduled for ${nextTime.toISOString()}`,
+    );
   }
 
   private computeNextRotationTime(cfg: StructurePackRotationConfig): Date {
@@ -165,9 +186,16 @@ export class StructurePackRotationService {
     const todayDay = get("day");
 
     // Map weekday string to number
-    const weekdayStr = todayParts.find((p) => p.type === "weekday")?.value ?? "";
+    const weekdayStr =
+      todayParts.find((p) => p.type === "weekday")?.value ?? "";
     const dayMap: Record<string, number> = {
-      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
     };
     const currentDay = dayMap[weekdayStr] ?? now.getDay();
 
@@ -175,7 +203,9 @@ export class StructurePackRotationService {
     if (daysUntil < 0) daysUntil += 7;
 
     // Build the target date in the configured timezone
-    const targetDate = new Date(Date.UTC(todayYear, todayMonth, todayDay + daysUntil));
+    const targetDate = new Date(
+      Date.UTC(todayYear, todayMonth, todayDay + daysUntil),
+    );
     const target = dateInTimezone(
       targetDate.getUTCFullYear(),
       targetDate.getUTCMonth(),
@@ -226,20 +256,29 @@ export class StructurePackRotationService {
     const startTime = Date.now();
 
     try {
-      const rotationConfig = await Q.structure.pack.rotation.config.getOrCreateDefault();
+      const rotationConfig =
+        await Q.structure.pack.rotation.config.getOrCreateDefault();
       const activePack = await this.packService.getActivePack();
-      const eligible = await Q.structure.pack.getEligibleForRotation(activePack?.id);
+      const eligible = await Q.structure.pack.getEligibleForRotation(
+        activePack?.id,
+      );
 
       if (eligible.length === 0) {
         logger.warn("No eligible packs for rotation");
-        await this.recordRotation(activePack?.id ?? null, 0, false, "No eligible packs");
+        await this.recordRotation(
+          activePack?.id ?? null,
+          0,
+          false,
+          "No eligible packs",
+        );
         this.scheduleNextRotation(rotationConfig);
         return;
       }
 
       // Compute weights
       const cycleStart = this.computeCycleStart(rotationConfig);
-      const boostData = await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
+      const boostData =
+        await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
       const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
       const weights = this.computeWeights(eligible, boostMap);
 
@@ -258,7 +297,9 @@ export class StructurePackRotationService {
           await this.ensureModsCached(incomingPack.mods);
 
           // Build a set of filenames that the incoming pack owns
-          const incomingFileNames = new Set(incomingPack.mods.map((m) => m.fileName));
+          const incomingFileNames = new Set(
+            incomingPack.mods.map((m) => m.fileName),
+          );
 
           // Remove outgoing pack's mods (skip files shared with the incoming pack)
           if (activePack) {
@@ -286,18 +327,28 @@ export class StructurePackRotationService {
         } catch (err) {
           const reason = err instanceof Error ? err.message : String(err);
           logger.error(`Rotation file operations failed: ${reason}`);
-          await this.recordRotation(activePack?.id ?? null, selectedPackId, false, reason);
+          await this.recordRotation(
+            activePack?.id ?? null,
+            selectedPackId,
+            false,
+            reason,
+          );
           this.scheduleNextRotation(rotationConfig);
           return;
         }
       } else {
-        logger.info("File ops not available — rotation recorded without file changes");
+        logger.info(
+          "File ops not available — rotation recorded without file changes",
+        );
       }
 
       // DB transaction: swap active, record rotation, clear boosts
       await db.inTransaction(async (tx) => {
         if (activePack) {
-          await tx.structure.pack.update({ id: activePack.id }, { isActive: false });
+          await tx.structure.pack.update(
+            { id: activePack.id },
+            { isActive: false },
+          );
         }
         await tx.structure.pack.update(
           { id: selectedPackId },
@@ -437,7 +488,8 @@ export class StructurePackRotationService {
       throw new BadRequestError("Cannot boost the currently active pack");
     }
 
-    const rotationConfig = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const rotationConfig =
+      await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cost = units * rotationConfig.boostUnitPrice;
     const cycleStart = this.computeCycleStart(rotationConfig);
 
@@ -460,19 +512,27 @@ export class StructurePackRotationService {
   }
 
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
-    const rotationConfig = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const rotationConfig =
+      await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cycleStart = this.computeCycleStart(rotationConfig);
-    return Q.structure.pack.boost.getPlayerBoostsForCycle(discordId, cycleStart);
+    return Q.structure.pack.boost.getPlayerBoostsForCycle(
+      discordId,
+      cycleStart,
+    );
   }
 
   async getPoolWithWeights(): Promise<
     Array<{ pack: StructurePack; weight: number; boostUnits: number }>
   > {
     const activePack = await this.packService.getActivePack();
-    const eligible = await Q.structure.pack.getEligibleForRotation(activePack?.id);
-    const rotationConfig = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const eligible = await Q.structure.pack.getEligibleForRotation(
+      activePack?.id,
+    );
+    const rotationConfig =
+      await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cycleStart = this.computeCycleStart(rotationConfig);
-    const boostData = await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
+    const boostData =
+      await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
     const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
     const weights = this.computeWeights(eligible, boostMap);
 
@@ -495,7 +555,16 @@ export class StructurePackRotationService {
   }
 
   async updateConfig(
-    data: Partial<Pick<StructurePackRotationConfig, "dayOfWeek" | "time" | "timezone" | "boostUnitPrice" | "gracePeriodMinutes">>,
+    data: Partial<
+      Pick<
+        StructurePackRotationConfig,
+        | "dayOfWeek"
+        | "time"
+        | "timezone"
+        | "boostUnitPrice"
+        | "gracePeriodMinutes"
+      >
+    >,
   ): Promise<StructurePackRotationConfig> {
     const current = await Q.structure.pack.rotation.config.getOrCreateDefault();
     const updated = await Q.structure.pack.rotation.config.updateAndReturn(
@@ -549,9 +618,16 @@ export class StructurePackRotationService {
       Number(todayParts.find((p) => p.type === type)?.value ?? 0);
 
     const dayMap: Record<string, number> = {
-      Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6,
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
     };
-    const weekdayStr = todayParts.find((p) => p.type === "weekday")?.value ?? "";
+    const weekdayStr =
+      todayParts.find((p) => p.type === "weekday")?.value ?? "";
     const currentDay = dayMap[weekdayStr] ?? now.getDay();
 
     let daysDiff = currentDay - cfg.dayOfWeek;

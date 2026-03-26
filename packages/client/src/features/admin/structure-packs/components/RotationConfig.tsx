@@ -45,13 +45,16 @@ export function RotationConfig() {
   const [time, setTime] = useState<string | null>(null);
   const [timezone, setTimezone] = useState<string | null>(null);
   const [boostUnitPrice, setBoostUnitPrice] = useState<number | null>(null);
-  const [gracePeriodMinutes, setGracePeriodMinutes] = useState<number | null>(null);
+  const [gracePeriodMinutes, setGracePeriodMinutes] = useState<number | null>(
+    null,
+  );
 
   const currentDayOfWeek = dayOfWeek ?? config?.dayOfWeek ?? 1;
   const currentTime = time ?? config?.time ?? "12:00";
   const currentTimezone = timezone ?? config?.timezone ?? "UTC";
   const currentBoostUnitPrice = boostUnitPrice ?? config?.boostUnitPrice ?? 50;
-  const currentGracePeriodMinutes = gracePeriodMinutes ?? config?.gracePeriodMinutes ?? 30;
+  const currentGracePeriodMinutes =
+    gracePeriodMinutes ?? config?.gracePeriodMinutes ?? 30;
 
   const updateMutation =
     trpc.admin.structurePacks.rotationConfig.update.useMutation({

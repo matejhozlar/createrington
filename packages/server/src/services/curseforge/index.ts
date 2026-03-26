@@ -207,7 +207,9 @@ export async function downloadModFile(
   }
 
   const fileStream = fs.createWriteStream(destPath);
-  const readable = Readable.fromWeb(res.body as import("node:stream/web").ReadableStream);
+  const readable = Readable.fromWeb(
+    res.body as import("node:stream/web").ReadableStream,
+  );
   await pipeline(readable, fileStream);
 
   return destPath;

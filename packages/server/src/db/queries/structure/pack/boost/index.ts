@@ -13,7 +13,10 @@ export class StructurePackBoostQueries extends StructurePackBoostBaseQueries {
   async getBoostsByPackForCycle(
     cycleStart: Date,
   ): Promise<Array<{ packId: number; totalUnits: number }>> {
-    const result = await this.db.query<{ pack_id: number; total_units: string }>(
+    const result = await this.db.query<{
+      pack_id: number;
+      total_units: string;
+    }>(
       `SELECT pack_id, SUM(units)::integer AS total_units
       FROM structure_pack_boost
       WHERE cycle_start = $1

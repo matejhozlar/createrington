@@ -6,7 +6,9 @@ import type {
   StructurePackMod,
 } from "@createrington/shared/db";
 
-export type StructurePackWithMods = StructurePack & { mods: StructurePackMod[] };
+export type StructurePackWithMods = StructurePack & {
+  mods: StructurePackMod[];
+};
 
 type PackRowWithMods = StructurePackRow & { mods: StructurePackMod[] };
 
@@ -59,7 +61,10 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     );
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
-    return { ...this.mapRowToEntity(row), mods: row.mods } as StructurePackWithMods;
+    return {
+      ...this.mapRowToEntity(row),
+      mods: row.mods,
+    } as StructurePackWithMods;
   }
 
   async getActive(): Promise<StructurePackWithMods | null> {
@@ -73,10 +78,15 @@ export class StructurePackQueries extends StructurePackBaseQueries {
     );
     if (result.rows.length === 0) return null;
     const row = result.rows[0];
-    return { ...this.mapRowToEntity(row), mods: row.mods } as StructurePackWithMods;
+    return {
+      ...this.mapRowToEntity(row),
+      mods: row.mods,
+    } as StructurePackWithMods;
   }
 
-  async getEligibleForRotation(excludePackId?: number): Promise<StructurePack[]> {
+  async getEligibleForRotation(
+    excludePackId?: number,
+  ): Promise<StructurePack[]> {
     const params: unknown[] = [];
     let excludeClause = "";
     if (excludePackId != null) {

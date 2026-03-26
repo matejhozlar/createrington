@@ -1,16 +1,23 @@
 import { Q } from "@/db";
-import { BadRequestError, NotFoundError, ConflictError } from "@/app/middleware/error-handler";
-import type { StructurePack, StructurePackMod, StructurePackModCreate } from "@createrington/shared/db";
+import {
+  BadRequestError,
+  NotFoundError,
+  ConflictError,
+} from "@/app/middleware/error-handler";
+import type {
+  StructurePack,
+  StructurePackMod,
+  StructurePackModCreate,
+} from "@createrington/shared/db";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 
 export class StructurePackService {
-  async createPack(
-    name: string,
-    description?: string,
-  ): Promise<StructurePack> {
+  async createPack(name: string, description?: string): Promise<StructurePack> {
     const existing = await Q.structure.pack.find({ name });
     if (existing) {
-      throw new ConflictError(`A structure pack named "${name}" already exists`);
+      throw new ConflictError(
+        `A structure pack named "${name}" already exists`,
+      );
     }
     return Q.structure.pack.createAndReturn({ name, description });
   }
@@ -23,7 +30,9 @@ export class StructurePackService {
     if (data.name && data.name !== pack.name) {
       const existing = await Q.structure.pack.find({ name: data.name });
       if (existing) {
-        throw new ConflictError(`A structure pack named "${data.name}" already exists`);
+        throw new ConflictError(
+          `A structure pack named "${data.name}" already exists`,
+        );
       }
     }
     return Q.structure.pack.updateAndReturn({ id }, data);
@@ -34,7 +43,10 @@ export class StructurePackService {
     if (pack.isActive) {
       throw new BadRequestError("Cannot delete the currently active pack");
     }
-    await Q.structure.pack.update({ id }, { deletedAt: new Date(), enabled: false });
+    await Q.structure.pack.update(
+      { id },
+      { deletedAt: new Date(), enabled: false },
+    );
   }
 
   async toggleEnabled(id: number, enabled: boolean): Promise<StructurePack> {

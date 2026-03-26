@@ -95,8 +95,7 @@ export async function writeFile(
     const basePath = getDefaultBasePath();
     const sftp = await createSftpClient();
     try {
-      const buf =
-        typeof content === "string" ? Buffer.from(content) : content;
+      const buf = typeof content === "string" ? Buffer.from(content) : content;
       await sftp.put(buf, `${basePath}/${name}`);
     } finally {
       await sftp.end();
@@ -179,9 +178,7 @@ export async function readFile(name: string): Promise<Buffer> {
     const sftp = await createSftpClient();
     try {
       const data = await sftp.get(`${basePath}/${name}`);
-      return Buffer.isBuffer(data)
-        ? data
-        : Buffer.from(data as string);
+      return Buffer.isBuffer(data) ? data : Buffer.from(data as string);
     } finally {
       await sftp.end();
     }
