@@ -189,7 +189,23 @@ export function StructurePackDetail() {
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="enabled"
+                checked={pack.enabled}
+                disabled={pack.isActive || toggleEnabledMutation.isPending}
+                onCheckedChange={(checked) =>
+                  toggleEnabledMutation.mutate({
+                    id: packId,
+                    enabled: checked === true,
+                  })
+                }
+              />
+              <Label htmlFor="enabled" className="cursor-pointer text-sm">
+                Enabled
+              </Label>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -241,24 +257,6 @@ export function StructurePackDetail() {
         {pack.description && (
           <p className="text-sm text-muted-foreground">{pack.description}</p>
         )}
-
-        {/* Enabled checkbox */}
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="enabled"
-            checked={pack.enabled}
-            disabled={pack.isActive || toggleEnabledMutation.isPending}
-            onCheckedChange={(checked) =>
-              toggleEnabledMutation.mutate({
-                id: packId,
-                enabled: checked === true,
-              })
-            }
-          />
-          <Label htmlFor="enabled" className="cursor-pointer text-sm">
-            Enabled for rotation
-          </Label>
-        </div>
 
         {/* Mods Section */}
         <div className="rounded-lg border border-border bg-card p-6">
