@@ -106,11 +106,27 @@ export function StructurePackDetail() {
 
   const toggleEnabledMutation =
     trpc.admin.structurePacks.toggleEnabled.useMutation({
-      onSuccess: () => {
+      onMutate: async ({ enabled }) => {
+        await utils.admin.structurePacks.get.cancel({ id: packId });
+        const previous = utils.admin.structurePacks.get.getData({ id: packId });
+        if (previous) {
+          utils.admin.structurePacks.get.setData({ id: packId }, {
+            ...previous,
+            enabled,
+          });
+        }
+        return { previous };
+      },
+      onError: (err, _vars, context) => {
+        if (context?.previous) {
+          utils.admin.structurePacks.get.setData({ id: packId }, context.previous);
+        }
+        toast.error(err.message);
+      },
+      onSettled: () => {
         utils.admin.structurePacks.get.invalidate({ id: packId });
         utils.admin.structurePacks.list.invalidate();
       },
-      onError: (err) => toast.error(err.message),
     });
 
   const addModMutation = trpc.admin.structurePacks.addMod.useMutation({
