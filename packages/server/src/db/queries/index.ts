@@ -1,9 +1,9 @@
 /**
  * Barrel export for all actual query classes
- *
+ * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
- *
+ * 
  * @example
  * import { PlayerQueries, AdminLogActionQueries } from "@/db/queries";
  */
@@ -50,6 +50,11 @@ export { PlayerStrikeQueries } from "./player/strike";
 export { RewardClaimQueries } from "./reward/claim";
 export { ServerQueries } from "./server";
 export { ServerMaintenanceScheduleQueries } from "./server/maintenance/schedule";
+export { StructurePackQueries } from "./structure/pack";
+export { StructurePackBoostQueries } from "./structure/pack/boost";
+export { StructurePackModQueries } from "./structure/pack/mod";
+export { StructurePackRotationQueries } from "./structure/pack/rotation";
+export { StructurePackRotationConfigQueries } from "./structure/pack/rotation/config";
 export { TicketQueries } from "./ticket";
 export { TicketActionQueries } from "./ticket/action";
 export { WaitlistEntryQueries } from "./waitlist/entry";

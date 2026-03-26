@@ -12,8 +12,9 @@ import { adminMetricsRouter } from "./metrics";
 import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
+import { adminStructurePacksRouter } from "./structure-packs";
 
-/** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, waitlists. */
+/** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, structure packs, waitlists. */
 export const adminRouter = router({
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,
@@ -27,5 +28,6 @@ export const adminRouter = router({
   metrics: adminMetricsRouter,
   players: adminPlayersRouter,
   servers: adminServersRouter,
+  structurePacks: adminStructurePacksRouter,
   waitlists: waitlistsRouter,
 });

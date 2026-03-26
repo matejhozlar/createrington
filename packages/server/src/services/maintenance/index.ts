@@ -1,160 +1,17 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import SftpClient from "ssh2-sftp-client";
-import config from "@/config";
 import { MinecraftRconManager, WhitelistAction } from "@/utils/rcon";
+import {
+  isFileOpsAllowed,
+  renameFile,
+  writeFile,
+  deleteFile,
+  fileExists,
+  getLocalPath,
+} from "@/services/mc-server/file-ops";
 import type { MaintenanceScheduler } from "./scheduler";
 import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_maintenance_schedule.types";
 
 const WHITELIST_FILE = "whitelist.json";
 const WHITELIST_BACKUP = "whitelist.json.bak";
-
-/**
- * Returns the local path for the Minecraft server data directory, or null
- * if not configured (meaning SFTP should be used instead).
- */
-function getLocalPath(): string | null {
-  return config.maintenance.localPath;
-}
-
-/**
- * SFTP credentials are shared across environments (dev + production both point
- * to the same game server). Only the production site should perform SFTP
- * operations to avoid the dev environment accidentally wiping the whitelist.
- */
-function isSftpAllowed(): boolean {
-  return !config.envMode.isDev && !config.envMode.isDevDeployment;
-}
-
-/** Whether any whitelist operations are possible (local or SFTP) */
-function isMaintenanceAllowed(): boolean {
-  return getLocalPath() !== null || isSftpAllowed();
-}
-
-/** Resolves SFTP config for a given server ID */
-function getSftpConfig(serverId: number) {
-  // Currently only one server is configured
-  if (serverId === config.servers.cogs.id) {
-    return config.servers.cogs.sftp;
-  }
-  throw new Error(`No SFTP config for server ${serverId}`);
-}
-
-/** Resolves the SFTP base path (parent of the stats directory) for a server */
-function getBasePath(serverId: number): string {
-  const sftpConfig = getSftpConfig(serverId);
-  // statsPath is something like "./world/stats"  - base is two levels up, i.e. "."
-  // We just use "." since whitelist.json is at the Minecraft server root
-  const parts = sftpConfig.statsPath.split("/");
-  // Remove "world/stats" (or similar) to get the root
-  if (parts.length >= 3) {
-    return parts.slice(0, -2).join("/") || ".";
-  }
-  return ".";
-}
-
-// =============================================================================
-// Filesystem adapters  - local or SFTP, selected by config
-// =============================================================================
-
-/** Renames a file by path, using the local filesystem or SFTP depending on config */
-async function renameFile(from: string, to: string): Promise<void> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    await fs.rename(path.join(localPath, from), path.join(localPath, to));
-  } else {
-    const sftpConfig = getSftpConfig(config.servers.cogs.id);
-    const basePath = getBasePath(config.servers.cogs.id);
-    const sftp = new SftpClient();
-    try {
-      await sftp.connect({
-        host: sftpConfig.host,
-        port: sftpConfig.port,
-        username: sftpConfig.username,
-        password: sftpConfig.password,
-      });
-      await sftp.rename(`${basePath}/${from}`, `${basePath}/${to}`);
-    } finally {
-      await sftp.end();
-    }
-  }
-}
-
-/** Writes a file by name, using the local filesystem or SFTP depending on config */
-async function writeFile(name: string, content: string): Promise<void> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    await fs.writeFile(path.join(localPath, name), content, "utf-8");
-  } else {
-    const sftpConfig = getSftpConfig(config.servers.cogs.id);
-    const basePath = getBasePath(config.servers.cogs.id);
-    const sftp = new SftpClient();
-    try {
-      await sftp.connect({
-        host: sftpConfig.host,
-        port: sftpConfig.port,
-        username: sftpConfig.username,
-        password: sftpConfig.password,
-      });
-      await sftp.put(Buffer.from(content), `${basePath}/${name}`);
-    } finally {
-      await sftp.end();
-    }
-  }
-}
-
-/** Deletes a file by name, using the local filesystem or SFTP depending on config */
-async function deleteFile(name: string): Promise<void> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    await fs.unlink(path.join(localPath, name)).catch(() => {});
-  } else {
-    const sftpConfig = getSftpConfig(config.servers.cogs.id);
-    const basePath = getBasePath(config.servers.cogs.id);
-    const sftp = new SftpClient();
-    try {
-      await sftp.connect({
-        host: sftpConfig.host,
-        port: sftpConfig.port,
-        username: sftpConfig.username,
-        password: sftpConfig.password,
-      });
-      const exists = await sftp.exists(`${basePath}/${name}`);
-      if (exists) await sftp.delete(`${basePath}/${name}`);
-    } finally {
-      await sftp.end();
-    }
-  }
-}
-
-/** Returns true if a file exists, using the local filesystem or SFTP depending on config */
-async function fileExists(name: string): Promise<boolean> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    try {
-      await fs.access(path.join(localPath, name));
-      return true;
-    } catch {
-      return false;
-    }
-  } else {
-    const sftpConfig = getSftpConfig(config.servers.cogs.id);
-    const basePath = getBasePath(config.servers.cogs.id);
-    const sftp = new SftpClient();
-    try {
-      await sftp.connect({
-        host: sftpConfig.host,
-        port: sftpConfig.port,
-        username: sftpConfig.username,
-        password: sftpConfig.password,
-      });
-      const exists = await sftp.exists(`${basePath}/${name}`);
-      return exists !== false;
-    } finally {
-      await sftp.end();
-    }
-  }
-}
 
 // =============================================================================
 // Service
@@ -167,7 +24,7 @@ async function fileExists(name: string): Promise<boolean> {
  * When enabled, ops can still join (they bypass whitelist), but regular players cannot.
  *
  * Supports two modes:
- * - **Local** (MAINTENANCE_LOCAL_PATH set): direct filesystem operations on the server data dir
+ * - **Local** (MC_SERVER_LOCAL_PATH set): direct filesystem operations on the server data dir
  * - **SFTP** (production): remote file operations via SSH
  *
  * Persistence: the existence of `whitelist.json.bak` IS the source of truth.
@@ -219,7 +76,7 @@ export class MaintenanceService {
     if (this.initialized) return;
     this.initialized = true;
 
-    if (!isMaintenanceAllowed()) {
+    if (!isFileOpsAllowed()) {
       logger.info(
         "Maintenance check skipped, no local path configured and SFTP not allowed",
       );
@@ -254,7 +111,7 @@ export class MaintenanceService {
    * @param onlinePlayers - Usernames of currently online players to kick
    */
   async enable(serverId: number, onlinePlayers: string[] = []): Promise<void> {
-    if (!isMaintenanceAllowed()) {
+    if (!isFileOpsAllowed()) {
       throw new Error(
         "Maintenance mode is not available (no local path or SFTP access)",
       );
@@ -291,7 +148,7 @@ export class MaintenanceService {
 
   /** Disable maintenance mode for a server */
   async disable(serverId: number): Promise<void> {
-    if (!isMaintenanceAllowed()) {
+    if (!isFileOpsAllowed()) {
       throw new Error(
         "Maintenance mode is not available (no local path or SFTP access)",
       );

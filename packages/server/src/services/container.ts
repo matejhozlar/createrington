@@ -22,6 +22,7 @@ import type { CryptoMarketService } from "./crypto";
 import type { AiService } from "./ai";
 import type { AutoMessageService } from "./discord/auto-message";
 import type { DonationService } from "./donation/donation.service";
+import type { StructurePackRotationService } from "./structure-pack/rotation";
 
 /**
  * Service lifecycle states
@@ -440,6 +441,7 @@ export const Services = {
   AI_SERVICE: "infra.aiService",
   AUTO_MESSAGE_SERVICE: "discord.autoMessageService",
   DONATION_SERVICE: "donation.service",
+  STRUCTURE_PACK_ROTATION: "structurePack.rotationService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -473,4 +475,5 @@ export interface ServiceTypeMap {
   [Services.AI_SERVICE]: AiService;
   [Services.AUTO_MESSAGE_SERVICE]: AutoMessageService;
   [Services.DONATION_SERVICE]: DonationService;
+  [Services.STRUCTURE_PACK_ROTATION]: StructurePackRotationService;
 }
