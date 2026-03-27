@@ -37,7 +37,7 @@ export function GuideDetail() {
 
   // Reset visibility when guide changes
   useEffect(() => {
-    setVisible(true);
+    requestAnimationFrame(() => setVisible(true));
   }, [slug]);
 
   if (!guide) {
