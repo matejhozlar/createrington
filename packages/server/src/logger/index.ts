@@ -82,30 +82,55 @@ class DailyFolderLogger {
   private createLoggerForDate(date: string): winston.Logger {
     const isDev = process.env.NODE_ENV !== "production";
 
+    const SCOPE_WIDTH = 20;
+    const LEVEL_WIDTH = 5; // DEBUG, ERROR, WARN, INFO
+
+    const padScope = (name: string) =>
+      name.length > SCOPE_WIDTH
+        ? name.slice(0, SCOPE_WIDTH)
+        : name.padEnd(SCOPE_WIDTH);
+
     const fileFormat = winston.format.combine(
       winston.format.errors({ stack: true }),
       winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       winston.format.printf((info) => {
         const { timestamp, level, message, filename } = info;
-        const fileTag = filename ? `[${filename}]` : "";
-        return `[${timestamp}]${fileTag}[${String(
-          level,
-        ).toUpperCase()}] ${message}`;
+        const scope = padScope(String(filename ?? "unknown"));
+        const lvl = String(level).toUpperCase().padEnd(LEVEL_WIDTH);
+        return `${timestamp}  ${lvl}  ${scope}  ${message}`;
       }),
     );
 
     const consoleFormat = winston.format.combine(
       winston.format.errors({ stack: true }),
       winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-      winston.format((info) => {
-        info.level = info.level.toUpperCase();
-        return info;
-      })(),
-      winston.format.colorize({ all: true }),
       winston.format.printf((info) => {
         const { timestamp, level, message, filename } = info;
-        const fileTag = filename ? `[${filename}]` : "";
-        return `[${timestamp}]${fileTag}[${level}] ${message}`;
+        const scope = padScope(String(filename ?? "unknown"));
+        const lvl = String(level).toUpperCase().padEnd(LEVEL_WIDTH);
+
+        // Color the level label
+        const coloredLvl =
+          level === "error"
+            ? `\x1b[31m${lvl}\x1b[0m`
+            : level === "warn"
+              ? `\x1b[33m${lvl}\x1b[0m`
+              : level === "debug"
+                ? `\x1b[36m${lvl}\x1b[0m`
+                : `\x1b[32m${lvl}\x1b[0m`;
+
+        // Dim the scope
+        const dimScope = `\x1b[2m${scope}\x1b[0m`;
+
+        // Color the message for errors and warnings
+        const msg =
+          level === "error"
+            ? `\x1b[31m${message}\x1b[0m`
+            : level === "warn"
+              ? `\x1b[33m${message}\x1b[0m`
+              : String(message);
+
+        return `\x1b[2m${timestamp}\x1b[0m  ${coloredLvl}  ${dimScope}  ${msg}`;
       }),
     );
 
