@@ -215,9 +215,6 @@ export class LotteryService {
       throw err;
     }
 
-    const message = `🎲 **Lottery Joined**\n**${username}** entered with **$${amount.toLocaleString()}**\nPot: **$${this.activeLottery.totalPot.toLocaleString()}** (${this.activeLottery.participants.length} players)`;
-    this.announceToDiscord(message);
-
     return {
       success: true,
       message: `Joined the lottery with $${amount}`,
