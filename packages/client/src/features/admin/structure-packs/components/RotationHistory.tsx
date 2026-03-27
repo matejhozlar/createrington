@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+/** Paginated table of past structure pack rotation events with success/failure status */
 export function RotationHistory() {
   const [page, setPage] = useState(0);
   const limit = 10;

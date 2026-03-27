@@ -30,6 +30,7 @@ import {
   check,
   primaryKey,
   numeric,
+  real,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -1593,16 +1594,20 @@ export const structurePackRotation = pgTable(
 );
 
 // --- structure_pack_rotation_config ---
-// Singleton row holding the weekly rotation schedule and boost pricing.
+// Singleton row holding the rotation schedule, boost pricing, and weight tuning.
 
 export const structurePackRotationConfig = pgTable(
   "structure_pack_rotation_config",
   {
     id: serial("id").primaryKey(),
+    period: text("period").notNull().default("weekly"),
     dayOfWeek: integer("day_of_week").notNull().default(1),
+    dayOfMonth: integer("day_of_month").notNull().default(1),
     time: text("time").notNull().default("12:00"),
     timezone: text("timezone").notNull().default("UTC"),
     boostUnitPrice: integer("boost_unit_price").notNull().default(50),
+    timeWeightMultiplier: real("time_weight_multiplier").notNull().default(1.0),
+    boostWeightPerUnit: real("boost_weight_per_unit").notNull().default(1.0),
     gracePeriodMinutes: integer("grace_period_minutes").notNull().default(30),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

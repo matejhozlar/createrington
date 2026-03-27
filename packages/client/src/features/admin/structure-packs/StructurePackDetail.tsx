@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   ArrowLeft,
   Pencil,
@@ -10,9 +11,11 @@ import {
   Trash2,
   Search,
   Plus,
-  X,
   Package,
   ExternalLink,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -53,9 +57,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { RotationConfig } from "./components/RotationConfig";
-import { RotationHistory } from "./components/RotationHistory";
 
+/** Detail view for a single structure pack — displays pack metadata, mod list, and dialogs for adding/removing mods with dependency resolution */
 export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
   const packId = parseInt(id ?? "0", 10);
@@ -72,19 +75,82 @@ export function StructurePackDetail() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
+
+  // Add mod dialog state
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModId, setSelectedModId] = useState<number | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{
+    id: number;
+    fileName: string;
+    displayName: string;
+    dependencies: Array<{ modId: number; relationType: number }>;
+  } | null>(null);
+  const [depOverrides, setDepOverrides] = useState<Set<number> | null>(null);
+
+  // Remove mod dialog state
+  const [removeDialog, setRemoveDialog] = useState<{
+    modId: number;
+    modName: string;
+    fileName: string;
+  } | null>(null);
+  const [removeDepOverrides, setRemoveDepOverrides] =
+    useState<Set<number> | null>(null);
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
   const searchModsQuery = trpc.admin.structurePacks.searchMods.useQuery(
-    { query: searchQuery },
-    { enabled: searchQuery.length >= 2 },
+    { query: debouncedSearch },
+    { enabled: debouncedSearch.length >= 2 },
   );
 
   const modFilesQuery = trpc.admin.structurePacks.getModFiles.useQuery(
     { modId: selectedModId! },
     { enabled: selectedModId !== null },
   );
+
+  // Dep resolution for add flow
+  const addDepModIds = useMemo(
+    () => (selectedFile?.dependencies ?? []).map((d) => d.modId),
+    [selectedFile],
+  );
+  const depsQuery = trpc.admin.structurePacks.resolveDeps.useQuery(
+    { packId, modIds: addDepModIds },
+    { enabled: addDepModIds.length > 0 && selectedFile !== null },
+  );
+
+  // Default selection: required deps not yet in pack
+  const defaultDepSelection = useMemo(() => {
+    if (!depsQuery.data || !selectedFile) return new Set<number>();
+    const set = new Set<number>();
+    for (const dep of depsQuery.data) {
+      const rel = selectedFile.dependencies.find((d) => d.modId === dep.modId);
+      // relationType 3 = Required in the CurseForge API
+      if (rel?.relationType === 3 && !dep.inPack && dep.bestFile) {
+        set.add(dep.modId);
+      }
+    }
+    return set;
+  }, [depsQuery.data, selectedFile]);
+
+  const selectedDeps = depOverrides ?? defaultDepSelection;
+
+  // Dep check for remove flow
+  const checkRemoveDepsQuery =
+    trpc.admin.structurePacks.checkRemoveDeps.useQuery(
+      { packId, modId: removeDialog?.modId ?? 0 },
+      { enabled: removeDialog !== null },
+    );
+
+  const defaultRemoveSelection = useMemo(() => {
+    if (!checkRemoveDepsQuery.data) return new Set<number>();
+    const safeIds = checkRemoveDepsQuery.data.deps
+      .filter((d) => d.safe)
+      .map((d) => d.modId);
+    return new Set(safeIds);
+  }, [checkRemoveDepsQuery.data]);
+
+  const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
   const updateMutation = trpc.admin.structurePacks.update.useMutation({
     onSuccess: () => {
@@ -115,20 +181,115 @@ export function StructurePackDetail() {
 
   const addModMutation = trpc.admin.structurePacks.addMod.useMutation({
     onSuccess: () => {
-      toast.success("Mod added");
       utils.admin.structurePacks.get.invalidate({ id: packId });
-      setSelectedModId(null);
     },
     onError: (err) => toast.error(err.message),
   });
 
   const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation({
     onSuccess: () => {
-      toast.success("Mod removed");
       utils.admin.structurePacks.get.invalidate({ id: packId });
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const [addingBatch, setAddingBatch] = useState(false);
+
+  /**
+   * Adds the selected mod and any checked dependencies to the pack in sequence.
+   *
+   * The primary mod is added first, then each selected dependency is added
+   * individually. Failures on individual deps are swallowed so the remaining
+   * mods still get added.
+   */
+  const handleBatchAdd = async () => {
+    if (!selectedFile || !selectedModId) return;
+    setAddingBatch(true);
+    try {
+      const searchMod = searchModsQuery.data?.find(
+        (m) => m.id === selectedModId,
+      );
+
+      // Add the main mod
+      await addModMutation.mutateAsync({
+        packId,
+        curseforgeModId: selectedModId,
+        curseforgeFileId: selectedFile.id,
+        fileName: selectedFile.fileName,
+        modName: searchMod?.name ?? selectedFile.displayName,
+        modUrl: searchMod?.url,
+        thumbnailUrl: searchMod?.thumbnailUrl,
+      });
+
+      // Add selected deps
+      for (const depModId of selectedDeps) {
+        const dep = depsQuery.data?.find((d) => d.modId === depModId);
+        if (!dep?.bestFile) continue;
+        try {
+          await addModMutation.mutateAsync({
+            packId,
+            curseforgeModId: dep.modId,
+            curseforgeFileId: dep.bestFile.id,
+            fileName: dep.bestFile.fileName,
+            modName: dep.modName,
+            modUrl: dep.modUrl,
+            thumbnailUrl: dep.thumbnailUrl,
+          });
+        } catch {
+          // Continue adding remaining deps even if one fails
+        }
+      }
+
+      const count = 1 + selectedDeps.size;
+      toast.success(`Added ${count} mod${count !== 1 ? "s" : ""} to pack`);
+      setSelectedFile(null);
+      setSelectedModId(null);
+      setDepOverrides(null);
+    } finally {
+      setAddingBatch(false);
+    }
+  };
+
+  const [removingBatch, setRemovingBatch] = useState(false);
+
+  /**
+   * Removes the targeted mod and any checked safe dependencies from the pack.
+   *
+   * Dependencies are removed first so the target mod's removal doesn't cause
+   * constraint issues. Failures on individual dep removals are swallowed.
+   */
+  const handleBatchRemove = async () => {
+    if (!removeDialog) return;
+    setRemovingBatch(true);
+    try {
+      // Remove selected deps first
+      for (const depModId of selectedRemoveDeps) {
+        const packMod = pack?.mods.find((m) => m.curseforgeModId === depModId);
+        if (!packMod) continue;
+        try {
+          await removeModMutation.mutateAsync({
+            packId,
+            modId: packMod.id,
+          });
+        } catch {
+          // Continue
+        }
+      }
+
+      // Remove the target mod
+      await removeModMutation.mutateAsync({
+        packId,
+        modId: removeDialog.modId,
+      });
+
+      const count = 1 + selectedRemoveDeps.size;
+      toast.success(`Removed ${count} mod${count !== 1 ? "s" : ""} from pack`);
+      setRemoveDialog(null);
+      setRemoveDepOverrides(null);
+    } finally {
+      setRemovingBatch(false);
+    }
+  };
 
   if (packQuery.isLoading) {
     return (
@@ -326,16 +487,16 @@ export function StructurePackDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="cursor-pointer"
+                        className="cursor-pointer text-destructive hover:text-destructive"
                         onClick={() =>
-                          removeModMutation.mutate({
-                            packId,
+                          setRemoveDialog({
                             modId: mod.id,
+                            modName: mod.modName,
+                            fileName: mod.fileName,
                           })
                         }
-                        disabled={removeModMutation.isPending}
                       >
-                        <X className="size-4" />
+                        <Trash2 className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -343,12 +504,6 @@ export function StructurePackDetail() {
               </TableBody>
             </Table>
           )}
-        </div>
-
-        {/* Rotation Config & History */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RotationConfig />
-          <RotationHistory />
         </div>
       </div>
 
@@ -395,12 +550,12 @@ export function StructurePackDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Mod Dialog */}
+      {/* Add Mod Dialog — Search & File Picker */}
       <Dialog
-        open={searchOpen}
+        open={searchOpen && selectedFile === null}
         onOpenChange={(open) => {
-          setSearchOpen(open);
           if (!open) {
+            setSearchOpen(false);
             setSearchQuery("");
             setSelectedModId(null);
           }
@@ -422,6 +577,13 @@ export function StructurePackDetail() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+
+              {searchModsQuery.data && searchModsQuery.data.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {searchModsQuery.data.length} result
+                  {searchModsQuery.data.length !== 1 && "s"}
+                </p>
+              )}
 
               <div className="max-h-[400px] space-y-2 overflow-y-auto">
                 {searchModsQuery.isLoading && (
@@ -456,13 +618,20 @@ export function StructurePackDetail() {
                           {mod.slug}
                         </div>
                       </div>
-                      {alreadyAdded && (
-                        <Badge variant="secondary">Already added</Badge>
-                      )}
+                      <div className="flex shrink-0 gap-1">
+                        {mod.inModpack && (
+                          <Badge className="bg-primary/20 text-xs text-primary">
+                            In modpack
+                          </Badge>
+                        )}
+                        {alreadyAdded && (
+                          <Badge variant="secondary">In pack</Badge>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
-                {searchQuery.length >= 2 &&
+                {debouncedSearch.length >= 2 &&
                   !searchModsQuery.isLoading &&
                   searchModsQuery.data?.length === 0 && (
                     <p className="py-4 text-center text-sm text-muted-foreground">
@@ -491,58 +660,56 @@ export function StructurePackDetail() {
                       Loading files...
                     </p>
                   )}
-                  {modFilesQuery.data?.map((file) => {
-                    const searchMod = searchModsQuery.data?.find(
-                      (m) => m.id === selectedModId,
-                    );
-                    return (
-                      <div
-                        key={file.id}
-                        className="flex items-center justify-between rounded-md border p-3 hover:bg-accent/50"
-                      >
-                        <div>
-                          <div className="font-medium">{file.displayName}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {file.fileName} (
-                            {(file.fileLength / 1024).toFixed(0)} KB)
-                          </div>
-                          <div className="mt-1 flex gap-1">
-                            {file.gameVersions.slice(0, 3).map((v) => (
-                              <Badge
-                                key={v}
-                                variant="outline"
-                                className="text-xs"
-                              >
-                                {v}
-                              </Badge>
-                            ))}
-                          </div>
+                  {modFilesQuery.data?.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex cursor-pointer items-center justify-between rounded-md border p-3 hover:bg-accent/50"
+                      onClick={() => {
+                        setSelectedFile({
+                          id: file.id,
+                          fileName: file.fileName,
+                          displayName: file.displayName,
+                          dependencies: file.dependencies,
+                        });
+                        setDepOverrides(null);
+                      }}
+                    >
+                      <div>
+                        <div className="font-medium">{file.displayName}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {file.fileName} ({(file.fileLength / 1024).toFixed(0)}{" "}
+                          KB)
                         </div>
-                        <Button
-                          size="sm"
-                          className="cursor-pointer"
-                          onClick={() => {
-                            addModMutation.mutate({
-                              packId,
-                              curseforgeModId: selectedModId!,
-                              curseforgeFileId: file.id,
-                              fileName: file.fileName,
-                              modName: searchMod?.name ?? file.displayName,
-                              modUrl: searchMod?.url,
-                              thumbnailUrl: searchMod?.thumbnailUrl,
-                            });
-                            setSearchOpen(false);
-                            setSearchQuery("");
-                            setSelectedModId(null);
-                          }}
-                          disabled={addModMutation.isPending}
-                        >
-                          <Plus className="mr-1 size-3" />
-                          Add
-                        </Button>
+                        <div className="mt-1 flex gap-1">
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${
+                              file.releaseType === 1
+                                ? "border-green-500/50 text-green-500"
+                                : file.releaseType === 2
+                                  ? "border-yellow-500/50 text-yellow-500"
+                                  : "border-red-500/50 text-red-500"
+                            }`}
+                          >
+                            {file.releaseType === 1
+                              ? "Release"
+                              : file.releaseType === 2
+                                ? "Beta"
+                                : "Alpha"}
+                          </Badge>
+                          {file.gameVersions.slice(0, 3).map((v) => (
+                            <Badge
+                              key={v}
+                              variant="outline"
+                              className="text-xs"
+                            >
+                              {v}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                   {modFilesQuery.data?.length === 0 && (
                     <p className="py-4 text-center text-sm text-muted-foreground">
                       No compatible files found
@@ -552,6 +719,265 @@ export function StructurePackDetail() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dependency Dialog (sandbox-style) */}
+      <Dialog
+        open={selectedFile !== null}
+        onOpenChange={(open) => {
+          if (!open && !addingBatch) {
+            setSelectedFile(null);
+            setDepOverrides(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dependencies</DialogTitle>
+            <DialogDescription>
+              <span className="font-medium text-foreground">
+                {selectedFile?.displayName}
+              </span>{" "}
+              {addDepModIds.length > 0
+                ? "has dependencies that may need to be added."
+                : "has no additional dependencies."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-80 space-y-2 overflow-y-auto">
+            {depsQuery.isLoading && addDepModIds.length > 0 && (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Resolving dependencies...
+              </div>
+            )}
+
+            {addDepModIds.length === 0 && (
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                No dependencies required.
+              </div>
+            )}
+
+            {depsQuery.data?.map((dep) => {
+              const relType = selectedFile?.dependencies.find(
+                (d) => d.modId === dep.modId,
+              )?.relationType;
+              // relationType 3 = Required in the CurseForge API
+              const isRequired = relType === 3;
+              const isSelected = selectedDeps.has(dep.modId);
+              const canSelect = !dep.inPack && !!dep.bestFile;
+
+              return (
+                <div
+                  key={dep.modId}
+                  className={`flex items-center gap-3 rounded-md border p-3 text-sm${canSelect ? " hover:bg-accent" : ""}`}
+                >
+                  <div className="shrink-0">
+                    {dep.inPack ? (
+                      <CheckCircle2 className="size-4 text-green-600" />
+                    ) : canSelect ? (
+                      <Checkbox
+                        checked={isSelected}
+                        disabled={addingBatch}
+                        onCheckedChange={() =>
+                          setDepOverrides((prev) => {
+                            const current = prev ?? defaultDepSelection;
+                            const next = new Set(current);
+                            if (next.has(dep.modId)) next.delete(dep.modId);
+                            else next.add(dep.modId);
+                            return next;
+                          })
+                        }
+                      />
+                    ) : (
+                      <div className="size-4" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 font-medium">
+                      <span className="truncate">{dep.modName}</span>
+                      <Badge
+                        variant={isRequired ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {isRequired ? "Required" : "Optional"}
+                      </Badge>
+                      {dep.inPack && (
+                        <Badge className="bg-green-600 text-xs">In pack</Badge>
+                      )}
+                    </div>
+                    {dep.bestFile ? (
+                      <div className="truncate text-xs text-muted-foreground">
+                        {dep.bestFile.fileName}
+                      </div>
+                    ) : !dep.inPack ? (
+                      <div className="text-xs text-destructive">
+                        No compatible file found
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button
+              onClick={handleBatchAdd}
+              disabled={depsQuery.isLoading || addingBatch}
+              className="cursor-pointer"
+            >
+              {addingBatch ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Add{selectedDeps.size > 0 ? ` ${1 + selectedDeps.size} mods` : ""}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Mod Dialog (sandbox-style) */}
+      <Dialog
+        open={removeDialog !== null}
+        onOpenChange={(open) => {
+          if (!open && !removingBatch) {
+            setRemoveDialog(null);
+            setRemoveDepOverrides(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Mod</DialogTitle>
+            <DialogDescription>
+              This will remove mod entries from the pack.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-80 space-y-2 overflow-y-auto">
+            {/* Target mod — always removed */}
+            <div className="flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm">
+              <Trash2 className="size-4 shrink-0 text-destructive" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">
+                  {removeDialog?.modName}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {removeDialog?.fileName}
+                </div>
+              </div>
+            </div>
+
+            {/* Dependents warning: other pack mods that need this mod */}
+            {checkRemoveDepsQuery.data &&
+              checkRemoveDepsQuery.data.dependents.length > 0 && (
+                <div className="flex items-start gap-3 rounded-md border border-yellow-500/50 bg-yellow-500/5 p-3 text-sm">
+                  <AlertTriangle className="mt-0.5 size-4 shrink-0 text-yellow-500" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-yellow-500">
+                      Other mods depend on this
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {checkRemoveDepsQuery.data.dependents
+                        .map((d) => d.modName)
+                        .join(", ")}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+            {checkRemoveDepsQuery.isLoading && (
+              <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Checking dependencies...
+              </div>
+            )}
+
+            {checkRemoveDepsQuery.data &&
+              checkRemoveDepsQuery.data.deps.length === 0 &&
+              checkRemoveDepsQuery.data.dependents.length === 0 && (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                  <CheckCircle2 className="mr-2 size-4 text-green-500" />
+                  No dependency conflicts, safe to remove.
+                </div>
+              )}
+
+            {checkRemoveDepsQuery.data &&
+              checkRemoveDepsQuery.data.deps.length === 0 &&
+              checkRemoveDepsQuery.data.dependents.length > 0 && (
+                <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+                  No removable dependencies.
+                </div>
+              )}
+
+            {checkRemoveDepsQuery.data?.deps.map((dep) => (
+              <div
+                key={dep.modId}
+                className={`flex items-center gap-3 rounded-md border p-3 text-sm${dep.safe ? " hover:bg-accent" : ""}`}
+              >
+                <div className="shrink-0">
+                  {dep.safe ? (
+                    <Checkbox
+                      checked={selectedRemoveDeps.has(dep.modId)}
+                      disabled={removingBatch}
+                      onCheckedChange={() =>
+                        setRemoveDepOverrides((prev) => {
+                          const current = prev ?? defaultRemoveSelection;
+                          const next = new Set(current);
+                          if (next.has(dep.modId)) next.delete(dep.modId);
+                          else next.add(dep.modId);
+                          return next;
+                        })
+                      }
+                    />
+                  ) : (
+                    <div className="size-4" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2 font-medium">
+                    <span className="truncate">{dep.modName}</span>
+                    {dep.safe ? (
+                      <Badge variant="secondary" className="text-xs">
+                        Unused
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-xs">
+                        In use
+                      </Badge>
+                    )}
+                  </div>
+                  {!dep.safe && dep.neededBy.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      Needed by {dep.neededBy.join(", ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={handleBatchRemove}
+              disabled={checkRemoveDepsQuery.isLoading || removingBatch}
+              className="cursor-pointer"
+            >
+              {removingBatch ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="size-3.5" />
+              )}
+              Remove
+              {selectedRemoveDeps.size > 0
+                ? ` ${1 + selectedRemoveDeps.size} mods`
+                : ""}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

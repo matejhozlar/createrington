@@ -2,14 +2,31 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { structurePackService } from "@/services/structure-pack";
 import { getService, Services } from "@/services";
-import { searchMods, getModFiles } from "@/services/curseforge";
+import {
+  searchMods,
+  getModFiles,
+  resolveDependencies,
+  getFilesDependencies,
+} from "@/services/curseforge";
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation";
 
+/** Resolves the structure pack rotation service from the DI container */
 async function getRotationService(): Promise<StructurePackRotationService> {
   return getService(Services.STRUCTURE_PACK_ROTATION);
 }
 
+/**
+ * Admin Structure Packs Router
+ *
+ * Manages structure packs and their weekly rotation schedule:
+ * - CRUD for structure packs (create, read, update, soft-delete)
+ * - Mod management: add/remove CurseForge mods linked to a pack
+ * - CurseForge integration: search mods and browse available files
+ * - Dependency resolution: inspect and validate inter-mod dependencies
+ * - Rotation control: trigger manual rotations and paginate rotation history
+ * - Rotation config: read and update the rotation schedule settings
+ */
 export const adminStructurePacksRouter = router({
   list: adminProcedure
     .meta({ description: "List all structure packs with their mods" })
@@ -123,6 +140,120 @@ export const adminStructurePacksRouter = router({
       return getModFiles(input.modId);
     }),
 
+  // Dependency resolution
+  resolveDeps: adminProcedure
+    .meta({
+      description:
+        "Resolve dependency mod IDs to names/thumbnails and check pack presence",
+    })
+    .input(
+      z.object({
+        packId: z.coerce.number().int().positive(),
+        modIds: z.array(z.number().int().positive()).min(1),
+      }),
+    )
+    .query(async ({ input }) => {
+      const pack = await structurePackService.getPack(input.packId);
+      const packModIds = new Set(pack.mods.map((m) => m.curseforgeModId));
+      return resolveDependencies(input.modIds, packModIds);
+    }),
+
+  checkRemoveDeps: adminProcedure
+    .meta({
+      description:
+        "Check which dependencies are safe to remove alongside a mod",
+    })
+    .input(
+      z.object({
+        packId: z.coerce.number().int().positive(),
+        modId: z.coerce.number().int().positive(),
+      }),
+    )
+    .query(async ({ input }) => {
+      const pack = await structurePackService.getPack(input.packId);
+      const targetMod = pack.mods.find((m) => m.id === input.modId);
+      if (!targetMod) return { deps: [], dependents: [] };
+
+      // Fetch dependency info for all pack mods
+      const fileIds = pack.mods.map((m) => m.curseforgeFileId);
+      const allFileDeps = await getFilesDependencies(fileIds);
+
+      // Find which other pack mods depend on the target mod
+      const dependents: Array<{ modName: string; relationType: number }> = [];
+      for (const fileDep of allFileDeps) {
+        if (fileDep.modId === targetMod.curseforgeModId) continue;
+        for (const dep of fileDep.dependencies) {
+          if (dep.modId === targetMod.curseforgeModId) {
+            const packMod = pack.mods.find(
+              (m) => m.curseforgeModId === fileDep.modId,
+            );
+            if (packMod) {
+              dependents.push({
+                modName: packMod.modName,
+                relationType: dep.relationType,
+              });
+            }
+          }
+        }
+      }
+
+      // Find target mod's own dependencies
+      const targetFileDeps = allFileDeps.find(
+        (f) => f.fileId === targetMod.curseforgeFileId,
+      );
+      const targetDepModIds = new Set(
+        (targetFileDeps?.dependencies ?? []).map((d) => d.modId),
+      );
+
+      if (targetDepModIds.size === 0) return { deps: [], dependents };
+
+      // Build reverse dep map: depModId → set of pack curseforgeModIds that need it
+      const reverseDeps = new Map<number, Set<number>>();
+      for (const fileDep of allFileDeps) {
+        for (const dep of fileDep.dependencies) {
+          if (!targetDepModIds.has(dep.modId)) continue;
+          if (!reverseDeps.has(dep.modId))
+            reverseDeps.set(dep.modId, new Set());
+          reverseDeps.get(dep.modId)!.add(fileDep.modId);
+        }
+      }
+
+      // Filter to deps that are actually in the pack
+      const packModIdSet = new Set(pack.mods.map((m) => m.curseforgeModId));
+      const inPackDepIds = [...targetDepModIds].filter((id) =>
+        packModIdSet.has(id),
+      );
+
+      if (inPackDepIds.length === 0) return { deps: [], dependents };
+
+      // Resolve names for the deps
+      const resolved = await resolveDependencies(inPackDepIds, packModIdSet);
+
+      // Determine safety: a dep is safe to remove if no OTHER pack mod needs it
+      return {
+        dependents,
+        deps: resolved.map((dep) => {
+          const neededByModIds = reverseDeps.get(dep.modId) ?? new Set();
+          const externalNeeders = [...neededByModIds].filter(
+            (id) => id !== targetMod.curseforgeModId,
+          );
+          const neededByNames = externalNeeders
+            .map(
+              (id) =>
+                pack.mods.find((m) => m.curseforgeModId === id)?.modName ?? "",
+            )
+            .filter(Boolean);
+
+          return {
+            modId: dep.modId,
+            modName: dep.modName,
+            safe: externalNeeders.length === 0,
+            neededBy: neededByNames,
+          };
+        }),
+      };
+    }),
+
   // Rotation
   forceRotation: adminProcedure
     .meta({ description: "Trigger a manual rotation" })
@@ -160,13 +291,17 @@ export const adminStructurePacksRouter = router({
       .meta({ description: "Update rotation schedule config" })
       .input(
         z.object({
+          period: z.enum(["daily", "weekly", "monthly"]).optional(),
           dayOfWeek: z.number().int().min(0).max(6).optional(),
+          dayOfMonth: z.number().int().min(1).max(28).optional(),
           time: z
             .string()
             .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format")
             .optional(),
           timezone: z.string().min(1).optional(),
           boostUnitPrice: z.number().int().positive().optional(),
+          timeWeightMultiplier: z.number().positive().optional(),
+          boostWeightPerUnit: z.number().min(0).optional(),
           gracePeriodMinutes: z.number().int().min(0).optional(),
         }),
       )
