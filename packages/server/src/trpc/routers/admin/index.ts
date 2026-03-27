@@ -1,4 +1,4 @@
-import { router } from "@/trpc/trpc";
+import { router, adminProcedure } from "@/trpc/trpc";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
 import { adminCryptoRouter } from "./crypto";
@@ -13,9 +13,18 @@ import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
+import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
 /** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, structure packs, waitlists. */
 export const adminRouter = router({
+  refetchDiscordEntities: adminProcedure
+    .meta({
+      description:
+        "Re-scrape Discord roles, channels, and categories from the live guild",
+    })
+    .mutation(async () => {
+      return refetchDiscordEntities();
+    }),
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,
   crypto: adminCryptoRouter,

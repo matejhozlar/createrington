@@ -105,9 +105,7 @@ function buildButtons(
   return row.components.length > 0 ? [row] : undefined;
 }
 
-const channels = config.discord.guild.channels;
-const roles = config.discord.guild.roles;
-const categories = config.discord.guild.categories;
+// Read from config inside handlers (not module-level) to support runtime refetch
 const colors = config.discord.embeds.colors;
 
 /** Admin embeds router — send Discord embeds, manage embed presets (CRUD). */
@@ -115,6 +113,8 @@ export const embedsRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category" })
     .query(() => {
+      const channels = config.discord.guild.channels;
+      const categories = config.discord.guild.categories;
       const grouped: Array<{
         category: string;
         categoryId: string;
@@ -145,6 +145,7 @@ export const embedsRouter = router({
   roles: adminProcedure
     .meta({ description: "Get all Discord roles" })
     .query(() => {
+      const roles = config.discord.guild.roles;
       return Object.entries(roles as unknown as Record<string, string>).map(
         ([name, id]) => ({ name, id }),
       );
