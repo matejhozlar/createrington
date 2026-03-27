@@ -29,6 +29,20 @@ const CACHE_DIR = ".structure-pack-cache";
 const T_REF = 7 * 24 * 60 * 60; // one week in seconds
 const DEFAULT_ELAPSED_WEEKS = 4;
 
+type RotationPeriod = "daily" | "weekly" | "monthly";
+
+/** How many milliseconds one period lasts (approximate, for missed-rotation detection). */
+function periodIntervalMs(period: RotationPeriod): number {
+  switch (period) {
+    case "daily":
+      return 24 * 60 * 60 * 1000;
+    case "weekly":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "monthly":
+      return 30 * 24 * 60 * 60 * 1000;
+  }
+}
+
 interface WeightEntry {
   packId: number;
   packName: string;
@@ -101,8 +115,15 @@ export class StructurePackRotationService {
   async initialize(): Promise<void> {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const period = rotationConfig.period as RotationPeriod;
+    const scheduleDesc =
+      period === "daily"
+        ? `daily at ${rotationConfig.time}`
+        : period === "monthly"
+          ? `monthly on day ${rotationConfig.dayOfMonth} at ${rotationConfig.time}`
+          : `weekly on ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rotationConfig.dayOfWeek]} at ${rotationConfig.time}`;
     logger.info(
-      `Structure pack rotation config: ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][rotationConfig.dayOfWeek]} at ${rotationConfig.time} ${rotationConfig.timezone}`,
+      `Structure pack rotation config: ${scheduleDesc} ${rotationConfig.timezone}`,
     );
 
     // Check for missed rotation
@@ -142,12 +163,13 @@ export class StructurePackRotationService {
 
     const nextTime = this.computeNextRotationTime(rotationConfig);
     const delayMs = nextTime.getTime() - Date.now();
+    const period = rotationConfig.period as RotationPeriod;
 
     if (delayMs <= 0) {
       logger.warn(
-        "Computed next rotation time is in the past, scheduling for next week",
+        "Computed next rotation time is in the past, scheduling for next period",
       );
-      const adjusted = new Date(nextTime.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const adjusted = new Date(nextTime.getTime() + periodIntervalMs(period));
       const adjustedDelay = adjusted.getTime() - Date.now();
       this.nextRotationTimer = setTimeout(
         () => this.executeRotation(),
@@ -168,6 +190,7 @@ export class StructurePackRotationService {
   private computeNextRotationTime(cfg: StructurePackRotationConfig): Date {
     const [hours, minutes] = cfg.time.split(":").map(Number);
     const now = new Date();
+    const period = cfg.period as RotationPeriod;
 
     // Get today's date components in the target timezone
     const todayParts = new Intl.DateTimeFormat("en-US", {
@@ -185,7 +208,53 @@ export class StructurePackRotationService {
     const todayMonth = get("month") - 1;
     const todayDay = get("day");
 
-    // Map weekday string to number
+    if (period === "daily") {
+      // Next occurrence is today at the configured time, or tomorrow
+      const target = dateInTimezone(
+        todayYear,
+        todayMonth,
+        todayDay,
+        hours,
+        minutes,
+        cfg.timezone,
+      );
+      if (target.getTime() <= now.getTime()) {
+        return dateInTimezone(
+          todayYear,
+          todayMonth,
+          todayDay + 1,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      }
+      return target;
+    }
+
+    if (period === "monthly") {
+      // Next occurrence is on dayOfMonth this month or next month
+      const target = dateInTimezone(
+        todayYear,
+        todayMonth,
+        cfg.dayOfMonth,
+        hours,
+        minutes,
+        cfg.timezone,
+      );
+      if (target.getTime() <= now.getTime()) {
+        return dateInTimezone(
+          todayYear,
+          todayMonth + 1,
+          cfg.dayOfMonth,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      }
+      return target;
+    }
+
+    // Weekly (default)
     const weekdayStr =
       todayParts.find((p) => p.type === "weekday")?.value ?? "";
     const dayMap: Record<string, number> = {
@@ -202,7 +271,6 @@ export class StructurePackRotationService {
     let daysUntil = cfg.dayOfWeek - currentDay;
     if (daysUntil < 0) daysUntil += 7;
 
-    // Build the target date in the configured timezone
     const targetDate = new Date(
       Date.UTC(todayYear, todayMonth, todayDay + daysUntil),
     );
@@ -215,7 +283,6 @@ export class StructurePackRotationService {
       cfg.timezone,
     );
 
-    // If the target is in the past (same day but time already passed), add 7 days
     if (target.getTime() <= now.getTime()) {
       const nextWeek = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
       return dateInTimezone(
@@ -236,7 +303,7 @@ export class StructurePackRotationService {
     lastRotatedAt: Date,
   ): boolean {
     const now = Date.now();
-    const expectedInterval = 7 * 24 * 60 * 60 * 1000; // 1 week
+    const expectedInterval = periodIntervalMs(cfg.period as RotationPeriod);
     const gracePeriod = cfg.gracePeriodMinutes * 60 * 1000;
     const timeSinceLastRotation = now - lastRotatedAt.getTime();
 
@@ -280,7 +347,12 @@ export class StructurePackRotationService {
       const boostData =
         await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
       const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-      const weights = this.computeWeights(eligible, boostMap);
+      const weights = this.computeWeights(
+        eligible,
+        boostMap,
+        rotationConfig.timeWeightMultiplier,
+        rotationConfig.boostWeightPerUnit,
+      );
 
       // Select next pack
       const selectedPackId = this.selectWeightedRandom(weights);
@@ -395,6 +467,8 @@ export class StructurePackRotationService {
   computeWeights(
     packs: StructurePack[],
     boosts: Map<number, number>,
+    timeWeightMultiplier = 1.0,
+    boostWeightPerUnit = 1.0,
   ): WeightEntry[] {
     const nowSec = Date.now() / 1000;
     const defaultElapsed = DEFAULT_ELAPSED_WEEKS * T_REF;
@@ -410,7 +484,8 @@ export class StructurePackRotationService {
       return {
         packId: pack.id,
         packName: pack.name,
-        weight: timeFactor + boostFactor,
+        weight:
+          timeFactor * timeWeightMultiplier + boostFactor * boostWeightPerUnit,
         timeFactor: Math.round(timeFactor * 100) / 100,
         boostFactor,
       };
@@ -534,7 +609,12 @@ export class StructurePackRotationService {
     const boostData =
       await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
     const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-    const weights = this.computeWeights(eligible, boostMap);
+    const weights = this.computeWeights(
+      eligible,
+      boostMap,
+      rotationConfig.timeWeightMultiplier,
+      rotationConfig.boostWeightPerUnit,
+    );
 
     return eligible.map((pack) => {
       const w = weights.find((e) => e.packId === pack.id);
@@ -558,10 +638,14 @@ export class StructurePackRotationService {
     data: Partial<
       Pick<
         StructurePackRotationConfig,
+        | "period"
         | "dayOfWeek"
+        | "dayOfMonth"
         | "time"
         | "timezone"
         | "boostUnitPrice"
+        | "timeWeightMultiplier"
+        | "boostWeightPerUnit"
         | "gracePeriodMinutes"
       >
     >,
@@ -603,9 +687,9 @@ export class StructurePackRotationService {
 
   private computeCycleStart(cfg: StructurePackRotationConfig): Date {
     const [hours, minutes] = cfg.time.split(":").map(Number);
-
-    // Get current date/time components in the configured timezone
     const now = new Date();
+    const period = cfg.period as RotationPeriod;
+
     const todayParts = new Intl.DateTimeFormat("en-US", {
       timeZone: cfg.timezone,
       year: "numeric",
@@ -617,6 +701,57 @@ export class StructurePackRotationService {
     const get = (type: string) =>
       Number(todayParts.find((p) => p.type === type)?.value ?? 0);
 
+    const todayYear = get("year");
+    const todayMonth = get("month") - 1;
+    const todayDay = get("day");
+
+    if (period === "daily") {
+      // Cycle started today at the configured time, or yesterday if time hasn't passed
+      const cycleStart = dateInTimezone(
+        todayYear,
+        todayMonth,
+        todayDay,
+        hours,
+        minutes,
+        cfg.timezone,
+      );
+      if (cycleStart.getTime() > now.getTime()) {
+        return dateInTimezone(
+          todayYear,
+          todayMonth,
+          todayDay - 1,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      }
+      return cycleStart;
+    }
+
+    if (period === "monthly") {
+      // Cycle started on dayOfMonth this month, or last month
+      const cycleStart = dateInTimezone(
+        todayYear,
+        todayMonth,
+        cfg.dayOfMonth,
+        hours,
+        minutes,
+        cfg.timezone,
+      );
+      if (cycleStart.getTime() > now.getTime()) {
+        return dateInTimezone(
+          todayYear,
+          todayMonth - 1,
+          cfg.dayOfMonth,
+          hours,
+          minutes,
+          cfg.timezone,
+        );
+      }
+      return cycleStart;
+    }
+
+    // Weekly (default)
     const dayMap: Record<string, number> = {
       Sun: 0,
       Mon: 1,
@@ -634,7 +769,7 @@ export class StructurePackRotationService {
     if (daysDiff < 0) daysDiff += 7;
 
     const baseDate = new Date(
-      Date.UTC(get("year"), get("month") - 1, get("day") - daysDiff),
+      Date.UTC(todayYear, todayMonth, todayDay - daysDiff),
     );
     const cycleStart = dateInTimezone(
       baseDate.getUTCFullYear(),
@@ -645,7 +780,6 @@ export class StructurePackRotationService {
       cfg.timezone,
     );
 
-    // If the computed cycle start is in the future, go back one week
     if (cycleStart.getTime() > now.getTime()) {
       const prevWeek = new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000);
       return dateInTimezone(

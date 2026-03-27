@@ -160,13 +160,17 @@ export const adminStructurePacksRouter = router({
       .meta({ description: "Update rotation schedule config" })
       .input(
         z.object({
+          period: z.enum(["daily", "weekly", "monthly"]).optional(),
           dayOfWeek: z.number().int().min(0).max(6).optional(),
+          dayOfMonth: z.number().int().min(1).max(28).optional(),
           time: z
             .string()
             .regex(/^\d{2}:\d{2}$/, "Time must be in HH:MM format")
             .optional(),
           timezone: z.string().min(1).optional(),
           boostUnitPrice: z.number().int().positive().optional(),
+          timeWeightMultiplier: z.number().positive().optional(),
+          boostWeightPerUnit: z.number().min(0).optional(),
           gracePeriodMinutes: z.number().int().min(0).optional(),
         }),
       )

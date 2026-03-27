@@ -3,23 +3,23 @@ import { StructurePackQueries } from "@/db/queries/structure/pack";
 
 /**
  * Namespace queries for structure
- *
+ * 
  * This is a pure organizational namespace that groups related query classes.
  * It does not correspond to an actual database table but provides hierarchical
  * access to child tables that share the 'structure_' prefix.
- *
+ * 
  * Uses singleton pattern with lazy loading for optimal performance:
  * - Child instances created once per database connection
  * - Cached in WeakMap for automatic garbage collection
  * - Shared across all StructureQueries instances using same connection
- *
+ * 
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 export class StructureQueries {
   /**
    * Static singleton registry for child query instances
-   *
+   * 
    * Uses WeakMap keyed by database connection (Pool or PoolClient):
    * - Allows garbage collection when connection is closed
    * - Prevents memory leaks in long-running applications
@@ -33,15 +33,15 @@ export class StructureQueries {
 
   /**
    * Get or create a child query instance from the singleton cache
-   *
+   * 
    * Implements the singleton pattern by checking the cache first and
    * creating new instances only when needed. All instances for a given
    * connection are stored in the same cache.
-   *
+   * 
    * @param key - Cache key for this child (e.g., "actions", "settings")
    * @param QueryClass - Constructor for the child query class
    * @returns Cached or newly created child query instance
-   *
+   * 
    * @remarks
    * - Cache key is prefixed with namespace (e.g., "structure.actions")
    * - Ensures child shares the same database connection as parent
@@ -49,7 +49,7 @@ export class StructureQueries {
    */
   protected getOrCreateChild<T>(
     key: string,
-    QueryClass: new (db: Pool | PoolClient) => T,
+    QueryClass: new (db: Pool | PoolClient) => T
   ): T {
     // Initialize cache for this connection if not exists
     if (!StructureQueries.queryInstances.has(this.db)) {
@@ -77,19 +77,16 @@ export class StructureQueries {
 
   /**
    * Lazy-loaded singleton accessor for structure_pack
-   *
+   * 
    * Returns a StructurePackQueries instance that shares this namespace's
    * database connection. The instance is created once on first access and
    * cached for all subsequent calls.
-   *
+   * 
    * @returns Singleton StructurePackQueries instance
    */
   get pack(): StructurePackQueries {
     if (!this._pack) {
-      this._pack = this.getOrCreateChild<StructurePackQueries>(
-        "pack",
-        StructurePackQueries,
-      );
+      this._pack = this.getOrCreateChild<StructurePackQueries>('pack', StructurePackQueries);
     }
     return this._pack;
   }

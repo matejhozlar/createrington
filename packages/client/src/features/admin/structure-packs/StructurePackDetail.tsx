@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   ArrowLeft,
   Pencil,
@@ -10,7 +11,6 @@ import {
   Trash2,
   Search,
   Plus,
-  X,
   Package,
   ExternalLink,
 } from "lucide-react";
@@ -53,8 +53,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { RotationConfig } from "./components/RotationConfig";
-import { RotationHistory } from "./components/RotationHistory";
 
 export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
@@ -75,10 +73,17 @@ export function StructurePackDetail() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedModId, setSelectedModId] = useState<number | null>(null);
+  const [removeModConfirm, setRemoveModConfirm] = useState<{
+    open: boolean;
+    modId: number | null;
+    modName: string;
+  }>({ open: false, modId: null, modName: "" });
+
+  const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
   const searchModsQuery = trpc.admin.structurePacks.searchMods.useQuery(
-    { query: searchQuery },
-    { enabled: searchQuery.length >= 2 },
+    { query: debouncedSearch },
+    { enabled: debouncedSearch.length >= 2 },
   );
 
   const modFilesQuery = trpc.admin.structurePacks.getModFiles.useQuery(
@@ -326,16 +331,16 @@ export function StructurePackDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="cursor-pointer"
+                        className="cursor-pointer text-destructive hover:text-destructive"
                         onClick={() =>
-                          removeModMutation.mutate({
-                            packId,
+                          setRemoveModConfirm({
+                            open: true,
                             modId: mod.id,
+                            modName: mod.modName,
                           })
                         }
-                        disabled={removeModMutation.isPending}
                       >
-                        <X className="size-4" />
+                        <Trash2 className="size-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -343,12 +348,6 @@ export function StructurePackDetail() {
               </TableBody>
             </Table>
           )}
-        </div>
-
-        {/* Rotation Config & History */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <RotationConfig />
-          <RotationHistory />
         </div>
       </div>
 
@@ -423,6 +422,13 @@ export function StructurePackDetail() {
                 />
               </div>
 
+              {searchModsQuery.data && searchModsQuery.data.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {searchModsQuery.data.length} result
+                  {searchModsQuery.data.length !== 1 && "s"}
+                </p>
+              )}
+
               <div className="max-h-[400px] space-y-2 overflow-y-auto">
                 {searchModsQuery.isLoading && (
                   <p className="py-4 text-center text-sm text-muted-foreground">
@@ -456,13 +462,11 @@ export function StructurePackDetail() {
                           {mod.slug}
                         </div>
                       </div>
-                      {alreadyAdded && (
-                        <Badge variant="secondary">Already added</Badge>
-                      )}
+                      {alreadyAdded && <Badge variant="secondary">Added</Badge>}
                     </div>
                   );
                 })}
-                {searchQuery.length >= 2 &&
+                {debouncedSearch.length >= 2 &&
                   !searchModsQuery.isLoading &&
                   searchModsQuery.data?.length === 0 && (
                     <p className="py-4 text-center text-sm text-muted-foreground">
@@ -531,8 +535,6 @@ export function StructurePackDetail() {
                               modUrl: searchMod?.url,
                               thumbnailUrl: searchMod?.thumbnailUrl,
                             });
-                            setSearchOpen(false);
-                            setSearchQuery("");
                             setSelectedModId(null);
                           }}
                           disabled={addModMutation.isPending}
@@ -554,6 +556,51 @@ export function StructurePackDetail() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Remove Mod Confirmation */}
+      <AlertDialog
+        open={removeModConfirm.open}
+        onOpenChange={(open) =>
+          !open &&
+          setRemoveModConfirm({ open: false, modId: null, modName: "" })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Mod</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove &quot;{removeModConfirm.modName}
+              &quot; from this pack?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="cursor-pointer"
+              onClick={() =>
+                setRemoveModConfirm({ open: false, modId: null, modName: "" })
+              }
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={() => {
+                if (removeModConfirm.modId) {
+                  removeModMutation.mutate({
+                    packId,
+                    modId: removeModConfirm.modId,
+                  });
+                }
+                setRemoveModConfirm({ open: false, modId: null, modName: "" });
+              }}
+              disabled={removeModMutation.isPending}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

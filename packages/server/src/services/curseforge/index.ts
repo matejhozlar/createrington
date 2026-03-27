@@ -59,7 +59,7 @@ export interface CurseForgeModFile {
 
 export async function searchMods(
   query: string,
-  pageSize = 20,
+  pageSize = 50,
 ): Promise<CurseForgeSearchResult[]> {
   ensureApiKey();
 
