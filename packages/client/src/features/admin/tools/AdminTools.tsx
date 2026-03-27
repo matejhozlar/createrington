@@ -7,15 +7,19 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import {
   Blocks,
   Coins,
   Megaphone,
   MessageCircleQuestion,
   Paintbrush,
+  RefreshCw,
   Terminal,
   Timer,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
 
 const tools = [
   {
@@ -71,6 +75,16 @@ const tools = [
 
 export function AdminTools() {
   const navigate = useNavigate();
+  const toast = useToastActions();
+
+  const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
+      );
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -89,7 +103,21 @@ export function AdminTools() {
       </header>
 
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Tools</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Tools</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => refetchMutation.mutate()}
+            disabled={refetchMutation.isPending}
+          >
+            <RefreshCw
+              className={`mr-2 size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
+            />
+            Refresh Discord Data
+          </Button>
+        </div>
 
         <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
           {tools.map((tool) => (
