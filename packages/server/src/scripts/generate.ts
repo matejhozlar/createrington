@@ -1,6 +1,7 @@
 process.env.VALIDATION_MODE = "generation";
 
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { pathToFileURL } from "node:url";
 
@@ -107,6 +108,20 @@ async function main() {
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
   const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
+
+  // Format generated query files with Prettier to match project conventions
+  if (successful > 0) {
+    try {
+      const serverRoot = path.resolve(__dirname, "../..");
+      console.log("[generate] Formatting generated files...");
+      execSync(`npx prettier --write "src/db/queries"`, {
+        cwd: serverRoot,
+        stdio: "ignore",
+      });
+    } catch {
+      console.warn("[generate] Prettier formatting failed (non-fatal)");
+    }
+  }
 
   console.log(
     `[generate] Complete: ${successful} succeeded, ${failed} failed (${formatDuration(totalDuration)})`,
