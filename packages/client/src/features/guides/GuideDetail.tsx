@@ -1,4 +1,4 @@
-import { useRef, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { PageHeader } from "@/components/page-header";
 import { guides } from "./data";
@@ -17,17 +17,28 @@ export function GuideDetail() {
     slug ?? "",
   );
 
+  const [visible, setVisible] = useState(true);
+
   const goToStep = useCallback(
     (step: number) => {
-      setCurrentStep(step);
-      const el = contentRef.current;
-      if (el) {
-        const top = el.getBoundingClientRect().top + window.scrollY - 50;
-        window.scrollTo({ top, behavior: "instant" });
-      }
+      setVisible(false);
+      setTimeout(() => {
+        setCurrentStep(step);
+        const el = contentRef.current;
+        if (el) {
+          const top = el.getBoundingClientRect().top + window.scrollY - 50;
+          window.scrollTo({ top, behavior: "instant" });
+        }
+        setVisible(true);
+      }, 150);
     },
     [setCurrentStep],
   );
+
+  // Reset visibility when guide changes
+  useEffect(() => {
+    setVisible(true);
+  }, [slug]);
 
   if (!guide) {
     return <Navigate to="/guides" replace />;
@@ -64,15 +75,20 @@ export function GuideDetail() {
             />
 
             <div className="flex-1 min-w-0 max-w-3xl">
-              <h2 className="text-foreground text-xl md:text-2xl font-semibold">
-                {step.title}
-              </h2>
-              <p className="text-muted-foreground text-sm mt-1">
-                {step.description}
-              </p>
+              <div
+                className="transition-opacity duration-200"
+                style={{ opacity: visible ? 1 : 0 }}
+              >
+                <h2 className="text-foreground text-xl md:text-2xl font-semibold">
+                  {step.title}
+                </h2>
+                <p className="text-muted-foreground text-sm mt-1">
+                  {step.description}
+                </p>
 
-              <div className="text-muted-foreground text-base/7 mt-6">
-                {step.content}
+                <div className="text-muted-foreground text-base/7 mt-6">
+                  {step.content}
+                </div>
               </div>
 
               <StepNavigation
