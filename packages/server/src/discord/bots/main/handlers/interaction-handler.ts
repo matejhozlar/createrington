@@ -11,7 +11,7 @@ import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
 import { Q } from "@/db";
 
-import { requireAdmin } from "@/discord/utils/admin-guard";
+import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
 import type { CommandModule } from "../../common/loaders/command-loader";
 import {
   type ButtonModule,
@@ -99,7 +99,12 @@ async function checkPermission(
 ): Promise<boolean> {
   if (!command.permissions) return true;
 
-  if (command.permissions.requireAdmin) {
+  if (command.permissions.requireOwner) {
+    const hasPermission = await requireOwner(interaction);
+    if (!hasPermission) {
+      return false;
+    }
+  } else if (command.permissions.requireAdmin) {
     const hasPermission = await requireAdmin(interaction);
     if (!hasPermission) {
       return false;
