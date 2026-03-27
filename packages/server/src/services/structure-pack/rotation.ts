@@ -99,6 +99,20 @@ function dateInTimezone(
   return new Date(guess.getTime() + offsetMs);
 }
 
+/**
+ * Structure Pack Rotation Service
+ *
+ * Manages the automated weekly (or configurable period) rotation of active structure packs:
+ * - Schedules rotations at configurable times using IANA timezone-aware scheduling
+ * - Detects and recovers from missed rotations on startup
+ * - Selects the next pack via a weighted-random algorithm (time-since-last + boost units)
+ * - Downloads and caches mod files from CurseForge before installing them on the server
+ * - Records every rotation attempt (success or failure) with a weights snapshot for auditing
+ * - Handles player-purchased boost units that increase a pack's selection weight for a cycle
+ *
+ * NOTE: File operations (mod installs/removals) are skipped when `isFileOpsAllowed()` returns
+ * false; the rotation is still recorded in the database in that case.
+ */
 export class StructurePackRotationService {
   private nextRotationTimer: ReturnType<typeof setTimeout> | null = null;
   private rotationInProgress = false;
@@ -109,9 +123,16 @@ export class StructurePackRotationService {
   ) {}
 
   // ===========================================================================
-  // Lifecycle
+  // LIFECYCLE
   // ===========================================================================
 
+  /**
+   * Initializes the rotation scheduler
+   *
+   * Loads the rotation config, logs the active schedule, and either triggers an
+   * immediate rotation (if one was missed while the server was down) or schedules
+   * the next rotation at the configured time.
+   */
   async initialize(): Promise<void> {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
@@ -143,6 +164,7 @@ export class StructurePackRotationService {
     this.scheduleNextRotation(rotationConfig);
   }
 
+  /** Cancels the pending rotation timer, preventing any further automatic rotations. */
   shutdown(): void {
     if (this.nextRotationTimer) {
       clearTimeout(this.nextRotationTimer);
@@ -151,9 +173,18 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Scheduling
+  // SCHEDULING
   // ===========================================================================
 
+  /**
+   * Schedules the next rotation timer using the given config.
+   *
+   * If the computed next time is already in the past (e.g. due to clock skew),
+   * it advances by one full period before scheduling.
+   *
+   * @private
+   * @param rotationConfig - The current rotation configuration
+   */
   private scheduleNextRotation(
     rotationConfig: StructurePackRotationConfig,
   ): void {
@@ -187,6 +218,16 @@ export class StructurePackRotationService {
     );
   }
 
+  /**
+   * Returns the next UTC instant at which a rotation should fire for the given config.
+   *
+   * All wall-clock comparisons are performed in the configured IANA timezone so that
+   * DST transitions do not shift the scheduled time.
+   *
+   * @private
+   * @param cfg - The current rotation configuration
+   * @returns UTC Date of the next scheduled rotation
+   */
   private computeNextRotationTime(cfg: StructurePackRotationConfig): Date {
     const [hours, minutes] = cfg.time.split(":").map(Number);
     const now = new Date();
@@ -298,6 +339,17 @@ export class StructurePackRotationService {
     return target;
   }
 
+  /**
+   * Returns true if a rotation was missed since the last recorded rotation.
+   *
+   * A rotation is considered missed when the elapsed time since `lastRotatedAt`
+   * exceeds one full period plus the configured grace period.
+   *
+   * @private
+   * @param cfg - The current rotation configuration
+   * @param lastRotatedAt - Timestamp of the most recent recorded rotation
+   * @returns Whether a rotation should have fired and was missed
+   */
   private checkMissedRotation(
     cfg: StructurePackRotationConfig,
     lastRotatedAt: Date,
@@ -311,9 +363,29 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Rotation execution
+  // ROTATION EXECUTION
   // ===========================================================================
 
+  /**
+   * Executes a full rotation cycle.
+   *
+   * Workflow steps:
+   * 1. Guard against concurrent rotations
+   * 2. Fetch eligible packs and compute selection weights
+   * 3. Select the incoming pack via weighted-random draw
+   * 4. Download and cache any uncached mod files from CurseForge
+   * 5. Remove outgoing pack's mods and install the incoming pack's mods on the server
+   * 6. Swap the active pack flag and record the rotation in the database
+   * 7. Clear boost units consumed during this cycle
+   * 8. Schedule the next rotation
+   *
+   * On any file-operations failure the rotation is recorded as failed and the
+   * next rotation is still scheduled. On unexpected errors the timer is also
+   * rescheduled so the service recovers automatically.
+   *
+   * @param _manual - Reserved for future use to distinguish manual vs automatic triggers
+   * @returns Promise that resolves when the rotation (or its failure path) is complete
+   */
   async executeRotation(_manual = false): Promise<void> {
     if (this.rotationInProgress) {
       throw new BadRequestError("A rotation is already in progress");
@@ -461,9 +533,25 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Weight computation
+  // WEIGHT COMPUTATION
   // ===========================================================================
 
+  /**
+   * Computes a selection weight for each eligible pack.
+   *
+   * Weight formula per pack:
+   *   `timeFactor * timeWeightMultiplier + boostUnits * boostWeightPerUnit`
+   *
+   * where `timeFactor` is the number of reference weeks (7 days) since the pack was
+   * last active. Packs that have never been active default to 4 elapsed weeks so they
+   * are reasonably competitive on their first rotation.
+   *
+   * @param packs - Eligible packs to weight
+   * @param boosts - Map of packId → total boost units purchased this cycle
+   * @param timeWeightMultiplier - Scalar applied to the time component
+   * @param boostWeightPerUnit - Scalar applied to each boost unit
+   * @returns Array of weight entries, one per pack, in the same order as `packs`
+   */
   computeWeights(
     packs: StructurePack[],
     boosts: Map<number, number>,
@@ -492,6 +580,12 @@ export class StructurePackRotationService {
     });
   }
 
+  /**
+   * Selects a pack ID from the weight entries using weighted-random sampling.
+   *
+   * @param weights - Non-empty array of weight entries produced by `computeWeights`
+   * @returns The packId of the selected entry
+   */
   selectWeightedRandom(weights: WeightEntry[]): number {
     const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
     let random = Math.random() * totalWeight;
@@ -506,9 +600,18 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Mod file caching
+  // MOD FILE CACHING
   // ===========================================================================
 
+  /**
+   * Returns the absolute path to the mod file cache directory.
+   *
+   * Uses the configured local server path when available; falls back to a
+   * `.structure-pack-cache` folder in the process working directory for SFTP mode.
+   *
+   * @private
+   * @returns Absolute path to the cache directory
+   */
   private getCacheDir(): string {
     const localPath = getLocalPath();
     if (localPath) {
@@ -518,10 +621,28 @@ export class StructurePackRotationService {
     return path.join(process.cwd(), ".structure-pack-cache");
   }
 
+  /**
+   * Returns the full path to a specific mod file within the cache directory.
+   *
+   * @private
+   * @param fileName - The mod's filename (e.g. `structurized-1.20.jar`)
+   * @returns Absolute path to the cached file
+   */
   private getCachePath(fileName: string): string {
     return path.join(this.getCacheDir(), fileName);
   }
 
+  /**
+   * Downloads any mods not already present in the local cache.
+   *
+   * Creates the cache directory if it does not exist, then iterates the provided
+   * mod list, skipping files that are already cached and downloading the rest
+   * from CurseForge.
+   *
+   * @private
+   * @param mods - List of mods to ensure are cached
+   * @returns Promise that resolves when all mods are available in the cache
+   */
   private async ensureModsCached(mods: StructurePackMod[]): Promise<void> {
     const cacheDir = this.getCacheDir();
     await fs.mkdir(cacheDir, { recursive: true });
@@ -547,9 +668,20 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Boost management
+  // BOOST MANAGEMENT
   // ===========================================================================
 
+  /**
+   * Records a player's boost purchase for a structure pack in the current cycle.
+   *
+   * Validates that the target pack is available and not currently active, deducts
+   * the cost from the player's balance, then creates the boost record.
+   *
+   * @param discordId - Discord ID of the purchasing player
+   * @param packId - ID of the pack to boost
+   * @param units - Number of boost units to purchase
+   * @returns The created boost record
+   */
   async purchaseBoost(
     discordId: string,
     packId: number,
@@ -586,6 +718,12 @@ export class StructurePackRotationService {
     });
   }
 
+  /**
+   * Returns all boost records placed by a player during the current rotation cycle.
+   *
+   * @param discordId - Discord ID of the player
+   * @returns List of boost records for the current cycle
+   */
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
@@ -596,6 +734,14 @@ export class StructurePackRotationService {
     );
   }
 
+  /**
+   * Returns each eligible pack together with its current computed weight and
+   * accumulated boost units for the active cycle.
+   *
+   * Intended for UI display so players can see how their boosts affect selection odds.
+   *
+   * @returns Array of objects containing the pack, its total weight, and boost unit count
+   */
   async getPoolWithWeights(): Promise<
     Array<{ pack: StructurePack; weight: number; boostUnits: number }>
   > {
@@ -627,13 +773,21 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Config
+  // CONFIG
   // ===========================================================================
 
+  /** Returns the current rotation configuration, creating the default record if none exists. */
   async getConfig(): Promise<StructurePackRotationConfig> {
     return Q.structure.pack.rotation.config.getOrCreateDefault();
   }
 
+  /**
+   * Persists partial updates to the rotation configuration and immediately
+   * reschedules the next rotation to reflect the new settings.
+   *
+   * @param data - Fields to update; unspecified fields retain their current values
+   * @returns The updated rotation configuration
+   */
   async updateConfig(
     data: Partial<
       Pick<
@@ -664,9 +818,16 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // History
+  // HISTORY
   // ===========================================================================
 
+  /**
+   * Returns a paginated list of past rotation records, ordered most-recent first.
+   *
+   * @param limit - Maximum number of records to return (default 20)
+   * @param offset - Number of records to skip for pagination (default 0)
+   * @returns Object containing the result rows and the total count of all rotations
+   */
   async getRotationHistory(
     limit = 20,
     offset = 0,
@@ -682,9 +843,20 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // Helpers
+  // HELPERS
   // ===========================================================================
 
+  /**
+   * Returns the UTC start timestamp of the current rotation cycle.
+   *
+   * The cycle start is the most recent past occurrence of the configured
+   * rotation time (daily, weekly, or monthly). Boost purchases are scoped
+   * to this timestamp so they expire automatically after a rotation fires.
+   *
+   * @private
+   * @param cfg - The current rotation configuration
+   * @returns UTC Date representing the start of the active cycle
+   */
   private computeCycleStart(cfg: StructurePackRotationConfig): Date {
     const [hours, minutes] = cfg.time.split(":").map(Number);
     const now = new Date();
@@ -795,6 +967,12 @@ export class StructurePackRotationService {
     return cycleStart;
   }
 
+  /**
+   * Returns the most recent rotation record, or null if no rotations have occurred.
+   *
+   * @private
+   * @returns The latest rotation record, or null
+   */
   private async getLastRotation() {
     const rotations = await Q.structure.pack.rotation.findAll(
       {},
@@ -803,6 +981,17 @@ export class StructurePackRotationService {
     return rotations[0] ?? null;
   }
 
+  /**
+   * Persists a rotation attempt to the database.
+   *
+   * @private
+   * @param outgoingPackId - ID of the pack that was active before this rotation, or null if none
+   * @param incomingPackId - ID of the pack selected for this rotation
+   * @param success - Whether the rotation completed without errors
+   * @param failureReason - Human-readable error message when `success` is false, otherwise null
+   * @param weights - Optional weight snapshot taken at selection time, stored for auditing
+   * @returns Promise that resolves when the record has been written
+   */
   private async recordRotation(
     outgoingPackId: number | null,
     incomingPackId: number,

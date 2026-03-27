@@ -11,10 +11,22 @@ import {
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation";
 
+/** Resolves the structure pack rotation service from the DI container */
 async function getRotationService(): Promise<StructurePackRotationService> {
   return getService(Services.STRUCTURE_PACK_ROTATION);
 }
 
+/**
+ * Admin Structure Packs Router
+ *
+ * Manages structure packs and their weekly rotation schedule:
+ * - CRUD for structure packs (create, read, update, soft-delete)
+ * - Mod management: add/remove CurseForge mods linked to a pack
+ * - CurseForge integration: search mods and browse available files
+ * - Dependency resolution: inspect and validate inter-mod dependencies
+ * - Rotation control: trigger manual rotations and paginate rotation history
+ * - Rotation config: read and update the rotation schedule settings
+ */
 export const adminStructurePacksRouter = router({
   list: adminProcedure
     .meta({ description: "List all structure packs with their mods" })

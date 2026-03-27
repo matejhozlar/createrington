@@ -58,6 +58,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
+/** Detail view for a single structure pack — displays pack metadata, mod list, and dialogs for adding/removing mods with dependency resolution */
 export function StructurePackDetail() {
   const { id } = useParams<{ id: string }>();
   const packId = parseInt(id ?? "0", 10);
@@ -124,6 +125,7 @@ export function StructurePackDetail() {
     const set = new Set<number>();
     for (const dep of depsQuery.data) {
       const rel = selectedFile.dependencies.find((d) => d.modId === dep.modId);
+      // relationType 3 = Required in the CurseForge API
       if (rel?.relationType === 3 && !dep.inPack && dep.bestFile) {
         set.add(dep.modId);
       }
@@ -150,7 +152,6 @@ export function StructurePackDetail() {
 
   const selectedRemoveDeps = removeDepOverrides ?? defaultRemoveSelection;
 
-  // Mutations
   const updateMutation = trpc.admin.structurePacks.update.useMutation({
     onSuccess: () => {
       toast.success("Pack updated");
@@ -192,8 +193,15 @@ export function StructurePackDetail() {
     onError: (err) => toast.error(err.message),
   });
 
-  // Batch add handler
   const [addingBatch, setAddingBatch] = useState(false);
+
+  /**
+   * Adds the selected mod and any checked dependencies to the pack in sequence.
+   *
+   * The primary mod is added first, then each selected dependency is added
+   * individually. Failures on individual deps are swallowed so the remaining
+   * mods still get added.
+   */
   const handleBatchAdd = async () => {
     if (!selectedFile || !selectedModId) return;
     setAddingBatch(true);
@@ -242,8 +250,14 @@ export function StructurePackDetail() {
     }
   };
 
-  // Batch remove handler
   const [removingBatch, setRemovingBatch] = useState(false);
+
+  /**
+   * Removes the targeted mod and any checked safe dependencies from the pack.
+   *
+   * Dependencies are removed first so the target mod's removal doesn't cause
+   * constraint issues. Failures on individual dep removals are swallowed.
+   */
   const handleBatchRemove = async () => {
     if (!removeDialog) return;
     setRemovingBatch(true);
@@ -749,6 +763,7 @@ export function StructurePackDetail() {
               const relType = selectedFile?.dependencies.find(
                 (d) => d.modId === dep.modId,
               )?.relationType;
+              // relationType 3 = Required in the CurseForge API
               const isRequired = relType === 3;
               const isSelected = selectedDeps.has(dep.modId);
               const canSelect = !dep.inPack && !!dep.bestFile;

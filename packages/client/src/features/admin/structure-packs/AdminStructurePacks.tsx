@@ -45,6 +45,7 @@ import { RotationHistory } from "./components/RotationHistory";
 type StatusFilter = "all" | "enabled" | "disabled";
 type ActiveFilter = "all" | "active" | "inactive";
 
+/** Admin page for managing structure packs and their weekly rotation schedule */
 export function AdminStructurePacks() {
   const navigate = useNavigate();
   const toast = useToastActions();

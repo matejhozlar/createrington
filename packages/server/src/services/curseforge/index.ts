@@ -12,6 +12,7 @@ const DEFAULT_GAME_VERSION = "1.21.1";
 const MODPACK_PROJECT_ID = 1316177;
 const MODPACK_CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
+/** Returns the auth and accept headers required for every CurseForge API request */
 function cfHeaders(): Record<string, string> {
   return {
     "x-api-key": config.curseforge.apiKey!,
@@ -19,6 +20,7 @@ function cfHeaders(): Record<string, string> {
   };
 }
 
+/** Throws if the CurseForge API key is missing from config */
 function ensureApiKey(): void {
   if (!config.curseforge.apiKey) {
     throw new Error("CurseForge API key not configured");
@@ -79,6 +81,13 @@ export interface RemovableDep {
 // API functions
 // =============================================================================
 
+/**
+ * Search CurseForge mods by name, filtered to NeoForge mods for the default game version
+ *
+ * @param query - Search string to filter mods by name
+ * @param pageSize - Maximum number of results to return (default: 50)
+ * @returns List of matching mods, each annotated with whether it is already in the modpack
+ */
 export async function searchMods(
   query: string,
   pageSize = 50,
@@ -128,6 +137,12 @@ export async function searchMods(
   }));
 }
 
+/**
+ * Fetch detailed metadata for a single mod by its CurseForge project ID
+ *
+ * @param modId - CurseForge project ID of the mod
+ * @returns Mod detail including summary, download count, and thumbnail
+ */
 export async function getMod(modId: number): Promise<CurseForgeModDetail> {
   ensureApiKey();
 
@@ -162,6 +177,15 @@ export async function getMod(modId: number): Promise<CurseForgeModDetail> {
   };
 }
 
+/**
+ * Fetch the available files for a mod, filtered by game version and NeoForge loader
+ *
+ * Only required (relationType 2) and optional (relationType 3) dependencies are included.
+ *
+ * @param modId - CurseForge project ID of the mod
+ * @param gameVersion - Minecraft version to filter files by (default: 1.21.1)
+ * @returns List of mod files with their metadata and filtered dependencies
+ */
 export async function getModFiles(
   modId: number,
   gameVersion = DEFAULT_GAME_VERSION,
@@ -205,6 +229,13 @@ export async function getModFiles(
   }));
 }
 
+/**
+ * Fetch the direct download URL for a specific mod file
+ *
+ * @param modId - CurseForge project ID of the mod
+ * @param fileId - CurseForge file ID to get the download URL for
+ * @returns Direct download URL string
+ */
 export async function getModFileDownloadUrl(
   modId: number,
   fileId: number,
@@ -231,8 +262,15 @@ export async function getModFileDownloadUrl(
 // =============================================================================
 
 /**
- * Resolve dependency mod IDs to display info (name, thumbnail, best compatible file).
- * Also checks whether each dependency is already present in a given pack.
+ * Resolve a list of dependency mod IDs to their display info and best compatible file
+ *
+ * Checks whether each dependency is already present in the given pack mod set.
+ * Best file selection prefers NeoForge + default game version, falling back to
+ * game version alone when no loader-specific file is available.
+ *
+ * @param modIds - CurseForge project IDs to resolve
+ * @param packModIds - Set of mod IDs already present in the modpack
+ * @returns Resolved dependency info including name, thumbnail, pack membership, and best file
  */
 export async function resolveDependencies(
   modIds: number[],
@@ -293,8 +331,12 @@ export async function resolveDependencies(
 }
 
 /**
- * Fetch dependency info for multiple files by their file IDs.
- * Returns modId and filtered dependencies (required + optional) for each file.
+ * Fetch dependency info for multiple mod files in a single batch request
+ *
+ * Only required (relationType 2) and optional (relationType 3) dependencies are returned.
+ *
+ * @param fileIds - CurseForge file IDs to look up
+ * @returns Per-file records containing the owning mod ID and its filtered dependencies
  */
 export async function getFilesDependencies(fileIds: number[]): Promise<
   Array<{
@@ -342,8 +384,12 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
 let modpackCache: { modIds: Set<number>; fetchedAt: number } | null = null;
 
 /**
- * Returns the set of CurseForge mod project IDs in the latest published modpack.
- * Downloads the modpack zip, parses manifest.json, and caches for 1 hour.
+ * Returns the set of CurseForge mod project IDs present in the latest published modpack
+ *
+ * Downloads the modpack zip, parses `manifest.json`, and caches the result for 1 hour.
+ * Prefers the server pack file when available, falling back to the client pack.
+ *
+ * @returns Set of CurseForge project IDs included in the modpack
  */
 export async function getModpackModIds(): Promise<Set<number>> {
   if (modpackCache && Date.now() - modpackCache.fetchedAt < MODPACK_CACHE_TTL) {
@@ -409,6 +455,15 @@ export async function getModpackModIds(): Promise<Set<number>> {
 // File downloads
 // =============================================================================
 
+/**
+ * Download a mod file from CurseForge and save it to disk using a stream pipeline
+ *
+ * @param modId - CurseForge project ID of the mod
+ * @param fileId - CurseForge file ID to download
+ * @param destDir - Directory to write the file into (created if it does not exist)
+ * @param fileName - Name to give the saved file
+ * @returns Absolute path to the downloaded file
+ */
 export async function downloadModFile(
   modId: number,
   fileId: number,
