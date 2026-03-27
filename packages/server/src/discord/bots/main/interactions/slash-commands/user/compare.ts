@@ -1,4 +1,4 @@
-import { playerRepo } from "@/db";
+import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
@@ -125,12 +125,30 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const bal1 = details1.balance
-        ? BalanceUtils.formatTrimmed(details1.balance.balance)
-        : "0";
-      const bal2 = details2.balance
-        ? BalanceUtils.formatTrimmed(details2.balance.balance)
-        : "0";
+      const tokens = await Q.crypto.token.where({}).all();
+      const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+
+      const computeNetworth = async (
+        details: typeof details1,
+      ): Promise<string> => {
+        const cash = details.balance
+          ? BalanceUtils.fromStorage(details.balance.balance)
+          : 0;
+        const holdings = await Q.crypto.holding
+          .where({ playerMinecraftUuid: details.player.minecraftUuid })
+          .all();
+        const cryptoValue = holdings.reduce((sum, h) => {
+          const price = tokenPriceMap.get(h.tokenId) ?? 0;
+          return sum + price * Number(h.amount);
+        }, 0);
+        const total = cash + cryptoValue;
+        return total.toFixed(3).replace(/\.?0+$/, "") || "0";
+      };
+
+      const [nw1, nw2] = await Promise.all([
+        computeNetworth(details1),
+        computeNetworth(details2),
+      ]);
 
       const pt1 = formatPlaytime(details1.playtime.totalSeconds);
       const pt2 = formatPlaytime(details2.playtime.totalSeconds);
@@ -142,7 +160,7 @@ export async function execute(
       const joined2 = Math.floor(details2.player.createdAt.getTime() / 1000);
 
       const embed = EmbedPresets.info(`${name1} vs ${name2}`)
-        .field("Balance", `${name1}: $${bal1}\n${name2}: $${bal2}`, true)
+        .field("Networth", `${name1}: $${nw1}\n${name2}: $${nw2}`, true)
         .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
         .field("\u200b", "\u200b") // line break
         .field(

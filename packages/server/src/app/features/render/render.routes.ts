@@ -66,21 +66,44 @@ router.get(
       playerRepo.getDetailed({ discordId: player2 }),
     ]);
 
-    const mapPlayer = (details: typeof details1) => ({
-      username: details.player.minecraftUsername,
-      uuid: details.player.minecraftUuid,
-      balance: details.balance
-        ? BalanceUtils.formatTrimmed(details.balance.balance)
-        : "0",
-      playtime: formatPlaytime(details.playtime.totalSeconds),
-      playtimeSeconds: details.playtime.totalSeconds,
-      sessions: details.playtime.totalSessions,
-      memberSince: details.player.createdAt.toISOString(),
-    });
+    const tokens = await Q.crypto.token.where({}).all();
+    const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+
+    const computeCryptoValue = async (uuid: string) => {
+      const holdings = await Q.crypto.holding
+        .where({ playerMinecraftUuid: uuid })
+        .all();
+      return holdings.reduce((sum, h) => {
+        const price = tokenPriceMap.get(h.tokenId) ?? 0;
+        return sum + price * Number(h.amount);
+      }, 0);
+    };
+
+    const [crypto1, crypto2] = await Promise.all([
+      computeCryptoValue(details1.player.minecraftUuid),
+      computeCryptoValue(details2.player.minecraftUuid),
+    ]);
+
+    const mapPlayer = (details: typeof details1, cryptoValue: number) => {
+      const cashBalance = details.balance
+        ? BalanceUtils.fromStorage(details.balance.balance)
+        : 0;
+      const networth = cashBalance + cryptoValue;
+      const formatted = networth.toFixed(3).replace(/\.?0+$/, "") || "0";
+      return {
+        username: details.player.minecraftUsername,
+        uuid: details.player.minecraftUuid,
+        networth: formatted,
+        playtime: formatPlaytime(details.playtime.totalSeconds),
+        playtimeSeconds: details.playtime.totalSeconds,
+        sessions: details.playtime.totalSessions,
+        memberSince: details.player.createdAt.toISOString(),
+      };
+    };
 
     res.json({
-      player1: mapPlayer(details1),
-      player2: mapPlayer(details2),
+      player1: mapPlayer(details1, crypto1),
+      player2: mapPlayer(details2, crypto2),
     });
   }),
 );
