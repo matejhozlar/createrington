@@ -70,15 +70,45 @@ interface ServerStatusSingleProps {
   isCollapsed: boolean;
 }
 
+const MAINTENANCE_VISIBLE_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+function useIsWithinWindow(schedule: ScheduledMaintenance | null): boolean {
+  const [within, setWithin] = React.useState(() => {
+    if (!schedule || schedule.status !== "scheduled") return false;
+    return (
+      new Date(schedule.scheduledAt).getTime() - Date.now() <=
+      MAINTENANCE_VISIBLE_MS
+    );
+  });
+
+  React.useEffect(() => {
+    if (!schedule || schedule.status !== "scheduled") {
+      setWithin(false);
+      return;
+    }
+
+    const check = () => {
+      const remaining = new Date(schedule.scheduledAt).getTime() - Date.now();
+      setWithin(remaining <= MAINTENANCE_VISIBLE_MS);
+    };
+
+    check();
+    const id = setInterval(check, 60_000); // recheck every minute
+    return () => clearInterval(id);
+  }, [schedule]);
+
+  return within;
+}
+
 function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
-  const hasSchedule = server.scheduledMaintenance?.status === "scheduled";
+  const isWithinWindow = useIsWithinWindow(server.scheduledMaintenance);
   const countdown = useCountdown(
-    hasSchedule ? server.scheduledMaintenance!.scheduledAt : null,
+    isWithinWindow ? server.scheduledMaintenance!.scheduledAt : null,
   );
 
   const statusLabel = server.maintenance
     ? "Maintenance"
-    : hasSchedule && countdown && countdown !== "Ended"
+    : isWithinWindow && countdown && countdown !== "Ended"
       ? `Maintenance in ${countdown}`
       : server.online
         ? "Online"
@@ -93,9 +123,9 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
             "bg-amber-500 shadow shadow-amber-500 animate-pulse":
               server.maintenance,
             "animate-maintenance-pulse shadow":
-              !server.maintenance && hasSchedule && server.online,
+              !server.maintenance && isWithinWindow && server.online,
             "bg-green-500 shadow shadow-green-500 animate-pulse":
-              !server.maintenance && !hasSchedule && server.online,
+              !server.maintenance && !isWithinWindow && server.online,
             "bg-destructive shadow shadow-destructive":
               !server.maintenance && !server.online,
             "size-4": isCollapsed,
@@ -106,9 +136,9 @@ function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {
         {!isCollapsed && (
           <span
             className={cn("text-base font-semibold whitespace-nowrap", {
-              "text-amber-500": server.maintenance || hasSchedule,
+              "text-amber-500": server.maintenance || isWithinWindow,
               "text-green-500":
-                !server.maintenance && !hasSchedule && server.online,
+                !server.maintenance && !isWithinWindow && server.online,
               "text-destructive": !server.maintenance && !server.online,
             })}
           >
