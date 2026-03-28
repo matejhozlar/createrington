@@ -70,8 +70,8 @@ export function MaintenanceAnnouncement() {
   const [type, setType] = useState<MaintenanceType>("maintenance");
   const [startsAt, setStartsAt] = useState(() => {
     const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
   });
   const [estimatedMinutes, setEstimatedMinutes] = useState("");
 

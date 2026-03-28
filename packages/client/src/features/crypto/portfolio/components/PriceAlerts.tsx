@@ -17,6 +17,64 @@ import {
 import { Bell, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
+function AlertRow({
+  alert,
+  onDeleted,
+}: {
+  alert: {
+    id: number;
+    tokenSymbol: string;
+    direction: "above" | "below";
+    targetPrice: string;
+    currentPrice?: string;
+  };
+  onDeleted: () => void;
+}) {
+  const deleteMutation = trpc.user.crypto.alertDelete.useMutation({
+    onSuccess: onDeleted,
+  });
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border bg-card/50 px-3 py-2.5">
+      <div className="flex items-center gap-3">
+        <span className="font-medium text-sm">{alert.tokenSymbol}</span>
+        <span
+          className={cn(
+            "flex items-center gap-1 text-xs font-medium",
+            alert.direction === "above"
+              ? "text-emerald-400"
+              : "text-destructive",
+          )}
+        >
+          {alert.direction === "above" ? (
+            <ArrowUp className="size-3" />
+          ) : (
+            <ArrowDown className="size-3" />
+          )}
+          {alert.direction === "above" ? "Above" : "Below"}
+        </span>
+        <span className="font-mono tabular-nums text-sm">
+          ${Number(alert.targetPrice).toFixed(4)}
+        </span>
+        {alert.currentPrice !== undefined && (
+          <span className="font-mono tabular-nums text-xs text-muted-foreground">
+            (now: ${Number(alert.currentPrice).toFixed(4)})
+          </span>
+        )}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7 text-muted-foreground hover:text-destructive"
+        onClick={() => deleteMutation.mutate({ alertId: alert.id })}
+        disabled={deleteMutation.isPending}
+      >
+        <Trash2 className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 export function PriceAlerts() {
   const { user } = useAuth();
   const toast = useToastActions();
@@ -42,13 +100,10 @@ export function PriceAlerts() {
     onError: (err) => toast.error(err.message),
   });
 
-  const deleteMutation = trpc.user.crypto.alertDelete.useMutation({
-    onSuccess: () => {
-      toast.success("Price alert deleted");
-      utils.user.crypto.alertList.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const onAlertDeleted = () => {
+    toast.success("Price alert deleted");
+    utils.user.crypto.alertList.invalidate();
+  };
 
   const handleCreate = () => {
     const trimmedSymbol = symbol.trim();
@@ -170,48 +225,11 @@ export function PriceAlerts() {
         ) : (
           <div className="space-y-2">
             {alerts.map((alert) => (
-              <div
+              <AlertRow
                 key={alert.id}
-                className="flex items-center justify-between rounded-xl border bg-card/50 px-3 py-2.5"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-sm">
-                    {alert.tokenSymbol}
-                  </span>
-                  <span
-                    className={cn(
-                      "flex items-center gap-1 text-xs font-medium",
-                      alert.direction === "above"
-                        ? "text-emerald-400"
-                        : "text-destructive",
-                    )}
-                  >
-                    {alert.direction === "above" ? (
-                      <ArrowUp className="size-3" />
-                    ) : (
-                      <ArrowDown className="size-3" />
-                    )}
-                    {alert.direction === "above" ? "Above" : "Below"}
-                  </span>
-                  <span className="font-mono tabular-nums text-sm">
-                    ${Number(alert.targetPrice).toFixed(4)}
-                  </span>
-                  {alert.currentPrice !== undefined && (
-                    <span className="font-mono tabular-nums text-xs text-muted-foreground">
-                      (now: ${Number(alert.currentPrice).toFixed(4)})
-                    </span>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7 text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteMutation.mutate({ alertId: alert.id })}
-                  disabled={deleteMutation.isPending}
-                >
-                  <Trash2 className="size-3.5" />
-                </Button>
-              </div>
+                alert={alert}
+                onDeleted={onAlertDeleted}
+              />
             ))}
           </div>
         )}

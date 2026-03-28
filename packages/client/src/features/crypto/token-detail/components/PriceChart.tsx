@@ -169,8 +169,12 @@ function CandlestickChart({ data }: { data: ChartDataPoint[] }) {
   }, []);
 
   useEffect(() => {
-    if (!candleSeriesRef.current || !volumeSeriesRef.current || data.length < 2)
+    if (!candleSeriesRef.current || !volumeSeriesRef.current) return;
+    if (data.length < 2) {
+      candleSeriesRef.current.setData([]);
+      volumeSeriesRef.current.setData([]);
       return;
+    }
 
     const candleData: CandlestickData<Time>[] = data.map((d) => ({
       time: d.time as Time,

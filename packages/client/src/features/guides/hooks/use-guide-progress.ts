@@ -25,6 +25,7 @@ export function useGuideProgress(slug: string) {
   );
 
   const clearProgress = useCallback(() => {
+    setCurrentStepState(0);
     try {
       localStorage.removeItem(`${STORAGE_PREFIX}${slug}`);
     } catch {

@@ -32,7 +32,7 @@ export function AdminPlayerProvider({ children }: AdminPlayerProviderProps) {
   const getPlayerServerId = useCallback(
     (minecraftUuid: string): number | null => {
       const player = onlinePlayers.find((p) => p.uuid === minecraftUuid);
-      return player?.serverId || null;
+      return player?.serverId ?? null;
     },
     [onlinePlayers],
   );
