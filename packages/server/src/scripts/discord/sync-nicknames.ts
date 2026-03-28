@@ -59,13 +59,11 @@ async function syncNicknames(): Promise<void> {
         continue;
       }
 
-      queue.add(
-        `${member.user.tag} → ${player.minecraftUsername}`,
-        () =>
-          member.setNickname(
-            player.minecraftUsername,
-            "Bulk sync: set to MC username",
-          ),
+      queue.add(`${member.user.tag} → ${player.minecraftUsername}`, () =>
+        member.setNickname(
+          player.minecraftUsername,
+          "Bulk sync: set to MC username",
+        ),
       );
     }
 
