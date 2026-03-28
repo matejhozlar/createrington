@@ -248,6 +248,17 @@ export async function execute(
       Discord.Roles.COGS_AND_STEAM,
     ]);
 
+    // Set Discord nickname to Minecraft username
+    try {
+      await member.setNickname(correctName, "Registration: sync to MC name");
+    } catch (err) {
+      // Nickname change can fail if the bot lacks permissions for the user
+      // (e.g. server owner). Non-fatal — registration still succeeds.
+      logger.warn(
+        `Could not set nickname for ${member.user.tag}: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
     steps[currentStep].completed = true;
 
     await interaction.editReply({
