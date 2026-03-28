@@ -263,6 +263,14 @@ export const adminStructurePacksRouter = router({
       return { triggered: true };
     }),
 
+  clearRotation: adminProcedure
+    .meta({ description: "Clear the current rotation and remove active mods" })
+    .mutation(async () => {
+      const service = await getRotationService();
+      await service.clearRotation();
+      return { cleared: true };
+    }),
+
   rotationHistory: adminProcedure
     .meta({ description: "Get paginated rotation history" })
     .input(z.object({ ...paginationInput() }))

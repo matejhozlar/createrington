@@ -1011,6 +1011,45 @@ export class StructurePackRotationService {
   }
 
   /**
+   * Clears the current rotation by deactivating the active pack and removing
+   * its mod files from the server. Cycle boosts are also cleared.
+   *
+   * This is a manual admin action — it does not record a rotation history entry
+   * since there is no incoming pack.
+   */
+  async clearRotation(): Promise<void> {
+    const activePack = await this.packService.getActivePack();
+    if (!activePack) {
+      throw new BadRequestError("No active structure pack to clear");
+    }
+
+    // Remove mod files from the server
+    if (isFileOpsAllowed()) {
+      for (const mod of activePack.mods) {
+        const modPath = `${MODS_DIR}/${mod.fileName}`;
+        if (await fileExists(modPath)) {
+          await deleteFile(modPath);
+          logger.info(`Removed mod file: ${mod.fileName}`);
+        }
+      }
+    } else {
+      logger.info(
+        "File ops not available — rotation cleared without file changes",
+      );
+    }
+
+    // Deactivate the pack
+    await Q.structure.pack.update({ id: activePack.id }, { isActive: false });
+
+    // Clear cycle boosts
+    const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
+    const cycleStart = this.computeCycleStart(cfg);
+    await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
+
+    logger.info(`Rotation cleared: deactivated pack "${activePack.name}"`);
+  }
+
+  /**
    * Validates that a mod's CurseForge download URL is resolvable.
    * Call this when adding a mod to a pack to fail early rather than at rotation time.
    */
