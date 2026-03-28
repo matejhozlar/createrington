@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { isProduction } from "@/lib/utils";
 
 const tools = [
   {
@@ -28,6 +29,7 @@ const tools = [
       "Manage weekly rotating structure packs. Create mod collections from CurseForge and configure the rotation schedule.",
     icon: Blocks,
     href: "/admin/tools/structure-packs",
+    devOnly: true,
   },
   {
     title: "FAQ Auto-Responder",
@@ -120,24 +122,26 @@ export function AdminTools() {
         </div>
 
         <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.href}
-              type="button"
-              onClick={() => navigate(tool.href)}
-              className="group cursor-pointer rounded-lg border border-border bg-card p-6 text-left transition-colors hover:bg-accent"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <tool.icon className="size-5" />
+          {tools
+            .filter((t) => !isProduction || !t.devOnly)
+            .map((tool) => (
+              <button
+                key={tool.href}
+                type="button"
+                onClick={() => navigate(tool.href)}
+                className="group cursor-pointer rounded-lg border border-border bg-card p-6 text-left transition-colors hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <tool.icon className="size-5" />
+                  </div>
+                  <h2 className="text-lg font-semibold">{tool.title}</h2>
                 </div>
-                <h2 className="text-lg font-semibold">{tool.title}</h2>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {tool.description}
-              </p>
-            </button>
-          ))}
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {tool.description}
+                </p>
+              </button>
+            ))}
         </div>
       </div>
     </div>
