@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft, Check } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 type StepSidebarProps = {
@@ -26,7 +27,7 @@ export function StepSidebar({
           </Link>
         </li>
         <li>
-          <hr className="border-border my-1" />
+          <Separator className="my-1" />
         </li>
         {steps.map((step, index) => {
           const isCompleted = index < currentStep;

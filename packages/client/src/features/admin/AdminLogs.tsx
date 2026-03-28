@@ -50,6 +50,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Search,
   Filter,
   FileText,
@@ -408,15 +413,19 @@ export function AdminLogs() {
                         </TableCell>
                         <TableCell className="px-4">
                           {action.metadata != null && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="size-8 p-0"
-                              onClick={() => setMetadataAction(action)}
-                              title="View metadata"
-                            >
-                              <Info className="size-4 text-muted-foreground" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="size-8 p-0"
+                                  onClick={() => setMetadataAction(action)}
+                                >
+                                  <Info className="size-4 text-muted-foreground" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>View metadata</TooltipContent>
+                            </Tooltip>
                           )}
                         </TableCell>
                       </TableRow>

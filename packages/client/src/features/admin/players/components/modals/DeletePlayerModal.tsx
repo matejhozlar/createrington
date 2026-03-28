@@ -12,8 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
@@ -39,8 +45,6 @@ export function DeletePlayerModal({
   const [reason, setReason] = useState("");
   const [confirmText, setConfirmText] = useState("");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-
-  if (!open) return null;
 
   const handleDeleteClick = () => {
     if (!reason.trim()) {
@@ -80,38 +84,24 @@ export function DeletePlayerModal({
 
   return (
     <>
-      <div
-        className={cn(
-          "fixed inset-0 z-50 flex items-center justify-center bg-black/50",
-        )}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            onClose();
-          }
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) onClose();
         }}
       >
-        <div className="w-full max-w-md rounded-lg border border-destructive bg-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-destructive">
+        <DialogContent className="border-destructive sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
               Delete Player
-            </h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="cursor-pointer"
-              aria-label="Close"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-
-          <p className="mb-4 text-sm text-muted-foreground">
-            This will permanently delete all data for{" "}
-            <span className="font-semibold">{player.minecraftUsername}</span>{" "}
-            including balance, sessions, tickets, and strikes. This action
-            cannot be undone.
-          </p>
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently delete all data for{" "}
+              <span className="font-semibold">{player.minecraftUsername}</span>{" "}
+              including balance, sessions, tickets, and strikes. This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
 
           <div className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/50 p-4">
@@ -151,28 +141,28 @@ export function DeletePlayerModal({
                 onChange={(e) => setReason(e.target.value)}
               />
             </Field>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                className="flex-1 cursor-pointer"
-                onClick={onClose}
-                disabled={deletePlayer.isPending}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1 cursor-pointer"
-                onClick={handleDeleteClick}
-                disabled={!reason.trim() || deletePlayer.isPending}
-              >
-                Delete Player
-              </Button>
-            </div>
           </div>
-        </div>
-      </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="flex-1 cursor-pointer"
+              onClick={onClose}
+              disabled={deletePlayer.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1 cursor-pointer"
+              onClick={handleDeleteClick}
+              disabled={!reason.trim() || deletePlayer.isPending}
+            >
+              Delete Player
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

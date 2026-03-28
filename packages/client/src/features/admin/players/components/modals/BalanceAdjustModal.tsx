@@ -2,7 +2,14 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { X, Plus, Minus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Minus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
@@ -27,8 +34,6 @@ export function BalanceAdjustModal({
   const toast = useToastActions();
   const adjustBalance = trpc.admin.players.balance.adjust.useMutation();
 
-  if (!open) return null;
-
   const handleSubmit = async () => {
     if (!amount || !reason) return;
 
@@ -50,19 +55,16 @@ export function BalanceAdjustModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Adjust Balance</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="cursor-pointer"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Adjust Balance</DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4">
           <Field>
@@ -107,25 +109,25 @@ export function BalanceAdjustModal({
               onChange={(e) => setReason(e.target.value)}
             />
           </Field>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 cursor-pointer"
-              onClick={handleSubmit}
-              disabled={!amount || !reason || adjustBalance.isPending}
-            >
-              {adjustBalance.isPending ? "Adjusting..." : "Confirm"}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 cursor-pointer"
+            onClick={handleSubmit}
+            disabled={!amount || !reason || adjustBalance.isPending}
+          >
+            {adjustBalance.isPending ? "Adjusting..." : "Confirm"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

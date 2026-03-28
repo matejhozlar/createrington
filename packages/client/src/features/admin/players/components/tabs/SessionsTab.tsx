@@ -6,6 +6,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
@@ -81,24 +89,25 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {/* Header */}
-      <div className="border-b border-border p-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold">
-            Session History ({total.toLocaleString()})
-          </h2>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => sessionsQuery.refetch()}
-            disabled={loading}
-            className="cursor-pointer"
-          >
-            <Clock className="size-4" />
-            {loading ? "Loading..." : "Refresh"}
-          </Button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Session History</h3>
+          <p className="text-sm text-muted-foreground">
+            {total.toLocaleString()} total
+          </p>
         </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => sessionsQuery.refetch()}
+          disabled={loading}
+          className="cursor-pointer"
+        >
+          <Clock className="size-4" />
+          {loading ? "Loading..." : "Refresh"}
+        </Button>
       </div>
 
       {loading ? (
@@ -125,95 +134,85 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
       ) : (
         <>
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="border-b border-border bg-sidebar-accent/50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Server
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Joined
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">
-                    Left
-                  </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium">
-                    Duration
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {sessions.map((session) => {
-                  const serverName = getServerName(session.serverId);
-                  const duration = session.secondsPlayed
-                    ? Number(session.secondsPlayed)
-                    : 0;
-                  const joinedAt = new Date(session.sessionStart);
-                  const leftAt = session.sessionEnd
-                    ? new Date(session.sessionEnd)
-                    : null;
+          <Table>
+            <TableHeader className="bg-sidebar-accent/50">
+              <TableRow>
+                <TableHead className="px-4 py-3">Server</TableHead>
+                <TableHead className="px-4 py-3">Joined</TableHead>
+                <TableHead className="px-4 py-3">Left</TableHead>
+                <TableHead className="px-4 py-3 text-right">Duration</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions.map((session) => {
+                const serverName = getServerName(session.serverId);
+                const duration = session.secondsPlayed
+                  ? Number(session.secondsPlayed)
+                  : 0;
+                const joinedAt = new Date(session.sessionStart);
+                const leftAt = session.sessionEnd
+                  ? new Date(session.sessionEnd)
+                  : null;
 
-                  return (
-                    <tr
-                      key={session.id}
-                      className="transition-colors hover:bg-sidebar-accent/30"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium">{serverName}</p>
-                          {!leftAt && (
-                            <Badge
-                              variant="default"
-                              className="bg-green-500/20 text-green-500"
-                            >
-                              Active
-                            </Badge>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <p className="text-sm text-foreground">
-                          {joinedAt.toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {joinedAt.toLocaleTimeString()}
-                        </p>
-                      </td>
-                      <td className="px-4 py-3">
-                        {leftAt ? (
-                          <>
-                            <p className="text-sm text-foreground">
-                              {leftAt.toLocaleDateString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {leftAt.toLocaleTimeString()}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">—</p>
+                return (
+                  <TableRow
+                    key={session.id}
+                    className="hover:bg-sidebar-accent/30"
+                  >
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{serverName}</p>
+                        {!leftAt && (
+                          <Badge
+                            variant="default"
+                            className="bg-green-500/20 text-green-500"
+                          >
+                            Active
+                          </Badge>
                         )}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <p className="font-semibold">
-                          {duration > 0
-                            ? formatDuration(Number(duration))
-                            : "In progress"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Session #{session.id}
-                        </p>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <p className="text-sm text-foreground">
+                        {joinedAt.toLocaleDateString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {joinedAt.toLocaleTimeString()}
+                      </p>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      {leftAt ? (
+                        <>
+                          <p className="text-sm text-foreground">
+                            {leftAt.toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {leftAt.toLocaleTimeString()}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">—</p>
+                      )}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-right">
+                      <p className="font-semibold">
+                        {duration > 0
+                          ? formatDuration(Number(duration))
+                          : "In progress"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Session #{session.id}
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center gap-4 border-t border-border p-4">
+            <div className="flex items-center gap-4 border-t border-border pt-4">
               <p className="flex-1 text-sm text-muted-foreground">
                 Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
                 of {total} sessions
@@ -276,6 +275,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           )}
         </>
       )}
-    </>
+    </div>
   );
 }

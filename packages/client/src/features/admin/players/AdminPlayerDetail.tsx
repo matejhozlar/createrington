@@ -122,7 +122,6 @@ export function AdminPlayerDetail() {
             ? getServerName(getPlayerServerId(player.player.minecraftUuid)!)
             : null
         }
-        onNavigateBack={() => navigate("/admin/players")}
         onEdit={() => setShowEditModal(true)}
         onDelete={() => setShowDeleteModal(true)}
       />
@@ -134,7 +133,7 @@ export function AdminPlayerDetail() {
 
       <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="mx-4 rounded-lg border border-border bg-card p-6">
+      <div className="mx-4 mb-4 rounded-lg border border-border bg-card p-6">
         {activeTab === "overview" && (
           <OverviewTab player={player} getServerName={getServerName} />
         )}

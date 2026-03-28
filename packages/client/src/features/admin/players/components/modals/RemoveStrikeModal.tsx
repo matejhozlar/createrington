@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
 
@@ -25,8 +31,6 @@ export function RemoveStrikeModal({
 
   const [reason, setReason] = useState("");
 
-  if (!open) return null;
-
   const handleSubmit = async () => {
     if (!reason.trim()) return;
 
@@ -47,26 +51,16 @@ export function RemoveStrikeModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Remove Strike</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="cursor-pointer"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remove Strike</DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4">
           <Field>
@@ -80,26 +74,26 @@ export function RemoveStrikeModal({
               rows={4}
             />
           </Field>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={onClose}
-              disabled={removeStrike.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 cursor-pointer"
-              onClick={handleSubmit}
-              disabled={!reason.trim() || removeStrike.isPending}
-            >
-              {removeStrike.isPending ? "Removing..." : "Remove Strike"}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={onClose}
+            disabled={removeStrike.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 cursor-pointer"
+            onClick={handleSubmit}
+            disabled={!reason.trim() || removeStrike.isPending}
+          >
+            {removeStrike.isPending ? "Removing..." : "Remove Strike"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

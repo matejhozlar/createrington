@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -110,7 +111,7 @@ export function MaintenanceAnnouncement() {
       {/* Form */}
       <div className="space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Type</label>
+          <Label className="text-sm font-medium">Type</Label>
           <Select
             value={type}
             onValueChange={(v) => setType(v as MaintenanceType)}
@@ -128,9 +129,9 @@ export function MaintenanceAnnouncement() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="startsAt">
+          <Label className="text-sm font-medium" htmlFor="startsAt">
             Start Date & Time
-          </label>
+          </Label>
           <Input
             id="startsAt"
             type="datetime-local"
@@ -140,9 +141,9 @@ export function MaintenanceAnnouncement() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium" htmlFor="estimatedMinutes">
+          <Label className="text-sm font-medium" htmlFor="estimatedMinutes">
             Estimated Duration (minutes)
-          </label>
+          </Label>
           <Input
             id="estimatedMinutes"
             type="number"

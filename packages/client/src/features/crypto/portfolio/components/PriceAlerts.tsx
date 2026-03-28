@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -92,9 +93,9 @@ export function PriceAlerts() {
         <div className="space-y-3 rounded-xl border bg-card/50 p-3">
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Symbol
-              </label>
+              </Label>
               <Input
                 placeholder="e.g. DOGE"
                 value={symbol}
@@ -103,9 +104,9 @@ export function PriceAlerts() {
               />
             </div>
             <div>
-              <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Target Price
-              </label>
+              </Label>
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                   $
@@ -123,9 +124,9 @@ export function PriceAlerts() {
           </div>
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Direction
-              </label>
+              </Label>
               <Select
                 value={direction}
                 onValueChange={(v) => setDirection(v as "above" | "below")}
