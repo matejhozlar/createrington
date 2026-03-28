@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { Settings, Save, Zap } from "lucide-react";
+import { Settings, Save, Zap, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,6 +101,16 @@ export function RotationConfig() {
       onError: (err) => toast.error(err.message),
     });
 
+  const clearRotationMutation =
+    trpc.admin.structurePacks.clearRotation.useMutation({
+      onSuccess: () => {
+        toast.success("Rotation cleared — no active structure pack");
+        utils.admin.structurePacks.list.invalidate();
+        utils.admin.structurePacks.rotationConfig.get.invalidate();
+      },
+      onError: (err) => toast.error(err.message),
+    });
+
   return (
     <div className="rounded-lg border border-border bg-card p-6">
       <div className="mb-4 flex items-center justify-between">
@@ -113,35 +123,70 @@ export function RotationConfig() {
             Global rotation schedule and weight configuration
           </p>
         </div>
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="sm" className="cursor-pointer">
-              <Zap className="size-4" />
-              Force Rotation
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Force rotation now?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will immediately select and activate a new structure pack.
-                All current boosts will be consumed.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="cursor-pointer">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
+        <div className="flex gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                size="sm"
                 className="cursor-pointer"
-                onClick={() => forceRotationMutation.mutate()}
-                disabled={forceRotationMutation.isPending}
               >
-                Rotate Now
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                <Trash2 className="size-4" />
+                Clear Rotation
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Clear current rotation?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will deactivate the current structure pack and remove its
+                  mods from the server. All current boosts will be cleared.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="cursor-pointer">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => clearRotationMutation.mutate()}
+                  disabled={clearRotationMutation.isPending}
+                >
+                  Clear Rotation
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" size="sm" className="cursor-pointer">
+                <Zap className="size-4" />
+                Force Rotation
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Force rotation now?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will immediately select and activate a new structure
+                  pack. All current boosts will be consumed.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="cursor-pointer">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  className="cursor-pointer"
+                  onClick={() => forceRotationMutation.mutate()}
+                  disabled={forceRotationMutation.isPending}
+                >
+                  Rotate Now
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       <div className="space-y-4">
