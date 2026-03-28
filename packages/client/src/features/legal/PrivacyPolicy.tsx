@@ -64,6 +64,13 @@ const sections = [
             <strong>Discord activity</strong> — guild join and leave events
             (user ID, username, timestamp) for community tracking
           </li>
+          <li>
+            <strong>Donation data</strong> — your Discord ID, donation amount,
+            currency, donation type (one-time or monthly), Stripe session ID,
+            Stripe customer ID, and Stripe subscription ID. We do not store your
+            card number, billing address, or other payment details — these are
+            handled entirely by Stripe
+          </li>
         </ul>
       </>
     ),
@@ -92,6 +99,12 @@ const sections = [
         <li>
           Maintaining admin audit logs for accountability and transparency
         </li>
+        <li>
+          Processing donations and managing subscription billing via Stripe
+        </li>
+        <li>
+          Assigning the Supporter role on Discord based on donation status
+        </li>
         <li>Improving and maintaining the service</li>
       </ul>
     ),
@@ -105,6 +118,12 @@ const sections = [
           <li>
             <strong>Discord API</strong> — for OAuth authentication, bot
             functionality, role management, and sending notifications
+          </li>
+          <li>
+            <strong>Stripe</strong> — for processing donation payments and
+            managing subscriptions. Stripe receives your payment details
+            directly; we only store transaction references (session IDs,
+            customer IDs, subscription IDs)
           </li>
           <li>
             <strong>Email delivery service</strong> — for sending waitlist
@@ -169,6 +188,10 @@ const sections = [
             <strong>Moderation records</strong> — strikes and bans may be
             removed by administrators but are retained for the duration of your
             account
+          </li>
+          <li>
+            <strong>Donation records</strong> — retained indefinitely for
+            accounting and tax purposes, even after account deletion
           </li>
         </ul>
         <p className="mt-2">
@@ -291,7 +314,7 @@ export function PrivacyPolicy() {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: March 13, 2026
+              Effective date: March 28, 2026
             </p>
 
             <div className="flex flex-col gap-6">

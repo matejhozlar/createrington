@@ -124,7 +124,54 @@ const sections = [
     ),
   },
   {
-    title: "6. Intellectual Property",
+    title: "6. Donations & Payments",
+    content: (
+      <>
+        <p>
+          Createrington accepts voluntary donations to help cover server
+          hosting, infrastructure, and development costs. By making a donation,
+          you acknowledge and agree:
+        </p>
+        <ul className="list-disc pl-6 space-y-1 mt-2">
+          <li>
+            Donations are <strong>entirely voluntary</strong> and are not
+            required to access or use any part of the Service
+          </li>
+          <li>
+            All payments are processed securely through <strong>Stripe</strong>.
+            We never see or store your card details, billing address, or other
+            payment information
+          </li>
+          <li>
+            Donations do not grant any in-game advantages, items, or currency.
+            You will receive a <strong>Supporter role</strong> on Discord as a
+            token of appreciation
+          </li>
+          <li>
+            Monthly subscriptions may be cancelled at any time from the donate
+            page or through Stripe directly. Perks remain active until the end
+            of the current billing period
+          </li>
+          <li>
+            Donations are generally <strong>non-refundable</strong>. If you
+            believe a charge was made in error, please contact us and we will
+            review your case
+          </li>
+          <li>
+            Prices are listed in EUR. If your payment method uses a different
+            currency, your bank may apply a conversion fee at their current
+            exchange rate
+          </li>
+          <li>
+            We reserve the right to modify donation tiers, perks, or the
+            availability of the donation system at any time
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "7. Intellectual Property",
     content: (
       <>
         <p>
@@ -141,7 +188,7 @@ const sections = [
     ),
   },
   {
-    title: "7. Notifications & Communication",
+    title: "8. Notifications & Communication",
     content: (
       <>
         <p>
@@ -163,7 +210,7 @@ const sections = [
     ),
   },
   {
-    title: "8. Support Tickets",
+    title: "9. Support Tickets",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -181,7 +228,7 @@ const sections = [
     ),
   },
   {
-    title: "9. Disclaimers",
+    title: "10. Disclaimers",
     content: (
       <ul className="list-disc pl-6 space-y-1">
         <li>
@@ -200,7 +247,7 @@ const sections = [
     ),
   },
   {
-    title: "10. Limitation of Liability",
+    title: "11. Limitation of Liability",
     content: (
       <p>
         To the maximum extent permitted by law, the Createrington team shall not
@@ -212,7 +259,7 @@ const sections = [
     ),
   },
   {
-    title: "11. Termination",
+    title: "12. Termination",
     content: (
       <>
         <p>
@@ -230,7 +277,7 @@ const sections = [
     ),
   },
   {
-    title: "12. Changes to These Terms",
+    title: "13. Changes to These Terms",
     content: (
       <p>
         We may update these Terms of Service from time to time. Changes will be
@@ -240,7 +287,7 @@ const sections = [
     ),
   },
   {
-    title: "13. Contact Us",
+    title: "14. Contact Us",
     content: (
       <p>
         If you have questions about these Terms of Service, you can reach us at{" "}
@@ -278,7 +325,7 @@ export function TermsOfService() {
         <div className="max-w-7xl mx-auto">
           <div className="max-w-5xl">
             <p className="text-sm text-muted-foreground mb-8">
-              Effective date: March 13, 2026
+              Effective date: March 28, 2026
             </p>
 
             <div className="flex flex-col gap-6">
