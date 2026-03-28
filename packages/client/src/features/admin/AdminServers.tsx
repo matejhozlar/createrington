@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Server, Users, Clock, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -230,21 +231,20 @@ export function AdminServers() {
                             {livePlayerCount} / {server.maxPlayers}
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-muted">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all",
-                              isMaintenance
-                                ? "bg-amber-500"
-                                : isOnline
-                                  ? "bg-green-500"
-                                  : "bg-muted-foreground",
-                            )}
-                            style={{
-                              width: `${Math.min((livePlayerCount / server.maxPlayers) * 100, 100)}%`,
-                            }}
-                          />
-                        </div>
+                        <Progress
+                          className="bg-muted"
+                          indicatorClassName={cn(
+                            isMaintenance
+                              ? "bg-amber-500"
+                              : isOnline
+                                ? "bg-green-500"
+                                : "bg-muted-foreground",
+                          )}
+                          value={Math.min(
+                            (livePlayerCount / server.maxPlayers) * 100,
+                            100,
+                          )}
+                        />
                       </div>
 
                       {/* Stats row */}

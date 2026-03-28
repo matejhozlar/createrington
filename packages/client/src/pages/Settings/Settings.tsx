@@ -3,7 +3,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { Loading } from "@/components/loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,8 +85,20 @@ function AccountSection() {
         <CardHeader>
           <CardTitle className="text-base">Account</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Loading mode="inline" size="small" />
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="size-12 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-36" />
+              <Skeleton className="h-4 w-28" />
+            </div>
+            <Skeleton className="ml-auto h-5 w-16 rounded-full" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <Skeleton className="h-14 rounded-lg" />
+            <Skeleton className="h-14 rounded-lg" />
+            <Skeleton className="h-14 rounded-lg" />
+          </div>
         </CardContent>
       </Card>
     );
@@ -179,8 +191,20 @@ function SessionsSection() {
         <CardHeader>
           <CardTitle className="text-base">Active Sessions</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Loading mode="inline" size="small" />
+        <CardContent className="space-y-3">
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 rounded-lg border px-3 py-2.5"
+            >
+              <Skeleton className="size-5 rounded" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+              <Skeleton className="h-8 w-16 rounded-md" />
+            </div>
+          ))}
         </CardContent>
       </Card>
     );

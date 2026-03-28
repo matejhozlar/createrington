@@ -44,6 +44,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Search,
   Filter,
   Users,
@@ -527,17 +532,23 @@ export function AdminWaitlists() {
                           </TableCell>
                           <TableCell className="px-4">
                             {entry.email ? (
-                              <button
-                                onClick={() => handleCopyEmail(entry.email!)}
-                                className="cursor-pointer text-sm transition-colors hover:text-foreground"
-                                title="Click to copy"
-                                type="button"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Mail className="size-4 text-muted-foreground" />
-                                  <span>{entry.email}</span>
-                                </div>
-                              </button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() =>
+                                      handleCopyEmail(entry.email!)
+                                    }
+                                    className="cursor-pointer text-sm transition-colors hover:text-foreground"
+                                    type="button"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <Mail className="size-4 text-muted-foreground" />
+                                      <span>{entry.email}</span>
+                                    </div>
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>Click to copy</TooltipContent>
+                              </Tooltip>
                             ) : (
                               <span className="text-sm text-muted-foreground">
                                 -

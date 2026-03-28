@@ -6,6 +6,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import { useCallback, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
@@ -195,14 +200,16 @@ export function AuditTab({ playerId }: AuditTabProps) {
 
                       {action.metadata &&
                         Object.keys(action.metadata).length > 0 && (
-                          <details className="mt-2">
-                            <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                          <Collapsible>
+                            <CollapsibleTrigger className="mt-2 cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
                               View Metadata
-                            </summary>
-                            <pre className="mt-1 rounded bg-muted p-2 text-xs">
-                              {JSON.stringify(action.metadata, null, 2)}
-                            </pre>
-                          </details>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <pre className="mt-1 rounded bg-muted p-2 text-xs">
+                                {JSON.stringify(action.metadata, null, 2)}
+                              </pre>
+                            </CollapsibleContent>
+                          </Collapsible>
                         )}
                     </div>
 

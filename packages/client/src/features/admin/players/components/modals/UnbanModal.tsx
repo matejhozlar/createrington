@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
@@ -22,8 +29,6 @@ export function UnbanModal({
   const unbanPlayer = trpc.admin.players.bans.unban.useMutation();
 
   const [reason, setReason] = useState("");
-
-  if (!open) return null;
 
   const handleSubmit = async () => {
     if (!reason.trim()) {
@@ -54,30 +59,19 @@ export function UnbanModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          handleClose();
-        }
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) handleClose();
       }}
     >
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Unban Player</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleClose}
-            className="cursor-pointer"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-
-        <p className="mb-4 text-sm text-muted-foreground">
-          This will lift the ban and allow the player to rejoin the server.
-        </p>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Unban Player</DialogTitle>
+          <DialogDescription>
+            This will lift the ban and allow the player to rejoin the server.
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-muted/50 p-3">
@@ -98,26 +92,26 @@ export function UnbanModal({
               rows={4}
             />
           </Field>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={handleClose}
-              disabled={unbanPlayer.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 cursor-pointer"
-              onClick={handleSubmit}
-              disabled={!reason.trim() || unbanPlayer.isPending}
-            >
-              {unbanPlayer.isPending ? "Unbanning..." : "Unban Player"}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={handleClose}
+            disabled={unbanPlayer.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 cursor-pointer"
+            onClick={handleSubmit}
+            disabled={!reason.trim() || unbanPlayer.isPending}
+          >
+            {unbanPlayer.isPending ? "Unbanning..." : "Unban Player"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

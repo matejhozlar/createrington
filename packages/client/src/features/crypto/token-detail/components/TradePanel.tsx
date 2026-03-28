@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -296,9 +298,9 @@ export function TradePanel({
           </div>
 
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               Amount
-            </label>
+            </Label>
             <Input
               type="number"
               placeholder={
@@ -383,39 +385,35 @@ export function TradePanel({
 
         {/* Buy/Sell toggle */}
         {showBuySellTabs && (
-          <div className="grid grid-cols-2 gap-1.5 rounded-xl border p-1">
-            <button
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
-                tab === "buy"
-                  ? "bg-emerald-500 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setTab("buy")}
-            >
-              <ArrowUpRight className="size-4" />
-              Buy
-            </button>
-            <button
-              className={cn(
-                "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold transition-all",
-                tab === "sell"
-                  ? "bg-destructive text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              onClick={() => setTab("sell")}
-            >
-              <ArrowDownRight className="size-4" />
-              Sell
-            </button>
-          </div>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => setTab(v as "buy" | "sell")}
+            className="gap-0"
+          >
+            <TabsList className="grid w-full grid-cols-2 rounded-xl border bg-transparent p-1 h-auto">
+              <TabsTrigger
+                value="buy"
+                className="rounded-lg px-3 py-2.5 text-sm font-semibold data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
+                <ArrowUpRight className="size-4" />
+                Buy
+              </TabsTrigger>
+              <TabsTrigger
+                value="sell"
+                className="rounded-lg px-3 py-2.5 text-sm font-semibold data-[state=active]:bg-destructive data-[state=active]:text-white data-[state=active]:shadow-sm"
+              >
+                <ArrowDownRight className="size-4" />
+                Sell
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
 
         {/* Amount input */}
         <div>
-          <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
             Amount
-          </label>
+          </Label>
           <Input
             type="number"
             placeholder="0"
@@ -452,7 +450,7 @@ export function TradePanel({
         {/* Target price input */}
         {orderMode !== "market" && (
           <div>
-            <label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {orderMode === "limit"
                 ? tab === "buy"
                   ? "Buy at or below"
@@ -460,7 +458,7 @@ export function TradePanel({
                 : orderMode === "stop_loss"
                   ? "Sell if price drops to"
                   : "Sell if price rises to"}
-            </label>
+            </Label>
             <div className="relative mt-1.5">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
