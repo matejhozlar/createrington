@@ -278,10 +278,7 @@ export const adminServersRouter = router({
           if (input.announce) {
             try {
               const embed = EmbedPresets.announcements.maintenanceEnded();
-              const webMessageService = await getService(
-                Services.WEB_MESSAGE_SERVICE,
-              );
-              await webMessageService.send({
+              await Discord.Messages.send({
                 channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
                 embeds: embed.build(),
               });
@@ -356,7 +353,7 @@ export const adminServersRouter = router({
         scheduledByDiscordId: ctx.user.discordId,
       });
 
-      // Send initial Discord announcement via web bot
+      // Send initial Discord announcement via main bot
       try {
         const embed = EmbedPresets.announcements.maintenance({
           type: input.type,
@@ -364,10 +361,7 @@ export const adminServersRouter = router({
           estimatedMinutes: input.estimatedMinutes,
         });
 
-        const webMessageService = await getService(
-          Services.WEB_MESSAGE_SERVICE,
-        );
-        await webMessageService.send({
+        await Discord.Messages.send({
           channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
           embeds: embed.build(),
         });
