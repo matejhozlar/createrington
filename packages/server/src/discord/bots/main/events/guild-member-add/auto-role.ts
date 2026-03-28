@@ -103,7 +103,7 @@ export async function execute(
       );
     }
 
-    const existingPlayer = await Q.player.exists({
+    const existingPlayer = await Q.player.find({
       discordId: member.user.id,
     });
 
@@ -121,6 +121,19 @@ export async function execute(
       } catch (error) {
         logger.error(
           `Error assigning verified role to returning player ${member.user.tag}:`,
+          error,
+        );
+      }
+
+      // Sync Discord nickname to Minecraft username
+      try {
+        await member.setNickname(
+          existingPlayer.minecraftUsername,
+          "Returning player: sync to MC name",
+        );
+      } catch (error) {
+        logger.warn(
+          `Could not set nickname for returning player ${member.user.tag}:`,
           error,
         );
       }
