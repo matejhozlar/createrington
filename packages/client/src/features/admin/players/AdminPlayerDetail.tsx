@@ -94,6 +94,10 @@ export function AdminPlayerDetail() {
     );
   }
 
+  const currentServerId = player
+    ? getPlayerServerId(player.player.minecraftUuid)
+    : null;
+
   if (error || !player) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -118,9 +122,7 @@ export function AdminPlayerDetail() {
         player={player.player}
         isOnline={isPlayerOnline(player.player.minecraftUuid)}
         currentServerName={
-          getPlayerServerId(player.player.minecraftUuid)
-            ? getServerName(getPlayerServerId(player.player.minecraftUuid)!)
-            : null
+          currentServerId !== null ? getServerName(currentServerId) : null
         }
         onEdit={() => setShowEditModal(true)}
         onDelete={() => setShowDeleteModal(true)}
@@ -169,6 +171,7 @@ export function AdminPlayerDetail() {
 
       {/* Modals */}
       <EditPlayerModal
+        key={player.player.minecraftUuid}
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
         player={player.player}

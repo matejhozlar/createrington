@@ -190,11 +190,12 @@ export function TradePanel({
   });
 
   const handleTrade = () => {
-    const amountNum = parseInt(amount);
-    if (!amountNum || amountNum <= 0) {
-      toast.error("Enter a valid amount");
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+      toast.error("Enter a valid whole number");
       return;
     }
+    const amountNum = parsed;
 
     if (orderMode === "market") {
       setShowConfirm(true);
@@ -221,7 +222,7 @@ export function TradePanel({
   };
 
   const executeMarketTrade = () => {
-    const amountNum = parseInt(amount);
+    const amountNum = Math.floor(Number(amount)) || 0;
     if (tab === "buy") {
       buyMutation.mutate({ symbol, amount: amountNum });
     } else {
@@ -233,8 +234,9 @@ export function TradePanel({
     buyMutation.isPending ||
     sellMutation.isPending ||
     placeOrderMutation.isPending;
+  const isOnCooldown = orderMode === "market" && !!cooldownText;
   const numPrice = isIpo ? Number(ipoPrice) : Number(price);
-  const amountNum = parseInt(amount) || 0;
+  const amountNum = Math.floor(Number(amount)) || 0;
   const effectivePrice =
     isIpo || orderMode === "market" ? numPrice : Number(targetPrice) || 0;
   const feeRate = FEE_RATES[category] ?? 0.05;
@@ -515,12 +517,7 @@ export function TradePanel({
               : "bg-destructive hover:bg-destructive/90 text-white",
           )}
           onClick={handleTrade}
-          disabled={
-            isPending ||
-            isCrashed ||
-            amountNum <= 0 ||
-            (!!cooldownExpiresAt && orderMode === "market")
-          }
+          disabled={isPending || isCrashed || amountNum <= 0 || isOnCooldown}
         >
           {isPending
             ? "Processing..."

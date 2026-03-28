@@ -478,14 +478,19 @@ export const embedsRouter = router({
           throw trpcError.conflict("A preset with that name already exists");
         }
 
-        await Q.discord.embed.preset.create({
+        const created = await Q.discord.embed.preset.createAndReturn({
           name: input.name,
           data: input.data as EmbedData as Record<string, unknown>,
           createdBy: ctx.user.minecraftUsername,
           categoryId: input.categoryId ?? undefined,
         });
 
-        return { message: "Preset created" };
+        return {
+          message: "Preset created",
+          id: created.id,
+          name: created.name,
+          categoryId: created.categoryId ?? null,
+        };
       }),
 
     update: adminProcedure

@@ -238,6 +238,14 @@ export function WebSocketProvider({
 
     setSocket(newSocket);
 
+    // Replay existing listeners onto the new socket so that
+    // subscriptions registered before the reconnect are not lost
+    for (const [event, callbacks] of eventListenersRef.current) {
+      for (const cb of callbacks) {
+        newSocket.on(event, cb);
+      }
+    }
+
     // Connection successful
     newSocket.on("connect", () => {
       if (import.meta.env.DEV)
