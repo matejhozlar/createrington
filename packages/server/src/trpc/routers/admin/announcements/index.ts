@@ -5,13 +5,14 @@ import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { searchMods } from "@/services/curseforge";
+import { searchMods, getModFiles } from "@/services/curseforge";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import config from "@/config";
 
 const changelogModSchema = z.object({
   name: z.string().min(1),
   url: z.string().url(),
+  version: z.string().optional(),
 });
 
 const sendChangelogInput = z.object({
@@ -42,6 +43,13 @@ export const announcementsRouter = router({
 
       const results = await searchMods(input.query);
       return { mods: results };
+    }),
+
+  getModFiles: adminProcedure
+    .meta({ description: "Get available files for a CurseForge mod" })
+    .input(z.object({ modId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      return getModFiles(input.modId);
     }),
 
   sendChangelog: adminProcedure
