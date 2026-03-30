@@ -14,6 +14,7 @@ import { StrikesTab } from "./components/tabs/StrikesTab";
 import { BansTab } from "./components/tabs/BansTab";
 import { AuditTab } from "./components/tabs/AuditTab";
 import { TransactionsTab } from "./components/tabs/TransactionsTab";
+import { StatsTab } from "./components/tabs/StatsTab";
 import { BalanceAdjustModal } from "./components/modals/BalanceAdjustModal";
 import { IssueStrikeModal } from "./components/modals/IssueStrikeModal";
 import { IssueBanModal } from "./components/modals/IssueBanModal";
@@ -26,6 +27,7 @@ import { trpc } from "@/lib/trpc";
 type TabType =
   | "overview"
   | "sessions"
+  | "stats"
   | "tickets"
   | "strikes"
   | "bans"
@@ -142,6 +144,10 @@ export function AdminPlayerDetail() {
 
         {activeTab === "sessions" && id && (
           <SessionsTab playerId={id} getServerName={getServerName} />
+        )}
+
+        {activeTab === "stats" && id && (
+          <StatsTab playerId={id} getServerName={getServerName} />
         )}
 
         {activeTab === "tickets" && <TicketsTab playerId={id!} />}
