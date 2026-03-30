@@ -183,6 +183,7 @@ export function StructurePackDetail() {
   const addModMutation = trpc.admin.structurePacks.addMod.useMutation({
     onSuccess: () => {
       utils.admin.structurePacks.get.invalidate({ id: packId });
+      utils.admin.structurePacks.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -190,6 +191,7 @@ export function StructurePackDetail() {
   const removeModMutation = trpc.admin.structurePacks.removeMod.useMutation({
     onSuccess: () => {
       utils.admin.structurePacks.get.invalidate({ id: packId });
+      utils.admin.structurePacks.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

@@ -350,7 +350,7 @@ export function AdminStructurePacks() {
                           : "Never"}
                       </TableCell>
                       <TableCell className="px-4 text-right">
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
                               size="sm"
