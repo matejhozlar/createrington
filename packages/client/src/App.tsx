@@ -47,7 +47,6 @@ import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder"
 import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
-import { isProduction } from "./lib/utils";
 import { AdminStructurePacks } from "./features/admin/structure-packs/AdminStructurePacks";
 import { StructurePackDetail } from "./features/admin/structure-packs/StructurePackDetail";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
@@ -291,18 +290,14 @@ function AppContent() {
                   <Route path="players/:id" element={<AdminPlayerDetail />} />
                   <Route path="servers" element={<AdminServers />} />
                   <Route path="servers/:id" element={<AdminServerDetail />} />
-                  {!isProduction && (
-                    <>
-                      <Route
-                        path="tools/structure-packs"
-                        element={<AdminStructurePacks />}
-                      />
-                      <Route
-                        path="tools/structure-packs/:id"
-                        element={<StructurePackDetail />}
-                      />
-                    </>
-                  )}
+                  <Route
+                    path="tools/structure-packs"
+                    element={<AdminStructurePacks />}
+                  />
+                  <Route
+                    path="tools/structure-packs/:id"
+                    element={<StructurePackDetail />}
+                  />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
                   <Route
