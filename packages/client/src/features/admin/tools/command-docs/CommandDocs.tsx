@@ -58,13 +58,19 @@ const OPTION_TYPE_LABELS: Record<number, string> = {
   11: "Attachment",
 };
 
-const CATEGORY_ORDER = ["admin", "user", "public"] as const;
+const CATEGORY_ORDER = ["owner", "admin", "user", "public"] as const;
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  owner: { label: "Owner", color: "bg-amber-500/10 text-amber-400" },
   admin: { label: "Admin", color: "bg-red-500/10 text-red-400" },
   user: { label: "User", color: "bg-blue-500/10 text-blue-400" },
   public: { label: "Public", color: "bg-green-500/10 text-green-400" },
 };
+
+function getDisplayCategory(cmd: CommandData): string {
+  if (cmd.permissions?.requireOwner) return "owner";
+  return cmd.category;
+}
 
 function PermissionBadge({ command }: { command: CommandData }) {
   if (command.permissions?.requireOwner) {
@@ -256,7 +262,8 @@ export function CommandDocs() {
   const allCommands = (payload?.commands ?? []) as CommandData[];
 
   const filtered = allCommands.filter((cmd) => {
-    if (categoryFilter && cmd.category !== categoryFilter) return false;
+    if (categoryFilter && getDisplayCategory(cmd) !== categoryFilter)
+      return false;
     if (search) {
       const q = search.toLowerCase();
       return cmd.name.includes(q) || cmd.description.toLowerCase().includes(q);
@@ -266,9 +273,10 @@ export function CommandDocs() {
 
   const grouped = new Map<string, CommandData[]>();
   for (const cmd of filtered) {
-    const list = grouped.get(cmd.category) ?? [];
+    const cat = getDisplayCategory(cmd);
+    const list = grouped.get(cat) ?? [];
     list.push(cmd);
-    grouped.set(cmd.category, list);
+    grouped.set(cat, list);
   }
 
   const sortedCategories = [...grouped.keys()].sort(
@@ -341,7 +349,7 @@ export function CommandDocs() {
             {CATEGORY_ORDER.map((cat) => {
               const meta = CATEGORY_META[cat];
               const count = allCommands.filter(
-                (c) => c.category === cat,
+                (c) => getDisplayCategory(c) === cat,
               ).length;
               if (count === 0) return null;
               return (

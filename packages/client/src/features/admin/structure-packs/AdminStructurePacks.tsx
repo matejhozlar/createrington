@@ -3,7 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { Plus, Package, Search, Filter } from "lucide-react";
+import {
+  Plus,
+  Package,
+  Search,
+  Filter,
+  Upload,
+  MoreHorizontal,
+  Eye,
+  Copy,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +38,12 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -90,6 +105,52 @@ export function AdminStructurePacks() {
     return result;
   }, [packs, searchQuery, statusFilter, activeFilter]);
 
+  // Import
+  const importMutation = trpc.admin.structurePacks.importPacks.useMutation({
+    onSuccess: (result) => {
+      const parts: string[] = [];
+      if (result.created.length > 0)
+        parts.push(`Created: ${result.created.join(", ")}`);
+      if (result.skipped.length > 0)
+        parts.push(`Skipped (already exist): ${result.skipped.join(", ")}`);
+      toast.success(parts.join(". ") || "Nothing to import");
+      utils.admin.structurePacks.list.invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  function copyPackJson(pack: (typeof packs)[number]) {
+    const exported = {
+      structurePacks: [
+        {
+          name: pack.name,
+          description: pack.description,
+          enabled: pack.enabled,
+          mods: pack.mods.map((m) => ({
+            curseforgeModId: m.curseforgeModId,
+            curseforgeFileId: m.curseforgeFileId,
+            fileName: m.fileName,
+            modName: m.modName,
+            modUrl: m.modUrl,
+            thumbnailUrl: m.thumbnailUrl,
+          })),
+        },
+      ],
+    };
+    navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
+    toast.success(`Copied "${pack.name}" to clipboard`);
+  }
+
+  async function handleImport() {
+    try {
+      const text = await navigator.clipboard.readText();
+      const data = JSON.parse(text);
+      importMutation.mutate(data);
+    } catch {
+      toast.error("Could not read clipboard or invalid JSON");
+    }
+  }
+
   const createMutation = trpc.admin.structurePacks.create.useMutation({
     onSuccess: (pack) => {
       toast.success("Structure pack created");
@@ -139,13 +200,24 @@ export function AdminStructurePacks() {
                 <Filter className="size-4 text-muted-foreground" />
                 Packs
               </CardTitle>
-              <Button
-                onClick={() => setCreateOpen(true)}
-                className="cursor-pointer"
-              >
-                <Plus className="mr-2 size-4" />
-                New Pack
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={handleImport}
+                  disabled={importMutation.isPending}
+                  className="cursor-pointer"
+                >
+                  <Upload className="mr-2 size-4" />
+                  Import
+                </Button>
+                <Button
+                  onClick={() => setCreateOpen(true)}
+                  className="cursor-pointer"
+                >
+                  <Plus className="mr-2 size-4" />
+                  New Pack
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -278,16 +350,35 @@ export function AdminStructurePacks() {
                           : "Never"}
                       </TableCell>
                       <TableCell className="px-4 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            navigate(`/admin/tools/structure-packs/${pack.id}`)
-                          }
-                          className="cursor-pointer"
-                        >
-                          View
-                        </Button>
+                        <DropdownMenu modal={false}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="size-8 cursor-pointer p-0"
+                            >
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                navigate(
+                                  `/admin/tools/structure-packs/${pack.id}`,
+                                )
+                              }
+                            >
+                              <Eye className="mr-2 size-4" />
+                              View
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => copyPackJson(pack)}
+                            >
+                              <Copy className="mr-2 size-4" />
+                              Copy
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
