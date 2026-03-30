@@ -233,7 +233,8 @@ class ServerRconConnection {
   }
 
   /**
-   * Sends a command to the server
+   * Sends a command to the server.
+   * Automatically reconnects and retries once if the connection is stale.
    */
   public async send(command: string): Promise<string> {
     if (!command || command.trim().length === 0) {
@@ -247,30 +248,60 @@ class ServerRconConnection {
     const trimmedCommand = command.trim();
 
     try {
-      const rcon = await this.connect();
-      logger.info(
-        `[Server ${this.serverId} - ${this.serverName}] Sending RCON: ${trimmedCommand}`,
-      );
-
-      const response = await rcon.send(trimmedCommand);
-      logger.debug(
-        `[Server ${this.serverId} - ${this.serverName}] RCON response: ${response}`,
-      );
-
-      this.lastUsed = Date.now();
-      return response;
+      return await this.trySend(trimmedCommand);
     } catch (error) {
-      logger.error(
-        `[Server ${this.serverId} - ${this.serverName}] RCON command failed: "${trimmedCommand}":`,
-        error,
+      const isDisconnect =
+        error instanceof Error &&
+        (error.message.includes("Not connected") ||
+          error.message.includes("ECONNRESET") ||
+          error.message.includes("EPIPE") ||
+          error.message.includes("socket has been ended"));
+
+      if (!isDisconnect) {
+        throw new RconCommandError(
+          `Failed to execute RCON command: ${trimmedCommand}`,
+          trimmedCommand,
+          this.serverId,
+          error,
+        );
+      }
+
+      logger.warn(
+        `[Server ${this.serverId} - ${this.serverName}] Stale RCON connection detected, reconnecting...`,
       );
-      throw new RconCommandError(
-        `Failed to execute RCON command: ${trimmedCommand}`,
-        trimmedCommand,
-        this.serverId,
-        error,
-      );
+
+      this.connection = null;
+
+      try {
+        return await this.trySend(trimmedCommand);
+      } catch (retryError) {
+        logger.error(
+          `[Server ${this.serverId} - ${this.serverName}] RCON command failed after reconnect: "${trimmedCommand}":`,
+          retryError,
+        );
+        throw new RconCommandError(
+          `Failed to execute RCON command: ${trimmedCommand}`,
+          trimmedCommand,
+          this.serverId,
+          retryError,
+        );
+      }
     }
+  }
+
+  private async trySend(command: string): Promise<string> {
+    const rcon = await this.connect();
+    logger.info(
+      `[Server ${this.serverId} - ${this.serverName}] Sending RCON: ${command}`,
+    );
+
+    const response = await rcon.send(command);
+    logger.debug(
+      `[Server ${this.serverId} - ${this.serverName}] RCON response: ${response}`,
+    );
+
+    this.lastUsed = Date.now();
+    return response;
   }
 
   /**
