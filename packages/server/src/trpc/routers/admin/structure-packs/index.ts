@@ -254,6 +254,63 @@ export const adminStructurePacksRouter = router({
       };
     }),
 
+  // Import
+  importPacks: adminProcedure
+    .meta({ description: "Import structure packs from exported JSON" })
+    .input(
+      z.object({
+        structurePacks: z.array(
+          z.object({
+            name: z.string().min(1).max(100),
+            description: z.string().max(500).nullish(),
+            enabled: z.boolean().optional().default(true),
+            mods: z.array(
+              z.object({
+                curseforgeModId: z.number().int().positive(),
+                curseforgeFileId: z.number().int().positive(),
+                fileName: z.string().min(1),
+                modName: z.string().min(1),
+                modUrl: z.string().url().nullish(),
+                thumbnailUrl: z.string().url().nullish(),
+              }),
+            ),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const created: string[] = [];
+      const skipped: string[] = [];
+
+      for (const packData of input.structurePacks) {
+        try {
+          const pack = await structurePackService.createPack(
+            packData.name,
+            packData.description ?? undefined,
+          );
+
+          await structurePackService.toggleEnabled(pack.id, false);
+
+          for (const mod of packData.mods) {
+            await structurePackService.addMod(pack.id, {
+              curseforgeModId: mod.curseforgeModId,
+              curseforgeFileId: mod.curseforgeFileId,
+              fileName: mod.fileName,
+              modName: mod.modName,
+              modUrl: mod.modUrl ?? undefined,
+              thumbnailUrl: mod.thumbnailUrl ?? undefined,
+            });
+          }
+
+          created.push(packData.name);
+        } catch {
+          skipped.push(packData.name);
+        }
+      }
+
+      return { created, skipped };
+    }),
+
   // Rotation
   forceRotation: adminProcedure
     .meta({ description: "Trigger a manual rotation" })

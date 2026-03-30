@@ -165,6 +165,7 @@ export function StructurePackDetail() {
   const deleteMutation = trpc.admin.structurePacks.delete.useMutation({
     onSuccess: () => {
       toast.success("Pack deleted");
+      utils.admin.structurePacks.list.invalidate();
       navigate("/admin/tools/structure-packs");
     },
     onError: (err) => toast.error(err.message),
