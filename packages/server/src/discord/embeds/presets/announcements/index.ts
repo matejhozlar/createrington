@@ -4,6 +4,7 @@ import { createEmbed } from "../../embed-builder";
 export interface ChangelogMod {
   name: string;
   url: string;
+  version?: string;
 }
 
 export interface ChangelogData {
@@ -39,7 +40,12 @@ const MAINTENANCE_CONFIG: Record<
 
 /** Converts a list of mods into a markdown bullet list of linked mod names */
 function formatModList(mods: ChangelogMod[]): string {
-  return mods.map((m) => `- [${m.name}](${m.url})`).join("\n");
+  return mods
+    .map((m) => {
+      const link = `[${m.name}](${m.url})`;
+      return m.version ? `- ${link} — \`${m.version}\`` : `- ${link}`;
+    })
+    .join("\n");
 }
 
 /** Formats a Date as a Discord timestamp tag (`<t:unix:style>`) */

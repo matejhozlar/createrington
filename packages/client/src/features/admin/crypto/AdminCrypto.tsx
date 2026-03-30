@@ -554,6 +554,59 @@ function TriggerEventDialog({
 }
 
 // ---------------------------------------------------------------------------
+// DELIST BUTTON (per-row mutation to avoid shared pending state)
+// ---------------------------------------------------------------------------
+
+function DelistButton({
+  tokenId,
+  tokenSymbol,
+  onDelisted,
+}: {
+  tokenId: number;
+  tokenSymbol: string;
+  onDelisted: () => void;
+}) {
+  const toast = useToastActions();
+  const delistMutation = trpc.admin.crypto.delistToken.useMutation({
+    onSuccess: onDelisted,
+    onError: (err) => toast.error(err.message),
+  });
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 text-muted-foreground hover:text-destructive"
+          disabled={delistMutation.isPending}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent size="sm">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delist {tokenSymbol}</AlertDialogTitle>
+          <AlertDialogDescription>
+            All holdings will be auto-sold at current price. This action cannot
+            be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            variant="destructive"
+            onClick={() => delistMutation.mutate({ id: tokenId })}
+          >
+            Delist
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // MAIN PAGE
 // ---------------------------------------------------------------------------
 
@@ -570,14 +623,11 @@ export function AdminCrypto() {
     includesCrashed: true,
   });
 
-  const delistMutation = trpc.admin.crypto.delistToken.useMutation({
-    onSuccess: () => {
-      toast.success("Token delisted");
-      utils.public.crypto.list.invalidate();
-      utils.admin.crypto.marketStats.invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const onTokenDelisted = () => {
+    toast.success("Token delisted");
+    utils.public.crypto.list.invalidate();
+    utils.admin.crypto.marketStats.invalidate();
+  };
 
   const stats = statsQuery.data;
   const treasury = treasuryQuery.data;
@@ -874,40 +924,11 @@ export function AdminCrypto() {
                         </TableCell>
                         <TableCell className="text-right">
                           {isActive && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="size-7 text-muted-foreground hover:text-destructive"
-                                  disabled={delistMutation.isPending}
-                                >
-                                  <Trash2 className="size-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent size="sm">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Delist {token.symbol}
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    All holdings will be auto-sold at current
-                                    price. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    variant="destructive"
-                                    onClick={() =>
-                                      delistMutation.mutate({ id: token.id })
-                                    }
-                                  >
-                                    Delist
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                            <DelistButton
+                              tokenId={token.id}
+                              tokenSymbol={token.symbol}
+                              onDelisted={onTokenDelisted}
+                            />
                           )}
                         </TableCell>
                       </TableRow>

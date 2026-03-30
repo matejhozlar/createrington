@@ -9,6 +9,7 @@ import {
 import { TicketType } from "@/services/discord/tickets";
 import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
+import { Q } from "@/db";
 
 /**
  * Slash command definition for the ticket command
@@ -25,6 +26,11 @@ export const data = new SlashCommandBuilder()
       .addUserOption((opt) =>
         opt.setName("user").setDescription("Discord user").setRequired(true),
       ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("close")
+      .setDescription("Close the ticket in the current channel"),
   );
 
 /**
@@ -102,6 +108,43 @@ export async function execute(
         embeds: [embed.build()],
         flags: MessageFlags.Ephemeral,
       });
+    } else if (subcommand === "close") {
+      const ticket = await Q.ticket.find({
+        channelId: interaction.channelId,
+      });
+
+      if (!ticket) {
+        const embed = EmbedPresets.error(
+          "Not a Ticket",
+          "This command can only be used inside a ticket channel.",
+        );
+        await interaction.reply({
+          embeds: [embed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      if (ticket.status === "closed") {
+        const embed = EmbedPresets.error(
+          "Already Closed",
+          "This ticket is already closed.",
+        );
+        await interaction.reply({
+          embeds: [embed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+      await ticketService.closeTicket(ticket.id, interaction.user.id, false);
+
+      const embed = EmbedPresets.success(
+        "Ticket Closed",
+        "This ticket has been closed.",
+      );
+      await interaction.editReply({ embeds: [embed.build()] });
     } else {
       const embed = EmbedPresets.error("Error", "Invalid subcommand.");
 

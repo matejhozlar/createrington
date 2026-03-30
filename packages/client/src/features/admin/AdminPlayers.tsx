@@ -46,6 +46,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Search,
   Filter,
   Users,
@@ -546,16 +551,20 @@ export function AdminPlayers() {
                             </div>
                           </TableCell>
                           <TableCell className="px-4">
-                            <button
-                              onClick={() =>
-                                handleCopyDiscordId(player.discordId)
-                              }
-                              className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-                              title="Click to copy"
-                              type="button"
-                            >
-                              {player.discordId}
-                            </button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() =>
+                                    handleCopyDiscordId(player.discordId)
+                                  }
+                                  className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                                  type="button"
+                                >
+                                  {player.discordId}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Click to copy</TooltipContent>
+                            </Tooltip>
                           </TableCell>
                           <TableCell className="px-4">
                             <Badge

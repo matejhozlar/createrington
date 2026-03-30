@@ -1,16 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePlayerData } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
+import { useAuth } from "@/contexts/auth";
+import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Search,
   Users,
@@ -36,19 +34,6 @@ function formatDuration(seconds: number): string {
   return `${s}s`;
 }
 
-function formatDurationLong(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-
-  if (h > 0) {
-    return `${h} hour${h !== 1 ? "s" : ""}, ${m} minute${m !== 1 ? "s" : ""}`;
-  }
-  if (m > 0) {
-    return `${m} minute${m !== 1 ? "s" : ""}`;
-  }
-  return "Just joined";
-}
-
 function getSessionSeconds(player: PlayerData): number {
   const start =
     player.sessionStart instanceof Date
@@ -69,16 +54,9 @@ function SessionTimer({ player }: { player: PlayerData }) {
   }, [player]);
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <span className="tabular-nums text-muted-foreground text-sm font-mono">
-          {formatDuration(seconds)}
-        </span>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Session: {formatDurationLong(seconds)}</p>
-      </TooltipContent>
-    </Tooltip>
+    <span className="tabular-nums text-muted-foreground text-sm font-mono">
+      {formatDuration(seconds)}
+    </span>
   );
 }
 
@@ -108,10 +86,25 @@ function StatBlock({
 }
 
 /** Individual player card */
-function PlayerCard({ player, index }: { player: PlayerData; index: number }) {
+function PlayerCard({
+  player,
+  index,
+  onClick,
+}: {
+  player: PlayerData;
+  index: number;
+  onClick?: () => void;
+}) {
   return (
     <div
-      className="group relative flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:bg-card/80"
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? (e) => e.key === "Enter" && onClick() : undefined}
+      className={cn(
+        "group relative flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all duration-300 hover:border-primary/30 hover:bg-card/80",
+        onClick && "cursor-pointer",
+      )}
       style={{
         animation: `fade-in-up 0.4s ease-out ${index * 40}ms both`,
       }}
@@ -151,6 +144,10 @@ function PlayerCard({ player, index }: { player: PlayerData; index: number }) {
 export function OnlinePlayers() {
   // TODO: When converting to multiple servers, update this to use the selected server
   const serverId = 1;
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const isAdmin = user?.isAdmin ?? false;
 
   const {
     getServerPlayers,
@@ -319,7 +316,16 @@ export function OnlinePlayers() {
           ) : sortedPlayers.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {sortedPlayers.map((player, i) => (
-                <PlayerCard key={player.uuid} player={player} index={i} />
+                <PlayerCard
+                  key={player.uuid}
+                  player={player}
+                  index={i}
+                  onClick={
+                    isAdmin
+                      ? () => navigate(`/admin/players/${player.uuid}`)
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ) : searchQuery.trim() ? (

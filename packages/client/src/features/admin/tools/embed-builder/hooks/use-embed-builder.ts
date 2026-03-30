@@ -383,7 +383,7 @@ export function useEmbedBuilder() {
         return;
       }
       try {
-        await createPreset.mutateAsync({
+        const created = await createPreset.mutateAsync({
           name: presetName.trim(),
           data: embedData,
           categoryId: selectedCategoryId,
@@ -392,21 +392,11 @@ export function useEmbedBuilder() {
         clearDraft();
         utils.admin.embeds.presets.list.invalidate();
         utils.admin.embeds.presets.categories.list.invalidate();
-        // Reload the preset list and find the newly created preset to set it as active
-        const refreshed = await utils.admin.embeds.presets.list.fetch({
-          search: undefined,
-          limit: 50,
+        setActivePreset({
+          id: created.id,
+          name: created.name,
+          categoryId: created.categoryId ?? null,
         });
-        const created = refreshed.presets.find(
-          (p) => p.name === presetName.trim(),
-        );
-        if (created) {
-          setActivePreset({
-            id: created.id,
-            name: created.name,
-            categoryId: created.categoryId ?? null,
-          });
-        }
         toast.success(`Preset "${presetName.trim()}" created`);
       } catch (err) {
         toast.error(

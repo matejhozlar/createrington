@@ -5,14 +5,13 @@ import { trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
-const channels = config.discord.guild.channels;
-const categories = config.discord.guild.categories;
-
 /** Admin auto-messages router — channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category" })
     .query(() => {
+      const channels = config.discord.guild.channels;
+      const categories = config.discord.guild.categories;
       const grouped: Array<{
         category: string;
         categoryId: string;

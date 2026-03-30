@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { Edit, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -17,7 +17,6 @@ interface PlayerHeaderProps {
   player: PlayerApiData;
   isOnline: boolean;
   currentServerName: string | null;
-  onNavigateBack: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
@@ -26,7 +25,6 @@ export function PlayerHeader({
   player,
   isOnline,
   currentServerName,
-  onNavigateBack,
   onEdit,
   onDelete,
 }: PlayerHeaderProps) {
@@ -52,19 +50,6 @@ export function PlayerHeader({
           </BreadcrumbList>
         </Breadcrumb>
       </header>
-
-      {/* Back Button */}
-      <div className="px-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onNavigateBack}
-          className="cursor-pointer"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Players
-        </Button>
-      </div>
 
       {/* Player Info Card */}
       <div className="mx-4 rounded-lg border border-border bg-card p-6">

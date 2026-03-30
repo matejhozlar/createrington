@@ -60,6 +60,8 @@ INSERT INTO player (minecraft_uuid, minecraft_username, discord_id, online, last
 ('091b900c-4174-478c-900c-a0fe5a31a329', 'saunhardy', '818819241666281503', true, NOW(), NOW() - INTERVAL '180 days', 1),
 ('3e0db446-147a-4692-87fd-c3facc4341db', 'Agent772', '547450242090532874', true, NOW(), NOW() - INTERVAL '175 days', 1),
 ('4cada83a-c012-4a31-8d80-942f3f79e8a1', 'The_Bigshot', '99318080374607872', true, NOW(), NOW() - INTERVAL '170 days', 1),
+('8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f', 'diablothe2nd', '462293344807026699', true, NOW(), NOW() - INTERVAL '10 days', 1),
+('32ff995f-cf92-417b-b745-891738346120', 'Tetsuoken', '1041727959767191655', false, NOW() - INTERVAL '2 hours', NOW() - INTERVAL '10 days', NULL),
 
 -- Active players (online now)
 ('550e8400-e29b-41d4-a716-446655440001', 'Steve', '123456789012345678', true, NOW(), NOW() - INTERVAL '90 days', 1),
@@ -170,6 +172,8 @@ INSERT INTO player_balance (minecraft_uuid, balance, updated_at) VALUES
 ('091b900c-4174-478c-900c-a0fe5a31a329', 15000000, NOW()),
 ('3e0db446-147a-4692-87fd-c3facc4341db', 12500000, NOW()),
 ('4cada83a-c012-4a31-8d80-942f3f79e8a1', 18750000, NOW()),
+('8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f', 500000, NOW()),
+('32ff995f-cf92-417b-b745-891738346120', 500000, NOW()),
 
 -- Other players
 ('550e8400-e29b-41d4-a716-446655440001', 1250500, NOW()),
@@ -270,6 +274,8 @@ INSERT INTO admin (discord_id, created_at, vanished) VALUES
 ('818819241666281503', NOW() - INTERVAL '180 days', false),  -- saunhardy
 ('547450242090532874', NOW() - INTERVAL '175 days', false),  -- Agent772
 ('99318080374607872', NOW() - INTERVAL '170 days', false),   -- The_Bigshot
+('462293344807026699', NOW() - INTERVAL '10 days', false),   -- diablothe2nd
+('1041727959767191655', NOW() - INTERVAL '10 days', false),  -- Tetsuoken
 ('123456789012345678', NOW() - INTERVAL '90 days', false),   -- Steve
 ('123456789012345680', NOW() - INTERVAL '80 days', false),   -- Notch
 ('123456789012345684', NOW() - INTERVAL '60 days', true);    -- Technoblade (vanished)

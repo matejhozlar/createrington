@@ -9,7 +9,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { StrikeClassification } from "@createrington/shared/db";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
@@ -35,8 +41,6 @@ export function IssueStrikeModal({
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState<1 | 2 | 3 | 4 | 5>(1);
 
-  if (!open) return null;
-
   const handleSubmit = async () => {
     if (!description) return;
 
@@ -59,26 +63,16 @@ export function IssueStrikeModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
       }}
     >
-      <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Issue Strike</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="cursor-pointer"
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Issue Strike</DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4">
           <Field>
@@ -135,25 +129,25 @@ export function IssueStrikeModal({
               rows={4}
             />
           </Field>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1 cursor-pointer"
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button
-              className="flex-1 cursor-pointer"
-              onClick={handleSubmit}
-              disabled={!description || issueStrike.isPending}
-            >
-              {issueStrike.isPending ? "Issuing..." : "Issue Strike"}
-            </Button>
-          </div>
         </div>
-      </div>
-    </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            className="flex-1 cursor-pointer"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            className="flex-1 cursor-pointer"
+            onClick={handleSubmit}
+            disabled={!description || issueStrike.isPending}
+          >
+            {issueStrike.isPending ? "Issuing..." : "Issue Strike"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

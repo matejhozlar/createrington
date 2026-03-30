@@ -19,8 +19,8 @@ export function StrikesTab({
   onRemoveStrike,
 }: StrikesTabProps) {
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Strikes</h3>
         <Button size="sm" onClick={onIssueStrike}>
           <Shield className="size-4" />
@@ -67,7 +67,7 @@ export function StrikesTab({
       )}
 
       {player.strikes.all.length > player.strikes.active.length && (
-        <div className="mt-6">
+        <div>
           <h4 className="text-sm font-semibold text-muted-foreground">
             Removed Strikes
           </h4>

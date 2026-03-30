@@ -9,6 +9,7 @@ import { ModSection } from "./components/ModSection";
 interface Mod {
   name: string;
   url: string;
+  version?: string;
 }
 
 export function ModpackChangelog() {
@@ -63,6 +64,7 @@ export function ModpackChangelog() {
           mods={added}
           onAdd={(mod) => setAdded((prev) => [...prev, mod])}
           onRemove={(i) => setAdded((prev) => prev.filter((_, j) => j !== i))}
+          showVersionPicker
         />
 
         <ModSection
@@ -79,6 +81,7 @@ export function ModpackChangelog() {
           mods={updated}
           onAdd={(mod) => setUpdated((prev) => [...prev, mod])}
           onRemove={(i) => setUpdated((prev) => prev.filter((_, j) => j !== i))}
+          showVersionPicker
         />
 
         <Button
@@ -154,6 +157,9 @@ function PreviewField({ title, mods }: { title: string; mods: Mod[] }) {
             >
               {mod.name}
             </a>
+            {mod.version && (
+              <span className="text-gray-400"> — {mod.version}</span>
+            )}
           </div>
         ))}
       </div>

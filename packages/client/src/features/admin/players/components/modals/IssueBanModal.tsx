@@ -19,8 +19,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { X, AlertTriangle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
@@ -53,7 +59,14 @@ export function IssueBanModal({
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
   const [confirmText, setConfirmText] = useState("");
 
-  if (!open) return null;
+  const handleClose = () => {
+    setReason("");
+    setDurationDays(7);
+    setBanType("temporary");
+    setConfirmText("");
+    setShowPermanentConfirm(false);
+    onClose();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,40 +132,18 @@ export function IssueBanModal({
     setConfirmText("");
   };
 
-  const handleClose = () => {
-    setReason("");
-    setDurationDays(7);
-    setBanType("temporary");
-    setConfirmText("");
-    setShowPermanentConfirm(false);
-    onClose();
-  };
-
   return (
     <>
-      <div
-        className={cn(
-          "fixed inset-0 z-50 flex items-center justify-center bg-black/50",
-        )}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) {
-            handleClose();
-          }
+      <Dialog
+        open={open}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) handleClose();
         }}
       >
-        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Issue Ban</h3>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="cursor-pointer"
-              aria-label="Close"
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Issue Ban</DialogTitle>
+          </DialogHeader>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="rounded-lg border border-border bg-muted/50 p-3">
@@ -234,7 +225,7 @@ export function IssueBanModal({
               />
             </Field>
 
-            <div className="flex gap-2">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -252,10 +243,10 @@ export function IssueBanModal({
               >
                 {loading ? "Issuing..." : "Issue Ban"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Permanent Ban Confirmation Dialog */}
       <AlertDialog

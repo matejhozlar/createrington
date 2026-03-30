@@ -30,11 +30,13 @@ export const commandRegistry: Record<string, CommandEnv> = {
   // Admin
   username: "prod",
   leaderboard: "prod",
-  "notification-panel": "prod",
   ticket: "prod",
   cooldown: "prod",
   purge: "prod",
   message: "prod",
+
+  // Owner
+  "notification-panel": "prod",
   "ticket-panel": "prod",
   "server-panel": "prod",
   "donate-panel": "prod",

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -416,12 +417,11 @@ export function AdminDashboard() {
                             {cmd.count}
                           </span>
                         </div>
-                        <div className="h-2 rounded-full bg-muted">
-                          <div
-                            className="h-2 rounded-full bg-sidebar-primary"
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
+                        <Progress
+                          className="bg-muted"
+                          indicatorClassName="bg-sidebar-primary"
+                          value={pct}
+                        />
                       </div>
                     );
                   })}

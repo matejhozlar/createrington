@@ -6,9 +6,8 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Server } from "lucide-react";
+import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ServerHeaderProps {
@@ -17,7 +16,6 @@ interface ServerHeaderProps {
   port: number;
   isOnline: boolean;
   isMaintenance: boolean;
-  onNavigateBack: () => void;
 }
 
 export function ServerHeader({
@@ -26,7 +24,6 @@ export function ServerHeader({
   port,
   isOnline,
   isMaintenance,
-  onNavigateBack,
 }: ServerHeaderProps) {
   const statusLabel = isMaintenance
     ? "Maintenance"
@@ -53,18 +50,6 @@ export function ServerHeader({
           </BreadcrumbList>
         </Breadcrumb>
       </header>
-
-      <div className="px-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onNavigateBack}
-          className="cursor-pointer"
-        >
-          <ArrowLeft className="size-4" />
-          Back to Servers
-        </Button>
-      </div>
 
       <div className="mx-4 rounded-lg border border-border bg-card p-6">
         <div className="flex items-center gap-4">

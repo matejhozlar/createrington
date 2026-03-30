@@ -206,8 +206,8 @@ const config = {
   },
 
   // null means SFTP is used (production path); a non-null value enables local filesystem ops
-  maintenance: {
-    localPath: env.MAINTENANCE_LOCAL_PATH ?? null,
+  mcServer: {
+    localPath: env.MC_SERVER_LOCAL_PATH ?? null,
   },
 
   sync: {

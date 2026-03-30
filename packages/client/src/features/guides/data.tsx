@@ -111,7 +111,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforge-homepage.webp"
               alt="CurseForge homepage with Get CurseForge App button highlighted"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               On the download page, you'll see two options — either one works,
@@ -131,7 +131,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforge-download.webp"
               alt="CurseForge download page with Overwolf and Standalone options"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               Run the installer and follow the on-screen instructions to
@@ -153,7 +153,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-game.webp"
               alt="CurseForge app game selection screen with Minecraft highlighted"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -170,7 +170,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-search.webp"
               alt="CurseForge app Minecraft section with search bar"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               You'll see <strong>Createrington: Cogs & Steam</strong> in the
@@ -180,7 +180,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-modpack.webp"
               alt="Createrington modpack in CurseForge search results with Install button"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               The app will automatically download all required mods and
@@ -231,7 +231,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
               alt="Createrington modpack page in CurseForge"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -254,7 +254,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-content-management.webp"
               alt="CurseForge Profile Options with content management disabled"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               The <strong>Change Version</strong> option only appears when
@@ -277,7 +277,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-change-version-button.webp"
               alt="CurseForge three-dot menu with Change Version option"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-4">
               Select the latest version from the list and confirm. CurseForge
@@ -345,7 +345,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-import-button.webp"
               alt="CurseForge app with Import button highlighted"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -359,7 +359,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-import-menu.webp"
               alt="CurseForge import profile dialog"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <ul className="list-disc pl-6 space-y-1 mt-4">
               <li>
@@ -416,7 +416,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-modpack-properties-button.webp"
               alt="Createrington modpack page in CurseForge"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -433,7 +433,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforgeapp-profile-options-button.webp"
               alt="CurseForge three-dot menu with Profile Options highlighted"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -452,7 +452,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/download/curseforge-app-profile-properties-content-management.webp"
               alt="CurseForge Profile Options with Allow content management checkbox"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -524,7 +524,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/money.webp"
               alt="/money command showing your balance"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-6">
               <CopyBlock label="Claim daily reward" value="/daily" />
@@ -536,7 +536,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/daily.webp"
               alt="/daily command showing reward claimed"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-6">
               <CopyBlock label="Send money" value="/pay @user [amount]" />
@@ -547,7 +547,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/pay.webp"
               alt="/pay command showing transfer complete"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-6">
               <CopyBlock label="Transaction history" value="/history" />
@@ -559,7 +559,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/history.webp"
               alt="/history command showing transaction list"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),
@@ -579,7 +579,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/playtime.webp"
               alt="/playtime command showing playtime stats"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
             <p className="mt-6">
               <CopyBlock
@@ -594,7 +594,7 @@ export const guides: Guide[] = [
             <img
               src="/assets/guides/commands/compare.webp"
               alt="/compare command showing player comparison"
-              className="mt-4 rounded-lg border border-border"
+              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
             />
           </>
         ),

@@ -7,16 +7,30 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
 import {
+  Blocks,
   Coins,
   Megaphone,
   MessageCircleQuestion,
   Paintbrush,
+  RefreshCw,
   Terminal,
   Timer,
 } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useToastActions } from "@/hooks/use-toast";
+import { isProduction } from "@/lib/utils";
 
 const tools = [
+  {
+    title: "Structure Packs",
+    description:
+      "Manage weekly rotating structure packs. Create mod collections from CurseForge and configure the rotation schedule.",
+    icon: Blocks,
+    href: "/admin/tools/structure-packs",
+    devOnly: true,
+  },
   {
     title: "FAQ Auto-Responder",
     description:
@@ -63,6 +77,16 @@ const tools = [
 
 export function AdminTools() {
   const navigate = useNavigate();
+  const toast = useToastActions();
+
+  const refetchMutation = trpc.admin.refetchDiscordEntities.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        `Refreshed: ${data.roles} roles, ${data.channels} channels, ${data.categories} categories`,
+      );
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -81,27 +105,43 @@ export function AdminTools() {
       </header>
 
       <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
-        <h1 className="text-2xl font-semibold">Tools</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Tools</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            onClick={() => refetchMutation.mutate()}
+            disabled={refetchMutation.isPending}
+          >
+            <RefreshCw
+              className={`mr-2 size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
+            />
+            Refresh Discord Data
+          </Button>
+        </div>
 
         <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.href}
-              type="button"
-              onClick={() => navigate(tool.href)}
-              className="group cursor-pointer rounded-lg border border-border bg-card p-6 text-left transition-colors hover:bg-accent"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <tool.icon className="size-5" />
+          {tools
+            .filter((t) => !isProduction || !t.devOnly)
+            .map((tool) => (
+              <button
+                key={tool.href}
+                type="button"
+                onClick={() => navigate(tool.href)}
+                className="group cursor-pointer rounded-lg border border-border bg-card p-6 text-left transition-colors hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                    <tool.icon className="size-5" />
+                  </div>
+                  <h2 className="text-lg font-semibold">{tool.title}</h2>
                 </div>
-                <h2 className="text-lg font-semibold">{tool.title}</h2>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {tool.description}
-              </p>
-            </button>
-          ))}
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {tool.description}
+                </p>
+              </button>
+            ))}
         </div>
       </div>
     </div>

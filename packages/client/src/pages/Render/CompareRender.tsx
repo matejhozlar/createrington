@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 interface PlayerData {
   username: string;
   uuid: string;
-  balance: string;
+  networth: string;
   playtime: string;
   playtimeSeconds: number;
   sessions: number;
@@ -118,9 +118,9 @@ export function CompareRender() {
   const left = data.player1;
   const right = data.player2;
 
-  const balanceWin = winner(
-    parseFloat(left.balance.replace(/,/g, "")),
-    parseFloat(right.balance.replace(/,/g, "")),
+  const networthWin = winner(
+    parseFloat(left.networth.replace(/,/g, "")),
+    parseFloat(right.networth.replace(/,/g, "")),
   );
   const playtimeWin = winner(left.playtimeSeconds, right.playtimeSeconds);
   const sessionsWin = winner(left.sessions, right.sessions);
@@ -182,10 +182,10 @@ export function CompareRender() {
           </span>
           <div className="flex flex-col gap-2.5 w-full">
             <StatRow
-              label="BALANCE"
-              value1={`$${left.balance}`}
-              value2={`$${right.balance}`}
-              win={balanceWin}
+              label="NETWORTH"
+              value1={`$${left.networth}`}
+              value2={`$${right.networth}`}
+              win={networthWin}
             />
             <StatRow
               label="PLAYTIME"

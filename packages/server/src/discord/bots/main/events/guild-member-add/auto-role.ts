@@ -103,7 +103,7 @@ export async function execute(
       );
     }
 
-    const existingPlayer = await Q.player.exists({
+    const existingPlayer = await Q.player.find({
       discordId: member.user.id,
     });
 
@@ -121,6 +121,19 @@ export async function execute(
       } catch (error) {
         logger.error(
           `Error assigning verified role to returning player ${member.user.tag}:`,
+          error,
+        );
+      }
+
+      // Sync Discord nickname to Minecraft username
+      try {
+        await member.setNickname(
+          existingPlayer.minecraftUsername,
+          "Returning player: sync to MC name",
+        );
+      } catch (error) {
+        logger.warn(
+          `Could not set nickname for returning player ${member.user.tag}:`,
           error,
         );
       }
@@ -189,7 +202,12 @@ export async function execute(
         );
 
         await verificationChannel.send({
-          content: `Welcome ${member}! 👋\n\nTo get started, please verify your account using the \`/verify <token>\` command with the token you received after applying.\n\nIf you don't have a token yet, you'll need to apply first at <https://create-rington.com/apply-to-join>`,
+          content:
+            `## 👋 Welcome ${member}!\n\n` +
+            `To get started, verify your account using the \`/verify\` command with the token you received after applying.\n\n` +
+            `> **Example:** \`/verify your-token-here\`\n\n` +
+            `### Don't have a token?\n` +
+            `You'll need to apply first at <https://create-rington.com/apply-to-join>`,
         });
 
         logger.info(

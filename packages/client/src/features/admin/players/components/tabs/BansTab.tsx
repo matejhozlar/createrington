@@ -45,8 +45,8 @@ export function BansTab({
   };
 
   return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Bans</h3>
         <Button size="sm" onClick={onIssueBan}>
           <Ban className="size-4" />
@@ -56,7 +56,7 @@ export function BansTab({
 
       {/* Current Active Ban Warning */}
       {currentBan && !isExpired(currentBan.expiresAt) && (
-        <div className="mb-4 rounded-lg border border-destructive bg-destructive/10 p-4">
+        <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2">
@@ -153,7 +153,7 @@ export function BansTab({
       )}
 
       {removedBans.length > 0 && (
-        <div className="mt-6">
+        <div>
           <h4 className="text-sm font-semibold text-muted-foreground">
             Lifted Bans
           </h4>
