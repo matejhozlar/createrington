@@ -42,4 +42,26 @@ router.post(
   ),
 );
 
+/**
+ * POST /api/presence/heartbeat
+ *
+ * Periodic heartbeat from the mod with the full online player list.
+ * Used to reconcile stale sessions from missed leave events.
+ *
+ * Security:
+ * - Requires valid mod JWT token
+ * - Requires whitelisted server IP
+ *
+ * Request body:
+ * {
+ *  players: Array<{ uuid: string, username: string }>,
+ *  timestamp?: number,
+ *  serverId?: string
+ * }
+ */
+router.post(
+  "/heartbeat",
+  ...customRoute([verifyServerIP, verifyModJWT], PresenceController.heartbeat),
+);
+
 export default router;
