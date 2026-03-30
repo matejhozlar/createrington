@@ -58,9 +58,10 @@ const OPTION_TYPE_LABELS: Record<number, string> = {
   11: "Attachment",
 };
 
-const CATEGORY_ORDER = ["admin", "user", "public"] as const;
+const CATEGORY_ORDER = ["owner", "admin", "user", "public"] as const;
 
 const CATEGORY_META: Record<string, { label: string; color: string }> = {
+  owner: { label: "Owner", color: "bg-amber-500/10 text-amber-400" },
   admin: { label: "Admin", color: "bg-red-500/10 text-red-400" },
   user: { label: "User", color: "bg-blue-500/10 text-blue-400" },
   public: { label: "Public", color: "bg-green-500/10 text-green-400" },

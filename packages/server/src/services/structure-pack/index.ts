@@ -14,7 +14,7 @@ import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 export class StructurePackService {
   async createPack(name: string, description?: string): Promise<StructurePack> {
     const existing = await Q.structure.pack.find({ name });
-    if (existing) {
+    if (existing && !existing.deletedAt) {
       throw new ConflictError(
         `A structure pack named "${name}" already exists`,
       );
@@ -29,7 +29,7 @@ export class StructurePackService {
     const pack = await this.ensurePackExists(id);
     if (data.name && data.name !== pack.name) {
       const existing = await Q.structure.pack.find({ name: data.name });
-      if (existing) {
+      if (existing && !existing.deletedAt) {
         throw new ConflictError(
           `A structure pack named "${data.name}" already exists`,
         );
@@ -45,7 +45,11 @@ export class StructurePackService {
     }
     await Q.structure.pack.update(
       { id },
-      { deletedAt: new Date(), enabled: false },
+      {
+        deletedAt: new Date(),
+        enabled: false,
+        name: `deleted-${pack.id}-${pack.name}`,
+      },
     );
   }
 
