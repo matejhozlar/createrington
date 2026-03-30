@@ -3,6 +3,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 type TabType =
   | "overview"
   | "sessions"
+  | "stats"
   | "tickets"
   | "strikes"
   | "bans"
@@ -17,6 +18,7 @@ interface PlayerTabsProps {
 const TABS: Array<{ id: TabType; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "sessions", label: "Sessions" },
+  { id: "stats", label: "Stats" },
   { id: "tickets", label: "Tickets" },
   { id: "strikes", label: "Strikes" },
   { id: "bans", label: "Bans" },
