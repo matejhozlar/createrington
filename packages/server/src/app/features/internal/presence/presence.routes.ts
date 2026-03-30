@@ -36,4 +36,27 @@ router.post(
   ),
 );
 
+/**
+ * POST /api/internal/presence/heartbeat
+ *
+ * Receive a forwarded heartbeat from the dev server containing the full
+ * online player list. Reconciles test server sessions on production.
+ *
+ * Security:
+ * - Requires valid X-Sync-Secret header
+ *
+ * Request body:
+ * {
+ *   players: Array<{ uuid: string, username: string }>,
+ *   timestamp?: string (ISO 8601)
+ * }
+ */
+router.post(
+  "/heartbeat",
+  ...customRoute(
+    [verifySyncSecret],
+    InternalPresenceController.handleSyncedHeartbeat,
+  ),
+);
+
 export default router;
