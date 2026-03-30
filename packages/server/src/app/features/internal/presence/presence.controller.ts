@@ -126,4 +126,93 @@ export class InternalPresenceController {
       );
     }
   }
+
+  /**
+   * Processes a forwarded heartbeat from the dev server.
+   *
+   * Receives the full online player list from the dev test server and
+   * reconciles sessions on the production test server entry — ending
+   * stale sessions and starting missing ones.
+   */
+  static async handleSyncedHeartbeat(
+    req: Request,
+    res: Response,
+  ): Promise<void> {
+    const { players } = req.body;
+
+    if (!Array.isArray(players)) {
+      throw new BadRequestError("players must be an array");
+    }
+
+    const onlinePlayers: Array<{ uuid: string; username: string }> = [];
+    for (const p of players) {
+      if (!p.uuid || !p.username) continue;
+      if (!UUID_REGEX.test(p.uuid)) continue;
+      onlinePlayers.push({ uuid: p.uuid, username: p.username });
+    }
+
+    try {
+      const testServerId = await ensureTestServer();
+
+      // Find all active sessions on the test server
+      const activeSessions = await Q.player.session.findAll({
+        serverId: testServerId,
+        sessionEnd: null,
+      });
+
+      const activeUuids = new Set(
+        activeSessions.map((s) => s.playerMinecraftUuid),
+      );
+      const onlineUuids = new Set(onlinePlayers.map((p) => p.uuid));
+
+      // End stale sessions (tracked but not in heartbeat)
+      let ended = 0;
+      for (const session of activeSessions) {
+        if (!onlineUuids.has(session.playerMinecraftUuid)) {
+          await playtimeRepo.endSession({
+            sessionId: 0,
+            uuid: session.playerMinecraftUuid,
+            username: "",
+            serverId: testServerId,
+            sessionStart: new Date(),
+            sessionEnd: new Date(),
+            secondsPlayed: 0,
+          });
+          ended++;
+        }
+      }
+
+      // Start missing sessions (online but not tracked)
+      let started = 0;
+      for (const player of onlinePlayers) {
+        if (!activeUuids.has(player.uuid)) {
+          await playtimeRepo.startSession({
+            uuid: player.uuid,
+            username: player.username,
+            serverId: testServerId,
+            sessionStart: new Date(),
+          });
+          started++;
+        }
+      }
+
+      logger.info(
+        `[sync] Heartbeat reconciled: ${ended} ended, ${started} started, ${onlinePlayers.length} reported online`,
+      );
+
+      res.json({
+        success: true,
+        message: "Heartbeat reconciled",
+        data: {
+          playersReported: onlinePlayers.length,
+          sessionsEnded: ended,
+          sessionsStarted: started,
+          receivedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error("[sync] Failed to process synced heartbeat:", error);
+      throw new InternalServerError("Failed to process synced heartbeat.");
+    }
+  }
 }

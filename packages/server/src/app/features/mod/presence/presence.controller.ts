@@ -5,7 +5,9 @@ import type {
   ModPlayerJoinData,
   ModPlayerLeaveData,
 } from "@/services/playtime";
+import { PlaytimeForwarderService } from "@/services/playtime/forwarder.service";
 import { getServerByIp } from "@/services/playtime/config";
+import config from "@/config";
 import type { Request, Response } from "express";
 
 /**
@@ -200,6 +202,15 @@ export class PresenceController {
       }
 
       playtimeService.reconcileWithHeartbeat(onlinePlayers);
+
+      // Forward heartbeat to production if sync is configured
+      if (config.sync.targetUrl && config.sync.secret) {
+        const forwarder = new PlaytimeForwarderService(
+          config.sync.targetUrl,
+          config.sync.secret,
+        );
+        void forwarder.forwardHeartbeat(onlinePlayers);
+      }
 
       logger.info(
         `Heartbeat received for server ${targetServerId}: ${onlinePlayers.length} player(s) online`,
