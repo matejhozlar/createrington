@@ -1,6 +1,7 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { getService, Services } from "@/services";
 import type {
+  MinecraftPlayer,
   ModPlayerJoinData,
   ModPlayerLeaveData,
 } from "@/services/playtime";
@@ -129,6 +130,94 @@ export class PresenceController {
       logger.error("Failed to process presence update:", error);
       throw new InternalServerError(
         "Failed to process presence update. Please try again.",
+      );
+    }
+  }
+
+  /**
+   * Receives a heartbeat from the mod containing the full online player list.
+   * Reconciles tracked sessions against reality to clean up stale sessions.
+   *
+   * @param req - Express request with heartbeat payload
+   * @param res - Express response
+   */
+  static async heartbeat(req: Request, res: Response): Promise<void> {
+    const { players, serverId } = req.body;
+
+    if (!Array.isArray(players)) {
+      throw new BadRequestError("players must be an array");
+    }
+
+    // Validate each player entry
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    const onlinePlayers: MinecraftPlayer[] = [];
+    for (const p of players) {
+      if (!p.uuid || !p.username) continue;
+      if (!uuidRegex.test(p.uuid)) continue;
+      onlinePlayers.push({ uuid: p.uuid, username: p.username });
+    }
+
+    // Resolve target server
+    let targetServerId: number | undefined;
+
+    if (serverId) {
+      targetServerId = parseInt(serverId, 10);
+      if (isNaN(targetServerId)) {
+        throw new BadRequestError("Invalid serverId format");
+      }
+    } else {
+      const serverIp = req.serverIp;
+      if (!serverIp) {
+        throw new InternalServerError(
+          "Server IP not detected - IP verification middleware may not be properly configured",
+        );
+      }
+
+      const serverInfo = getServerByIp(serverIp);
+      if (!serverInfo) {
+        logger.warn(`Heartbeat from unknown server IP: ${serverIp}`);
+        throw new BadRequestError(
+          `Server IP ${serverIp} is not configured. Please contact an administrator`,
+        );
+      }
+
+      targetServerId = serverInfo.serverId;
+    }
+
+    try {
+      const playtimeManager = await getService(
+        Services.PLAYTIME_MANAGER_SERVICE,
+      );
+
+      const playtimeService = playtimeManager.getService(targetServerId);
+
+      if (!playtimeService) {
+        throw new InternalServerError(
+          `Playtime tracking not configured for server ${targetServerId}`,
+        );
+      }
+
+      playtimeService.reconcileWithHeartbeat(onlinePlayers);
+
+      logger.info(
+        `Heartbeat received for server ${targetServerId}: ${onlinePlayers.length} player(s) online`,
+      );
+
+      res.json({
+        success: true,
+        message: "Heartbeat processed",
+        data: {
+          serverId: targetServerId,
+          playersReported: onlinePlayers.length,
+          receivedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      logger.error("Failed to process heartbeat:", error);
+      throw new InternalServerError(
+        "Failed to process heartbeat. Please try again.",
       );
     }
   }

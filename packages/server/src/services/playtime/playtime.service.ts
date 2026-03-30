@@ -484,6 +484,66 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   }
 
   // ==========================================================================
+  // HEARTBEAT RECONCILIATION
+  // ==========================================================================
+
+  /**
+   * Reconciles in-memory sessions against the actual player list from the mod heartbeat.
+   *
+   * Ends sessions for any players tracked as online but not present in the heartbeat.
+   * Starts sessions for any players present in the heartbeat but not tracked.
+   *
+   * @param onlinePlayers - Full list of players currently on the server (from mod)
+   */
+  public reconcileWithHeartbeat(onlinePlayers: MinecraftPlayer[]): void {
+    const onlineUuids = new Set(onlinePlayers.map((p) => p.uuid));
+
+    // End stale sessions for players not actually online
+    const staleUuids: string[] = [];
+    for (const [uuid, session] of this.activeSessions) {
+      if (!onlineUuids.has(uuid)) {
+        logger.warn(
+          `Heartbeat reconciliation: ending stale session for ${session.username} (${uuid})`,
+        );
+        staleUuids.push(uuid);
+        this.handlePlayerLeave(session);
+      }
+    }
+    for (const uuid of staleUuids) {
+      this.activeSessions.delete(uuid);
+    }
+
+    // Start sessions for players online but not tracked
+    for (const player of onlinePlayers) {
+      if (!this.activeSessions.has(player.uuid)) {
+        logger.warn(
+          `Heartbeat reconciliation: starting missing session for ${player.username} (${player.uuid})`,
+        );
+        this.handlePlayerJoin(player);
+      }
+    }
+
+    if (
+      staleUuids.length > 0 ||
+      onlinePlayers.some((p) => !this.activeSessions.has(p.uuid))
+    ) {
+      logger.info(
+        `Heartbeat reconciliation complete: ended ${staleUuids.length} stale, tracking ${this.activeSessions.size} active`,
+      );
+    } else {
+      logger.debug(
+        `Heartbeat reconciliation: all ${this.activeSessions.size} sessions consistent`,
+      );
+    }
+
+    // Mark server as online if we receive a heartbeat
+    if (this.serverState !== ServerState.ONLINE) {
+      this.serverState = ServerState.ONLINE;
+      this.emit("serverOnline");
+    }
+  }
+
+  // ==========================================================================
   // PRIVATE
   // ==========================================================================
 
