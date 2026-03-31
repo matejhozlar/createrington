@@ -1,12 +1,16 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination } from "@/trpc/utils";
-import type { AdminLogActionFilters } from "@createrington/shared/db/admin_log_action.types";
 
 /** Admin audit logs router — filterable, paginated admin action history. */
 export const logsRouter = router({
+  admins: adminProcedure
+    .meta({ description: "Get distinct admin usernames for filter dropdown" })
+    .query(async () => {
+      return Q.admin.log.action.getDistinctAdmins();
+    }),
+
   list: adminProcedure
     .meta({
       description:
@@ -17,37 +21,23 @@ export const logsRouter = router({
         ...paginationInput({ defaultLimit: 20 }),
         search: z.string().optional(),
         actionType: z.string().optional(),
-        tableName: z.string().optional(),
         adminUsername: z.string().optional(),
         orderBy: z
-          .enum(["performedAt", "actionType", "tableName", "adminUsername"])
+          .enum(["performedAt", "actionType", "adminUsername"])
           .default("performedAt"),
         orderDirection: z.enum(["asc", "desc"]).default("desc"),
       }),
     )
     .query(async ({ input }) => {
-      const filters: AdminLogActionFilters = {};
-
-      if (input.search) {
-        filters.targetPlayerName = { $ilike: `%${escapeLike(input.search)}%` };
-      }
-      if (input.actionType) filters.actionType = input.actionType;
-      if (input.tableName) filters.tableName = input.tableName;
-      if (input.adminUsername) {
-        filters.adminUsername = {
-          $ilike: `%${escapeLike(input.adminUsername)}%`,
-        };
-      }
-
-      const [actions, total] = await Promise.all([
-        Q.admin.log.action.findAll(filters, {
-          orderBy: input.orderBy,
-          orderDirection: input.orderDirection,
-          limit: input.limit,
-          offset: input.page * input.limit,
-        }),
-        Q.admin.log.action.count(filters),
-      ]);
+      const { actions, total } = await Q.admin.log.action.search({
+        search: input.search,
+        actionType: input.actionType,
+        adminUsername: input.adminUsername,
+        orderBy: input.orderBy,
+        orderDirection: input.orderDirection,
+        limit: input.limit,
+        offset: input.page * input.limit,
+      });
 
       return {
         actions,

@@ -1,4 +1,5 @@
 import { router, adminProcedure } from "@/trpc/trpc";
+import { Q } from "@/db";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
 import { adminCryptoRouter } from "./crypto";
@@ -22,8 +23,17 @@ export const adminRouter = router({
       description:
         "Re-scrape Discord roles, channels, and categories from the live guild",
     })
-    .mutation(async () => {
-      return refetchDiscordEntities();
+    .mutation(async ({ ctx }) => {
+      const result = await refetchDiscordEntities();
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "discord_entities_refetch",
+        description: "Re-scraped Discord roles, channels, and categories",
+      });
+
+      return result;
     }),
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,

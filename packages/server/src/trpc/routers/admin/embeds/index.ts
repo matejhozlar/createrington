@@ -171,7 +171,7 @@ export const embedsRouter = router({
         bot: embedBotSchema.default("main"),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { channelId } = input;
       const data = input.embed as EmbedData;
 
@@ -203,6 +203,18 @@ export const embedsRouter = router({
         });
       }
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "embed_send",
+        description: `Sent embed to channel ${channelId}${data.title ? ` — "${data.title}"` : ""}`,
+        metadata: {
+          channelId,
+          presetId: input.presetId,
+          messageId: result.messageId,
+        },
+      });
+
       return { messageId: result.messageId };
     }),
 
@@ -217,7 +229,7 @@ export const embedsRouter = router({
         bot: embedBotSchema.default("main"),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { channelId, messageId } = input;
       const data = input.embed as EmbedData;
 
@@ -249,6 +261,14 @@ export const embedsRouter = router({
         );
       }
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "embed_edit",
+        description: `Edited embed ${messageId} in channel ${channelId}`,
+        metadata: { channelId, messageId, presetId: input.presetId },
+      });
+
       return { messageId: result.messageId };
     }),
 
@@ -263,7 +283,7 @@ export const embedsRouter = router({
         bot: embedBotSchema.default("main"),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const data = input.embed as EmbedData;
 
       if (!data.title && !data.description && data.fields.length === 0) {
@@ -302,6 +322,14 @@ export const embedsRouter = router({
           errors.push(`${link.messageId}: ${result.error ?? "Unknown error"}`);
         }
       }
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "embed_update_all",
+        description: `Updated preset #${input.presetId} and ${updated}/${links.length} linked messages`,
+        metadata: { presetId: input.presetId, updated, failed: errors.length },
+      });
 
       return { updated, failed: errors.length, errors };
     }),
