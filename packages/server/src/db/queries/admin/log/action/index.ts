@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { AdminLogActionBaseQueries } from "@/generated/db/admin_log_action.queries";
+import type { AdminLogAction } from "@createrington/shared/db/admin_log_action.types";
 
 /**
  * Custom queries for admin_log_action table
@@ -12,7 +13,73 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     super(db);
   }
 
-  // Custom methods can be implemented here
+  /**
+   * Search audit logs with text matching across description and targetPlayerName.
+   * Supports pagination, sorting, and optional action type filter.
+   */
+  async search(opts: {
+    search?: string;
+    actionType?: string;
+    adminUsername?: string;
+    orderBy: string;
+    orderDirection: "asc" | "desc";
+    limit: number;
+    offset: number;
+  }): Promise<{ actions: AdminLogAction[]; total: number }> {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let paramIndex = 1;
+
+    if (opts.search) {
+      const like = `%${opts.search}%`;
+      conditions.push(
+        `(description ILIKE $${paramIndex} OR target_player_name ILIKE $${paramIndex + 1})`,
+      );
+      params.push(like, like);
+      paramIndex += 2;
+    }
+
+    if (opts.actionType) {
+      conditions.push(`action_type = $${paramIndex}`);
+      params.push(opts.actionType);
+      paramIndex += 1;
+    }
+
+    if (opts.adminUsername) {
+      conditions.push(`admin_username ILIKE $${paramIndex}`);
+      params.push(`%${opts.adminUsername}%`);
+      paramIndex += 1;
+    }
+
+    const where =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const allowedSortColumns: Record<string, string> = {
+      performedAt: "performed_at",
+      actionType: "action_type",
+      adminUsername: "admin_username",
+    };
+    const sortCol = allowedSortColumns[opts.orderBy] ?? "performed_at";
+    const dir = opts.orderDirection === "asc" ? "ASC" : "DESC";
+
+    const [dataResult, countResult] = await Promise.all([
+      this.db.query(
+        `SELECT * FROM admin_log_action ${where} ORDER BY ${sortCol} ${dir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        [...params, opts.limit, opts.offset],
+      ),
+      this.db.query(
+        `SELECT COUNT(*)::int AS count FROM admin_log_action ${where}`,
+        params,
+      ),
+    ]);
+
+    return {
+      actions: dataResult.rows.map((row: Record<string, unknown>) =>
+        this.mapRowToEntity(row),
+      ),
+      total: countResult.rows[0]?.count ?? 0,
+    };
+  }
 
   /**
    * Log an admin action with all required context

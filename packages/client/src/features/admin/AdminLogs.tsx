@@ -43,13 +43,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
@@ -67,10 +60,27 @@ import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
 
-type SortField = "performedAt" | "actionType" | "tableName" | "adminUsername";
+type SortField = "performedAt" | "actionType" | "adminUsername";
 
-const ACTION_TYPES = ["UPDATE", "CREATE", "DELETE"];
-const TABLE_NAMES = ["player", "player_balance", "player_strike", "player_ban"];
+/** Build a human-readable description for an audit log entry */
+function getDescription(action: {
+  description: string | null;
+  targetPlayerName: string | null;
+  tableName: string | null;
+  fieldName: string | null;
+}): string {
+  if (action.description) return action.description;
+  const parts: string[] = [];
+  if (action.tableName && action.fieldName) {
+    parts.push(`${action.tableName}.${action.fieldName}`);
+  } else if (action.tableName) {
+    parts.push(action.tableName);
+  }
+  if (action.targetPlayerName) {
+    parts.push(`for ${action.targetPlayerName}`);
+  }
+  return parts.length > 0 ? parts.join(" ") : "—";
+}
 
 export function AdminLogs() {
   // Pagination state
@@ -79,12 +89,6 @@ export function AdminLogs() {
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
-  const [actionTypeFilter, setActionTypeFilter] = useState<string | undefined>(
-    undefined,
-  );
-  const [tableNameFilter, setTableNameFilter] = useState<string | undefined>(
-    undefined,
-  );
 
   // Metadata dialog state
   const [metadataAction, setMetadataAction] = useState<
@@ -104,8 +108,6 @@ export function AdminLogs() {
     orderBy,
     orderDirection,
     search: debouncedSearch.trim() || undefined,
-    actionType: actionTypeFilter,
-    tableName: tableNameFilter,
   });
 
   const actions = logsQuery.data?.actions ?? [];
@@ -219,52 +221,12 @@ export function AdminLogs() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by target player..."
+                  placeholder="Search logs..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
                   className="pl-9"
                 />
               </div>
-
-              <Select
-                value={actionTypeFilter ?? "all"}
-                onValueChange={(v) => {
-                  setActionTypeFilter(v === "all" ? undefined : v);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  {ACTION_TYPES.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={tableNameFilter ?? "all"}
-                onValueChange={(v) => {
-                  setTableNameFilter(v === "all" ? undefined : v);
-                  setPage(0);
-                }}
-              >
-                <SelectTrigger className="min-w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Tables</SelectItem>
-                  {TABLE_NAMES.map((name) => (
-                    <SelectItem key={name} value={name}>
-                      {name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
 
               <Button type="submit" className="min-w-[85px]">
                 Search
@@ -341,19 +303,8 @@ export function AdminLogs() {
                           {renderSortIcon("actionType")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4">Target Player</TableHead>
-                      <TableHead className="px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleSort("tableName")}
-                          className="inline-flex items-center gap-1 text-sm font-medium"
-                        >
-                          Table
-                          {renderSortIcon("tableName")}
-                        </button>
-                      </TableHead>
-                      <TableHead className="px-4">Field</TableHead>
-                      <TableHead className="px-4">Old / New</TableHead>
+                      <TableHead className="px-4">Description</TableHead>
+                      <TableHead className="px-4">Changes</TableHead>
                       <TableHead className="px-4">Reason</TableHead>
                       <TableHead className="w-[50px] px-4" />
                     </TableRow>
@@ -370,16 +321,10 @@ export function AdminLogs() {
                         <TableCell className="px-4">
                           <Badge variant="outline">{action.actionType}</Badge>
                         </TableCell>
-                        <TableCell className="px-4 text-sm">
-                          {action.targetPlayerName}
-                        </TableCell>
-                        <TableCell className="px-4">
-                          <Badge variant="outline">{action.tableName}</Badge>
-                        </TableCell>
-                        <TableCell className="px-4">
-                          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                            {action.fieldName}
-                          </code>
+                        <TableCell className="px-4 text-sm max-w-[300px] truncate">
+                          <span title={getDescription(action)}>
+                            {getDescription(action)}
+                          </span>
                         </TableCell>
                         <TableCell className="px-4">
                           <div className="flex flex-col gap-1 text-xs max-w-[200px]">
@@ -507,11 +452,14 @@ export function AdminLogs() {
           <DialogHeader>
             <DialogTitle>Entry Metadata</DialogTitle>
             <DialogDescription>
-              {metadataAction?.actionType} on{" "}
-              <span className="font-medium text-foreground">
-                {metadataAction?.tableName}.{metadataAction?.fieldName}
-              </span>{" "}
-              for {metadataAction?.targetPlayerName}
+              {getDescription(
+                metadataAction ?? {
+                  description: null,
+                  targetPlayerName: null,
+                  tableName: null,
+                  fieldName: null,
+                },
+              )}
             </DialogDescription>
           </DialogHeader>
           <pre className="max-h-[400px] overflow-auto rounded-md bg-muted p-4 text-xs">
