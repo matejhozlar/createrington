@@ -1077,7 +1077,15 @@ export class CryptoMarketService {
       );
       const volume = dailySnaps.reduce((sum, s) => sum + s.volume, 0n);
 
-      try {
+      const existing = await Q.crypto.price.snapshot
+        .where({
+          tokenId: token.id,
+          interval: "weekly",
+          recordedAt: lastMonday,
+        })
+        .first();
+
+      if (!existing) {
         await Q.crypto.price.snapshot.create({
           tokenId: token.id,
           interval: "weekly",
@@ -1088,8 +1096,6 @@ export class CryptoMarketService {
           volume,
           recordedAt: lastMonday,
         });
-      } catch {
-        // Ignore duplicate (unique constraint on token+interval+recordedAt)
       }
     }
 
