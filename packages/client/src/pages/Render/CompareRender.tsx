@@ -17,6 +17,12 @@ interface CompareData {
   player2: PlayerData;
 }
 
+function formatNumber(value: string): string {
+  const num = parseFloat(value);
+  if (isNaN(num)) return value;
+  return num.toLocaleString("en-US", { maximumFractionDigits: 3 });
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", {
     month: "short",
@@ -183,8 +189,8 @@ export function CompareRender() {
           <div className="flex flex-col gap-2.5 w-full">
             <StatRow
               label="NETWORTH"
-              value1={`$${left.networth}`}
-              value2={`$${right.networth}`}
+              value1={`$${formatNumber(left.networth)}`}
+              value2={`$${formatNumber(right.networth)}`}
               win={networthWin}
             />
             <StatRow
