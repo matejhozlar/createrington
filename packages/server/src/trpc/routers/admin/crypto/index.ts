@@ -46,7 +46,7 @@ export const adminCryptoRouter = router({
         delistedAt: z.string().datetime().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       if (input.category === "memecoin") {
         const catalogEntry = MEMECOIN_CATALOG.find(
           (m) => m.symbol === input.symbol,
@@ -71,6 +71,19 @@ export const adminCryptoRouter = router({
         delistedAt: input.delistedAt ? new Date(input.delistedAt) : undefined,
       });
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "crypto_token_create",
+        description: `Created token ${input.symbol} (${input.name})`,
+        metadata: {
+          tokenId: token.id,
+          symbol: input.symbol,
+          category: input.category,
+          price: input.price,
+        },
+      });
+
       return { token: serializeToken(token) };
     }),
 
@@ -85,8 +98,9 @@ export const adminCryptoRouter = router({
         delistedAt: z.string().datetime().nullable().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...updates } = input;
+      const oldToken = await Q.crypto.token.get({ id });
 
       // Build update payload explicitly so that null values (clearing a field)
       // are forwarded, while truly absent fields are omitted entirely.
@@ -104,6 +118,14 @@ export const adminCryptoRouter = router({
       await Q.crypto.token.update({ id }, updateData);
       const token = await Q.crypto.token.get({ id });
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "crypto_token_update",
+        description: `Updated token ${oldToken.symbol}`,
+        metadata: { tokenId: id, symbol: oldToken.symbol, changes: updates },
+      });
+
       return { token: serializeToken(token) };
     }),
 
@@ -113,10 +135,20 @@ export const adminCryptoRouter = router({
         "Delist a token — auto-sells all holdings at current price and marks as delisted",
     })
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const token = await Q.crypto.token.get({ id: input.id });
       const service = await getService(Services.CRYPTO_MARKET_SERVICE);
 
       await service.delistToken(input.id);
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "crypto_token_delist",
+        description: `Delisted token ${token.symbol} (${token.name})`,
+        metadata: { tokenId: input.id, symbol: token.symbol },
+      });
+
       return { message: "Token delisted successfully" };
     }),
 
@@ -139,7 +171,7 @@ export const adminCryptoRouter = router({
         tokenId: z.number().int().positive().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const service = await getService(Services.CRYPTO_MARKET_SERVICE);
 
       const event = await service.triggerEvent(
@@ -153,6 +185,18 @@ export const adminCryptoRouter = router({
           message: "Event could not be triggered (no valid target token found)",
         };
       }
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "crypto_event_trigger",
+        description: `Triggered ${input.eventType} event on ${event.tokenSymbol ?? "all tokens"}`,
+        metadata: {
+          eventType: input.eventType,
+          tokenId: event.tokenId,
+          tokenSymbol: event.tokenSymbol,
+        },
+      });
 
       return {
         success: true,

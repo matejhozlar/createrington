@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
+import { Q } from "@/db";
 import { trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
@@ -58,7 +59,7 @@ export const announcementsRouter = router({
         "Build and send a modpack changelog embed to the announcements channel. At least one mod must appear in added, removed, or updated",
     })
     .input(sendChangelogInput)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { version, added, removed, updated } = input;
 
       if (added.length === 0 && removed.length === 0 && updated.length === 0) {
@@ -94,6 +95,14 @@ export const announcementsRouter = router({
         throw trpcError.internal(result.error ?? "Failed to send changelog");
       }
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "announcement_changelog",
+        description: `Sent modpack changelog v${input.version} (${input.added.length} added, ${input.removed.length} removed, ${input.updated.length} updated)`,
+        metadata: { version: input.version },
+      });
+
       return { messageId: result.messageId };
     }),
 
@@ -103,7 +112,7 @@ export const announcementsRouter = router({
         "Build and send a maintenance announcement embed to the announcements channel",
     })
     .input(sendMaintenanceInput)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const embed = EmbedPresets.announcements.maintenance({
         type: input.type,
         startsAt: new Date(input.startsAt),
@@ -123,6 +132,18 @@ export const announcementsRouter = router({
           result.error ?? "Failed to send maintenance announcement",
         );
       }
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "announcement_maintenance",
+        description: `Sent ${input.type} announcement (starts ${input.startsAt}, ~${input.estimatedMinutes}min)`,
+        metadata: {
+          type: input.type,
+          startsAt: input.startsAt,
+          estimatedMinutes: input.estimatedMinutes,
+        },
+      });
 
       return { messageId: result.messageId };
     }),

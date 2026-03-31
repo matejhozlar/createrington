@@ -245,7 +245,7 @@ export const adminServersRouter = router({
         announce: z.boolean().optional().default(false),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const serverConfig = getServerById(input.serverId);
       if (!serverConfig) {
         throw trpcError.badRequest(
@@ -294,6 +294,16 @@ export const adminServersRouter = router({
           err instanceof Error ? err.message : "Failed to toggle maintenance",
         );
       }
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: input.enabled
+          ? "server_maintenance_enable"
+          : "server_maintenance_disable",
+        description: `${input.enabled ? "Enabled" : "Disabled"} maintenance on ${serverConfig.name}`,
+        serverId: input.serverId,
+      });
 
       // Broadcast updated server status via WebSocket
       try {
@@ -377,6 +387,18 @@ export const adminServersRouter = router({
         // Non-critical
       }
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "server_maintenance_schedule",
+        description: `Scheduled maintenance on ${serverConfig.name} for ${scheduledAt.toISOString()} (~${input.estimatedMinutes}min)`,
+        serverId: input.serverId,
+        metadata: {
+          scheduledAt: scheduledAt.toISOString(),
+          estimatedMinutes: input.estimatedMinutes,
+        },
+      });
+
       return {
         id: schedule.id,
         scheduledAt: schedule.scheduledAt.toISOString(),
@@ -388,7 +410,7 @@ export const adminServersRouter = router({
       description: "Cancel a pending scheduled maintenance for a server.",
     })
     .input(z.object({ serverId: z.coerce.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const schedule = maintenanceService.getScheduledMaintenance(
         input.serverId,
       );
@@ -399,6 +421,15 @@ export const adminServersRouter = router({
       }
 
       await maintenanceService.cancelScheduledMaintenance(input.serverId);
+
+      const serverConfig = getServerById(input.serverId);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "server_maintenance_cancel",
+        description: `Cancelled scheduled maintenance on ${serverConfig?.name ?? `server ${input.serverId}`}`,
+        serverId: input.serverId,
+      });
 
       // Broadcast server status update
       try {

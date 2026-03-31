@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
+import { Q } from "@/db";
 import { structurePackService } from "@/services/structure-pack";
 import { getService, Services } from "@/services";
 import {
@@ -49,8 +50,18 @@ export const adminStructurePacksRouter = router({
         description: z.string().max(500).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      return structurePackService.createPack(input.name, input.description);
+    .mutation(async ({ input, ctx }) => {
+      const pack = await structurePackService.createPack(
+        input.name,
+        input.description,
+      );
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_create",
+        description: `Created structure pack "${input.name}"`,
+      });
+      return pack;
     }),
 
   update: adminProcedure
@@ -62,16 +73,30 @@ export const adminStructurePacksRouter = router({
         description: z.string().max(500).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const { id, ...data } = input;
-      return structurePackService.updatePack(id, data);
+      const pack = await structurePackService.updatePack(id, data);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_update",
+        description: `Updated structure pack #${id}`,
+        metadata: { packId: id, changes: data },
+      });
+      return pack;
     }),
 
   delete: adminProcedure
     .meta({ description: "Soft-delete a structure pack" })
     .input(z.object({ id: z.coerce.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await structurePackService.deletePack(input.id);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_delete",
+        description: `Deleted structure pack #${input.id}`,
+      });
       return { deleted: true };
     }),
 
@@ -83,8 +108,18 @@ export const adminStructurePacksRouter = router({
         enabled: z.boolean(),
       }),
     )
-    .mutation(async ({ input }) => {
-      return structurePackService.toggleEnabled(input.id, input.enabled);
+    .mutation(async ({ input, ctx }) => {
+      const pack = await structurePackService.toggleEnabled(
+        input.id,
+        input.enabled,
+      );
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_toggle",
+        description: `${input.enabled ? "Enabled" : "Disabled"} structure pack #${input.id}`,
+      });
+      return pack;
     }),
 
   // Mod management
@@ -101,7 +136,7 @@ export const adminStructurePacksRouter = router({
         thumbnailUrl: z.string().url().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Validate the download URL is resolvable before persisting
       const rotationService = await getRotationService();
       await rotationService.validateModDownloadable(
@@ -109,7 +144,15 @@ export const adminStructurePacksRouter = router({
         input.curseforgeFileId,
       );
       const { packId, ...modData } = input;
-      return structurePackService.addMod(packId, modData);
+      const mod = await structurePackService.addMod(packId, modData);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_add_mod",
+        description: `Added mod "${input.modName}" to pack #${packId}`,
+        metadata: { packId, modName: input.modName },
+      });
+      return mod;
     }),
 
   removeMod: adminProcedure
@@ -120,8 +163,14 @@ export const adminStructurePacksRouter = router({
         modId: z.coerce.number().int().positive(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       await structurePackService.removeMod(input.packId, input.modId);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_remove_mod",
+        description: `Removed mod #${input.modId} from pack #${input.packId}`,
+      });
       return { removed: true };
     }),
 
@@ -278,7 +327,7 @@ export const adminStructurePacksRouter = router({
         ),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const created: string[] = [];
       const skipped: string[] = [];
 
@@ -308,23 +357,43 @@ export const adminStructurePacksRouter = router({
         }
       }
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_import",
+        description: `Imported ${created.length} structure packs (${skipped.length} skipped)`,
+        metadata: { created, skipped },
+      });
+
       return { created, skipped };
     }),
 
   // Rotation
   forceRotation: adminProcedure
     .meta({ description: "Trigger a manual rotation" })
-    .mutation(async () => {
+    .mutation(async ({ ctx }) => {
       const service = await getRotationService();
       await service.executeRotation(true);
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_force_rotation",
+        description: "Triggered manual structure pack rotation",
+      });
       return { triggered: true };
     }),
 
   clearRotation: adminProcedure
     .meta({ description: "Clear the current rotation and remove active mods" })
-    .mutation(async () => {
+    .mutation(async ({ ctx }) => {
       const service = await getRotationService();
       await service.clearRotation();
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "structure_pack_clear_rotation",
+        description: "Cleared active structure pack rotation",
+      });
       return { cleared: true };
     }),
 
@@ -370,9 +439,17 @@ export const adminStructurePacksRouter = router({
           gracePeriodMinutes: z.number().int().min(0).optional(),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const service = await getRotationService();
-        return service.updateConfig(input);
+        const config = await service.updateConfig(input);
+        await Q.admin.log.action.logAction({
+          adminDiscordId: ctx.user.discordId,
+          adminUsername: ctx.user.minecraftUsername,
+          actionType: "structure_pack_config_update",
+          description: "Updated structure pack rotation config",
+          metadata: input,
+        });
+        return config;
       }),
   }),
 });

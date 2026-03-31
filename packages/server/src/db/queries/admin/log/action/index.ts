@@ -23,13 +23,14 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     adminDiscordId: string;
     adminUsername: string;
     actionType: string;
-    targetPlayerUuid: string;
-    targetPlayerName: string;
-    tableName: string;
-    fieldName: string;
-    oldValue: string;
-    newValue: string;
-    reason: string;
+    description?: string;
+    targetPlayerUuid?: string;
+    targetPlayerName?: string;
+    tableName?: string;
+    fieldName?: string;
+    oldValue?: string;
+    newValue?: string;
+    reason?: string;
     serverId?: number;
     metadata?: Record<string, unknown>;
   }): Promise<void> {
@@ -37,6 +38,7 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
       adminDiscordId: data.adminDiscordId,
       adminUsername: data.adminUsername,
       actionType: data.actionType,
+      description: data.description,
       targetPlayerUuid: data.targetPlayerUuid,
       targetPlayerName: data.targetPlayerName,
       tableName: data.tableName,
@@ -48,8 +50,12 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
       metadata: data.metadata,
     });
 
-    logger.info(
-      `Admin action logged: ${data.adminUsername} updated ${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`,
-    );
+    const target =
+      data.description ??
+      (data.tableName && data.fieldName
+        ? `${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`
+        : data.actionType);
+
+    logger.info(`Admin action logged: ${data.adminUsername} — ${target}`);
   }
 }
