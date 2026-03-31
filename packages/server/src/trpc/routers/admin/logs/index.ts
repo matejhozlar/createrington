@@ -5,6 +5,12 @@ import { paginationInput, buildPagination } from "@/trpc/utils";
 
 /** Admin audit logs router — filterable, paginated admin action history. */
 export const logsRouter = router({
+  admins: adminProcedure
+    .meta({ description: "Get distinct admin usernames for filter dropdown" })
+    .query(async () => {
+      return Q.admin.log.action.getDistinctAdmins();
+    }),
+
   list: adminProcedure
     .meta({
       description:

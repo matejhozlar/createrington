@@ -48,6 +48,13 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Filter,
   FileText,
@@ -89,6 +96,7 @@ export function AdminLogs() {
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
+  const [adminFilter, setAdminFilter] = useState<string | undefined>(undefined);
 
   // Metadata dialog state
   const [metadataAction, setMetadataAction] = useState<
@@ -101,13 +109,17 @@ export function AdminLogs() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  // tRPC query
+  // tRPC queries
+  const adminsQuery = trpc.admin.logs.admins.useQuery();
+  const adminList = adminsQuery.data ?? [];
+
   const logsQuery = trpc.admin.logs.list.useQuery({
     page,
     limit,
     orderBy,
     orderDirection,
     search: debouncedSearch.trim() || undefined,
+    adminUsername: adminFilter,
   });
 
   const actions = logsQuery.data?.actions ?? [];
@@ -227,6 +239,26 @@ export function AdminLogs() {
                   className="pl-9"
                 />
               </div>
+
+              <Select
+                value={adminFilter ?? "all"}
+                onValueChange={(v) => {
+                  setAdminFilter(v === "all" ? undefined : v);
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="min-w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Admins</SelectItem>
+                  {adminList.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <Button type="submit" className="min-w-[85px]">
                 Search

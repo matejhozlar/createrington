@@ -46,8 +46,8 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
     }
 
     if (opts.adminUsername) {
-      conditions.push(`admin_username ILIKE $${paramIndex}`);
-      params.push(`%${opts.adminUsername}%`);
+      conditions.push(`admin_username = $${paramIndex}`);
+      params.push(opts.adminUsername);
       paramIndex += 1;
     }
 
@@ -79,6 +79,16 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
       ),
       total: countResult.rows[0]?.count ?? 0,
     };
+  }
+
+  /**
+   * Get distinct admin usernames that have audit log entries
+   */
+  async getDistinctAdmins(): Promise<string[]> {
+    const result = await this.db.query<{ admin_username: string }>(
+      `SELECT DISTINCT admin_username FROM admin_log_action ORDER BY admin_username ASC`,
+    );
+    return result.rows.map((r) => r.admin_username);
   }
 
   /**
