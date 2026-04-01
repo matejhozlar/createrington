@@ -46,11 +46,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from "@/components/ui/tooltip";
-import {
   Search,
   Filter,
   Users,
@@ -60,6 +55,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Copy,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
@@ -164,13 +160,14 @@ export function AdminPlayers() {
   /**
    * Copy Discord ID to clipboard
    */
-  const handleCopyDiscordId = useCallback(
-    async (discordId: string) => {
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent, text: string, label: string) => {
+      e.stopPropagation();
       try {
-        await navigator.clipboard.writeText(discordId);
-        toast.info("Discord ID copied to clipboard");
+        await navigator.clipboard.writeText(text);
+        toast.info(`${label} copied`);
       } catch {
-        toast.error("Failed to copy Discord ID");
+        toast.error(`Failed to copy ${label}`);
       }
     },
     [toast],
@@ -491,7 +488,6 @@ export function AdminPlayers() {
                           {renderSortIcon("lastSeen")}
                         </button>
                       </TableHead>
-                      <TableHead className="px-4 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -511,6 +507,7 @@ export function AdminPlayers() {
                         <TableRow
                           key={player.minecraftUuid}
                           className={cn(
+                            "group cursor-pointer",
                             badgeInfo.hasIssues &&
                               badgeInfo.color === "yellow" &&
                               "bg-yellow-500/5",
@@ -518,6 +515,11 @@ export function AdminPlayers() {
                               badgeInfo.color === "red" &&
                               "bg-destructive/5",
                           )}
+                          onClick={() =>
+                            navigate(
+                              `/admin/players/${player.minecraftUuid}`,
+                            )
+                          }
                         >
                           <TableCell className="px-4">
                             <div className="flex items-center gap-3">
@@ -541,30 +543,52 @@ export function AdminPlayers() {
                                 )}
                               </div>
                               <div>
-                                <p className="font-medium">
+                                <button
+                                  type="button"
+                                  onClick={(e) =>
+                                    handleCopy(
+                                      e,
+                                      player.minecraftUsername,
+                                      "Username",
+                                    )
+                                  }
+                                  className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                                >
                                   {player.minecraftUsername}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
+                                  <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) =>
+                                    handleCopy(
+                                      e,
+                                      player.minecraftUuid,
+                                      "UUID",
+                                    )
+                                  }
+                                  className="group/copy flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
                                   {player.minecraftUuid.slice(0, 8)}...
-                                </p>
+                                  <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                                </button>
                               </div>
                             </div>
                           </TableCell>
                           <TableCell className="px-4">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() =>
-                                    handleCopyDiscordId(player.discordId)
-                                  }
-                                  className="text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
-                                  type="button"
-                                >
-                                  {player.discordId}
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>Click to copy</TooltipContent>
-                            </Tooltip>
+                            <button
+                              type="button"
+                              onClick={(e) =>
+                                handleCopy(
+                                  e,
+                                  player.discordId,
+                                  "Discord ID",
+                                )
+                              }
+                              className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              {player.discordId}
+                              <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            </button>
                           </TableCell>
                           <TableCell className="px-4">
                             <Badge
@@ -590,20 +614,6 @@ export function AdminPlayers() {
                             <p className="text-sm text-muted-foreground">
                               {new Date(player.lastSeen).toLocaleDateString()}
                             </p>
-                          </TableCell>
-                          <TableCell className="px-4 text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                navigate(
-                                  `/admin/players/${player.minecraftUuid}`,
-                                )
-                              }
-                              className="cursor-pointer"
-                            >
-                              View
-                            </Button>
                           </TableCell>
                         </TableRow>
                       );
