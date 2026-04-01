@@ -72,9 +72,7 @@ export function AdminServerDetail() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>
-                {serverData.server.serverName}
-              </BreadcrumbPage>
+              <BreadcrumbPage>{serverData.server.serverName}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>

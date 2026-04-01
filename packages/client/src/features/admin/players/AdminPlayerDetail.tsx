@@ -140,9 +140,7 @@ export function AdminPlayerDetail() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>
-                {player.player.minecraftUsername}
-              </BreadcrumbPage>
+              <BreadcrumbPage>{player.player.minecraftUsername}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -167,41 +165,41 @@ export function AdminPlayerDetail() {
         <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="mb-4 rounded-lg border border-border bg-card p-6">
-        {activeTab === "overview" && (
-          <OverviewTab player={player} getServerName={getServerName} />
-        )}
+          {activeTab === "overview" && (
+            <OverviewTab player={player} getServerName={getServerName} />
+          )}
 
-        {activeTab === "sessions" && id && (
-          <SessionsTab playerId={id} getServerName={getServerName} />
-        )}
+          {activeTab === "sessions" && id && (
+            <SessionsTab playerId={id} getServerName={getServerName} />
+          )}
 
-        {activeTab === "stats" && id && (
-          <StatsTab playerId={id} getServerName={getServerName} />
-        )}
+          {activeTab === "stats" && id && (
+            <StatsTab playerId={id} getServerName={getServerName} />
+          )}
 
-        {activeTab === "tickets" && <TicketsTab playerId={id!} />}
+          {activeTab === "tickets" && <TicketsTab playerId={id!} />}
 
-        {activeTab === "strikes" && (
-          <StrikesTab
-            player={player}
-            onIssueStrike={() => setShowStrikeModal(true)}
-            onRefresh={refetchPlayer}
-            onRemoveStrike={openRemoveStrikeModal}
-          />
-        )}
+          {activeTab === "strikes" && (
+            <StrikesTab
+              player={player}
+              onIssueStrike={() => setShowStrikeModal(true)}
+              onRefresh={refetchPlayer}
+              onRemoveStrike={openRemoveStrikeModal}
+            />
+          )}
 
-        {activeTab === "bans" && (
-          <BansTab
-            player={player}
-            onIssueBan={() => setShowBanModal(true)}
-            onRefresh={refetchPlayer}
-            onUnban={openUnbanModal}
-          />
-        )}
+          {activeTab === "bans" && (
+            <BansTab
+              player={player}
+              onIssueBan={() => setShowBanModal(true)}
+              onRefresh={refetchPlayer}
+              onUnban={openUnbanModal}
+            />
+          )}
 
-        {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
+          {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
 
-        {activeTab === "audit" && <AuditTab playerId={id!} />}
+          {activeTab === "audit" && <AuditTab playerId={id!} />}
         </div>
       </div>
 

@@ -363,9 +363,13 @@ export function AdminPlayers() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
-              {(searchQuery || onlineFilter !== undefined || violationFilter !== "all") && (
+              {(searchQuery ||
+                onlineFilter !== undefined ||
+                violationFilter !== "all") && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) + (onlineFilter !== undefined ? 1 : 0) + (violationFilter !== "all" ? 1 : 0)}
+                  {(searchQuery ? 1 : 0) +
+                    (onlineFilter !== undefined ? 1 : 0) +
+                    (violationFilter !== "all" ? 1 : 0)}
                 </Badge>
               )}
             </CardTitle>
@@ -527,9 +531,7 @@ export function AdminPlayers() {
                               "bg-destructive/5",
                           )}
                           onClick={() =>
-                            navigate(
-                              `/admin/players/${player.minecraftUuid}`,
-                            )
+                            navigate(`/admin/players/${player.minecraftUuid}`)
                           }
                         >
                           <TableCell className="px-4">
@@ -571,11 +573,7 @@ export function AdminPlayers() {
                                 <button
                                   type="button"
                                   onClick={(e) =>
-                                    handleCopy(
-                                      e,
-                                      player.minecraftUuid,
-                                      "UUID",
-                                    )
+                                    handleCopy(e, player.minecraftUuid, "UUID")
                                   }
                                   className="group/copy flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >
@@ -589,11 +587,7 @@ export function AdminPlayers() {
                             <button
                               type="button"
                               onClick={(e) =>
-                                handleCopy(
-                                  e,
-                                  player.discordId,
-                                  "Discord ID",
-                                )
+                                handleCopy(e, player.discordId, "Discord ID")
                               }
                               className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                             >
@@ -628,9 +622,7 @@ export function AdminPlayers() {
                                   {formatRelativeDate(
                                     typeof player.lastSeen === "string"
                                       ? player.lastSeen
-                                      : new Date(
-                                          player.lastSeen,
-                                        ).toISOString(),
+                                      : new Date(player.lastSeen).toISOString(),
                                   )}
                                 </span>
                               </TooltipTrigger>
@@ -638,9 +630,7 @@ export function AdminPlayers() {
                                 {formatFullDate(
                                   typeof player.lastSeen === "string"
                                     ? player.lastSeen
-                                    : new Date(
-                                        player.lastSeen,
-                                      ).toISOString(),
+                                    : new Date(player.lastSeen).toISOString(),
                                 )}
                               </TooltipContent>
                             </Tooltip>

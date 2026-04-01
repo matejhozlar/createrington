@@ -31,108 +31,111 @@ export function PlayerHeader({
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="flex">
-          {/* Full body skin */}
-          <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sidebar-primary/8 via-transparent to-transparent" />
-            <img
-              src={mcBodyFront(player.minecraftUuid)}
-              alt={player.minecraftUsername}
-              className="relative z-10 h-32 object-contain drop-shadow-md"
+      <div className="flex">
+        {/* Full body skin */}
+        <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-sidebar-primary/8 via-transparent to-transparent" />
+          <img
+            src={mcBodyFront(player.minecraftUuid)}
+            alt={player.minecraftUsername}
+            className="relative z-10 h-32 object-contain drop-shadow-md"
+          />
+        </div>
+
+        {/* Info section */}
+        <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
+          {/* Row 1: Name + status + actions */}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold leading-tight">
+                {player.minecraftUsername}
+              </h1>
+              <Badge
+                variant={isOnline ? "default" : "outline"}
+                className={cn(
+                  "text-[10px] px-1.5 py-0",
+                  isOnline &&
+                    "bg-green-500/20 text-green-500 hover:bg-green-500/30",
+                )}
+              >
+                {isOnline ? "Online" : "Offline"}
+              </Badge>
+              {isOnline && currentServerName && (
+                <span className="text-xs text-muted-foreground">
+                  on{" "}
+                  <span className="font-medium text-foreground">
+                    {currentServerName}
+                  </span>
+                </span>
+              )}
+              {activeStrikes > 0 && (
+                <Badge
+                  variant="destructive"
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  {activeStrikes} Strike{activeStrikes > 1 ? "s" : ""}
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex shrink-0 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="cursor-pointer"
+              >
+                <Edit className="size-3.5" />
+                Edit
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onDelete}
+                className="cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+            </div>
+          </div>
+
+          {/* Row 2: Copyable identifiers */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <CopyField
+              label="UUID"
+              value={player.minecraftUuid}
+              onCopy={() => copyToClipboard(player.minecraftUuid, "UUID")}
+            />
+            <CopyField
+              label="Discord"
+              value={player.discordId}
+              onCopy={() => copyToClipboard(player.discordId, "Discord ID")}
             />
           </div>
 
-          {/* Info section */}
-          <div className="flex min-w-0 flex-1 flex-col gap-3 p-5">
-            {/* Row 1: Name + status + actions */}
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold leading-tight">
-                  {player.minecraftUsername}
-                </h1>
-                <Badge
-                  variant={isOnline ? "default" : "outline"}
-                  className={cn(
-                    "text-[10px] px-1.5 py-0",
-                    isOnline &&
-                      "bg-green-500/20 text-green-500 hover:bg-green-500/30",
-                  )}
-                >
-                  {isOnline ? "Online" : "Offline"}
-                </Badge>
-                {isOnline && currentServerName && (
-                  <span className="text-xs text-muted-foreground">
-                    on{" "}
-                    <span className="font-medium text-foreground">
-                      {currentServerName}
-                    </span>
-                  </span>
-                )}
-                {activeStrikes > 0 && (
-                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
-                    {activeStrikes} Strike{activeStrikes > 1 ? "s" : ""}
-                  </Badge>
-                )}
-              </div>
-
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onEdit}
-                  className="cursor-pointer"
-                >
-                  <Edit className="size-3.5" />
-                  Edit
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={onDelete}
-                  className="cursor-pointer"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-
-            {/* Row 2: Copyable identifiers */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <CopyField
-                label="UUID"
-                value={player.minecraftUuid}
-                onCopy={() => copyToClipboard(player.minecraftUuid, "UUID")}
-              />
-              <CopyField
-                label="Discord"
-                value={player.discordId}
-                onCopy={() => copyToClipboard(player.discordId, "Discord ID")}
-              />
-            </div>
-
-            {/* Row 3: Dates */}
-            <div className="flex items-center gap-x-3 text-[11px] text-muted-foreground/70">
-              <span>
-                Registered{" "}
-                {new Date(player.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-              <span>&middot;</span>
-              <span>
-                Last seen{" "}
-                {new Date(player.lastSeen).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </span>
-            </div>
+          {/* Row 3: Dates */}
+          <div className="flex items-center gap-x-3 text-[11px] text-muted-foreground/70">
+            <span>
+              Registered{" "}
+              {new Date(player.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+            <span>&middot;</span>
+            <span>
+              Last seen{" "}
+              {new Date(player.lastSeen).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
           </div>
         </div>
+      </div>
     </div>
   );
 }

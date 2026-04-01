@@ -382,9 +382,13 @@ export function AdminWaitlists() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
-              {(searchQuery || statusFilter !== "all" || verifiedFilter !== undefined) && (
+              {(searchQuery ||
+                statusFilter !== "all" ||
+                verifiedFilter !== undefined) && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                  {(searchQuery ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (verifiedFilter !== undefined ? 1 : 0)}
+                  {(searchQuery ? 1 : 0) +
+                    (statusFilter !== "all" ? 1 : 0) +
+                    (verifiedFilter !== undefined ? 1 : 0)}
                 </Badge>
               )}
             </CardTitle>
