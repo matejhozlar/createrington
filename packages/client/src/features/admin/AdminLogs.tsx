@@ -225,6 +225,11 @@ export function AdminLogs() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(searchQuery || adminFilter !== undefined) && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>

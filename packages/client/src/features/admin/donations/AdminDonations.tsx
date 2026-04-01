@@ -286,6 +286,11 @@ export function AdminDonations() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(discordIdInput || statusFilter !== "all" || typeFilter !== "all") && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(discordIdInput ? 1 : 0) + (statusFilter !== "all" ? 1 : 0) + (typeFilter !== "all" ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>

@@ -57,11 +57,17 @@ import {
   ArrowDown,
   Copy,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
+import { formatRelativeDate, formatFullDate } from "./format";
 
 // Extended player type with strike and ban counts
 interface PlayerWithCounts extends PlayerApiData {
@@ -357,6 +363,11 @@ export function AdminPlayers() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(searchQuery || onlineFilter !== undefined || violationFilter !== "all") && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(searchQuery ? 1 : 0) + (onlineFilter !== undefined ? 1 : 0) + (violationFilter !== "all" ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -611,9 +622,28 @@ export function AdminPlayers() {
                             )}
                           </TableCell>
                           <TableCell className="px-4">
-                            <p className="text-sm text-muted-foreground">
-                              {new Date(player.lastSeen).toLocaleDateString()}
-                            </p>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="text-sm text-muted-foreground cursor-default">
+                                  {formatRelativeDate(
+                                    typeof player.lastSeen === "string"
+                                      ? player.lastSeen
+                                      : new Date(
+                                          player.lastSeen,
+                                        ).toISOString(),
+                                  )}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" align="start">
+                                {formatFullDate(
+                                  typeof player.lastSeen === "string"
+                                    ? player.lastSeen
+                                    : new Date(
+                                        player.lastSeen,
+                                      ).toISOString(),
+                                )}
+                              </TooltipContent>
+                            </Tooltip>
                           </TableCell>
                         </TableRow>
                       );
