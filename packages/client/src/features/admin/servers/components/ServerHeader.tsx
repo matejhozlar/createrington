@@ -1,11 +1,3 @@
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Badge } from "@/components/ui/badge";
 import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,26 +24,7 @@ export function ServerHeader({
       : "Offline";
 
   return (
-    <>
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/servers">Servers</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{serverName}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
-
-      <div className="mx-4 rounded-lg border border-border bg-card p-6">
+    <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center gap-4">
           <div
             className={cn(
@@ -95,7 +68,6 @@ export function ServerHeader({
             </p>
           </div>
         </div>
-      </div>
-    </>
+    </div>
   );
 }

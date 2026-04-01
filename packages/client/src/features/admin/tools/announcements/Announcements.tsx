@@ -46,7 +46,7 @@ export function Announcements() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-6 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-6 px-4 pb-4">
         <h1 className="text-2xl font-semibold">Announcements</h1>
 
         <div className="overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

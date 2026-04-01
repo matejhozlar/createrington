@@ -183,7 +183,7 @@ export function AdminDonations() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Stats */}
         {statsQuery.isLoading ? (
           <div className="flex items-center justify-center py-8">

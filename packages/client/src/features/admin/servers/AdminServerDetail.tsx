@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
@@ -51,35 +59,57 @@ export function AdminServerDetail() {
     liveData?.playerCount ?? serverData.server.playerCount;
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <ServerHeader
-        serverName={serverData.server.serverName}
-        ip={serverData.server.ip}
-        port={serverData.server.port}
-        isOnline={isOnline}
-        isMaintenance={isMaintenance}
-      />
+    <div className="flex flex-1 flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/servers">Servers</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                {serverData.server.serverName}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
 
-      <ServerStatsCards
-        isOnline={isOnline}
-        playerCount={livePlayerCount}
-        maxPlayers={serverData.server.maxPlayers}
-        totalHours={serverData.stats.totalHours}
-        avgSessionSeconds={serverData.stats.avgSessionSeconds}
-      />
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 py-4">
+        <ServerHeader
+          serverName={serverData.server.serverName}
+          ip={serverData.server.ip}
+          port={serverData.server.port}
+          isOnline={isOnline}
+          isMaintenance={isMaintenance}
+        />
 
-      <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
+        <ServerStatsCards
+          isOnline={isOnline}
+          playerCount={livePlayerCount}
+          maxPlayers={serverData.server.maxPlayers}
+          totalHours={serverData.stats.totalHours}
+          avgSessionSeconds={serverData.stats.avgSessionSeconds}
+        />
 
-      <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
 
-      <div className="mx-4 rounded-lg border border-border bg-card p-6">
-        {activeTab === "overview" && (
-          <OverviewTab serverId={serverId} serverData={serverData} />
-        )}
+        <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
+        <div className="rounded-lg border border-border bg-card p-6">
+          {activeTab === "overview" && (
+            <OverviewTab serverId={serverId} serverData={serverData} />
+          )}
 
-        {activeTab === "analytics" && <AnalyticsTab serverId={serverId} />}
+          {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
+
+          {activeTab === "analytics" && <AnalyticsTab serverId={serverId} />}
+        </div>
       </div>
     </div>
   );

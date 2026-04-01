@@ -1,11 +1,3 @@
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Copy } from "lucide-react";
@@ -38,28 +30,7 @@ export function PlayerHeader({
   };
 
   return (
-    <>
-      {/* Breadcrumb Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/players">Players</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{player.minecraftUsername}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
-
-      {/* Player Info Card */}
-      <div className="mx-4 overflow-hidden rounded-lg border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
         <div className="flex">
           {/* Full body skin */}
           <div className="relative hidden w-36 shrink-0 items-center justify-center border-r border-border py-4 sm:flex">
@@ -162,8 +133,7 @@ export function PlayerHeader({
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </div>
   );
 }
 

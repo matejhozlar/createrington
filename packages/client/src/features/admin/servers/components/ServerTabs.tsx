@@ -20,7 +20,7 @@ const TABS: Array<{
 
 export function ServerTabs({ activeTab, onTabChange }: ServerTabsProps) {
   return (
-    <div className="mx-4 overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="overflow-x-auto border-b border-border [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex gap-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;

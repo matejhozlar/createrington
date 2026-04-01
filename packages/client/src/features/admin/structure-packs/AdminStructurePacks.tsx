@@ -183,7 +183,7 @@ export function AdminStructurePacks() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <h1 className="text-2xl font-semibold">Structure Packs</h1>
 
         {/* Rotation Settings & History */}

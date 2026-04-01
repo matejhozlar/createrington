@@ -218,7 +218,7 @@ export function AdminLogs() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Filters & Search */}
         <Card className="gap-2">
           <CardHeader>

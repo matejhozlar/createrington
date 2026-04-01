@@ -305,7 +305,7 @@ export function CommandDocs() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Discord Commands</h1>
