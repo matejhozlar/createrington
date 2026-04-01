@@ -32,7 +32,7 @@ export function PlayerStatsCards({
       : "green";
 
   return (
-    <div className="mx-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Balance */}
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between">

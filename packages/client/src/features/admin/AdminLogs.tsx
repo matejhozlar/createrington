@@ -218,13 +218,18 @@ export function AdminLogs() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Filters & Search */}
         <Card className="gap-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(searchQuery || adminFilter !== undefined) && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(searchQuery ? 1 : 0) + (adminFilter !== undefined ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>

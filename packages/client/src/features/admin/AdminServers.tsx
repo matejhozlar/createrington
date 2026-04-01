@@ -49,7 +49,7 @@ export function AdminServers() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loading size="medium" text="Loading servers..." />

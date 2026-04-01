@@ -18,7 +18,7 @@ export function ServerStatsCards({
   avgSessionSeconds,
 }: ServerStatsCardsProps) {
   return (
-    <div className="mx-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {/* Status */}
       <Card>
         <CardContent className="p-6">
