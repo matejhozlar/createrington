@@ -27,7 +27,7 @@ export const RegistrationEmbedPresets = {
   /**
    * Creates a successful registration embed with close button
    */
-  userSuccess(username: string, uuid: string) {
+  userSuccess(username: string, uuid: string, autoCloseAt?: number) {
     const ch = Discord.Channels;
     const m = ch.mention.bind(ch);
 
@@ -53,7 +53,7 @@ export const RegistrationEmbedPresets = {
           `**📖 Guides**\n` +
           `Our [Guides](${config.meta.links.website}/guides) cover everything from installing and updating the modpack to adding custom mods.\n\n` +
           `**Need help?**\n` +
-          `You can ask anything in this channel. Once you're all set, feel free to close it. Otherwise, it will be closed automatically later.`,
+          `You can ask anything in this channel. Once you're all set, feel free to close it. Otherwise, it will be closed automatically <t:${autoCloseAt}:R>.`,
       )
       .field("Minecraft Username", `\`${username}\``, true)
       .field("UUID", `\`${uuid}\``, true)
