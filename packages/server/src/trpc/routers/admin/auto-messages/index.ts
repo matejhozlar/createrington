@@ -5,6 +5,22 @@ import { trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
+/** Helper to log auto-message admin actions */
+async function logAutoMessageAction(
+  ctx: { user: { discordId: string; minecraftUsername: string } },
+  actionType: string,
+  description: string,
+  metadata?: Record<string, unknown>,
+) {
+  await Q.admin.log.action.logAction({
+    adminDiscordId: ctx.user.discordId,
+    adminUsername: ctx.user.minecraftUsername,
+    actionType,
+    description,
+    metadata,
+  });
+}
+
 /** Admin auto-messages router — channel listing, config CRUD, and message management (add/update/delete/reorder). */
 export const autoMessagesRouter = router({
   channels: adminProcedure
@@ -88,7 +104,7 @@ export const autoMessagesRouter = router({
           rotationMode: z.enum(["sequential", "random"]).default("sequential"),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const created = await Q.discord.auto.message.config.createAndReturn({
           name: input.name,
           channelId: input.channelId,
@@ -101,6 +117,12 @@ export const autoMessagesRouter = router({
           const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
           await service.startConfig(created.id);
         }
+
+        await logAutoMessageAction(
+          ctx,
+          "auto_message_config_create",
+          `Created auto-message config "${input.name}"`,
+        );
 
         return created;
       }),
@@ -117,7 +139,7 @@ export const autoMessagesRouter = router({
           rotationMode: z.enum(["sequential", "random"]).optional(),
         }),
       )
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const existing = await Q.discord.auto.message.config.find({
           id: input.id,
         });
@@ -129,13 +151,19 @@ export const autoMessagesRouter = router({
         const service = getServiceSync(Services.AUTO_MESSAGE_SERVICE);
         await service.restartConfig(id);
 
+        await logAutoMessageAction(
+          ctx,
+          "auto_message_config_update",
+          `Updated auto-message config "${existing.name}"`,
+        );
+
         return { message: "Config updated" };
       }),
 
     delete: adminProcedure
       .meta({ description: "Delete an auto-message config" })
       .input(z.object({ id: z.number().int().positive() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ input, ctx }) => {
         const existing = await Q.discord.auto.message.config.find({
           id: input.id,
         });
@@ -145,6 +173,12 @@ export const autoMessagesRouter = router({
         service.stopConfig(input.id);
 
         await Q.discord.auto.message.config.delete({ id: input.id });
+
+        await logAutoMessageAction(
+          ctx,
+          "auto_message_config_delete",
+          `Deleted auto-message config "${existing.name}"`,
+        );
 
         return { message: "Config deleted" };
       }),

@@ -102,7 +102,7 @@ export const faqRouter = router({
         enabled: z.boolean().default(true),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       validatePattern(input.matchMode, input.pattern);
 
       await Q.faq.entry.create({
@@ -116,6 +116,13 @@ export const faqRouter = router({
 
       const faqService = container.getSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "faq_create",
+        description: `Created FAQ entry "${input.title}"`,
+      });
 
       return { message: "FAQ entry created" };
     }),
@@ -133,7 +140,7 @@ export const faqRouter = router({
         enabled: z.boolean().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const existing = await Q.faq.entry.find({ id: input.id });
       if (!existing) {
         throw trpcError.notFound("FAQ entry not found");
@@ -149,13 +156,20 @@ export const faqRouter = router({
       const faqService = container.getSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "faq_update",
+        description: `Updated FAQ entry "${existing.title}"`,
+      });
+
       return { message: "FAQ entry updated" };
     }),
 
   delete: adminProcedure
     .meta({ description: "Delete a FAQ entry" })
     .input(z.object({ id: z.number().int().positive() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const existing = await Q.faq.entry.find({ id: input.id });
       if (!existing) {
         throw trpcError.notFound("FAQ entry not found");
@@ -166,14 +180,28 @@ export const faqRouter = router({
       const faqService = container.getSync(Services.FAQ_SERVICE);
       await faqService.refreshPatterns();
 
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "faq_delete",
+        description: `Deleted FAQ entry "${existing.title}"`,
+      });
+
       return { message: "FAQ entry deleted" };
     }),
 
   repostWelcome: adminProcedure
     .meta({ description: "Manually trigger a welcome message repost" })
-    .mutation(async () => {
+    .mutation(async ({ ctx }) => {
       const faqService = container.getSync(Services.FAQ_SERVICE);
       await faqService.repostWelcomeMessage();
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "faq_repost_welcome",
+        description: "Reposted FAQ welcome message",
+      });
 
       return { message: "Welcome message reposted" };
     }),

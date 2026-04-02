@@ -183,7 +183,7 @@ export function AdminDonations() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Stats */}
         {statsQuery.isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -286,6 +286,15 @@ export function AdminDonations() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(discordIdInput ||
+                statusFilter !== "all" ||
+                typeFilter !== "all") && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(discordIdInput ? 1 : 0) +
+                    (statusFilter !== "all" ? 1 : 0) +
+                    (typeFilter !== "all" ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>

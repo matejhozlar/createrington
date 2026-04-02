@@ -1,6 +1,10 @@
 import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
+import {
+  AUTO_CLOSE_MS,
+  scheduleChannelClose,
+} from "@/discord/bots/main/registration-cleanup";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
@@ -8,6 +12,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   type ChatInputCommandInteraction,
+  type GuildTextBasedChannel,
   MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
@@ -271,9 +276,12 @@ export async function execute(
 
     await randomDelay(500, 1000);
 
+    const autoCloseAt = Math.floor((Date.now() + AUTO_CLOSE_MS) / 1000);
+
     const { embed, closeButton } = EmbedPresets.registration.userSuccess(
       correctName,
       uuid,
+      autoCloseAt,
     );
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -288,6 +296,16 @@ export async function execute(
     logger.info(
       `User ${interaction.user.tag} (${discordId}) registered as ${correctName} (${uuid})`,
     );
+
+    // Schedule auto-close of the registration channel
+    const channel = interaction.channel;
+    if (channel && !channel.isDMBased()) {
+      scheduleChannelClose(
+        channel as GuildTextBasedChannel,
+        AUTO_CLOSE_MS,
+        `Registration completed - auto-closed after 24 hours (${interaction.user.tag})`,
+      );
+    }
   } catch (error) {
     logger.error("/register failed:", error);
 

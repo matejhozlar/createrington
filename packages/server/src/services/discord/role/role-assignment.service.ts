@@ -215,20 +215,9 @@ export class RoleAssignmentService {
         previousRole = rules.find((r) => r.roleId === currentRoleIds[0]);
       }
 
-      const removedRoles: string[] = [];
-      for (const roleId of allRoleIds) {
-        if (roleId !== targetRole.roleId && RoleManager.has(member, roleId)) {
-          const removed = await RoleManager.remove(
-            member,
-            roleId,
-            `Upgrading to ${targetRole.label}`,
-          );
-          if (removed) {
-            removedRoles.push(roleId);
-          }
-        }
-      }
-
+      // Assign the new role BEFORE removing old ones so that if the assign
+      // fails, the player keeps their current role instead of ending up with
+      // no role at all.
       let justAssigned = false;
       if (!hasTargetRole) {
         const assigned = await RoleManager.assign(
@@ -248,6 +237,20 @@ export class RoleAssignmentService {
         }
 
         justAssigned = true;
+      }
+
+      const removedRoles: string[] = [];
+      for (const roleId of allRoleIds) {
+        if (roleId !== targetRole.roleId && RoleManager.has(member, roleId)) {
+          const removed = await RoleManager.remove(
+            member,
+            roleId,
+            `Upgrading to ${targetRole.label}`,
+          );
+          if (removed) {
+            removedRoles.push(roleId);
+          }
+        }
       }
 
       if (justAssigned) {

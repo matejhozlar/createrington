@@ -301,7 +301,7 @@ export function AdminWaitlists() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Stats Cards */}
         {statsLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -382,6 +382,15 @@ export function AdminWaitlists() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Filter className="size-4 text-muted-foreground" />
               Filters
+              {(searchQuery ||
+                statusFilter !== "all" ||
+                verifiedFilter !== undefined) && (
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                  {(searchQuery ? 1 : 0) +
+                    (statusFilter !== "all" ? 1 : 0) +
+                    (verifiedFilter !== undefined ? 1 : 0)}
+                </Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>

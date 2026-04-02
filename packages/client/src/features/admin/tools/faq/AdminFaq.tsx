@@ -222,7 +222,7 @@ export function AdminFaq() {
         </Breadcrumb>
       </header>
 
-      <div className="flex flex-1 flex-col gap-4 px-4 pb-4">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Actions Bar */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">FAQ Auto-Responder</h1>

@@ -2,6 +2,14 @@ import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import { ArrowLeft } from "lucide-react";
 import { useAdminPlayers } from "@/contexts/admin";
 import { PlayerHeader } from "./components/PlayerHeader";
@@ -119,60 +127,80 @@ export function AdminPlayerDetail() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
-      <PlayerHeader
-        player={player.player}
-        isOnline={isPlayerOnline(player.player.minecraftUuid)}
-        currentServerName={
-          currentServerId !== null ? getServerName(currentServerId) : null
-        }
-        onEdit={() => setShowEditModal(true)}
-        onDelete={() => setShowDeleteModal(true)}
-      />
+    <div className="flex flex-1 flex-col">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/players">Players</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{player.player.minecraftUsername}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
 
-      <PlayerStatsCards
-        player={player}
-        onAdjustBalance={() => setShowBalanceModal(true)}
-      />
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 py-4">
+        <PlayerHeader
+          player={player.player}
+          isOnline={isPlayerOnline(player.player.minecraftUuid)}
+          currentServerName={
+            currentServerId !== null ? getServerName(currentServerId) : null
+          }
+          onEdit={() => setShowEditModal(true)}
+          onDelete={() => setShowDeleteModal(true)}
+        />
 
-      <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <PlayerStatsCards
+          player={player}
+          onAdjustBalance={() => setShowBalanceModal(true)}
+        />
 
-      <div className="mx-4 mb-4 rounded-lg border border-border bg-card p-6">
-        {activeTab === "overview" && (
-          <OverviewTab player={player} getServerName={getServerName} />
-        )}
+        <PlayerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        {activeTab === "sessions" && id && (
-          <SessionsTab playerId={id} getServerName={getServerName} />
-        )}
+        <div className="mb-4 rounded-lg border border-border bg-card p-6">
+          {activeTab === "overview" && (
+            <OverviewTab player={player} getServerName={getServerName} />
+          )}
 
-        {activeTab === "stats" && id && (
-          <StatsTab playerId={id} getServerName={getServerName} />
-        )}
+          {activeTab === "sessions" && id && (
+            <SessionsTab playerId={id} getServerName={getServerName} />
+          )}
 
-        {activeTab === "tickets" && <TicketsTab playerId={id!} />}
+          {activeTab === "stats" && id && (
+            <StatsTab playerId={id} getServerName={getServerName} />
+          )}
 
-        {activeTab === "strikes" && (
-          <StrikesTab
-            player={player}
-            onIssueStrike={() => setShowStrikeModal(true)}
-            onRefresh={refetchPlayer}
-            onRemoveStrike={openRemoveStrikeModal}
-          />
-        )}
+          {activeTab === "tickets" && <TicketsTab playerId={id!} />}
 
-        {activeTab === "bans" && (
-          <BansTab
-            player={player}
-            onIssueBan={() => setShowBanModal(true)}
-            onRefresh={refetchPlayer}
-            onUnban={openUnbanModal}
-          />
-        )}
+          {activeTab === "strikes" && (
+            <StrikesTab
+              player={player}
+              onIssueStrike={() => setShowStrikeModal(true)}
+              onRefresh={refetchPlayer}
+              onRemoveStrike={openRemoveStrikeModal}
+            />
+          )}
 
-        {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
+          {activeTab === "bans" && (
+            <BansTab
+              player={player}
+              onIssueBan={() => setShowBanModal(true)}
+              onRefresh={refetchPlayer}
+              onUnban={openUnbanModal}
+            />
+          )}
 
-        {activeTab === "audit" && <AuditTab playerId={id!} />}
+          {activeTab === "transactions" && <TransactionsTab playerId={id!} />}
+
+          {activeTab === "audit" && <AuditTab playerId={id!} />}
+        </div>
       </div>
 
       {/* Modals */}

@@ -9,3 +9,7 @@ export function mcHeadsAvatar(uuid: string): string {
 export function mcHeadsBody(uuid: string): string {
   return `${MC_HEADS_BASE}/body/${uuid}`;
 }
+
+export function mcBodyFront(uuid: string): string {
+  return `https://api.mineatar.io/body/front/${uuid}?scale=6`;
+}
