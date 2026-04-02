@@ -78,8 +78,8 @@ jobs:
           export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington-dev/.env | cut -d'=' -f2-)
           export PGPASSWORD=$DB_PASSWORD
 
-          psql -h $DB_HOST -U "$DB_USER" -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
-          psql -h $DB_HOST -U "$DB_USER" -c "CREATE DATABASE $DB_DATABASE;"
+          psql -h $DB_HOST -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
+          psql -h $DB_HOST -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
           pnpm db:migrate
           psql -h $DB_HOST -U "$DB_USER" -d "$DB_DATABASE" -f db/data/test-data.sql
 
