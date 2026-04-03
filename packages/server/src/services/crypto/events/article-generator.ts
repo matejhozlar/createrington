@@ -743,7 +743,7 @@ export function fireAndForgetArticle(
   severity: string,
   metadata: Record<string, unknown> | null,
 ): void {
-  if (!config.ai.enabled) return;
+  if (!config.ai.enabled || config.envMode.isDevDeployment) return;
 
   articleQueue.push({ eventId, title, description, severity, metadata });
   processQueue().catch((err) => {
