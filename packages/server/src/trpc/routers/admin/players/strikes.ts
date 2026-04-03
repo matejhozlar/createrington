@@ -52,7 +52,12 @@ export const strikesRouter = router({
           z.literal(5),
         ]),
         serverId: z.number().int().positive().optional(),
-        metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
+        metadata: z
+          .record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
