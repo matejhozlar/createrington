@@ -26,7 +26,7 @@ export const waitlistsRouter = router({
           .min(1, "Discord name is required")
           .max(100, "Discord name too long"),
         email: z.string().email("Invalid email format").optional(),
-        metadata: z.record(z.string(), z.any()).optional(),
+        metadata: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()])).optional(),
       }),
     )
     .mutation(async ({ input }) => {
