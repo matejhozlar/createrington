@@ -44,7 +44,12 @@ export const bansRouter = router({
         reason: z.string().min(1, "Reason is required"),
         durationDays: z.number().int().min(1).max(365),
         serverId: z.number().int().positive().optional(),
-        metadata: z.record(z.string(), z.any()).optional(),
+        metadata: z
+          .record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
@@ -119,7 +124,12 @@ export const bansRouter = router({
         id: z.string().min(1),
         reason: z.string().min(1, "Reason is required"),
         serverId: z.number().int().positive().optional(),
-        metadata: z.record(z.string(), z.any()).optional(),
+        metadata: z
+          .record(
+            z.string(),
+            z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
