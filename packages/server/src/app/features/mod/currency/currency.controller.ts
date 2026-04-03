@@ -4,6 +4,7 @@ import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
+import { formatDuration } from "@/utils/format";
 import type { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
@@ -199,7 +200,11 @@ export class CurrencyController {
     const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
     if (!result.success) {
-      res.status(400).json({ message: result.error });
+      const message = result.nextClaimTime
+        ? `You can claim again in ${formatDuration(new Date(), result.nextClaimTime)}`
+        : (result.error ?? "Daily reward not available");
+
+      res.status(400).json({ message });
       return;
     }
 
