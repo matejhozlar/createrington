@@ -16,7 +16,7 @@ import {
   Activity,
   Radio,
   Signal,
-  SignalZero,
+  WifiOff,
 } from "lucide-react";
 import type { PlayerData } from "@createrington/shared/socket";
 
@@ -234,7 +234,7 @@ export function OnlinePlayers() {
               {isOnline ? (
                 <Signal className="size-3.5" />
               ) : (
-                <SignalZero className="size-3.5" />
+                <WifiOff className="size-3.5" />
               )}
               {isOnline ? "Server Online" : "Server Offline"}
             </Badge>
@@ -340,7 +340,7 @@ export function OnlinePlayers() {
             </div>
           ) : !isOnline ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <SignalZero className="size-12 text-muted-foreground mb-4" />
+              <WifiOff className="size-12 text-muted-foreground mb-4" />
               <p className="text-lg font-medium text-foreground">
                 Server Offline
               </p>
