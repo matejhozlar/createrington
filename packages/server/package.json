@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "server.ts",
   "exports": {
@@ -92,7 +92,7 @@
     "jszip": "^3.10.1",
     "minecraft-server-util": "^5.4.4",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.11",
+    "nodemailer": "^8.0.4",
     "openai": "^6.27.0",
     "pg": "^8.16.3",
     "puppeteer-core": "^24.38.0",

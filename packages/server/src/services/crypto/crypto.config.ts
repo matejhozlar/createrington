@@ -30,9 +30,9 @@ export const CRYPTO_CONFIG = {
   MEMECOIN_MAX_DEMAND_PRESSURE: 0.03, // cap demand pressure at ±3% per tick to prevent low-supply manipulation
 
   // Mean Reversion (pull price toward 24h average when far off)
-  MEMECOIN_MEAN_REVERSION_HIGH_THRESHOLD: 1.5, // trigger when price > 1.5x avg (tighter)
-  MEMECOIN_MEAN_REVERSION_LOW_THRESHOLD: 0.7, // trigger when price < 0.7x avg (tighter)
-  MEMECOIN_MEAN_REVERSION_STRENGTH: 0.005, // pull strength per tick (stronger correction)
+  MEMECOIN_MEAN_REVERSION_HIGH_THRESHOLD: 1.3, // trigger when price > 1.3x avg
+  MEMECOIN_MEAN_REVERSION_LOW_THRESHOLD: 0.75, // trigger when price < 0.75x avg
+  MEMECOIN_MEAN_REVERSION_STRENGTH: 0.008, // pull strength per tick
 
   // Memecoin Generation
   MEMECOIN_MAX_ACTIVE: 5, // max active (non-crashed, non-delisted) memecoins at a time
@@ -60,21 +60,21 @@ export const CRYPTO_CONFIG = {
       maxPrice: 0.1,
       minChange: 0.01,
       maxChange: 0.03,
-      upwardBias: 0.505,
+      upwardBias: 0.5,
     },
-    LOW: { maxPrice: 5, minChange: 0.005, maxChange: 0.015, upwardBias: 0.502 },
+    LOW: { maxPrice: 5, minChange: 0.005, maxChange: 0.015, upwardBias: 0.5 },
     MID: { maxPrice: 500, minChange: 0.003, maxChange: 0.008, upwardBias: 0.5 },
     HIGH: {
       maxPrice: 10_000,
       minChange: 0.001,
       maxChange: 0.004,
-      upwardBias: 0.495,
+      upwardBias: 0.498,
     },
     MEGA: {
       maxPrice: Infinity,
       minChange: 0.0005,
       maxChange: 0.002,
-      upwardBias: 0.49,
+      upwardBias: 0.495,
     },
   },
 
