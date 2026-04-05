@@ -674,10 +674,12 @@ export class PlaytimeRepository {
           online: false,
           lastSeen,
           currentServerId: null,
-          logoutX: metadata?.position?.x ?? null,
-          logoutY: metadata?.position?.y ?? null,
-          logoutZ: metadata?.position?.z ?? null,
-          logoutDimension: metadata?.dimension ?? null,
+          ...(metadata?.position && {
+            logoutX: Math.floor(metadata.position.x),
+            logoutY: Math.floor(metadata.position.y),
+            logoutZ: Math.floor(metadata.position.z),
+          }),
+          ...(metadata && { logoutDimension: metadata.dimension ?? null }),
         },
       );
     }

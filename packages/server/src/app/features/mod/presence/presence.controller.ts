@@ -104,7 +104,18 @@ export class PresenceController {
           `Player ${minecraftUsername} (${uuid}) joined server ${targetServerId}`,
         );
       } else if (state === "left") {
-        const { dimension, position } = req.body;
+        const rawPos = req.body.position;
+        const position =
+          rawPos &&
+          typeof rawPos.x === "number" &&
+          typeof rawPos.y === "number" &&
+          typeof rawPos.z === "number"
+            ? { x: rawPos.x, y: rawPos.y, z: rawPos.z }
+            : undefined;
+        const dimension =
+          typeof req.body.dimension === "string"
+            ? req.body.dimension
+            : undefined;
 
         const leaveData: ModPlayerLeaveData = {
           uuid,
