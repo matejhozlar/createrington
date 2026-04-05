@@ -7,12 +7,6 @@ export interface StatsUpsertEntry {
   dataVersion: number | null;
 }
 
-export interface StatSearchResult {
-  minecraftUuid: string;
-  minecraftUsername: string;
-  value: number;
-}
-
 export interface StatCompareResult {
   minecraftUuid: string;
   minecraftUsername: string;
@@ -31,75 +25,6 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
   }
 
   /**
-   * Search all players for a specific stat within a category.
-   *
-   * Queries the JSONB `stats` column across all rows, joining with the player
-   * table to return usernames. Results are summed across servers and sorted
-   * by value descending.
-   */
-  async searchByStat(
-    category: string,
-    item: string,
-    options?: { serverId?: number; limit?: number },
-  ): Promise<StatSearchResult[]> {
-    const limit = options?.limit ?? 100;
-    const values: unknown[] = [category, item, limit];
-    let serverFilter = "";
-
-    if (options?.serverId) {
-      serverFilter = "AND s.server_id = $4";
-      values.push(options.serverId);
-    }
-
-    const query = `
-      SELECT
-        p.minecraft_uuid AS "minecraftUuid",
-        p.minecraft_username AS "minecraftUsername",
-        SUM((s.stats -> $1 ->> $2)::bigint)::bigint AS "value"
-      FROM ${this.table} s
-      JOIN player p ON p.minecraft_uuid = s.minecraft_uuid
-      WHERE s.stats -> $1 ? $2
-      ${serverFilter}
-      GROUP BY p.minecraft_uuid, p.minecraft_username
-      HAVING SUM((s.stats -> $1 ->> $2)::bigint) > 0
-      ORDER BY "value" DESC
-      LIMIT $3
-    `;
-
-    const result = await this.db.query<StatSearchResult>(query, values);
-    return result.rows.map((r) => ({ ...r, value: Number(r.value) }));
-  }
-
-  /**
-   * Get all distinct stat keys within a category across all players.
-   */
-  async getStatKeys(category: string): Promise<string[]> {
-    const query = `
-      SELECT DISTINCT key
-      FROM ${this.table}, jsonb_object_keys(stats -> $1) AS key
-      WHERE stats ? $1
-      ORDER BY key
-    `;
-
-    const result = await this.db.query<{ key: string }>(query, [category]);
-    return result.rows.map((r) => r.key);
-  }
-
-  /**
-   * Get all distinct stat categories across all players.
-   */
-  async getCategories(): Promise<string[]> {
-    const query = `
-      SELECT DISTINCT key
-      FROM ${this.table}, jsonb_object_keys(stats) AS key
-      ORDER BY key
-    `;
-
-    const result = await this.db.query<{ key: string }>(query, []);
-    return result.rows.map((r) => r.key);
-  }
-
-  /**
    * Search for item keys matching a query string across all categories.
    * Returns distinct item names (e.g. "minecraft:diamond", "northstar:targeting_computer").
    */
@@ -114,8 +39,9 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
       LIMIT $2
     `;
 
+    const escaped = search.replace(/[%_\\]/g, "\\$&");
     const result = await this.db.query<{ key: string }>(query, [
-      `%${search}%`,
+      `%${escaped}%`,
       limit ?? 50,
     ]);
     return result.rows.map((r) => r.key);

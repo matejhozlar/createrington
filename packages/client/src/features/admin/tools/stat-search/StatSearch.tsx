@@ -45,6 +45,9 @@ const CATEGORY_OPTIONS = [
   { key: "minecraft:custom", label: "General" },
 ] as const;
 
+/** Minimum total count before a zero-in-one-category row is highlighted */
+const SUSPICIOUS_THRESHOLD = 10;
+
 function formatStatName(key: string): string {
   return key
     .replace(/^minecraft:/, "")
@@ -375,7 +378,7 @@ export function StatSearch() {
                               suspicious && value === 0 && "text-yellow-500",
                               suspicious &&
                                 value === max &&
-                                total > 10 &&
+                                total > SUSPICIOUS_THRESHOLD &&
                                 "text-yellow-500 font-bold",
                             )}
                           >

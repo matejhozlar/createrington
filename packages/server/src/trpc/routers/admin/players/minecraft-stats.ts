@@ -40,42 +40,6 @@ export const minecraftStatsRouter = router({
       };
     }),
 
-  /** Get all distinct stat categories (e.g. minecraft:mined, minecraft:picked_up). */
-  categories: adminProcedure
-    .meta({ description: "Get all distinct stat categories" })
-    .query(async () => {
-      return Q.player.minecraft.stats.getCategories();
-    }),
-
-  /** Get all distinct stat keys within a category. */
-  keys: adminProcedure
-    .meta({ description: "Get all stat keys within a category" })
-    .input(z.object({ category: z.string().min(1) }))
-    .query(async ({ input }) => {
-      return Q.player.minecraft.stats.getStatKeys(input.category);
-    }),
-
-  /** Search all players for a specific stat value. */
-  search: adminProcedure
-    .meta({
-      description:
-        "Search all players for a specific stat (e.g. picked_up diamond)",
-    })
-    .input(
-      z.object({
-        category: z.string().min(1),
-        item: z.string().min(1),
-        serverId: z.number().int().positive().optional(),
-        limit: z.number().int().min(1).max(500).default(100),
-      }),
-    )
-    .query(async ({ input }) => {
-      return Q.player.minecraft.stats.searchByStat(input.category, input.item, {
-        serverId: input.serverId,
-        limit: input.limit,
-      });
-    }),
-
   /** Search for item keys matching a query string across all categories. */
   searchItems: adminProcedure
     .meta({ description: "Autocomplete search for item keys" })
