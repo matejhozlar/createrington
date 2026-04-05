@@ -124,7 +124,6 @@ export function PlayerHeader({
                 y={player.logoutY}
                 z={player.logoutZ}
                 dimension={player.logoutDimension}
-                username={player.minecraftUsername}
                 onCopy={copyToClipboard}
               />
             )}
@@ -199,17 +198,15 @@ function LogoutPosition({
   y,
   z,
   dimension,
-  username,
   onCopy,
 }: {
   x: number;
   y: number;
   z: number;
   dimension: string | null;
-  username: string;
   onCopy: (text: string, label: string) => void;
 }) {
-  const tpCommand = `/tp ${username} ${x} ${y} ${z}`;
+  const tpCommand = `/tp ${x} ${y} ${z}`;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
