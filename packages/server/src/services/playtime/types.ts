@@ -41,6 +41,7 @@ export interface SessionEndEvent {
   sessionStart: Date;
   sessionEnd: Date;
   secondsPlayed: number;
+  metadata?: SessionMetadata;
 }
 
 /** Event emitted when a player's session begins */
@@ -102,6 +103,12 @@ export interface ModPlayerLeaveData {
   uuid: string;
   username: string;
   timestamp?: Date;
+  dimension?: string;
+  position?: {
+    x: number;
+    y: number;
+    z: number;
+  };
 }
 
 /** Lifecycle state of a tracked Minecraft server */

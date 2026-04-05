@@ -15,7 +15,11 @@ import type {
   PlayerSession,
 } from "@/generated/db";
 import { PlaytimeService } from "@/services/playtime";
-import type { SessionEndEvent, SessionStartEvent } from "@/services/playtime";
+import type {
+  SessionEndEvent,
+  SessionMetadata,
+  SessionStartEvent,
+} from "@/services/playtime";
 
 /**
  * Repository for playtime data management
@@ -190,8 +194,12 @@ export class PlaytimeRepository {
         );
       }
 
-      // Sync player online status
-      await this.syncPlayerOfflineStatus(event.uuid, event.sessionEnd);
+      // Sync player online status and persist logout position
+      await this.syncPlayerOfflineStatus(
+        event.uuid,
+        event.sessionEnd,
+        event.metadata,
+      );
     } catch (error) {
       logger.error("Failed to end session:", error);
       throw error;
@@ -652,6 +660,7 @@ export class PlaytimeRepository {
   private async syncPlayerOfflineStatus(
     playerMinecraftUuid: string,
     lastSeen: Date,
+    metadata?: SessionMetadata,
   ): Promise<void> {
     const remaining = await Q.player.session.findAll({
       playerMinecraftUuid,
@@ -661,7 +670,17 @@ export class PlaytimeRepository {
     if (remaining.length === 0) {
       await Q.player.update(
         { minecraftUuid: playerMinecraftUuid },
-        { online: false, lastSeen, currentServerId: null },
+        {
+          online: false,
+          lastSeen,
+          currentServerId: null,
+          ...(metadata?.position && {
+            logoutX: Math.floor(metadata.position.x),
+            logoutY: Math.floor(metadata.position.y),
+            logoutZ: Math.floor(metadata.position.z),
+          }),
+          ...(metadata && { logoutDimension: metadata.dimension ?? null }),
+        },
       );
     }
   }
