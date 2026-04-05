@@ -1,3 +1,15 @@
+## [2026-04-05]
+
+### @createrington/server (1.0.1 → 1.1.0)
+- Add stat search tool with cross-category comparison — new `searchItems` and `compareItem` query methods let admins search for any Minecraft item key and compare counts across categories (e.g. picked up vs crafted) for all players, exposed via two new tRPC admin procedures
+- Store player logout position (x/y/z coordinates and dimension) — when a player disconnects, their last position is persisted to the `player` table and used to display location info in the admin panel
+- Validate mod position payload fields and preserve logout position during graceful server shutdown
+
+### @createrington/client (0.0.1 → 0.1.0)
+- Add Stat Search admin tool page — full-featured UI with item autocomplete, multi-category toggle, sortable comparison table, and suspicious-pattern highlighting (e.g. high pickup but zero crafted)
+- Display player logout position in the admin player header — shows last known coordinates and dimension with a one-click `/tp` command copy button (only visible for offline players)
+- Add Stat Search entry to the admin tools grid
+
 ## [2026-04-04]
 
 ### @createrington/server (1.0.0 → 1.0.1)
