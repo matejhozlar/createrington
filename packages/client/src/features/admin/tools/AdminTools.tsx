@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
+  BarChart3,
   Blocks,
   Coins,
   Megaphone,
@@ -70,6 +71,13 @@ const tools = [
       "Auto-generated reference of all Discord slash commands with options, permissions, and cooldowns.",
     icon: Terminal,
     href: "/admin/tools/command-docs",
+  },
+  {
+    title: "Stat Search",
+    description:
+      "Search Minecraft stats across all players. Find who mined, picked up, crafted, or used specific items.",
+    icon: BarChart3,
+    href: "/admin/tools/stat-search",
   },
 ];
 
