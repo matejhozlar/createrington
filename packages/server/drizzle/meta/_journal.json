@@ -155,6 +155,13 @@
       "when": 1774970720400,
       "tag": "0021_slim_morgan_stark",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1775416497162,
+      "tag": "0022_jazzy_gauntlet",
+      "breakpoints": true
     }
   ]
 }

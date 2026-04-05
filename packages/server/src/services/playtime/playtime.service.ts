@@ -6,6 +6,7 @@ import type {
   PlaytimeServiceConfig,
   ServerStatusSnapshot,
   SessionEndEvent,
+  SessionMetadata,
   SessionStartEvent,
   MinecraftPlayer,
 } from "./types";
@@ -372,6 +373,12 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     const session = this.activeSessions.get(data.uuid);
     const sessionEnd = data.timestamp || new Date();
 
+    // Build metadata from the leave payload (position at disconnect)
+    const metadata: SessionMetadata | undefined =
+      data.position || data.dimension
+        ? { position: data.position, dimension: data.dimension }
+        : undefined;
+
     if (!session) {
       logger.warn(
         `Received leave notification for ${data.username} (${data.uuid}) but no active in-memory session found. ` +
@@ -388,6 +395,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
         sessionStart: sessionEnd,
         sessionEnd,
         secondsPlayed: 0,
+        metadata,
       };
 
       this.emit("sessionEnd", event);
@@ -412,6 +420,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
         sessionStart: session.sessionStart,
         sessionEnd,
         secondsPlayed,
+        metadata,
       };
 
       this.emit("sessionEnd", event);
@@ -427,6 +436,7 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       sessionStart: session.sessionStart,
       sessionEnd,
       secondsPlayed,
+      metadata,
     };
 
     this.emit("sessionEnd", event);
