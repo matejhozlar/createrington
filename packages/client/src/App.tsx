@@ -52,6 +52,7 @@ import { StructurePackDetail } from "./features/admin/structure-packs/StructureP
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { AdminDonations } from "./features/admin/donations/AdminDonations";
 import { CommandDocs } from "./features/admin/tools/command-docs/CommandDocs";
+import { StatSearch } from "./features/admin/tools/stat-search/StatSearch";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -315,6 +316,7 @@ function AppContent() {
                   <Route path="donations" element={<AdminDonations />} />
                   <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="tools/command-docs" element={<CommandDocs />} />
+                  <Route path="tools/stat-search" element={<StatSearch />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>

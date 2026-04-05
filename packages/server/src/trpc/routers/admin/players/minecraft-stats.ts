@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { parsePlayerId, trpcError } from "@/trpc/utils";
 
-/** Admin minecraft stats router — fetch per-server JSONB stats for a player. */
+/** Admin minecraft stats router — fetch per-server JSONB stats for a player, and search stats across all players. */
 export const minecraftStatsRouter = router({
   list: adminProcedure
     .meta({
@@ -38,5 +38,70 @@ export const minecraftStatsRouter = router({
           updatedAt: s.updatedAt.toISOString(),
         })),
       };
+    }),
+
+  /** Get all distinct stat categories (e.g. minecraft:mined, minecraft:picked_up). */
+  categories: adminProcedure
+    .meta({ description: "Get all distinct stat categories" })
+    .query(async () => {
+      return Q.player.minecraft.stats.getCategories();
+    }),
+
+  /** Get all distinct stat keys within a category. */
+  keys: adminProcedure
+    .meta({ description: "Get all stat keys within a category" })
+    .input(z.object({ category: z.string().min(1) }))
+    .query(async ({ input }) => {
+      return Q.player.minecraft.stats.getStatKeys(input.category);
+    }),
+
+  /** Search all players for a specific stat value. */
+  search: adminProcedure
+    .meta({
+      description:
+        "Search all players for a specific stat (e.g. picked_up diamond)",
+    })
+    .input(
+      z.object({
+        category: z.string().min(1),
+        item: z.string().min(1),
+        serverId: z.number().int().positive().optional(),
+        limit: z.number().int().min(1).max(500).default(100),
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.player.minecraft.stats.searchByStat(input.category, input.item, {
+        serverId: input.serverId,
+        limit: input.limit,
+      });
+    }),
+
+  /** Search for item keys matching a query string across all categories. */
+  searchItems: adminProcedure
+    .meta({ description: "Autocomplete search for item keys" })
+    .input(z.object({ query: z.string().min(1) }))
+    .query(async ({ input }) => {
+      return Q.player.minecraft.stats.searchItems(input.query);
+    }),
+
+  /** Compare a single item across multiple categories for all players. */
+  compare: adminProcedure
+    .meta({
+      description:
+        "Compare one item across multiple categories (e.g. picked_up vs crafted)",
+    })
+    .input(
+      z.object({
+        item: z.string().min(1),
+        categories: z.array(z.string().min(1)).min(1).max(9),
+        limit: z.number().int().min(1).max(500).default(200),
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.player.minecraft.stats.compareItem(
+        input.item,
+        input.categories,
+        { limit: input.limit },
+      );
     }),
 });
