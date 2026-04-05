@@ -110,6 +110,10 @@ export const player = pgTable(
     currentServerId: integer("current_server_id").references(() => server.id, {
       onDelete: "set null",
     }),
+    logoutX: integer("logout_x"),
+    logoutY: integer("logout_y"),
+    logoutZ: integer("logout_z"),
+    logoutDimension: text("logout_dimension"),
   },
   (table) => [
     index("idx_player_discord_id").on(table.discordId),

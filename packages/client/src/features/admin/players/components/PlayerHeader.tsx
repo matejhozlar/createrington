@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, Copy } from "lucide-react";
+import { Edit, Trash2, Copy, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { mcBodyFront } from "@/lib/external-urls";
@@ -114,6 +114,21 @@ export function PlayerHeader({
             />
           </div>
 
+          {/* Row 2.5: Logout position (offline only) */}
+          {!isOnline &&
+            player.logoutX != null &&
+            player.logoutY != null &&
+            player.logoutZ != null && (
+              <LogoutPosition
+                x={player.logoutX}
+                y={player.logoutY}
+                z={player.logoutZ}
+                dimension={player.logoutDimension}
+                username={player.minecraftUsername}
+                onCopy={copyToClipboard}
+              />
+            )}
+
           {/* Row 3: Dates */}
           <div className="flex items-center gap-x-3 text-[11px] text-muted-foreground/70">
             <span>
@@ -159,5 +174,62 @@ function CopyField({
       <span className="font-mono text-[11px]">{value}</span>
       <Copy className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
     </button>
+  );
+}
+
+const DIMENSION_LABELS: Record<string, string> = {
+  "minecraft:overworld": "Overworld",
+  "minecraft:the_nether": "Nether",
+  "minecraft:the_end": "The End",
+};
+
+function formatDimension(dimension: string | null): string {
+  if (!dimension) return "Unknown";
+  return (
+    DIMENSION_LABELS[dimension] ??
+    dimension
+      .replace(/^[^:]+:/, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  );
+}
+
+function LogoutPosition({
+  x,
+  y,
+  z,
+  dimension,
+  username,
+  onCopy,
+}: {
+  x: number;
+  y: number;
+  z: number;
+  dimension: string | null;
+  username: string;
+  onCopy: (text: string, label: string) => void;
+}) {
+  const tpCommand = `/tp ${username} ${x} ${y} ${z}`;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <MapPin className="size-3" />
+        <span>Logout:</span>
+        <span className="font-mono text-[11px] text-foreground">
+          {x}, {y}, {z}
+        </span>
+        <span>&middot;</span>
+        <span>{formatDimension(dimension)}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => onCopy(tpCommand, "TP command")}
+        className="group flex cursor-pointer items-center gap-1 rounded border border-border bg-sidebar-accent/50 px-2 py-0.5 text-[11px] font-mono text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+      >
+        {tpCommand}
+        <Copy className="size-3 opacity-50 transition-opacity group-hover:opacity-100" />
+      </button>
+    </div>
   );
 }

@@ -104,10 +104,14 @@ export class PresenceController {
           `Player ${minecraftUsername} (${uuid}) joined server ${targetServerId}`,
         );
       } else if (state === "left") {
+        const { dimension, position } = req.body;
+
         const leaveData: ModPlayerLeaveData = {
           uuid,
           username: minecraftUsername,
           timestamp: eventTimestamp,
+          dimension,
+          position,
         };
 
         await playtimeService.handlePlayerLeaveFromMod(leaveData);
