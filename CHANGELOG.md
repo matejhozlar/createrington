@@ -1,5 +1,10 @@
 ## [2026-04-05]
 
+### @createrington/client (0.1.0 → 0.1.1)
+- Fix teleport command in admin player detail — remove the player username from the `/tp` command so it copies as `/tp x y z` instead of `/tp username x y z`, matching the expected in-game format
+
+## [2026-04-05]
+
 ### @createrington/server (1.0.1 → 1.1.0)
 - Add stat search tool with cross-category comparison — new `searchItems` and `compareItem` query methods let admins search for any Minecraft item key and compare counts across categories (e.g. picked up vs crafted) for all players, exposed via two new tRPC admin procedures
 - Store player logout position (x/y/z coordinates and dimension) — when a player disconnects, their last position is persisted to the `player` table and used to display location info in the admin panel
