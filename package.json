@@ -51,6 +51,7 @@
     "start": "node dist/server/src/server.js",
     "format": "prettier --write ./packages",
     "format:check": "prettier --check ./packages",
+    "prepare": "husky",
     "lint": "pnpm -r lint",
     "lint:server": "pnpm --filter @createrington/server lint",
     "lint:client": "pnpm --filter @createrington/client lint",
@@ -79,7 +80,12 @@
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "packages/**/*.{ts,tsx,js,json,css,md}": "prettier --write"
   }
 }
