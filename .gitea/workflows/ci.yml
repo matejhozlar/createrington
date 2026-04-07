@@ -7,6 +7,9 @@ on:
       - main
       - dev
 
+env:
+  HUSKY: "0"
+
 jobs:
   format:
     runs-on: ubuntu-latest
