@@ -149,6 +149,7 @@ export class DiscordMessageService {
         embeds: options.embeds ? [options.embeds] : undefined,
         components: options.components,
         files: options.files,
+        flags: options.flags,
       };
 
       const message = await channel.send(messageOptions);

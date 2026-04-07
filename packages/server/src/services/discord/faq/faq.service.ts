@@ -2,7 +2,7 @@ import config from "@/config";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import type { Client, Message } from "discord.js";
+import { MessageFlags, type Client, type Message } from "discord.js";
 
 interface CompiledPattern {
   id: number;
@@ -88,7 +88,10 @@ export class FaqService {
     if (matched) {
       const embed = EmbedPresets.faq.faqReply(matched.title, matched.response);
 
-      await message.reply({ embeds: [embed.build()] });
+      await message.reply({
+        embeds: [embed.build()],
+        flags: MessageFlags.SuppressNotifications,
+      });
 
       logger.info(
         `FAQ auto-replied to message ${message.id} with pattern #${matched.id} ("${matched.title}")`,
@@ -170,6 +173,7 @@ export class FaqService {
       const result = await Discord.Messages.send({
         channelId: this.channelId,
         embeds: embed.build(),
+        flags: MessageFlags.SuppressNotifications,
       });
 
       if (!result.success || !result.messageId) {
