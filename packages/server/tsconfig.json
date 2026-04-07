@@ -3,6 +3,7 @@
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "Bundler",
+    "rootDir": "..",
     "outDir": "dist",
     "declaration": true,
     "declarationMap": true,
@@ -10,10 +11,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    "baseUrl": ".",
     "verbatimModuleSyntax": true,
     "paths": {
-      "@/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@createrington/shared": ["../shared/src"],
       "@createrington/shared/*": ["../shared/src/*"]
     }
