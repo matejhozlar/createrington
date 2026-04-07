@@ -1630,49 +1630,52 @@ export function ServerChat() {
             </div>
           ) : (
             <div className="py-2">
-              {messageGroups.map((group, idx) => {
-                let isOnline: boolean | undefined;
-                if (group.source === MessageSource.MINECRAFT && serverId) {
-                  const player = getPlayerByUsername(group.displayName);
-                  isOnline = player?.serverId === serverId ? true : false;
-                }
-
-                const isHighlighted = groupHasHighlight(
-                  group,
-                  highlightedMessages,
+              {(() => {
+                const groupHighlights = messageGroups.map((g) =>
+                  groupHasHighlight(g, highlightedMessages),
                 );
-                const prevGroup = idx > 0 ? messageGroups[idx - 1] : undefined;
-                const nextGroup =
-                  idx < messageGroups.length - 1
-                    ? messageGroups[idx + 1]
-                    : undefined;
+                return messageGroups.map((group, idx) => {
+                  let isOnline: boolean | undefined;
+                  if (group.source === MessageSource.MINECRAFT && serverId) {
+                    const player = getPlayerByUsername(group.displayName);
+                    isOnline = player?.serverId === serverId ? true : false;
+                  }
 
-                const prevIsHighlightedSameSource =
-                  !!prevGroup &&
-                  prevGroup.source === group.source &&
-                  groupHasHighlight(prevGroup, highlightedMessages);
+                  const isHighlighted = groupHighlights[idx];
+                  const prevGroup =
+                    idx > 0 ? messageGroups[idx - 1] : undefined;
+                  const nextGroup =
+                    idx < messageGroups.length - 1
+                      ? messageGroups[idx + 1]
+                      : undefined;
 
-                const nextIsHighlightedSameSource =
-                  !!nextGroup &&
-                  nextGroup.source === group.source &&
-                  groupHasHighlight(nextGroup, highlightedMessages);
+                  const prevIsHighlightedSameSource =
+                    !!prevGroup &&
+                    prevGroup.source === group.source &&
+                    groupHighlights[idx - 1];
 
-                return (
-                  <MessageGroupComponent
-                    key={`${group.key}-${group.messages[0]?.messageId}`}
-                    group={group}
-                    prevSource={prevGroup?.source}
-                    tick={tick}
-                    onImageLoad={() => {
-                      if (isAtBottomRef.current) scrollToBottom();
-                    }}
-                    isOnline={isOnline}
-                    hasHighlight={isHighlighted}
-                    prevHighlighted={prevIsHighlightedSameSource}
-                    nextHighlighted={nextIsHighlightedSameSource}
-                  />
-                );
-              })}
+                  const nextIsHighlightedSameSource =
+                    !!nextGroup &&
+                    nextGroup.source === group.source &&
+                    groupHighlights[idx + 1];
+
+                  return (
+                    <MessageGroupComponent
+                      key={`${group.key}-${group.messages[0]?.messageId}`}
+                      group={group}
+                      prevSource={prevGroup?.source}
+                      tick={tick}
+                      onImageLoad={() => {
+                        if (isAtBottomRef.current) scrollToBottom();
+                      }}
+                      isOnline={isOnline}
+                      hasHighlight={isHighlighted}
+                      prevHighlighted={prevIsHighlightedSameSource}
+                      nextHighlighted={nextIsHighlightedSameSource}
+                    />
+                  );
+                });
+              })()}
               <div ref={messagesEndRef} />
             </div>
           )}

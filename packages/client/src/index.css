@@ -164,13 +164,10 @@
 
 /* Server chat new message highlight animation */
 @keyframes new-message-fade {
-  0% {
-    border-color: oklch(0.488 0.243 264.376 / 0.4);
-    background-color: oklch(0.488 0.243 264.376 / 0.05);
-  }
+  0%,
   80% {
-    border-color: oklch(0.488 0.243 264.376 / 0.4);
-    background-color: oklch(0.488 0.243 264.376 / 0.05);
+    border-color: oklch(from var(--sidebar-primary) l c h / 0.4);
+    background-color: oklch(from var(--sidebar-primary) l c h / 0.05);
   }
   100% {
     border-color: transparent;
