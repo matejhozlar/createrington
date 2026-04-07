@@ -947,6 +947,7 @@ function MessageGroupComponent({
   hasHighlight,
   prevHighlighted,
   nextHighlighted,
+  onHighlightEnd,
 }: {
   group: MessageGroup;
   prevSource?: MessageSource;
@@ -956,6 +957,7 @@ function MessageGroupComponent({
   hasHighlight: boolean;
   prevHighlighted: boolean;
   nextHighlighted: boolean;
+  onHighlightEnd?: (messageIds: string[]) => void;
 }) {
   const config = SOURCE_CONFIG[group.source];
   const showDivider = prevSource !== undefined && prevSource !== group.source;
@@ -994,6 +996,11 @@ function MessageGroupComponent({
           hasHighlight && prevHighlighted && "border-t-0",
           hasHighlight && nextHighlighted && "border-b-0",
         )}
+        onAnimationEnd={(e) => {
+          if (e.animationName === "new-message-fade" && onHighlightEnd) {
+            onHighlightEnd(group.messages.map((m) => m.messageId));
+          }
+        }}
       >
         <div className="shrink-0 pt-0.5">
           <Avatar
@@ -1361,11 +1368,15 @@ export function ServerChat() {
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
-
-    setTimeout(() => {
-      setHighlightedMessages(new Set());
-    }, 2000);
   }, [scrollToBottom]);
+
+  const handleHighlightEnd = useCallback((messageIds: string[]) => {
+    setHighlightedMessages((prev) => {
+      const next = new Set(prev);
+      for (const id of messageIds) next.delete(id);
+      return next;
+    });
+  }, []);
 
   const upsertMessage = useCallback((msg: CachedMessage) => {
     setMessages((prev) => {
@@ -1515,9 +1526,6 @@ export function ServerChat() {
         setUnreadCount((prev) => prev + newMessageCount);
       } else {
         scrollToBottom();
-        setTimeout(() => {
-          setHighlightedMessages(new Set());
-        }, 2000);
       }
     }
 
@@ -1672,6 +1680,7 @@ export function ServerChat() {
                       hasHighlight={isHighlighted}
                       prevHighlighted={prevIsHighlightedSameSource}
                       nextHighlighted={nextIsHighlightedSameSource}
+                      onHighlightEnd={handleHighlightEnd}
                     />
                   );
                 });
