@@ -716,13 +716,11 @@ function MessageRow({
   message,
   isFirst,
   tick,
-  isHighlighted,
   onImageLoad,
 }: {
   message: CachedMessage;
   isFirst: boolean;
   tick: number;
-  isHighlighted: boolean;
   onImageLoad?: () => void;
 }) {
   void tick;
@@ -748,13 +746,8 @@ function MessageRow({
         className={cn(
           "group relative pl-[3.25rem] transition-all duration-500",
           isFirst ? "pt-0" : "pt-0.5",
-          isHighlighted && "animate-new-message",
         )}
       >
-        {isHighlighted && (
-          <div className="animate-new-message-indicator absolute -left-4 top-0 h-full w-0.5 rounded-full bg-sidebar-primary" />
-        )}
-
         {!isFirst && !isImageOnly && (
           <span className="absolute right-0 top-0 opacity-0 text-[11px] text-muted-foreground/60 transition-opacity duration-150 group-hover:opacity-100">
             {formatTime(message.createdAt)}
@@ -938,20 +931,31 @@ function MessageRow({
   );
 }
 
-function MessageGroup({
+function groupHasHighlight(
+  group: MessageGroup,
+  highlighted: Set<string>,
+): boolean {
+  return group.messages.some((m) => highlighted.has(m.messageId));
+}
+
+function MessageGroupComponent({
   group,
   prevSource,
   tick,
-  highlightedMessages,
   onImageLoad,
   isOnline,
+  hasHighlight,
+  prevHighlighted,
+  nextHighlighted,
 }: {
   group: MessageGroup;
   prevSource?: MessageSource;
   tick: number;
-  highlightedMessages: Set<string>;
   onImageLoad?: () => void;
   isOnline?: boolean;
+  hasHighlight: boolean;
+  prevHighlighted: boolean;
+  nextHighlighted: boolean;
 }) {
   const config = SOURCE_CONFIG[group.source];
   const showDivider = prevSource !== undefined && prevSource !== group.source;
@@ -980,7 +984,17 @@ function MessageGroup({
         </div>
       )}
 
-      <div className="group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20">
+      <div
+        className={cn(
+          "group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20",
+          hasHighlight &&
+            "animate-new-message border-l border-r border-sidebar-primary/40 bg-sidebar-primary/5",
+          hasHighlight && !prevHighlighted && "border-t rounded-t-lg",
+          hasHighlight && !nextHighlighted && "border-b rounded-b-lg",
+          hasHighlight && prevHighlighted && "border-t-0",
+          hasHighlight && nextHighlighted && "border-b-0",
+        )}
+      >
         <div className="shrink-0 pt-0.5">
           <Avatar
             url={group.avatarUrl}
@@ -1021,7 +1035,6 @@ function MessageGroup({
               message={msg}
               isFirst={i === 0}
               tick={tick}
-              isHighlighted={highlightedMessages.has(msg.messageId)}
               onImageLoad={onImageLoad}
             />
           ))}
@@ -1617,29 +1630,52 @@ export function ServerChat() {
             </div>
           ) : (
             <div className="py-2">
-              {messageGroups.map((group, idx) => {
-                let isOnline: boolean | undefined;
-                if (group.source === MessageSource.MINECRAFT && serverId) {
-                  const player = getPlayerByUsername(group.displayName);
-                  isOnline = player?.serverId === serverId ? true : false;
-                }
-
-                return (
-                  <MessageGroup
-                    key={`${group.key}-${group.messages[0]?.messageId}`}
-                    group={group}
-                    prevSource={
-                      idx > 0 ? messageGroups[idx - 1].source : undefined
-                    }
-                    tick={tick}
-                    highlightedMessages={highlightedMessages}
-                    onImageLoad={() => {
-                      if (isAtBottomRef.current) scrollToBottom();
-                    }}
-                    isOnline={isOnline}
-                  />
+              {(() => {
+                const groupHighlights = messageGroups.map((g) =>
+                  groupHasHighlight(g, highlightedMessages),
                 );
-              })}
+                return messageGroups.map((group, idx) => {
+                  let isOnline: boolean | undefined;
+                  if (group.source === MessageSource.MINECRAFT && serverId) {
+                    const player = getPlayerByUsername(group.displayName);
+                    isOnline = player?.serverId === serverId ? true : false;
+                  }
+
+                  const isHighlighted = groupHighlights[idx];
+                  const prevGroup =
+                    idx > 0 ? messageGroups[idx - 1] : undefined;
+                  const nextGroup =
+                    idx < messageGroups.length - 1
+                      ? messageGroups[idx + 1]
+                      : undefined;
+
+                  const prevIsHighlightedSameSource =
+                    !!prevGroup &&
+                    prevGroup.source === group.source &&
+                    groupHighlights[idx - 1];
+
+                  const nextIsHighlightedSameSource =
+                    !!nextGroup &&
+                    nextGroup.source === group.source &&
+                    groupHighlights[idx + 1];
+
+                  return (
+                    <MessageGroupComponent
+                      key={`${group.key}-${group.messages[0]?.messageId}`}
+                      group={group}
+                      prevSource={prevGroup?.source}
+                      tick={tick}
+                      onImageLoad={() => {
+                        if (isAtBottomRef.current) scrollToBottom();
+                      }}
+                      isOnline={isOnline}
+                      hasHighlight={isHighlighted}
+                      prevHighlighted={prevIsHighlightedSameSource}
+                      nextHighlighted={nextIsHighlightedSameSource}
+                    />
+                  );
+                });
+              })()}
               <div ref={messagesEndRef} />
             </div>
           )}
