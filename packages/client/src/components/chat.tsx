@@ -1520,9 +1520,6 @@ export function ServerChat() {
         setUnreadCount((prev) => prev + newMessageCount);
       } else {
         scrollToBottom();
-        setTimeout(() => {
-          setHighlightedMessages(new Set());
-        }, 2000);
       }
     }
 
