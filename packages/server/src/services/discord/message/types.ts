@@ -4,6 +4,7 @@ import type {
   ButtonBuilder,
   EmbedBuilder,
   Message,
+  MessageCreateOptions,
 } from "discord.js";
 
 /**
@@ -20,6 +21,8 @@ export interface SendMessageOptions {
   components?: ActionRowBuilder<ButtonBuilder>[];
   /** Optional file attachments to include */
   files?: AttachmentBuilder[];
+  /** Optional message flags (e.g. MessageFlags.SuppressNotifications) */
+  flags?: MessageCreateOptions["flags"];
 }
 
 /**
