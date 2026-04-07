@@ -718,12 +718,14 @@ function MessageRow({
   tick,
   isHighlighted,
   onImageLoad,
+  onHighlightEnd,
 }: {
   message: CachedMessage;
   isFirst: boolean;
   tick: number;
   isHighlighted: boolean;
   onImageLoad?: () => void;
+  onHighlightEnd?: (messageId: string) => void;
 }) {
   void tick;
 
@@ -750,6 +752,15 @@ function MessageRow({
           isFirst ? "pt-0" : "pt-0.5",
           isHighlighted && "animate-new-message",
         )}
+        onAnimationEnd={(e) => {
+          if (
+            e.animationName === "new-message-bg-fade" &&
+            isHighlighted &&
+            onHighlightEnd
+          ) {
+            onHighlightEnd(message.messageId);
+          }
+        }}
       >
         {isHighlighted && (
           <div className="animate-new-message-indicator absolute -left-4 top-0 h-full w-0.5 rounded-full bg-sidebar-primary" />
@@ -944,6 +955,7 @@ function MessageGroup({
   tick,
   highlightedMessages,
   onImageLoad,
+  onHighlightEnd,
   isOnline,
 }: {
   group: MessageGroup;
@@ -951,6 +963,7 @@ function MessageGroup({
   tick: number;
   highlightedMessages: Set<string>;
   onImageLoad?: () => void;
+  onHighlightEnd?: (messageId: string) => void;
   isOnline?: boolean;
 }) {
   const config = SOURCE_CONFIG[group.source];
@@ -1023,6 +1036,7 @@ function MessageGroup({
               tick={tick}
               isHighlighted={highlightedMessages.has(msg.messageId)}
               onImageLoad={onImageLoad}
+              onHighlightEnd={onHighlightEnd}
             />
           ))}
         </div>
@@ -1348,11 +1362,15 @@ export function ServerChat() {
   const handleScrollToBottom = useCallback(() => {
     scrollToBottom();
     setUnreadCount(0);
-
-    setTimeout(() => {
-      setHighlightedMessages(new Set());
-    }, 2000);
   }, [scrollToBottom]);
+
+  const handleHighlightEnd = useCallback((messageId: string) => {
+    setHighlightedMessages((prev) => {
+      const next = new Set(prev);
+      next.delete(messageId);
+      return next;
+    });
+  }, []);
 
   const upsertMessage = useCallback((msg: CachedMessage) => {
     setMessages((prev) => {
@@ -1633,6 +1651,7 @@ export function ServerChat() {
                     }
                     tick={tick}
                     highlightedMessages={highlightedMessages}
+                    onHighlightEnd={handleHighlightEnd}
                     onImageLoad={() => {
                       if (isAtBottomRef.current) scrollToBottom();
                     }}
