@@ -1,3 +1,18 @@
+## [2026-04-07]
+
+### @createrington/server (1.1.0 → 1.1.1)
+- Suppress notifications for FAQ auto-reply embeds — both inline replies in the questions channel and standalone FAQ welcome messages now use the `SuppressNotifications` flag so they no longer ping users
+- Add `flags` support to the shared Discord message service so any caller can pass message flags (e.g. silent sends)
+
+### @createrington/client (0.1.1 → 0.1.2)
+- Rework new-message highlighting in server chat — highlights now apply at the message-group level with a bordered container that visually connects consecutive highlighted groups, replacing the old per-row left-bar indicator
+- Use CSS `animationEnd` event to clean up highlights after the fade-out completes, removing the previous `setTimeout`-based cleanup that could leave stale highlights or clear them too early
+
+### Tooling
+- Set up pre-commit hook with Husky + lint-staged to auto-format staged files with Prettier
+- Disable Husky in CI to avoid hook failures in workflows
+- Update pnpm from 10.29.3 to 10.33.0
+
 ## [2026-04-05]
 
 ### @createrington/client (0.1.0 → 0.1.1)
