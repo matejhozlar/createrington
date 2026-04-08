@@ -35,7 +35,7 @@ export function ActivePack() {
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
           <Package className="mx-auto mb-2 size-8 opacity-50" />
-          <p>No structure pack is currently active.</p>
+          <p>No pack is currently active.</p>
         </CardContent>
       </Card>
     );

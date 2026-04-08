@@ -40,13 +40,11 @@ export function StructurePacks() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Package className="size-5 text-primary" />
-            <h1 className="text-xl font-bold tracking-tight">
-              Structure Packs
-            </h1>
+            <h1 className="text-xl font-bold tracking-tight">Packs</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Vote on which structure pack gets activated next by spending in-game
-            currency to boost your favorites.
+            Vote on which pack gets activated next by spending in-game currency
+            to boost your favorites.
           </p>
         </div>
 

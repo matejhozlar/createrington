@@ -99,7 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         requiresAuth: true,
       },
       {
-        title: "Structure Packs",
+        title: "Packs",
         url: "/structure-packs",
         icon: Package,
         requiresAuth: true,
