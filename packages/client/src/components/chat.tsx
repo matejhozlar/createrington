@@ -988,13 +988,12 @@ function MessageGroupComponent({
 
       <div
         className={cn(
-          "group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20",
-          hasHighlight &&
-            "animate-new-message border-l border-r border-sidebar-primary/40 bg-sidebar-primary/5",
-          hasHighlight && !prevHighlighted && "border-t rounded-t-lg",
-          hasHighlight && !nextHighlighted && "border-b rounded-b-lg",
-          hasHighlight && prevHighlighted && "border-t-0",
-          hasHighlight && nextHighlighted && "border-b-0",
+          "group/msg-group flex gap-3 border-x border-y border-transparent px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20",
+          hasHighlight && "animate-new-message",
+          hasHighlight && !prevHighlighted && "rounded-t-lg",
+          hasHighlight && !nextHighlighted && "rounded-b-lg",
+          hasHighlight && prevHighlighted && "!border-t-transparent",
+          hasHighlight && nextHighlighted && "!border-b-transparent",
         )}
         onAnimationEnd={(e) => {
           if (e.animationName === "new-message-fade" && onHighlightEnd) {
