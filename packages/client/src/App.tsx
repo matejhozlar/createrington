@@ -72,6 +72,7 @@ import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 import { GuideList } from "./features/guides/GuideList";
 import { GuideDetail } from "./features/guides/GuideDetail";
+import { StructurePacks } from "./features/structure-packs/StructurePacks";
 import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
 import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
@@ -255,6 +256,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <Achievements />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/structure-packs"
+          element={
+            <ProtectedRoute>
+              <StructurePacks />
             </ProtectedRoute>
           }
         />

@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   Map,
   MessageCircle,
+  Package,
   Wrench,
   Server,
   Shield,
@@ -95,6 +96,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Market",
         url: "/market",
         icon: Store,
+        requiresAuth: true,
+      },
+      {
+        title: "Packs",
+        url: "/structure-packs",
+        icon: Package,
         requiresAuth: true,
       },
       {

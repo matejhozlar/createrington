@@ -45,4 +45,13 @@ export const userStructurePacksRouter = router({
       const service = await getRotationService();
       return service.getPlayerBoosts(ctx.user.discordId);
     }),
+
+  rotationInfo: userProcedure
+    .meta({
+      description: "Get next scheduled rotation time and boost pricing config",
+    })
+    .query(async () => {
+      const service = await getRotationService();
+      return service.getNextRotationInfo();
+    }),
 });
