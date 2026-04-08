@@ -35,6 +35,11 @@ export function BoostDialog({
   const [units, setUnits] = useState(1);
   const utils = trpc.useUtils();
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) setUnits(1);
+    onOpenChange(nextOpen);
+  };
+
   const { data: balanceData } = trpc.user.crypto.balance.useQuery(undefined, {
     enabled: !!user && open,
   });
@@ -70,7 +75,7 @@ export function BoostDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Boost "{packName}"</DialogTitle>

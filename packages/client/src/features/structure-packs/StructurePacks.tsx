@@ -1,25 +1,13 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
+import { useCountdown } from "@/hooks/use-countdown";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Package, Clock, Info } from "lucide-react";
 import { ActivePack } from "./components/ActivePack";
 import { PackCard } from "./components/PackCard";
 
-function formatTimeRemaining(isoDate: string): string {
-  const diff = new Date(isoDate).getTime() - Date.now();
-  if (diff <= 0) return "any moment now";
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (minutes > 0) parts.push(`${minutes}m`);
-  return parts.join(" ") || "< 1m";
-}
+const DEFAULT_BOOST_UNIT_PRICE = 50;
 
 export function StructurePacks() {
   const { user } = useAuth();
@@ -38,6 +26,8 @@ export function StructurePacks() {
     trpc.user.structurePacks.rotationInfo.useQuery(undefined, {
       enabled: !!user,
     });
+
+  const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
 
   const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
 
@@ -69,7 +59,7 @@ export function StructurePacks() {
               <Clock className="size-4 text-muted-foreground shrink-0" />
               <span className="text-muted-foreground">Next rotation in</span>
               <span className="font-semibold font-mono">
-                {formatTimeRemaining(rotationInfo.nextRotationAt)}
+                {countdown ?? "any moment now"}
               </span>
             </div>
           )
@@ -98,7 +88,7 @@ export function StructurePacks() {
             Vote for Next Rotation
           </h2>
 
-          {poolLoading ? (
+          {poolLoading || rotationLoading ? (
             <div className="grid gap-3 sm:grid-cols-2">
               {Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-44 w-full rounded-lg" />
@@ -119,7 +109,9 @@ export function StructurePacks() {
                   boostUnits={entry.boostUnits}
                   totalWeight={totalWeight}
                   myBoostUnits={myBoostMap.get(entry.pack.id) ?? 0}
-                  boostUnitPrice={rotationInfo?.boostUnitPrice ?? 50}
+                  boostUnitPrice={
+                    rotationInfo?.boostUnitPrice ?? DEFAULT_BOOST_UNIT_PRICE
+                  }
                 />
               ))}
             </div>

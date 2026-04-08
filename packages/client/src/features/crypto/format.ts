@@ -40,13 +40,15 @@ export function getHeldPercent(
   return Math.max(0, Math.min(100, (1 - avail / tot) * 100));
 }
 
-/** Formats remaining milliseconds as "Xh Ym" or "Ym Zs". */
+/** Formats remaining milliseconds as "Xd Yh Zm", "Xh Ym", or "Ym Zs". */
 export function formatCountdown(ms: number): string {
   if (ms <= 0) return "Ended";
   const totalSec = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSec / 3600);
+  const days = Math.floor(totalSec / 86400);
+  const hours = Math.floor((totalSec % 86400) / 3600);
   const minutes = Math.floor((totalSec % 3600) / 60);
   const seconds = totalSec % 60;
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
   if (hours > 0) return `${hours}h ${minutes}m`;
   if (minutes > 0) return `${minutes}m ${seconds}s`;
   return `${seconds}s`;
