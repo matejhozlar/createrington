@@ -165,7 +165,7 @@
 /* Server chat new message highlight animation */
 @keyframes new-message-fade {
   0%,
-  80% {
+  60% {
     border-color: oklch(from var(--sidebar-primary) l c h / 0.4);
     background-color: oklch(from var(--sidebar-primary) l c h / 0.05);
   }
@@ -176,7 +176,7 @@
 }
 
 .animate-new-message {
-  animation: new-message-fade 10s ease-out forwards;
+  animation: new-message-fade 10s ease-in-out forwards;
 }
 
 /* Sidebar status dot: green pulse → amber pulse when maintenance is scheduled */
