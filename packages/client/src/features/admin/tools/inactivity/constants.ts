@@ -85,18 +85,25 @@ export const STAT_CARDS: {
 
 /**
  * Derives the display status of a warning from its timestamps.
- * Matches the backend `statusFragment` semantics in the query layer.
+ * Matches the backend status semantics in the query layer.
+ *
+ * @param warning - Warning row with timestamps
+ * @param graceDays - Grace window in days (should come from the
+ *   `capabilities` query so the UI tracks the server-side constant)
  */
-export function deriveWarningStatus(warning: {
-  warnedAt: string | Date;
-  resolvedAt: string | Date | null;
-  removedAt: string | Date | null;
-}): DerivedStatus {
+export function deriveWarningStatus(
+  warning: {
+    warnedAt: string | Date;
+    resolvedAt: string | Date | null;
+    removedAt: string | Date | null;
+  },
+  graceDays = 14,
+): DerivedStatus {
   if (warning.removedAt) return "removed";
   if (warning.resolvedAt) return "resolved";
 
   const warnedAtMs = new Date(warning.warnedAt).getTime();
-  const graceMs = 14 * 24 * 60 * 60 * 1000;
+  const graceMs = graceDays * 24 * 60 * 60 * 1000;
   return Date.now() - warnedAtMs < graceMs ? "active" : "expired";
 }
 

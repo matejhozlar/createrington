@@ -74,6 +74,11 @@ import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
+/** Normalizes a tRPC-serialized timestamp to an ISO string. */
+function toIso(value: string | Date): string {
+  return typeof value === "string" ? value : new Date(value).toISOString();
+}
+
 export function InactivityManagement() {
   const toast = useToastActions();
 
@@ -108,6 +113,11 @@ export function InactivityManagement() {
 
   const triggerCleanup = trpc.admin.inactivity.triggerCleanup.useMutation();
 
+  // Destructure refetch so the callbacks below have stable deps — the
+  // full query object is a new reference on every render.
+  const { refetch: refetchList } = listQuery;
+  const { refetch: refetchStats } = statsQuery;
+
   const warnings = listQuery.data?.warnings ?? [];
   const total = listQuery.data?.pagination.total ?? 0;
   const totalPages = listQuery.data?.pagination.totalPages ?? 0;
@@ -116,6 +126,16 @@ export function InactivityManagement() {
 
   const canMutate = capabilitiesQuery.data?.canMutate ?? false;
   const graceDays = capabilitiesQuery.data?.graceDays ?? 14;
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(e.target.value);
+      // Reset pagination on every keystroke so the debounced query
+      // below can't land on an out-of-range page when results shrink.
+      setPage(0);
+    },
+    [],
+  );
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
@@ -129,22 +149,22 @@ export function InactivityManagement() {
   const handleSuccess = useCallback(() => {
     setResolveModal({ open: false, warning: null });
     setRemoveModal({ open: false, warning: null });
-    listQuery.refetch();
-    statsQuery.refetch();
-  }, [listQuery, statsQuery]);
+    refetchList();
+    refetchStats();
+  }, [refetchList, refetchStats]);
 
   const handleTriggerCleanup = useCallback(async () => {
     try {
       await triggerCleanup.mutateAsync();
       toast.success("Cleanup cycle completed");
-      listQuery.refetch();
-      statsQuery.refetch();
+      refetchList();
+      refetchStats();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to run cleanup cycle",
       );
     }
-  }, [triggerCleanup, toast, listQuery, statsQuery]);
+  }, [triggerCleanup, toast, refetchList, refetchStats]);
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -297,7 +317,7 @@ export function InactivityManagement() {
                   type="text"
                   placeholder="Search by username..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   className="pl-9"
                 />
               </div>
@@ -376,12 +396,16 @@ export function InactivityManagement() {
                   </TableHeader>
                   <TableBody>
                     {warnings.map((warning) => {
-                      const status = deriveWarningStatus(warning);
+                      const status = deriveWarningStatus(warning, graceDays);
                       const daysLeft = daysUntilDeadline(
                         warning.warnedAt,
                         graceDays,
                       );
                       const canAct = !warning.resolvedAt && !warning.removedAt;
+                      const warnedAtIso = toIso(warning.warnedAt);
+                      const lastSeenIso = warning.lastSeen
+                        ? toIso(warning.lastSeen)
+                        : null;
 
                       return (
                         <TableRow key={warning.id}>
@@ -411,21 +435,11 @@ export function InactivityManagement() {
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className="text-sm text-muted-foreground cursor-default">
-                                  {formatRelativeDate(
-                                    typeof warning.warnedAt === "string"
-                                      ? warning.warnedAt
-                                      : new Date(
-                                          warning.warnedAt,
-                                        ).toISOString(),
-                                  )}
+                                  {formatRelativeDate(warnedAtIso)}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent side="bottom" align="start">
-                                {formatFullDate(
-                                  typeof warning.warnedAt === "string"
-                                    ? warning.warnedAt
-                                    : new Date(warning.warnedAt).toISOString(),
-                                )}
+                                {formatFullDate(warnedAtIso)}
                               </TooltipContent>
                             </Tooltip>
                           </TableCell>
@@ -446,27 +460,15 @@ export function InactivityManagement() {
                             )}
                           </TableCell>
                           <TableCell className="px-4">
-                            {warning.lastSeen ? (
+                            {lastSeenIso ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-sm text-muted-foreground cursor-default">
-                                    {formatRelativeDate(
-                                      typeof warning.lastSeen === "string"
-                                        ? warning.lastSeen
-                                        : new Date(
-                                            warning.lastSeen,
-                                          ).toISOString(),
-                                    )}
+                                    {formatRelativeDate(lastSeenIso)}
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent side="bottom" align="start">
-                                  {formatFullDate(
-                                    typeof warning.lastSeen === "string"
-                                      ? warning.lastSeen
-                                      : new Date(
-                                          warning.lastSeen,
-                                        ).toISOString(),
-                                  )}
+                                  {formatFullDate(lastSeenIso)}
                                 </TooltipContent>
                               </Tooltip>
                             ) : (
