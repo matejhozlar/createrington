@@ -207,8 +207,10 @@ export function registerServices(): void {
     { dependencies: [Services.DISCORD_MAIN_BOT] },
   );
 
-  // Only enabled in dev for now — remove the guard when ready for production
-  if (!config.envMode.isProd) {
+  // Production-only: never run on local dev or the dev deployment
+  // (dev.create-rington.com ships with NODE_ENV=production, so the
+  // isDevDeployment hostname check is required in addition to isProd).
+  if (config.envMode.isProd && !config.envMode.isDevDeployment) {
     container.register(
       Services.INACTIVITY_CLEANUP_SERVICE,
       async () => {
