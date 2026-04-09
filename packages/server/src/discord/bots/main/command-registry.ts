@@ -40,4 +40,5 @@ export const commandRegistry: Record<string, CommandEnv> = {
   "ticket-panel": "prod",
   "server-panel": "prod",
   "donate-panel": "prod",
+  "force-inactivity-cleanup": "prod",
 };

@@ -292,4 +292,36 @@ export class InactivityCleanupService {
     logger.info("Manual inactivity cleanup triggered");
     await this.runCycle();
   }
+
+  /**
+   * Force-run the full cleanup cycle now and reset the recurring schedule.
+   * The next automatic run will happen CHECK_INTERVAL from this call's
+   * completion, not from the previously-scheduled tick.
+   *
+   * Used by the owner-only /force-inactivity-cleanup command.
+   */
+  async forceRunAndResetSchedule(): Promise<void> {
+    logger.info(
+      "Forced inactivity cleanup triggered — resetting recurring schedule",
+    );
+
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+
+    try {
+      await this.runCycle();
+    } finally {
+      this.intervalId = setInterval(() => {
+        this.runCycle().catch((error) => {
+          logger.error("Scheduled inactivity cleanup cycle failed:", error);
+        });
+      }, this.CHECK_INTERVAL);
+
+      logger.info(
+        `Inactivity cleanup schedule reset — next run in ${this.CHECK_INTERVAL / 86400000}d`,
+      );
+    }
+  }
 }
