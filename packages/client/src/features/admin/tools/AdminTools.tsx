@@ -18,6 +18,7 @@ import {
   BarChart3,
   Blocks,
   ChevronRight,
+  Clock,
   Coins,
   Megaphone,
   MessageCircleQuestion,
@@ -86,6 +87,18 @@ const TOOL_SECTIONS: ToolSection[] = [
         description: "Tokens, market events, treasury, and economy stats.",
         icon: Coins,
         href: "/admin/tools/crypto",
+      },
+    ],
+  },
+  {
+    title: "Moderation",
+    tools: [
+      {
+        title: "Inactivity Management",
+        description:
+          "Track 60-day inactivity warnings and run the cleanup cycle.",
+        icon: Clock,
+        href: "/admin/tools/inactivity",
       },
     ],
   },

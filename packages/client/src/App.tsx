@@ -43,6 +43,7 @@ import { AdminPlayers } from "./features/admin/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
+import { InactivityManagement } from "./features/admin/tools/inactivity/InactivityManagement";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
@@ -310,6 +311,10 @@ function AppContent() {
                   />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
+                  <Route
+                    path="tools/inactivity"
+                    element={<InactivityManagement />}
+                  />
                   <Route
                     path="tools/embed-builder"
                     element={<EmbedBuilder />}
