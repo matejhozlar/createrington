@@ -945,8 +945,6 @@ function MessageGroupComponent({
   onImageLoad,
   isOnline,
   hasHighlight,
-  prevHighlighted,
-  nextHighlighted,
   onHighlightEnd,
 }: {
   group: MessageGroup;
@@ -955,8 +953,6 @@ function MessageGroupComponent({
   onImageLoad?: () => void;
   isOnline?: boolean;
   hasHighlight: boolean;
-  prevHighlighted: boolean;
-  nextHighlighted: boolean;
   onHighlightEnd?: (messageIds: string[]) => void;
 }) {
   const config = SOURCE_CONFIG[group.source];
@@ -988,16 +984,11 @@ function MessageGroupComponent({
 
       <div
         className={cn(
-          "group/msg-group flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20",
-          hasHighlight &&
-            "animate-new-message border-l border-r border-sidebar-primary/40 bg-sidebar-primary/5",
-          hasHighlight && !prevHighlighted && "border-t rounded-t-lg",
-          hasHighlight && !nextHighlighted && "border-b rounded-b-lg",
-          hasHighlight && prevHighlighted && "border-t-0",
-          hasHighlight && nextHighlighted && "border-b-0",
+          "group/msg-group relative flex gap-3 px-4 py-2.5 transition-colors duration-150 hover:bg-sidebar-accent/20",
+          hasHighlight && "animate-new-message",
         )}
         onAnimationEnd={(e) => {
-          if (e.animationName === "new-message-fade" && onHighlightEnd) {
+          if (e.animationName === "highlight-bg" && onHighlightEnd) {
             onHighlightEnd(group.messages.map((m) => m.messageId));
           }
         }}
@@ -1652,20 +1643,6 @@ export function ServerChat() {
                   const isHighlighted = groupHighlights[idx];
                   const prevGroup =
                     idx > 0 ? messageGroups[idx - 1] : undefined;
-                  const nextGroup =
-                    idx < messageGroups.length - 1
-                      ? messageGroups[idx + 1]
-                      : undefined;
-
-                  const prevIsHighlightedSameSource =
-                    !!prevGroup &&
-                    prevGroup.source === group.source &&
-                    groupHighlights[idx - 1];
-
-                  const nextIsHighlightedSameSource =
-                    !!nextGroup &&
-                    nextGroup.source === group.source &&
-                    groupHighlights[idx + 1];
 
                   return (
                     <MessageGroupComponent
@@ -1678,8 +1655,6 @@ export function ServerChat() {
                       }}
                       isOnline={isOnline}
                       hasHighlight={isHighlighted}
-                      prevHighlighted={prevIsHighlightedSameSource}
-                      nextHighlighted={nextIsHighlightedSameSource}
                       onHighlightEnd={handleHighlightEnd}
                     />
                   );

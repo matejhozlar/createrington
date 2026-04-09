@@ -15,6 +15,7 @@ import {
   getModFileDownloadUrl,
 } from "@/services/curseforge";
 import type { StructurePackService } from "./index";
+import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
   StructurePack,
   StructurePackMod,
@@ -736,19 +737,38 @@ export class StructurePackRotationService {
 
   /**
    * Returns each eligible pack together with its current computed weight and
-   * accumulated boost units for the active cycle.
+   * accumulated boost units for the active cycle. Each pack also includes its
+   * full mod list so the UI can display mod counts and a detailed inspect view.
    *
    * Intended for UI display so players can see how their boosts affect selection odds.
    *
-   * @returns Array of objects containing the pack, its total weight, and boost unit count
+   * @returns Array of objects containing the pack (with mods), its total weight, and boost unit count
    */
   async getPoolWithWeights(): Promise<
-    Array<{ pack: StructurePack; weight: number; boostUnits: number }>
+    Array<{ pack: StructurePackWithMods; weight: number; boostUnits: number }>
   > {
     const activePack = await this.packService.getActivePack();
     const eligible = await Q.structure.pack.getEligibleForRotation(
       activePack?.id,
     );
+
+    const packIds = eligible.map((p) => p.id);
+    const mods =
+      packIds.length > 0
+        ? await Q.structure.pack.mod.findAll({
+            packId: { $in: packIds },
+          })
+        : [];
+    const modsByPackId = new Map<number, StructurePackMod[]>();
+    for (const mod of mods) {
+      const list = modsByPackId.get(mod.packId);
+      if (list) {
+        list.push(mod);
+      } else {
+        modsByPackId.set(mod.packId, [mod]);
+      }
+    }
+
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cycleStart = this.computeCycleStart(rotationConfig);
@@ -765,7 +785,7 @@ export class StructurePackRotationService {
     return eligible.map((pack) => {
       const w = weights.find((e) => e.packId === pack.id);
       return {
-        pack,
+        pack: { ...pack, mods: modsByPackId.get(pack.id) ?? [] },
         weight: w?.weight ?? 0,
         boostUnits: boostMap.get(pack.id) ?? 0,
       };
@@ -779,6 +799,19 @@ export class StructurePackRotationService {
   /** Returns the current rotation configuration, creating the default record if none exists. */
   async getConfig(): Promise<StructurePackRotationConfig> {
     return Q.structure.pack.rotation.config.getOrCreateDefault();
+  }
+
+  /** Returns the next scheduled rotation time as a UTC Date, along with the boost unit price. */
+  async getNextRotationInfo(): Promise<{
+    nextRotationAt: string;
+    boostUnitPrice: number;
+  }> {
+    const cfg = await this.getConfig();
+    const next = this.computeNextRotationTime(cfg);
+    return {
+      nextRotationAt: next.toISOString(),
+      boostUnitPrice: cfg.boostUnitPrice,
+    };
   }
 
   /**

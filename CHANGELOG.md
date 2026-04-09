@@ -1,3 +1,21 @@
+## [2026-04-09]
+
+### @createrington/server (1.1.1 → 1.2.0)
+- Add admin inactivity management tRPC router — new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
+- Extract shared `removeInactiveWarning` helper — consolidates the full removal sequence (Discord guild kick → RCON whitelist removal → player DB delete → warning marked removed) into a single reusable function used by both the scheduled cleanup and the new manual-remove endpoint
+- Add owner-only `/force-inactivity-cleanup` Discord slash command to trigger the cleanup cycle on demand without waiting for the next scheduled run
+- Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.create-rington.com, which runs with `NODE_ENV=production`) is excluded
+- Fix tsconfig `rootDir` and `baseUrl` deprecation errors — set explicit `rootDir: ".."`, remove deprecated `baseUrl`, and normalize `@/*` path alias to `./src/*`
+
+### @createrington/client (0.1.2 → 0.2.0)
+- Add Inactivity Management admin tool — full-page UI with status-tab navigation (active / expired / resolved / removed), paginated warning table, stats summary cards, and modal dialogs to manually resolve or remove individual warnings; destructive actions are gated to the production environment
+- Add player-facing Structure Packs voting page — players can browse available packs, see which is currently active, boost packs with votes, and inspect the full mod list for each pack via an inline dialog
+- Add pack mod list inspect dialog — pack cards in the admin and player views now include an "Inspect" button that opens a scrollable dialog listing all mods in the pack
+- Rework admin tools page into a grouped compact list — tools are now organised under collapsible category headers with a compact row layout, replacing the previous icon-grid
+- Overhaul chat new-message highlight animation — simplify to a single CSS `highlight-bg` keyframe animation per message group, removing the previous group-border-stitching logic (`prevHighlighted`/`nextHighlighted` props) that caused visual glitches
+- Fix number input spinner arrows — hide browser-default increment/decrement arrows on `<input type="number">` elements via global CSS
+- Fix chat highlight layout shift — prevent the highlight animation from causing content reflow by adjusting positioning and transition approach
+
 ## [2026-04-07]
 
 ### @createrington/server (1.1.0 → 1.1.1)

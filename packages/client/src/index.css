@@ -125,6 +125,19 @@
   *:hover::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/50;
   }
+
+  /* Hide number input spinners (Chrome, Safari, Edge, Opera) */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Hide number input spinners (Firefox) */
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }
 
 /* ============================================================================
@@ -163,20 +176,55 @@
 }
 
 /* Server chat new message highlight animation */
-@keyframes new-message-fade {
-  0%,
-  80% {
-    border-color: oklch(from var(--sidebar-primary) l c h / 0.4);
-    background-color: oklch(from var(--sidebar-primary) l c h / 0.05);
+@keyframes highlight-bar {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.8);
+  }
+  8% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
   }
   100% {
-    border-color: transparent;
+    opacity: 0;
+    transform: scaleY(0.8);
+  }
+}
+
+@keyframes highlight-bg {
+  0% {
+    background-color: transparent;
+  }
+  8% {
+    background-color: oklch(from var(--sidebar-primary) l c h / 0.03);
+  }
+  50% {
+    background-color: oklch(from var(--sidebar-primary) l c h / 0.03);
+  }
+  100% {
     background-color: transparent;
   }
 }
 
 .animate-new-message {
-  animation: new-message-fade 10s ease-out forwards;
+  position: relative;
+  animation: highlight-bg 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-new-message::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background-color: oklch(from var(--sidebar-primary) l c h / 0.6);
+  animation: highlight-bar 5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 /* Sidebar status dot: green pulse → amber pulse when maintenance is scheduled */

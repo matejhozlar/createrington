@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import type { LucideIcon } from "lucide-react";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -9,8 +10,15 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   BarChart3,
   Blocks,
+  ChevronRight,
+  Clock,
   Coins,
   Megaphone,
   MessageCircleQuestion,
@@ -22,62 +30,94 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
-const tools = [
+type Tool = {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  href: string;
+};
+
+type ToolSection = {
+  title: string;
+  tools: Tool[];
+};
+
+const TOOL_SECTIONS: ToolSection[] = [
   {
-    title: "Structure Packs",
-    description:
-      "Manage weekly rotating structure packs. Create mod collections from CurseForge and configure the rotation schedule.",
-    icon: Blocks,
-    href: "/admin/tools/structure-packs",
+    title: "Communication",
+    tools: [
+      {
+        title: "Embed Builder",
+        description:
+          "Build Discord embeds with a live preview and save presets.",
+        icon: Paintbrush,
+        href: "/admin/tools/embed-builder",
+      },
+      {
+        title: "Auto Messages",
+        description: "Scheduled rotating messages sent to Discord channels.",
+        icon: Timer,
+        href: "/admin/tools/auto-messages",
+      },
+      {
+        title: "Announcements",
+        description: "Post modpack changelogs and maintenance notices.",
+        icon: Megaphone,
+        href: "/admin/tools/announcements",
+      },
+      {
+        title: "FAQ Auto-Responder",
+        description: "Keyword-triggered replies to common questions.",
+        icon: MessageCircleQuestion,
+        href: "/admin/tools/faq",
+      },
+    ],
   },
   {
-    title: "FAQ Auto-Responder",
-    description:
-      "Manage keyword-triggered FAQ entries that automatically respond to common questions in Discord.",
-    icon: MessageCircleQuestion,
-    href: "/admin/tools/faq",
+    title: "Game Systems",
+    tools: [
+      {
+        title: "Structure Packs",
+        description: "Manage weekly rotating mod collections from CurseForge.",
+        icon: Blocks,
+        href: "/admin/tools/structure-packs",
+      },
+      {
+        title: "Crypto Market",
+        description: "Tokens, market events, treasury, and economy stats.",
+        icon: Coins,
+        href: "/admin/tools/crypto",
+      },
+    ],
   },
   {
-    title: "Embed Builder",
-    description:
-      "Visually build Discord embeds with a live preview and send them to any channel. Save and load presets.",
-    icon: Paintbrush,
-    href: "/admin/tools/embed-builder",
+    title: "Moderation",
+    tools: [
+      {
+        title: "Inactivity Management",
+        description:
+          "Track 60-day inactivity warnings and run the cleanup cycle.",
+        icon: Clock,
+        href: "/admin/tools/inactivity",
+      },
+    ],
   },
   {
-    title: "Auto Messages",
-    description:
-      "Configure scheduled rotating messages sent to Discord channels on a timer.",
-    icon: Timer,
-    href: "/admin/tools/auto-messages",
-  },
-  {
-    title: "Announcements",
-    description:
-      "Send modpack changelogs and maintenance announcements to the Discord announcements channel.",
-    icon: Megaphone,
-    href: "/admin/tools/announcements",
-  },
-  {
-    title: "Crypto Market",
-    description:
-      "Manage tokens, trigger market events, view treasury stats, and monitor the in-game crypto economy.",
-    icon: Coins,
-    href: "/admin/tools/crypto",
-  },
-  {
-    title: "Command Docs",
-    description:
-      "Auto-generated reference of all Discord slash commands with options, permissions, and cooldowns.",
-    icon: Terminal,
-    href: "/admin/tools/command-docs",
-  },
-  {
-    title: "Stat Search",
-    description:
-      "Search Minecraft stats across all players. Find who mined, picked up, crafted, or used specific items.",
-    icon: BarChart3,
-    href: "/admin/tools/stat-search",
+    title: "Reference",
+    tools: [
+      {
+        title: "Command Docs",
+        description: "Auto-generated reference of all Discord slash commands.",
+        icon: Terminal,
+        href: "/admin/tools/command-docs",
+      },
+      {
+        title: "Stat Search",
+        description: "Search Minecraft stats across all players.",
+        icon: BarChart3,
+        href: "/admin/tools/stat-search",
+      },
+    ],
   },
 ];
 
@@ -96,7 +136,7 @@ export function AdminTools() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border bg-sidebar px-4">
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -108,45 +148,66 @@ export function AdminTools() {
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              onClick={() => refetchMutation.mutate()}
+              disabled={refetchMutation.isPending}
+              aria-label="Refresh Discord data"
+            >
+              <RefreshCw
+                className={`size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
+              />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Refresh Discord data</TooltipContent>
+        </Tooltip>
       </header>
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Tools</h1>
-          <Button
-            variant="outline"
-            size="sm"
-            className="cursor-pointer"
-            onClick={() => refetchMutation.mutate()}
-            disabled={refetchMutation.isPending}
-          >
-            <RefreshCw
-              className={`mr-2 size-4 ${refetchMutation.isPending ? "animate-spin" : ""}`}
-            />
-            Refresh Discord Data
-          </Button>
-        </div>
+      <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-8 px-4 pb-4">
+        <h1 className="text-2xl font-semibold">Tools</h1>
 
-        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.href}
-              type="button"
-              onClick={() => navigate(tool.href)}
-              className="group cursor-pointer rounded-lg border border-border bg-card p-6 text-left transition-colors hover:bg-accent"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                  <tool.icon className="size-5" />
-                </div>
-                <h2 className="text-lg font-semibold">{tool.title}</h2>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                {tool.description}
-              </p>
-            </button>
-          ))}
-        </div>
+        {TOOL_SECTIONS.map((section) => (
+          <section key={section.title} className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {section.title}
+              </h2>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <ul className="flex flex-col rounded-lg border border-border bg-card">
+              {section.tools.map((tool, index) => (
+                <li key={tool.href}>
+                  <button
+                    type="button"
+                    onClick={() => navigate(tool.href)}
+                    className={`group flex w-full cursor-pointer items-center gap-4 px-4 py-3 text-left transition-colors hover:bg-accent ${
+                      index !== section.tools.length - 1
+                        ? "border-b border-border"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <tool.icon className="size-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{tool.title}</div>
+                      <div className="truncate text-sm text-muted-foreground">
+                        {tool.description}
+                      </div>
+                    </div>
+                    <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
       </div>
     </div>
   );

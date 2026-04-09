@@ -43,6 +43,7 @@ import { AdminPlayers } from "./features/admin/AdminPlayers";
 import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
 import { AdminTools } from "./features/admin/tools/AdminTools";
 import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
+import { InactivityManagement } from "./features/admin/tools/inactivity/InactivityManagement";
 import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
 import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
@@ -72,6 +73,7 @@ import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 import { GuideList } from "./features/guides/GuideList";
 import { GuideDetail } from "./features/guides/GuideDetail";
+import { StructurePacks } from "./features/structure-packs/StructurePacks";
 import { CryptoLayout } from "./features/crypto/CryptoLayout";
 import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
 import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
@@ -258,6 +260,14 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/structure-packs"
+          element={
+            <ProtectedRoute>
+              <StructurePacks />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Server Routes */}
         <Route
@@ -301,6 +311,10 @@ function AppContent() {
                   />
                   <Route path="tools" element={<AdminTools />} />
                   <Route path="tools/faq" element={<AdminFaq />} />
+                  <Route
+                    path="tools/inactivity"
+                    element={<InactivityManagement />}
+                  />
                   <Route
                     path="tools/embed-builder"
                     element={<EmbedBuilder />}

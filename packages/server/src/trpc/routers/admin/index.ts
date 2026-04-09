@@ -8,6 +8,7 @@ import { discordCommandsRouter } from "./discord-commands";
 import { adminDonationsRouter } from "./donations";
 import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
+import { inactivityRouter } from "./inactivity";
 import { logsRouter } from "./logs";
 import { adminMetricsRouter } from "./metrics";
 import { adminPlayersRouter } from "./players";
@@ -43,6 +44,7 @@ export const adminRouter = router({
   donations: adminDonationsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
+  inactivity: inactivityRouter,
   logs: logsRouter,
   metrics: adminMetricsRouter,
   players: adminPlayersRouter,

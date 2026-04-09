@@ -3,7 +3,7 @@ import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { removeInactiveWarning } from "./remove-warning";
 
 /**
  * Inactivity Cleanup Service
@@ -192,54 +192,8 @@ export class InactivityCleanupService {
           continue;
         }
 
-        // Kick from Discord
-        try {
-          const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-          const guild = mainBot.guilds.cache.first();
-          if (guild) {
-            const member = await guild.members
-              .fetch(warning.discordId)
-              .catch(() => null);
-            if (member) {
-              await member.kick("Inactivity: 60+ days without logging in");
-              logger.info(
-                `Kicked ${warning.minecraftUsername} from Discord (inactivity)`,
-              );
-            }
-          }
-        } catch (error) {
-          logger.warn(
-            `Failed to kick ${warning.minecraftUsername} from Discord:`,
-            error,
-          );
-        }
-
-        // Remove from whitelist
-        try {
-          await minecraftRcon.whitelistAll(
-            WhitelistAction.REMOVE,
-            warning.minecraftUsername,
-          );
-        } catch (error) {
-          logger.error(
-            `Failed to remove ${warning.minecraftUsername} from whitelist:`,
-            error,
-          );
-        }
-
-        // Delete player record (cascades to all related tables)
-        await Q.player.delete({
-          minecraftUuid: warning.playerMinecraftUuid,
-        });
-
-        // Mark warning as removed
-        await Q.player.inactivity.warning.markRemoved(warning.id);
-
+        await removeInactiveWarning(warning);
         removedUsernames.push(warning.minecraftUsername);
-
-        logger.info(
-          `Removed inactive player ${warning.minecraftUsername} (warned ${warning.warnedAt.toISOString()})`,
-        );
       } catch (error) {
         logger.error(
           `Failed to remove inactive player ${warning.minecraftUsername}:`,
@@ -291,5 +245,37 @@ export class InactivityCleanupService {
   async triggerManualCleanup(): Promise<void> {
     logger.info("Manual inactivity cleanup triggered");
     await this.runCycle();
+  }
+
+  /**
+   * Force-run the full cleanup cycle now and reset the recurring schedule.
+   * The next automatic run will happen CHECK_INTERVAL from this call's
+   * completion, not from the previously-scheduled tick.
+   *
+   * Used by the owner-only /force-inactivity-cleanup command.
+   */
+  async forceRunAndResetSchedule(): Promise<void> {
+    logger.info(
+      "Forced inactivity cleanup triggered — resetting recurring schedule",
+    );
+
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = undefined;
+    }
+
+    try {
+      await this.runCycle();
+    } finally {
+      this.intervalId = setInterval(() => {
+        this.runCycle().catch((error) => {
+          logger.error("Scheduled inactivity cleanup cycle failed:", error);
+        });
+      }, this.CHECK_INTERVAL);
+
+      logger.info(
+        `Inactivity cleanup schedule reset — next run in ${this.CHECK_INTERVAL / 86400000}d`,
+      );
+    }
   }
 }
