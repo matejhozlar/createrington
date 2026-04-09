@@ -18,6 +18,36 @@ interface ActiveWarning {
   lastSeen: Date;
 }
 
+export type WarningStatus =
+  | "all"
+  | "active"
+  | "expired"
+  | "resolved"
+  | "removed";
+
+/**
+ * Warning row joined with player data (nullable when the player record
+ * was deleted as part of the removal flow).
+ */
+export interface WarningListItem {
+  id: number;
+  playerMinecraftUuid: string;
+  warnedAt: Date;
+  warningMessageId: string | null;
+  resolvedAt: Date | null;
+  removedAt: Date | null;
+  minecraftUsername: string | null;
+  discordId: string | null;
+  lastSeen: Date | null;
+}
+
+export interface WarningStatusCounts {
+  active: number;
+  expired: number;
+  resolvedLast30d: number;
+  removedLast30d: number;
+}
+
 export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
@@ -175,5 +205,237 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
       `UPDATE player_inactivity_warning SET removed_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [id],
     );
+  }
+
+  /**
+   * List warnings filtered by status, optionally searching by current
+   * Minecraft username. Uses LEFT JOIN on player so "removed" rows still
+   * return even after the player record has been deleted.
+   *
+   * Params are built dynamically: `graceDays` is only passed when the
+   * status clause actually needs it (active/expired). Passing an unused
+   * parameter would trigger Postgres "could not determine data type".
+   *
+   * @param params.status - Warning status to filter on
+   * @param params.graceDays - Grace period in days (used for active/expired split)
+   * @param params.search - Optional case-insensitive username substring
+   * @param params.limit - Page size
+   * @param params.offset - Row offset
+   */
+  async listByStatus(params: {
+    status: WarningStatus;
+    graceDays: number;
+    search?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ warnings: WarningListItem[]; total: number }> {
+    // Status clause. `$1` references graceDays when pushed as the first
+    // param (active/expired). For the other statuses no param is needed,
+    // so we keep the SQL free of unreferenced placeholders.
+    const needsGraceDays =
+      params.status === "active" || params.status === "expired";
+
+    let statusClause: string;
+    switch (params.status) {
+      case "active":
+        statusClause = `w.resolved_at IS NULL AND w.removed_at IS NULL AND w.warned_at >= NOW() - ($1 || ' days')::interval`;
+        break;
+      case "expired":
+        statusClause = `w.resolved_at IS NULL AND w.removed_at IS NULL AND w.warned_at < NOW() - ($1 || ' days')::interval`;
+        break;
+      case "resolved":
+        statusClause = `w.resolved_at IS NOT NULL`;
+        break;
+      case "removed":
+        statusClause = `w.removed_at IS NOT NULL`;
+        break;
+      case "all":
+      default:
+        statusClause = `TRUE`;
+        break;
+    }
+
+    // List params: [graceDays?], limit, offset, [search?]
+    const listParams: Array<string | number> = [];
+    if (needsGraceDays) listParams.push(params.graceDays);
+
+    listParams.push(params.limit);
+    const limitParamIdx = listParams.length;
+    listParams.push(params.offset);
+    const offsetParamIdx = listParams.length;
+
+    // Count params: [graceDays?], [search?]
+    const countParams: Array<string | number> = [];
+    if (needsGraceDays) countParams.push(params.graceDays);
+
+    let listSearchClause = "";
+    let countSearchClause = "";
+    if (params.search) {
+      listParams.push(params.search);
+      listSearchClause = `AND p.minecraft_username ILIKE '%' || $${listParams.length} || '%'`;
+      countParams.push(params.search);
+      countSearchClause = `AND p.minecraft_username ILIKE '%' || $${countParams.length} || '%'`;
+    }
+
+    const listQuery = `
+      SELECT
+        w.id,
+        w.player_minecraft_uuid,
+        w.warned_at,
+        w.warning_message_id,
+        w.resolved_at,
+        w.removed_at,
+        p.minecraft_username,
+        p.discord_id,
+        p.last_seen
+      FROM player_inactivity_warning w
+      LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
+      WHERE ${statusClause}
+        ${listSearchClause}
+      ORDER BY w.warned_at DESC
+      LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}`;
+
+    const countQuery = `
+      SELECT COUNT(*)::integer AS total
+      FROM player_inactivity_warning w
+      LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
+      WHERE ${statusClause}
+        ${countSearchClause}`;
+
+    try {
+      const [listResult, countResult] = await Promise.all([
+        this.db.query<{
+          id: number;
+          player_minecraft_uuid: string;
+          warned_at: Date;
+          warning_message_id: string | null;
+          resolved_at: Date | null;
+          removed_at: Date | null;
+          minecraft_username: string | null;
+          discord_id: string | null;
+          last_seen: Date | null;
+        }>(listQuery, listParams),
+        this.db.query<{ total: number }>(countQuery, countParams),
+      ]);
+
+      return {
+        warnings: listResult.rows.map((row) => ({
+          id: row.id,
+          playerMinecraftUuid: row.player_minecraft_uuid,
+          warnedAt: row.warned_at,
+          warningMessageId: row.warning_message_id,
+          resolvedAt: row.resolved_at,
+          removedAt: row.removed_at,
+          minecraftUsername: row.minecraft_username,
+          discordId: row.discord_id,
+          lastSeen: row.last_seen,
+        })),
+        total: countResult.rows[0]?.total ?? 0,
+      };
+    } catch (error) {
+      logger.error("Error listing warnings by status:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Returns counts for stats cards: active (in grace), expired (past grace
+   * and not yet cleaned up), and resolved/removed in the last 30 days.
+   */
+  async countByStatus(graceDays: number): Promise<WarningStatusCounts> {
+    const query = `
+      SELECT
+        COUNT(*) FILTER (
+          WHERE resolved_at IS NULL
+            AND removed_at IS NULL
+            AND warned_at >= NOW() - ($1 || ' days')::interval
+        )::integer AS active,
+        COUNT(*) FILTER (
+          WHERE resolved_at IS NULL
+            AND removed_at IS NULL
+            AND warned_at < NOW() - ($1 || ' days')::interval
+        )::integer AS expired,
+        COUNT(*) FILTER (
+          WHERE resolved_at IS NOT NULL
+            AND resolved_at >= NOW() - INTERVAL '30 days'
+        )::integer AS resolved_last30d,
+        COUNT(*) FILTER (
+          WHERE removed_at IS NOT NULL
+            AND removed_at >= NOW() - INTERVAL '30 days'
+        )::integer AS removed_last30d
+      FROM player_inactivity_warning`;
+
+    try {
+      const result = await this.db.query<{
+        active: number;
+        expired: number;
+        resolved_last30d: number;
+        removed_last30d: number;
+      }>(query, [graceDays]);
+
+      const row = result.rows[0];
+      return {
+        active: row?.active ?? 0,
+        expired: row?.expired ?? 0,
+        resolvedLast30d: row?.resolved_last30d ?? 0,
+        removedLast30d: row?.removed_last30d ?? 0,
+      };
+    } catch (error) {
+      logger.error("Error counting warnings by status:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetches a single warning joined with current player data. Returns
+   * null fields for the player columns if the player record was deleted.
+   */
+  async findByIdWithPlayer(id: number): Promise<WarningListItem | null> {
+    const query = `
+      SELECT
+        w.id,
+        w.player_minecraft_uuid,
+        w.warned_at,
+        w.warning_message_id,
+        w.resolved_at,
+        w.removed_at,
+        p.minecraft_username,
+        p.discord_id,
+        p.last_seen
+      FROM player_inactivity_warning w
+      LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
+      WHERE w.id = $1
+      LIMIT 1`;
+
+    try {
+      const result = await this.db.query<{
+        id: number;
+        player_minecraft_uuid: string;
+        warned_at: Date;
+        warning_message_id: string | null;
+        resolved_at: Date | null;
+        removed_at: Date | null;
+        minecraft_username: string | null;
+        discord_id: string | null;
+        last_seen: Date | null;
+      }>(query, [id]);
+
+      if (result.rows.length === 0) return null;
+      const row = result.rows[0];
+      return {
+        id: row.id,
+        playerMinecraftUuid: row.player_minecraft_uuid,
+        warnedAt: row.warned_at,
+        warningMessageId: row.warning_message_id,
+        resolvedAt: row.resolved_at,
+        removedAt: row.removed_at,
+        minecraftUsername: row.minecraft_username,
+        discordId: row.discord_id,
+        lastSeen: row.last_seen,
+      };
+    } catch (error) {
+      logger.error("Error fetching warning by id:", error);
+      throw error;
+    }
   }
 }
