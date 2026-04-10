@@ -223,7 +223,7 @@ export function TopRender() {
       </div>
 
       {/* Podium */}
-      <div className="flex-1 flex items-center justify-center gap-1 px-8 z-10">
+      <div className="flex-1 flex items-center justify-center px-8 z-10">
         {data.players.length === 0 ? (
           <span className="text-lg text-muted-foreground pb-20">
             No players found for this stat
