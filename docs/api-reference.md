@@ -5,15 +5,15 @@
 
 ## Table of Contents
 
-- **[Auth](#auth)** (7) — `GET /api/auth/discord`, `POST /api/auth/discord/callback`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/auth/me`, `POST /api/auth/logout-all`, `GET /api/auth/status`
-- **[Messages](#messages)** (1) — `POST /api/messages`
-- **[Skin](#skin)** (1) — `GET /api/skin/:uuid`
-- **[Donations](#donations)** (1) — `POST /api/donations/webhook`
-- **[Currency](#currency)** (10) — `POST /api/currency/login`, `GET /api/currency/balance`, `POST /api/currency/pay`, `POST /api/currency/deposit`, `POST /api/currency/withdraw`, `GET /api/currency/history`, `GET /api/currency/top`, `POST /api/currency/daily`, `POST /api/currency/lottery/start`, `POST /api/currency/lottery/join`
-- **[Presence](#presence)** (2) — `POST /api/presence`, `POST /api/presence/heartbeat`
-- **[Trains](#trains)** (1) — `POST /api/trains/crash`
-- **[Render](#render)** (5) — `GET /api/render/compare`, `GET /api/render/profile`, `GET /api/render/activity`, `GET /api/render/top`, `GET /api/render/crypto-chart`
-- **[Internal Sync](#internal-sync)** (2) — `POST /api/internal/presence`, `POST /api/internal/presence/heartbeat`
+- **[Auth](#auth)** — 7 endpoint(s)
+- **[Messages](#messages)** — 1 endpoint(s)
+- **[Skin](#skin)** — 1 endpoint(s)
+- **[Donations](#donations)** — 1 endpoint(s)
+- **[Currency](#currency)** — 10 endpoint(s)
+- **[Presence](#presence)** — 2 endpoint(s)
+- **[Trains](#trains)** — 1 endpoint(s)
+- **[Render](#render)** — 5 endpoint(s)
+- **[Internal Sync](#internal-sync)** — 2 endpoint(s)
 
 ## Authentication
 

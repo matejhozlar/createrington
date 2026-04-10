@@ -407,11 +407,8 @@ function generateMarkdown(
   lines.push("## Table of Contents");
   lines.push("");
   for (const { module, routes } of modules) {
-    const endpointList = routes
-      .map((r) => `\`${r.method} ${r.path}\``)
-      .join(", ");
     lines.push(
-      `- **[${module.name}](#${module.name.toLowerCase().replace(/\s+/g, "-")})** (${routes.length}) — ${endpointList}`,
+      `- **[${module.name}](#${module.name.toLowerCase().replace(/\s+/g, "-")})** — ${routes.length} endpoint(s)`,
     );
   }
   lines.push("");
