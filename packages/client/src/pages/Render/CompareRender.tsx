@@ -2,6 +2,34 @@ import { useEffect, useState } from "react";
 import { mcHeadsBody } from "@/lib/external-urls";
 import { useSearchParams } from "react-router-dom";
 
+const SKIN_POSES = [
+  "walking",
+  "dungeons",
+  "crossed",
+  "crouching",
+  "cheering",
+  "facepalm",
+] as const;
+
+function randomPose(): string {
+  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
+}
+
+function starlightSkinUrl(uuid: string, pose: string): string {
+  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
+}
+
+/** Try to load a starlightskins render, fall back to mc-heads on failure. */
+function loadSkin(uuid: string, pose: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img.src);
+    img.onerror = () => resolve(mcHeadsBody(uuid));
+    img.src = starlightSkinUrl(uuid, pose);
+  });
+}
+
 interface PlayerData {
   username: string;
   uuid: string;
@@ -76,6 +104,10 @@ export function CompareRender() {
   const [params] = useSearchParams();
   const [data, setData] = useState<CompareData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [skinLeft, setSkinLeft] = useState<string | null>(null);
+  const [skinRight, setSkinRight] = useState<string | null>(null);
+  const [poseLeft] = useState(randomPose);
+  const [poseRight] = useState(randomPose);
 
   const secret = params.get("secret");
   const p1 = params.get("player1");
@@ -99,6 +131,13 @@ export function CompareRender() {
       .catch(() => setFetchError("Failed to load comparison data"));
   }, [hasMissingParams, secret, p1, p2]);
 
+  // Load skin images once data arrives — both in parallel
+  useEffect(() => {
+    if (!data) return;
+    loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
+    loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
+  }, [data, poseLeft, poseRight]);
+
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 
   if (error) {
@@ -111,7 +150,7 @@ export function CompareRender() {
     );
   }
 
-  if (!data) {
+  if (!data || !skinLeft || !skinRight) {
     return (
       <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
         <span className="text-base tracking-wide text-muted-foreground">
@@ -170,7 +209,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-1" />
             <img
-              src={mcHeadsBody(left.uuid)}
+              src={skinLeft}
               alt={left.username}
               className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
@@ -219,7 +258,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-5" />
             <img
-              src={mcHeadsBody(right.uuid)}
+              src={skinRight}
               alt={right.username}
               className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
