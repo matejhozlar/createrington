@@ -11,7 +11,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { CopyBlock } from "./components/CopyBlock";
+import { DiscordCommandsGroup } from "./components/DiscordCommandsContent";
 
 type GuideStep = {
   title: string;
@@ -514,90 +514,29 @@ export const guides: Guide[] = [
     estimatedMinutes: 5,
     steps: [
       {
+        title: "Getting Started",
+        description: "Essential commands for joining the server.",
+        content: <DiscordCommandsGroup group="Getting Started" />,
+      },
+      {
         title: "Economy",
         description: "Manage your in-game money through Discord.",
-        content: (
-          <>
-            <p>
-              <CopyBlock label="Check balance" value="/money" />
-            </p>
-            <img
-              src="/assets/guides/commands/money.webp"
-              alt="/money command showing your balance"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-            <p className="mt-6">
-              <CopyBlock label="Claim daily reward" value="/daily" />
-            </p>
-            <p className="mt-2">
-              Claim a free reward once per day. The bot will show you when your
-              next claim is available.
-            </p>
-            <img
-              src="/assets/guides/commands/daily.webp"
-              alt="/daily command showing reward claimed"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-            <p className="mt-6">
-              <CopyBlock label="Send money" value="/pay @user [amount]" />
-            </p>
-            <p className="mt-2">
-              Transfer money to another player. You can optionally add a note.
-            </p>
-            <img
-              src="/assets/guides/commands/pay.webp"
-              alt="/pay command showing transfer complete"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-            <p className="mt-6">
-              <CopyBlock label="Transaction history" value="/history" />
-            </p>
-            <p className="mt-2">
-              View your last 10 transactions — transfers, rewards, crypto
-              trades, and more.
-            </p>
-            <img
-              src="/assets/guides/commands/history.webp"
-              alt="/history command showing transaction list"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-          </>
-        ),
+        content: <DiscordCommandsGroup group="Economy" />,
       },
       {
         title: "Player Info",
-        description: "Check stats and compare with other players.",
-        content: (
-          <>
-            <p>
-              <CopyBlock label="Check playtime" value="/playtime" />
-            </p>
-            <p className="mt-2">
-              See your total playtime, session count, and per-server breakdown.
-              Mention another player to check theirs.
-            </p>
-            <img
-              src="/assets/guides/commands/playtime.webp"
-              alt="/playtime command showing playtime stats"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-            <p className="mt-6">
-              <CopyBlock
-                label="Compare players"
-                value="/compare @player1 @player2"
-              />
-            </p>
-            <p className="mt-2">
-              Side-by-side comparison of balance, playtime, sessions, and join
-              date between two players.
-            </p>
-            <img
-              src="/assets/guides/commands/compare.webp"
-              alt="/compare command showing player comparison"
-              className="mt-4 w-full rounded-lg border border-border bg-muted object-cover"
-            />
-          </>
-        ),
+        description: "Check stats, compare with others, and view profiles.",
+        content: <DiscordCommandsGroup group="Player Info" />,
+      },
+      {
+        title: "Crypto",
+        description: "Trade and manage in-game cryptocurrency.",
+        content: <DiscordCommandsGroup group="Crypto" />,
+      },
+      {
+        title: "Server",
+        description: "Check server status and online players.",
+        content: <DiscordCommandsGroup group="Server" />,
       },
     ],
   },
