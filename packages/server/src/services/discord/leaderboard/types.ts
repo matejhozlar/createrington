@@ -1,6 +1,7 @@
 /** Available leaderboard categories */
 export enum LeaderboardType {
   PLAYTIME = "playtime",
+  CRYPTO_NETWORTH = "crypto_networth",
 }
 
 /** A single entry in a leaderboard display */
@@ -21,8 +22,8 @@ export interface LeaderboardConfig {
   emoji: string;
   /** Discord channel ID where the leaderboard message is posted */
   channelId: string;
-  /** Minecraft server ID to fetch data from */
-  serverId: number;
+  /** Minecraft server ID to fetch data from (optional for non-server leaderboards) */
+  serverId?: number;
   /** Fetches leaderboard entries from the database */
   fetchData: (serverId: number, limit: number) => Promise<LeaderboardEntry[]>;
   /** Formats a raw numeric value for display */

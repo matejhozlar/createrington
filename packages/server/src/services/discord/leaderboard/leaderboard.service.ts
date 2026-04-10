@@ -18,6 +18,18 @@ import { EmbedPresets } from "@/discord/embeds";
  * - Refreshing leaderboard data
  * - Managing persistent leaderboard messages in database
  */
+const MESSAGE_NOT_FOUND_PATTERNS = [
+  "Unknown Message",
+  "Unknown Channel",
+  "Message not found",
+  "Channel not found",
+];
+
+function isMessageNotFoundError(error?: string): boolean {
+  if (!error) return false;
+  return MESSAGE_NOT_FOUND_PATTERNS.some((p) => error.includes(p));
+}
+
 export class LeaderboardService {
   private refreshInterval?: NodeJS.Timeout;
   private readonly REFRESH_INTERVAL = 60 * 60 * 1000;
@@ -81,7 +93,7 @@ export class LeaderboardService {
   ): Promise<{ messageId: string; channelId: string }> {
     const config = getLeaderboardConfig(type);
 
-    const entries = await config.fetchData(config.serverId, 10);
+    const entries = await config.fetchData(config.serverId ?? 0, 10);
 
     const embed = EmbedPresets.leaderboard.display(type, entries);
 
@@ -92,25 +104,43 @@ export class LeaderboardService {
     });
 
     if (existing) {
-      await Discord.Messages.edit({
+      const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
         embeds: embed.build(),
         components: buttons,
       });
 
-      await Q.leaderboard.message.update(
-        { id: existing.id },
-        { lastRefreshed: new Date() },
-      );
+      if (editResult.success) {
+        await Q.leaderboard.message.update(
+          { id: existing.id },
+          { lastRefreshed: new Date() },
+        );
 
-      logger.info(`Updated ${type} leaderboard message ${existing.messageId}`);
+        logger.info(
+          `Updated ${type} leaderboard message ${existing.messageId}`,
+        );
 
-      return {
-        messageId: existing.messageId,
-        channelId: existing.channelId,
-      };
-    } else {
+        return {
+          messageId: existing.messageId,
+          channelId: existing.channelId,
+        };
+      }
+
+      if (isMessageNotFoundError(editResult.error)) {
+        logger.warn(
+          `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+        );
+        await Q.leaderboard.message.delete({ id: existing.id });
+      } else {
+        throw new Error(
+          `Failed to update ${type} leaderboard: ${editResult.error}`,
+        );
+      }
+    }
+
+    // No existing record or stale record was just deleted — create fresh
+    {
       const result = await Discord.Messages.send({
         channelId: config.channelId,
         embeds: embed.build(),
@@ -155,7 +185,7 @@ export class LeaderboardService {
     try {
       const config = getLeaderboardConfig(type);
 
-      const entries = await config.fetchData(config.serverId, 10);
+      const entries = await config.fetchData(config.serverId ?? 0, 10);
 
       const existing = await Q.leaderboard.message.find({
         leaderboardType: type,
@@ -176,12 +206,28 @@ export class LeaderboardService {
       const embed = EmbedPresets.leaderboard.display(type, entries);
       const buttons = this.buildLeaderboardButtons(type);
 
-      await Discord.Messages.edit({
+      const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
         embeds: embed.build(),
         components: buttons,
       });
+
+      if (!editResult.success) {
+        if (isMessageNotFoundError(editResult.error)) {
+          logger.warn(
+            `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+          );
+          await Q.leaderboard.message.delete({ id: existing.id });
+        }
+
+        return {
+          success: false,
+          type,
+          entries: [],
+          error: editResult.error ?? "Failed to edit leaderboard message",
+        };
+      }
 
       const updates: {
         lastRefreshed: Date;

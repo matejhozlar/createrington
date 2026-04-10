@@ -1,8 +1,9 @@
 import config from "@/config";
 import { type LeaderboardConfig, LeaderboardType } from "./types";
 import { Q } from "@/db";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime, formatBalance } from "@/utils/format";
 import { Discord } from "@/discord/constants";
+import { getLeaderboard as getCryptoLeaderboard } from "@/services/crypto/analytics/leaderboard";
 
 /**
  * Configuration registry for all leaderboard types
@@ -44,6 +45,24 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
       }));
     },
     formatValue: formatPlaytime,
+  },
+  [LeaderboardType.CRYPTO_NETWORTH]: {
+    type: LeaderboardType.CRYPTO_NETWORTH,
+    title: "Top Players by Crypto Net Worth",
+    description: "Players with the highest crypto portfolio value",
+    emoji: "💰",
+    channelId: Discord.Channels.general.LEADERBOARDS,
+    fetchData: async (_serverId: number, limit: number) => {
+      const leaderboard = await getCryptoLeaderboard("networth", limit);
+
+      return leaderboard.map((entry) => ({
+        rank: entry.rank,
+        playerName: entry.playerName,
+        value: entry.value,
+        formattedValue: formatBalance(entry.value),
+      }));
+    },
+    formatValue: (value: number) => formatBalance(value),
   },
 };
 
