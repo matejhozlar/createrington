@@ -139,6 +139,7 @@ export class LeaderboardService {
       }
     }
 
+    // No existing record or stale record was just deleted — create fresh
     {
       const result = await Discord.Messages.send({
         channelId: config.channelId,
