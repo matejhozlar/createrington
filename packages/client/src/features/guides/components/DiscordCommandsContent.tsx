@@ -1,8 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/loading-spinner";
-import { Clock, ChevronDown, ChevronRight, Terminal } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 interface CommandOption {
@@ -11,37 +8,19 @@ interface CommandOption {
   description: string;
   required?: boolean;
   choices?: { name: string; value: string | number }[];
-  min_value?: number;
-  max_value?: number;
   options?: CommandOption[];
 }
 
 interface CommandData {
   name: string;
   description: string;
-  category: string;
   options: CommandOption[];
   cooldown?: { duration: number; type: string; message?: string };
 }
 
-const OPTION_TYPE_LABELS: Record<number, string> = {
-  3: "Text",
-  4: "Number",
-  5: "True/False",
-  6: "Player",
-  7: "Channel",
-  10: "Number",
-};
-
-function formatCooldown(seconds: number): string {
-  if (seconds < 60) return `${seconds}s cooldown`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m cooldown`;
-}
-
 function buildSyntax(name: string, options: CommandOption[]): string {
-  const subcommands = options.filter((o) => o.type === 1 || o.type === 2);
-  if (subcommands.length > 0) return `/${name} ...`;
+  const subs = options.filter((o) => o.type === 1 || o.type === 2);
+  if (subs.length > 0) return `/${name} <subcommand>`;
 
   const params = options
     .map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`))
@@ -49,131 +28,73 @@ function buildSyntax(name: string, options: CommandOption[]): string {
   return params ? `/${name} ${params}` : `/${name}`;
 }
 
-function OptionRow({ option }: { option: CommandOption }) {
-  const typeLabel = OPTION_TYPE_LABELS[option.type] ?? "Value";
-  return (
-    <div className="flex items-start gap-3 rounded-md bg-muted/30 px-3 py-2 text-sm">
-      <code className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-foreground">
-        {option.name}
-      </code>
-      <span className="shrink-0 text-xs text-muted-foreground">
-        {typeLabel}
-        {option.required && <span className="ml-1 text-red-400">*</span>}
-      </span>
-      <span className="text-muted-foreground">
-        {option.description}
-        {option.choices && option.choices.length > 0 && (
-          <span className="ml-1 text-muted-foreground/70">
-            ({option.choices.map((c) => c.name).join(", ")})
-          </span>
-        )}
-      </span>
-    </div>
-  );
+function formatCooldown(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m`;
 }
 
-function SubcommandBlock({
-  sub,
-  prefix,
-}: {
-  sub: CommandOption;
-  prefix?: string;
-}) {
-  const label = prefix ? `${prefix} ${sub.name}` : sub.name;
-  const opts = (sub.options ?? []).filter((o) => o.type !== 1 && o.type !== 2);
+function CommandEntry({ command }: { command: CommandData }) {
+  const subs = command.options.filter((o) => o.type === 1 || o.type === 2);
+  const topOpts = command.options.filter((o) => o.type !== 1 && o.type !== 2);
 
   return (
-    <div className="rounded-md border border-border/50 bg-card/50 p-3">
-      <div className="flex items-center gap-2">
-        <code className="text-sm font-semibold text-foreground">{label}</code>
-        <span className="text-sm text-muted-foreground">{sub.description}</span>
+    <div className="rounded-lg border border-border bg-card/50 p-4">
+      {/* Header: syntax + cooldown */}
+      <div className="flex items-center justify-between gap-3">
+        <code className="text-sm font-bold text-primary">
+          {buildSyntax(command.name, command.options)}
+        </code>
+        {command.cooldown && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+            <Clock className="size-3" />
+            {formatCooldown(command.cooldown.duration)}
+          </span>
+        )}
       </div>
-      {opts.length > 0 && (
-        <div className="mt-2 flex flex-col gap-1">
-          {opts.map((o) => (
-            <OptionRow key={o.name} option={o} />
+
+      {/* Description */}
+      <p className="text-sm text-muted-foreground mt-1.5">
+        {command.description}
+      </p>
+
+      {/* Top-level options */}
+      {topOpts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {topOpts.map((o) => (
+            <span
+              key={o.name}
+              className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-xs"
+            >
+              <code className="font-medium text-foreground">{o.name}</code>
+              {o.required && <span className="text-red-400">*</span>}
+              <span className="text-muted-foreground">— {o.description}</span>
+            </span>
           ))}
         </div>
       )}
-    </div>
-  );
-}
 
-function CommandCard({ command }: { command: CommandData }) {
-  const [expanded, setExpanded] = useState(false);
-
-  const subcommands = command.options.filter(
-    (o) => o.type === 1 || o.type === 2,
-  );
-  const topLevelOptions = command.options.filter(
-    (o) => o.type !== 1 && o.type !== 2,
-  );
-  const hasDetails = subcommands.length > 0 || topLevelOptions.length > 0;
-
-  return (
-    <div className="rounded-lg border border-border bg-card">
-      <button
-        type="button"
-        onClick={() => hasDetails && setExpanded(!expanded)}
-        className={cn(
-          "flex w-full items-center gap-3 p-4 text-left",
-          hasDetails && "cursor-pointer hover:bg-accent/50 transition-colors",
-        )}
-      >
-        {hasDetails ? (
-          expanded ? (
-            <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-          )
-        ) : (
-          <Terminal className="size-4 shrink-0 text-muted-foreground" />
-        )}
-
-        <div className="flex flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-          <code className="text-sm font-bold text-primary">
-            {buildSyntax(command.name, command.options)}
-          </code>
-          <span className="text-sm text-muted-foreground">
-            {command.description}
-          </span>
-        </div>
-
-        {command.cooldown && (
-          <Badge
-            variant="outline"
-            className="shrink-0 gap-1 border-border text-muted-foreground"
-          >
-            <Clock className="size-3" />
-            {formatCooldown(command.cooldown.duration)}
-          </Badge>
-        )}
-      </button>
-
-      {expanded && hasDetails && (
-        <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-          {topLevelOptions.length > 0 && (
-            <div className="flex flex-col gap-1">
-              {topLevelOptions.map((o) => (
-                <OptionRow key={o.name} option={o} />
-              ))}
-            </div>
-          )}
-
-          {subcommands.map((sub) =>
+      {/* Subcommands */}
+      {subs.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1.5">
+          {subs.map((sub) =>
             sub.type === 2 ? (
-              <div key={sub.name} className="flex flex-col gap-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {sub.name}
-                </p>
-                {(sub.options ?? [])
-                  .filter((s) => s.type === 1)
-                  .map((s) => (
-                    <SubcommandBlock key={s.name} sub={s} prefix={sub.name} />
-                  ))}
-              </div>
+              // Subcommand group
+              (sub.options ?? [])
+                .filter((s) => s.type === 1)
+                .map((s) => (
+                  <SubcommandRow
+                    key={`${sub.name}-${s.name}`}
+                    parentName={command.name}
+                    groupName={sub.name}
+                    sub={s}
+                  />
+                ))
             ) : (
-              <SubcommandBlock key={sub.name} sub={sub} />
+              <SubcommandRow
+                key={sub.name}
+                parentName={command.name}
+                sub={sub}
+              />
             ),
           )}
         </div>
@@ -182,7 +103,39 @@ function CommandCard({ command }: { command: CommandData }) {
   );
 }
 
-export function DiscordCommandsContent() {
+function SubcommandRow({
+  parentName,
+  groupName,
+  sub,
+}: {
+  parentName: string;
+  groupName?: string;
+  sub: CommandOption;
+}) {
+  const opts = (sub.options ?? []).filter((o) => o.type !== 1 && o.type !== 2);
+  const params = opts
+    .map((o) => (o.required ? `<${o.name}>` : `[${o.name}]`))
+    .join(" ");
+  const prefix = groupName
+    ? `/${parentName} ${groupName} ${sub.name}`
+    : `/${parentName} ${sub.name}`;
+  const syntax = params ? `${prefix} ${params}` : prefix;
+
+  return (
+    <div className="rounded bg-muted/40 px-3 py-2">
+      <code className="text-xs font-semibold text-foreground">{syntax}</code>
+      <span className="text-xs text-muted-foreground ml-2">
+        {sub.description}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Renders commands for a specific group name.
+ * Used as guide step content — each group becomes its own step.
+ */
+export function DiscordCommandsGroup({ group }: { group: string }) {
   const { data, isLoading } = trpc.public.discordCommands.list.useQuery();
 
   if (isLoading) {
@@ -193,20 +146,17 @@ export function DiscordCommandsContent() {
     );
   }
 
-  const commands = (data?.commands ?? []) as CommandData[];
+  const commands = (data?.groups?.find((g) => g.name === group)?.commands ??
+    []) as CommandData[];
 
   if (commands.length === 0) {
-    return <p className="text-muted-foreground">No commands available.</p>;
+    return <p className="text-muted-foreground">No commands in this group.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm text-muted-foreground mb-2">
-        {commands.length} commands available. Click a command to see its options
-        and usage details.
-      </p>
+    <div className="flex flex-col gap-3">
       {commands.map((cmd) => (
-        <CommandCard key={cmd.name} command={cmd} />
+        <CommandEntry key={cmd.name} command={cmd} />
       ))}
     </div>
   );

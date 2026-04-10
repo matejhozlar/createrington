@@ -11,7 +11,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { DiscordCommandsContent } from "./components/DiscordCommandsContent";
+import { DiscordCommandsGroup } from "./components/DiscordCommandsContent";
 
 type GuideStep = {
   title: string;
@@ -514,10 +514,29 @@ export const guides: Guide[] = [
     estimatedMinutes: 5,
     steps: [
       {
-        title: "All Commands",
-        description:
-          "Browse all available player commands. Click any command to see its options and usage details.",
-        content: <DiscordCommandsContent />,
+        title: "Getting Started",
+        description: "Essential commands for joining the server.",
+        content: <DiscordCommandsGroup group="Getting Started" />,
+      },
+      {
+        title: "Economy",
+        description: "Manage your in-game money through Discord.",
+        content: <DiscordCommandsGroup group="Economy" />,
+      },
+      {
+        title: "Player Info",
+        description: "Check stats, compare with others, and view profiles.",
+        content: <DiscordCommandsGroup group="Player Info" />,
+      },
+      {
+        title: "Crypto",
+        description: "Trade and manage in-game cryptocurrency.",
+        content: <DiscordCommandsGroup group="Crypto" />,
+      },
+      {
+        title: "Server",
+        description: "Check server status and online players.",
+        content: <DiscordCommandsGroup group="Server" />,
       },
     ],
   },
