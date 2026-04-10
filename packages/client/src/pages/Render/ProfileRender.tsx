@@ -20,12 +20,18 @@ interface ProfileData {
 }
 
 const SKIN_POSES = [
+  "default",
+  "marching",
   "walking",
-  "dungeons",
-  "crossed",
   "crouching",
+  "crossed",
   "cheering",
+  "trudging",
+  "pointing",
+  "dungeons",
   "facepalm",
+  "kicking",
+  "ultimate",
 ] as const;
 
 function randomPose(): string {

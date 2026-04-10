@@ -3,12 +3,18 @@ import { mcHeadsBody } from "@/lib/external-urls";
 import { useSearchParams } from "react-router-dom";
 
 const SKIN_POSES = [
+  "default",
+  "marching",
   "walking",
-  "dungeons",
-  "crossed",
   "crouching",
+  "crossed",
   "cheering",
+  "trudging",
+  "pointing",
+  "dungeons",
   "facepalm",
+  "kicking",
+  "ultimate",
 ] as const;
 
 function randomPose(): string {
