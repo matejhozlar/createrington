@@ -1,18 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { router, adminProcedure } from "@/trpc/trpc";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CHANGELOG_PATH = path.resolve(
-  __dirname,
-  "..",
-  "..",
-  "..",
-  "..",
-  "..",
-  "CHANGELOG.md",
-);
+const CHANGELOG_PATH = path.resolve(process.cwd(), "CHANGELOG.md");
 
 export const changelogRouter = router({
   get: adminProcedure
@@ -21,7 +11,8 @@ export const changelogRouter = router({
       try {
         const content = await fs.readFile(CHANGELOG_PATH, "utf-8");
         return { content };
-      } catch {
+      } catch (error) {
+        logger.warn("Failed to read CHANGELOG.md:", error);
         return { content: "" };
       }
     }),
