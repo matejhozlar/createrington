@@ -1,4 +1,7 @@
 import { ActivityType, Client } from "discord.js";
+
+import config from "@/config";
+
 import { type StatusCategory, type StatusConfig, statusConfigs } from "./types";
 
 /**
@@ -43,11 +46,10 @@ export class RotatingStatusService {
    * @returns Promise resolving when the service initialization is completed
    */
   async initialize(): Promise<void> {
-    // Uncomment if you want to skip in non-production:
-    // if (!config.envMode.isProd) {
-    //   logger.warn("Skipping rotating statuses in non-production environment");
-    //   return;
-    // }
+    if (config.envMode.isDev) {
+      logger.warn("Skipping rotating statuses in development environment");
+      return;
+    }
 
     if (!this.client.isReady()) {
       logger.warn("Client not ready yet, waiting for ready state");
