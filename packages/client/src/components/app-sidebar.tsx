@@ -189,7 +189,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {user?.isAdmin && (
           <NavLink
             to="/admin/changelog"
-            className="text-muted-foreground hover:text-foreground px-3 text-xs transition-colors group-data-[state=collapsed]:hidden"
+            className="text-muted-foreground hover:text-foreground mx-auto text-xs transition-colors group-data-[state=collapsed]:hidden"
           >
             v{__APP_VERSION__}
           </NavLink>
