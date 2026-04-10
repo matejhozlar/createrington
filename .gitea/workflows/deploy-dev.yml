@@ -35,6 +35,7 @@ jobs:
           export DB_PORT=5432
           pnpm generate:ci
           pnpm generate-command-docs:json
+          pnpm generate-api-docs
           pnpm deploy-commands
 
       - name: Build
