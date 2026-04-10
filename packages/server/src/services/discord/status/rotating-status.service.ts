@@ -1,6 +1,6 @@
 import { ActivityType, Client } from "discord.js";
 
-import { config } from "@/config";
+import config from "@/config";
 
 import { type StatusCategory, type StatusConfig, statusConfigs } from "./types";
 
