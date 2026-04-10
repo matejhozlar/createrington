@@ -5,6 +5,8 @@ import { mcHeadsAvatar } from "@/lib/external-urls";
 interface ActivityData {
   username: string;
   uuid: string;
+  online: boolean;
+  currentSessionSeconds: number | null;
   totalSeconds: number;
   currentStreak: number;
   mostActiveDay: string;
@@ -213,9 +215,21 @@ export function ActivityRender() {
           crossOrigin="anonymous"
         />
         <div className="flex flex-col gap-2.5">
-          <h2 className="text-3xl font-bold tracking-wide text-foreground">
-            {data.username}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl font-bold tracking-wide text-foreground">
+              {data.username}
+            </h2>
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`w-2.5 h-2.5 rounded-full ${data.online ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" : "bg-muted-foreground/40"}`}
+              />
+              <span
+                className={`text-[12px] font-semibold tracking-wide uppercase ${data.online ? "text-emerald-400" : "text-muted-foreground/40"}`}
+              >
+                {data.online ? "Online" : "Offline"}
+              </span>
+            </div>
+          </div>
           <div className="flex gap-2.5">
             <StatPill label="Total" value={formatPlaytime(data.totalSeconds)} />
             <StatPill
@@ -223,6 +237,12 @@ export function ActivityRender() {
               value={`${data.currentStreak} day${data.currentStreak !== 1 ? "s" : ""}`}
             />
             <StatPill label="Most Active" value={data.mostActiveDay} />
+            {data.online && data.currentSessionSeconds != null && (
+              <StatPill
+                label="Session"
+                value={formatPlaytime(data.currentSessionSeconds)}
+              />
+            )}
           </div>
         </div>
       </div>

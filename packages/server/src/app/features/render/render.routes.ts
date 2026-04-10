@@ -280,9 +280,29 @@ router.get(
       }
     }
 
+    // Current session duration (if online)
+    let currentSessionSeconds: number | null = null;
+    if (details.player.online) {
+      const activeSession = await Q.player.session
+        .where({
+          playerMinecraftUuid: uuid,
+          sessionEnd: { $exists: false },
+        })
+        .orderBy("sessionStart", "desc")
+        .first();
+
+      if (activeSession) {
+        currentSessionSeconds = Math.floor(
+          (Date.now() - activeSession.sessionStart.getTime()) / 1000,
+        );
+      }
+    }
+
     res.json({
       username: details.player.minecraftUsername,
       uuid,
+      online: details.player.online,
+      currentSessionSeconds,
       totalSeconds,
       currentStreak,
       mostActiveDay: totalSeconds > 0 ? dayNames[bestDay] : "N/A",
