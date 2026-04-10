@@ -16,4 +16,9 @@ fs.cpSync(SERVER_DIST, DIST, {
 
 fs.cpSync(CLIENT_DIST, path.join(DIST, "public"), { recursive: true });
 
+const changelogSrc = path.join(ROOT, "CHANGELOG.md");
+if (fs.existsSync(changelogSrc)) {
+  fs.cpSync(changelogSrc, path.join(DIST, "CHANGELOG.md"));
+}
+
 console.log("Build assembled in dist/");
