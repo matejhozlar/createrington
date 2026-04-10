@@ -265,11 +265,11 @@ export function ActivityRender() {
 
       {/* Footer: legend + branding */}
       <div className="flex items-center justify-between px-8 pb-4 z-10">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2.5">
           {LEVEL_COLORS.map((color, i) => (
             <div key={i} className="flex items-center gap-1">
-              <div className={`size-3 rounded-sm ${color}`} />
-              <span className="text-[9px] text-muted-foreground/50 font-medium">
+              <div className={`size-4 rounded-sm ${color}`} />
+              <span className="text-[11px] text-muted-foreground font-medium">
                 {LEVEL_LABELS[i]}
               </span>
             </div>
