@@ -197,6 +197,101 @@ router.get(
 );
 
 /**
+ * GET /api/render/activity?secret=...&player=...
+ *
+ * Returns daily playtime data for the last 365 days, aggregated across servers.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/activity",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { player } = req.query;
+
+    if (!player || typeof player !== "string") {
+      res.status(400).json({ error: "player query param required" });
+      return;
+    }
+
+    const details = await playerRepo.getDetailed({ discordId: player });
+    const uuid = details.player.minecraftUuid;
+
+    // Fetch daily playtime for the last 365 days
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 365);
+
+    const rows = await Q.player.playtime.daily
+      .where({
+        playerMinecraftUuid: uuid,
+        playDate: { $gte: startDate },
+      })
+      .all();
+
+    // Aggregate seconds across servers per day
+    const dayMap: Record<string, number> = {};
+    for (const row of rows) {
+      const date =
+        row.playDate instanceof Date
+          ? row.playDate.toISOString().split("T")[0]
+          : String(row.playDate);
+      dayMap[date] = (dayMap[date] ?? 0) + Number(row.secondsPlayed);
+    }
+
+    // Total seconds
+    const totalSeconds = Object.values(dayMap).reduce((s, v) => s + v, 0);
+
+    // Current streak — consecutive days ending today or yesterday
+    let currentStreak = 0;
+    const today = new Date();
+    const check = new Date(today);
+    // Start from today, then try yesterday if today has no data yet
+    if (!dayMap[check.toISOString().split("T")[0]]) {
+      check.setDate(check.getDate() - 1);
+    }
+    while (dayMap[check.toISOString().split("T")[0]]) {
+      currentStreak++;
+      check.setDate(check.getDate() - 1);
+    }
+
+    // Most active day of week
+    const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    for (const [dateStr, seconds] of Object.entries(dayMap)) {
+      const dow = new Date(dateStr).getUTCDay();
+      dayTotals[dow] += seconds;
+      dayCounts[dow]++;
+    }
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    let bestDay = 0;
+    let bestAvg = 0;
+    for (let i = 0; i < 7; i++) {
+      const avg = dayCounts[i] > 0 ? dayTotals[i] / dayCounts[i] : 0;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestDay = i;
+      }
+    }
+
+    res.json({
+      username: details.player.minecraftUsername,
+      uuid,
+      totalSeconds,
+      currentStreak,
+      mostActiveDay: totalSeconds > 0 ? dayNames[bestDay] : "N/A",
+      days: dayMap,
+    });
+  }),
+);
+
+/**
  * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
  *
  * Returns token data and OHLCV price history for the chart render page.
