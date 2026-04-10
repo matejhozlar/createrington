@@ -81,7 +81,7 @@ export class LeaderboardService {
   ): Promise<{ messageId: string; channelId: string }> {
     const config = getLeaderboardConfig(type);
 
-    const entries = await config.fetchData(config.serverId, 10);
+    const entries = await config.fetchData(config.serverId ?? 0, 10);
 
     const embed = EmbedPresets.leaderboard.display(type, entries);
 
@@ -155,7 +155,7 @@ export class LeaderboardService {
     try {
       const config = getLeaderboardConfig(type);
 
-      const entries = await config.fetchData(config.serverId, 10);
+      const entries = await config.fetchData(config.serverId ?? 0, 10);
 
       const existing = await Q.leaderboard.message.find({
         leaderboardType: type,
