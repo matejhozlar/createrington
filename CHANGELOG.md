@@ -1,3 +1,15 @@
+## v1.4.0 (2026-04-10)
+
+### @createrington/server (1.3.0 → 1.4.0)
+- Add `admin.changelog.get` tRPC endpoint — reads `CHANGELOG.md` from the project root and returns its raw content to authenticated admin clients; logs a warning on read failure instead of crashing
+
+### @createrington/client (0.2.0 → 0.2.1)
+- Add Changelog page to admin area — collapsible timeline UI that parses and renders all release entries from the project CHANGELOG.md, with expandable version sections and a "Latest" badge on the most recent release
+- Show app version badge in sidebar footer — admins see the current version number (injected from root `package.json` at build time via Vite `define`) as a clickable link to the Changelog page; hidden when the sidebar is collapsed
+- Add Changelog shortcut to user dropdown — admins can navigate directly to the changelog from the nav-user dropdown alongside the existing Admin Panel link
+- Remove deprecated `baseUrl` from TypeScript config — aligns tsconfig with Vite 6 path-alias recommendations and eliminates compiler warnings
+- Copy `CHANGELOG.md` to dist during production build — ensures the server can locate and read the changelog file at the expected path in deployed environments
+
 ## v1.3.0 (2026-04-10)
 
 ### @createrington/server (1.2.0 → 1.3.0)
