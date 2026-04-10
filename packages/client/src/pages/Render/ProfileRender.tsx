@@ -13,6 +13,10 @@ interface ProfileData {
   playtimeSeconds: number;
   sessions: number;
   memberSince: string;
+  blocksMined: number;
+  mobsKilled: number;
+  deaths: number;
+  distanceKm: number;
 }
 
 const SKIN_POSES = [
@@ -174,7 +178,7 @@ export function ProfileRender() {
         </div>
 
         {/* Right: Stats */}
-        <div className="flex-1 flex flex-col gap-4 pl-2 pr-4">
+        <div className="flex-1 flex flex-col gap-2.5 pl-2 pr-4">
           {/* Username + Status */}
           <div className="flex items-center gap-3">
             <h2 className="text-2xl font-bold tracking-wide text-foreground">
@@ -193,7 +197,7 @@ export function ProfileRender() {
           </div>
 
           {/* Finance row */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             <StatPill
               label="Networth"
               value={`$${formatNumber(data.networth)}`}
@@ -209,13 +213,31 @@ export function ProfileRender() {
           </div>
 
           {/* Activity row */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             <StatPill label="Playtime" value={data.playtime} />
             <StatPill label="Sessions" value={data.sessions.toLocaleString()} />
+            <StatPill
+              label="Member Since"
+              value={formatDate(data.memberSince)}
+            />
           </div>
 
-          {/* Member since */}
-          <StatPill label="Member Since" value={formatDate(data.memberSince)} />
+          {/* Minecraft stats row */}
+          <div className="grid grid-cols-4 gap-2">
+            <StatPill
+              label="Blocks Mined"
+              value={data.blocksMined.toLocaleString()}
+            />
+            <StatPill
+              label="Mobs Killed"
+              value={data.mobsKilled.toLocaleString()}
+            />
+            <StatPill label="Deaths" value={data.deaths.toLocaleString()} />
+            <StatPill
+              label="Traveled"
+              value={`${data.distanceKm.toLocaleString()} km`}
+            />
+          </div>
         </div>
       </div>
 

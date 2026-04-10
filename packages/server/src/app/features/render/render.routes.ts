@@ -145,6 +145,38 @@ router.get(
     const networth = cashBalance + cryptoValue;
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
+    // Aggregate Minecraft stats across all servers
+    const statsRows = await Q.player.minecraft.stats.findAll({
+      minecraftUuid: details.player.minecraftUuid,
+    });
+
+    let blocksMined = 0;
+    let mobsKilled = 0;
+    let deaths = 0;
+    let distanceCm = 0;
+
+    for (const row of statsRows) {
+      const stats = row.stats as Record<string, Record<string, number>>;
+      const mined = stats["minecraft:mined"];
+      if (mined) {
+        blocksMined += Object.values(mined).reduce((s, v) => s + v, 0);
+      }
+      const custom = stats["minecraft:custom"];
+      if (custom) {
+        mobsKilled += custom["minecraft:mob_kills"] ?? 0;
+        deaths += custom["minecraft:deaths"] ?? 0;
+        distanceCm +=
+          (custom["minecraft:walk_one_cm"] ?? 0) +
+          (custom["minecraft:sprint_one_cm"] ?? 0) +
+          (custom["minecraft:boat_one_cm"] ?? 0) +
+          (custom["minecraft:horse_one_cm"] ?? 0) +
+          (custom["minecraft:fly_one_cm"] ?? 0) +
+          (custom["minecraft:swim_one_cm"] ?? 0);
+      }
+    }
+
+    const distanceKm = Math.round(distanceCm / 100_000);
+
     res.json({
       username: details.player.minecraftUsername,
       uuid: details.player.minecraftUuid,
@@ -156,6 +188,10 @@ router.get(
       playtimeSeconds: details.playtime.totalSeconds,
       sessions: details.playtime.totalSessions,
       memberSince: details.player.createdAt.toISOString(),
+      blocksMined,
+      mobsKilled,
+      deaths,
+      distanceKm,
     });
   }),
 );
