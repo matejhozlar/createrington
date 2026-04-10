@@ -1,8 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { router, adminProcedure } from "@/trpc/trpc";
 
-const CHANGELOG_PATH = path.resolve(process.cwd(), "CHANGELOG.md");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(__dirname, "..", "..", "..", "..", "..", "..");
+const CHANGELOG_PATH = path.join(ROOT, "CHANGELOG.md");
 
 export const changelogRouter = router({
   get: adminProcedure
