@@ -19,6 +19,8 @@ const LEVEL_COLORS = [
   "bg-green-500/80",
 ];
 
+const LEVEL_LABELS = ["None", "<1h", "1-2h", "2-4h", "4h+"];
+
 const MONTH_LABELS = [
   "Jan",
   "Feb",
@@ -34,13 +36,13 @@ const MONTH_LABELS = [
   "Dec",
 ];
 
-function getLevel(seconds: number, max: number): number {
+const NUM_WEEKS = 26;
+
+function getLevel(seconds: number): number {
   if (seconds <= 0) return 0;
-  if (max <= 0) return 1;
-  const ratio = seconds / max;
-  if (ratio < 0.25) return 1;
-  if (ratio < 0.5) return 2;
-  if (ratio < 0.75) return 3;
+  if (seconds < 3600) return 1;
+  if (seconds < 7200) return 2;
+  if (seconds < 14400) return 3;
   return 4;
 }
 
@@ -61,32 +63,31 @@ function starlightBustUrl(uuid: string): string {
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-md bg-card/60 border border-border px-4 py-2.5">
-      <span className="text-[9px] font-semibold tracking-[0.2em] uppercase text-muted-foreground/50">
+    <div className="flex flex-col gap-1 rounded-md bg-card/60 border border-border px-5 py-3">
+      <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-muted-foreground/50">
         {label}
       </span>
-      <span className="text-[15px] font-semibold text-foreground tabular-nums">
+      <span className="text-[17px] font-semibold text-foreground tabular-nums">
         {value}
       </span>
     </div>
   );
 }
 
-/** Build the grid: 53 columns × 7 rows, starting ~52 weeks ago aligned to Monday. */
 function buildGrid(days: Record<string, number>) {
   const today = new Date();
   const todayDay = today.getUTCDay();
   const mondayOffset = todayDay === 0 ? 6 : todayDay - 1;
 
   const start = new Date(today);
-  start.setUTCDate(start.getUTCDate() - mondayOffset - 52 * 7);
+  start.setUTCDate(start.getUTCDate() - mondayOffset - (NUM_WEEKS - 1) * 7);
 
   const weeks: { date: string; seconds: number; future: boolean }[][] = [];
   const monthLabels: { label: string; col: number }[] = [];
   let lastMonth = -1;
 
   const cursor = new Date(start);
-  for (let col = 0; col < 53; col++) {
+  for (let col = 0; col < NUM_WEEKS; col++) {
     const week: { date: string; seconds: number; future: boolean }[] = [];
     for (let row = 0; row < 7; row++) {
       const dateStr = toDateStr(cursor);
@@ -110,15 +111,7 @@ function buildGrid(days: Record<string, number>) {
     weeks.push(week);
   }
 
-  // Find max seconds for relative scaling
-  let max = 0;
-  for (const week of weeks) {
-    for (const day of week) {
-      if (day.seconds > max) max = day.seconds;
-    }
-  }
-
-  return { weeks, monthLabels, max };
+  return { weeks, monthLabels };
 }
 
 export function ActivityRender() {
@@ -178,8 +171,9 @@ export function ActivityRender() {
     );
   }
 
-  const { weeks, monthLabels, max } = buildGrid(data.days);
+  const { weeks, monthLabels } = buildGrid(data.days);
   const dayLabels = ["Mon", "", "Wed", "", "Fri", "", "Sun"];
+  const cellSpacing = (900 - 64 - 36) / NUM_WEEKS;
 
   return (
     <div
@@ -208,18 +202,18 @@ export function ActivityRender() {
       </div>
 
       {/* Player info row */}
-      <div className="flex items-center gap-5 px-8 pt-4 z-10">
+      <div className="flex items-center gap-6 px-8 pt-5 pb-2 z-10">
         <img
           src={avatarSrc}
           alt={data.username}
-          className="w-[72px] h-[72px] rounded-md drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
+          className="w-[100px] h-[100px] rounded-md drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
           crossOrigin="anonymous"
         />
-        <div className="flex flex-col gap-1.5">
-          <h2 className="text-2xl font-bold tracking-wide text-foreground">
+        <div className="flex flex-col gap-2.5">
+          <h2 className="text-3xl font-bold tracking-wide text-foreground">
             {data.username}
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <StatPill label="Total" value={formatPlaytime(data.totalSeconds)} />
             <StatPill
               label="Streak"
@@ -231,14 +225,14 @@ export function ActivityRender() {
       </div>
 
       {/* Heatmap */}
-      <div className="flex-1 flex flex-col justify-center px-8 pt-3 z-10">
+      <div className="flex-1 flex flex-col justify-center px-8 z-10">
         {/* Month labels */}
-        <div className="relative h-4 ml-[32px]">
+        <div className="relative h-5 ml-[36px]">
           {monthLabels.map((m, i) => (
             <span
               key={i}
-              className="absolute text-[10px] text-muted-foreground font-medium"
-              style={{ left: `${m.col * 15.08}px` }}
+              className="absolute text-[11px] text-muted-foreground font-medium"
+              style={{ left: `${m.col * cellSpacing}px` }}
             >
               {m.label}
             </span>
@@ -247,8 +241,8 @@ export function ActivityRender() {
 
         {/* Grid rows */}
         {dayLabels.map((label, row) => (
-          <div key={row} className="flex items-center gap-[2px] mb-[2px]">
-            <div className="w-[30px] text-right text-[10px] text-muted-foreground pr-2 shrink-0">
+          <div key={row} className="flex items-center gap-[3px] mb-[3px]">
+            <div className="w-[33px] text-right text-[11px] text-muted-foreground pr-2 shrink-0">
               {label}
             </div>
             {weeks.map((week, col) => {
@@ -259,7 +253,7 @@ export function ActivityRender() {
                   className={`flex-1 aspect-square rounded-sm ${
                     day.future
                       ? "opacity-0"
-                      : LEVEL_COLORS[getLevel(day.seconds, max)]
+                      : LEVEL_COLORS[getLevel(day.seconds)]
                   }`}
                   title={`${day.date}: ${formatPlaytime(day.seconds)}`}
                 />
@@ -271,12 +265,15 @@ export function ActivityRender() {
 
       {/* Footer: legend + branding */}
       <div className="flex items-center justify-between px-8 pb-4 z-10">
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <span>Less</span>
+        <div className="flex items-center gap-1.5">
           {LEVEL_COLORS.map((color, i) => (
-            <div key={i} className={`size-3 rounded-sm ${color}`} />
+            <div key={i} className="flex items-center gap-1">
+              <div className={`size-3 rounded-sm ${color}`} />
+              <span className="text-[9px] text-muted-foreground/50 font-medium">
+                {LEVEL_LABELS[i]}
+              </span>
+            </div>
           ))}
-          <span>More</span>
         </div>
         <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
           create-rington.com
