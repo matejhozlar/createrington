@@ -48,6 +48,7 @@ import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder"
 import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
 import { Announcements } from "./features/admin/tools/announcements/Announcements";
 import { AdminDashboard } from "./features/admin/AdminDashboard";
+import { Changelog } from "./features/admin/Changelog";
 import { AdminStructurePacks } from "./features/admin/structure-packs/AdminStructurePacks";
 import { StructurePackDetail } from "./features/admin/structure-packs/StructurePackDetail";
 import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
@@ -331,6 +332,7 @@ function AppContent() {
                   <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="tools/command-docs" element={<CommandDocs />} />
                   <Route path="tools/stat-search" element={<StatSearch />} />
+                  <Route path="changelog" element={<Changelog />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
               </AdminPlayerProvider>
