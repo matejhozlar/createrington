@@ -255,9 +255,6 @@ export function CommandDocs() {
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
 
-  if (isLoading)
-    return <Loading mode="fullscreen" text="Loading commands..." />;
-
   const payload = data as CommandsPayload | undefined;
   const allCommands = (payload?.commands ?? []) as CommandData[];
 
@@ -305,110 +302,116 @@ export function CommandDocs() {
         </Breadcrumb>
       </header>
 
-      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Discord Commands</h1>
-            <p className="text-sm text-muted-foreground">
-              {allCommands.length} commands registered
-              {payload?.generatedAt && (
-                <>
-                  {" "}
-                  · Generated{" "}
-                  {new Date(payload.generatedAt).toLocaleDateString()}
-                </>
-              )}
-            </p>
-          </div>
+      {isLoading ? (
+        <div className="flex flex-1 items-center justify-center">
+          <Loading text="Loading commands..." />
         </div>
-
-        <div className="flex items-center gap-2">
-          <div className="relative max-w-xs flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search commands..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+      ) : (
+        <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Discord Commands</h1>
+              <p className="text-sm text-muted-foreground">
+                {allCommands.length} commands registered
+                {payload?.generatedAt && (
+                  <>
+                    {" "}
+                    · Generated{" "}
+                    {new Date(payload.generatedAt).toLocaleDateString()}
+                  </>
+                )}
+              </p>
+            </div>
           </div>
 
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setCategoryFilter(null)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                categoryFilter === null
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              All
-            </button>
-            {CATEGORY_ORDER.map((cat) => {
-              const meta = CATEGORY_META[cat];
-              const count = allCommands.filter(
-                (c) => getDisplayCategory(c) === cat,
-              ).length;
-              if (count === 0) return null;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() =>
-                    setCategoryFilter(categoryFilter === cat ? null : cat)
-                  }
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                    categoryFilter === cat
-                      ? meta.color
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {meta.label} ({count})
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search commands..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter(null)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  categoryFilter === null
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                All
+              </button>
+              {CATEGORY_ORDER.map((cat) => {
+                const meta = CATEGORY_META[cat];
+                const count = allCommands.filter(
+                  (c) => getDisplayCategory(c) === cat,
+                ).length;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() =>
+                      setCategoryFilter(categoryFilter === cat ? null : cat)
+                    }
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                      categoryFilter === cat
+                        ? meta.color
+                        : "text-muted-foreground hover:bg-muted",
+                    )}
+                  >
+                    {meta.label} ({count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {sortedCategories.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-muted-foreground">
+                No commands match your search.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {sortedCategories.map((category) => {
+                const cmds = grouped.get(category)!;
+                const meta = CATEGORY_META[category] ?? {
+                  label: category,
+                  color: "bg-muted text-muted-foreground",
+                };
+
+                return (
+                  <section key={category}>
+                    <div className="mb-3 flex items-center gap-2">
+                      <h2 className="text-lg font-semibold">
+                        {meta.label} Commands
+                      </h2>
+                      <Badge variant="secondary" className="text-xs">
+                        {cmds.length}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      {cmds.map((cmd) => (
+                        <CommandCard key={cmd.name} command={cmd} />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          )}
         </div>
-
-        {sortedCategories.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center">
-            <p className="text-muted-foreground">
-              No commands match your search.
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {sortedCategories.map((category) => {
-              const cmds = grouped.get(category)!;
-              const meta = CATEGORY_META[category] ?? {
-                label: category,
-                color: "bg-muted text-muted-foreground",
-              };
-
-              return (
-                <section key={category}>
-                  <div className="mb-3 flex items-center gap-2">
-                    <h2 className="text-lg font-semibold">
-                      {meta.label} Commands
-                    </h2>
-                    <Badge variant="secondary" className="text-xs">
-                      {cmds.length}
-                    </Badge>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {cmds.map((cmd) => (
-                      <CommandCard key={cmd.name} command={cmd} />
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
