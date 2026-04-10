@@ -55,7 +55,7 @@ const MEDAL_STYLES = [
     glow: "bg-amber-400",
     text: "text-amber-400",
     height: "h-[240px]",
-    medal: "🥇",
+    rank: "#1",
   },
   {
     label: "2nd",
@@ -63,15 +63,15 @@ const MEDAL_STYLES = [
     glow: "bg-zinc-400",
     text: "text-zinc-400",
     height: "h-[200px]",
-    medal: "🥈",
+    rank: "#2",
   },
   {
     label: "3rd",
-    border: "border-orange-700/50",
-    glow: "bg-orange-700",
-    text: "text-orange-700",
+    border: "border-amber-600/50",
+    glow: "bg-amber-600",
+    text: "text-amber-600",
     height: "h-[200px]",
-    medal: "🥉",
+    rank: "#3",
   },
 ];
 
@@ -103,9 +103,13 @@ function PodiumEntry({
           crossOrigin="anonymous"
         />
       </div>
-      {/* Medal + Username */}
+      {/* Rank + Username */}
       <div className="flex flex-col items-center gap-0.5">
-        <span className="text-lg">{style.medal}</span>
+        <span
+          className={`text-[18px] font-extrabold tracking-wider ${style.text}`}
+        >
+          {style.rank}
+        </span>
         <span className={`text-[15px] font-bold tracking-wide ${style.text}`}>
           {player.username}
         </span>
