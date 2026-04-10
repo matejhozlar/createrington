@@ -2,6 +2,7 @@ import config from "@/config";
 import fs from "node:fs";
 import type { CooldownType } from "@/discord/utils/cooldown";
 import {
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   Collection,
   type SlashCommandBuilder,
@@ -21,6 +22,7 @@ const isDev = config.envMode.isDev;
 export interface CommandModule {
   data: SlashCommandBuilder;
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+  autocomplete?: (interaction: AutocompleteInteraction) => Promise<void>;
 
   // Permission configurations
   permissions?: {

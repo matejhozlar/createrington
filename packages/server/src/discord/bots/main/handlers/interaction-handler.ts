@@ -383,6 +383,21 @@ export function registerInteractionHandler(
       return;
     }
 
+    if (interaction.isAutocomplete()) {
+      const command = commandHandlers.get(interaction.commandName);
+      if (command?.autocomplete) {
+        try {
+          await command.autocomplete(interaction);
+        } catch (error) {
+          logger.error(
+            `Autocomplete error for /${interaction.commandName}:`,
+            error,
+          );
+        }
+      }
+      return;
+    }
+
     if (interaction.isButton()) {
       await handleButtonInteractions(interaction, buttonHandlers);
       return;

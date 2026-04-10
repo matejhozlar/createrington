@@ -312,6 +312,69 @@ router.get(
 );
 
 /**
+ * GET /api/render/top?secret=...&category=...&item=...
+ *
+ * Returns top 3 players for a given Minecraft stat category + item.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/top",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { category, item } = req.query;
+
+    if (
+      !category ||
+      !item ||
+      typeof category !== "string" ||
+      typeof item !== "string"
+    ) {
+      res
+        .status(400)
+        .json({ error: "category and item query params required" });
+      return;
+    }
+
+    const results = await Q.player.minecraft.stats.compareItem(
+      item,
+      [category],
+      { limit: 3 },
+    );
+
+    // Format display title: "minecraft:zombie" + "minecraft:killed" → "Zombie Killed"
+    const itemName = item
+      .replace(/^minecraft:/, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const categoryVerbs: Record<string, string> = {
+      "minecraft:mined": "Mined",
+      "minecraft:killed": "Killed",
+      "minecraft:killed_by": "Deaths By",
+      "minecraft:crafted": "Crafted",
+      "minecraft:used": "Used",
+      "minecraft:broken": "Broken",
+      "minecraft:picked_up": "Picked Up",
+      "minecraft:dropped": "Dropped",
+      "minecraft:custom": "",
+    };
+    const verb = categoryVerbs[category] ?? category.replace(/^minecraft:/, "");
+    const displayTitle = verb ? `${itemName} ${verb}` : itemName;
+
+    res.json({
+      category,
+      item,
+      displayTitle,
+      players: results.map((r) => ({
+        username: r.minecraftUsername,
+        uuid: r.minecraftUuid,
+        value: r.values[0] ?? 0,
+      })),
+    });
+  }),
+);
+
+/**
  * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
  *
  * Returns token data and OHLCV price history for the chart render page.
