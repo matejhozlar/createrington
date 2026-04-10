@@ -76,7 +76,7 @@ export async function execute(
         url: renderUrl.toString(),
         waitForSelector: "#profile-container",
         elementSelector: "#profile-container",
-        settleDelay: 2500,
+        settleDelay: 1500,
         timeout: 15_000,
         viewportWidth: 900,
         viewportHeight: 500,

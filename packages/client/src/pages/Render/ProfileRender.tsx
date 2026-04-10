@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { SkinViewer as SkinViewerLib } from "skinview3d";
+import { mcHeadsBody } from "@/lib/external-urls";
 
 interface ProfileData {
   username: string;
@@ -13,6 +13,23 @@ interface ProfileData {
   playtimeSeconds: number;
   sessions: number;
   memberSince: string;
+}
+
+const SKIN_POSES = [
+  "walking",
+  "dungeons",
+  "crossed",
+  "crouching",
+  "cheering",
+  "facepalm",
+] as const;
+
+function randomPose(): string {
+  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
+}
+
+function starlightSkinUrl(uuid: string, pose: string): string {
+  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
 }
 
 function formatNumber(value: string): string {
@@ -56,9 +73,8 @@ export function ProfileRender() {
   const [params] = useSearchParams();
   const [data, setData] = useState<ProfileData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [skinReady, setSkinReady] = useState(false);
-  const skinContainerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<SkinViewerLib | null>(null);
+  const [skinSrc, setSkinSrc] = useState<string | null>(null);
+  const [pose] = useState(randomPose);
 
   const secret = params.get("secret");
   const player = params.get("player");
@@ -81,45 +97,16 @@ export function ProfileRender() {
       .catch(() => setFetchError("Failed to load profile data"));
   }, [hasMissingParams, secret, player]);
 
-  // Initialize skinview3d once data arrives
+  // Load skin image once data arrives — try starlightskins, fall back to mc-heads
   useEffect(() => {
-    if (!data || !skinContainerRef.current) return;
+    if (!data) return;
 
-    const viewer = new SkinViewerLib({
-      width: 280,
-      height: 380,
-      enableControls: false,
-      fov: 50,
-      zoom: 0.85,
-    });
-
-    viewer.autoRotate = false;
-    viewer.animation = null;
-
-    // 3/4 view — rotate entire model so camera sees it from an angle
-    viewer.playerObject.rotation.y = 0.4;
-
-    viewer
-      .loadSkin(`/api/skin/${data.uuid}`)
-      .then(() => {
-        // Head turned slightly back toward viewer
-        viewer.playerObject.skin.head.rotation.y = -0.2;
-
-        setSkinReady(true);
-      })
-      .catch(() => {
-        // Still show the card even if skin fails
-        setSkinReady(true);
-      });
-
-    skinContainerRef.current.appendChild(viewer.canvas);
-    viewerRef.current = viewer;
-
-    return () => {
-      viewer.dispose();
-      viewerRef.current = null;
-    };
-  }, [data]);
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => setSkinSrc(img.src);
+    img.onerror = () => setSkinSrc(mcHeadsBody(data.uuid));
+    img.src = starlightSkinUrl(data.uuid, pose);
+  }, [data, pose]);
 
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 
@@ -133,10 +120,9 @@ export function ProfileRender() {
     );
   }
 
-  if (!data || !skinReady) {
+  if (!data || !skinSrc) {
     return (
       <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
-        <div ref={skinContainerRef} className="hidden" />
         <span className="text-base tracking-wide text-muted-foreground">
           Loading...
         </span>
@@ -173,14 +159,16 @@ export function ProfileRender() {
 
       {/* Body */}
       <div className="flex-1 flex items-center px-6 pt-1 z-10">
-        {/* Left: 3D skin */}
+        {/* Left: Skin render */}
         <div className="flex flex-col items-center w-[300px] shrink-0">
           <div className="relative h-[380px] flex items-end justify-center">
             {/* Glow beneath skin */}
             <div className="absolute bottom-2 w-36 h-36 rounded-full blur-[60px] opacity-40 bg-chart-1" />
-            <div
-              ref={skinContainerRef}
-              className="relative drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)]"
+            <img
+              src={skinSrc}
+              alt={data.username}
+              className="relative h-[340px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
+              crossOrigin="anonymous"
             />
           </div>
         </div>
