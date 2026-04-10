@@ -2,6 +2,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
+import { changelogRouter } from "./changelog";
 import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
@@ -38,6 +39,7 @@ export const adminRouter = router({
     }),
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,
+  changelog: changelogRouter,
   crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
