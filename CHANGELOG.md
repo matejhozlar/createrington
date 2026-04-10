@@ -1,3 +1,10 @@
+## [2026-04-10]
+
+### @createrington/server (1.2.0 → 1.3.0)
+- Add crypto net worth Discord leaderboard — a new `CRYPTO_NETWORTH` leaderboard type displays players ranked by their total crypto portfolio value, posted to the leaderboards channel and refreshed on the same hourly schedule as the playtime leaderboard
+- Make `serverId` optional in leaderboard config — non-server leaderboards (like crypto) don't require a Minecraft server ID; the config type now reflects this and call sites default to `0` when unset
+- Fix stale leaderboard message handling — when a Discord message has been deleted externally, editing it now returns a structured error instead of throwing; the service detects "not found" errors, deletes the stale DB record, and re-creates the message cleanly rather than crashing the refresh cycle
+
 ## [2026-04-09]
 
 ### @createrington/server (1.1.1 → 1.2.0)
