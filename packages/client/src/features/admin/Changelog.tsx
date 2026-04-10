@@ -67,13 +67,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-const PACKAGE_COLORS: Record<string, string> = {
-  "@createrington/server": "bg-blue-500/15 text-blue-400 border-blue-500/20",
-  "@createrington/client":
-    "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-  Tooling: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-};
-
 function ReleaseCard({
   section,
   isLatest,
@@ -91,36 +84,23 @@ function ReleaseCard({
         className="cursor-pointer select-none"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {open ? (
-              <ChevronDown className="text-muted-foreground size-4" />
-            ) : (
-              <ChevronRight className="text-muted-foreground size-4" />
-            )}
-            <span className="text-base font-semibold">
-              {formatDate(section.date)}
-            </span>
-            {isLatest && (
-              <Badge className="bg-primary/15 text-primary border-primary/20 text-xs">
-                Latest
-              </Badge>
-            )}
-          </div>
-          <div className="flex gap-1.5">
-            {section.entries.map((entry) => (
-              <Badge
-                key={entry.name}
-                variant="outline"
-                className={
-                  PACKAGE_COLORS[entry.name] ??
-                  "bg-muted/50 text-muted-foreground"
-                }
-              >
-                {entry.name.replace("@createrington/", "")}
-              </Badge>
-            ))}
-          </div>
+        <div className="flex items-center gap-3">
+          {open ? (
+            <ChevronDown className="text-muted-foreground size-4 shrink-0" />
+          ) : (
+            <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+          )}
+          <span className="text-base font-semibold">
+            {formatDate(section.date)}
+          </span>
+          {isLatest && (
+            <Badge
+              variant="outline"
+              className="text-muted-foreground border-border text-xs"
+            >
+              Latest
+            </Badge>
+          )}
         </div>
       </CardHeader>
 
@@ -128,16 +108,10 @@ function ReleaseCard({
         <CardContent className="space-y-5 border-t pt-5">
           {section.entries.map((entry) => (
             <div key={entry.name}>
-              <div className="mb-2.5 flex items-center gap-2">
-                <Badge
-                  variant="outline"
-                  className={
-                    PACKAGE_COLORS[entry.name] ??
-                    "bg-muted/50 text-muted-foreground"
-                  }
-                >
+              <div className="mb-2 flex items-center gap-2">
+                <span className="text-sm font-medium">
                   {entry.name.replace("@createrington/", "")}
-                </Badge>
+                </span>
                 {entry.versionRange && (
                   <span className="text-muted-foreground text-xs">
                     {entry.versionRange}
