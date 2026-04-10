@@ -11,7 +11,9 @@ const rootPkg = JSON.parse(
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(rootPkg.version),
+    __APP_VERSION__: JSON.stringify(
+      process.env.VITE_APP_VERSION || rootPkg.version,
+    ),
   },
   plugins: [react(), tailwindcss()],
   resolve: {
