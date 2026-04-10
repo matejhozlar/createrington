@@ -6,6 +6,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
@@ -29,20 +32,29 @@ interface RawCommand {
   name: string;
   description: string;
   category: string;
-  options: Array<{ type: number; name: string; options?: unknown[] }>;
+  options: Array<{
+    type: number;
+    name: string;
+    description?: string;
+    options?: unknown[];
+  }>;
 }
 
 interface CommandsFile {
   commands: RawCommand[];
 }
 
-function buildCommandLine(cmd: RawCommand): string {
+function formatCommand(cmd: RawCommand): string {
   const subs = cmd.options.filter((o) => o.type === 1 || o.type === 2);
+
   if (subs.length > 0) {
-    const subNames = subs.map((s) => `\`/${cmd.name} ${s.name}\``);
-    return subNames.join("  ");
+    // Show each subcommand with its description
+    return subs
+      .map((s) => `</${cmd.name} ${s.name}:0> — ${s.description ?? ""}`)
+      .join("\n");
   }
-  return `\`/${cmd.name}\``;
+
+  return `</${cmd.name}:0> — ${cmd.description}`;
 }
 
 export const data = new SlashCommandBuilder()
@@ -107,34 +119,43 @@ export async function execute(
       grouped.set(group, list);
     }
 
-    // Build description
+    // Build embed with fields per group
     const guideUrl = `${config.meta.links.website}/guides/discord-commands`;
-    const sections: string[] = [];
 
-    sections.push(`**[View the full interactive guide](${guideUrl})**\n`);
+    const embed = createEmbed()
+      .title("Discord Commands")
+      .description(
+        `All available player commands. For full details, options, and usage examples visit the [command guide](${guideUrl}).`,
+      )
+      .color(EmbedColors.Info)
+      .timestamp();
 
     for (const groupName of GROUP_ORDER) {
       const cmds = grouped.get(groupName);
       if (!cmds || cmds.length === 0) continue;
 
-      const lines = cmds.map((cmd) => buildCommandLine(cmd)).join("  ");
-      sections.push(`**${groupName}**\n${lines}`);
+      const fieldValue = cmds.map((cmd) => formatCommand(cmd)).join("\n");
+      embed.field(groupName, fieldValue, false);
     }
 
-    // Add ungrouped if any
     const other = grouped.get("Other");
     if (other && other.length > 0) {
-      const lines = other.map((cmd) => buildCommandLine(cmd)).join("  ");
-      sections.push(`**Other**\n${lines}`);
+      const fieldValue = other.map((cmd) => formatCommand(cmd)).join("\n");
+      embed.field("Other", fieldValue, false);
     }
 
-    const embed = createEmbed()
-      .title("Discord Commands")
-      .description(sections.join("\n\n"))
-      .color(EmbedColors.Info);
+    embed.footer(`${playerCommands.length} commands available`);
+
+    // Link button to the guide
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder()
+        .setLabel("Full Command Guide")
+        .setStyle(ButtonStyle.Link)
+        .setURL(guideUrl),
+    );
 
     const messageId = interaction.options.getString("message_id");
-    const payload = { embeds: [embed.build()] };
+    const payload = { embeds: [embed.build()], components: [row] };
 
     if (messageId) {
       const existing = await interaction.channel.messages
