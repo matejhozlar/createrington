@@ -90,9 +90,15 @@ function PodiumEntry({
   const style = MEDAL_STYLES[rank];
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className="flex flex-col items-center w-[220px]">
+      {/* Rank */}
+      <span
+        className={`text-[18px] font-extrabold tracking-wider ${style.text}`}
+      >
+        {style.rank}
+      </span>
       {/* Skin with glow */}
-      <div className="relative flex items-end justify-center">
+      <div className="relative flex items-end justify-center mt-1">
         <div
           className={`absolute bottom-0 w-20 h-20 rounded-full blur-[40px] opacity-30 ${style.glow}`}
         />
@@ -103,20 +109,15 @@ function PodiumEntry({
           crossOrigin="anonymous"
         />
       </div>
-      {/* Rank + Username */}
-      <div className="flex flex-col items-center gap-0.5">
-        <span
-          className={`text-[18px] font-extrabold tracking-wider ${style.text}`}
-        >
-          {style.rank}
-        </span>
-        <span className={`text-[15px] font-bold tracking-wide ${style.text}`}>
-          {player.username}
-        </span>
-        <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
-          {player.value.toLocaleString()}
-        </span>
-      </div>
+      {/* Username + Value */}
+      <span
+        className={`text-[15px] font-bold tracking-wide mt-2 ${style.text}`}
+      >
+        {player.username}
+      </span>
+      <span className="text-[13px] font-semibold text-muted-foreground tabular-nums">
+        {player.value.toLocaleString()}
+      </span>
     </div>
   );
 }
@@ -222,7 +223,7 @@ export function TopRender() {
       </div>
 
       {/* Podium */}
-      <div className="flex-1 flex items-end justify-center gap-12 px-8 pb-2 z-10">
+      <div className="flex-1 flex items-center justify-center gap-1 px-8 z-10">
         {data.players.length === 0 ? (
           <span className="text-lg text-muted-foreground pb-20">
             No players found for this stat
