@@ -148,9 +148,6 @@ export function Changelog() {
               <div
                 key={section.version}
                 className="relative grid grid-cols-[32px_1fr]"
-                style={{
-                  animation: `fade-in-up 0.4s ease-out ${i * 50}ms both`,
-                }}
               >
                 {/* Timeline dot */}
                 <div className="flex justify-center pt-[17px]">
