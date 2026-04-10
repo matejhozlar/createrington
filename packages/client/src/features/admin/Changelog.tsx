@@ -8,13 +8,10 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { useMemo } from "react";
+import { Badge } from "@/components/ui/badge";
+import { useMemo, useState } from "react";
+import { cn } from "@/lib/utils";
+import { ChevronRight } from "lucide-react";
 
 interface ChangelogSection {
   version: string;
@@ -70,7 +67,7 @@ function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T12:00:00");
   return date.toLocaleDateString("en-US", {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
   });
 }
@@ -93,12 +90,31 @@ const HEADER = (
 
 export function Changelog() {
   const { data, isLoading } = trpc.admin.changelog.get.useQuery();
+  const [expanded, setExpanded] = useState<Set<string> | null>(null);
 
   const content = data?.content;
   const sections = useMemo(
     () => (content ? parseChangelog(content) : []),
     [content],
   );
+
+  const expandedVersions =
+    expanded ??
+    (sections.length > 0 ? new Set([sections[0].version]) : new Set<string>());
+
+  const toggle = (version: string) => {
+    setExpanded((prev) => {
+      const base =
+        prev ??
+        (sections.length > 0
+          ? new Set([sections[0].version])
+          : new Set<string>());
+      const next = new Set(base);
+      if (next.has(version)) next.delete(version);
+      else next.add(version);
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -112,53 +128,130 @@ export function Changelog() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4">
+    <div className="flex flex-1 flex-col">
       {HEADER}
 
-      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 px-4 pb-4">
-        <Accordion type="multiple" defaultValue={[sections[0]?.version]}>
-          {sections.map((section) => (
-            <AccordionItem key={section.version} value={section.version}>
-              <AccordionTrigger className="text-base hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <span className="font-semibold">{section.version}</span>
-                  <span className="text-muted-foreground text-sm font-normal">
-                    {formatDate(section.date)}
-                  </span>
+      <div className="mx-auto w-full max-w-[800px] px-6 py-8">
+        <div className="relative">
+          {/* Timeline vertical line */}
+          <div className="absolute left-[15px] top-6 bottom-6 w-px bg-border" />
+
+          {sections.map((section, i) => {
+            const isOpen = expandedVersions.has(section.version);
+            const isLatest = i === 0;
+            const changeCount = section.entries.reduce(
+              (sum, e) => sum + e.items.length,
+              0,
+            );
+
+            return (
+              <div
+                key={section.version}
+                className="relative grid grid-cols-[32px_1fr]"
+                style={{
+                  animation: `fade-in-up 0.4s ease-out ${i * 50}ms both`,
+                }}
+              >
+                {/* Timeline dot */}
+                <div className="flex justify-center pt-[17px]">
+                  <div
+                    className={cn(
+                      "relative z-10 rounded-full ring-[5px] ring-background",
+                      isLatest
+                        ? "size-[11px] bg-primary"
+                        : "size-[9px] bg-muted-foreground/25",
+                    )}
+                  />
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-4">
-                  {section.entries.map((entry) => (
-                    <div key={entry.name}>
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="text-sm font-medium">
-                          {entry.name}
-                        </span>
-                        {entry.versionRange && (
-                          <span className="text-muted-foreground text-xs">
-                            {entry.versionRange}
-                          </span>
-                        )}
-                      </div>
-                      <ul className="space-y-1.5 pl-1">
-                        {entry.items.map((item, i) => (
-                          <li
-                            key={i}
-                            className="text-muted-foreground flex items-start gap-2.5 text-sm"
-                          >
-                            <span className="bg-muted-foreground/40 mt-2 size-1 shrink-0 rounded-full" />
-                            <span>{item}</span>
-                          </li>
+
+                {/* Version content */}
+                <div className="min-w-0 pb-1">
+                  {/* Clickable version header */}
+                  <button
+                    onClick={() => toggle(section.version)}
+                    className="group -ml-1 flex w-[calc(100%+0.25rem)] items-center gap-3 rounded-md px-2 py-3 text-left outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono text-sm font-semibold tracking-tight",
+                        isLatest ? "text-primary" : "text-foreground",
+                      )}
+                    >
+                      {section.version}
+                    </span>
+
+                    {isLatest && (
+                      <Badge
+                        variant="default"
+                        className="h-[18px] px-1.5 text-[10px] font-medium"
+                      >
+                        Latest
+                      </Badge>
+                    )}
+
+                    <span className="text-[11px] text-muted-foreground">
+                      {changeCount} {changeCount === 1 ? "change" : "changes"}
+                    </span>
+
+                    <span className="flex-1" />
+
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {formatDate(section.date)}
+                    </span>
+
+                    <ChevronRight
+                      className={cn(
+                        "size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+                        isOpen && "rotate-90",
+                      )}
+                    />
+                  </button>
+
+                  {/* Collapsible entries */}
+                  <div
+                    className="grid transition-[grid-template-rows] duration-300 ease-out"
+                    style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="space-y-5 px-2 pb-5 pt-1">
+                        {section.entries.map((entry) => (
+                          <div key={entry.name}>
+                            <div className="mb-2 flex items-baseline gap-2.5">
+                              <span className="text-sm font-medium text-foreground/80">
+                                {entry.name}
+                              </span>
+                              {entry.versionRange && (
+                                <>
+                                  <span className="text-muted-foreground/40">
+                                    ·
+                                  </span>
+                                  <span className="font-mono text-[11px] text-muted-foreground">
+                                    {entry.versionRange}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <ul className="space-y-1">
+                              {entry.items.map((item, k) => (
+                                <li
+                                  key={k}
+                                  className="flex items-start gap-2.5 py-0.5 text-[13px] leading-relaxed text-muted-foreground"
+                                >
+                                  <span className="mt-[7px] size-[5px] shrink-0 rounded-full bg-muted-foreground/40" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
