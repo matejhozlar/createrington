@@ -69,7 +69,7 @@ export async function execute(
         settleDelay: 1500,
         timeout: 15_000,
         viewportWidth: 900,
-        viewportHeight: 450,
+        viewportHeight: 500,
       });
 
       screenshotBuffer = result.buffer;
