@@ -18,6 +18,18 @@ import { EmbedPresets } from "@/discord/embeds";
  * - Refreshing leaderboard data
  * - Managing persistent leaderboard messages in database
  */
+const MESSAGE_NOT_FOUND_PATTERNS = [
+  "Unknown Message",
+  "Unknown Channel",
+  "Message not found",
+  "Channel not found",
+];
+
+function isMessageNotFoundError(error?: string): boolean {
+  if (!error) return false;
+  return MESSAGE_NOT_FOUND_PATTERNS.some((p) => error.includes(p));
+}
+
 export class LeaderboardService {
   private refreshInterval?: NodeJS.Timeout;
   private readonly REFRESH_INTERVAL = 60 * 60 * 1000;
@@ -115,10 +127,16 @@ export class LeaderboardService {
         };
       }
 
-      logger.warn(
-        `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
-      );
-      await Q.leaderboard.message.delete({ id: existing.id });
+      if (isMessageNotFoundError(editResult.error)) {
+        logger.warn(
+          `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+        );
+        await Q.leaderboard.message.delete({ id: existing.id });
+      } else {
+        throw new Error(
+          `Failed to update ${type} leaderboard: ${editResult.error}`,
+        );
+      }
     }
 
     {
@@ -195,15 +213,18 @@ export class LeaderboardService {
       });
 
       if (!editResult.success) {
-        logger.warn(
-          `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
-        );
-        await Q.leaderboard.message.delete({ id: existing.id });
+        if (isMessageNotFoundError(editResult.error)) {
+          logger.warn(
+            `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+          );
+          await Q.leaderboard.message.delete({ id: existing.id });
+        }
+
         return {
           success: false,
           type,
           entries: [],
-          error: `Leaderboard message no longer exists, stale record removed`,
+          error: editResult.error ?? "Failed to edit leaderboard message",
         };
       }
 
