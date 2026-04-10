@@ -58,12 +58,10 @@ export async function autocomplete(
   interaction: AutocompleteInteraction,
 ): Promise<void> {
   const focused = interaction.options.getFocused();
-  if (!focused || focused.length < 1) {
-    await interaction.respond([]);
-    return;
-  }
 
-  const results = await Q.player.minecraft.stats.searchItems(focused, 25);
+  // When empty, search with a broad term to show common items
+  const query = focused.length >= 1 ? focused : "minecraft:";
+  const results = await Q.player.minecraft.stats.searchItems(query, 25);
 
   await interaction.respond(
     results.map((item) => ({

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mcHeadsBody } from "@/lib/external-urls";
+import { randomPose, starlightSkinUrl } from "./skin-utils";
 
 interface ProfileData {
   username: string;
@@ -17,29 +18,6 @@ interface ProfileData {
   mobsKilled: number;
   deaths: number;
   distanceKm: number;
-}
-
-const SKIN_POSES = [
-  "default",
-  "marching",
-  "walking",
-  "crouching",
-  "crossed",
-  "cheering",
-  "trudging",
-  "pointing",
-  "dungeons",
-  "facepalm",
-  "kicking",
-  "ultimate",
-] as const;
-
-function randomPose(): string {
-  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
-}
-
-function starlightSkinUrl(uuid: string, pose: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
 }
 
 function formatNumber(value: string): string {

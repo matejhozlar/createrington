@@ -1,40 +1,6 @@
 import { useEffect, useState } from "react";
-import { mcHeadsBody } from "@/lib/external-urls";
 import { useSearchParams } from "react-router-dom";
-
-const SKIN_POSES = [
-  "default",
-  "marching",
-  "walking",
-  "crouching",
-  "crossed",
-  "cheering",
-  "trudging",
-  "pointing",
-  "dungeons",
-  "facepalm",
-  "kicking",
-  "ultimate",
-] as const;
-
-function randomPose(): string {
-  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
-}
-
-function starlightSkinUrl(uuid: string, pose: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
-}
-
-/** Try to load a starlightskins render, fall back to mc-heads on failure. */
-function loadSkin(uuid: string, pose: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img.src);
-    img.onerror = () => resolve(mcHeadsBody(uuid));
-    img.src = starlightSkinUrl(uuid, pose);
-  });
-}
+import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
   username: string;

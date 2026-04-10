@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mcHeadsAvatar } from "@/lib/external-urls";
+import { starlightBustUrl } from "./skin-utils";
 
 interface ActivityData {
   username: string;
@@ -57,10 +58,6 @@ function formatPlaytime(seconds: number): string {
 
 function toDateStr(d: Date): string {
   return d.toISOString().split("T")[0];
-}
-
-function starlightBustUrl(uuid: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/default/${uuid}/bust`;
 }
 
 function StatPill({ label, value }: { label: string; value: string }) {

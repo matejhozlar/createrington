@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { mcHeadsBody } from "@/lib/external-urls";
+import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerEntry {
   username: string;
@@ -13,39 +13,6 @@ interface TopData {
   item: string;
   displayTitle: string;
   players: PlayerEntry[];
-}
-
-const SKIN_POSES = [
-  "default",
-  "marching",
-  "walking",
-  "crouching",
-  "crossed",
-  "cheering",
-  "trudging",
-  "pointing",
-  "dungeons",
-  "facepalm",
-  "kicking",
-  "ultimate",
-] as const;
-
-function randomPose(): string {
-  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
-}
-
-function starlightSkinUrl(uuid: string, pose: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
-}
-
-function loadSkin(uuid: string, pose: string): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img.src);
-    img.onerror = () => resolve(mcHeadsBody(uuid));
-    img.src = starlightSkinUrl(uuid, pose);
-  });
 }
 
 const MEDAL_STYLES = [
@@ -154,13 +121,12 @@ export function TopRender() {
   // Load skins once data arrives
   useEffect(() => {
     if (!data) return;
-    if (data.players.length === 0) {
-      // No players — mark skins as loaded so the card renders
-      Promise.resolve().then(() => setSkins([]));
-      return;
-    }
-    Promise.all(data.players.map((p, i) => loadSkin(p.uuid, poses[i]))).then(
-      setSkins,
+    const promises =
+      data.players.length > 0
+        ? data.players.map((p, i) => loadSkin(p.uuid, poses[i]))
+        : [Promise.resolve("")];
+    Promise.all(promises).then((results) =>
+      setSkins(data.players.length > 0 ? results : []),
     );
   }, [data, poses]);
 

@@ -237,8 +237,8 @@ router.get(
       dayMap[date] = (dayMap[date] ?? 0) + Number(row.secondsPlayed);
     }
 
-    // Total seconds
-    const totalSeconds = Object.values(dayMap).reduce((s, v) => s + v, 0);
+    // Use all-time total from playtime summary (not just 365-day window)
+    const totalSeconds = details.playtime.totalSeconds;
 
     // Current streak — consecutive days ending today or yesterday
     let currentStreak = 0;
@@ -332,6 +332,23 @@ router.get(
       res
         .status(400)
         .json({ error: "category and item query params required" });
+      return;
+    }
+
+    const validCategories = [
+      "minecraft:mined",
+      "minecraft:killed",
+      "minecraft:killed_by",
+      "minecraft:crafted",
+      "minecraft:used",
+      "minecraft:broken",
+      "minecraft:picked_up",
+      "minecraft:dropped",
+      "minecraft:custom",
+    ];
+
+    if (!validCategories.includes(category)) {
+      res.status(400).json({ error: "Invalid stat category" });
       return;
     }
 
