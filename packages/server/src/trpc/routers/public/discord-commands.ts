@@ -1,4 +1,5 @@
 import { router, publicProcedure } from "@/trpc/trpc";
+import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,36 +27,6 @@ interface CommandData {
   generatedAt: string | null;
   commands: RawCommand[];
 }
-
-/** Maps command names to logical display groups. */
-const COMMAND_GROUPS: Record<string, string> = {
-  verify: "Getting Started",
-  register: "Getting Started",
-  money: "Economy",
-  daily: "Economy",
-  pay: "Economy",
-  lottery: "Economy",
-  history: "Economy",
-  playtime: "Player Info",
-  compare: "Player Info",
-  profile: "Player Info",
-  activity: "Player Info",
-  seen: "Player Info",
-  skin: "Player Info",
-  top: "Player Info",
-  crypto: "Crypto",
-  ping: "Server",
-  status: "Server",
-  list: "Server",
-};
-
-const GROUP_ORDER = [
-  "Getting Started",
-  "Economy",
-  "Player Info",
-  "Crypto",
-  "Server",
-];
 
 /** Public Discord commands router — serves player-facing command docs. */
 export const discordCommandsRouter = router({

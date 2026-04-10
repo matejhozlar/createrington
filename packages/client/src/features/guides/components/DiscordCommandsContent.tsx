@@ -136,13 +136,22 @@ function SubcommandRow({
  * Used as guide step content — each group becomes its own step.
  */
 export function DiscordCommandsGroup({ group }: { group: string }) {
-  const { data, isLoading } = trpc.public.discordCommands.list.useQuery();
+  const { data, isLoading, isError } =
+    trpc.public.discordCommands.list.useQuery();
 
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
         <Loading text="Loading commands..." />
       </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="text-destructive">
+        Failed to load commands. Please try again later.
+      </p>
     );
   }
 

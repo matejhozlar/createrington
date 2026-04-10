@@ -1,5 +1,6 @@
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
 import config from "@/config";
 import fs from "node:fs";
 import path from "node:path";
@@ -19,6 +20,7 @@ const JSON_PATH = path.join(
   "..",
   "..",
   "..",
+  "..",
   "config",
   "discord-commands.json",
 );
@@ -33,35 +35,6 @@ interface RawCommand {
 interface CommandsFile {
   commands: RawCommand[];
 }
-
-const COMMAND_GROUPS: Record<string, string> = {
-  verify: "Getting Started",
-  register: "Getting Started",
-  money: "Economy",
-  daily: "Economy",
-  pay: "Economy",
-  lottery: "Economy",
-  history: "Economy",
-  playtime: "Player Info",
-  compare: "Player Info",
-  profile: "Player Info",
-  activity: "Player Info",
-  seen: "Player Info",
-  skin: "Player Info",
-  top: "Player Info",
-  crypto: "Crypto",
-  ping: "Server",
-  status: "Server",
-  list: "Server",
-};
-
-const GROUP_ORDER = [
-  "Getting Started",
-  "Economy",
-  "Player Info",
-  "Crypto",
-  "Server",
-];
 
 function buildCommandLine(cmd: RawCommand): string {
   const subs = cmd.options.filter((o) => o.type === 1 || o.type === 2);
