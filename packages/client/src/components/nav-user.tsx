@@ -3,6 +3,7 @@
 import {
   BadgeCheck,
   ChevronsUpDown,
+  FileText,
   Heart,
   LogOut,
   Settings,
@@ -133,12 +134,20 @@ export function NavUser({ user }: { user: User }) {
             </DropdownMenuItem>
 
             {user.isAdmin && (
-              <DropdownMenuItem asChild>
-                <NavLink to="/admin/dashboard" className="cursor-pointer">
-                  <BadgeCheck />
-                  Admin Panel
-                </NavLink>
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem asChild>
+                  <NavLink to="/admin/dashboard" className="cursor-pointer">
+                    <BadgeCheck />
+                    Admin Panel
+                  </NavLink>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <NavLink to="/admin/changelog" className="cursor-pointer">
+                    <FileText />
+                    Changelog
+                  </NavLink>
+                </DropdownMenuItem>
+              </>
             )}
 
             <DropdownMenuItem asChild>

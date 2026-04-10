@@ -87,12 +87,10 @@ export function Changelog() {
     [content],
   );
 
-  if (isLoading) return <Loading />;
-
-  return (
-    <>
-      <header className="flex h-16 shrink-0 items-center gap-2">
-        <div className="flex items-center gap-2 px-4">
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 flex-col gap-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem>
@@ -104,7 +102,28 @@ export function Changelog() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+        </header>
+        <div className="flex flex-1 items-center justify-center">
+          <Loading size="medium" text="Loading changelog..." />
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-1 flex-col gap-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Changelog</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </header>
 
       <div className="mx-auto w-full max-w-[900px] flex flex-1 flex-col gap-4 px-4 pb-4">
@@ -171,6 +190,6 @@ export function Changelog() {
           ))}
         </Accordion>
       </div>
-    </>
+    </div>
   );
 }
