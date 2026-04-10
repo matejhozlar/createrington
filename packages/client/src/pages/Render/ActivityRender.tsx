@@ -195,9 +195,12 @@ export function ActivityRender() {
       {/* Header */}
       <div className="flex items-center gap-4 px-8 pt-5 z-10">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <h1 className="text-[12px] font-semibold tracking-[0.35em] uppercase text-muted-foreground/40">
-          Player Activity
-        </h1>
+        <img
+          src="/assets/render/player-activity.webp"
+          alt="Player Activity"
+          className="h-[44px]"
+          style={{ imageRendering: "pixelated" }}
+        />
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
