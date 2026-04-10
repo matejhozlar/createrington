@@ -109,6 +109,58 @@ router.get(
 );
 
 /**
+ * GET /api/render/profile?secret=...&player=...
+ *
+ * Returns profile data for a single player identified by Discord ID.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/profile",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { player } = req.query;
+
+    if (!player || typeof player !== "string") {
+      res.status(400).json({ error: "player query param required" });
+      return;
+    }
+
+    const details = await playerRepo.getDetailed({ discordId: player });
+
+    const tokens = await Q.crypto.token.where({}).all();
+    const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+
+    const cashBalance = details.balance
+      ? BalanceUtils.fromStorage(details.balance.balance)
+      : 0;
+
+    const holdings = await Q.crypto.holding
+      .where({ playerMinecraftUuid: details.player.minecraftUuid })
+      .all();
+    const cryptoValue = holdings.reduce((sum, h) => {
+      const price = tokenPriceMap.get(h.tokenId) ?? 0;
+      return sum + price * Number(h.amount);
+    }, 0);
+
+    const networth = cashBalance + cryptoValue;
+    const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
+
+    res.json({
+      username: details.player.minecraftUsername,
+      uuid: details.player.minecraftUuid,
+      online: details.player.online,
+      networth: fmt(networth),
+      cashBalance: fmt(cashBalance),
+      cryptoValue: fmt(cryptoValue),
+      playtime: formatPlaytime(details.playtime.totalSeconds),
+      playtimeSeconds: details.playtime.totalSeconds,
+      sessions: details.playtime.totalSessions,
+      memberSince: details.player.createdAt.toISOString(),
+    });
+  }),
+);
+
+/**
  * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
  *
  * Returns token data and OHLCV price history for the chart render page.
