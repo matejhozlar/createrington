@@ -17,6 +17,7 @@ import {
 import { useMemo } from "react";
 
 interface ChangelogSection {
+  version: string;
   date: string;
   entries: PackageEntry[];
 }
@@ -33,9 +34,13 @@ function parseChangelog(raw: string): ChangelogSection[] {
   let currentPkg: PackageEntry | null = null;
 
   for (const line of raw.split("\n")) {
-    const dateMatch = line.match(/^## \[(.+)]$/);
-    if (dateMatch) {
-      current = { date: dateMatch[1], entries: [] };
+    const headingMatch = line.match(/^## (v[\d.]+)\s+\((.+)\)$/);
+    if (headingMatch) {
+      current = {
+        version: headingMatch[1],
+        date: headingMatch[2],
+        entries: [],
+      };
       sections.push(current);
       currentPkg = null;
       continue;
@@ -111,13 +116,16 @@ export function Changelog() {
       {HEADER}
 
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 px-4 pb-4">
-        <Accordion type="multiple" defaultValue={[sections[0]?.date]}>
+        <Accordion type="multiple" defaultValue={[sections[0]?.version]}>
           {sections.map((section) => (
-            <AccordionItem key={section.date} value={section.date}>
+            <AccordionItem key={section.version} value={section.version}>
               <AccordionTrigger className="text-base hover:no-underline">
-                <span className="font-semibold">
-                  {formatDate(section.date)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold">{section.version}</span>
+                  <span className="text-muted-foreground text-sm font-normal">
+                    {formatDate(section.date)}
+                  </span>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-4">
@@ -125,7 +133,7 @@ export function Changelog() {
                     <div key={entry.name}>
                       <div className="mb-2 flex items-center gap-2">
                         <span className="text-sm font-medium">
-                          {entry.name.replace("@createrington/", "")}
+                          {entry.name}
                         </span>
                         {entry.versionRange && (
                           <span className="text-muted-foreground text-xs">

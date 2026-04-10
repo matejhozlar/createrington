@@ -4,14 +4,14 @@ import path from "node:path";
 import { readFileSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
 
-const serverPkg = JSON.parse(
-  readFileSync(path.resolve(__dirname, "../server/package.json"), "utf-8"),
+const rootPkg = JSON.parse(
+  readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"),
 );
 
 // https://vite.dev/config/
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(serverPkg.version),
+    __APP_VERSION__: JSON.stringify(rootPkg.version),
   },
   plugins: [react(), tailwindcss()],
   resolve: {

@@ -1,11 +1,11 @@
-## [2026-04-10]
+## v1.3.0 (2026-04-10)
 
 ### @createrington/server (1.2.0 → 1.3.0)
 - Add crypto net worth Discord leaderboard — a new `CRYPTO_NETWORTH` leaderboard type displays players ranked by their total crypto portfolio value, posted to the leaderboards channel and refreshed on the same hourly schedule as the playtime leaderboard
 - Make `serverId` optional in leaderboard config — non-server leaderboards (like crypto) don't require a Minecraft server ID; the config type now reflects this and call sites default to `0` when unset
 - Fix stale leaderboard message handling — when a Discord message has been deleted externally, editing it now returns a structured error instead of throwing; the service detects "not found" errors, deletes the stale DB record, and re-creates the message cleanly rather than crashing the refresh cycle
 
-## [2026-04-09]
+## v1.2.0 (2026-04-09)
 
 ### @createrington/server (1.1.1 → 1.2.0)
 - Add admin inactivity management tRPC router — new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
@@ -23,7 +23,7 @@
 - Fix number input spinner arrows — hide browser-default increment/decrement arrows on `<input type="number">` elements via global CSS
 - Fix chat highlight layout shift — prevent the highlight animation from causing content reflow by adjusting positioning and transition approach
 
-## [2026-04-07]
+## v1.1.2 (2026-04-07)
 
 ### @createrington/server (1.1.0 → 1.1.1)
 - Suppress notifications for FAQ auto-reply embeds — both inline replies in the questions channel and standalone FAQ welcome messages now use the `SuppressNotifications` flag so they no longer ping users
@@ -38,12 +38,12 @@
 - Disable Husky in CI to avoid hook failures in workflows
 - Update pnpm from 10.29.3 to 10.33.0
 
-## [2026-04-05]
+## v1.1.1 (2026-04-05)
 
 ### @createrington/client (0.1.0 → 0.1.1)
 - Fix teleport command in admin player detail — remove the player username from the `/tp` command so it copies as `/tp x y z` instead of `/tp username x y z`, matching the expected in-game format
 
-## [2026-04-05]
+## v1.1.0 (2026-04-05)
 
 ### @createrington/server (1.0.1 → 1.1.0)
 - Add stat search tool with cross-category comparison — new `searchItems` and `compareItem` query methods let admins search for any Minecraft item key and compare counts across categories (e.g. picked up vs crafted) for all players, exposed via two new tRPC admin procedures
@@ -55,7 +55,7 @@
 - Display player logout position in the admin player header — shows last known coordinates and dimension with a one-click `/tp` command copy button (only visible for offline players)
 - Add Stat Search entry to the admin tools grid
 
-## [2026-04-04]
+## v1.0.1 (2026-04-04)
 
 ### @createrington/server (1.0.0 → 1.0.1)
 - Tighten metadata validation across bans, strikes, and waitlist endpoints — replace permissive `z.any()` with a strict primitive union (`string | number | boolean | null`) to prevent arbitrary object injection
