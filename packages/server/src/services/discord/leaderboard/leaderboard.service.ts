@@ -92,25 +92,36 @@ export class LeaderboardService {
     });
 
     if (existing) {
-      await Discord.Messages.edit({
+      const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
         embeds: embed.build(),
         components: buttons,
       });
 
-      await Q.leaderboard.message.update(
-        { id: existing.id },
-        { lastRefreshed: new Date() },
+      if (editResult.success) {
+        await Q.leaderboard.message.update(
+          { id: existing.id },
+          { lastRefreshed: new Date() },
+        );
+
+        logger.info(
+          `Updated ${type} leaderboard message ${existing.messageId}`,
+        );
+
+        return {
+          messageId: existing.messageId,
+          channelId: existing.channelId,
+        };
+      }
+
+      logger.warn(
+        `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
       );
+      await Q.leaderboard.message.delete({ id: existing.id });
+    }
 
-      logger.info(`Updated ${type} leaderboard message ${existing.messageId}`);
-
-      return {
-        messageId: existing.messageId,
-        channelId: existing.channelId,
-      };
-    } else {
+    {
       const result = await Discord.Messages.send({
         channelId: config.channelId,
         embeds: embed.build(),
@@ -176,12 +187,25 @@ export class LeaderboardService {
       const embed = EmbedPresets.leaderboard.display(type, entries);
       const buttons = this.buildLeaderboardButtons(type);
 
-      await Discord.Messages.edit({
+      const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
         embeds: embed.build(),
         components: buttons,
       });
+
+      if (!editResult.success) {
+        logger.warn(
+          `Leaderboard message ${existing.messageId} no longer exists, removing stale record`,
+        );
+        await Q.leaderboard.message.delete({ id: existing.id });
+        return {
+          success: false,
+          type,
+          entries: [],
+          error: `Leaderboard message no longer exists, stale record removed`,
+        };
+      }
 
       const updates: {
         lastRefreshed: Date;
