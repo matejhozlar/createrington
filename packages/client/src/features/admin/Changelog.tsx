@@ -8,10 +8,13 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useMemo } from "react";
 
 interface ChangelogSection {
   date: string;
@@ -67,76 +70,6 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function ReleaseCard({
-  section,
-  isLatest,
-  defaultOpen,
-}: {
-  section: ChangelogSection;
-  isLatest: boolean;
-  defaultOpen: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <Card>
-      <CardHeader
-        className="cursor-pointer select-none"
-        onClick={() => setOpen(!open)}
-      >
-        <div className="flex items-center gap-3">
-          {open ? (
-            <ChevronDown className="text-muted-foreground size-4 shrink-0" />
-          ) : (
-            <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-          )}
-          <span className="text-base font-semibold">
-            {formatDate(section.date)}
-          </span>
-          {isLatest && (
-            <Badge
-              variant="outline"
-              className="text-muted-foreground border-border text-xs"
-            >
-              Latest
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-
-      {open && (
-        <CardContent className="space-y-5 border-t pt-5">
-          {section.entries.map((entry) => (
-            <div key={entry.name}>
-              <div className="mb-2 flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {entry.name.replace("@createrington/", "")}
-                </span>
-                {entry.versionRange && (
-                  <span className="text-muted-foreground text-xs">
-                    {entry.versionRange}
-                  </span>
-                )}
-              </div>
-              <ul className="space-y-2 pl-1">
-                {entry.items.map((item, i) => (
-                  <li
-                    key={i}
-                    className="text-muted-foreground flex items-start gap-2.5 text-sm"
-                  >
-                    <span className="bg-muted-foreground/40 mt-2 size-1 shrink-0 rounded-full" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
 const HEADER = (
   <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
     <Breadcrumb>
@@ -177,15 +110,47 @@ export function Changelog() {
     <div className="flex flex-1 flex-col gap-4">
       {HEADER}
 
-      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-3 px-4 pb-4">
-        {sections.map((section, i) => (
-          <ReleaseCard
-            key={section.date}
-            section={section}
-            isLatest={i === 0}
-            defaultOpen={i === 0}
-          />
-        ))}
+      <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col gap-4 px-4 pb-4">
+        <Accordion type="multiple" defaultValue={[sections[0]?.date]}>
+          {sections.map((section) => (
+            <AccordionItem key={section.date} value={section.date}>
+              <AccordionTrigger className="text-base hover:no-underline">
+                <span className="font-semibold">
+                  {formatDate(section.date)}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4">
+                  {section.entries.map((entry) => (
+                    <div key={entry.name}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {entry.name.replace("@createrington/", "")}
+                        </span>
+                        {entry.versionRange && (
+                          <span className="text-muted-foreground text-xs">
+                            {entry.versionRange}
+                          </span>
+                        )}
+                      </div>
+                      <ul className="space-y-1.5 pl-1">
+                        {entry.items.map((item, i) => (
+                          <li
+                            key={i}
+                            className="text-muted-foreground flex items-start gap-2.5 text-sm"
+                          >
+                            <span className="bg-muted-foreground/40 mt-2 size-1 shrink-0 rounded-full" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </div>
   );
