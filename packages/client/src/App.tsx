@@ -71,6 +71,9 @@ import { Advertisement } from "./pages/Advertisement";
 import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
 import { CompareRender } from "./pages/Render/CompareRender";
 import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
+import { ProfileRender } from "./pages/Render/ProfileRender";
+import { ActivityRender } from "./pages/Render/ActivityRender";
+import { TopRender } from "./pages/Render/TopRender";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 import { GuideList } from "./features/guides/GuideList";
 import { GuideDetail } from "./features/guides/GuideDetail";
@@ -143,6 +146,9 @@ function AppContent() {
 
       {/* Puppeteer render routes (no layout, screenshot targets) */}
       <Route path="/render/compare" element={<CompareRender />} />
+      <Route path="/render/profile" element={<ProfileRender />} />
+      <Route path="/render/activity" element={<ActivityRender />} />
+      <Route path="/render/top" element={<TopRender />} />
       <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
       <Route element={<AppLayout />}>
