@@ -40,7 +40,6 @@ jobs:
         run: |
           rm -rf /opt/createrington/dist
           cp -r dist /opt/createrington/dist
-          cp dist/CHANGELOG.md /opt/createrington/CHANGELOG.md 2>/dev/null || true
           cp package.json /opt/createrington/package.json
           rm -rf /opt/createrington/node_modules
           cp -r node_modules /opt/createrington/node_modules

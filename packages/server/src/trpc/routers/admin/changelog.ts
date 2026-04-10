@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { router, adminProcedure } from "@/trpc/trpc";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, "..", "..", "..", "..", "..", "..");
+const levels = process.env.NODE_ENV === "production" ? 5 : 6;
+const ROOT = path.resolve(__dirname, ...Array(levels).fill(".."));
 const CHANGELOG_PATH = path.join(ROOT, "CHANGELOG.md");
 
 export const changelogRouter = router({
