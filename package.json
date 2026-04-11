@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.33.0",
@@ -62,6 +62,8 @@
     "generate-command-docs": "pnpm --filter @createrington/server util:generate-command-docs",
     "generate-command-docs:json": "pnpm --filter @createrington/server util:generate-command-docs:json",
     "generate-command-docs:md": "pnpm --filter @createrington/server util:generate-command-docs:md",
+    "generate-api-docs": "pnpm --filter @createrington/server util:generate-api-docs",
+    "generate-mod-api": "pnpm --filter @createrington/server util:generate-mod-api",
     "scrape-discord": "pnpm --filter @createrington/server util:scrape-discord",
     "sync-nicknames": "pnpm --filter @createrington/server util:sync-nicknames",
     "db:generate": "pnpm --filter @createrington/server db:generate",

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { mcHeadsBody } from "@/lib/external-urls";
 import { useSearchParams } from "react-router-dom";
+import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerData {
   username: string;
@@ -76,6 +76,10 @@ export function CompareRender() {
   const [params] = useSearchParams();
   const [data, setData] = useState<CompareData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [skinLeft, setSkinLeft] = useState<string | null>(null);
+  const [skinRight, setSkinRight] = useState<string | null>(null);
+  const [poseLeft] = useState(randomPose);
+  const [poseRight] = useState(randomPose);
 
   const secret = params.get("secret");
   const p1 = params.get("player1");
@@ -99,6 +103,13 @@ export function CompareRender() {
       .catch(() => setFetchError("Failed to load comparison data"));
   }, [hasMissingParams, secret, p1, p2]);
 
+  // Load skin images once data arrives — both in parallel
+  useEffect(() => {
+    if (!data) return;
+    loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);
+    loadSkin(data.player2.uuid, poseRight).then(setSkinRight);
+  }, [data, poseLeft, poseRight]);
+
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 
   if (error) {
@@ -111,7 +122,7 @@ export function CompareRender() {
     );
   }
 
-  if (!data) {
+  if (!data || !skinLeft || !skinRight) {
     return (
       <div className="w-[900px] h-[500px] bg-background flex items-center justify-center">
         <span className="text-base tracking-wide text-muted-foreground">
@@ -157,9 +168,12 @@ export function CompareRender() {
       {/* Header */}
       <div className="flex items-center gap-4 px-8 pt-5 z-10">
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
-        <h1 className="text-[12px] font-semibold tracking-[0.35em] uppercase text-muted-foreground/40">
-          Player Comparison
-        </h1>
+        <img
+          src="/assets/render/player-comparison.webp"
+          alt="Player Comparison"
+          className="h-[44px]"
+          style={{ imageRendering: "pixelated" }}
+        />
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
 
@@ -170,7 +184,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-1" />
             <img
-              src={mcHeadsBody(left.uuid)}
+              src={skinLeft}
               alt={left.username}
               className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"
@@ -219,7 +233,7 @@ export function CompareRender() {
           <div className="relative h-[300px] flex items-end justify-center">
             <div className="absolute bottom-0 w-40 h-40 rounded-full blur-[60px] opacity-40 bg-chart-5" />
             <img
-              src={mcHeadsBody(right.uuid)}
+              src={skinRight}
               alt={right.username}
               className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
               crossOrigin="anonymous"

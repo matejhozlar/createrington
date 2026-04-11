@@ -4,6 +4,7 @@ import { playersRouter } from "./players";
 import { waitlistsRouter } from "./waitlists";
 import { metricsRouter } from "./metrics";
 import { cryptoRouter } from "./crypto";
+import { discordCommandsRouter } from "./discord-commands";
 
 /** Public router — servers, players, waitlists, metrics, and crypto market data (no auth required). */
 export const publicRouter = router({
@@ -12,4 +13,5 @@ export const publicRouter = router({
   waitlists: waitlistsRouter,
   metrics: metricsRouter,
   crypto: cryptoRouter,
+  discordCommands: discordCommandsRouter,
 });

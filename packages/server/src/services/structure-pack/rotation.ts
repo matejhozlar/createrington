@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { BadRequestError } from "@/app/middleware/error-handler";
@@ -135,6 +136,13 @@ export class StructurePackRotationService {
    * the next rotation at the configured time.
    */
   async initialize(): Promise<void> {
+    if (config.envMode.isDev) {
+      logger.warn(
+        "Skipping structure pack rotation in development environment",
+      );
+      return;
+    }
+
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
     const period = rotationConfig.period as RotationPeriod;

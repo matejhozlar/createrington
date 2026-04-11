@@ -26,6 +26,9 @@ export const commandRegistry: Record<string, CommandEnv> = {
   history: "prod",
   list: "prod",
   crypto: "prod",
+  profile: "prod",
+  activity: "prod",
+  top: "prod",
 
   // Admin
   username: "prod",
@@ -40,5 +43,6 @@ export const commandRegistry: Record<string, CommandEnv> = {
   "ticket-panel": "prod",
   "server-panel": "prod",
   "donate-panel": "prod",
+  "command-docs-panel": "prod",
   "force-inactivity-cleanup": "prod",
 };

@@ -109,6 +109,289 @@ router.get(
 );
 
 /**
+ * GET /api/render/profile?secret=...&player=...
+ *
+ * Returns profile data for a single player identified by Discord ID.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/profile",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { player } = req.query;
+
+    if (!player || typeof player !== "string") {
+      res.status(400).json({ error: "player query param required" });
+      return;
+    }
+
+    const details = await playerRepo.getDetailed({ discordId: player });
+
+    const tokens = await Q.crypto.token.where({}).all();
+    const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
+
+    const cashBalance = details.balance
+      ? BalanceUtils.fromStorage(details.balance.balance)
+      : 0;
+
+    const holdings = await Q.crypto.holding
+      .where({ playerMinecraftUuid: details.player.minecraftUuid })
+      .all();
+    const cryptoValue = holdings.reduce((sum, h) => {
+      const price = tokenPriceMap.get(h.tokenId) ?? 0;
+      return sum + price * Number(h.amount);
+    }, 0);
+
+    const networth = cashBalance + cryptoValue;
+    const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
+
+    // Aggregate Minecraft stats across all servers
+    const statsRows = await Q.player.minecraft.stats.findAll({
+      minecraftUuid: details.player.minecraftUuid,
+    });
+
+    let blocksMined = 0;
+    let mobsKilled = 0;
+    let deaths = 0;
+    let distanceCm = 0;
+
+    for (const row of statsRows) {
+      const stats = row.stats as Record<string, Record<string, number>>;
+      const mined = stats["minecraft:mined"];
+      if (mined) {
+        blocksMined += Object.values(mined).reduce((s, v) => s + v, 0);
+      }
+      const custom = stats["minecraft:custom"];
+      if (custom) {
+        mobsKilled += custom["minecraft:mob_kills"] ?? 0;
+        deaths += custom["minecraft:deaths"] ?? 0;
+        distanceCm +=
+          (custom["minecraft:walk_one_cm"] ?? 0) +
+          (custom["minecraft:sprint_one_cm"] ?? 0) +
+          (custom["minecraft:boat_one_cm"] ?? 0) +
+          (custom["minecraft:horse_one_cm"] ?? 0) +
+          (custom["minecraft:fly_one_cm"] ?? 0) +
+          (custom["minecraft:swim_one_cm"] ?? 0);
+      }
+    }
+
+    const distanceKm = Math.round(distanceCm / 100_000);
+
+    res.json({
+      username: details.player.minecraftUsername,
+      uuid: details.player.minecraftUuid,
+      online: details.player.online,
+      networth: fmt(networth),
+      cashBalance: fmt(cashBalance),
+      cryptoValue: fmt(cryptoValue),
+      playtime: formatPlaytime(details.playtime.totalSeconds),
+      playtimeSeconds: details.playtime.totalSeconds,
+      sessions: details.playtime.totalSessions,
+      memberSince: details.player.createdAt.toISOString(),
+      blocksMined,
+      mobsKilled,
+      deaths,
+      distanceKm,
+    });
+  }),
+);
+
+/**
+ * GET /api/render/activity?secret=...&player=...
+ *
+ * Returns daily playtime data for the last 365 days, aggregated across servers.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/activity",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { player } = req.query;
+
+    if (!player || typeof player !== "string") {
+      res.status(400).json({ error: "player query param required" });
+      return;
+    }
+
+    const details = await playerRepo.getDetailed({ discordId: player });
+    const uuid = details.player.minecraftUuid;
+
+    // Fetch daily playtime for the last 365 days
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 365);
+
+    const rows = await Q.player.playtime.daily
+      .where({
+        playerMinecraftUuid: uuid,
+        playDate: { $gte: startDate },
+      })
+      .all();
+
+    // Aggregate seconds across servers per day
+    const dayMap: Record<string, number> = {};
+    for (const row of rows) {
+      const date =
+        row.playDate instanceof Date
+          ? row.playDate.toISOString().split("T")[0]
+          : String(row.playDate);
+      dayMap[date] = (dayMap[date] ?? 0) + Number(row.secondsPlayed);
+    }
+
+    // Use all-time total from playtime summary (not just 365-day window)
+    const totalSeconds = details.playtime.totalSeconds;
+
+    // Current streak — consecutive days ending today or yesterday
+    let currentStreak = 0;
+    const today = new Date();
+    const check = new Date(today);
+    // Start from today, then try yesterday if today has no data yet
+    if (!dayMap[check.toISOString().split("T")[0]]) {
+      check.setDate(check.getDate() - 1);
+    }
+    while (dayMap[check.toISOString().split("T")[0]]) {
+      currentStreak++;
+      check.setDate(check.getDate() - 1);
+    }
+
+    // Most active day of week
+    const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+    for (const [dateStr, seconds] of Object.entries(dayMap)) {
+      const dow = new Date(dateStr).getUTCDay();
+      dayTotals[dow] += seconds;
+      dayCounts[dow]++;
+    }
+    const dayNames = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    let bestDay = 0;
+    let bestAvg = 0;
+    for (let i = 0; i < 7; i++) {
+      const avg = dayCounts[i] > 0 ? dayTotals[i] / dayCounts[i] : 0;
+      if (avg > bestAvg) {
+        bestAvg = avg;
+        bestDay = i;
+      }
+    }
+
+    // Current session duration (if online)
+    let currentSessionSeconds: number | null = null;
+    if (details.player.online) {
+      const activeSession = await Q.player.session
+        .where({
+          playerMinecraftUuid: uuid,
+          sessionEnd: { $exists: false },
+        })
+        .orderBy("sessionStart", "desc")
+        .first();
+
+      if (activeSession) {
+        currentSessionSeconds = Math.floor(
+          (Date.now() - activeSession.sessionStart.getTime()) / 1000,
+        );
+      }
+    }
+
+    res.json({
+      username: details.player.minecraftUsername,
+      uuid,
+      online: details.player.online,
+      currentSessionSeconds,
+      totalSeconds,
+      currentStreak,
+      mostActiveDay: totalSeconds > 0 ? dayNames[bestDay] : "N/A",
+      days: dayMap,
+    });
+  }),
+);
+
+/**
+ * GET /api/render/top?secret=...&category=...&item=...
+ *
+ * Returns top 3 players for a given Minecraft stat category + item.
+ * Protected by puppeteer secret — not accessible to regular users.
+ */
+router.get(
+  "/top",
+  asyncHandler(requirePuppeteerSecret),
+  asyncHandler(async (req: Request, res: Response) => {
+    const { category, item } = req.query;
+
+    if (
+      !category ||
+      !item ||
+      typeof category !== "string" ||
+      typeof item !== "string"
+    ) {
+      res
+        .status(400)
+        .json({ error: "category and item query params required" });
+      return;
+    }
+
+    const validCategories = [
+      "minecraft:mined",
+      "minecraft:killed",
+      "minecraft:killed_by",
+      "minecraft:crafted",
+      "minecraft:used",
+      "minecraft:broken",
+      "minecraft:picked_up",
+      "minecraft:dropped",
+      "minecraft:custom",
+    ];
+
+    if (!validCategories.includes(category)) {
+      res.status(400).json({ error: "Invalid stat category" });
+      return;
+    }
+
+    const results = await Q.player.minecraft.stats.compareItem(
+      item,
+      [category],
+      { limit: 3 },
+    );
+
+    // Format display title: "minecraft:zombie" + "minecraft:killed" → "Zombie Killed"
+    const itemName = item
+      .replace(/^minecraft:/, "")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const categoryVerbs: Record<string, string> = {
+      "minecraft:mined": "Mined",
+      "minecraft:killed": "Killed",
+      "minecraft:killed_by": "Deaths By",
+      "minecraft:crafted": "Crafted",
+      "minecraft:used": "Used",
+      "minecraft:broken": "Broken",
+      "minecraft:picked_up": "Picked Up",
+      "minecraft:dropped": "Dropped",
+      "minecraft:custom": "",
+    };
+    const verb = categoryVerbs[category] ?? category.replace(/^minecraft:/, "");
+    const displayTitle = verb ? `${itemName} ${verb}` : itemName;
+
+    res.json({
+      category,
+      item,
+      displayTitle,
+      players: results.map((r) => ({
+        username: r.minecraftUsername,
+        uuid: r.minecraftUuid,
+        value: r.values[0] ?? 0,
+      })),
+    });
+  }),
+);
+
+/**
  * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
  *
  * Returns token data and OHLCV price history for the chart render page.
