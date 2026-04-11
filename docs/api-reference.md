@@ -1,7 +1,7 @@
 # API Reference
 
 > Auto-generated from Express route and controller definitions. Do not edit manually.
-> Generated: 2026-04-10
+> Generated: 2026-04-11
 
 ## Table of Contents
 
@@ -149,30 +149,48 @@ Verifies the signature, then delegates to DonationService.
 
 ## Currency
 
-In-game economy endpoints called by the Minecraft mod: balances, transfers, withdrawals, daily rewards, and leaderboard.
+In-game economy operations: balance, payments, deposits, withdrawals, daily rewards, leaderboard, lottery
 
 **Base path:** `/api/currency` · **Auth:** Server IP + Mod JWT
 
 ### POST `/api/currency/login`
 
-Creates a short-lived JWT for subsequent currency requests.
-Only requires server IP verification (no existing JWT needed).
+Creates a short-lived JWT (10 min) for subsequent currency requests. Only requires server IP verification.
 
 **Auth:** `Server IP`
 
 **Body:**
 
 ```json
-{ uuid: string, name: string }
+{
+  uuid: string,  // Minecraft player UUID
+  name: string,  // Minecraft username
+}
+```
+
+**Response:**
+
+```json
+{
+  token: string,  // HS256 JWT, expires in 10 minutes
+}
 ```
 
 ---
 
 ### GET `/api/currency/balance`
 
-Returns the player's current balance.
+Returns the authenticated player's current balance.
 
 **Auth:** `Server IP + Mod JWT`
+
+**Response:**
+
+```json
+{
+  balance: double,  // Current balance
+}
+```
 
 ---
 
@@ -185,7 +203,20 @@ Transfers currency between two players.
 **Body:**
 
 ```json
-{ toUuid: string, amount: number, fromUuid?: string }
+{
+  toUuid: string,  // Recipient's Minecraft UUID
+  amount: double,  // Positive amount to transfer
+  fromUuid?: string,  // Sender UUID; defaults to authenticated player
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  new_sender_balance: double,  // Sender's new balance
+}
 ```
 
 ---
@@ -199,22 +230,82 @@ Adds currency to the authenticated player's balance.
 **Body:**
 
 ```json
-{ amount: number, reason?: string }
+{
+  amount: double,  // Positive amount to add
+  reason?: string,  // Transaction description; defaults to 'Deposit'
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  new_balance: double,  // New balance after deposit
+}
 ```
 
 ---
 
 ### POST `/api/currency/withdraw`
 
-Withdraws currency from the authenticated player's balance.
-Total withdrawn = denomination * count.
+Withdraws currency from the authenticated player's balance. Total withdrawn = denomination * count.
 
 **Auth:** `Server IP + Mod JWT`
 
 **Body:**
 
 ```json
-{ denomination: number, count: number }
+{
+  denomination: double,  // Unit size of one note/coin
+  count: int,  // Number of units to withdraw
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  withdrawn: double,  // Total amount deducted (denomination * count)
+  new_balance: double,  // New balance after withdrawal
+  denomination: double,
+  count: int,
+}
+```
+
+---
+
+### GET `/api/currency/top`
+
+Returns top 10 players by balance, sorted descending.
+
+**Auth:** `Server IP + Mod JWT`
+
+**Response:**
+
+```json
+// Returns: TopEntry[]
+{
+  name: string,  // Minecraft username
+  balance: double,
+}
+```
+
+---
+
+### POST `/api/currency/daily`
+
+Claims the daily reward for the authenticated player. Returns 400 with a message if not yet eligible.
+
+**Auth:** `Server IP + Mod JWT`
+
+**Response:**
+
+```json
+{
+  message: string,
+}
 ```
 
 ---
@@ -225,21 +316,24 @@ Returns paginated transaction history for the authenticated player.
 
 **Auth:** `Server IP + Mod JWT`
 
----
+**Query params:**
 
-### GET `/api/currency/top`
+```json
+{
+  page?: int,  // 1-indexed page number (default: 1)
+  limit?: int,  // Items per page (default: 10, max: 20)
+}
+```
 
-Returns top 10 players by balance.
+**Response:**
 
-**Auth:** `Server IP + Mod JWT`
-
----
-
-### POST `/api/currency/daily`
-
-Claims the daily reward for the authenticated player.
-
-**Auth:** `Server IP + Mod JWT`
+```json
+{
+  transactions: Transaction[],
+  page: int,
+  hasMore: boolean,
+}
+```
 
 ---
 
@@ -252,37 +346,27 @@ Starts a new lottery round with the given buy-in amount.
 **Body:**
 
 ```json
-{ amount: number }
+{
+  amount: double,  // Buy-in amount
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  message: string,
+  entryAmount: double,
+  endsAt: string,  // ISO 8601 timestamp when the lottery resolves
+}
 ```
 
 ---
 
 ### POST `/api/currency/lottery/join`
 
-Joins an active lottery round with the given buy-in amount.
-
-**Auth:** `Server IP + Mod JWT`
-
-**Body:**
-
-```json
-{ amount: number }
-```
-
----
-
-## Presence
-
-Player join/leave tracking and heartbeat reconciliation from the Minecraft mod.
-
-**Base path:** `/api/presence` · **Auth:** Server IP + Mod JWT
-
-### POST `/api/presence`
-
-Records a player join or leave event from a Minecraft server.
-Resolves the target server from either the `serverId` field in the request
-body or the verified server IP attached by the middleware. Dispatches to the
-correct PlaytimeService instance and responds with the echoed event details.
+Joins an active lottery round with the given bet amount.
 
 **Auth:** `Server IP + Mod JWT`
 
@@ -290,11 +374,57 @@ correct PlaytimeService instance and responds with the echoed event details.
 
 ```json
 {
- minecraftUsername: string,
- uuid: string,
- state: "joined" | "left",
- timestamp: number,
- serverId?: number
+  amount: double,  // Bet amount
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  message: string,
+  entryAmount: double,
+  totalPot: double,
+  participantCount: int,
+}
+```
+
+---
+
+## Presence
+
+Minecraft player presence tracking: join/leave events and periodic heartbeats
+
+**Base path:** `/api/presence` · **Auth:** Server IP + Mod JWT
+
+### POST `/api/presence`
+
+Records a player join or leave event from a Minecraft server.
+
+**Auth:** `Server IP + Mod JWT`
+
+**Body:**
+
+```json
+{
+  minecraftUsername: string,
+  uuid: string,  // Minecraft player UUID
+  state: string,  // "joined" or "left"
+  timestamp?: long,  // Unix milliseconds; defaults to server time
+  serverId?: int,  // Overrides IP-derived server
+  position?: Position,  // Last known position (only used when state is 'left')
+  dimension?: string,  // e.g. "minecraft:overworld"
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  message: string,
+  data: PresenceData,
 }
 ```
 
@@ -302,8 +432,7 @@ correct PlaytimeService instance and responds with the echoed event details.
 
 ### POST `/api/presence/heartbeat`
 
-Receives a heartbeat from the mod containing the full online player list.
-Reconciles tracked sessions against reality to clean up stale sessions.
+Receives the full online player list from a server. Reconciles tracked sessions against reality to clean up stale sessions.
 
 **Auth:** `Server IP + Mod JWT`
 
@@ -311,9 +440,19 @@ Reconciles tracked sessions against reality to clean up stale sessions.
 
 ```json
 {
- players: Array<{ uuid: string, username: string }>,
- timestamp?: number,
- serverId?: string
+  players: HeartbeatPlayer[],
+  serverId?: int,  // Overrides IP-derived server
+  timestamp?: long,  // Unix milliseconds
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+  message: string,
+  data: HeartbeatData,
 }
 ```
 
@@ -321,16 +460,41 @@ Reconciles tracked sessions against reality to clean up stale sessions.
 
 ## Trains
 
-Train crash event reporting from the Create: Trains Minecraft mod.
+Train crash event reporting from the Create: Trains Minecraft mod
 
 **Base path:** `/api/trains` · **Auth:** Server IP
 
 ### POST `/api/trains/crash`
 
-Receives train crash data from the Minecraft mod and sends
-a notification embed to the Cogs & Steam notifications channel.
+Receives train crash data and sends a notification embed to the Cogs & Steam notifications channel.
 
 **Auth:** `Server IP`
+
+**Body:**
+
+```json
+{
+  trainId: string,
+  trainName: string,
+  speed?: double,
+  carriageCount?: int,
+  position?: Position,
+  dimension?: string,  // e.g. "minecraft:overworld"
+  timestamp?: long,  // Unix milliseconds
+  owner?: string,  // Minecraft UUID of train owner
+  driverUuid?: string,  // Minecraft UUID of active driver
+  passengers?: CrashPassenger[],
+  backwardsDriver?: BackwardsDriver,
+}
+```
+
+**Response:**
+
+```json
+{
+  success: boolean,
+}
+```
 
 ---
 

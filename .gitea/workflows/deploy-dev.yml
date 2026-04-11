@@ -38,6 +38,36 @@ jobs:
           pnpm generate-api-docs
           pnpm deploy-commands
 
+      - name: Check for API spec changes
+        id: spec-check
+        run: |
+          if git diff HEAD~1 --name-only -- '*.api-spec.ts' | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Gradle
+        if: steps.spec-check.outputs.changed == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Generate and publish mod API (dev)
+        if: steps.spec-check.outputs.changed == 'true'
+        run: |
+          pnpm generate-mod-api
+          cd mod-api
+          sed -i 's/artifact_id=createrington-api/artifact_id=createrington-dev-api/' gradle.properties
+          gradle publish
+          cd ..
+          git clone https://x-access-token:${{ secrets.MAVEN_REPO_TOKEN }}@github.com/matejhozlar/maven.git maven-repo
+          cp -r mod-api/build/maven-publish/. maven-repo/
+          cd maven-repo
+          git config user.email "ci@createrington.com"
+          git config user.name "CI"
+          git add .
+          git diff --cached --quiet || git commit -m "publish createrington-dev-api $(grep '^version=' ../mod-api/gradle.properties | cut -d'=' -f2)"
+          git push
+
       - name: Build
         run: |
           VITE_APP_VERSION="$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" \

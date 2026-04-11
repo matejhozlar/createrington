@@ -45,4 +45,7 @@ storage/transcripts
 # Auto-generated files
 generated
 packages/shared/src/db
+mod-api/src/
+mod-api/build/
+mod-api/.gradle/
 

@@ -1,0 +1,27 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+java {
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+    withSourcesJar()
+}
+
+dependencies {
+    compileOnly 'com.google.code.gson:gson:2.11.0'
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            from components.java
+            groupId = project.group_id
+            artifactId = project.artifact_id
+            version = project.version
+        }
+    }
+    repositories {
+        maven { url = layout.buildDirectory.dir('maven-publish') }
+    }
+}

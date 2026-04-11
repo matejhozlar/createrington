@@ -1,11 +1,11 @@
 /**
  * API Docs Generator
  *
- * Statically parses Express route files and controller JSDoc comments
- * to generate a human-readable Markdown reference for the REST API.
+ * Generates a human-readable Markdown reference for the REST API.
  *
- * No runtime imports — reads source files as plain text, so it works
- * without a database connection or any service dependencies.
+ * Mod-facing modules (Currency, Presence, Trains) use structured API spec
+ * files as their source of truth. All other modules fall back to static
+ * source-file parsing of Express routes and controller JSDoc comments.
  *
  * Usage:
  *   tsx src/scripts/api/generate-api-docs.ts
@@ -14,6 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { ApiModuleSpec, FieldSpec, FieldType } from "./spec-types";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FEATURES_DIR = path.join(__dirname, "..", "..", "app", "features");
@@ -76,33 +77,7 @@ const ROUTE_MODULES: RouteModule[] = [
       "Stripe webhook processing for donation and subscription events.",
     authNote: "Stripe signature",
   },
-  {
-    name: "Currency",
-    prefix: "/api/currency",
-    routeFile: "mod/currency/currency.routes.ts",
-    controllerFile: "mod/currency/currency.controller.ts",
-    description:
-      "In-game economy endpoints called by the Minecraft mod: balances, transfers, withdrawals, daily rewards, and leaderboard.",
-    authNote: "Server IP + Mod JWT",
-  },
-  {
-    name: "Presence",
-    prefix: "/api/presence",
-    routeFile: "mod/presence/presence.routes.ts",
-    controllerFile: "mod/presence/presence.controller.ts",
-    description:
-      "Player join/leave tracking and heartbeat reconciliation from the Minecraft mod.",
-    authNote: "Server IP + Mod JWT",
-  },
-  {
-    name: "Trains",
-    prefix: "/api/trains",
-    routeFile: "mod/trains/trains.routes.ts",
-    controllerFile: "mod/trains/trains.controller.ts",
-    description:
-      "Train crash event reporting from the Create: Trains Minecraft mod.",
-    authNote: "Server IP",
-  },
+  // Currency, Presence, and Trains are generated from API spec files (see MOD_SPECS below)
   {
     name: "Render",
     prefix: "/api/render",
@@ -386,109 +361,7 @@ function authBadge(auth: string): string {
   }
 }
 
-function generateMarkdown(
-  modules: Array<{
-    module: RouteModule;
-    routes: ParsedRoute[];
-    controllerDocs: Map<string, ControllerDoc>;
-  }>,
-): string {
-  const lines: string[] = [];
-
-  lines.push("# API Reference");
-  lines.push("");
-  lines.push(
-    "> Auto-generated from Express route and controller definitions. Do not edit manually.",
-  );
-  lines.push(`> Generated: ${new Date().toISOString().split("T")[0]}`);
-  lines.push("");
-
-  // Table of contents
-  lines.push("## Table of Contents");
-  lines.push("");
-  for (const { module, routes } of modules) {
-    lines.push(
-      `- **[${module.name}](#${module.name.toLowerCase().replace(/\s+/g, "-")})** — ${routes.length} endpoint(s)`,
-    );
-  }
-  lines.push("");
-
-  // Auth reference
-  lines.push("## Authentication");
-  lines.push("");
-  lines.push("| Scheme | Description |");
-  lines.push("|--------|-------------|");
-  lines.push(
-    "| **Bearer JWT** | User access token from Discord OAuth. Sent as `Authorization: Bearer {token}` |",
-  );
-  lines.push(
-    "| **Mod JWT** | Short-lived token (10 min) issued by `POST /api/currency/login`. Same Bearer header |",
-  );
-  lines.push(
-    "| **Server IP** | Request must originate from a whitelisted Minecraft server IP |",
-  );
-  lines.push(
-    "| **Sync Secret** | `X-Sync-Secret` header for cross-environment sync |",
-  );
-  lines.push(
-    "| **Puppeteer Secret** | `?secret=` query param for internal render service |",
-  );
-  lines.push(
-    "| **Stripe Signature** | `stripe-signature` header for webhook verification |",
-  );
-  lines.push("");
-
-  lines.push("---");
-  lines.push("");
-
-  // Module sections
-  for (const { module, routes, controllerDocs } of modules) {
-    lines.push(`## ${module.name}`);
-    lines.push("");
-    lines.push(module.description);
-    lines.push("");
-    lines.push(
-      `**Base path:** \`${module.prefix}\` · **Auth:** ${module.authNote}`,
-    );
-    lines.push("");
-
-    for (const route of routes) {
-      lines.push(`### ${route.method} \`${route.path}\``);
-      lines.push("");
-
-      // Get description from controller JSDoc, route comment, or route-level JSDoc
-      const doc = route.handlerMethod
-        ? controllerDocs.get(route.handlerMethod)
-        : null;
-      const description =
-        doc?.description || extractRouteDescription(route.routeComment);
-
-      if (description) {
-        lines.push(description);
-        lines.push("");
-      }
-
-      lines.push(`**Auth:** ${authBadge(route.auth)}`);
-      lines.push("");
-
-      // Body documentation
-      const body = doc?.body || extractBodyFromComment(route.routeComment);
-      if (body) {
-        lines.push("**Body:**");
-        lines.push("");
-        lines.push("```json");
-        lines.push(body);
-        lines.push("```");
-        lines.push("");
-      }
-
-      lines.push("---");
-      lines.push("");
-    }
-  }
-
-  return lines.join("\n");
-}
+// (generateMarkdown replaced by generateFullMarkdown + generateParsedModuleMarkdown below)
 
 /**
  * Extracts a description from a route-level comment, stripping the route
@@ -542,18 +415,266 @@ function extractBodyFromComment(comment: string): string | null {
 }
 
 // ============================================================================
+// API SPEC–BASED GENERATION (mod modules)
+// ============================================================================
+
+const MOD_SPECS: ApiModuleSpec[] = [
+  (await import("@/app/features/mod/currency/currency.api-spec")).default,
+  (await import("@/app/features/mod/presence/presence.api-spec")).default,
+  (await import("@/app/features/mod/trains/trains.api-spec")).default,
+];
+
+/**
+ * Formats a FieldType as a human-readable type string for docs.
+ */
+function formatFieldType(type: FieldType): string {
+  if (typeof type === "string") return type;
+  if (type.type === "array") return `${formatFieldType(type.items)}[]`;
+  if (type.type === "object") return type.name;
+  return "unknown";
+}
+
+/**
+ * Renders a list of fields as a JSON-like body block for the docs.
+ */
+function fieldsToBodyBlock(fields: FieldSpec[]): string {
+  const lines: string[] = ["{"];
+
+  for (const field of fields) {
+    const opt = field.nullable ? "?" : "";
+    const typeStr = formatFieldType(field.type);
+    const desc = field.description ? `  // ${field.description}` : "";
+    const key = field.jsonName ?? field.name;
+    lines.push(`  ${key}${opt}: ${typeStr},${desc}`);
+  }
+
+  lines.push("}");
+  return lines.join("\n");
+}
+
+/**
+ * Generates markdown sections for modules backed by API spec files.
+ * Output format matches the source-parsed module sections.
+ */
+function generateSpecModulesMarkdown(specs: ApiModuleSpec[]): string {
+  const lines: string[] = [];
+
+  for (const spec of specs) {
+    lines.push(`## ${spec.name}`);
+    lines.push("");
+    lines.push(spec.description ?? "");
+    lines.push("");
+    lines.push(`**Base path:** \`${spec.prefix}\` · **Auth:** ${spec.auth}`);
+    lines.push("");
+
+    for (const ep of spec.endpoints) {
+      const fullPath = spec.prefix + (ep.path === "/" ? "" : ep.path);
+      lines.push(`### ${ep.method} \`${fullPath}\``);
+      lines.push("");
+
+      if (ep.description) {
+        lines.push(ep.description);
+        lines.push("");
+      }
+
+      const auth = ep.auth ?? spec.auth;
+      lines.push(`**Auth:** \`${auth}\``);
+      lines.push("");
+
+      // Query params
+      if (ep.query && ep.query.length > 0) {
+        lines.push("**Query params:**");
+        lines.push("");
+        lines.push("```json");
+        lines.push(fieldsToBodyBlock(ep.query));
+        lines.push("```");
+        lines.push("");
+      }
+
+      // Request body
+      if (ep.request) {
+        lines.push("**Body:**");
+        lines.push("");
+        lines.push("```json");
+        lines.push(fieldsToBodyBlock(ep.request.fields));
+        lines.push("```");
+        lines.push("");
+      }
+
+      // Response body
+      if (ep.response) {
+        const prefix = ep.response.isArray ? `${ep.response.name}[]` : "";
+        lines.push("**Response:**");
+        lines.push("");
+        lines.push("```json");
+        if (ep.response.isArray) {
+          lines.push(`// Returns: ${prefix}`);
+        }
+        lines.push(fieldsToBodyBlock(ep.response.fields));
+        lines.push("```");
+        lines.push("");
+      }
+
+      lines.push("---");
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+// ============================================================================
 // MAIN
 // ============================================================================
+
+/**
+ * An ordered entry for document generation. Either a source-parsed module
+ * or a spec-based module.
+ */
+type DocEntry =
+  | {
+      kind: "parsed";
+      module: RouteModule;
+      routes: ParsedRoute[];
+      controllerDocs: Map<string, ControllerDoc>;
+    }
+  | {
+      kind: "spec";
+      spec: ApiModuleSpec;
+    };
+
+/**
+ * Renders the full Markdown document from an ordered list of doc entries.
+ */
+function generateFullMarkdown(entries: DocEntry[]): string {
+  const lines: string[] = [];
+
+  lines.push("# API Reference");
+  lines.push("");
+  lines.push(
+    "> Auto-generated from Express route and controller definitions. Do not edit manually.",
+  );
+  lines.push(`> Generated: ${new Date().toISOString().split("T")[0]}`);
+  lines.push("");
+
+  // Table of contents
+  lines.push("## Table of Contents");
+  lines.push("");
+  for (const entry of entries) {
+    if (entry.kind === "parsed") {
+      const count = entry.routes.length;
+      lines.push(
+        `- **[${entry.module.name}](#${entry.module.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} endpoint(s)`,
+      );
+    } else {
+      const count = entry.spec.endpoints.length;
+      lines.push(
+        `- **[${entry.spec.name}](#${entry.spec.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} endpoint(s)`,
+      );
+    }
+  }
+  lines.push("");
+
+  // Auth reference
+  lines.push("## Authentication");
+  lines.push("");
+  lines.push("| Scheme | Description |");
+  lines.push("|--------|-------------|");
+  lines.push(
+    "| **Bearer JWT** | User access token from Discord OAuth. Sent as `Authorization: Bearer {token}` |",
+  );
+  lines.push(
+    "| **Mod JWT** | Short-lived token (10 min) issued by `POST /api/currency/login`. Same Bearer header |",
+  );
+  lines.push(
+    "| **Server IP** | Request must originate from a whitelisted Minecraft server IP |",
+  );
+  lines.push(
+    "| **Sync Secret** | `X-Sync-Secret` header for cross-environment sync |",
+  );
+  lines.push(
+    "| **Puppeteer Secret** | `?secret=` query param for internal render service |",
+  );
+  lines.push(
+    "| **Stripe Signature** | `stripe-signature` header for webhook verification |",
+  );
+  lines.push("");
+
+  lines.push("---");
+  lines.push("");
+
+  // Module sections
+  for (const entry of entries) {
+    if (entry.kind === "spec") {
+      lines.push(generateSpecModulesMarkdown([entry.spec]));
+    } else {
+      lines.push(generateParsedModuleMarkdown(entry));
+    }
+  }
+
+  return lines.join("\n");
+}
+
+/**
+ * Renders a single source-parsed module as a Markdown section.
+ */
+function generateParsedModuleMarkdown(entry: {
+  module: RouteModule;
+  routes: ParsedRoute[];
+  controllerDocs: Map<string, ControllerDoc>;
+}): string {
+  const { module: mod, routes, controllerDocs } = entry;
+  const lines: string[] = [];
+
+  lines.push(`## ${mod.name}`);
+  lines.push("");
+  lines.push(mod.description);
+  lines.push("");
+  lines.push(`**Base path:** \`${mod.prefix}\` · **Auth:** ${mod.authNote}`);
+  lines.push("");
+
+  for (const route of routes) {
+    lines.push(`### ${route.method} \`${route.path}\``);
+    lines.push("");
+
+    const doc = route.handlerMethod
+      ? controllerDocs.get(route.handlerMethod)
+      : null;
+    const description =
+      doc?.description || extractRouteDescription(route.routeComment);
+
+    if (description) {
+      lines.push(description);
+      lines.push("");
+    }
+
+    lines.push(`**Auth:** ${authBadge(route.auth)}`);
+    lines.push("");
+
+    const body = doc?.body || extractBodyFromComment(route.routeComment);
+    if (body) {
+      lines.push("**Body:**");
+      lines.push("");
+      lines.push("```json");
+      lines.push(body);
+      lines.push("```");
+      lines.push("");
+    }
+
+    lines.push("---");
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
 
 function main(): void {
   console.log("Generating API reference docs...\n");
 
-  const modules: Array<{
-    module: RouteModule;
-    routes: ParsedRoute[];
-    controllerDocs: Map<string, ControllerDoc>;
-  }> = [];
+  // --- Build ordered list of doc entries ---
+  const entries: DocEntry[] = [];
 
+  // Source-parsed modules (non-mod)
   for (const mod of ROUTE_MODULES) {
     const routeFilePath = path.join(FEATURES_DIR, mod.routeFile);
 
@@ -578,12 +699,35 @@ function main(): void {
 
     console.log(`  ${mod.name}: ${routes.length} endpoint(s)`);
 
-    modules.push({ module: mod, routes, controllerDocs });
+    // Insert spec-based modules after Donations (the 4th parsed module)
+    if (entries.length === 4) {
+      for (const spec of MOD_SPECS) {
+        console.log(
+          `  ${spec.name}: ${spec.endpoints.length} endpoint(s) [spec]`,
+        );
+        entries.push({ kind: "spec", spec });
+      }
+    }
+
+    entries.push({ kind: "parsed", module: mod, routes, controllerDocs });
   }
 
-  const totalEndpoints = modules.reduce((sum, m) => sum + m.routes.length, 0);
+  // If we had fewer than 4 parsed modules, append specs at the end
+  if (!entries.some((e) => e.kind === "spec")) {
+    for (const spec of MOD_SPECS) {
+      console.log(
+        `  ${spec.name}: ${spec.endpoints.length} endpoint(s) [spec]`,
+      );
+      entries.push({ kind: "spec", spec });
+    }
+  }
 
-  const markdown = generateMarkdown(modules);
+  const totalEndpoints = entries.reduce((sum, e) => {
+    if (e.kind === "parsed") return sum + e.routes.length;
+    return sum + e.spec.endpoints.length;
+  }, 0);
+
+  const markdown = generateFullMarkdown(entries);
 
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   fs.writeFileSync(OUTPUT_FILE, markdown, "utf-8");
