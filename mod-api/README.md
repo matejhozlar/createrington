@@ -130,10 +130,14 @@ The generator script (`packages/server/src/scripts/api/generate-mod-api.ts`) rea
 
 | Branch | Artifact ID | Published when |
 |--------|-------------|----------------|
-| `dev` | `createrington-dev-api` | Spec files changed in the push |
-| `main` | `createrington-api` | Spec files changed in the push |
+| `dev` | `createrington-dev-api` | Spec files changed in the push to `dev` |
+| `main` | `createrington-api` | Spec files changed in the push to `main` |
 
-Both publish to `https://github.com/matejhozlar/maven` via CI.
+Both publish to `https://github.com/matejhozlar/maven` via CI. The version number should always match between dev and prod — only the artifact ID differs.
+
+### Change detection
+
+CI uses `git diff ${{ github.event.before }}..HEAD` to detect spec file changes. This compares the previous branch tip with the new one, so it captures **all changes in a merged PR**, not just the last commit. If no `*.api-spec.ts` files changed, the publish step is skipped entirely. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error.
 
 ### Local development
 
@@ -143,4 +147,75 @@ pnpm generate-mod-api
 
 # Build the jar (requires Java 21 + Gradle)
 cd mod-api && gradle build
+```
+
+## Development & release workflow
+
+This is the full flow for making API changes and shipping them to mods.
+
+### Phase 1: API changes (Createrington app)
+
+1. **Create a feature branch** off `dev` in this repo
+2. **Make the server changes** — modify the controller, service, routes, etc.
+3. **Update the spec file** — edit the corresponding `*.api-spec.ts` alongside the controller
+4. **Bump the version** in `mod-api/gradle.properties` (e.g. `1.0.0` → `1.1.0`)
+5. **PR to `dev`** — on merge, CI publishes `createrington-dev-api:1.1.0`
+
+### Phase 2: Update CRNet (CRNet repo)
+
+6. **Create a feature branch** off `neoforge-1.21.1` in CRNet
+7. **Update the dependency version** in `build.gradle`:
+   ```groovy
+   api 'com.saunhardy:createrington-dev-api:1.1.0'
+   ```
+   And the `jarJar` version range:
+   ```groovy
+   jarJar('com.saunhardy:createrington-dev-api') {
+       version {
+           strictly '[1.1.0, 2.0.0)'
+           prefer '1.1.0'
+       }
+   }
+   ```
+8. **Build and test** — `./gradlew build` to verify the new types resolve
+
+### Phase 3: Update the mod (e.g. PresenceAPI)
+
+9. **Create a feature branch** in the mod repo
+10. **Use the new types** — replace manual Gson with the typed records, use `Endpoints` constants
+11. **Test against the dev server** (`dev.create-rington.com`) to verify everything works end-to-end
+
+### Phase 4: Ship to production
+
+Once satisfied with the dev cycle:
+
+12. **Createrington app** — PR from `dev` to `main`. On merge, CI publishes `createrington-api:1.1.0` (same version, production artifact)
+13. **CRNet** — switch the dependency from dev to prod artifact:
+    ```groovy
+    api 'com.saunhardy:createrington-api:1.1.0'
+    ```
+    And update the `jarJar` block:
+    ```groovy
+    jarJar('com.saunhardy:createrington-api') {
+        version {
+            strictly '[1.1.0, 2.0.0)'
+            prefer '1.1.0'
+        }
+    }
+    ```
+    PR, merge, build, and publish CRNet to Maven
+14. **Mod** — update CRNet version in the mod's `build.gradle`, build, and publish the mod
+
+### Quick reference
+
+```
+Spec change → dev merge → createrington-dev-api published
+                ↓
+          CRNet picks up dev artifact → mod develops against it
+                ↓
+       main merge → createrington-api published (same version)
+                ↓
+     CRNet switches to prod artifact → CRNet published
+                ↓
+            Mod updates CRNet version → mod published
 ```
