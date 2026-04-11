@@ -146,7 +146,7 @@ ${generateHelperFunctions()}
  * ```
  */
 function generateTableConstant(table: TableInfo): string {
-  const constName = table.tableName.toUpperCase().replace(/_/g, "_");
+  const constName = table.tableName.toUpperCase();
   const snakeFields = generateFieldConstants(table, false);
   const camelFields = generateFieldConstants(table, true);
 
