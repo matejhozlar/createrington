@@ -57,6 +57,12 @@ jobs:
           pnpm generate-mod-api
           cd mod-api
           sed -i 's/artifact_id=createrington-api/artifact_id=createrington-dev-api/' gradle.properties
+          VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)
+          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-dev-api/${VERSION}/createrington-dev-api-${VERSION}.jar"
+          if curl --silent --head --fail "$JAR_URL" > /dev/null 2>&1; then
+            echo "ERROR: createrington-dev-api:${VERSION} already published. Bump version in mod-api/gradle.properties"
+            exit 1
+          fi
           gradle publish
           cd ..
           git clone https://x-access-token:${{ secrets.MAVEN_REPO_TOKEN }}@github.com/matejhozlar/maven.git maven-repo
@@ -65,7 +71,7 @@ jobs:
           git config user.email "ci@createrington.com"
           git config user.name "CI"
           git add .
-          git diff --cached --quiet || git commit -m "publish createrington-dev-api $(grep '^version=' ../mod-api/gradle.properties | cut -d'=' -f2)"
+          git diff --cached --quiet || git commit -m "publish createrington-dev-api ${VERSION}"
           git push
 
       - name: Build
