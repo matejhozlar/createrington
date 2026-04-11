@@ -1,3 +1,4 @@
+// API spec for mod-facing currency endpoints — source of truth for Java library + docs generation
 import { defineApiSpec } from "@/scripts/api/spec-types";
 
 export default defineApiSpec({
