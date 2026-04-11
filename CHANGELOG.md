@@ -1,3 +1,23 @@
+## v1.5.0 (2026-04-11)
+
+### @createrington/server (1.4.0 → 1.5.0)
+- Add `/profile`, `/activity`, and `/top` Discord slash commands that generate and post rendered player stat cards (profile summary, playtime heatmap, and leaderboard podium respectively)
+- Add server-side render API endpoints (`/api/render/profile`, `/api/render/activity`, `/api/render/top`, `/api/render/compare`) that serve headless-rendered card pages for Discord embeds
+- Add mod API Java library generator (`generate-mod-api`) that produces typed Java records and endpoint constants from structured spec files; initial spec files cover the `currency`, `presence`, and `trains` modules
+- Add API documentation generator script (`generate-api-docs`) that produces `docs/api-reference.md` from spec files and JSDoc source parsing
+- Add `/command-docs-panel` owner slash command that posts a persistent Discord embed listing all available commands, organised by group
+- Replace hardcoded Discord command docs in the guides with dynamically fetched command data via a new `public.discordCommands` tRPC router, keeping the client always in sync with the actual command registry
+- Improve `command-docs-panel` embed layout and design
+- Guard rotating status service and structure pack rotation service so they are skipped in the dev environment, avoiding unintended Discord/server side effects during local development
+- Set up CI workflow for automated mod API library publishing to Maven when spec files change
+
+### @createrington/client (0.2.1 → 0.2.2)
+- Add `ActivityRender`, `ProfileRender`, and `TopRender` headless pages used by the Discord slash commands to render player stat cards as images
+- Switch profile and compare render pages to use the starlightskins API for Minecraft skin rendering, replacing the previous skinview3d library
+- Add `skin-utils.ts` with a curated pool of verified skin poses for render card variety
+- Replace hardcoded Discord commands guide content with dynamically loaded command data fetched from the server, so the guide always reflects the current command list
+- Fix command docs tool to show an inline loading spinner while commands are being fetched
+
 ## v1.4.0 (2026-04-10)
 
 ### @createrington/server (1.3.0 → 1.4.0)
