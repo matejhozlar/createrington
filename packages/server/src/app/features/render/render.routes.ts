@@ -30,7 +30,7 @@ function requirePuppeteerSecret(
   _res: Response,
   next: () => void,
 ) {
-  const secret = req.query.secret;
+  const secret = req.headers["x-render-secret"];
   if (!secret || secret !== config.puppeteer.secret) {
     throw new UnauthorizedError("Invalid render secret");
   }
