@@ -49,6 +49,13 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Setup JDK 21
+        if: steps.spec-check.outputs.changed == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
       - name: Setup Gradle
         if: steps.spec-check.outputs.changed == 'true'
         uses: gradle/actions/setup-gradle@v4
