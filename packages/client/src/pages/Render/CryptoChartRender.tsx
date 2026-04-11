@@ -228,11 +228,10 @@ export function CryptoChartRender() {
     if (hasMissingParams) return;
 
     const url = new URL("/api/render/crypto-chart", window.location.origin);
-    url.searchParams.set("secret", secret);
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("interval", interval);
 
-    fetch(url.toString())
+    fetch(url.toString(), { headers: { "x-render-secret": secret } })
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<ChartData>;
