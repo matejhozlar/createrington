@@ -563,13 +563,15 @@ function generateFullMarkdown(entries: DocEntry[]): string {
   for (const entry of entries) {
     if (entry.kind === "parsed") {
       const count = entry.routes.length;
+      const label = count === 1 ? "endpoint" : "endpoints";
       lines.push(
-        `- **[${entry.module.name}](#${entry.module.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} endpoint(s)`,
+        `- **[${entry.module.name}](#${entry.module.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} ${label}`,
       );
     } else {
       const count = entry.spec.endpoints.length;
+      const label = count === 1 ? "endpoint" : "endpoints";
       lines.push(
-        `- **[${entry.spec.name}](#${entry.spec.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} endpoint(s)`,
+        `- **[${entry.spec.name}](#${entry.spec.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} ${label}`,
       );
     }
   }
@@ -699,8 +701,10 @@ function main(): void {
 
     console.log(`  ${mod.name}: ${routes.length} endpoint(s)`);
 
-    // Insert spec-based modules after Donations (the 4th parsed module)
-    if (entries.length === 4) {
+    entries.push({ kind: "parsed", module: mod, routes, controllerDocs });
+
+    // Insert spec-based modules after Donations (last module before mod endpoints)
+    if (mod.name === "Donations") {
       for (const spec of MOD_SPECS) {
         console.log(
           `  ${spec.name}: ${spec.endpoints.length} endpoint(s) [spec]`,
@@ -708,11 +712,9 @@ function main(): void {
         entries.push({ kind: "spec", spec });
       }
     }
-
-    entries.push({ kind: "parsed", module: mod, routes, controllerDocs });
   }
 
-  // If we had fewer than 4 parsed modules, append specs at the end
+  // If Donations wasn't found, append specs at the end
   if (!entries.some((e) => e.kind === "spec")) {
     for (const spec of MOD_SPECS) {
       console.log(

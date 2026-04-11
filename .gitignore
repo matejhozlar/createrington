@@ -48,4 +48,5 @@ packages/shared/src/db
 mod-api/src/
 mod-api/build/
 mod-api/.gradle/
+docs/api-reference.md
 

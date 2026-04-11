@@ -32,7 +32,7 @@ jobs:
       - name: Check for API spec changes
         id: spec-check
         run: |
-          if git diff HEAD~1 --name-only -- '*.api-spec.ts' | grep -q .; then
+          if git diff ${{ github.event.before }}..HEAD --name-only -- '*.api-spec.ts' | grep -q .; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"

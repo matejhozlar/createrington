@@ -318,46 +318,46 @@ function main(): void {
 
     console.log(`  ${spec.name} (${spec.endpoints.length} endpoints)`);
 
+    const generatedRecords = new Set<string>();
+
     for (const ep of spec.endpoints) {
       // Request record
       if (ep.request) {
-        const nested = collectNestedRecords(ep.request.fields);
         writeFile(
           path.join(moduleDir, `${ep.request.name}.java`),
           generateRecordFile(packageName, ep.request.name, ep.request.fields),
         );
+        generatedRecords.add(ep.request.name);
         totalFiles++;
 
-        // Nested records from request
-        for (const rec of nested) {
+        for (const rec of collectNestedRecords(ep.request.fields)) {
+          if (generatedRecords.has(rec.name)) continue;
           writeFile(
             path.join(moduleDir, `${rec.name}.java`),
             generateRecordFile(packageName, rec.name, rec.fields),
           );
+          generatedRecords.add(rec.name);
           totalFiles++;
         }
       }
 
       // Response record
       if (ep.response) {
-        const nested = collectNestedRecords(ep.response.fields);
         writeFile(
           path.join(moduleDir, `${ep.response.name}.java`),
           generateRecordFile(packageName, ep.response.name, ep.response.fields),
         );
+        generatedRecords.add(ep.response.name);
         totalFiles++;
 
-        // Nested records from response
-        for (const rec of nested) {
-          // Skip if already generated (e.g. Position in both request and response)
-          const filePath = path.join(moduleDir, `${rec.name}.java`);
-          if (!fs.existsSync(filePath)) {
-            writeFile(
-              filePath,
-              generateRecordFile(packageName, rec.name, rec.fields),
-            );
-            totalFiles++;
-          }
+        for (const rec of collectNestedRecords(ep.response.fields)) {
+          if (generatedRecords.has(rec.name)) continue;
+          writeFile(
+            path.join(moduleDir, `${rec.name}.java`),
+            generateRecordFile(packageName, rec.name, rec.fields),
+          );
+          generatedRecords.add(rec.name);
+          totalFiles++;
         }
       }
     }
