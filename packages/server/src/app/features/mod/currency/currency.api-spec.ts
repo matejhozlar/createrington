@@ -1,5 +1,6 @@
 import { defineApiSpec } from "@/scripts/api/spec-types";
 
+// v1.0.0
 export default defineApiSpec({
   name: "Currency",
   prefix: "/api/currency",
