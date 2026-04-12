@@ -31,7 +31,33 @@ export interface InsertEmbedAction {
   label?: string;
 }
 
-export type AdminChatAction = HighlightAction | InsertEmbedAction;
+export interface NavigateAction {
+  type: "navigate";
+  /** Same-origin path to push into the router (e.g. "/admin/tools/embed-builder"). */
+  path: string;
+  /** Optional label shown on the preview card. */
+  label?: string;
+}
+
+export type AdminChatAction =
+  | HighlightAction
+  | InsertEmbedAction
+  | NavigateAction;
+
+/**
+ * Server-persisted action record — matches the ChatAction Prisma row shape
+ * that arrives over SSE (`action` events) and on history load (nested under
+ * each `ChatMessage`). The `payload` carries the envelope that the widget
+ * would previously have parsed out of a fenced code block.
+ */
+export interface ChatActionRecord {
+  id: number;
+  sessionId: number;
+  chatMessageId: number;
+  type: string;
+  payload: unknown;
+  createdAt: string | Date;
+}
 
 /** sessionStorage key the EmbedBuilder picks up on mount if set. */
 export const PENDING_EMBED_KEY = "admin-chat:pending-embed";
@@ -117,6 +143,13 @@ function isValidAction(a: unknown): a is AdminChatAction {
   if (rec.type === "highlight") {
     return typeof rec.selector === "string" && rec.selector.length > 0;
   }
+  if (rec.type === "navigate") {
+    return (
+      typeof rec.path === "string" &&
+      rec.path.length > 0 &&
+      rec.path.startsWith("/")
+    );
+  }
   if (rec.type === "insert_embed") {
     if (rec.embed && typeof rec.embed === "object") return true;
     // Forgiveness: Claude sometimes flattens the embed fields to the top
@@ -145,6 +178,9 @@ export function describeAction(action: AdminChatAction): string {
   if (action.label) return action.label;
   if (action.type === "highlight") {
     return `Highlight ${action.selector}`;
+  }
+  if (action.type === "navigate") {
+    return `Go to ${action.path}`;
   }
   const title = (action.embed.title as string | undefined) ?? "untitled";
   return `Insert embed: ${title}`;

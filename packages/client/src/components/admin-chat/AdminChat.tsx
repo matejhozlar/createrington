@@ -18,9 +18,11 @@ import {
   PENDING_EMBED_KEY,
   INSERT_EMBED_EVENT,
   type AdminChatAction,
+  type ChatActionRecord,
   type HighlightAction,
   type InsertEmbedAction,
 } from "./actions";
+import { EmbedActionPreview } from "./EmbedActionPreview";
 
 const API_BASE = "/api/claude-chat";
 
@@ -64,7 +66,7 @@ function detectMention(value: string, cursor: number): MentionState | null {
 interface StreamHandlers {
   onMessage: (m: ChatMessage) => void;
   onSessionEnded: () => void;
-  onAction: (action: AdminChatAction) => void;
+  onAction: (record: ChatActionRecord) => void;
   onOpen?: () => void;
   onError?: () => void;
 }
@@ -115,12 +117,15 @@ async function runStream(
         if (event === "message") {
           handlers.onMessage(parsed as ChatMessage);
         } else if (event === "action") {
-          // Envelope shape on the wire is { sessionId, action: {...} }.
-          // Validate via the same forgiveness path the fence parser uses so
-          // MCP-emitted actions get the same flat-field normalization.
-          const envelope = (parsed as { action?: unknown }).action;
-          const coerced = coerceAction(envelope);
-          if (coerced) handlers.onAction(coerced);
+          // Wire shape: { sessionId, action: ChatActionRecord }. The widget
+          // re-validates the payload via the existing forgiveness path so
+          // MCP-emitted envelopes get the same flat-field normalization as
+          // fence-parsed ones — but the persisted record (id, messageId,
+          // createdAt) still drives attachment + dedupe.
+          const record = (parsed as { action?: ChatActionRecord }).action;
+          if (record && coerceAction(record.payload)) {
+            handlers.onAction(record);
+          }
         } else if (event === "session_ended") {
           handlers.onSessionEnded();
         }
@@ -157,6 +162,8 @@ interface ChatMessage {
     streaming?: boolean;
   } | null;
   createdAt: string;
+  /** Persisted MCP-tool action envelopes tied to this message. */
+  actions?: ChatActionRecord[];
 }
 
 /**
@@ -319,34 +326,33 @@ function ActionCard({
     if (action.type === "highlight") {
       const ok = applyHighlight(action);
       setPersistent(ok ? "applied" : "dismissed");
-    } else {
-      applyInsertEmbed(action, navigate);
-      setPersistent("applied");
+      return;
     }
+    if (action.type === "navigate") {
+      navigate(action.path);
+      setPersistent("applied");
+      return;
+    }
+    applyInsertEmbed(action, navigate);
+    setPersistent("applied");
   };
+
+  const typeLabel =
+    action.type === "highlight"
+      ? "Highlight"
+      : action.type === "navigate"
+        ? "Navigate"
+        : "Insert embed";
 
   return (
     <div className={`ac-action-card ac-action-${state}`}>
       <div className="ac-action-head">
         <Sparkles size={12} />
-        <span className="ac-action-type">
-          {action.type === "highlight" ? "Highlight" : "Insert embed"}
-        </span>
+        <span className="ac-action-type">{typeLabel}</span>
         <span className="ac-action-desc">{describeAction(action)}</span>
       </div>
       {action.type === "insert_embed" && (
-        <div className="ac-action-embed-preview">
-          {action.embed.title && (
-            <div className="ac-action-embed-title">
-              {String(action.embed.title)}
-            </div>
-          )}
-          {action.embed.description && (
-            <div className="ac-action-embed-desc">
-              {String(action.embed.description)}
-            </div>
-          )}
-        </div>
+        <EmbedActionPreview embed={action.embed} />
       )}
       <div className="ac-action-buttons">
         {state === "pending" ? (
@@ -382,15 +388,6 @@ export function AdminChat(): React.JSX.Element | null {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  /**
-   * Action envelopes delivered over SSE (MCP tool calls on the backend).
-   * Separate from fence-parsed actions so both paths can coexist during the
-   * MCP migration. Render order follows arrival time; the id stays stable so
-   * ActionCard's sessionStorage persistence doesn't churn on rerenders.
-   */
-  const [streamActions, setStreamActions] = useState<
-    Array<{ id: string; action: AdminChatAction }>
-  >([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -513,10 +510,7 @@ export function AdminChat(): React.JSX.Element | null {
           // otherwise flicker between empty → messages as the stream
           // refills.
           setSessionId((prev) => {
-            if (prev !== nextId) {
-              setMessages([]);
-              setStreamActions([]);
-            }
+            if (prev !== nextId) setMessages([]);
             return nextId;
           });
           setSessionActive(Boolean(data.active));
@@ -537,7 +531,19 @@ export function AdminChat(): React.JSX.Element | null {
       const byId = new Map<number, ChatMessage>(
         prev.map((m) => [m.id, m] as const),
       );
-      for (const m of incoming) byId.set(m.id, m);
+      for (const m of incoming) {
+        // SSE message events don't include the actions relation (Prisma
+        // update() returns only scalar fields); history load does. When
+        // overwriting a message, preserve whatever actions we had if the
+        // incoming copy doesn't carry its own.
+        const prior = byId.get(m.id);
+        const next: ChatMessage = m.actions
+          ? m
+          : prior?.actions
+            ? { ...m, actions: prior.actions }
+            : m;
+        byId.set(m.id, next);
+      }
       const incomingUserContent = new Set(
         incoming.filter((m) => m.role === "user").map((m) => m.content),
       );
@@ -561,6 +567,25 @@ export function AdminChat(): React.JSX.Element | null {
         return a.id - b.id;
       });
       return merged;
+    });
+  }, []);
+
+  /**
+   * Append a live MCP-tool action record to its parent message (by
+   * chatMessageId). Dedupes by record id so an SSE event that races a
+   * history refetch doesn't double-render a card.
+   */
+  const attachAction = useCallback((record: ChatActionRecord): void => {
+    setMessages((prev) => {
+      let changed = false;
+      const next = prev.map((m) => {
+        if (m.id !== record.chatMessageId) return m;
+        const existing = m.actions ?? [];
+        if (existing.some((a) => a.id === record.id)) return m;
+        changed = true;
+        return { ...m, actions: [...existing, record] };
+      });
+      return changed ? next : prev;
     });
   }, []);
 
@@ -595,14 +620,7 @@ export function AdminChat(): React.JSX.Element | null {
           sessionId,
           {
             onMessage: (m) => mergeMessages([m]),
-            onAction: (action) =>
-              setStreamActions((prev) => [
-                ...prev,
-                {
-                  id: `sse-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                  action,
-                },
-              ]),
+            onAction: (record) => attachAction(record),
             onSessionEnded: () => setSessionActive(false),
           },
           abort.signal,
@@ -654,7 +672,6 @@ export function AdminChat(): React.JSX.Element | null {
         setSessionId(data.sessionId);
         setSessionActive(true);
         setMessages([]);
-        setStreamActions([]);
       }
     } catch (err) {
       console.error("[admin-chat] Failed to start session:", err);
@@ -1023,6 +1040,104 @@ export function AdminChat(): React.JSX.Element | null {
           gap: 0.375rem;
           align-items: center;
         }
+        .ac-embed-preview {
+          display: flex;
+          gap: 0;
+          border-radius: 0.25rem;
+          overflow: hidden;
+          background: var(--muted);
+          border: 1px solid var(--border);
+          max-width: 100%;
+        }
+        .ac-embed-stripe {
+          width: 3px;
+          flex-shrink: 0;
+        }
+        .ac-embed-body {
+          flex: 1;
+          min-width: 0;
+          padding: 0.5rem 0.625rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .ac-embed-author {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          font-weight: 500;
+        }
+        .ac-embed-title {
+          font-size: 0.8125rem;
+          font-weight: 600;
+          color: var(--foreground);
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        .ac-embed-main {
+          display: flex;
+          gap: 0.5rem;
+          align-items: flex-start;
+        }
+        .ac-embed-text {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .ac-embed-desc {
+          font-size: 0.75rem;
+          color: var(--muted-foreground);
+          line-height: 1.4;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .ac-embed-fields {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 0.25rem;
+          margin-top: 0.25rem;
+        }
+        .ac-embed-field {
+          display: flex;
+          flex-direction: column;
+          gap: 0.0625rem;
+        }
+        .ac-embed-field-name {
+          font-size: 0.6875rem;
+          font-weight: 600;
+          color: var(--foreground);
+        }
+        .ac-embed-field-value {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .ac-embed-fields-more {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          font-style: italic;
+        }
+        .ac-embed-thumb {
+          width: 3rem;
+          height: 3rem;
+          object-fit: cover;
+          border-radius: 0.25rem;
+          flex-shrink: 0;
+        }
+        .ac-embed-image {
+          width: 100%;
+          max-height: 8rem;
+          object-fit: cover;
+          border-radius: 0.25rem;
+          margin-top: 0.25rem;
+        }
+        .ac-embed-footer {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          margin-top: 0.25rem;
+        }
         .ac-action-apply,
         .ac-action-dismiss {
           padding: 0.25rem 0.625rem;
@@ -1286,13 +1401,16 @@ export function AdminChat(): React.JSX.Element | null {
                     const isStreaming = !!(
                       msg.metadata as { streaming?: boolean }
                     )?.streaming;
-                    // Don't parse action envelopes out of a half-written
-                    // message — the envelope might not be complete yet.
-                    // Wait until the stream settles.
-                    const { content, actions } =
+                    // Legacy fence-parsed actions — kept as a transitional
+                    // fallback for messages written before MCP migration.
+                    // Don't run the parser on half-streaming content; wait
+                    // until the stream settles so the fence isn't truncated.
+                    const { content, actions: fenceActions } =
                       msg.role === "assistant" && !isStreaming
                         ? parseActionsFromMessage(msg.content)
                         : { content: msg.content, actions: [] };
+                    // Server-persisted MCP actions attached to this message.
+                    const persistedActions = msg.actions ?? [];
                     return (
                       <div
                         key={msg.id}
@@ -1308,26 +1426,29 @@ export function AdminChat(): React.JSX.Element | null {
                                 : content.replace(/</g, "&lt;"),
                           }}
                         />
-                        {actions.map((action, i) => (
+                        {persistedActions.map((record) => {
+                          const coerced = coerceAction(record.payload);
+                          if (!coerced) return null;
+                          return (
+                            <ActionCard
+                              key={`db-${record.id}`}
+                              action={coerced}
+                              storageKey={`db-${record.id}`}
+                              navigate={navigate}
+                            />
+                          );
+                        })}
+                        {fenceActions.map((action, i) => (
                           <ActionCard
-                            key={`${msg.id}:${i}`}
+                            key={`fence-${msg.id}:${i}`}
                             action={action}
-                            storageKey={`${msg.id}:${i}`}
+                            storageKey={`fence-${msg.id}:${i}`}
                             navigate={navigate}
                           />
                         ))}
                       </div>
                     );
                   })}
-                  {streamActions.map(({ id, action }) => (
-                    <div key={id} className="ac-msg-row" data-role="assistant">
-                      <ActionCard
-                        action={action}
-                        storageKey={id}
-                        navigate={navigate}
-                      />
-                    </div>
-                  ))}
                   <div ref={messagesEndRef} />
                 </div>
                 {sessionActive ? (
