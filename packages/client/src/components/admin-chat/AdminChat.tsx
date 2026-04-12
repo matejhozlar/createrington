@@ -421,7 +421,17 @@ export function AdminChat(): React.JSX.Element | null {
             incomingUserContent.has(m.content)
           ),
       );
-      merged.sort((a, b) => a.id - b.id);
+      // Positive (server-assigned) ids come first, ascending. Optimistic
+      // (negative) ids come after, with less-negative (created earlier)
+      // before more-negative (created later) so a burst of sends stays
+      // in send order instead of reversing.
+      merged.sort((a, b) => {
+        const aOpt = a.id < 0;
+        const bOpt = b.id < 0;
+        if (aOpt !== bOpt) return aOpt ? 1 : -1;
+        if (aOpt) return b.id - a.id;
+        return a.id - b.id;
+      });
       return merged;
     });
   }, []);
@@ -521,6 +531,22 @@ export function AdminChat(): React.JSX.Element | null {
     if (!trimmed || !sessionId) return;
     setSending(true);
     setInput("");
+    // Add the optimistic bubble BEFORE the POST. With SSE the real
+    // message can arrive before the POST's await resolves; if we added
+    // optimistic after, the SSE dedup pass has nothing to dedup against
+    // and both end up in state. Negative id so it can't collide with a
+    // DB sequence; mergeMessages swaps it out when the server copy
+    // arrives with the same content.
+    const optimisticId = -Date.now();
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: optimisticId,
+        role: "user" as const,
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+      },
+    ]);
     try {
       await claudeFetch("/send", {
         method: "POST",
@@ -532,21 +558,12 @@ export function AdminChat(): React.JSX.Element | null {
           ),
         }),
       });
-      // Optimistic add — negative id so it never collides with a server
-      // sequence id; the poll dedup below swaps this out when the persisted
-      // copy arrives.
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: -Date.now(),
-          role: "user" as const,
-          content: trimmed,
-          createdAt: new Date().toISOString(),
-        },
-      ]);
     } catch (err) {
       console.error("[admin-chat] Failed to send message:", err);
       setInput(trimmed);
+      // POST failed — drop the optimistic so the admin doesn't see a
+      // ghost message that never actually reached the backend.
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
     } finally {
       setSending(false);
     }
