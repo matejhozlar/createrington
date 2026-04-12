@@ -77,6 +77,30 @@ export function parseActionsFromMessage(raw: string): {
   return { content: content.trim(), actions };
 }
 
+/**
+ * Fields that belong inside the `embed` sub-object. When Claude flattens
+ * these to the top level of an insert_embed envelope (a common mistake),
+ * we auto-wrap them so the action is still usable.
+ */
+const EMBED_FIELDS = new Set([
+  "title",
+  "description",
+  "color",
+  "url",
+  "footer",
+  "author",
+  "authorUrl",
+  "authorIconUrl",
+  "thumbnailUrl",
+  "imageUrl",
+  "thumbnail",
+  "image",
+  "fields",
+  "buttons",
+  "actionButtons",
+  "timestamp",
+]);
+
 function isValidAction(a: unknown): a is AdminChatAction {
   if (!a || typeof a !== "object") return false;
   const rec = a as Record<string, unknown>;
@@ -84,7 +108,21 @@ function isValidAction(a: unknown): a is AdminChatAction {
     return typeof rec.selector === "string" && rec.selector.length > 0;
   }
   if (rec.type === "insert_embed") {
-    return rec.embed !== null && typeof rec.embed === "object";
+    if (rec.embed && typeof rec.embed === "object") return true;
+    // Forgiveness: Claude sometimes flattens the embed fields to the top
+    // level of the envelope. If we see any known embed field as a sibling
+    // of `type`, pull them into an `embed` object in place so the action
+    // handler still works.
+    const flattened: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(rec)) {
+      if (EMBED_FIELDS.has(k)) flattened[k] = v;
+    }
+    if (Object.keys(flattened).length > 0) {
+      rec.embed = flattened;
+      for (const k of Object.keys(flattened)) delete rec[k];
+      return true;
+    }
+    return false;
   }
   return false;
 }
