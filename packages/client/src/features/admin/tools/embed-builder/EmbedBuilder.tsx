@@ -147,9 +147,9 @@ export function EmbedBuilder() {
       try {
         const parsed = JSON.parse(pending) as Partial<EmbedData>;
         applyPartialEmbed(builder.setEmbedData, parsed);
-        toast.success("Embed inserted from Claude");
+        toast.success("Embed inserted from Createrington Assistant");
       } catch {
-        toast.error("Claude's embed payload was invalid");
+        toast.error("Assistant sent an invalid embed payload");
       } finally {
         try {
           sessionStorage.removeItem(PENDING_EMBED_KEY);
@@ -163,7 +163,7 @@ export function EmbedBuilder() {
       const detail = (e as CustomEvent<Partial<EmbedData>>).detail;
       if (!detail) return;
       applyPartialEmbed(builder.setEmbedData, detail);
-      toast.success("Embed inserted from Claude");
+      toast.success("Embed inserted from Createrington Assistant");
     };
     window.addEventListener(INSERT_EMBED_EVENT, handler);
     return () => window.removeEventListener(INSERT_EMBED_EVENT, handler);
