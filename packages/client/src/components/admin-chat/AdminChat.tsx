@@ -1,10 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
 import { getAccessToken } from "@/services/auth/token-manager";
 import { MessageSquare, X, Send, Loader2, Square } from "lucide-react";
 
 const API_BASE = "/api/claude-chat";
 const POLL_INTERVAL = 800;
+
+/**
+ * pageContext passed to the proxy on every start/send. Gives Claude enough
+ * to say "you're already on /admin/players — click the Ban button on the
+ * row" instead of guessing where features live.
+ */
+interface PageContext {
+  type: "admin-chat" | "admin" | "page";
+  owner: "Createrington";
+  repo: "app";
+  pathname: string;
+  search?: string;
+  title?: string;
+}
 
 interface ChatMessage {
   id: number;
@@ -60,13 +75,21 @@ function renderMarkdown(text: string): string {
   // Italic
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 
-  // Links — restrict to http(s) URLs so escaped-but-still-working schemes
-  // like `javascript:` can't sneak through the href.
+  // Links — allow http(s) URLs (open in new tab) and same-origin relative
+  // paths (handled as in-app React Router navigation via delegated click
+  // handler below, marked with data-nav). Anything else (including
+  // "javascript:" and protocol-relative "//evil.com") is rendered as plain
+  // text so it can't land in an href.
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     (_match, label: string, url: string) => {
-      if (!/^https?:\/\//i.test(url)) return label;
-      return `<a href="${url}" target="_blank" rel="noopener" class="ac-link">${label}</a>`;
+      if (/^https?:\/\//i.test(url)) {
+        return `<a href="${url}" target="_blank" rel="noopener" class="ac-link">${label}</a>`;
+      }
+      if (/^\/[^/]/.test(url) || url === "/") {
+        return `<a href="${url}" data-nav="1" class="ac-link">${label}</a>`;
+      }
+      return label;
     },
   );
 
@@ -84,6 +107,8 @@ function renderMarkdown(text: string): string {
 
 export function AdminChat(): React.JSX.Element | null {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(false);
   const [sessionId, setSessionId] = useState<number | null>(null);
@@ -95,6 +120,21 @@ export function AdminChat(): React.JSX.Element | null {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastIdRef = useRef(0);
+
+  /** Snapshot of the admin's current page — sent with every start/send. */
+  const pageContext = useCallback(
+    (type: PageContext["type"]): PageContext => ({
+      type,
+      owner: "Createrington",
+      repo: "app",
+      pathname: location.pathname,
+      ...(location.search && { search: location.search }),
+      ...(typeof document !== "undefined" && document.title
+        ? { title: document.title }
+        : {}),
+    }),
+    [location.pathname, location.search],
+  );
 
   // Check if admin chat is enabled
   useEffect(() => {
@@ -123,12 +163,16 @@ export function AdminChat(): React.JSX.Element | null {
         }) => {
           const nextId = data.active ? data.sessionId : data.lastSessionId;
           if (!nextId) return;
-          // Different session's ID space — reset the delta cursor and clear
-          // any messages still in state from a prior session so the next poll
-          // rehydrates history cleanly.
-          lastIdRef.current = 0;
-          setMessages([]);
-          setSessionId(nextId);
+          // Only tear down message state when the session ID is actually
+          // changing — reopening the drawer on the same session would
+          // otherwise flicker between empty → messages as the poll refills.
+          setSessionId((prev) => {
+            if (prev !== nextId) {
+              lastIdRef.current = 0;
+              setMessages([]);
+            }
+            return nextId;
+          });
           setSessionActive(Boolean(data.active));
         },
       )
@@ -196,11 +240,7 @@ export function AdminChat(): React.JSX.Element | null {
       const res = await claudeFetch("/start", {
         method: "POST",
         body: JSON.stringify({
-          pageContext: {
-            type: "admin-chat",
-            owner: "Createrington",
-            repo: "app",
-          },
+          pageContext: pageContext("admin-chat"),
         }),
       });
       const data = (await res.json()) as {
@@ -231,13 +271,9 @@ export function AdminChat(): React.JSX.Element | null {
         body: JSON.stringify({
           sessionId,
           message: trimmed,
-          pageContext: {
-            type: window.location.pathname.startsWith("/admin")
-              ? "admin"
-              : "page",
-            owner: "Createrington",
-            repo: "app",
-          },
+          pageContext: pageContext(
+            location.pathname.startsWith("/admin") ? "admin" : "page",
+          ),
         }),
       });
       // Optimistic add — negative id so it never collides with a server
@@ -331,10 +367,25 @@ export function AdminChat(): React.JSX.Element | null {
           border-bottom: 1px solid var(--border);
           flex-shrink: 0;
         }
+        .ac-header-meta {
+          display: flex;
+          flex-direction: column;
+          gap: 0.125rem;
+          min-width: 0;
+        }
         .ac-header-title {
           font-size: 0.875rem;
           font-weight: 600;
           color: var(--foreground);
+        }
+        .ac-header-breadcrumb {
+          font-size: 0.625rem;
+          color: var(--muted-foreground);
+          font-family: ui-monospace, monospace;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 14rem;
         }
         .ac-header-status {
           font-size: 0.625rem;
@@ -413,6 +464,19 @@ export function AdminChat(): React.JSX.Element | null {
           gap: 0.5rem;
           align-items: flex-end;
           flex-shrink: 0;
+        }
+        .ac-ended-bar {
+          padding: 0.75rem;
+          border-top: 1px solid var(--border);
+          display: flex;
+          gap: 0.75rem;
+          align-items: center;
+          justify-content: space-between;
+          flex-shrink: 0;
+        }
+        .ac-ended-note {
+          font-size: 0.75rem;
+          color: var(--muted-foreground);
         }
         .ac-textarea {
           flex: 1;
@@ -495,7 +559,15 @@ export function AdminChat(): React.JSX.Element | null {
         {open && (
           <div className="ac-panel">
             <div className="ac-header">
-              <span className="ac-header-title">Claude</span>
+              <div className="ac-header-meta">
+                <span className="ac-header-title">Claude</span>
+                <span
+                  className="ac-header-breadcrumb"
+                  title="What Claude sees as your current page"
+                >
+                  {location.pathname}
+                </span>
+              </div>
               <div className="ac-header-actions">
                 {sessionActive && (
                   <span className="ac-header-status ac-status-active">
@@ -542,7 +614,23 @@ export function AdminChat(): React.JSX.Element | null {
               </div>
             ) : (
               <>
-                <div className="ac-messages">
+                <div
+                  className="ac-messages"
+                  onClick={(e) => {
+                    // Delegated handler for in-app nav links that Claude
+                    // embeds in replies (markdown link → href="/admin/...").
+                    // Real anchors still get ctrl/middle-click behavior.
+                    const target = (e.target as HTMLElement).closest(
+                      "a[data-nav='1']",
+                    );
+                    if (!target) return;
+                    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+                    const href = target.getAttribute("href");
+                    if (!href || !href.startsWith("/")) return;
+                    e.preventDefault();
+                    navigate(href);
+                  }}
+                >
                   {messages.map((msg) => {
                     const isAck = !!(msg.metadata as { isAck?: boolean })
                       ?.isAck;
@@ -564,34 +652,44 @@ export function AdminChat(): React.JSX.Element | null {
                   })}
                   <div ref={messagesEndRef} />
                 </div>
-                <div className="ac-input-area">
-                  <textarea
-                    className="ac-textarea"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={
-                      sessionActive
-                        ? "Ask anything..."
-                        : "Session ended — start a new one"
-                    }
-                    disabled={!sessionActive || sending}
-                    rows={1}
-                  />
-                  <button
-                    className="ac-send-btn"
-                    onClick={() => void sendMessage()}
-                    disabled={
-                      !sessionActive || sending || input.trim().length === 0
-                    }
-                  >
-                    {sending ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Send size={14} />
-                    )}
-                  </button>
-                </div>
+                {sessionActive ? (
+                  <div className="ac-input-area">
+                    <textarea
+                      className="ac-textarea"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask anything..."
+                      disabled={sending}
+                      rows={1}
+                    />
+                    <button
+                      className="ac-send-btn"
+                      onClick={() => void sendMessage()}
+                      disabled={sending || input.trim().length === 0}
+                    >
+                      {sending ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <Send size={14} />
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="ac-ended-bar">
+                    <span className="ac-ended-note">Session ended</span>
+                    <button
+                      className="ac-start-btn"
+                      onClick={() => void startSession()}
+                      disabled={starting}
+                    >
+                      {starting && (
+                        <Loader2 size={14} className="animate-spin" />
+                      )}
+                      Start new chat
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </div>
