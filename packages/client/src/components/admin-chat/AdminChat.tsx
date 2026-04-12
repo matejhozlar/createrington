@@ -2,7 +2,24 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
 import { getAccessToken } from "@/services/auth/token-manager";
-import { MessageSquare, X, Send, Loader2, Square } from "lucide-react";
+import {
+  MessageSquare,
+  X,
+  Send,
+  Loader2,
+  Square,
+  Sparkles,
+  Check,
+} from "lucide-react";
+import {
+  parseActionsFromMessage,
+  describeAction,
+  PENDING_EMBED_KEY,
+  INSERT_EMBED_EVENT,
+  type AdminChatAction,
+  type HighlightAction,
+  type InsertEmbedAction,
+} from "./actions";
 
 const API_BASE = "/api/claude-chat";
 const POLL_INTERVAL = 800;
@@ -103,6 +120,149 @@ function renderMarkdown(text: string): string {
   );
 
   return html;
+}
+
+/**
+ * Apply a highlight action to the current document. Scrolls the element
+ * into view and flashes an outline via .ac-highlighted for ttlMs (default
+ * 3s). Returns true if the selector matched an element.
+ */
+function applyHighlight(action: HighlightAction): boolean {
+  try {
+    const el = document.querySelector(action.selector);
+    if (!(el instanceof HTMLElement)) return false;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ac-highlighted");
+    const ttl = action.ttlMs ?? 3000;
+    window.setTimeout(() => el.classList.remove("ac-highlighted"), ttl);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Apply an insert_embed action. If the user is already on the embed
+ * builder, dispatches INSERT_EMBED_EVENT so it can apply immediately.
+ * Otherwise stashes the embed in sessionStorage under PENDING_EMBED_KEY
+ * and navigates there — the builder picks it up on mount.
+ */
+function applyInsertEmbed(
+  action: InsertEmbedAction,
+  navigate: (to: string) => void,
+): void {
+  const serialized = JSON.stringify(action.embed);
+  const onBuilderPage = window.location.pathname.startsWith(
+    "/admin/tools/embed-builder",
+  );
+  if (onBuilderPage) {
+    window.dispatchEvent(
+      new CustomEvent(INSERT_EMBED_EVENT, { detail: action.embed }),
+    );
+    return;
+  }
+  try {
+    sessionStorage.setItem(PENDING_EMBED_KEY, serialized);
+  } catch {
+    // Best-effort — if storage is unavailable, navigation alone still lets
+    // the admin reapply from chat history.
+  }
+  navigate("/admin/tools/embed-builder");
+}
+
+interface ActionCardProps {
+  action: AdminChatAction;
+  /** Unique-per-session key for persisting applied state across polls. */
+  storageKey: string;
+  navigate: (to: string) => void;
+}
+
+function ActionCard({
+  action,
+  storageKey,
+  navigate,
+}: ActionCardProps): React.JSX.Element {
+  const persistKey = `admin-chat-action:${storageKey}`;
+  const [state, setState] = useState<"pending" | "applied" | "dismissed">(
+    () => {
+      try {
+        const v = sessionStorage.getItem(persistKey);
+        if (v === "applied" || v === "dismissed") return v;
+      } catch {
+        // ignore
+      }
+      return "pending";
+    },
+  );
+
+  const setPersistent = useCallback(
+    (next: "applied" | "dismissed") => {
+      setState(next);
+      try {
+        sessionStorage.setItem(persistKey, next);
+      } catch {
+        // ignore
+      }
+    },
+    [persistKey],
+  );
+
+  const onApply = (): void => {
+    if (action.type === "highlight") {
+      const ok = applyHighlight(action);
+      setPersistent(ok ? "applied" : "dismissed");
+    } else {
+      applyInsertEmbed(action, navigate);
+      setPersistent("applied");
+    }
+  };
+
+  return (
+    <div className={`ac-action-card ac-action-${state}`}>
+      <div className="ac-action-head">
+        <Sparkles size={12} />
+        <span className="ac-action-type">
+          {action.type === "highlight" ? "Highlight" : "Insert embed"}
+        </span>
+        <span className="ac-action-desc">{describeAction(action)}</span>
+      </div>
+      {action.type === "insert_embed" && (
+        <div className="ac-action-embed-preview">
+          {action.embed.title && (
+            <div className="ac-action-embed-title">
+              {String(action.embed.title)}
+            </div>
+          )}
+          {action.embed.description && (
+            <div className="ac-action-embed-desc">
+              {String(action.embed.description)}
+            </div>
+          )}
+        </div>
+      )}
+      <div className="ac-action-buttons">
+        {state === "pending" ? (
+          <>
+            <button className="ac-action-apply" onClick={onApply} type="button">
+              <Check size={12} />
+              Apply
+            </button>
+            <button
+              className="ac-action-dismiss"
+              onClick={() => setPersistent("dismissed")}
+              type="button"
+            >
+              Dismiss
+            </button>
+          </>
+        ) : (
+          <span className="ac-action-status">
+            {state === "applied" ? "Applied" : "Dismissed"}
+          </span>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function AdminChat(): React.JSX.Element | null {
@@ -468,6 +628,109 @@ export function AdminChat(): React.JSX.Element | null {
           color: var(--primary);
           text-decoration: underline;
         }
+        .ac-msg-row {
+          display: flex;
+          flex-direction: column;
+          gap: 0.375rem;
+        }
+        .ac-msg-row[data-role="user"] {
+          align-items: flex-end;
+        }
+        .ac-action-card {
+          align-self: stretch;
+          max-width: 90%;
+          background: var(--muted);
+          border: 1px solid var(--border);
+          border-radius: 0.5rem;
+          padding: 0.5rem 0.625rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.375rem;
+          font-size: 0.75rem;
+        }
+        .ac-action-applied { opacity: 0.7; }
+        .ac-action-dismissed { opacity: 0.5; }
+        .ac-action-head {
+          display: flex;
+          align-items: center;
+          gap: 0.375rem;
+          color: var(--muted-foreground);
+        }
+        .ac-action-type {
+          font-weight: 600;
+          color: var(--foreground);
+          font-size: 0.625rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .ac-action-desc {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .ac-action-embed-preview {
+          border-left: 3px solid var(--primary);
+          padding: 0.25rem 0.5rem;
+          background: var(--background);
+          border-radius: 0.25rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.125rem;
+        }
+        .ac-action-embed-title {
+          font-weight: 600;
+          color: var(--foreground);
+        }
+        .ac-action-embed-desc {
+          color: var(--muted-foreground);
+          font-size: 0.6875rem;
+          line-height: 1.4;
+          max-height: 3em;
+          overflow: hidden;
+        }
+        .ac-action-buttons {
+          display: flex;
+          gap: 0.375rem;
+          align-items: center;
+        }
+        .ac-action-apply,
+        .ac-action-dismiss {
+          padding: 0.25rem 0.625rem;
+          border-radius: 0.25rem;
+          border: none;
+          cursor: pointer;
+          font-size: 0.6875rem;
+          font-weight: 500;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.25rem;
+        }
+        .ac-action-apply {
+          background: var(--primary);
+          color: var(--primary-foreground);
+        }
+        .ac-action-dismiss {
+          background: transparent;
+          color: var(--muted-foreground);
+        }
+        .ac-action-status {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          font-style: italic;
+        }
+        @keyframes ac-highlight-pulse {
+          0%, 100% { box-shadow: 0 0 0 3px var(--primary); }
+          50% { box-shadow: 0 0 0 6px var(--primary); }
+        }
+        .ac-highlighted {
+          outline: 2px solid var(--primary) !important;
+          outline-offset: 4px !important;
+          border-radius: 4px;
+          animation: ac-highlight-pulse 1s ease-in-out infinite;
+          scroll-margin: 4rem;
+        }
         .ac-input-area {
           padding: 0.75rem;
           border-top: 1px solid var(--border);
@@ -648,17 +911,34 @@ export function AdminChat(): React.JSX.Element | null {
                     const isProgress = !!(
                       msg.metadata as { isProgress?: boolean }
                     )?.isProgress;
+                    const { content, actions } =
+                      msg.role === "assistant"
+                        ? parseActionsFromMessage(msg.content)
+                        : { content: msg.content, actions: [] };
                     return (
                       <div
                         key={msg.id}
-                        className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}`}
-                        dangerouslySetInnerHTML={{
-                          __html:
-                            msg.role === "assistant"
-                              ? renderMarkdown(msg.content)
-                              : msg.content.replace(/</g, "&lt;"),
-                        }}
-                      />
+                        className="ac-msg-row"
+                        data-role={msg.role}
+                      >
+                        <div
+                          className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}`}
+                          dangerouslySetInnerHTML={{
+                            __html:
+                              msg.role === "assistant"
+                                ? renderMarkdown(content)
+                                : content.replace(/</g, "&lt;"),
+                          }}
+                        />
+                        {actions.map((action, i) => (
+                          <ActionCard
+                            key={`${msg.id}:${i}`}
+                            action={action}
+                            storageKey={`${msg.id}:${i}`}
+                            navigate={navigate}
+                          />
+                        ))}
+                      </div>
                     );
                   })}
                   <div ref={messagesEndRef} />
