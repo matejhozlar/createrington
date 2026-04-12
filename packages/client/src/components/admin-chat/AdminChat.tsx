@@ -228,10 +228,21 @@ export function AdminChat(): React.JSX.Element | null {
     };
   }, [sessionId, open, pollMessages]);
 
-  // Auto-scroll
+  // Auto-scroll on new messages — smooth so the eye can follow.
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Snap to bottom on drawer reopen so the latest message is visible
+  // without a scroll-up animation. Runs in rAF so the messages container
+  // has a chance to lay out after `open` flips to true.
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   const startSession = async (): Promise<void> => {
     if (!user?.isAdmin) return;
