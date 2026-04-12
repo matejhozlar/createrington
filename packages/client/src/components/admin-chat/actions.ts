@@ -50,18 +50,30 @@ export function parseActionsFromMessage(raw: string): {
   actions: AdminChatAction[];
 } {
   const actions: AdminChatAction[] = [];
-  const content = raw.replace(/```action\s*\n([\s\S]*?)```/g, (_m, body) => {
-    try {
-      const parsed: unknown = JSON.parse(body);
-      if (isValidAction(parsed)) {
-        actions.push(parsed);
-        return "";
+  // Accept the documented ```action fence AND common fallbacks Claude
+  // reaches for when drafting JSON (```json, bare ```). Only promote to
+  // an action if the JSON body actually matches our action shape — other
+  // JSON blocks render as-is so Claude can still illustrate, say, a DB
+  // query payload without it getting swallowed.
+  const fenceRe = /```(action|json)?\s*\n([\s\S]*?)```/g;
+  const content = raw.replace(
+    fenceRe,
+    (match, lang: string | undefined, body: string) => {
+      const wasActionFence = lang === "action";
+      try {
+        const parsed: unknown = JSON.parse(body);
+        if (isValidAction(parsed)) {
+          actions.push(parsed);
+          return "";
+        }
+      } catch {
+        // fall through — render the original fence so the admin can see it
       }
-    } catch {
-      // fall through — render as raw so the admin can see the bad JSON
-    }
-    return "```action\n" + body + "```";
-  });
+      // Not an action — leave the original code block untouched.
+      if (wasActionFence) return "```action\n" + body + "```";
+      return match;
+    },
+  );
   return { content: content.trim(), actions };
 }
 
