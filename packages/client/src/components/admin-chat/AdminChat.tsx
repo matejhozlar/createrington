@@ -572,17 +572,43 @@ export function AdminChat(): React.JSX.Element | null {
     }
   };
 
-  // Global shortcut (Ctrl/Cmd+I) toggles the drawer. Intentionally not
-  // documented in-app — if you found this comment you're probably an
-  // admin who earned it. Only attaches when enabled so non-admins and
-  // kill-switch-off sessions never even bind the listener.
+  // Bubble visibility — default hidden, toggled by Ctrl/Cmd+I. Clicking
+  // the bubble (when shown) still opens/closes the drawer exactly as
+  // before. Persisted in localStorage so an admin who enabled it doesn't
+  // have to re-press on every page nav.
+  const BUBBLE_KEY = "admin-chat:bubble-visible";
+  const [bubbleVisible, setBubbleVisible] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(BUBBLE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(BUBBLE_KEY, bubbleVisible ? "1" : "0");
+    } catch {
+      // Non-fatal — state still works within this tab.
+    }
+  }, [bubbleVisible]);
+
+  // Global shortcut (Ctrl/Cmd+I) toggles the bubble's visibility.
+  // Intentionally not documented in-app — if you found this comment
+  // you're probably an admin who earned it. Only attaches when `enabled`
+  // so non-admins and kill-switch-off sessions never even bind it.
+  // Hiding the bubble also closes the drawer so there's no orphaned
+  // panel floating without its toggle.
   useEffect(() => {
     if (!enabled) return;
     const handler = (e: KeyboardEvent): void => {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         if (e.key === "i" || e.key === "I") {
           e.preventDefault();
-          setOpen((o) => !o);
+          setBubbleVisible((v) => {
+            if (v) setOpen(false);
+            return !v;
+          });
         }
       }
     };
@@ -591,6 +617,7 @@ export function AdminChat(): React.JSX.Element | null {
   }, [enabled]);
 
   if (!enabled) return null;
+  if (!bubbleVisible) return null;
 
   return (
     <>
@@ -602,9 +629,26 @@ export function AdminChat(): React.JSX.Element | null {
           z-index: 9999;
           font-family: inherit;
         }
+        .ac-toggle {
+          width: 3rem;
+          height: 3rem;
+          border-radius: 50%;
+          background: var(--primary);
+          color: var(--primary-foreground);
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+          transition: transform 0.15s;
+        }
+        .ac-toggle:hover {
+          transform: scale(1.08);
+        }
         .ac-panel {
           position: fixed;
-          bottom: 1.25rem;
+          bottom: 5rem;
           right: 1.25rem;
           width: 24rem;
           max-width: calc(100vw - 2.5rem);
@@ -1078,6 +1122,14 @@ export function AdminChat(): React.JSX.Element | null {
             )}
           </div>
         )}
+
+        <button
+          className="ac-toggle"
+          onClick={() => setOpen((o) => !o)}
+          title="Createrington Assistant (Ctrl+I to hide)"
+        >
+          {open ? <X size={20} /> : <MessageSquare size={20} />}
+        </button>
       </div>
     </>
   );
