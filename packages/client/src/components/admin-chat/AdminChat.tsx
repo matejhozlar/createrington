@@ -38,7 +38,12 @@ async function claudeFetch(
 }
 
 function renderMarkdown(text: string): string {
-  let html = text;
+  // Escape HTML first so raw tags in the upstream payload can't execute —
+  // the markdown regexes below re-introduce only the specific tags we allow.
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 
   // Code blocks
   html = html.replace(
@@ -55,10 +60,14 @@ function renderMarkdown(text: string): string {
   // Italic
   html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
 
-  // Links
+  // Links — restrict to http(s) URLs so escaped-but-still-working schemes
+  // like `javascript:` can't sneak through the href.
   html = html.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" target="_blank" rel="noopener" class="ac-link">$1</a>',
+    (_match, label: string, url: string) => {
+      if (!/^https?:\/\//i.test(url)) return label;
+      return `<a href="${url}" target="_blank" rel="noopener" class="ac-link">${label}</a>`;
+    },
   );
 
   // Line breaks (skip inside <pre>)
@@ -112,13 +121,15 @@ export function AdminChat(): React.JSX.Element | null {
           sessionId?: number | null;
           lastSessionId?: number | null;
         }) => {
-          if (data.active && data.sessionId) {
-            setSessionId(data.sessionId);
-            setSessionActive(true);
-          } else if (data.lastSessionId) {
-            setSessionId(data.lastSessionId);
-            setSessionActive(false);
-          }
+          const nextId = data.active ? data.sessionId : data.lastSessionId;
+          if (!nextId) return;
+          // Different session's ID space — reset the delta cursor and clear
+          // any messages still in state from a prior session so the next poll
+          // rehydrates history cleanly.
+          lastIdRef.current = 0;
+          setMessages([]);
+          setSessionId(nextId);
+          setSessionActive(Boolean(data.active));
         },
       )
       .catch(console.error);
@@ -137,7 +148,21 @@ export function AdminChat(): React.JSX.Element | null {
             const newMsgs = data.messages!.filter(
               (m) => !existingIds.has(m.id),
             );
-            return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+            if (newMsgs.length === 0) return prev;
+            // Drop optimistic user messages (id < 0) once the server's copy
+            // of the same content arrives, otherwise they'd render twice.
+            const incomingUserContent = new Set(
+              newMsgs.filter((m) => m.role === "user").map((m) => m.content),
+            );
+            const withoutStaleOptimistic = prev.filter(
+              (m) =>
+                !(
+                  m.id < 0 &&
+                  m.role === "user" &&
+                  incomingUserContent.has(m.content)
+                ),
+            );
+            return [...withoutStaleOptimistic, ...newMsgs];
           });
           lastIdRef.current = data.messages[data.messages.length - 1].id;
         }
@@ -215,11 +240,13 @@ export function AdminChat(): React.JSX.Element | null {
           },
         }),
       });
-      // Optimistic add
+      // Optimistic add — negative id so it never collides with a server
+      // sequence id; the poll dedup below swaps this out when the persisted
+      // copy arrives.
       setMessages((prev) => [
         ...prev,
         {
-          id: Date.now(),
+          id: -Date.now(),
           role: "user" as const,
           content: trimmed,
           createdAt: new Date().toISOString(),

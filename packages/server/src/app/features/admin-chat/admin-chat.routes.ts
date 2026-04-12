@@ -21,6 +21,12 @@ const router = Router();
 const REPO = "Createrington/app";
 const ENVIRONMENT = env.NODE_ENV === "production" ? "prod" : "dev";
 
+// Upstream LLM calls can hang on network glitches — cap every outbound
+// request so a stuck claude-automation can't pile up Express connections.
+const UPSTREAM_TIMEOUT_MS = 30000;
+
+const claudeClient = axios.create({ timeout: UPSTREAM_TIMEOUT_MS });
+
 function claudeHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -67,7 +73,7 @@ router.get(
     const base = requireUpstream(res);
     if (!base) return;
     try {
-      const r = await axios.get(`${base}/api/chat/enabled`, {
+      const r = await claudeClient.get(`${base}/api/chat/enabled`, {
         params: { repo: REPO, environment: ENVIRONMENT },
         headers: claudeHeaders(),
       });
@@ -86,7 +92,7 @@ router.get(
     const base = requireUpstream(res);
     if (!base) return;
     try {
-      const r = await axios.get(`${base}/api/chat/session`, {
+      const r = await claudeClient.get(`${base}/api/chat/session`, {
         params: {
           username: adminUsername(req),
           environment: ENVIRONMENT,
@@ -112,7 +118,7 @@ router.get(
       throw new BadRequestError("sessionId is required");
     }
     try {
-      const r = await axios.get(`${base}/api/chat/messages`, {
+      const r = await claudeClient.get(`${base}/api/chat/messages`, {
         params: {
           username: adminUsername(req),
           sessionId,
@@ -138,7 +144,7 @@ router.post(
       pageContext?: unknown;
     };
     try {
-      const r = await axios.post(
+      const r = await claudeClient.post(
         `${base}/api/chat/start`,
         {
           username: adminUsername(req),
@@ -171,7 +177,7 @@ router.post(
       throw new BadRequestError("sessionId and message are required");
     }
     try {
-      const r = await axios.post(
+      const r = await claudeClient.post(
         `${base}/api/chat/send`,
         {
           username: adminUsername(req),
@@ -200,7 +206,7 @@ router.post(
       throw new BadRequestError("sessionId is required");
     }
     try {
-      const r = await axios.post(
+      const r = await claudeClient.post(
         `${base}/api/chat/end`,
         { username: adminUsername(req), sessionId },
         { headers: claudeHeaders() },
