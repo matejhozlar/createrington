@@ -240,39 +240,46 @@ router.get(
       throw new BadRequestError("sessionId is required");
     }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache, no-transform");
-    res.setHeader("Connection", "keep-alive");
-    res.setHeader("X-Accel-Buffering", "no");
-    res.flushHeaders?.();
-
+    // Hold off on sending SSE headers until the upstream connects — if
+    // the upstream rejects (404 session not found, 401 bad secret, etc.)
+    // we want to surface the real status to the browser, not a 200 with
+    // no body.
+    let upstream;
     try {
-      const upstream = await axios.get(`${base}/api/chat/stream`, {
+      upstream = await axios.get(`${base}/api/chat/stream`, {
         params: { username: adminUsername(req), sessionId },
         headers: claudeHeaders(),
         responseType: "stream",
         // Disable axios timeout for the long-lived stream.
         timeout: 0,
       });
-
-      const stream = upstream.data as Readable;
-      stream.pipe(res);
-      req.on("close", () => {
-        stream.destroy();
-      });
     } catch (err) {
-      // Close the half-open SSE so the browser doesn't hang retrying the
-      // same failing endpoint. A non-SSE JSON body is fine here since the
-      // EventSource will fire onerror either way.
       if (err instanceof AxiosError && err.response) {
         res
           .status(err.response.status)
-          .write(
-            `event: error\ndata: ${JSON.stringify(err.response.data ?? {})}\n\n`,
-          );
+          .json(err.response.data ?? { error: "upstream error" });
+        return;
       }
-      res.end();
+      throw err;
     }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const stream = upstream.data as Readable;
+    // If the upstream drops (restart, network blip) mid-stream, close our
+    // side cleanly instead of leaving Express in an undefined state.
+    stream.on("error", (err) => {
+      console.error("[admin-chat] upstream stream error:", err);
+      res.end();
+    });
+    stream.pipe(res);
+    req.on("close", () => {
+      stream.destroy();
+    });
   }),
 );
 
