@@ -21,6 +21,11 @@ export const globalLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
+  // Skip long-lived SSE streams — they count as one request but stay open
+  // for minutes, and the stream itself has auth + upstream gating, so the
+  // per-IP bucket would otherwise burn through and throttle the admin's
+  // other browsing.
+  skip: (req) => req.path === "/api/claude-chat/stream",
 });
 
 /** Auth-specific rate limiter — 20 requests per 15-minute window per IP */

@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import axios, { AxiosError } from "axios";
+import type { Readable } from "node:stream";
 import {
   asyncHandler,
   authenticate,
@@ -216,6 +217,61 @@ router.post(
       res.json(r.data);
     } catch (err) {
       forwardUpstreamError(err, res);
+    }
+  }),
+);
+
+/**
+ * SSE passthrough to claude-automation's /api/chat/stream. Axios streaming
+ * responses are piped through so the widget sees events frame-by-frame.
+ * The 30s UPSTREAM_TIMEOUT_MS on claudeClient does not apply here — the
+ * stream is long-lived, bounded by the upstream's 20s ping keeping it alive
+ * plus the admin eventually closing the drawer.
+ */
+router.get(
+  "/stream",
+  asyncHandler(authenticate),
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req: Request, res: Response) => {
+    const base = requireUpstream(res);
+    if (!base) return;
+    const sessionId = req.query.sessionId;
+    if (typeof sessionId !== "string" || !sessionId) {
+      throw new BadRequestError("sessionId is required");
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    try {
+      const upstream = await axios.get(`${base}/api/chat/stream`, {
+        params: { username: adminUsername(req), sessionId },
+        headers: claudeHeaders(),
+        responseType: "stream",
+        // Disable axios timeout for the long-lived stream.
+        timeout: 0,
+      });
+
+      const stream = upstream.data as Readable;
+      stream.pipe(res);
+      req.on("close", () => {
+        stream.destroy();
+      });
+    } catch (err) {
+      // Close the half-open SSE so the browser doesn't hang retrying the
+      // same failing endpoint. A non-SSE JSON body is fine here since the
+      // EventSource will fire onerror either way.
+      if (err instanceof AxiosError && err.response) {
+        res
+          .status(err.response.status)
+          .write(
+            `event: error\ndata: ${JSON.stringify(err.response.data ?? {})}\n\n`,
+          );
+      }
+      res.end();
     }
   }),
 );

@@ -22,7 +22,68 @@ import {
 } from "./actions";
 
 const API_BASE = "/api/claude-chat";
-const POLL_INTERVAL = 350;
+
+interface StreamHandlers {
+  onMessage: (m: ChatMessage) => void;
+  onSessionEnded: () => void;
+  onOpen?: () => void;
+  onError?: () => void;
+}
+
+/**
+ * Open an SSE stream through the proxy. EventSource can't attach the
+ * Bearer token, so we use fetch + ReadableStream and parse SSE frames
+ * manually. Each frame is separated by a blank line; event-type defaults
+ * to "message" when omitted.
+ */
+async function runStream(
+  sessionId: number,
+  handlers: StreamHandlers,
+  abort: AbortSignal,
+): Promise<void> {
+  const token = getAccessToken();
+  const response = await fetch(`${API_BASE}/stream?sessionId=${sessionId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    signal: abort,
+  });
+  if (!response.ok || !response.body) {
+    handlers.onError?.();
+    return;
+  }
+  handlers.onOpen?.();
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    // Frame boundary is a blank line (CRLF or LF).
+    let idx: number;
+    while ((idx = buffer.search(/\r?\n\r?\n/)) !== -1) {
+      const frame = buffer.slice(0, idx);
+      buffer = buffer.slice(idx).replace(/^\r?\n\r?\n/, "");
+      let event = "message";
+      const dataLines: string[] = [];
+      for (const line of frame.split(/\r?\n/)) {
+        if (line.startsWith(":")) continue; // comment / keepalive
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+      }
+      if (dataLines.length === 0) continue;
+      try {
+        const parsed = JSON.parse(dataLines.join("\n")) as unknown;
+        if (event === "message") {
+          handlers.onMessage(parsed as ChatMessage);
+        } else if (event === "session_ended") {
+          handlers.onSessionEnded();
+        }
+      } catch {
+        // Ignore malformed frame — next one will probably be fine.
+      }
+    }
+  }
+}
 
 /**
  * pageContext passed to the proxy on every start/send. Gives Claude enough
@@ -279,8 +340,6 @@ export function AdminChat(): React.JSX.Element | null {
   const [sending, setSending] = useState(false);
   const [starting, setStarting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastIdRef = useRef(0);
 
   /** Snapshot of the admin's current page — sent with every start/send. */
   const pageContext = useCallback(
@@ -326,12 +385,10 @@ export function AdminChat(): React.JSX.Element | null {
           if (!nextId) return;
           // Only tear down message state when the session ID is actually
           // changing — reopening the drawer on the same session would
-          // otherwise flicker between empty → messages as the poll refills.
+          // otherwise flicker between empty → messages as the stream
+          // refills.
           setSessionId((prev) => {
-            if (prev !== nextId) {
-              lastIdRef.current = 0;
-              setMessages([]);
-            }
+            if (prev !== nextId) setMessages([]);
             return nextId;
           });
           setSessionActive(Boolean(data.active));
@@ -340,71 +397,82 @@ export function AdminChat(): React.JSX.Element | null {
       .catch(console.error);
   }, [open, user]);
 
-  // Poll for messages
-  const pollMessages = useCallback((): void => {
-    if (!sessionId) return;
+  /**
+   * Merge one or a batch of incoming messages into state by id. Streaming
+   * rows update in place (same id, growing content); new rows append.
+   * Also swaps out optimistic user messages (id < 0) once the server's
+   * copy of the same content arrives.
+   */
+  const mergeMessages = useCallback((incoming: ChatMessage[]): void => {
+    if (incoming.length === 0) return;
+    setMessages((prev) => {
+      const byId = new Map<number, ChatMessage>(
+        prev.map((m) => [m.id, m] as const),
+      );
+      for (const m of incoming) byId.set(m.id, m);
+      const incomingUserContent = new Set(
+        incoming.filter((m) => m.role === "user").map((m) => m.content),
+      );
+      const merged = Array.from(byId.values()).filter(
+        (m) =>
+          !(
+            m.id < 0 &&
+            m.role === "user" &&
+            incomingUserContent.has(m.content)
+          ),
+      );
+      merged.sort((a, b) => a.id - b.id);
+      return merged;
+    });
+  }, []);
 
-    claudeFetch(`/messages?sessionId=${sessionId}&afterId=${lastIdRef.current}`)
-      .then((r) => r.json())
-      .then((data: { messages?: ChatMessage[]; sessionActive?: boolean }) => {
-        if (data.messages && data.messages.length > 0) {
-          setMessages((prev) => {
-            // Merge-by-id rather than skip-existing: streaming messages
-            // come back on each poll with updated content, and we need
-            // to replace them in place so the bubble grows instead of
-            // duplicating.
-            const byId = new Map<number, ChatMessage>(
-              prev.map((m) => [m.id, m] as const),
-            );
-            for (const m of data.messages!) byId.set(m.id, m);
+  // Load history once + open the SSE stream. History comes from the
+  // existing /messages?afterId=0 endpoint so the transcript renders
+  // immediately on drawer open; live events take over from there.
+  useEffect(() => {
+    if (!sessionId || !open) return;
 
-            // Drop optimistic user messages (id < 0) once the server's
-            // copy of the same content arrives — otherwise they'd render
-            // twice briefly.
-            const incomingUserContent = new Set(
-              data
-                .messages!.filter((m) => m.role === "user")
-                .map((m) => m.content),
-            );
-            const merged = Array.from(byId.values()).filter(
-              (m) =>
-                !(
-                  m.id < 0 &&
-                  m.role === "user" &&
-                  incomingUserContent.has(m.content)
-                ),
-            );
-            merged.sort((a, b) => a.id - b.id);
-            return merged;
-          });
-          // Advance the delta cursor only past non-streaming messages —
-          // streaming rows need to stay in the "refresh this" window
-          // until they settle.
-          const settled = data.messages.filter(
-            (m) => !m.metadata || m.metadata.streaming !== true,
-          );
-          if (settled.length > 0) {
-            const maxId = settled[settled.length - 1].id;
-            if (maxId > lastIdRef.current) lastIdRef.current = maxId;
-          }
-        }
+    const abort = new AbortController();
+    let cancelled = false;
+
+    (async (): Promise<void> => {
+      try {
+        const res = await claudeFetch(`/messages?sessionId=${sessionId}`);
+        if (cancelled) return;
+        const data = (await res.json()) as {
+          messages?: ChatMessage[];
+          sessionActive?: boolean;
+        };
+        if (data.messages) mergeMessages(data.messages);
         if (data.sessionActive !== undefined) {
           setSessionActive(data.sessionActive);
         }
-      })
-      .catch(console.error);
-  }, [sessionId]);
+      } catch {
+        // Non-fatal — live stream will still surface new messages.
+      }
 
-  useEffect(() => {
-    if (!sessionId || !open) return;
-    // Initial fetch
-    pollMessages();
-    // Start polling
-    pollRef.current = setInterval(pollMessages, POLL_INTERVAL);
+      if (cancelled) return;
+      try {
+        await runStream(
+          sessionId,
+          {
+            onMessage: (m) => mergeMessages([m]),
+            onSessionEnded: () => setSessionActive(false),
+          },
+          abort.signal,
+        );
+      } catch (err) {
+        if ((err as { name?: string }).name !== "AbortError") {
+          console.error("[admin-chat] stream error:", err);
+        }
+      }
+    })();
+
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
+      cancelled = true;
+      abort.abort();
     };
-  }, [sessionId, open, pollMessages]);
+  }, [sessionId, open, mergeMessages]);
 
   // Auto-scroll on new messages — smooth so the eye can follow.
   useEffect(() => {
@@ -440,7 +508,6 @@ export function AdminChat(): React.JSX.Element | null {
         setSessionId(data.sessionId);
         setSessionActive(true);
         setMessages([]);
-        lastIdRef.current = 0;
       }
     } catch (err) {
       console.error("[admin-chat] Failed to start session:", err);
