@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
 import { getAccessToken } from "@/services/auth/token-manager";
@@ -23,6 +23,43 @@ import {
 } from "./actions";
 
 const API_BASE = "/api/claude-chat";
+
+interface RepoSuggestion {
+  name: string;
+  fullName: string;
+  description: string;
+  htmlUrl: string;
+  private: boolean;
+}
+
+interface MentionState {
+  /** Index of the `@` trigger in the input string. */
+  start: number;
+  /** Text typed after `@`, before the cursor. */
+  query: string;
+}
+
+/**
+ * Walk back from the cursor to find an active `@`-mention. Returns the
+ * mention state or null. Triggers only when `@` sits at a word boundary
+ * (start of input or after whitespace) and the query is plain
+ * repo-name-ish text — a space or newline closes the menu.
+ */
+function detectMention(value: string, cursor: number): MentionState | null {
+  if (cursor <= 0) return null;
+  const before = value.slice(0, cursor);
+  const at = before.lastIndexOf("@");
+  if (at === -1) return null;
+  const prev = at > 0 ? before[at - 1] : "";
+  // Only trigger at word boundaries so email addresses / Discord handles
+  // don't open the menu.
+  if (prev && !/\s/.test(prev)) return null;
+  const query = before.slice(at + 1);
+  if (/[\s\n]/.test(query)) return null;
+  // Allow a generous character set — repo names, partial org/repo, hyphens.
+  if (!/^[A-Za-z0-9._/-]*$/.test(query)) return null;
+  return { start: at, query };
+}
 
 interface StreamHandlers {
   onMessage: (m: ChatMessage) => void;
@@ -358,6 +395,76 @@ export function AdminChat(): React.JSX.Element | null {
   const [sending, setSending] = useState(false);
   const [starting, setStarting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // @-mention autocomplete for Createrington repos. Lazy-loaded on the
+  // first `@` keystroke so opening the drawer doesn't fan out to Gitea if
+  // the admin never uses the feature. Fetch runs once per session.
+  const [repos, setRepos] = useState<RepoSuggestion[] | null>(null);
+  const reposLoadingRef = useRef(false);
+  const [mention, setMention] = useState<MentionState | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+
+  const loadRepos = useCallback(async (): Promise<void> => {
+    if (repos !== null || reposLoadingRef.current) return;
+    reposLoadingRef.current = true;
+    try {
+      const res = await claudeFetch("/repos");
+      if (!res.ok) {
+        setRepos([]);
+        return;
+      }
+      const data = (await res.json()) as { repos?: RepoSuggestion[] };
+      setRepos(data.repos ?? []);
+    } catch {
+      setRepos([]);
+    } finally {
+      reposLoadingRef.current = false;
+    }
+  }, [repos]);
+
+  const mentionMatches = useMemo<RepoSuggestion[]>(() => {
+    if (!mention || !repos) return [];
+    const q = mention.query.toLowerCase();
+    return repos.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [mention, repos]);
+
+  const onInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
+      const value = e.target.value;
+      setInput(value);
+      const cursor = e.target.selectionStart ?? value.length;
+      const next = detectMention(value, cursor);
+      setMention(next);
+      if (next) {
+        void loadRepos();
+        setMentionIndex(0);
+      }
+    },
+    [loadRepos],
+  );
+
+  const acceptMention = useCallback(
+    (repo: RepoSuggestion): void => {
+      if (!mention) return;
+      const before = input.slice(0, mention.start);
+      const after = input.slice(mention.start + mention.query.length + 1);
+      // Trailing space so the admin can keep typing without extra keystroke.
+      const inserted = `${repo.fullName} `;
+      const nextValue = before + inserted + after;
+      const nextCursor = before.length + inserted.length;
+      setInput(nextValue);
+      setMention(null);
+      // Restore focus + cursor after the controlled update flushes.
+      requestAnimationFrame(() => {
+        const ta = textareaRef.current;
+        if (!ta) return;
+        ta.focus();
+        ta.setSelectionRange(nextCursor, nextCursor);
+      });
+    },
+    [input, mention],
+  );
 
   /** Snapshot of the admin's current page — sent with every start/send. */
   const pageContext = useCallback(
@@ -613,11 +720,53 @@ export function AdminChat(): React.JSX.Element | null {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>): void => {
+    // When the mention menu is open, arrow keys + Enter/Tab drive it
+    // instead of navigating the textarea / submitting the message.
+    if (mention && mentionMatches.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((i) => (i + 1) % mentionMatches.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex(
+          (i) => (i - 1 + mentionMatches.length) % mentionMatches.length,
+        );
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        const chosen = mentionMatches[mentionIndex];
+        if (chosen) acceptMention(chosen);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMention(null);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void sendMessage();
     }
   };
+
+  const syncMentionFromCursor = useCallback(
+    (ta: HTMLTextAreaElement): void => {
+      // Arrow keys / clicks move the cursor without firing onChange, so
+      // re-detect on keyup / click to keep the menu state in sync with
+      // where the caret actually sits.
+      const next = detectMention(
+        ta.value,
+        ta.selectionStart ?? ta.value.length,
+      );
+      setMention(next);
+      if (next) void loadRepos();
+    },
+    [loadRepos],
+  );
 
   // Bubble visibility — default hidden, toggled by Ctrl/Cmd+I. Clicking
   // the bubble (when shown) still opens/closes the drawer exactly as
@@ -911,6 +1060,7 @@ export function AdminChat(): React.JSX.Element | null {
           scroll-margin: 4rem;
         }
         .ac-input-area {
+          position: relative;
           padding: 0.75rem;
           border-top: 1px solid var(--border);
           display: flex;
@@ -930,6 +1080,50 @@ export function AdminChat(): React.JSX.Element | null {
         .ac-ended-note {
           font-size: 0.75rem;
           color: var(--muted-foreground);
+        }
+        .ac-mention-menu {
+          position: absolute;
+          bottom: calc(100% - 0.25rem);
+          left: 0.75rem;
+          right: 0.75rem;
+          max-height: 14rem;
+          overflow-y: auto;
+          background: var(--popover, var(--card));
+          border: 1px solid var(--border);
+          border-radius: 0.5rem;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+          z-index: 10;
+          padding: 0.25rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.125rem;
+        }
+        .ac-mention-item {
+          text-align: left;
+          border: none;
+          background: transparent;
+          color: var(--foreground);
+          cursor: pointer;
+          padding: 0.375rem 0.5rem;
+          border-radius: 0.25rem;
+          font-size: 0.8125rem;
+          display: flex;
+          flex-direction: column;
+          gap: 0.125rem;
+          font-family: inherit;
+        }
+        .ac-mention-item-active {
+          background: var(--accent, var(--muted));
+        }
+        .ac-mention-name {
+          font-weight: 500;
+        }
+        .ac-mention-desc {
+          font-size: 0.6875rem;
+          color: var(--muted-foreground);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .ac-textarea {
           flex: 1;
@@ -1138,12 +1332,40 @@ export function AdminChat(): React.JSX.Element | null {
                 </div>
                 {sessionActive ? (
                   <div className="ac-input-area">
+                    {mention && mentionMatches.length > 0 && (
+                      <div className="ac-mention-menu" role="listbox">
+                        {mentionMatches.map((repo, i) => (
+                          <button
+                            key={repo.fullName}
+                            type="button"
+                            className={`ac-mention-item${i === mentionIndex ? " ac-mention-item-active" : ""}`}
+                            role="option"
+                            aria-selected={i === mentionIndex}
+                            // Prevent the textarea from losing focus before
+                            // the click handler fires.
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => acceptMention(repo)}
+                            onMouseEnter={() => setMentionIndex(i)}
+                          >
+                            <span className="ac-mention-name">{repo.name}</span>
+                            {repo.description && (
+                              <span className="ac-mention-desc">
+                                {repo.description}
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     <textarea
+                      ref={textareaRef}
                       className="ac-textarea"
                       value={input}
-                      onChange={(e) => setInput(e.target.value)}
+                      onChange={onInputChange}
                       onKeyDown={handleKeyDown}
-                      placeholder="Ask anything..."
+                      onKeyUp={(e) => syncMentionFromCursor(e.currentTarget)}
+                      onClick={(e) => syncMentionFromCursor(e.currentTarget)}
+                      placeholder="Ask anything... (type @ for repo)"
                       disabled={sending}
                       rows={1}
                     />

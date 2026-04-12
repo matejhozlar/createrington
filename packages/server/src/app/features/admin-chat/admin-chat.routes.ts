@@ -88,6 +88,24 @@ router.get(
 );
 
 router.get(
+  "/repos",
+  asyncHandler(authenticate),
+  asyncHandler(requireAdmin),
+  asyncHandler(async (_req: Request, res: Response) => {
+    const base = requireUpstream(res);
+    if (!base) return;
+    try {
+      const r = await claudeClient.get(`${base}/api/chat/repos`, {
+        headers: claudeHeaders(),
+      });
+      res.json(r.data);
+    } catch (err) {
+      forwardUpstreamError(err, res);
+    }
+  }),
+);
+
+router.get(
   "/session",
   asyncHandler(authenticate),
   asyncHandler(requireAdmin),
