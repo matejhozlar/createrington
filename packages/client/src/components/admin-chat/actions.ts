@@ -101,6 +101,16 @@ const EMBED_FIELDS = new Set([
   "timestamp",
 ]);
 
+/**
+ * Validate and normalize an action envelope. Exported so SSE `action` events
+ * (MCP tool calls on the backend) can reuse the same flat-field forgiveness
+ * that the fence parser applies. Returns the narrowed envelope or null.
+ */
+export function coerceAction(raw: unknown): AdminChatAction | null {
+  if (isValidAction(raw)) return raw;
+  return null;
+}
+
 function isValidAction(a: unknown): a is AdminChatAction {
   if (!a || typeof a !== "object") return false;
   const rec = a as Record<string, unknown>;

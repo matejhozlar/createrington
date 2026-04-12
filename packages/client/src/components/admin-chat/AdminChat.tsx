@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import {
   parseActionsFromMessage,
+  coerceAction,
   describeAction,
   PENDING_EMBED_KEY,
   INSERT_EMBED_EVENT,
@@ -26,6 +27,7 @@ const API_BASE = "/api/claude-chat";
 interface StreamHandlers {
   onMessage: (m: ChatMessage) => void;
   onSessionEnded: () => void;
+  onAction: (action: AdminChatAction) => void;
   onOpen?: () => void;
   onError?: () => void;
 }
@@ -75,6 +77,13 @@ async function runStream(
         const parsed = JSON.parse(dataLines.join("\n")) as unknown;
         if (event === "message") {
           handlers.onMessage(parsed as ChatMessage);
+        } else if (event === "action") {
+          // Envelope shape on the wire is { sessionId, action: {...} }.
+          // Validate via the same forgiveness path the fence parser uses so
+          // MCP-emitted actions get the same flat-field normalization.
+          const envelope = (parsed as { action?: unknown }).action;
+          const coerced = coerceAction(envelope);
+          if (coerced) handlers.onAction(coerced);
         } else if (event === "session_ended") {
           handlers.onSessionEnded();
         }
@@ -336,6 +345,15 @@ export function AdminChat(): React.JSX.Element | null {
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  /**
+   * Action envelopes delivered over SSE (MCP tool calls on the backend).
+   * Separate from fence-parsed actions so both paths can coexist during the
+   * MCP migration. Render order follows arrival time; the id stays stable so
+   * ActionCard's sessionStorage persistence doesn't churn on rerenders.
+   */
+  const [streamActions, setStreamActions] = useState<
+    Array<{ id: string; action: AdminChatAction }>
+  >([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [starting, setStarting] = useState(false);
@@ -388,7 +406,10 @@ export function AdminChat(): React.JSX.Element | null {
           // otherwise flicker between empty → messages as the stream
           // refills.
           setSessionId((prev) => {
-            if (prev !== nextId) setMessages([]);
+            if (prev !== nextId) {
+              setMessages([]);
+              setStreamActions([]);
+            }
             return nextId;
           });
           setSessionActive(Boolean(data.active));
@@ -467,6 +488,14 @@ export function AdminChat(): React.JSX.Element | null {
           sessionId,
           {
             onMessage: (m) => mergeMessages([m]),
+            onAction: (action) =>
+              setStreamActions((prev) => [
+                ...prev,
+                {
+                  id: `sse-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  action,
+                },
+              ]),
             onSessionEnded: () => setSessionActive(false),
           },
           abort.signal,
@@ -518,6 +547,7 @@ export function AdminChat(): React.JSX.Element | null {
         setSessionId(data.sessionId);
         setSessionActive(true);
         setMessages([]);
+        setStreamActions([]);
       }
     } catch (err) {
       console.error("[admin-chat] Failed to start session:", err);
@@ -1095,6 +1125,15 @@ export function AdminChat(): React.JSX.Element | null {
                       </div>
                     );
                   })}
+                  {streamActions.map(({ id, action }) => (
+                    <div key={id} className="ac-msg-row" data-role="assistant">
+                      <ActionCard
+                        action={action}
+                        storageKey={id}
+                        navigate={navigate}
+                      />
+                    </div>
+                  ))}
                   <div ref={messagesEndRef} />
                 </div>
                 {sessionActive ? (
