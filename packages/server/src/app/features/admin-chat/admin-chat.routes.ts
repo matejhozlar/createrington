@@ -1,5 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import axios, { AxiosError } from "axios";
+import type { Readable } from "node:stream";
 import {
   asyncHandler,
   authenticate,
@@ -217,6 +218,68 @@ router.post(
     } catch (err) {
       forwardUpstreamError(err, res);
     }
+  }),
+);
+
+/**
+ * SSE passthrough to claude-automation's /api/chat/stream. Axios streaming
+ * responses are piped through so the widget sees events frame-by-frame.
+ * The 30s UPSTREAM_TIMEOUT_MS on claudeClient does not apply here — the
+ * stream is long-lived, bounded by the upstream's 20s ping keeping it alive
+ * plus the admin eventually closing the drawer.
+ */
+router.get(
+  "/stream",
+  asyncHandler(authenticate),
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req: Request, res: Response) => {
+    const base = requireUpstream(res);
+    if (!base) return;
+    const sessionId = req.query.sessionId;
+    if (typeof sessionId !== "string" || !sessionId) {
+      throw new BadRequestError("sessionId is required");
+    }
+
+    // Hold off on sending SSE headers until the upstream connects — if
+    // the upstream rejects (404 session not found, 401 bad secret, etc.)
+    // we want to surface the real status to the browser, not a 200 with
+    // no body.
+    let upstream;
+    try {
+      upstream = await axios.get(`${base}/api/chat/stream`, {
+        params: { username: adminUsername(req), sessionId },
+        headers: claudeHeaders(),
+        responseType: "stream",
+        // Disable axios timeout for the long-lived stream.
+        timeout: 0,
+      });
+    } catch (err) {
+      if (err instanceof AxiosError && err.response) {
+        res
+          .status(err.response.status)
+          .json(err.response.data ?? { error: "upstream error" });
+        return;
+      }
+      throw err;
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const stream = upstream.data as Readable;
+    // If the upstream drops (restart, network blip) mid-stream, close our
+    // side cleanly instead of leaving Express in an undefined state.
+    stream.on("error", (err) => {
+      console.error("[admin-chat] upstream stream error:", err);
+      res.end();
+    });
+    stream.pipe(res);
+    req.on("close", () => {
+      stream.destroy();
+    });
   }),
 );
 
