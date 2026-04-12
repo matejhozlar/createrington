@@ -296,8 +296,8 @@ export function AdminChat(): React.JSX.Element | null {
           width: 3rem;
           height: 3rem;
           border-radius: 50%;
-          background: hsl(var(--primary));
-          color: hsl(var(--primary-foreground));
+          background: var(--primary);
+          color: var(--primary-foreground);
           border: none;
           cursor: pointer;
           display: flex;
@@ -315,8 +315,8 @@ export function AdminChat(): React.JSX.Element | null {
           max-width: calc(100vw - 2.5rem);
           height: 32rem;
           max-height: calc(100vh - 7rem);
-          background: hsl(var(--card));
-          border: 1px solid hsl(var(--border));
+          background: var(--card);
+          border: 1px solid var(--border);
           border-radius: 0.75rem;
           display: flex;
           flex-direction: column;
@@ -328,13 +328,13 @@ export function AdminChat(): React.JSX.Element | null {
           align-items: center;
           justify-content: space-between;
           padding: 0.75rem 1rem;
-          border-bottom: 1px solid hsl(var(--border));
+          border-bottom: 1px solid var(--border);
           flex-shrink: 0;
         }
         .ac-header-title {
           font-size: 0.875rem;
           font-weight: 600;
-          color: hsl(var(--foreground));
+          color: var(--foreground);
         }
         .ac-header-status {
           font-size: 0.625rem;
@@ -347,8 +347,8 @@ export function AdminChat(): React.JSX.Element | null {
           color: hsl(142 76% 56%);
         }
         .ac-status-inactive {
-          background: hsl(var(--muted));
-          color: hsl(var(--muted-foreground));
+          background: var(--muted);
+          color: var(--muted-foreground);
         }
         .ac-messages {
           flex: 1;
@@ -368,13 +368,13 @@ export function AdminChat(): React.JSX.Element | null {
         }
         .ac-msg-user {
           align-self: flex-end;
-          background: hsl(var(--primary));
-          color: hsl(var(--primary-foreground));
+          background: var(--primary);
+          color: var(--primary-foreground);
         }
         .ac-msg-assistant {
           align-self: flex-start;
-          background: hsl(var(--muted));
-          color: hsl(var(--foreground));
+          background: var(--muted);
+          color: var(--foreground);
         }
         .ac-msg-ack {
           opacity: 0.6;
@@ -386,7 +386,7 @@ export function AdminChat(): React.JSX.Element | null {
           font-size: 0.75rem;
         }
         .ac-code-block {
-          background: hsl(var(--background));
+          background: var(--background);
           border-radius: 0.375rem;
           padding: 0.5rem;
           margin: 0.25rem 0;
@@ -396,19 +396,19 @@ export function AdminChat(): React.JSX.Element | null {
           white-space: pre;
         }
         .ac-inline-code {
-          background: hsl(var(--background));
+          background: var(--background);
           padding: 0.1rem 0.3rem;
           border-radius: 0.25rem;
           font-size: 0.75rem;
           font-family: ui-monospace, monospace;
         }
         .ac-link {
-          color: hsl(var(--primary));
+          color: var(--primary);
           text-decoration: underline;
         }
         .ac-input-area {
           padding: 0.75rem;
-          border-top: 1px solid hsl(var(--border));
+          border-top: 1px solid var(--border);
           display: flex;
           gap: 0.5rem;
           align-items: flex-end;
@@ -417,24 +417,24 @@ export function AdminChat(): React.JSX.Element | null {
         .ac-textarea {
           flex: 1;
           resize: none;
-          border: 1px solid hsl(var(--border));
+          border: 1px solid var(--border);
           border-radius: 0.5rem;
           padding: 0.5rem 0.75rem;
           font-size: 0.8125rem;
-          background: hsl(var(--background));
-          color: hsl(var(--foreground));
+          background: var(--background);
+          color: var(--foreground);
           outline: none;
           max-height: 6rem;
           font-family: inherit;
           line-height: 1.5;
         }
-        .ac-textarea:focus { border-color: hsl(var(--ring)); }
+        .ac-textarea:focus { border-color: var(--ring); }
         .ac-send-btn {
           width: 2rem;
           height: 2rem;
           border-radius: 0.375rem;
-          background: hsl(var(--primary));
-          color: hsl(var(--primary-foreground));
+          background: var(--primary);
+          color: var(--primary-foreground);
           border: none;
           cursor: pointer;
           display: flex;
@@ -455,13 +455,13 @@ export function AdminChat(): React.JSX.Element | null {
           gap: 0.75rem;
           padding: 2rem;
           text-align: center;
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
         }
         .ac-start-btn {
           padding: 0.5rem 1.25rem;
           border-radius: 0.5rem;
-          background: hsl(var(--primary));
-          color: hsl(var(--primary-foreground));
+          background: var(--primary);
+          color: var(--primary-foreground);
           border: none;
           cursor: pointer;
           font-size: 0.8125rem;
@@ -478,12 +478,12 @@ export function AdminChat(): React.JSX.Element | null {
           background: none;
           border: none;
           cursor: pointer;
-          color: hsl(var(--muted-foreground));
+          color: var(--muted-foreground);
           padding: 0.25rem;
           display: flex;
           align-items: center;
         }
-        .ac-icon-btn:hover { color: hsl(var(--foreground)); }
+        .ac-icon-btn:hover { color: var(--foreground); }
         .ac-header-actions {
           display: flex;
           align-items: center;
