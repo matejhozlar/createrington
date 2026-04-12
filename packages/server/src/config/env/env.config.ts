@@ -142,6 +142,11 @@ const envSchema = z.object({
     .min(32, "Playtime sync secret must be at least 32 characters")
     .optional(),
 
+  // Claude automation proxy — admin chat widget talks to claude-automation
+  // through the app backend so the shared secret never ships to clients.
+  CLAUDE_API_URL: z.string().url().optional(),
+  ADMIN_CHAT_SECRET: z.string().min(1).optional(),
+
   // CurseForge
   CURSEFORGE_API_KEY: z.string().min(1).optional(),
 

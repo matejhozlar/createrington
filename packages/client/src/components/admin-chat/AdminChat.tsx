@@ -1,20 +1,40 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/auth";
+import { getAccessToken } from "@/services/auth/token-manager";
 import { MessageSquare, X, Send, Loader2, Square } from "lucide-react";
 
-const CLAUDE_API_URL = import.meta.env.VITE_CLAUDE_API_URL as
-  | string
-  | undefined;
-const ENVIRONMENT = import.meta.env.PROD ? "prod" : "dev";
-const REPO = "Createrington/app";
+const API_BASE = "/api/claude-chat";
 const POLL_INTERVAL = 800;
 
 interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
-  metadata?: { isAck?: boolean; isProgress?: boolean } | null;
+  metadata?: {
+    isAck?: boolean;
+    isProgress?: boolean;
+    isIdleWarning?: boolean;
+    isIdleTimeout?: boolean;
+  } | null;
   createdAt: string;
+}
+
+/**
+ * Fetch through the app backend proxy, which injects the admin-chat shared
+ * secret and forwards to claude-automation. The JWT auth header is required
+ * so the proxy can gate on isAdmin and derive the username.
+ */
+async function claudeFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  const token = getAccessToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (init?.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
 function renderMarkdown(text: string): string {
@@ -43,9 +63,12 @@ function renderMarkdown(text: string): string {
 
   // Line breaks (skip inside <pre>)
   html = html.replace(/\n/g, "<br>");
-  html = html.replace(/<pre class="ac-code-block"><code>([\s\S]*?)<\/code><\/pre>/g, (_m, code: string) => {
-    return `<pre class="ac-code-block"><code>${(code as string).replace(/<br>/g, "\n")}</code></pre>`;
-  });
+  html = html.replace(
+    /<pre class="ac-code-block"><code>([\s\S]*?)<\/code><\/pre>/g,
+    (_m, code: string) => {
+      return `<pre class="ac-code-block"><code>${(code as string).replace(/<br>/g, "\n")}</code></pre>`;
+    },
+  );
 
   return html;
 }
@@ -64,30 +87,24 @@ export function AdminChat(): React.JSX.Element | null {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastIdRef = useRef(0);
 
-  const username = user?.username ?? user?.discordId ?? "";
-
   // Check if admin chat is enabled
   useEffect(() => {
-    if (!user?.isAdmin || !CLAUDE_API_URL) {
+    if (!user?.isAdmin) {
       setEnabled(false);
       return;
     }
 
-    fetch(
-      `${CLAUDE_API_URL}/api/chat/enabled?repo=${encodeURIComponent(REPO)}&environment=${ENVIRONMENT}`,
-    )
-      .then((r) => r.json())
+    claudeFetch("/enabled")
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
       .then((data: { enabled?: boolean }) => setEnabled(data.enabled === true))
       .catch(() => setEnabled(false));
   }, [user]);
 
   // Check for existing session on open
   useEffect(() => {
-    if (!open || !username || !CLAUDE_API_URL) return;
+    if (!open || !user?.isAdmin) return;
 
-    fetch(
-      `${CLAUDE_API_URL}/api/chat/session?username=${encodeURIComponent(username)}`,
-    )
+    claudeFetch("/session")
       .then((r) => r.json())
       .then(
         (data: {
@@ -105,38 +122,31 @@ export function AdminChat(): React.JSX.Element | null {
         },
       )
       .catch(console.error);
-  }, [open, username]);
+  }, [open, user]);
 
   // Poll for messages
   const pollMessages = useCallback((): void => {
-    if (!sessionId || !username || !CLAUDE_API_URL) return;
+    if (!sessionId) return;
 
-    fetch(
-      `${CLAUDE_API_URL}/api/chat/messages?username=${encodeURIComponent(username)}&sessionId=${sessionId}&afterId=${lastIdRef.current}`,
-    )
+    claudeFetch(`/messages?sessionId=${sessionId}&afterId=${lastIdRef.current}`)
       .then((r) => r.json())
-      .then(
-        (data: {
-          messages?: ChatMessage[];
-          sessionActive?: boolean;
-        }) => {
-          if (data.messages && data.messages.length > 0) {
-            setMessages((prev) => {
-              const existingIds = new Set(prev.map((m) => m.id));
-              const newMsgs = data.messages!.filter(
-                (m) => !existingIds.has(m.id),
-              );
-              return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
-            });
-            lastIdRef.current = data.messages[data.messages.length - 1].id;
-          }
-          if (data.sessionActive !== undefined) {
-            setSessionActive(data.sessionActive);
-          }
-        },
-      )
+      .then((data: { messages?: ChatMessage[]; sessionActive?: boolean }) => {
+        if (data.messages && data.messages.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const newMsgs = data.messages!.filter(
+              (m) => !existingIds.has(m.id),
+            );
+            return newMsgs.length > 0 ? [...prev, ...newMsgs] : prev;
+          });
+          lastIdRef.current = data.messages[data.messages.length - 1].id;
+        }
+        if (data.sessionActive !== undefined) {
+          setSessionActive(data.sessionActive);
+        }
+      })
       .catch(console.error);
-  }, [sessionId, username]);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId || !open) return;
@@ -155,16 +165,12 @@ export function AdminChat(): React.JSX.Element | null {
   }, [messages]);
 
   const startSession = async (): Promise<void> => {
-    if (!username || !CLAUDE_API_URL) return;
+    if (!user?.isAdmin) return;
     setStarting(true);
     try {
-      const res = await fetch(`${CLAUDE_API_URL}/api/chat/start`, {
+      const res = await claudeFetch("/start", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
-          repo: REPO,
-          environment: ENVIRONMENT,
           pageContext: {
             type: "admin-chat",
             owner: "Createrington",
@@ -191,15 +197,13 @@ export function AdminChat(): React.JSX.Element | null {
 
   const sendMessage = async (): Promise<void> => {
     const trimmed = input.trim();
-    if (!trimmed || !sessionId || !username || !CLAUDE_API_URL) return;
+    if (!trimmed || !sessionId) return;
     setSending(true);
     setInput("");
     try {
-      await fetch(`${CLAUDE_API_URL}/api/chat/send`, {
+      await claudeFetch("/send", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          username,
           sessionId,
           message: trimmed,
           pageContext: {
@@ -230,12 +234,11 @@ export function AdminChat(): React.JSX.Element | null {
   };
 
   const endSession = async (): Promise<void> => {
-    if (!sessionId || !username || !CLAUDE_API_URL) return;
+    if (!sessionId) return;
     try {
-      await fetch(`${CLAUDE_API_URL}/api/chat/end`, {
+      await claudeFetch("/end", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, sessionId }),
+        body: JSON.stringify({ sessionId }),
       });
       setSessionActive(false);
     } catch (err) {
