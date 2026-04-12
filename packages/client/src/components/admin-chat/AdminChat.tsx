@@ -816,19 +816,6 @@ export function AdminChat(): React.JSX.Element | null {
           animation: ac-highlight-pulse 1s ease-in-out infinite;
           scroll-margin: 4rem;
         }
-        .ac-caret {
-          display: inline-block;
-          width: 0.5em;
-          height: 1em;
-          margin-left: 0.125em;
-          vertical-align: text-bottom;
-          background: currentColor;
-          opacity: 0.7;
-          animation: ac-caret-blink 1s steps(2) infinite;
-        }
-        @keyframes ac-caret-blink {
-          50% { opacity: 0; }
-        }
         .ac-input-area {
           padding: 0.75rem;
           border-top: 1px solid var(--border);
@@ -1029,12 +1016,9 @@ export function AdminChat(): React.JSX.Element | null {
                           className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}${isStreaming ? " ac-msg-streaming" : ""}`}
                           dangerouslySetInnerHTML={{
                             __html:
-                              (msg.role === "assistant"
+                              msg.role === "assistant"
                                 ? renderMarkdown(content)
-                                : content.replace(/</g, "&lt;")) +
-                              (isStreaming
-                                ? '<span class="ac-caret" aria-hidden="true"></span>'
-                                : ""),
+                                : content.replace(/</g, "&lt;"),
                           }}
                         />
                         {actions.map((action, i) => (
