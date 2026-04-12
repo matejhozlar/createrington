@@ -34,6 +34,7 @@ import {
 import { Logo } from "./components/logo";
 
 import { ServerChat } from "./components/chat";
+import { AdminChat } from "./components/admin-chat";
 import { AdminLogs } from "./features/admin/AdminLogs";
 import { AdminServers } from "./features/admin/AdminServers";
 import { AdminServerDetail } from "./features/admin/servers/AdminServerDetail";
@@ -387,6 +388,7 @@ function App() {
                           <AppContent />
                         </SidebarProvider>
                       </ErrorBoundary>
+                      <AdminChat />
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>
