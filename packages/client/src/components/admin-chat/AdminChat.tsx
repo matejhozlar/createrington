@@ -22,7 +22,7 @@ import {
 } from "./actions";
 
 const API_BASE = "/api/claude-chat";
-const POLL_INTERVAL = 800;
+const POLL_INTERVAL = 350;
 
 /**
  * pageContext passed to the proxy on every start/send. Gives Claude enough
@@ -47,6 +47,7 @@ interface ChatMessage {
     isProgress?: boolean;
     isIdleWarning?: boolean;
     isIdleTimeout?: boolean;
+    streaming?: boolean;
   } | null;
   createdAt: string;
 }
@@ -348,17 +349,24 @@ export function AdminChat(): React.JSX.Element | null {
       .then((data: { messages?: ChatMessage[]; sessionActive?: boolean }) => {
         if (data.messages && data.messages.length > 0) {
           setMessages((prev) => {
-            const existingIds = new Set(prev.map((m) => m.id));
-            const newMsgs = data.messages!.filter(
-              (m) => !existingIds.has(m.id),
+            // Merge-by-id rather than skip-existing: streaming messages
+            // come back on each poll with updated content, and we need
+            // to replace them in place so the bubble grows instead of
+            // duplicating.
+            const byId = new Map<number, ChatMessage>(
+              prev.map((m) => [m.id, m] as const),
             );
-            if (newMsgs.length === 0) return prev;
-            // Drop optimistic user messages (id < 0) once the server's copy
-            // of the same content arrives, otherwise they'd render twice.
+            for (const m of data.messages!) byId.set(m.id, m);
+
+            // Drop optimistic user messages (id < 0) once the server's
+            // copy of the same content arrives — otherwise they'd render
+            // twice briefly.
             const incomingUserContent = new Set(
-              newMsgs.filter((m) => m.role === "user").map((m) => m.content),
+              data
+                .messages!.filter((m) => m.role === "user")
+                .map((m) => m.content),
             );
-            const withoutStaleOptimistic = prev.filter(
+            const merged = Array.from(byId.values()).filter(
               (m) =>
                 !(
                   m.id < 0 &&
@@ -366,9 +374,19 @@ export function AdminChat(): React.JSX.Element | null {
                   incomingUserContent.has(m.content)
                 ),
             );
-            return [...withoutStaleOptimistic, ...newMsgs];
+            merged.sort((a, b) => a.id - b.id);
+            return merged;
           });
-          lastIdRef.current = data.messages[data.messages.length - 1].id;
+          // Advance the delta cursor only past non-streaming messages —
+          // streaming rows need to stay in the "refresh this" window
+          // until they settle.
+          const settled = data.messages.filter(
+            (m) => !m.metadata || m.metadata.streaming !== true,
+          );
+          if (settled.length > 0) {
+            const maxId = settled[settled.length - 1].id;
+            if (maxId > lastIdRef.current) lastIdRef.current = maxId;
+          }
         }
         if (data.sessionActive !== undefined) {
           setSessionActive(data.sessionActive);
@@ -731,6 +749,19 @@ export function AdminChat(): React.JSX.Element | null {
           animation: ac-highlight-pulse 1s ease-in-out infinite;
           scroll-margin: 4rem;
         }
+        .ac-caret {
+          display: inline-block;
+          width: 0.5em;
+          height: 1em;
+          margin-left: 0.125em;
+          vertical-align: text-bottom;
+          background: currentColor;
+          opacity: 0.7;
+          animation: ac-caret-blink 1s steps(2) infinite;
+        }
+        @keyframes ac-caret-blink {
+          50% { opacity: 0; }
+        }
         .ac-input-area {
           padding: 0.75rem;
           border-top: 1px solid var(--border);
@@ -911,8 +942,14 @@ export function AdminChat(): React.JSX.Element | null {
                     const isProgress = !!(
                       msg.metadata as { isProgress?: boolean }
                     )?.isProgress;
+                    const isStreaming = !!(
+                      msg.metadata as { streaming?: boolean }
+                    )?.streaming;
+                    // Don't parse action envelopes out of a half-written
+                    // message — the envelope might not be complete yet.
+                    // Wait until the stream settles.
                     const { content, actions } =
-                      msg.role === "assistant"
+                      msg.role === "assistant" && !isStreaming
                         ? parseActionsFromMessage(msg.content)
                         : { content: msg.content, actions: [] };
                     return (
@@ -922,12 +959,15 @@ export function AdminChat(): React.JSX.Element | null {
                         data-role={msg.role}
                       >
                         <div
-                          className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}`}
+                          className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}${isStreaming ? " ac-msg-streaming" : ""}`}
                           dangerouslySetInnerHTML={{
                             __html:
-                              msg.role === "assistant"
+                              (msg.role === "assistant"
                                 ? renderMarkdown(content)
-                                : content.replace(/</g, "&lt;"),
+                                : content.replace(/</g, "&lt;")) +
+                              (isStreaming
+                                ? '<span class="ac-caret" aria-hidden="true"></span>'
+                                : ""),
                           }}
                         />
                         {actions.map((action, i) => (
