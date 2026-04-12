@@ -7,7 +7,7 @@ import {
   BadRequestError,
   InternalServerError,
 } from "@/app/middleware";
-import { env } from "@/config/env/env.config";
+import { env, envMode } from "@/config/env/env.config";
 
 /**
  * Admin chat proxy routes. Forwards to claude-automation's chat endpoints
@@ -19,7 +19,9 @@ import { env } from "@/config/env/env.config";
 const router = Router();
 
 const REPO = "Createrington/app";
-const ENVIRONMENT = env.NODE_ENV === "production" ? "prod" : "dev";
+// Both deployments run with NODE_ENV=production. Dev vs prod is determined
+// by the WEBSITE_URL (dev.* subdomain or localhost) via envMode.isDevDeployment.
+const ENVIRONMENT = envMode.isDevDeployment ? "dev" : "prod";
 
 // Upstream LLM calls can hang on network glitches — cap every outbound
 // request so a stuck claude-automation can't pile up Express connections.
