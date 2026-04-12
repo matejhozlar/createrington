@@ -22,10 +22,6 @@ import {
 } from "./actions";
 
 const API_BASE = "/api/claude-chat";
-// 350ms is snappy enough that a streaming message feels live without
-// hammering the proxy. Pairs with the claude-automation server-side poll
-// at 300ms and its 120ms parser flush — the net token-to-pixel latency
-// is ~500ms typical, which reads as "real-time" in a chat UI.
 const POLL_INTERVAL = 350;
 
 /**
