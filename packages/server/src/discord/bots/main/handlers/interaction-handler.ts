@@ -4,9 +4,19 @@ import type {
   Client,
   Collection,
   Interaction,
+  ModalSubmitInteraction,
   Role,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
+import * as registrationModal from "../interactions/modals/registration";
+
+type ModalHandler = {
+  customId: string;
+  execute: (interaction: ModalSubmitInteraction) => Promise<void>;
+};
+
+/** Registry of modal-submit handlers keyed by the modal's customId. */
+const MODAL_HANDLERS: ModalHandler[] = [registrationModal];
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
 import { Q } from "@/db";
@@ -402,5 +412,54 @@ export function registerInteractionHandler(
       await handleButtonInteractions(interaction, buttonHandlers);
       return;
     }
+
+    if (interaction.isModalSubmit()) {
+      await handleModalSubmit(interaction);
+      return;
+    }
   });
+}
+
+/**
+ * Routes a modal-submit interaction to its matching handler by exact customId.
+ * Errors are logged and surfaced to the user as an ephemeral message.
+ */
+async function handleModalSubmit(
+  interaction: ModalSubmitInteraction,
+): Promise<void> {
+  const handler = MODAL_HANDLERS.find(
+    (h) => h.customId === interaction.customId,
+  );
+
+  if (!handler) {
+    logger.debug(`No handler for modal: ${interaction.customId}`);
+    return;
+  }
+
+  logger.info(
+    `${interaction.user.tag} (${interaction.user.id}) submitted modal: ${interaction.customId}`,
+  );
+
+  try {
+    await handler.execute(interaction);
+  } catch (error) {
+    logger.error(
+      `Error executing modal handler ${interaction.customId}:`,
+      error,
+    );
+
+    try {
+      const replyMethod =
+        interaction.replied || interaction.deferred
+          ? interaction.followUp
+          : interaction.reply;
+
+      await replyMethod.call(interaction, {
+        content: "❌ Something went wrong",
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (replyError) {
+      logger.error("Failed to send modal error response:", error, replyError);
+    }
+  }
 }

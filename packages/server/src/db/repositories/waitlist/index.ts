@@ -374,6 +374,61 @@ export class WaitlistRepository {
   }
 
   // ============================================================================
+  // AUTO CLEANUP
+  // ============================================================================
+
+  /**
+   * Deletes accepted entries whose single-use Discord invite expired before the
+   * applicant ever joined. Targets rows where `discordId` is still NULL and
+   * `inviteCode` is set, applying the per-status TTL that matches how the
+   * invite was issued:
+   *
+   * - `auto_accepted` — invite is 1 hour, so delete after submission + 1 hour
+   * - `accepted` — invite is 7 days, so delete after acceptance + 7 days
+   *
+   * @returns The number of entries deleted
+   */
+  async sweepExpiredUnclaimedEntries(): Promise<number> {
+    const now = Date.now();
+    const autoAcceptCutoff = new Date(now - 60 * 60 * 1000); // 1 hour
+    const manualAcceptCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const [autoAccepted, adminAccepted] = await Promise.all([
+      Q.waitlist.entry.findAll(
+        {
+          status: "auto_accepted",
+          discordId: { $exists: false },
+          inviteCode: { $exists: true },
+          submittedAt: { $lt: autoAcceptCutoff },
+        },
+        { limit: 1000 },
+      ),
+      Q.waitlist.entry.findAll(
+        {
+          status: "accepted",
+          discordId: { $exists: false },
+          inviteCode: { $exists: true },
+          acceptedAt: { $lt: manualAcceptCutoff },
+        },
+        { limit: 1000 },
+      ),
+    ]);
+
+    const rows = [...autoAccepted, ...adminAccepted];
+    for (const row of rows) {
+      await Q.waitlist.entry.delete({ id: row.id });
+    }
+
+    if (rows.length > 0) {
+      logger.info(
+        `Swept ${rows.length} expired unclaimed waitlist entries (${autoAccepted.length} auto-accepted, ${adminAccepted.length} admin-accepted)`,
+      );
+    }
+
+    return rows.length;
+  }
+
+  // ============================================================================
   // ADMIN DELETION
   // ============================================================================
 

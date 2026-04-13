@@ -17,6 +17,7 @@ import {
   generateWelcomeCard,
 } from "@/discord/utils/welcome-card";
 import { diffAndUpdateInvites } from "@/discord/bots/main/invites";
+import { buildIdleWelcomeMessage } from "@/discord/bots/main/registration/welcome-message";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
@@ -231,13 +232,12 @@ export async function execute(
           `Created verification channel ${verificationChannel.name} for ${member.user.tag}`,
         );
 
+        const welcome = buildIdleWelcomeMessage({
+          memberMention: `${member}`,
+        });
         await verificationChannel.send({
-          content:
-            `## 👋 Welcome ${member}!\n\n` +
-            `To finish onboarding, link your Minecraft account with \`/register <your_mc_name>\`.\n\n` +
-            `> **Example:** \`/register Steve\`\n\n` +
-            `### Haven't applied yet?\n` +
-            `Apply first at <https://create-rington.com/apply-to-join>`,
+          embeds: welcome.embeds.map((e) => e.build()),
+          components: welcome.components,
         });
 
         logger.info(
