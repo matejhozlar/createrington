@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { useAuth } from "@/contexts/auth";
 import { getAccessToken } from "@/services/auth/token-manager";
 import {
@@ -184,57 +187,72 @@ async function claudeFetch(
   return fetch(`${API_BASE}${path}`, { ...init, headers });
 }
 
-function renderMarkdown(text: string): string {
-  // Escape HTML first so raw tags in the upstream payload can't execute —
-  // the markdown regexes below re-introduce only the specific tags we allow.
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // Code blocks
-  html = html.replace(
-    /```(\w*)\n([\s\S]*?)```/g,
-    '<pre class="ac-code-block"><code>$2</code></pre>',
+function AssistantMarkdown({
+  text,
+  navigate,
+}: {
+  text: string;
+  navigate: (to: string) => void;
+}): React.JSX.Element {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkBreaks]}
+      components={{
+        a: ({ href, children }) => {
+          if (typeof href === "string" && /^https?:\/\//i.test(href)) {
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ac-link"
+              >
+                {children}
+              </a>
+            );
+          }
+          if (typeof href === "string" && href.startsWith("/")) {
+            return (
+              <a
+                href={href}
+                className="ac-link"
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey) return;
+                  e.preventDefault();
+                  navigate(href);
+                }}
+              >
+                {children}
+              </a>
+            );
+          }
+          return <>{children}</>;
+        },
+        code: ({
+          inline,
+          className,
+          children,
+        }: {
+          inline?: boolean;
+          className?: string;
+          children?: React.ReactNode;
+        }) =>
+          inline ? (
+            <code className="ac-inline-code">{children}</code>
+          ) : (
+            <code className={className}>{children}</code>
+          ),
+        pre: ({ children }) => <pre className="ac-code-block">{children}</pre>,
+        table: ({ children }) => (
+          <div className="ac-table-wrap">
+            <table className="ac-table">{children}</table>
+          </div>
+        ),
+      }}
+    >
+      {text}
+    </ReactMarkdown>
   );
-
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code class="ac-inline-code">$1</code>');
-
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-
-  // Italic
-  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>");
-
-  // Links — allow http(s) URLs (open in new tab) and same-origin relative
-  // paths (handled as in-app React Router navigation via delegated click
-  // handler below, marked with data-nav). Anything else (including
-  // "javascript:" and protocol-relative "//evil.com") is rendered as plain
-  // text so it can't land in an href.
-  html = html.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    (_match, label: string, url: string) => {
-      if (/^https?:\/\//i.test(url)) {
-        return `<a href="${url}" target="_blank" rel="noopener" class="ac-link">${label}</a>`;
-      }
-      if (/^\/[^/]/.test(url) || url === "/") {
-        return `<a href="${url}" data-nav="1" class="ac-link">${label}</a>`;
-      }
-      return label;
-    },
-  );
-
-  // Line breaks (skip inside <pre>)
-  html = html.replace(/\n/g, "<br>");
-  html = html.replace(
-    /<pre class="ac-code-block"><code>([\s\S]*?)<\/code><\/pre>/g,
-    (_m, code: string) => {
-      return `<pre class="ac-code-block"><code>${(code as string).replace(/<br>/g, "\n")}</code></pre>`;
-    },
-  );
-
-  return html;
 }
 
 /**
@@ -973,6 +991,56 @@ export function AdminChat(): React.JSX.Element | null {
           color: var(--primary);
           text-decoration: underline;
         }
+        .ac-msg :first-child { margin-top: 0; }
+        .ac-msg :last-child { margin-bottom: 0; }
+        .ac-msg p { margin: 0 0 0.375rem 0; }
+        .ac-msg ul,
+        .ac-msg ol {
+          margin: 0 0 0.375rem 0;
+          padding-left: 1.25rem;
+        }
+        .ac-msg li { margin: 0.125rem 0; }
+        .ac-msg li > p { margin: 0; }
+        .ac-msg blockquote {
+          margin: 0.25rem 0;
+          padding: 0.25rem 0.625rem;
+          border-left: 2px solid var(--border);
+          color: var(--muted-foreground);
+        }
+        .ac-msg h1,
+        .ac-msg h2,
+        .ac-msg h3,
+        .ac-msg h4 {
+          margin: 0.5rem 0 0.25rem 0;
+          font-weight: 600;
+        }
+        .ac-msg h1 { font-size: 1rem; }
+        .ac-msg h2 { font-size: 0.9375rem; }
+        .ac-msg h3 { font-size: 0.875rem; }
+        .ac-msg hr {
+          border: 0;
+          border-top: 1px solid var(--border);
+          margin: 0.5rem 0;
+        }
+        .ac-table-wrap {
+          overflow-x: auto;
+          margin: 0.375rem 0;
+        }
+        .ac-table {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 0.75rem;
+        }
+        .ac-table th,
+        .ac-table td {
+          border: 1px solid var(--border);
+          padding: 0.25rem 0.5rem;
+          text-align: left;
+        }
+        .ac-table th {
+          font-weight: 600;
+          background: var(--background);
+        }
         .ac-msg-row {
           display: flex;
           flex-direction: column;
@@ -1375,23 +1443,7 @@ export function AdminChat(): React.JSX.Element | null {
               </div>
             ) : (
               <>
-                <div
-                  className="ac-messages"
-                  onClick={(e) => {
-                    // Delegated handler for in-app nav links that Claude
-                    // embeds in replies (markdown link → href="/admin/...").
-                    // Real anchors still get ctrl/middle-click behavior.
-                    const target = (e.target as HTMLElement).closest(
-                      "a[data-nav='1']",
-                    );
-                    if (!target) return;
-                    if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-                    const href = target.getAttribute("href");
-                    if (!href || !href.startsWith("/")) return;
-                    e.preventDefault();
-                    navigate(href);
-                  }}
-                >
+                <div className="ac-messages">
                   {messages.map((msg) => {
                     const isAck = !!(msg.metadata as { isAck?: boolean })
                       ?.isAck;
@@ -1419,13 +1471,16 @@ export function AdminChat(): React.JSX.Element | null {
                       >
                         <div
                           className={`ac-msg ac-msg-${msg.role}${isAck ? " ac-msg-ack" : ""}${isProgress ? " ac-msg-progress" : ""}${isStreaming ? " ac-msg-streaming" : ""}`}
-                          dangerouslySetInnerHTML={{
-                            __html:
-                              msg.role === "assistant"
-                                ? renderMarkdown(content)
-                                : content.replace(/</g, "&lt;"),
-                          }}
-                        />
+                        >
+                          {msg.role === "assistant" ? (
+                            <AssistantMarkdown
+                              text={content}
+                              navigate={navigate}
+                            />
+                          ) : (
+                            content
+                          )}
+                        </div>
                         {persistedActions.map((record) => {
                           const coerced = coerceAction(record.payload);
                           if (!coerced) return null;
