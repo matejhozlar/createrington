@@ -1,4 +1,7 @@
 export const DISCORD_INVITE_URL = "https://discord.gg/mtF6MDHj4Z";
+export const CURSEFORGE_MODPACK_URL =
+  "https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam";
+export const CONTACT_EMAIL = "admin@create-rington.com";
 
 const MC_HEADS_BASE = "https://mc-heads.net";
 

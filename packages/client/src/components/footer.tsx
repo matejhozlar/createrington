@@ -1,4 +1,33 @@
 import { NavLink } from "react-router-dom";
+import { Mail } from "lucide-react";
+import { DiscordIcon } from "@/components/icons/discord";
+import { CurseForgeIcon } from "@/components/icons/curseforge";
+import {
+  CONTACT_EMAIL,
+  CURSEFORGE_MODPACK_URL,
+  DISCORD_INVITE_URL,
+} from "@/lib/external-urls";
+
+const SOCIAL_LINKS = [
+  {
+    label: "Discord",
+    href: DISCORD_INVITE_URL,
+    Icon: DiscordIcon,
+    external: true,
+  },
+  {
+    label: "CurseForge modpack",
+    href: CURSEFORGE_MODPACK_URL,
+    Icon: CurseForgeIcon,
+    external: true,
+  },
+  {
+    label: `Email ${CONTACT_EMAIL}`,
+    href: `mailto:${CONTACT_EMAIL}`,
+    Icon: Mail,
+    external: false,
+  },
+] as const;
 
 export const Footer = () => {
   return (
@@ -21,6 +50,24 @@ export const Footer = () => {
             <p className="text-sm text-muted-foreground">
               A Create-powered Minecraft server for builders and engineers.
             </p>
+
+            <ul className="flex items-center gap-4 mt-2">
+              {SOCIAL_LINKS.map(({ label, href, Icon, external }) => (
+                <li key={label}>
+                  <a
+                    href={href}
+                    aria-label={label}
+                    title={label}
+                    {...(external
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Icon className="size-5" />
+                  </a>
+                </li>
+              ))}
+            </ul>
 
             <p className="text-xs text-muted-foreground/60 mt-2">
               &copy; {new Date().getFullYear()} Createrington
