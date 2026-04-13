@@ -14,7 +14,6 @@ import {
   Wrench,
   Server,
   Shield,
-  Store,
   UserPlus,
   Users,
   X,
@@ -92,12 +91,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Home",
         url: "/",
         icon: Home,
-      },
-      {
-        title: "Market",
-        url: "/market",
-        icon: Store,
-        requiresAuth: true,
       },
       {
         title: "Packs",

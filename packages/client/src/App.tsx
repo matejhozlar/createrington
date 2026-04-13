@@ -18,11 +18,7 @@ import { Profile } from "./pages/Profile/Profile";
 import { Settings } from "./pages/Settings/Settings";
 import { ServerDetail } from "./pages/ServerDetail/ServerDetail";
 import { ServerStatus } from "./pages/ServerStatus/ServerStatus";
-import { Forum } from "./pages/Forum/Forum";
-import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
-import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/not-found";
-import { ComingSoon } from "./pages/ComingSoon";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppSidebar } from "./components/app-sidebar";
@@ -196,53 +192,6 @@ function AppContent() {
           <Route path=":symbol" element={<TokenDetail />} />
         </Route>
 
-        {/* Market Routes */}
-        <Route
-          path="/market"
-          element={
-            <ComingSoon
-              title="Market"
-              description="The market dashboard is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/marketplace"
-          element={
-            <ComingSoon
-              title="Marketplace"
-              description="The marketplace is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/companies"
-          element={
-            <ComingSoon
-              title="Companies"
-              description="The companies page is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/shops"
-          element={
-            <ComingSoon
-              title="Shops"
-              description="The shops page is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/requests"
-          element={
-            <ComingSoon
-              title="Requests"
-              description="The requests page is currently under development."
-            />
-          }
-        />
-
         {/* Protected Routes */}
         <Route
           path="/profile"
@@ -287,11 +236,6 @@ function AppContent() {
           }
         />
         <Route path="/servers/status" element={<ServerStatus />} />
-
-        {/* Additional Routes */}
-        <Route path="/forum" element={<Forum />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/shop" element={<Shop />} />
 
         {/* Full-screen Routes (no footer) */}
         <Route path="/chat/:serverId" element={<ServerChat />} />
