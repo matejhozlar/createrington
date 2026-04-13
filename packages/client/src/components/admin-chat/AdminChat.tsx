@@ -153,19 +153,18 @@ interface PageContext {
   title?: string;
 }
 
+type ChatMessageKind = "text" | "ack" | "progress" | "streaming";
+
 interface ChatMessage {
   id: number;
   role: "user" | "assistant";
   content: string;
+  kind?: ChatMessageKind;
   metadata?: {
-    isAck?: boolean;
-    isProgress?: boolean;
     isIdleWarning?: boolean;
     isIdleTimeout?: boolean;
-    streaming?: boolean;
   } | null;
   createdAt: string;
-  /** Persisted MCP-tool action envelopes tied to this message. */
   actions?: ChatActionRecord[];
 }
 
@@ -1445,14 +1444,9 @@ export function AdminChat(): React.JSX.Element | null {
               <>
                 <div className="ac-messages">
                   {messages.map((msg) => {
-                    const isAck = !!(msg.metadata as { isAck?: boolean })
-                      ?.isAck;
-                    const isProgress = !!(
-                      msg.metadata as { isProgress?: boolean }
-                    )?.isProgress;
-                    const isStreaming = !!(
-                      msg.metadata as { streaming?: boolean }
-                    )?.streaming;
+                    const isAck = msg.kind === "ack";
+                    const isProgress = msg.kind === "progress";
+                    const isStreaming = msg.kind === "streaming";
                     // Legacy fence-parsed actions — kept as a transitional
                     // fallback for messages written before MCP migration.
                     // Don't run the parser on half-streaming content; wait
