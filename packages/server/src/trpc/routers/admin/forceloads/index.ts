@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { MINECRAFT_SERVERS } from "@/services/playtime/config";
+import { minecraftRcon } from "@/utils/rcon";
 
 export const adminForceloadsRouter = router({
   stats: adminProcedure
@@ -65,5 +67,29 @@ export const adminForceloadsRouter = router({
     .input(z.object({ partyId: z.number().int() }))
     .query(async ({ input }) => {
       return Q.server.forceload.party.getPartyMembers(input.partyId);
+    }),
+
+  resync: adminProcedure
+    .meta({
+      description:
+        "Dispatch /opac-fp sync over RCON to force an immediate forceload resync",
+    })
+    .input(z.object({ serverId: z.number().int() }))
+    .mutation(async ({ input }) => {
+      try {
+        const response = await minecraftRcon.send(
+          input.serverId,
+          "opac-fp sync",
+        );
+        return { dispatched: true, response };
+      } catch (error) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            error instanceof Error
+              ? `Failed to dispatch sync: ${error.message}`
+              : "Failed to dispatch sync",
+        });
+      }
     }),
 });

@@ -1,9 +1,9 @@
 import { Fragment, useState } from "react";
+import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -13,6 +13,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatRelativeDate, formatFullDate } from "@/features/admin/format";
+import type { DimensionFilter } from "../AdminForceloads";
+import { ChunkTable } from "./ChunkTable";
 
 interface Player {
   id: number;
@@ -23,58 +31,51 @@ interface Player {
   activeChunks: number;
 }
 
-function ChunkDetails({ ownerId }: { ownerId: number }) {
+function ChunkDetails({
+  ownerId,
+  dimensionFilter,
+  activeOnly,
+}: {
+  ownerId: number;
+  dimensionFilter: DimensionFilter;
+  activeOnly: boolean;
+}) {
   const chunksQuery = trpc.admin.forceloads.chunks.useQuery({
     ownerId,
     ownerType: "player",
   });
 
   if (chunksQuery.isLoading) return <Loading size="small" />;
-  if (!chunksQuery.data?.length) {
-    return (
-      <p className="py-2 text-sm text-muted-foreground">No chunks found</p>
-    );
-  }
+  if (!chunksQuery.data) return null;
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Dimension</TableHead>
-          <TableHead>X</TableHead>
-          <TableHead>Z</TableHead>
-          <TableHead>Status</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {chunksQuery.data.map((chunk) => (
-          <TableRow key={chunk.id}>
-            <TableCell className="font-mono text-xs">
-              {chunk.dimension}
-            </TableCell>
-            <TableCell className="font-mono text-xs">{chunk.x}</TableCell>
-            <TableCell className="font-mono text-xs">{chunk.z}</TableCell>
-            <TableCell>
-              <Badge
-                variant="outline"
-                className={
-                  chunk.active
-                    ? "border-success bg-success/10 text-success"
-                    : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                }
-              >
-                {chunk.active ? "Active" : "Inactive"}
-              </Badge>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <ChunkTable
+      chunks={chunksQuery.data}
+      dimensionFilter={dimensionFilter}
+      activeOnly={activeOnly}
+    />
   );
 }
 
-export function PlayerForceloadsTable({ players }: { players: Player[] }) {
+export function PlayerForceloadsTable({
+  players,
+  search,
+  dimensionFilter,
+  activeOnly,
+}: {
+  players: Player[];
+  search: string;
+  dimensionFilter: DimensionFilter;
+  activeOnly: boolean;
+}) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const needle = search.trim().toLowerCase();
+  const filtered = needle
+    ? players.filter((p) =>
+        (p.minecraftUsername ?? p.playerUuid).toLowerCase().includes(needle),
+      )
+    : players;
 
   if (players.length === 0) {
     return (
@@ -92,7 +93,10 @@ export function PlayerForceloadsTable({ players }: { players: Player[] }) {
   return (
     <Card className="gap-0">
       <CardHeader className="border-b">
-        <CardTitle>Solo Players ({players.length})</CardTitle>
+        <CardTitle>
+          Solo Players ({filtered.length}
+          {filtered.length !== players.length && ` of ${players.length}`})
+        </CardTitle>
       </CardHeader>
       <CardContent className="px-0">
         <Table>
@@ -106,52 +110,111 @@ export function PlayerForceloadsTable({ players }: { players: Player[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {players.map((player) => {
-              const isExpanded = expandedId === player.id;
-              const displayName = player.minecraftUsername ?? player.playerUuid;
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={5}
+                  className="py-6 text-center text-sm text-muted-foreground"
+                >
+                  No players match "{search}"
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((player) => {
+                const isExpanded = expandedId === player.id;
+                const resolved = Boolean(player.minecraftUsername);
+                const displayName =
+                  player.minecraftUsername ?? player.playerUuid;
 
-              return (
-                <Fragment key={player.id}>
-                  <TableRow
-                    className="cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : player.id)}
-                  >
-                    <TableCell>
-                      {isExpanded ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <MinecraftAvatar
-                          username={displayName}
+                return (
+                  <Fragment key={player.id}>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setExpandedId(isExpanded ? null : player.id)
+                      }
+                    >
+                      <TableCell>
+                        {isExpanded ? (
+                          <ChevronDown className="size-4" />
+                        ) : (
+                          <ChevronRight className="size-4" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <PlayerLabel
                           uuid={player.playerUuid}
-                          size={24}
+                          name={displayName}
+                          resolved={resolved}
                         />
-                        <span className="font-medium">{displayName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{player.totalChunks}</TableCell>
-                    <TableCell>{player.activeChunks}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(player.syncedAt).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                  {isExpanded && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="bg-muted/30 p-4">
-                        <ChunkDetails ownerId={player.id} />
+                      </TableCell>
+                      <TableCell>{player.totalChunks}</TableCell>
+                      <TableCell>{player.activeChunks}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{formatRelativeDate(player.syncedAt)}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {formatFullDate(player.syncedAt)}
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
-                  )}
-                </Fragment>
-              );
-            })}
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="bg-muted/30 p-4">
+                          <ChunkDetails
+                            ownerId={player.id}
+                            dimensionFilter={dimensionFilter}
+                            activeOnly={activeOnly}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
   );
 }
+
+function PlayerLabel({
+  uuid,
+  name,
+  resolved,
+  size = 24,
+}: {
+  uuid: string;
+  name: string;
+  resolved: boolean;
+  size?: number;
+}) {
+  if (!resolved) {
+    return (
+      <div className="flex items-center gap-2">
+        <MinecraftAvatar username={name} uuid={uuid} size={size} />
+        <span className="font-medium">{name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      to={`/admin/players/${uuid}`}
+      onClick={(e) => e.stopPropagation()}
+      className="group flex items-center gap-2 rounded"
+    >
+      <MinecraftAvatar username={name} uuid={uuid} size={size} />
+      <span className="font-medium transition-colors group-hover:text-primary">
+        {name}
+      </span>
+    </Link>
+  );
+}
+
+export { PlayerLabel };
