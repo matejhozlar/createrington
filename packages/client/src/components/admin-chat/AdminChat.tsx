@@ -653,7 +653,7 @@ export function AdminChat(): React.JSX.Element | null {
       cancelled = true;
       abort.abort();
     };
-  }, [sessionId, open, mergeMessages]);
+  }, [sessionId, open, mergeMessages, attachAction]);
 
   // Auto-scroll on new messages — smooth so the eye can follow.
   useEffect(() => {
