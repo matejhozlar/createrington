@@ -98,7 +98,7 @@ export function AdminForceloads() {
         </Tooltip>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 pb-4">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold">Forceloads</h1>
 
@@ -131,7 +131,7 @@ export function AdminForceloads() {
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {playersQuery.isLoading ? (
               <Loading size="medium" text="Loading players..." />
             ) : playersQuery.data ? (

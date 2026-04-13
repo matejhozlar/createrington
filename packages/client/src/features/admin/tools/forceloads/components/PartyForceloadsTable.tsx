@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, UsersRound } from "lucide-react";
+import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -93,7 +93,7 @@ function PartyDetails({ partyId }: { partyId: number }) {
                       variant="outline"
                       className={
                         chunk.active
-                          ? "border-emerald-500 bg-emerald-500/10 text-emerald-500"
+                          ? "border-success bg-success/10 text-success"
                           : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
                       }
                     >
@@ -117,7 +117,7 @@ export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-2 py-12">
-          <UsersRound className="size-10 text-muted-foreground" />
+          <Users className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             No party forceloads on this server
           </p>

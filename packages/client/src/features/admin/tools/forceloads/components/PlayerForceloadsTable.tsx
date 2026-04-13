@@ -1,5 +1,5 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, User } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
@@ -59,7 +59,7 @@ function ChunkDetails({ ownerId }: { ownerId: number }) {
                 variant="outline"
                 className={
                   chunk.active
-                    ? "border-emerald-500 bg-emerald-500/10 text-emerald-500"
+                    ? "border-success bg-success/10 text-success"
                     : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
                 }
               >
@@ -80,7 +80,7 @@ export function PlayerForceloadsTable({ players }: { players: Player[] }) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center gap-2 py-12">
-          <Users className="size-10 text-muted-foreground" />
+          <User className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
             No solo player forceloads on this server
           </p>
