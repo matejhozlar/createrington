@@ -5,16 +5,24 @@ import { ZodError } from "zod";
 
 /**
  * Custom app error class with HTTP status code
+ *
+ * `playerMessage` is an optional player-facing message intended for in-game
+ * chat display (mod endpoints). When omitted, only the system `message` is
+ * surfaced.
  */
 export class AppError extends Error {
+  public playerMessage?: string;
+
   constructor(
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
     public details?: unknown,
+    options?: { playerMessage?: string },
   ) {
     super(message);
     this.name = "AppError";
+    if (options?.playerMessage) this.playerMessage = options.playerMessage;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -25,8 +33,12 @@ export class AppError extends Error {
 
 /** 400 Bad Request */
 export class BadRequestError extends AppError {
-  constructor(message: string = "Bad Request", details?: unknown) {
-    super(message, 400, true, details);
+  constructor(
+    message: string = "Bad Request",
+    details?: unknown,
+    options?: { playerMessage?: string },
+  ) {
+    super(message, 400, true, details, options);
     this.name = "BadRequestError";
   }
 }
@@ -90,6 +102,7 @@ export class ValidationError extends BadRequestError {
 interface ErrorResponse {
   success: false;
   message: string;
+  playerMessage?: string;
   error: {
     message: string;
     statusCode: number;
@@ -158,6 +171,7 @@ export function errorHandler(
   let message = "Internal Server Error";
   let isOperational = false;
   let details: unknown = undefined;
+  let playerMessage: string | undefined = undefined;
 
   if (err instanceof ZodError) {
     const { message: ZodMessage, fieldErrors } = formatZodError(err);
@@ -177,6 +191,7 @@ export function errorHandler(
     message = err.message;
     isOperational = err.isOperational;
     details = err.details;
+    playerMessage = err.playerMessage;
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
@@ -216,6 +231,7 @@ export function errorHandler(
   const errorResponse: ErrorResponse = {
     success: false,
     message,
+    ...(playerMessage ? { playerMessage } : {}),
     error: {
       message,
       statusCode,

@@ -152,6 +152,7 @@ function generateRecordFile(
   packageName: string,
   recordName: string,
   fields: FieldSpec[],
+  options?: { envelopedAs?: string },
 ): string {
   const lines: string[] = [];
 
@@ -175,6 +176,19 @@ function generateRecordFile(
     imports.sort();
     lines.push(...imports);
     lines.push("");
+  }
+
+  // Optional envelope JavaDoc
+  if (options?.envelopedAs) {
+    lines.push("/**");
+    lines.push(
+      ` * Wire format: ${options.envelopedAs}. This record describes the inner`,
+    );
+    lines.push(
+      ` * \`data\` payload only -- the surrounding success/message/playerMessage`,
+    );
+    lines.push(" * fields live on ApiResponse.");
+    lines.push(" */");
   }
 
   // Record declaration
@@ -253,6 +267,42 @@ function endpointConstantName(moduleName: string, ep: EndpointSpec): string {
   return `${prefix}_${pathPart}`;
 }
 
+/**
+ * Generic envelope used by all enveloped modules. Mod consumers deserialize
+ * responses as `ApiResponse<BalanceResponse>`, etc., to access the typed
+ * `data` payload alongside the `success`, `message`, and `playerMessage`
+ * envelope fields.
+ */
+function generateApiResponseEnvelope(): string {
+  return `package ${BASE_PACKAGE};
+
+import com.google.gson.annotations.SerializedName;
+
+public record ApiResponse<T>(
+    boolean success,
+    String message,
+    @Nullable @SerializedName("playerMessage") String playerMessage,
+    @Nullable T data
+) {
+    public static <T> ApiResponse<T> ok(String message, T data) {
+        return new ApiResponse<>(true, message, null, data);
+    }
+
+    public static <T> ApiResponse<T> ok(String message, String playerMessage, T data) {
+        return new ApiResponse<>(true, message, playerMessage, data);
+    }
+
+    public static <T> ApiResponse<T> fail(String message) {
+        return new ApiResponse<>(false, message, null, null);
+    }
+
+    public static <T> ApiResponse<T> fail(String message, String playerMessage) {
+        return new ApiResponse<>(false, message, playerMessage, null);
+    }
+}
+`;
+}
+
 function generateNullableAnnotation(): string {
   const lines: string[] = [];
 
@@ -304,6 +354,15 @@ function main(): void {
   );
   totalFiles++;
 
+  // Generate ApiResponse<T> envelope (only if at least one module is enveloped)
+  if (MOD_SPECS.some((s) => s.enveloped)) {
+    writeFile(
+      path.join(OUTPUT_BASE, "ApiResponse.java"),
+      generateApiResponseEnvelope(),
+    );
+    totalFiles++;
+  }
+
   // Generate Endpoints.java
   writeFile(
     path.join(OUTPUT_BASE, "Endpoints.java"),
@@ -344,9 +403,20 @@ function main(): void {
 
       // Response record
       if (ep.response) {
+        const envelopedAs = spec.enveloped
+          ? ep.response.isArray
+            ? `ApiResponse<List<${ep.response.name}>>`
+            : `ApiResponse<${ep.response.name}>`
+          : undefined;
+
         writeFile(
           path.join(moduleDir, `${ep.response.name}.java`),
-          generateRecordFile(packageName, ep.response.name, ep.response.fields),
+          generateRecordFile(
+            packageName,
+            ep.response.name,
+            ep.response.fields,
+            { envelopedAs },
+          ),
         );
         generatedRecords.add(ep.response.name);
         totalFiles++;

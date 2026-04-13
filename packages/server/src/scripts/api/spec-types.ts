@@ -95,6 +95,13 @@ export interface ApiModuleSpec {
   auth: string;
   /** Whether this is a mod-facing API (used by Java generator to filter) */
   mod?: boolean;
+  /**
+   * When true, every endpoint's response is wrapped in the standard
+   * `ApiResponse<T>` envelope: `{ success, message, playerMessage?, data? }`.
+   * The `response` record on each endpoint defines the shape of `data`
+   * (omit `response` for endpoints with no data payload).
+   */
+  enveloped?: boolean;
   /** Endpoint definitions */
   endpoints: EndpointSpec[];
 }
