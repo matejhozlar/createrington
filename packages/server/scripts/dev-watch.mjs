@@ -17,11 +17,10 @@ let shuttingDown = false;
 
 function spawnServer() {
   restarting = false;
-  child = spawn(
-    process.execPath,
-    ["--import", "tsx/esm", entry],
-    { stdio: "inherit", cwd: serverRoot },
-  );
+  child = spawn(process.execPath, ["--import", "tsx/esm", entry], {
+    stdio: "inherit",
+    cwd: serverRoot,
+  });
 
   child.on("exit", (code, signal) => {
     child = null;
@@ -29,7 +28,9 @@ function spawnServer() {
     if (restarting) return;
     if (signal) return;
     if (code !== 0) {
-      console.log(`\n[dev-watch] server exited with code ${code}. waiting for changes...`);
+      console.log(
+        `\n[dev-watch] server exited with code ${code}. waiting for changes...`,
+      );
     }
   });
 }
@@ -68,7 +69,9 @@ const watcher = chokidar.watch(watchRoot, {
 });
 
 watcher.on("ready", () => {
-  console.log(`[dev-watch] watching ${path.relative(serverRoot, watchRoot) || "src"} (chokidar)`);
+  console.log(
+    `[dev-watch] watching ${path.relative(serverRoot, watchRoot) || "src"} (chokidar)`,
+  );
   spawnServer();
 });
 
