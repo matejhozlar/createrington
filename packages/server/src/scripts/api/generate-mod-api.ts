@@ -44,6 +44,7 @@ const BASE_PACKAGE = "com.saunhardy.createrington.api";
 
 const MOD_SPECS: ApiModuleSpec[] = [
   (await import("@/app/features/mod/currency/currency.api-spec")).default,
+  (await import("@/app/features/mod/forceloads/forceloads.api-spec")).default,
   (await import("@/app/features/mod/presence/presence.api-spec")).default,
   (await import("@/app/features/mod/trains/trains.api-spec")).default,
 ];

@@ -77,7 +77,7 @@ const ROUTE_MODULES: RouteModule[] = [
       "Stripe webhook processing for donation and subscription events.",
     authNote: "Stripe signature",
   },
-  // Currency, Presence, and Trains are generated from API spec files (see MOD_SPECS below)
+  // Currency, Forceloads, Presence, and Trains are generated from API spec files (see MOD_SPECS below)
   {
     name: "Render",
     prefix: "/api/render",
@@ -420,6 +420,7 @@ function extractBodyFromComment(comment: string): string | null {
 
 const MOD_SPECS: ApiModuleSpec[] = [
   (await import("@/app/features/mod/currency/currency.api-spec")).default,
+  (await import("@/app/features/mod/forceloads/forceloads.api-spec")).default,
   (await import("@/app/features/mod/presence/presence.api-spec")).default,
   (await import("@/app/features/mod/trains/trains.api-spec")).default,
 ];
