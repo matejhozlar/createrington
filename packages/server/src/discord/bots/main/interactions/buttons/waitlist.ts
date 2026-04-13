@@ -120,7 +120,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       if (
         entry.status === "accepted" ||
         entry.status === "auto_accepted" ||
-        entry.token
+        entry.inviteCode
       ) {
         await interaction.editReply(`⚠️ This user has already been invited`);
         return;

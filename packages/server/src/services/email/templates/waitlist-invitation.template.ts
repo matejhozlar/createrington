@@ -69,7 +69,7 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
                 <tr>
                   <td style="padding: 32px 40px 0;">
                     <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #ededf0;">
-                      Hi <strong>${data.discordName}</strong>,
+                      Hi${data.discordName ? ` <strong>${data.discordName}</strong>` : ""},
                     </p>
                     <p style="margin: 0; font-size: 16px; line-height: 1.6; color: #a09bab;">
                       Great news &mdash; a spot has just opened up on <strong style="color: #ededf0;">Createrington</strong>, and you're next in line! We're excited to welcome you to the server and can't wait to see what you'll create.
@@ -182,28 +182,8 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
                       Next Steps
                     </h2>
                     <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.7; color: #a09bab;">
-                      To join, use the verification token below and follow the instructions in our Discord. If we don't hear back within <strong style="color: #ededf0;">48 hours</strong>, the spot may be offered to the next person in the queue.
+                      Click the button below to join our Discord using your personal, single-use invite. Once you're in, run <strong style="color: #ededf0;">/register &lt;your_minecraft_name&gt;</strong> to get whitelisted. If we don't see you within <strong style="color: #ededf0;">14 days</strong>, the invite will expire and the spot may be offered to the next person in the queue.
                     </p>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- Token Box -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="padding: 0 40px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="background-color: #231f33; border: 1px solid #2a2540; border-left: 4px solid #d4a843; border-radius: 0 12px 12px 0; padding: 20px 24px;">
-                          <p style="margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #6b6575; font-weight: 600;">
-                            Verification Token
-                          </p>
-                          <p style="margin: 0; font-size: 24px; font-weight: 700; font-family: 'Courier New', Courier, monospace; color: #d4a843; letter-spacing: 2px;">
-                            ${data.token}
-                          </p>
-                        </td>
-                      </tr>
-                    </table>
                   </td>
                 </tr>
               </table>
@@ -215,7 +195,7 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td align="center" style="border-radius: 10px; background: linear-gradient(135deg, #d4a843 0%, #b8922f 100%);">
-                          <a href="${links.discordInvite}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 700; color: #0f0d19; text-decoration: none; letter-spacing: 0.3px;">
+                          <a href="${data.inviteUrl}" target="_blank" style="display: inline-block; padding: 16px 40px; font-size: 16px; font-weight: 700; color: #0f0d19; text-decoration: none; letter-spacing: 0.3px;">
                             Join our Discord
                           </a>
                         </td>
@@ -278,7 +258,7 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
 
   protected getText(data: WaitlistInvitationData): string {
     return `
-Hi ${data.discordName},
+Hi${data.discordName ? ` ${data.discordName}` : ""},
 
 Great news — a spot has just opened up on Createrington, and you're next in line! We're excited to welcome you to the server and can't wait to see what you'll create.
 
@@ -296,11 +276,9 @@ Highlights of the Experience:
 
 Next Steps:
 
-To join, use the verification token below and follow the instructions in our Discord. If we don't hear back within 48 hours, the spot may be offered to the next person in the queue.
+Click the link below to join our Discord using your personal, single-use invite. Once you're in, run /register <your_minecraft_name> to get whitelisted. If we don't see you within 14 days, the invite will expire and the spot may be offered to the next person in the queue.
 
-Your verification token: ${data.token}
-
-Join our Discord: ${links.discordInvite}
+Your Discord invite: ${data.inviteUrl}
 
 Looking forward to seeing you in-game and watching your creations come to life!
 

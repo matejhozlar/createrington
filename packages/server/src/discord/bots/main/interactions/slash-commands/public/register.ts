@@ -134,10 +134,10 @@ export async function execute(
     await randomDelay();
     const entry = await Q.waitlist.entry.find({ discordId });
 
-    if (!entry || !entry.verified) {
-      steps[currentStep].error = "No verified waitlist entry found";
+    if (!entry) {
+      steps[currentStep].error = "No waitlist entry found";
       throw new Error(
-        "You haven't verified your token yet. Run `/verify` with your token first.",
+        "We couldn't find your waitlist entry. Please apply at https://create-rington.com/apply-to-join and use the invite link we email you.",
       );
     }
 

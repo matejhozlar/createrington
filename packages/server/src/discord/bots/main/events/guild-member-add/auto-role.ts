@@ -7,7 +7,7 @@ import type {
 } from "discord.js";
 import { PermissionFlagsBits, ChannelType } from "discord.js";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
-import { Q } from "@/db";
+import { Q, waitlistRepo } from "@/db";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
@@ -16,6 +16,7 @@ import {
   generateCustomWelcomeCard,
   generateWelcomeCard,
 } from "@/discord/utils/welcome-card";
+import { diffAndUpdateInvites } from "@/discord/bots/main/invites";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
@@ -99,6 +100,35 @@ export async function execute(
     } catch (error) {
       logger.error(
         `Failed to cancel departure record for ${member.user.tag}:`,
+        error,
+      );
+    }
+
+    // Match the join against any single-use waitlist invite so the entry
+    // can be auto-linked to this Discord account without requiring /verify.
+    try {
+      const consumedCode = await diffAndUpdateInvites(member.guild);
+      if (consumedCode) {
+        const entry = await Q.waitlist.entry.find({ inviteCode: consumedCode });
+        if (entry) {
+          await Q.waitlist.entry.update(
+            { id: entry.id },
+            {
+              discordId: member.user.id,
+              joinedDiscord: true,
+              verified: true,
+              email: null,
+            },
+          );
+          await waitlistRepo.updateProgressEmbed(entry.id);
+          logger.info(
+            `Linked waitlist entry #${entry.id} to Discord user ${member.user.tag} via invite ${consumedCode}`,
+          );
+        }
+      }
+    } catch (error) {
+      logger.error(
+        `Failed to match waitlist invite for ${member.user.tag}:`,
         error,
       );
     }
@@ -204,10 +234,10 @@ export async function execute(
         await verificationChannel.send({
           content:
             `## 👋 Welcome ${member}!\n\n` +
-            `To get started, verify your account using the \`/verify\` command with the token you received after applying.\n\n` +
-            `> **Example:** \`/verify your-token-here\`\n\n` +
-            `### Don't have a token?\n` +
-            `You'll need to apply first at <https://create-rington.com/apply-to-join>`,
+            `To finish onboarding, link your Minecraft account with \`/register <your_mc_name>\`.\n\n` +
+            `> **Example:** \`/register Steve\`\n\n` +
+            `### Haven't applied yet?\n` +
+            `Apply first at <https://create-rington.com/apply-to-join>`,
         });
 
         logger.info(

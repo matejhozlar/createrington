@@ -10,13 +10,13 @@ import type {
 import { email, EmailTemplate } from "@/services/email";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
-import crypto from "node:crypto";
+import { createOneUseInvite } from "@/discord/bots/main/invites";
 
 /** Result of a waitlist registration attempt */
 interface RegistrationResult {
   entry: WaitlistEntry;
   autoAccepted: boolean;
-  token?: string;
+  inviteUrl?: string;
 }
 
 /** Onboarding progress steps tracked per waitlist entry */
@@ -161,20 +161,20 @@ export class WaitlistRepository {
     const shouldAutoAccept = await this.hasCapacity();
 
     if (shouldAutoAccept) {
-      const token = crypto.randomBytes(32).toString("hex");
+      const { code: inviteCode, url: inviteUrl } = await createOneUseInvite();
 
       const entry = await Q.waitlist.entry.createAndReturn({
         email: data.email,
         discordName: data.discordName,
         metadata: data.metadata,
-        token,
+        inviteCode,
         status: "auto_accepted",
         acceptedAt: new Date(),
         acceptedBy: config.discord.bots.main.id,
       });
 
       logger.info(
-        `New waitlist entry (auto-accepted): ${data.discordName} - ID: ${entry.id}`,
+        `New waitlist entry (auto-accepted): ${data.discordName ?? data.email ?? `#${entry.id}`} - ID: ${entry.id}`,
       );
 
       const messageId = await this.notifyAdmins(entry, true);
@@ -185,10 +185,21 @@ export class WaitlistRepository {
         );
       }
 
+      if (data.email) {
+        await email.sendTemplate(
+          data.email,
+          EmailTemplate.WAITLIST_INVITATION,
+          {
+            discordName: data.discordName ?? null,
+            inviteUrl,
+          },
+        );
+      }
+
       return {
         entry,
         autoAccepted: true,
-        token,
+        inviteUrl,
       };
     } else {
       const entry = await Q.waitlist.entry.createAndReturn({
@@ -198,7 +209,7 @@ export class WaitlistRepository {
       });
 
       logger.info(
-        `New waitlist entry (pending): ${data.email} (${data.discordName}) - ID: ${entry.id}`,
+        `New waitlist entry (pending): ${data.email ?? "(no email)"} (${data.discordName ?? "(no discord name)"}) - ID: ${entry.id}`,
       );
 
       const messageId = await this.notifyAdmins(entry, false);
@@ -214,7 +225,7 @@ export class WaitlistRepository {
           data.email,
           EmailTemplate.WAITLIST_CONFIRMATION,
           {
-            discordName: data.discordName,
+            discordName: data.discordName ?? null,
           },
         );
       }
@@ -227,24 +238,31 @@ export class WaitlistRepository {
   }
 
   /**
-   * Manually invites a user (called by admin action)
+   * Manually invites a user (called by admin action).
+   * Generates a one-use Discord invite if none exists, then emails it to the user.
    *
    * @param entryId - Waitlist entry ID
    * @param adminId - Discord ID of admin who approved
-   * @returns Updated waitlist entry with accepted status and generated token
+   * @returns Updated waitlist entry with accepted status and generated invite code
    */
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
 
-    let token = entry.token;
-    if (!token) {
-      token = crypto.randomBytes(32).toString("hex");
+    let inviteCode = entry.inviteCode;
+    let inviteUrl: string | null = null;
+    if (!inviteCode) {
+      const created = await createOneUseInvite();
+      inviteCode = created.code;
+      inviteUrl = created.url;
+    } else {
+      // Reconstruct URL from existing code so we can re-email if needed.
+      inviteUrl = `https://discord.gg/${inviteCode}`;
     }
 
     await Q.waitlist.entry.update(
       { id: entry.id },
       {
-        token,
+        inviteCode,
         status: "accepted",
         acceptedAt: new Date(),
         acceptedBy: adminId,
@@ -254,7 +272,7 @@ export class WaitlistRepository {
     if (entry.email) {
       await email.sendTemplate(entry.email, EmailTemplate.WAITLIST_INVITATION, {
         discordName: entry.discordName,
-        token,
+        inviteUrl,
       });
     }
 

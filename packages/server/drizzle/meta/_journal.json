@@ -169,6 +169,13 @@
       "when": 1776040338662,
       "tag": "0023_military_naoko",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1776090867808,
+      "tag": "0024_concerned_felicia_hardy",
+      "breakpoints": true
     }
   ]
 }

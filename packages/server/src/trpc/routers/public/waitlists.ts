@@ -17,15 +17,19 @@ export const waitlistsRouter = router({
   create: publicProcedure
     .meta({
       description:
-        "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and returns a token. In waitlist mode, requires email and goes to pending",
+        "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and emails a Discord invite URL. In waitlist mode, requires Discord name + email and goes to pending.",
     })
     .input(
       z.object({
         discordName: z
           .string()
-          .min(1, "Discord name is required")
-          .max(100, "Discord name too long"),
-        email: z.string().email("Invalid email format").optional(),
+          .min(1, "Discord name too short")
+          .max(100, "Discord name too long")
+          .optional(),
+        email: z
+          .string()
+          .email("Invalid email format")
+          .min(1, "Email is required"),
         metadata: z
           .record(
             z.string(),
@@ -39,52 +43,52 @@ export const waitlistsRouter = router({
 
       const hasCapacity = await waitlistRepo.hasCapacity();
 
-      if (!hasCapacity && !email) {
+      if (!hasCapacity && !discordName) {
         throw trpcError.badRequest(
-          "Email is required when the server is at capacity",
+          "Discord username is required when the server is at capacity",
         );
       }
 
-      if (email) {
-        const [emailExists] = await waitlist.entry.findAll(
-          { email },
+      const [emailExists] = await waitlist.entry.findAll(
+        { email },
+        { limit: 1 },
+      );
+      if (emailExists) {
+        throw trpcError.conflict("This email is already on the waitlist");
+      }
+
+      if (discordName) {
+        const [discordExists] = await waitlist.entry.findAll(
+          { discordName },
           { limit: 1 },
         );
-        if (emailExists) {
-          throw trpcError.conflict("This email is already on the waitlist");
+        if (discordExists) {
+          throw trpcError.conflict(
+            "This Discord username is already on the waitlist",
+          );
         }
       }
 
-      const [discordExists] = await waitlist.entry.findAll(
-        { discordName },
-        { limit: 1 },
-      );
-      if (discordExists) {
-        throw trpcError.conflict(
-          "This Discord username is already on the waitlist",
-        );
-      }
-
       const result = await waitlistRepo.register({
-        discordName,
-        email: email || null,
+        discordName: discordName ?? null,
+        email,
         metadata: metadata || null,
       });
 
-      if (result.autoAccepted && result.token) {
+      if (result.autoAccepted && result.inviteUrl) {
         return {
           entry: result.entry,
           status: "auto_accepted" as const,
-          token: result.token,
-          redirectUrl: `/invite/${encodeURIComponent(result.token)}`,
-          message: "You've been accepted! Use the token below to join.",
+          inviteUrl: result.inviteUrl,
+          message:
+            "You're in! Click the button below to join our Discord server.",
         };
       } else {
         return {
           entry: result.entry,
           status: "pending" as const,
           message:
-            "Thanks! We've added you to the waitlist. We'll contact you when a spot opens up.",
+            "Thanks! We've added you to the waitlist. We'll email you when a spot opens up.",
         };
       }
     }),
