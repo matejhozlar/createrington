@@ -182,7 +182,7 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
                       Next Steps
                     </h2>
                     <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.7; color: #a09bab;">
-                      Click the button below to join our Discord using your personal, single-use invite. Once you're in, run <strong style="color: #ededf0;">/register &lt;your_minecraft_name&gt;</strong> to get whitelisted. If we don't see you within <strong style="color: #ededf0;">14 days</strong>, the invite will expire and the spot may be offered to the next person in the queue.
+                      Click the button below to join our Discord using your personal, single-use invite. Once you're in, run <strong style="color: #ededf0;">/register &lt;your_minecraft_name&gt;</strong> to get whitelisted. If we don't see you within <strong style="color: #ededf0;">7 days</strong>, the invite will expire and the spot may be offered to the next person in the queue.
                     </p>
                   </td>
                 </tr>
@@ -276,7 +276,7 @@ Highlights of the Experience:
 
 Next Steps:
 
-Click the link below to join our Discord using your personal, single-use invite. Once you're in, run /register <your_minecraft_name> to get whitelisted. If we don't see you within 14 days, the invite will expire and the spot may be offered to the next person in the queue.
+Click the link below to join our Discord using your personal, single-use invite. Once you're in, run /register <your_minecraft_name> to get whitelisted. If we don't see you within 7 days, the invite will expire and the spot may be offered to the next person in the queue.
 
 Your Discord invite: ${data.inviteUrl}
 

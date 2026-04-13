@@ -26,10 +26,7 @@ export const waitlistsRouter = router({
           .min(1, "Discord name too short")
           .max(100, "Discord name too long")
           .optional(),
-        email: z
-          .string()
-          .email("Invalid email format")
-          .min(1, "Email is required"),
+        email: z.string().email("Invalid email format").optional(),
         metadata: z
           .record(
             z.string(),
@@ -43,18 +40,26 @@ export const waitlistsRouter = router({
 
       const hasCapacity = await waitlistRepo.hasCapacity();
 
+      if (!hasCapacity && !email) {
+        throw trpcError.badRequest(
+          "Email is required when the server is at capacity",
+        );
+      }
+
       if (!hasCapacity && !discordName) {
         throw trpcError.badRequest(
           "Discord username is required when the server is at capacity",
         );
       }
 
-      const [emailExists] = await waitlist.entry.findAll(
-        { email },
-        { limit: 1 },
-      );
-      if (emailExists) {
-        throw trpcError.conflict("This email is already on the waitlist");
+      if (email) {
+        const [emailExists] = await waitlist.entry.findAll(
+          { email },
+          { limit: 1 },
+        );
+        if (emailExists) {
+          throw trpcError.conflict("This email is already on the waitlist");
+        }
       }
 
       if (discordName) {
@@ -71,7 +76,7 @@ export const waitlistsRouter = router({
 
       const result = await waitlistRepo.register({
         discordName: discordName ?? null,
-        email,
+        email: email ?? null,
         metadata: metadata || null,
       });
 

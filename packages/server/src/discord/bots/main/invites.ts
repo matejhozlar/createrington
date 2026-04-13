@@ -5,7 +5,13 @@ import { mainBot } from "@/discord/bots/main/client";
 /** In-memory snapshot of each guild's invite usage counts, keyed by guild id then invite code */
 const inviteUseCache = new Map<string, Map<string, number>>();
 
-const ONE_USE_INVITE_MAX_AGE_SECONDS = 14 * 24 * 60 * 60;
+/** TTLs for waitlist invites. Auto-accepted applicants are on the site right now,
+ * so they get a short window. Admin-issued invites go by email and may sit in an
+ * inbox for a few days before being opened, so they get a longer window. */
+export const INVITE_MAX_AGE_SECONDS = {
+  AUTO_ACCEPT: 60 * 60, // 1 hour
+  MANUAL_INVITE: 7 * 24 * 60 * 60, // 7 days
+} as const;
 
 function getWelcomeChannelId(): string {
   const channelId = config.discord.events.onGuildMemberAdd.welcome.channelId;
@@ -95,9 +101,14 @@ export async function diffAndUpdateInvites(
 /**
  * Creates a single-use Discord invite for a waitlist applicant.
  *
+ * @param maxAgeSeconds - How long the invite is valid before Discord expires it
+ * @param reason - Audit-log reason shown in the Discord server settings
  * @returns The new invite's code and URL
  */
-export async function createOneUseInvite(): Promise<{
+export async function createOneUseInvite(
+  maxAgeSeconds: number,
+  reason: string,
+): Promise<{
   code: string;
   url: string;
 }> {
@@ -106,9 +117,9 @@ export async function createOneUseInvite(): Promise<{
 
   const invite: Invite = await guild.invites.create(channelId, {
     maxUses: 1,
-    maxAge: ONE_USE_INVITE_MAX_AGE_SECONDS,
+    maxAge: maxAgeSeconds,
     unique: true,
-    reason: "Waitlist applicant auto-accept / invitation",
+    reason,
   });
 
   // Seed the cache so the freshly created invite is tracked at 0 uses before

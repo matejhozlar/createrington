@@ -10,7 +10,10 @@ import type {
 import { email, EmailTemplate } from "@/services/email";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
-import { createOneUseInvite } from "@/discord/bots/main/invites";
+import {
+  createOneUseInvite,
+  INVITE_MAX_AGE_SECONDS,
+} from "@/discord/bots/main/invites";
 
 /** Result of a waitlist registration attempt */
 interface RegistrationResult {
@@ -161,7 +164,10 @@ export class WaitlistRepository {
     const shouldAutoAccept = await this.hasCapacity();
 
     if (shouldAutoAccept) {
-      const { code: inviteCode, url: inviteUrl } = await createOneUseInvite();
+      const { code: inviteCode, url: inviteUrl } = await createOneUseInvite(
+        INVITE_MAX_AGE_SECONDS.AUTO_ACCEPT,
+        "Waitlist auto-accept",
+      );
 
       const entry = await Q.waitlist.entry.createAndReturn({
         email: data.email,
@@ -248,16 +254,12 @@ export class WaitlistRepository {
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
 
-    let inviteCode = entry.inviteCode;
-    let inviteUrl: string | null = null;
-    if (!inviteCode) {
-      const created = await createOneUseInvite();
-      inviteCode = created.code;
-      inviteUrl = created.url;
-    } else {
-      // Reconstruct URL from existing code so we can re-email if needed.
-      inviteUrl = `https://discord.gg/${inviteCode}`;
-    }
+    // Always mint a fresh invite so we never email a link that's already
+    // expired on Discord's side.
+    const { code: inviteCode, url: inviteUrl } = await createOneUseInvite(
+      INVITE_MAX_AGE_SECONDS.MANUAL_INVITE,
+      `Waitlist manual invite by admin ${adminId}`,
+    );
 
     await Q.waitlist.entry.update(
       { id: entry.id },

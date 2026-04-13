@@ -50,7 +50,7 @@ export function ApplyToJoin() {
     e.preventDefault();
     setFormError(null);
 
-    if (!email.trim()) {
+    if (isWaitlistMode && !email.trim()) {
       setFormError("Email is required");
       return;
     }
@@ -74,7 +74,7 @@ export function ApplyToJoin() {
     try {
       await createMutation.mutateAsync({
         discordName: discordName.trim() || undefined,
-        email: email.trim(),
+        email: email.trim() || undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
     } catch (err: unknown) {
