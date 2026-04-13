@@ -98,7 +98,6 @@ export class CurrencyController {
         message: `Transferred ${amount} from ${senderUuid} to ${toUuid}`,
         playerMessage: `You sent ${formatMoney(amount)}`,
         data: {
-          success: true,
           new_sender_balance: result.senderBalance,
         },
       });
@@ -149,7 +148,6 @@ export class CurrencyController {
         message: `Deposited ${amount} for player ${name}`,
         playerMessage: `Deposited ${formatMoney(amount)}. New balance: ${formatMoney(newBalance)}`,
         data: {
-          success: true,
           new_balance: newBalance,
         },
       });
@@ -202,7 +200,6 @@ export class CurrencyController {
         message: `Withdrew ${totalAmount} for player ${name} (${count}x${denomination})`,
         playerMessage: `Withdrew ${formatMoney(totalAmount)}.`,
         data: {
-          success: true,
           withdrawn: totalAmount,
           new_balance: newBalance,
           denomination,

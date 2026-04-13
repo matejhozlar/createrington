@@ -514,7 +514,8 @@ function generateSpecModulesMarkdown(specs: ApiModuleSpec[]): string {
         if (spec.enveloped) {
           const innerLines = fieldsToBodyBlock(ep.response.fields).split("\n");
           // First line is `{`, last is `}`. Re-indent everything by 2 spaces
-          // and inline the opening brace onto the `data:` key.
+          // and inline the opening brace onto the `data:` key. Wrap in
+          // `[...]` for array-valued responses.
           const indented = innerLines
             .slice(1, -1)
             .map((l) => `  ${l}`)
@@ -523,9 +524,15 @@ function generateSpecModulesMarkdown(specs: ApiModuleSpec[]): string {
           lines.push("  success: boolean,");
           lines.push("  message: string,");
           lines.push("  playerMessage?: string,");
-          lines.push("  data: {");
-          lines.push(indented);
-          lines.push("  }");
+          if (ep.response.isArray) {
+            lines.push("  data: [{");
+            lines.push(indented);
+            lines.push("  }]");
+          } else {
+            lines.push("  data: {");
+            lines.push(indented);
+            lines.push("  }");
+          }
           lines.push("}");
         } else {
           lines.push(fieldsToBodyBlock(ep.response.fields));
