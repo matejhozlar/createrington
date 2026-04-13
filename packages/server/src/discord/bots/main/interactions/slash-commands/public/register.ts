@@ -1,16 +1,8 @@
-import { Q, waitlistRepo } from "@/db";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import {
-  AUTO_CLOSE_MS,
-  scheduleChannelClose,
-} from "@/discord/bots/main/registration-cleanup";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { RoleManager } from "@/discord/utils/roles/role-manager";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { runRegistration } from "@/discord/bots/main/registration/run-registration";
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
   type ChatInputCommandInteraction,
   type GuildTextBasedChannel,
   MessageFlags,
@@ -18,8 +10,8 @@ import {
 } from "discord.js";
 
 /**
- * Slash command definition for the register command
- * Registers the user into the system
+ * Fallback slash command — primary registration flow is the button + modal in
+ * the verification channel. Kept here so power users can still bypass the UI.
  */
 export const data = new SlashCommandBuilder()
   .setName("register")
@@ -31,63 +23,17 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-/**
- * Cooldown configuration for the register command
- *
- * - duration: 60 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when user is on cooldown
- */
 export const cooldown = {
   duration: 60,
   type: CooldownType.USER,
   message: "Please wait before trying to register again!",
 };
 
-/**
- * Introduces a random delay for paced progress updates
- *
- * @param min - Minimum delay in milliseconds
- * @param max - Maximum delay in milliseconds
- * @returns Promise that resolves after the random delay
- * @private
- */
-function randomDelay(min = 1000, max = 3000): Promise<void> {
-  const ms = Math.floor(Math.random() * (max - min + 1)) + min;
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/** Single step in the multi-step registration flow */
-interface RegistrationStep {
-  name: string;
-  completed: boolean;
-  error?: string;
-}
-
-const STEPS: RegistrationStep[] = [
-  { name: "Validate Discord account", completed: false },
-  { name: "Check Minecraft username", completed: false },
-  { name: "Verify account availability", completed: false },
-  { name: "Add to server whitelist", completed: false },
-  { name: "Save to database", completed: false },
-  { name: "Assign Discord roles", completed: false },
-];
-
-/**
- * Executes the register command to register the user
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
   const mcName = interaction.options.getString("mc_name", true);
-  const discordId = interaction.user.id;
   const member = await interaction.guild!.members.fetch(interaction.user.id);
-
-  const steps = STEPS.map((s) => ({ ...s }));
-  let currentStep = 0;
 
   if (
     !member ||
@@ -98,21 +44,15 @@ export async function execute(
       "Registration Failed",
       "Could not verify your roles. Please try again.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-    });
+    await interaction.reply({ embeds: [embed.build()] });
     return;
   }
 
-  const hasUnverified = RoleManager.has(member, Discord.Roles.UNVERIFIED);
-
-  if (!hasUnverified) {
+  if (!member.roles.cache.has(Discord.Roles.UNVERIFIED)) {
     const embed = EmbedPresets.error(
       "Already Registered",
       "You are already verified or not eligible to register",
     );
-
     await interaction.reply({
       embeds: [embed.build()],
       flags: MessageFlags.Ephemeral,
@@ -120,218 +60,22 @@ export async function execute(
     return;
   }
 
-  const progressEmbed = EmbedPresets.registration.userProgress(
+  await interaction.deferReply();
+
+  const channel = (interaction.channel ?? null) as GuildTextBasedChannel | null;
+
+  await runRegistration({
+    member,
+    discordId: interaction.user.id,
+    userTag: interaction.user.tag,
+    username: interaction.user.username,
     mcName,
-    steps,
-    currentStep,
-  );
-
-  await interaction.reply({
-    embeds: [progressEmbed.build()],
+    channel,
+    render: async ({ embeds, components }) => {
+      await interaction.editReply({
+        embeds: embeds.map((e) => e.build()),
+        components: components ?? [],
+      });
+    },
   });
-
-  try {
-    await randomDelay();
-    const entry = await Q.waitlist.entry.find({ discordId });
-
-    if (!entry || !entry.verified) {
-      steps[currentStep].error = "No verified waitlist entry found";
-      throw new Error(
-        "You haven't verified your token yet. Run `/verify` with your token first.",
-      );
-    }
-
-    steps[currentStep].completed = true;
-    currentStep++;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(mcName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay();
-
-    const response = await fetch(
-      `https://playerdb.co/api/player/minecraft/${mcName}`,
-    );
-    const result = (await response.json()) as {
-      success: boolean;
-      data: { player?: { id: string; username: string } };
-    };
-
-    if (!response.ok || !result.success || !result.data.player?.id) {
-      steps[currentStep].error = "Minecraft account not found";
-      throw new Error(`No Minecraft account found with the name \`${mcName}\``);
-    }
-
-    const uuid = result.data.player.id;
-    const correctName = result.data.player.username;
-
-    steps[currentStep].completed = true;
-    currentStep++;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(correctName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay();
-    const exists = await Q.player.exists({ minecraftUuid: uuid });
-
-    if (exists) {
-      steps[currentStep].error = "Account already registered";
-      throw new Error(
-        `This Minecraft account (\`${correctName}\`) is already registered`,
-      );
-    }
-
-    steps[currentStep].completed = true;
-    currentStep++;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(correctName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay();
-
-    try {
-      await minecraftRcon.whitelistAll(WhitelistAction.ADD, correctName);
-    } catch (error) {
-      steps[currentStep].error = "Failed to add to whitelist";
-      throw new Error(`Failed to whitelist ${correctName}: ${error}`);
-    }
-
-    steps[currentStep].completed = true;
-    currentStep++;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(correctName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay();
-    await Q.player.create({
-      minecraftUuid: uuid,
-      minecraftUsername: correctName,
-      discordId,
-    });
-    await Q.player.balance.create({
-      minecraftUuid: uuid,
-    });
-
-    await Q.waitlist.entry.update({ id: entry.id }, { registered: true });
-    await waitlistRepo.updateProgressEmbed(entry.id);
-
-    steps[currentStep].completed = true;
-    currentStep++;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(correctName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay();
-    await RoleManager.remove(member, Discord.Roles.UNVERIFIED);
-    await RoleManager.assign(member, [
-      Discord.Roles.VERIFIED,
-      Discord.Roles.COGS_AND_STEAM,
-    ]);
-
-    // Set Discord nickname to Minecraft username
-    try {
-      await member.setNickname(correctName, "Registration: sync to MC name");
-    } catch (err) {
-      // Nickname change can fail if the bot lacks permissions for the user
-      // (e.g. server owner). Non-fatal — registration still succeeds.
-      logger.warn(
-        `Could not set nickname for ${member.user.tag}: ${err instanceof Error ? err.message : err}`,
-      );
-    }
-
-    steps[currentStep].completed = true;
-
-    await interaction.editReply({
-      embeds: [
-        EmbedPresets.registration
-          .userProgress(correctName, steps, currentStep)
-          .build(),
-      ],
-    });
-
-    await randomDelay(500, 1000);
-
-    const autoCloseAt = Math.floor((Date.now() + AUTO_CLOSE_MS) / 1000);
-
-    const { embed, closeButton } = EmbedPresets.registration.userSuccess(
-      correctName,
-      uuid,
-      autoCloseAt,
-    );
-
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      closeButton,
-    );
-
-    await interaction.editReply({
-      embeds: [embed.build()],
-      components: [row],
-    });
-
-    logger.info(
-      `User ${interaction.user.tag} (${discordId}) registered as ${correctName} (${uuid})`,
-    );
-
-    // Schedule auto-close of the registration channel
-    const channel = interaction.channel;
-    if (channel && !channel.isDMBased()) {
-      scheduleChannelClose(
-        channel as GuildTextBasedChannel,
-        AUTO_CLOSE_MS,
-        `Registration completed - auto-closed after 24 hours (${interaction.user.tag})`,
-      );
-    }
-  } catch (error) {
-    logger.error("/register failed:", error);
-
-    const adminEmbed = EmbedPresets.registration.adminError(
-      mcName,
-      interaction.user.tag,
-      discordId,
-      error instanceof Error ? error.message : String(error),
-      steps[currentStep]?.name || "Unknown step",
-    );
-
-    await Discord.Messages.send({
-      channelId: Discord.Channels.administration.NOTIFICATIONS,
-      embeds: adminEmbed.build(),
-      content: Discord.Roles.mention(Discord.Roles.ADMIN),
-    });
-
-    const userErrorEmbed = EmbedPresets.registration.userError(
-      mcName,
-      error instanceof Error ? error.message : String(error),
-      steps[currentStep]?.name || "Unknown step",
-    );
-
-    await interaction.editReply({
-      embeds: [userErrorEmbed.build()],
-      components: [],
-    });
-  }
 }

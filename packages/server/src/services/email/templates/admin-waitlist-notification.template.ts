@@ -4,7 +4,7 @@ import { BaseEmailTemplate } from "./base.template";
 /** Email template for notifying the admin about a new waitlist submission */
 export class AdminWaitlistNotificationTemplate extends BaseEmailTemplate<AdminWaitlistNotificationData> {
   protected getSubject(data: AdminWaitlistNotificationData): string {
-    return `New Waitlist Submission: ${data.discordName}`;
+    return `New Waitlist Submission: ${data.discordName ?? data.email}`;
   }
 
   protected getHtml(data: AdminWaitlistNotificationData): string {
@@ -81,7 +81,7 @@ export class AdminWaitlistNotificationTemplate extends BaseEmailTemplate<AdminWa
                           Discord
                         </td>
                         <td style="font-size: 15px; color: #d4a843; font-weight: 600;">
-                          ${data.discordName}
+                          ${data.discordName ?? "N/A"}
                         </td>
                       </tr>
                     </table>
@@ -129,7 +129,7 @@ export class AdminWaitlistNotificationTemplate extends BaseEmailTemplate<AdminWa
 New Waitlist Submission
 ---
 ID: ${data.id}
-Discord: ${data.discordName}
+Discord: ${data.discordName ?? "N/A"}
 Email: ${data.email}
 ---
 Createrington - Waitlist System

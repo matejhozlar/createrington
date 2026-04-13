@@ -17,6 +17,7 @@ import {
 import { TicketService } from "./discord/tickets";
 import { LeaderboardService } from "./discord/leaderboard";
 import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivity-cleanup.service";
+import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
 import { RotatingStatusService } from "./discord/status";
@@ -227,6 +228,16 @@ export function registerServices(): void {
       },
     );
   }
+
+  container.register(
+    Services.WAITLIST_CLEANUP_SERVICE,
+    async () => {
+      const service = new WaitlistCleanupService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE] },
+  );
 
   container.register(
     Services.SERVER_STATS_SERVICE,

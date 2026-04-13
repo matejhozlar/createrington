@@ -979,9 +979,9 @@ export const waitlistEntry = pgTable(
   {
     id: serial("id").primaryKey(),
     email: text("email"),
-    discordName: text("discord_name").notNull().unique(),
+    discordName: text("discord_name").unique(),
     discordId: text("discord_id").unique(),
-    token: text("token").unique(),
+    inviteCode: text("invite_code").unique(),
     submittedAt: timestamp("submitted_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -999,7 +999,7 @@ export const waitlistEntry = pgTable(
     index("idx_waitlist_discord_message_id").on(table.discordMessageId),
     index("idx_waitlist_status").on(table.status),
     index("idx_waitlist_submitted_at").on(table.submittedAt),
-    index("idx_waitlist_token").on(table.token),
+    index("idx_waitlist_invite_code").on(table.inviteCode),
   ],
 );
 

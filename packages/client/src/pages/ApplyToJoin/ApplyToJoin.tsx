@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Copy, ExternalLink } from "lucide-react";
+import { CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -39,7 +39,6 @@ export function ApplyToJoin() {
   const [referralOther, setReferralOther] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";
@@ -51,7 +50,12 @@ export function ApplyToJoin() {
     e.preventDefault();
     setFormError(null);
 
-    if (!discordName.trim()) {
+    if (isWaitlistMode && !email.trim()) {
+      setFormError("Email is required");
+      return;
+    }
+
+    if (isWaitlistMode && !discordName.trim()) {
       setFormError("Discord username is required");
       return;
     }
@@ -69,7 +73,7 @@ export function ApplyToJoin() {
 
     try {
       await createMutation.mutateAsync({
-        discordName: discordName.trim(),
+        discordName: discordName.trim() || undefined,
         email: email.trim() || undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
@@ -79,17 +83,6 @@ export function ApplyToJoin() {
           ? err.message
           : "Something went wrong. Please try again.";
       setFormError(message);
-    }
-  };
-
-  const handleCopyToken = async () => {
-    if (!result || !("token" in result) || !result.token) return;
-    try {
-      await navigator.clipboard.writeText(result.token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback: select the text
     }
   };
 
@@ -103,40 +96,24 @@ export function ApplyToJoin() {
 
   // Success state
   if (result) {
-    if (isAutoAccepted && "token" in result) {
+    if (isAutoAccepted && "inviteUrl" in result) {
       return (
         <div className="flex flex-1 items-center justify-center px-4 py-20">
           <div className="w-full max-w-md rounded-lg border border-success bg-success/5 p-8 text-center">
             <CheckCircle className="mx-auto mb-4 size-12 text-success" />
             <h2 className="mb-2 text-2xl font-semibold">You're In!</h2>
             <p className="mb-6 text-muted-foreground">
-              You've been automatically accepted. Use the token below to
-              complete your registration.
+              You've been automatically accepted. Click the button below to join
+              our Discord using your personal invite, then run{" "}
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                /register &lt;your_mc_name&gt;
+              </code>{" "}
+              to get whitelisted.
             </p>
-
-            <div className="mb-6 rounded-md border border-border bg-card p-4">
-              <p className="mb-2 text-sm font-medium text-muted-foreground">
-                Your Access Token
-              </p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 overflow-x-auto rounded bg-muted px-3 py-2 text-sm">
-                  {result.token}
-                </code>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 cursor-pointer"
-                  onClick={handleCopyToken}
-                >
-                  <Copy className="mr-1 size-3.5" />
-                  {copied ? "Copied!" : "Copy"}
-                </Button>
-              </div>
-            </div>
 
             <Button asChild className="w-full">
               <a
-                href={DISCORD_INVITE_URL}
+                href={result.inviteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -200,25 +177,11 @@ export function ApplyToJoin() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     {isWaitlistMode
                       ? "Share your details and we'll reach out when a spot opens."
-                      : "Share your details to start building with the community today."}
+                      : "Accept the terms to get your Discord invite."}
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <Field>
-                    <FieldLabel htmlFor="discord-name">
-                      Discord Username
-                    </FieldLabel>
-                    <Input
-                      id="discord-name"
-                      type="text"
-                      placeholder="e.g. username"
-                      value={discordName}
-                      onChange={(e) => setDiscordName(e.target.value)}
-                      required
-                    />
-                  </Field>
-
                   {isWaitlistMode && (
                     <Field>
                       <FieldLabel htmlFor="email">Email Address</FieldLabel>
@@ -228,6 +191,22 @@ export function ApplyToJoin() {
                         placeholder="you@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </Field>
+                  )}
+
+                  {isWaitlistMode && (
+                    <Field>
+                      <FieldLabel htmlFor="discord-name">
+                        Discord Username
+                      </FieldLabel>
+                      <Input
+                        id="discord-name"
+                        type="text"
+                        placeholder="e.g. username"
+                        value={discordName}
+                        onChange={(e) => setDiscordName(e.target.value)}
                         required
                       />
                     </Field>
@@ -360,15 +339,17 @@ export function ApplyToJoin() {
                       <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
                         1
                       </span>
-                      Submit your application with your Discord username.
+                      {isWaitlistMode
+                        ? "Submit your application with your email and Discord username."
+                        : "Accept the terms and submit your application."}
                     </li>
                     <li className="flex gap-3">
                       <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
                         2
                       </span>
                       {isWaitlistMode
-                        ? "We'll review and notify you by email when a spot opens."
-                        : "You'll get immediate access if approved."}
+                        ? "We'll review and email you a personal Discord invite when a spot opens."
+                        : "You'll get a personal Discord invite on the next screen."}
                     </li>
                     <li className="flex gap-3">
                       <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">

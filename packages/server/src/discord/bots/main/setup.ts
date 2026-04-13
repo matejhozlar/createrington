@@ -6,6 +6,7 @@ import { loadButtonHandlers } from "../common/loaders/button-loader";
 import { registerInteractionHandler } from "./handlers/interaction-handler";
 import { loadEventHandlers } from "../common/loaders/event-loader";
 import { sweepRegistrationChannels } from "./registration-cleanup";
+import { buildInviteCache } from "./invites";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +30,11 @@ export async function setupMainBotHandlers(bot: Client): Promise<void> {
 
   registerInteractionHandler(bot, commandHandlers, buttonHandlers);
   await loadEventHandlers(bot, eventsPath);
+
+  // Seed the invite-use cache so guildMemberAdd can diff against it to identify
+  // which waitlist invite a joining member consumed. Must happen here because
+  // setup runs after bot login, so a `once` clientReady handler would never fire.
+  await buildInviteCache(bot);
 
   // Re-schedule any pending registration channel auto-closes from before restart
   sweepRegistrationChannels(bot).catch((err) =>
