@@ -1,25 +1,55 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerForceloadPartyBaseQueries } from "@/generated/db/server_forceload_party.queries";
 
-/**
- * Custom queries for server_forceload_party table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<ServerForceloadParty[]> {
-  //   const result = await this.db.query<ServerForceloadParty>(
-  //     `SELECT * FROM server_forceload_party WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  async getPartiesWithStats(serverId: number) {
+    const result = await this.db.query<{
+      id: number;
+      partyId: string;
+      partyName: string;
+      memberCount: number;
+      optedIn: boolean;
+      syncedAt: Date;
+      totalChunks: number;
+      activeChunks: number;
+    }>(
+      `SELECT
+        fp.id,
+        fp.party_id AS "partyId",
+        fp.party_name AS "partyName",
+        fp.member_count AS "memberCount",
+        fp.opted_in AS "optedIn",
+        fp.synced_at AS "syncedAt",
+        COUNT(fc.id)::int AS "totalChunks",
+        COUNT(fc.id) FILTER (WHERE fc.active)::int AS "activeChunks"
+      FROM server_forceload_party fp
+      LEFT JOIN server_forceload_chunk fc ON fc.party_id = fp.id
+      WHERE fp.server_id = $1
+      GROUP BY fp.id, fp.party_id, fp.party_name, fp.member_count, fp.opted_in, fp.synced_at
+      ORDER BY "totalChunks" DESC`,
+      [serverId],
+    );
+    return result.rows;
+  }
+
+  async getPartyMembers(partyId: number) {
+    const result = await this.db.query<{
+      playerUuid: string;
+      minecraftUsername: string | null;
+    }>(
+      `SELECT
+        fm.player_uuid AS "playerUuid",
+        p.minecraft_username AS "minecraftUsername"
+      FROM server_forceload_member fm
+      LEFT JOIN player p ON p.minecraft_uuid = fm.player_uuid
+      WHERE fm.party_id = $1
+      ORDER BY p.minecraft_username ASC NULLS LAST`,
+      [partyId],
+    );
+    return result.rows;
+  }
 }

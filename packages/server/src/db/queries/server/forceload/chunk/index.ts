@@ -1,25 +1,26 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerForceloadChunkBaseQueries } from "@/generated/db/server_forceload_chunk.queries";
 
-/**
- * Custom queries for server_forceload_chunk table
- *
- * Extends the auto-generated base class with custom methods.
- * This file is scaffolded once and never overwritten - add your custom
- * query methods here while inheriting all generated CRUD operations.
- */
 export class ServerForceloadChunkQueries extends ServerForceloadChunkBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<ServerForceloadChunk[]> {
-  //   const result = await this.db.query<ServerForceloadChunk>(
-  //     `SELECT * FROM server_forceload_chunk WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  async getChunksByOwner(ownerId: number, ownerType: "player" | "party") {
+    const column = ownerType === "player" ? "player_id" : "party_id";
+    const result = await this.db.query<{
+      id: number;
+      dimension: string;
+      x: number;
+      z: number;
+      active: boolean;
+    }>(
+      `SELECT id, dimension, x, z, active
+      FROM server_forceload_chunk
+      WHERE ${column} = $1
+      ORDER BY dimension, x, z`,
+      [ownerId],
+    );
+    return result.rows;
+  }
 }
