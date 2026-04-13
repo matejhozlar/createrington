@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
@@ -111,9 +111,8 @@ export function PlayerForceloadsTable({ players }: { players: Player[] }) {
               const displayName = player.minecraftUsername ?? player.playerUuid;
 
               return (
-                <>
+                <Fragment key={player.id}>
                   <TableRow
-                    key={player.id}
                     className="cursor-pointer"
                     onClick={() => setExpandedId(isExpanded ? null : player.id)}
                   >
@@ -141,13 +140,13 @@ export function PlayerForceloadsTable({ players }: { players: Player[] }) {
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow key={`${player.id}-chunks`}>
+                    <TableRow>
                       <TableCell colSpan={5} className="bg-muted/30 p-4">
                         <ChunkDetails ownerId={player.id} />
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>

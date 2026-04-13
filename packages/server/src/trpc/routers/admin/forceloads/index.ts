@@ -13,36 +13,7 @@ export const adminForceloadsRouter = router({
         : Object.keys(MINECRAFT_SERVERS).map(Number);
 
       const stats = await Promise.all(
-        serverIds.map(async (serverId) => {
-          const players =
-            await Q.server.forceload.player.getPlayersWithChunks(serverId);
-          const parties =
-            await Q.server.forceload.party.getPartiesWithStats(serverId);
-
-          const playerChunks = players.reduce(
-            (acc, p) => ({
-              total: acc.total + p.totalChunks,
-              active: acc.active + p.activeChunks,
-            }),
-            { total: 0, active: 0 },
-          );
-
-          const partyChunks = parties.reduce(
-            (acc, p) => ({
-              total: acc.total + p.totalChunks,
-              active: acc.active + p.activeChunks,
-            }),
-            { total: 0, active: 0 },
-          );
-
-          return {
-            serverId,
-            totalPlayers: players.length,
-            totalParties: parties.length,
-            totalChunks: playerChunks.total + partyChunks.total,
-            activeChunks: playerChunks.active + partyChunks.active,
-          };
-        }),
+        serverIds.map((id) => Q.server.forceload.player.getStats(id)),
       );
 
       if (input.serverId) {
@@ -51,19 +22,12 @@ export const adminForceloadsRouter = router({
 
       return stats.reduce(
         (acc, s) => ({
-          serverId: null,
           totalPlayers: acc.totalPlayers + s.totalPlayers,
           totalParties: acc.totalParties + s.totalParties,
           totalChunks: acc.totalChunks + s.totalChunks,
           activeChunks: acc.activeChunks + s.activeChunks,
         }),
-        {
-          serverId: null as number | null,
-          totalPlayers: 0,
-          totalParties: 0,
-          totalChunks: 0,
-          activeChunks: 0,
-        },
+        { totalPlayers: 0, totalParties: 0, totalChunks: 0, activeChunks: 0 },
       );
     }),
 

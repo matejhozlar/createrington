@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, UsersRound } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
@@ -148,9 +148,8 @@ export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
               const isExpanded = expandedId === party.id;
 
               return (
-                <>
+                <Fragment key={party.id}>
                   <TableRow
-                    key={party.id}
                     className="cursor-pointer"
                     onClick={() => setExpandedId(isExpanded ? null : party.id)}
                   >
@@ -182,13 +181,13 @@ export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
                     </TableCell>
                   </TableRow>
                   {isExpanded && (
-                    <TableRow key={`${party.id}-details`}>
+                    <TableRow>
                       <TableCell colSpan={6} className="bg-muted/30 p-4">
                         <PartyDetails partyId={party.id} />
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </TableBody>

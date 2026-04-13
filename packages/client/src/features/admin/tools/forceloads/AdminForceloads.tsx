@@ -28,12 +28,13 @@ import { PlayerForceloadsTable } from "./components/PlayerForceloadsTable";
 import { PartyForceloadsTable } from "./components/PartyForceloadsTable";
 
 export function AdminForceloads() {
-  const [selectedServer, setSelectedServer] = useState<string>("");
+  const [selectedServer, setSelectedServer] = useState<string>("all");
 
   const serversQuery = trpc.admin.servers.list.useQuery();
   const servers = serversQuery.data?.servers ?? [];
 
-  const serverId = selectedServer ? parseInt(selectedServer, 10) : undefined;
+  const serverId =
+    selectedServer !== "all" ? parseInt(selectedServer, 10) : undefined;
 
   const statsQuery = trpc.admin.forceloads.stats.useQuery(
     { serverId },
@@ -106,7 +107,7 @@ export function AdminForceloads() {
               <SelectValue placeholder="All Servers" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Servers</SelectItem>
+              <SelectItem value="all">All Servers</SelectItem>
               {servers.map((s) => (
                 <SelectItem key={s.serverId} value={String(s.serverId)}>
                   {s.serverName}
