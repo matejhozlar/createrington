@@ -7,8 +7,8 @@ import {
 } from "@/discord/bots/main/registration-cleanup";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { ActionRowBuilder } from "discord.js";
 import type {
-  ActionRowBuilder,
   ButtonBuilder,
   GuildMember,
   GuildTextBasedChannel,
@@ -93,6 +93,20 @@ export async function runRegistration(params: {
       EmbedPresets.registration.userProgress(mcName, steps, currentStep),
     ],
   });
+
+  // Minecraft usernames are 3-16 chars of [a-zA-Z0-9_]. Reject anything else
+  // up-front so we don't issue malformed URLs to playerdb.co or leak arbitrary
+  // input into downstream services.
+  if (!/^[a-zA-Z0-9_]{3,16}$/.test(mcName)) {
+    steps[currentStep].error = "Invalid Minecraft username";
+    const userErrorEmbed = EmbedPresets.registration.userError(
+      mcName,
+      "Minecraft usernames can only contain letters, numbers, and underscores (3-16 characters).",
+      steps[currentStep].name,
+    );
+    await render({ embeds: [userErrorEmbed] });
+    return { ok: false, errorMessage: "invalid mc name" };
+  }
 
   try {
     await randomDelay();
@@ -239,8 +253,9 @@ export async function runRegistration(params: {
       autoCloseAt,
     );
 
-    const { ActionRowBuilder: Row } = await import("discord.js");
-    const row = new Row<ButtonBuilder>().addComponents(closeButton);
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      closeButton,
+    );
 
     await render({
       embeds: [embed],

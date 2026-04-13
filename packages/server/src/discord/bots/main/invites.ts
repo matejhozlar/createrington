@@ -5,6 +5,10 @@ import { mainBot } from "@/discord/bots/main/client";
 /** In-memory snapshot of each guild's invite usage counts, keyed by guild id then invite code */
 const inviteUseCache = new Map<string, Map<string, number>>();
 
+/** Per-guild serialization of diff-and-update so two near-simultaneous joins
+ * don't read the same baseline and miss the second consumer. */
+const diffQueue = new Map<string, Promise<string | null>>();
+
 /** TTLs for waitlist invites. Auto-accepted applicants are on the site right now,
  * so they get a short window. Admin-issued invites go by email and may sit in an
  * inbox for a few days before being opened, so they get a longer window. */
@@ -65,6 +69,24 @@ export async function buildInviteCache(client: Client): Promise<void> {
 export async function diffAndUpdateInvites(
   guild: Guild,
 ): Promise<string | null> {
+  // Serialize per-guild so concurrent joins don't race on the shared cache.
+  // Each call chains onto the previous one's completion, then does its own
+  // snapshot + diff + cache write atomically.
+  const previousTask = diffQueue.get(guild.id) ?? Promise.resolve(null);
+  const task = previousTask.catch(() => null).then(() => performDiff(guild));
+  diffQueue.set(guild.id, task);
+
+  try {
+    return await task;
+  } finally {
+    // Only clear if we're still the latest task (otherwise a newer call owns the slot).
+    if (diffQueue.get(guild.id) === task) {
+      diffQueue.delete(guild.id);
+    }
+  }
+}
+
+async function performDiff(guild: Guild): Promise<string | null> {
   const previous = inviteUseCache.get(guild.id) ?? new Map<string, number>();
   let current: Map<string, number>;
   try {

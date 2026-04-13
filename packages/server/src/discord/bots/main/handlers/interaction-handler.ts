@@ -8,15 +8,6 @@ import type {
   Role,
 } from "discord.js";
 import { MessageFlags } from "discord.js";
-import * as registrationModal from "../interactions/modals/registration";
-
-type ModalHandler = {
-  customId: string;
-  execute: (interaction: ModalSubmitInteraction) => Promise<void>;
-};
-
-/** Registry of modal-submit handlers keyed by the modal's customId. */
-const MODAL_HANDLERS: ModalHandler[] = [registrationModal];
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
 import { Q } from "@/db";
@@ -27,6 +18,15 @@ import {
   type ButtonModule,
   findButtonHandler,
 } from "../../common/loaders/button-loader";
+import * as registrationModal from "../interactions/modals/registration";
+
+type ModalHandler = {
+  customId: string;
+  execute: (interaction: ModalSubmitInteraction) => Promise<void>;
+};
+
+/** Registry of modal-submit handlers keyed by the modal's customId. */
+const MODAL_HANDLERS: ModalHandler[] = [registrationModal];
 
 // ==========================================================================
 // HELPERS
