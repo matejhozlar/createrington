@@ -2,7 +2,6 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
-import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -13,6 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { formatRelativeDate, formatFullDate } from "@/features/admin/format";
+import type { DimensionFilter } from "../AdminForceloads";
+import { ChunkTable } from "./ChunkTable";
+import { PlayerLabel } from "./PlayerForceloadsTable";
 
 interface Party {
   id: number;
@@ -25,7 +33,15 @@ interface Party {
   activeChunks: number;
 }
 
-function PartyDetails({ partyId }: { partyId: number }) {
+function PartyDetails({
+  partyId,
+  dimensionFilter,
+  activeOnly,
+}: {
+  partyId: number;
+  dimensionFilter: DimensionFilter;
+  activeOnly: boolean;
+}) {
   const membersQuery = trpc.admin.forceloads.partyMembers.useQuery({
     partyId,
   });
@@ -45,18 +61,19 @@ function PartyDetails({ partyId }: { partyId: number }) {
         ) : (
           <div className="flex flex-wrap gap-2">
             {membersQuery.data.map((member) => {
+              const resolved = Boolean(member.minecraftUsername);
               const displayName = member.minecraftUsername ?? member.playerUuid;
               return (
                 <div
                   key={member.playerUuid}
-                  className="flex items-center gap-1.5 rounded-md border px-2 py-1"
+                  className="rounded-md border px-2 py-1"
                 >
-                  <MinecraftAvatar
-                    username={displayName}
+                  <PlayerLabel
                     uuid={member.playerUuid}
+                    name={displayName}
+                    resolved={resolved}
                     size={20}
                   />
-                  <span className="text-sm">{displayName}</span>
                 </div>
               );
             })}
@@ -68,50 +85,35 @@ function PartyDetails({ partyId }: { partyId: number }) {
         <h4 className="mb-2 text-sm font-semibold">Chunks</h4>
         {chunksQuery.isLoading ? (
           <Loading size="small" />
-        ) : !chunksQuery.data?.length ? (
-          <p className="text-sm text-muted-foreground">No chunks found</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Dimension</TableHead>
-                <TableHead>X</TableHead>
-                <TableHead>Z</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {chunksQuery.data.map((chunk) => (
-                <TableRow key={chunk.id}>
-                  <TableCell className="font-mono text-xs">
-                    {chunk.dimension}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{chunk.x}</TableCell>
-                  <TableCell className="font-mono text-xs">{chunk.z}</TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={
-                        chunk.active
-                          ? "border-success bg-success/10 text-success"
-                          : "border-muted-foreground bg-muted-foreground/10 text-muted-foreground"
-                      }
-                    >
-                      {chunk.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+        ) : chunksQuery.data ? (
+          <ChunkTable
+            chunks={chunksQuery.data}
+            dimensionFilter={dimensionFilter}
+            activeOnly={activeOnly}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
 
-export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
+export function PartyForceloadsTable({
+  parties,
+  search,
+  dimensionFilter,
+  activeOnly,
+}: {
+  parties: Party[];
+  search: string;
+  dimensionFilter: DimensionFilter;
+  activeOnly: boolean;
+}) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const needle = search.trim().toLowerCase();
+  const filtered = needle
+    ? parties.filter((p) => p.partyName.toLowerCase().includes(needle))
+    : parties;
 
   if (parties.length === 0) {
     return (
@@ -129,7 +131,10 @@ export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
   return (
     <Card className="gap-0">
       <CardHeader className="border-b">
-        <CardTitle>Parties ({parties.length})</CardTitle>
+        <CardTitle>
+          Parties ({filtered.length}
+          {filtered.length !== parties.length && ` of ${parties.length}`})
+        </CardTitle>
       </CardHeader>
       <CardContent className="px-0">
         <Table>
@@ -144,52 +149,76 @@ export function PartyForceloadsTable({ parties }: { parties: Party[] }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {parties.map((party) => {
-              const isExpanded = expandedId === party.id;
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="py-6 text-center text-sm text-muted-foreground"
+                >
+                  No parties match "{search}"
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((party) => {
+                const isExpanded = expandedId === party.id;
 
-              return (
-                <Fragment key={party.id}>
-                  <TableRow
-                    className="cursor-pointer"
-                    onClick={() => setExpandedId(isExpanded ? null : party.id)}
-                  >
-                    <TableCell>
-                      {isExpanded ? (
-                        <ChevronDown className="size-4" />
-                      ) : (
-                        <ChevronRight className="size-4" />
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{party.partyName}</span>
-                        {!party.optedIn && (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500 bg-amber-500/10 text-amber-500"
-                          >
-                            Opted Out
-                          </Badge>
+                return (
+                  <Fragment key={party.id}>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() =>
+                        setExpandedId(isExpanded ? null : party.id)
+                      }
+                    >
+                      <TableCell>
+                        {isExpanded ? (
+                          <ChevronDown className="size-4" />
+                        ) : (
+                          <ChevronRight className="size-4" />
                         )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{party.memberCount}</TableCell>
-                    <TableCell>{party.totalChunks}</TableCell>
-                    <TableCell>{party.activeChunks}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(party.syncedAt).toLocaleString()}
-                    </TableCell>
-                  </TableRow>
-                  {isExpanded && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="bg-muted/30 p-4">
-                        <PartyDetails partyId={party.id} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{party.partyName}</span>
+                          {!party.optedIn && (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-500 bg-amber-500/10 text-amber-500"
+                            >
+                              Opted Out
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{party.memberCount}</TableCell>
+                      <TableCell>{party.totalChunks}</TableCell>
+                      <TableCell>{party.activeChunks}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>{formatRelativeDate(party.syncedAt)}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {formatFullDate(party.syncedAt)}
+                          </TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
-                  )}
-                </Fragment>
-              );
-            })}
+                    {isExpanded && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="bg-muted/30 p-4">
+                          <PartyDetails
+                            partyId={party.id}
+                            dimensionFilter={dimensionFilter}
+                            activeOnly={activeOnly}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
           </TableBody>
         </Table>
       </CardContent>
