@@ -244,6 +244,49 @@ export class WaitlistRepository {
   }
 
   /**
+   * Creates an auto-accepted waitlist entry for a user who is already a guild
+   * member when they run /register — i.e. they joined via the public Discord
+   * invite rather than the waitlist flow. Marks the entry as already verified
+   * and linked to Discord, and posts the progress embed to the admin channel.
+   *
+   * Caller must have already confirmed capacity.
+   *
+   * @param discordId - Discord user ID to link
+   * @param discordName - Discord username for display
+   * @returns The newly created waitlist entry
+   */
+  async registerForExistingMember(
+    discordId: string,
+    discordName: string,
+  ): Promise<WaitlistEntry> {
+    const entry = await Q.waitlist.entry.createAndReturn({
+      email: null,
+      discordName,
+      discordId,
+      status: "auto_accepted",
+      joinedDiscord: true,
+      verified: true,
+      acceptedAt: new Date(),
+      acceptedBy: config.discord.bots.main.id,
+    });
+
+    logger.info(
+      `Auto-registered existing guild member ${discordName} (${discordId}) as waitlist entry #${entry.id}`,
+    );
+
+    const messageId = await this.notifyAdmins(entry, true);
+    if (messageId) {
+      await Q.waitlist.entry.update(
+        { id: entry.id },
+        { discordMessageId: messageId },
+      );
+      await this.updateProgressEmbed(entry.id);
+    }
+
+    return Q.waitlist.entry.get({ id: entry.id });
+  }
+
+  /**
    * Manually invites a user (called by admin action).
    * Generates a one-use Discord invite if none exists, then emails it to the user.
    *

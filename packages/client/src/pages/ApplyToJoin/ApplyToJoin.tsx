@@ -177,22 +177,24 @@ export function ApplyToJoin() {
                   <p className="mt-2 text-sm text-muted-foreground">
                     {isWaitlistMode
                       ? "Share your details and we'll reach out when a spot opens."
-                      : "Share your email and we'll send you a Discord invite."}
+                      : "Accept the terms to get your Discord invite."}
                   </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  <Field>
-                    <FieldLabel htmlFor="email">Email Address</FieldLabel>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </Field>
+                  {isWaitlistMode && (
+                    <Field>
+                      <FieldLabel htmlFor="email">Email Address</FieldLabel>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </Field>
+                  )}
 
                   {isWaitlistMode && (
                     <Field>
@@ -339,7 +341,7 @@ export function ApplyToJoin() {
                       </span>
                       {isWaitlistMode
                         ? "Submit your application with your email and Discord username."
-                        : "Submit your application with your email."}
+                        : "Accept the terms and submit your application."}
                     </li>
                     <li className="flex gap-3">
                       <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
@@ -347,17 +349,13 @@ export function ApplyToJoin() {
                       </span>
                       {isWaitlistMode
                         ? "We'll review and email you a personal Discord invite when a spot opens."
-                        : "We'll email you a personal Discord invite right away."}
+                        : "You'll get a personal Discord invite on the next screen."}
                     </li>
                     <li className="flex gap-3">
                       <span className="mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-foreground/10 text-xs font-semibold text-foreground">
                         3
                       </span>
-                      Join the Discord, run{" "}
-                      <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                        /register
-                      </code>
-                      , and start building with the community.
+                      Join the Discord and start building with the community.
                     </li>
                   </ol>
                 </div>

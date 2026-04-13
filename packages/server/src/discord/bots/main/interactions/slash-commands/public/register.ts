@@ -132,12 +132,23 @@ export async function execute(
 
   try {
     await randomDelay();
-    const entry = await Q.waitlist.entry.find({ discordId });
+    let entry = await Q.waitlist.entry.find({ discordId });
 
+    // User joined via the public Discord invite (no waitlist entry exists).
+    // Under cap, auto-create one as if they'd just applied. Over cap, require
+    // them to apply properly so they go through the normal waitlist email flow.
     if (!entry) {
-      steps[currentStep].error = "No waitlist entry found";
-      throw new Error(
-        "We couldn't find your waitlist entry. Please apply at https://create-rington.com/apply-to-join and use the invite link we email you.",
+      const hasCapacity = await waitlistRepo.hasCapacity();
+      if (!hasCapacity) {
+        steps[currentStep].error = "No waitlist entry found";
+        throw new Error(
+          "The server is currently at capacity. Please apply at https://create-rington.com/apply-to-join to join the waitlist.",
+        );
+      }
+
+      entry = await waitlistRepo.registerForExistingMember(
+        discordId,
+        interaction.user.username,
       );
     }
 
