@@ -16,6 +16,7 @@ import { adminPlayersRouter } from "./players";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
+import { adminForceloadsRouter } from "./forceloads";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
 /** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, structure packs, waitlists. */
@@ -46,6 +47,7 @@ export const adminRouter = router({
   donations: adminDonationsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
+  forceloads: adminForceloadsRouter,
   inactivity: inactivityRouter,
   logs: logsRouter,
   metrics: adminMetricsRouter,
