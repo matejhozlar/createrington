@@ -163,10 +163,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarTrigger />
           )}
         </div>
+        <ServerStatus />
       </SidebarHeader>
 
       <SidebarContent>
-        <ServerStatus />
         <NavMain
           items={filteredNavMain}
           prepend={
