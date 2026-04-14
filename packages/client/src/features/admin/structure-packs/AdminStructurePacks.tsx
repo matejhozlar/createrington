@@ -205,15 +205,11 @@ export function AdminStructurePacks() {
                   variant="outline"
                   onClick={handleImport}
                   disabled={importMutation.isPending}
-                  className="cursor-pointer"
                 >
                   <Upload className="mr-2 size-4" />
                   Import
                 </Button>
-                <Button
-                  onClick={() => setCreateOpen(true)}
-                  className="cursor-pointer"
-                >
+                <Button onClick={() => setCreateOpen(true)}>
                   <Plus className="mr-2 size-4" />
                   New Pack
                 </Button>
@@ -286,10 +282,7 @@ export function AdminStructurePacks() {
                     : "No packs match your filters"}
                 </p>
                 {packs.length === 0 && (
-                  <Button
-                    onClick={() => setCreateOpen(true)}
-                    className="mt-4 cursor-pointer"
-                  >
+                  <Button onClick={() => setCreateOpen(true)} className="mt-4">
                     <Plus className="mr-2 size-4" />
                     Create First Pack
                   </Button>
@@ -355,7 +348,7 @@ export function AdminStructurePacks() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="size-8 cursor-pointer p-0"
+                              className="size-8 p-0"
                             >
                               <MoreHorizontal className="size-4" />
                             </Button>
@@ -416,15 +409,10 @@ export function AdminStructurePacks() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => setCreateOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>
               Cancel
             </Button>
             <Button
-              className="cursor-pointer"
               onClick={() =>
                 createMutation.mutate({
                   name,

@@ -126,11 +126,7 @@ export function RotationConfig() {
         <div className="flex gap-2">
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="cursor-pointer"
-              >
+              <Button variant="destructive" size="sm">
                 <Trash2 className="size-4" />
                 Clear Rotation
               </Button>
@@ -144,11 +140,9 @@ export function RotationConfig() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="cursor-pointer">
-                  Cancel
-                </AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="cursor-pointer bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   onClick={() => clearRotationMutation.mutate()}
                   disabled={clearRotationMutation.isPending}
                 >
@@ -159,7 +153,7 @@ export function RotationConfig() {
           </AlertDialog>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" className="cursor-pointer">
+              <Button variant="outline" size="sm">
                 <Zap className="size-4" />
                 Force Rotation
               </Button>
@@ -173,11 +167,8 @@ export function RotationConfig() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="cursor-pointer">
-                  Cancel
-                </AlertDialogCancel>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  className="cursor-pointer"
                   onClick={() => forceRotationMutation.mutate()}
                   disabled={forceRotationMutation.isPending}
                 >
@@ -341,7 +332,7 @@ export function RotationConfig() {
         </div>
 
         <Button
-          className="w-full cursor-pointer"
+          className="w-full"
           onClick={() =>
             updateMutation.mutate({
               period: currentPeriod as "daily" | "weekly" | "monthly",

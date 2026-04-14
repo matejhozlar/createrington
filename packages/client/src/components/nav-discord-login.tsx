@@ -40,7 +40,7 @@ export function NavDiscordLogin() {
               size="lg"
               onClick={handleLogin}
               disabled={loading}
-              className={`cursor-pointer bg-discord hover:bg-discord/85 text-white hover:text-white disabled:opacity-50 disabled:cursor-not-allowed ${state === "expanded" ? "justify-center" : ""}`}
+              className={`bg-discord hover:bg-discord/85 text-white hover:text-white disabled:opacity-50 disabled:cursor-not-allowed ${state === "expanded" ? "justify-center" : ""}`}
             >
               <DiscordIcon
                 className={`${state === "collapsed" ? "ml-3" : ""}`}

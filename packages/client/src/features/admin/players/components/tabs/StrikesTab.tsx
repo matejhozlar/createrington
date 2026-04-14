@@ -57,7 +57,6 @@ export function StrikesTab({
                 size="sm"
                 variant="outline"
                 onClick={() => onRemoveStrike(strike.id)}
-                className="cursor-pointer"
               >
                 Remove
               </Button>
