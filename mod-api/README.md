@@ -123,21 +123,30 @@ The generator script (`packages/server/src/scripts/api/generate-mod-api.ts`) rea
 1. Modify the endpoint in the server controller
 2. Update the corresponding `.api-spec.ts` file
 3. Bump the version in `mod-api/gradle.properties`
-4. Merge to `dev` — CI generates the Java files, builds the jar, and publishes `createrington-dev-api` to the Maven repo
-5. Merge to `main` — CI publishes `createrington-api` (production artifact)
+4. Merge to `dev` — CI generates the Java files, builds the jar, and publishes `createrington-api` to the Maven repo
+5. Merge to `main` — deploys the new API to production. No publish step; the artifact was already published when merging to `dev`.
 
 ### Artifacts
 
 | Branch | Artifact ID | Published when |
 |--------|-------------|----------------|
-| `dev` | `createrington-dev-api` | Spec files changed in the push to `dev` |
-| `main` | `createrington-api` | Spec files changed in the push to `main` |
+| `dev` | `createrington-api` | Spec files changed in the push to `dev` |
+| `main` | — | Deploys the already-published version to prod |
 
-Both publish to `https://github.com/matejhozlar/maven` via CI. The version number should always match between dev and prod — only the artifact ID differs.
+Published to `https://github.com/matejhozlar/maven` via CI. A version is only ever published once, from the first branch (always `dev`) that bumps it.
+
+### Version safety for mod releases
+
+Since versions are published from `dev` before the matching server is live on `create-rington.com`, a version existing in Maven does not mean prod serves it yet. A mod bound for production users must pin a version that has **already been deployed to prod** (i.e. merged to `main` and the prod deploy has succeeded). Development mods targeting `dev.create-rington.com` can pin any published version.
 
 ### Change detection
 
-CI uses `git diff ${{ github.event.before }}..HEAD` to detect spec file changes. This compares the previous branch tip with the new one, so it captures **all changes in a merged PR**, not just the last commit. If no `*.api-spec.ts` files changed, the publish step is skipped entirely. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error.
+CI triggers a publish when **either** of these is true between the previous branch tip and the new one:
+
+- Any `*.api-spec.ts` file changed, or
+- The `version=` line in `mod-api/gradle.properties` changed
+
+This compares `${{ github.event.before }}..HEAD`, so it captures **all changes in a merged PR**, not just the last commit. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
 
 ### Local development
 
@@ -159,18 +168,18 @@ This is the full flow for making API changes and shipping them to mods.
 2. **Make the server changes** — modify the controller, service, routes, etc.
 3. **Update the spec file** — edit the corresponding `*.api-spec.ts` alongside the controller
 4. **Bump the version** in `mod-api/gradle.properties` (e.g. `1.0.0` → `1.1.0`)
-5. **PR to `dev`** — on merge, CI publishes `createrington-dev-api:1.1.0`
+5. **PR to `dev`** — on merge, CI publishes `createrington-api:1.1.0` and deploys it to `dev.create-rington.com`
 
 ### Phase 2: Update CRNet (CRNet repo)
 
 6. **Create a feature branch** off `neoforge-1.21.1` in CRNet
 7. **Update the dependency version** in `build.gradle`:
    ```groovy
-   api 'com.saunhardy:createrington-dev-api:1.1.0'
+   api 'com.saunhardy:createrington-api:1.1.0'
    ```
    And the `jarJar` version range:
    ```groovy
-   jarJar('com.saunhardy:createrington-dev-api') {
+   jarJar('com.saunhardy:createrington-api') {
        version {
            strictly '[1.1.0, 2.0.0)'
            prefer '1.1.0'
@@ -189,33 +198,20 @@ This is the full flow for making API changes and shipping them to mods.
 
 Once satisfied with the dev cycle:
 
-12. **Createrington app** — PR from `dev` to `main`. On merge, CI publishes `createrington-api:1.1.0` (same version, production artifact)
-13. **CRNet** — switch the dependency from dev to prod artifact:
-    ```groovy
-    api 'com.saunhardy:createrington-api:1.1.0'
-    ```
-    And update the `jarJar` block:
-    ```groovy
-    jarJar('com.saunhardy:createrington-api') {
-        version {
-            strictly '[1.1.0, 2.0.0)'
-            prefer '1.1.0'
-        }
-    }
-    ```
-    PR, merge, build, and publish CRNet to Maven
-14. **Mod** — update CRNet version in the mod's `build.gradle`, build, and publish the mod
+12. **Createrington app** — PR from `dev` to `main`. On merge, CI deploys the server to `create-rington.com`. No new artifact is published — `createrington-api:1.1.0` was already published in Phase 1.
+13. **CRNet** — already on `createrington-api:1.1.0` from Phase 2, so nothing to change here unless you want to bump CRNet itself. Publish CRNet if needed.
+14. **Mod** — update CRNet version in the mod's `build.gradle` if it changed, build, and publish the mod.
+
+> Only pin prod-bound mod releases to a `createrington-api` version once that version is live on `create-rington.com` (Phase 4 step 12 complete). Before that, the artifact exists in Maven but prod still serves the previous version.
 
 ### Quick reference
 
 ```
-Spec change → dev merge → createrington-dev-api published
+Spec change → dev merge → createrington-api published + dev server deployed
                 ↓
-          CRNet picks up dev artifact → mod develops against it
+          CRNet picks up artifact → mod develops against it on dev.create-rington.com
                 ↓
-       main merge → createrington-api published (same version)
+       main merge → prod server deploys (same version, no re-publish)
                 ↓
-     CRNet switches to prod artifact → CRNet published
-                ↓
-            Mod updates CRNet version → mod published
+            Mod release → safe to publish once prod is live on this version
 ```
