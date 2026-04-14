@@ -639,7 +639,6 @@ export function AdminWaitlists() {
                                 <Button
                                   size="sm"
                                   variant="default"
-                                  className="cursor-pointer"
                                   onClick={() => handleInvite(entry)}
                                 >
                                   Invite
@@ -659,7 +658,6 @@ export function AdminWaitlists() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                className="cursor-pointer"
                                 onClick={() => handleDelete(entry)}
                               >
                                 <Trash2 className="size-4" />

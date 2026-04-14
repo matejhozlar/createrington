@@ -80,21 +80,11 @@ export function PlayerHeader({
             </div>
 
             <div className="flex shrink-0 gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onEdit}
-                className="cursor-pointer"
-              >
+              <Button variant="outline" size="sm" onClick={onEdit}>
                 <Edit className="size-3.5" />
                 Edit
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onDelete}
-                className="cursor-pointer"
-              >
+              <Button variant="destructive" size="sm" onClick={onDelete}>
                 <Trash2 className="size-3.5" />
                 Delete
               </Button>

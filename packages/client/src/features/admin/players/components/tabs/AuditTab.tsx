@@ -109,7 +109,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
           variant="outline"
           onClick={() => auditQuery.refetch()}
           disabled={loading}
-          className="cursor-pointer"
         >
           <FileText className="size-4" />
           {loading ? "Loading..." : "Refresh"}
@@ -126,7 +125,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
             <p className="text-destructive">{error}</p>
             <Button
               onClick={() => auditQuery.refetch()}
-              className="mt-4 cursor-pointer"
+              className="mt-4"
               variant="outline"
             >
               Try Again
@@ -242,7 +241,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
                     }}
                     className={cn(
                       page === 0 && "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>
@@ -261,7 +259,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
                           handlePageChange(item);
                         }}
                         isActive={page === item}
-                        className="cursor-pointer"
                       >
                         {item + 1}
                       </PaginationLink>
@@ -279,7 +276,6 @@ export function AuditTab({ playerId }: AuditTabProps) {
                     className={cn(
                       page >= totalPages - 1 &&
                         "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>

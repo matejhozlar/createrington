@@ -94,7 +94,6 @@ export function RotationHistory() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="cursor-pointer"
                   disabled={page === 0}
                   onClick={() => setPage((p) => p - 1)}
                 >
@@ -103,7 +102,6 @@ export function RotationHistory() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="cursor-pointer"
                   disabled={page >= data.pagination.totalPages - 1}
                   onClick={() => setPage((p) => p + 1)}
                 >

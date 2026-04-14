@@ -49,7 +49,7 @@ export function PlayerStatsCards({
         <Button
           size="sm"
           variant="outline"
-          className="mt-4 w-full cursor-pointer"
+          className="mt-4 w-full"
           onClick={onAdjustBalance}
         >
           Adjust Balance

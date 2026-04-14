@@ -146,7 +146,7 @@ export function DeletePlayerModal({
           <DialogFooter>
             <Button
               variant="outline"
-              className="flex-1 cursor-pointer"
+              className="flex-1"
               onClick={onClose}
               disabled={deletePlayer.isPending}
             >
@@ -154,7 +154,7 @@ export function DeletePlayerModal({
             </Button>
             <Button
               variant="destructive"
-              className="flex-1 cursor-pointer"
+              className="flex-1"
               onClick={handleDeleteClick}
               disabled={!reason.trim() || deletePlayer.isPending}
             >
@@ -186,15 +186,11 @@ export function DeletePlayerModal({
           </Field>
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={handleCancelConfirm}
-              className="cursor-pointer"
-            >
+            <AlertDialogCancel onClick={handleCancelConfirm}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="cursor-pointer"
               onClick={handleConfirmDelete}
               disabled={confirmText !== "DELETE" || deletePlayer.isPending}
             >

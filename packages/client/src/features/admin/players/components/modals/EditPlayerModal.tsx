@@ -281,14 +281,12 @@ export function EditPlayerModal({
               variant="outline"
               onClick={handleCancel}
               disabled={updatePlayer.isPending}
-              className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleReviewChanges}
               disabled={updatePlayer.isPending}
-              className="cursor-pointer"
             >
               Review Changes
             </Button>
@@ -333,16 +331,12 @@ export function EditPlayerModal({
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={updatePlayer.isPending}
-              className="cursor-pointer"
-            >
+            <AlertDialogCancel disabled={updatePlayer.isPending}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSubmit}
               disabled={updatePlayer.isPending}
-              className="cursor-pointer"
             >
               {updatePlayer.isPending ? "Updating..." : "Confirm & Update"}
             </AlertDialogAction>

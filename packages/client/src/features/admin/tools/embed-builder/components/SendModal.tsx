@@ -85,7 +85,7 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
               variant="outline"
               onClick={onUpdateAll}
               disabled={updateAllPending || !hasContent}
-              className="cursor-pointer sm:mr-auto"
+              className="sm:mr-auto"
             >
               <RefreshCw className="mr-1.5 size-4" />
               {updateAllPending ? "Updating..." : "Update All Linked"}
@@ -94,7 +94,6 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
           <Button
             onClick={onSend}
             disabled={isPending || !hasContent || !channelId}
-            className="cursor-pointer"
           >
             <Send className="mr-1.5 size-4" />
             {isPending ? "Sending..." : "Send"}

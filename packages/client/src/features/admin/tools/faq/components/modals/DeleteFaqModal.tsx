@@ -69,12 +69,9 @@ export function DeleteFaqModal({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose} className="cursor-pointer">
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            className="cursor-pointer"
             onClick={handleDelete}
             disabled={deleteEntry.isPending}
           >

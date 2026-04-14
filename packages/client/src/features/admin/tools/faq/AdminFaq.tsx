@@ -231,7 +231,6 @@ export function AdminFaq() {
               variant="outline"
               onClick={handleRepostWelcome}
               disabled={repostWelcome.isPending}
-              className="cursor-pointer"
             >
               <RefreshCw
                 className={cn(
@@ -241,10 +240,7 @@ export function AdminFaq() {
               />
               Repost Welcome
             </Button>
-            <Button
-              onClick={() => setCreateModal(true)}
-              className="cursor-pointer"
-            >
+            <Button onClick={() => setCreateModal(true)}>
               <Plus className="mr-2 size-4" />
               New Entry
             </Button>
@@ -326,10 +322,7 @@ export function AdminFaq() {
                 <p className="mt-2 text-muted-foreground">
                   No FAQ entries found
                 </p>
-                <Button
-                  onClick={() => setCreateModal(true)}
-                  className="mt-4 cursor-pointer"
-                >
+                <Button onClick={() => setCreateModal(true)} className="mt-4">
                   <Plus className="mr-2 size-4" />
                   Create First Entry
                 </Button>
@@ -428,7 +421,6 @@ export function AdminFaq() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="cursor-pointer"
                               onClick={() =>
                                 setEditModal({ open: true, entry })
                               }
@@ -438,7 +430,6 @@ export function AdminFaq() {
                             <Button
                               size="sm"
                               variant="destructive"
-                              className="cursor-pointer"
                               onClick={() =>
                                 setDeleteModal({ open: true, entry })
                               }

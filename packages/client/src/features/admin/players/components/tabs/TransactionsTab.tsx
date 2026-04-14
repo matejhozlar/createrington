@@ -54,7 +54,7 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
             <p className="text-destructive">{error.message}</p>
             <Button
               onClick={() => refetch()}
-              className="mt-4 cursor-pointer"
+              className="mt-4"
               variant="outline"
             >
               Try Again
@@ -146,7 +146,6 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
                 size="sm"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="cursor-pointer"
               >
                 <ChevronLeft className="size-4" />
               </Button>
@@ -158,7 +157,6 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
                 size="sm"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page >= totalPages - 1}
-                className="cursor-pointer"
               >
                 <ChevronRight className="size-4" />
               </Button>

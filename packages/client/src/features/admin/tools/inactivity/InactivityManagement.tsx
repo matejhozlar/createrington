@@ -241,7 +241,6 @@ export function InactivityManagement() {
                     variant="outline"
                     onClick={handleTriggerCleanup}
                     disabled={!canMutate || triggerCleanup.isPending}
-                    className="cursor-pointer"
                   >
                     <RefreshCw
                       className={cn(
@@ -483,7 +482,6 @@ export function InactivityManagement() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="cursor-pointer"
                                       disabled={!canAct}
                                       onClick={() =>
                                         setResolveModal({

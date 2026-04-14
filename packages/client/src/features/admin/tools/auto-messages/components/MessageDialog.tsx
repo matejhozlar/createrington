@@ -149,16 +149,11 @@ export function MessageDialog({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="cursor-pointer"
               disabled={isPending}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={isPending}
-            >
+            <Button type="submit" disabled={isPending}>
               {isPending
                 ? isEdit
                   ? "Saving..."

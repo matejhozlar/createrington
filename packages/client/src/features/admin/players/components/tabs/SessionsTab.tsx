@@ -103,7 +103,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
           variant="outline"
           onClick={() => sessionsQuery.refetch()}
           disabled={loading}
-          className="cursor-pointer"
         >
           <Clock className="size-4" />
           {loading ? "Loading..." : "Refresh"}
@@ -121,7 +120,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
             size="sm"
             variant="outline"
             onClick={() => sessionsQuery.refetch()}
-            className="mt-4 cursor-pointer"
+            className="mt-4"
           >
             Retry
           </Button>
@@ -229,7 +228,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                     }}
                     className={cn(
                       page === 0 && "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>
@@ -248,7 +246,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                           setPage(item);
                         }}
                         isActive={page === item}
-                        className="cursor-pointer"
                       >
                         {item + 1}
                       </PaginationLink>
@@ -266,7 +263,6 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                     className={cn(
                       page >= totalPages - 1 &&
                         "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>

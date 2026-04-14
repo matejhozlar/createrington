@@ -151,10 +151,7 @@ export function AutoMessages() {
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Auto Messages</h1>
-          <Button
-            onClick={() => setConfigDialog({ open: true, config: null })}
-            className="cursor-pointer"
-          >
+          <Button onClick={() => setConfigDialog({ open: true, config: null })}>
             <Plus className="mr-2 size-4" />
             New Config
           </Button>
@@ -173,7 +170,7 @@ export function AutoMessages() {
               </p>
               <Button
                 onClick={() => setConfigDialog({ open: true, config: null })}
-                className="mt-4 cursor-pointer"
+                className="mt-4"
               >
                 <Plus className="mr-2 size-4" />
                 Create First Config
@@ -241,7 +238,6 @@ export function AutoMessages() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="cursor-pointer"
                         onClick={() => setConfigDialog({ open: true, config })}
                       >
                         <Pencil className="size-4" />
@@ -249,7 +245,6 @@ export function AutoMessages() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        className="cursor-pointer"
                         onClick={() =>
                           setDeleteConfigConfirm({ open: true, config })
                         }
@@ -273,7 +268,6 @@ export function AutoMessages() {
                               message: null,
                             })
                           }
-                          className="cursor-pointer"
                         >
                           <Plus className="mr-1 size-3" />
                           Add Message
@@ -316,7 +310,7 @@ export function AutoMessages() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="cursor-pointer size-8 p-0"
+                                  className="size-8 p-0"
                                   onClick={() =>
                                     setMessageDialog({
                                       open: true,
@@ -330,7 +324,7 @@ export function AutoMessages() {
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="cursor-pointer size-8 p-0 text-destructive hover:text-destructive"
+                                  className="size-8 p-0 text-destructive hover:text-destructive"
                                   onClick={() =>
                                     setDeleteMessageConfirm({
                                       open: true,
@@ -394,13 +388,11 @@ export function AutoMessages() {
               onClick={() =>
                 setDeleteConfigConfirm({ open: false, config: null })
               }
-              className="cursor-pointer"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="cursor-pointer"
               onClick={handleDeleteConfig}
               disabled={deleteMutation.isPending}
             >
@@ -427,13 +419,11 @@ export function AutoMessages() {
           <AlertDialogFooter>
             <AlertDialogCancel
               onClick={() => setDeleteMessageConfirm({ open: false, id: null })}
-              className="cursor-pointer"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="cursor-pointer"
               onClick={handleDeleteMessage}
               disabled={deleteMessageMutation.isPending}
             >

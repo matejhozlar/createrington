@@ -212,7 +212,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
           variant="outline"
           onClick={() => statsQuery.refetch()}
           disabled={loading}
-          className="cursor-pointer"
         >
           <RefreshCw className={cn("size-4", loading && "animate-spin")} />
           {loading ? "Loading..." : "Refresh"}
@@ -230,7 +229,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
             size="sm"
             variant="outline"
             onClick={() => statsQuery.refetch()}
-            className="mt-4 cursor-pointer"
+            className="mt-4"
           >
             Retry
           </Button>
@@ -304,7 +303,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                 size="sm"
                 variant="ghost"
                 onClick={expandAll}
-                className="cursor-pointer text-xs"
+                className="text-xs"
               >
                 Expand All
               </Button>
@@ -312,7 +311,7 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
                 size="sm"
                 variant="ghost"
                 onClick={collapseAll}
-                className="cursor-pointer text-xs"
+                className="text-xs"
               >
                 Collapse All
               </Button>

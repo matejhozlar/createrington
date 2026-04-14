@@ -229,7 +229,7 @@ export function IssueBanModal({
               <Button
                 type="button"
                 variant="outline"
-                className="flex-1 cursor-pointer"
+                className="flex-1"
                 onClick={handleClose}
                 disabled={loading}
               >
@@ -238,7 +238,7 @@ export function IssueBanModal({
               <Button
                 type="submit"
                 variant={banType === "permanent" ? "destructive" : "default"}
-                className="flex-1 cursor-pointer"
+                className="flex-1"
                 disabled={!reason.trim() || loading}
               >
                 {loading ? "Issuing..." : "Issue Ban"}
@@ -277,15 +277,11 @@ export function IssueBanModal({
           </Field>
 
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={handleCancelConfirm}
-              className="cursor-pointer"
-            >
+            <AlertDialogCancel onClick={handleCancelConfirm}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
-              className="cursor-pointer"
               onClick={handleConfirmPermanent}
               disabled={confirmText !== "PERMANENTLY BAN" || loading}
             >
