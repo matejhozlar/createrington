@@ -1,4 +1,4 @@
-import { customRoute, verifyServerIP } from "@/app/middleware";
+import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
 import { Router } from "express";
 import { TrainsController } from "./trains.controller";
 
@@ -14,7 +14,7 @@ const router = Router();
 // POST /api/trains/crash — report a train crash
 router.post(
   "/crash",
-  ...customRoute([verifyServerIP], TrainsController.reportCrash),
+  ...customRoute([verifyServerIP, verifyModJWT], TrainsController.reportCrash),
 );
 
 export default router;
