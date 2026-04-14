@@ -1,3 +1,8 @@
+## v1.6.2 (2026-04-14)
+
+### @createrington/server (1.6.1 → 1.6.2)
+- Add legacy trains crash route (`POST /api/legacy/trains/crash`) for pre-mod-JWT mod clients — mirrors the secured `/api/trains/crash` endpoint but requires only server IP verification, allowing older mod builds to keep reporting train crashes without a code update; returns the same flat `{ success: true }` response the mod expects
+
 ## v1.6.1 (2026-04-14)
 
 ### @createrington/server (1.6.0 → 1.6.1)
