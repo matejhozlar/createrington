@@ -12,6 +12,7 @@ import renderRoutes from "./render/render.routes";
 import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
+import legacyCurrencyRoutes from "./legacy/currency/currency.routes";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -21,6 +22,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
+  app.use(`${API_PREFIX}/legacy/currency`, legacyCurrencyRoutes);
   app.use(`${API_PREFIX}/forceloads`, forceloadsRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);
