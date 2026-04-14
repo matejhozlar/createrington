@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -7,7 +7,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { usePlayerData } from "@/contexts/player-data";
 import type { RouterOutput } from "@/lib/trpc";
@@ -27,7 +26,6 @@ function formatDuration(seconds: number): string {
 }
 
 export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
-  const navigate = useNavigate();
   const { getServerPlayers } = usePlayerData();
 
   const onlinePlayers = getServerPlayers(serverId);
@@ -50,35 +48,29 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
               <TableRow>
                 <TableHead className="px-4">Player</TableHead>
                 <TableHead className="px-4">Session Duration</TableHead>
-                <TableHead className="px-4 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {onlinePlayers.map((player) => (
                 <TableRow key={player.uuid}>
                   <TableCell className="px-4">
-                    <div className="flex items-center gap-3">
+                    <Link
+                      to={`/admin/players/${player.uuid}`}
+                      className="group flex items-center gap-3 rounded"
+                    >
                       <MinecraftAvatar
                         uuid={player.uuid}
                         username={player.username}
                       />
-                      <p className="font-medium">{player.username}</p>
-                    </div>
+                      <span className="font-medium transition-colors group-hover:text-primary">
+                        {player.username}
+                      </span>
+                    </Link>
                   </TableCell>
                   <TableCell className="px-4">
                     <p className="text-sm text-muted-foreground">
                       {formatDuration(player.sessionDuration)}
                     </p>
-                  </TableCell>
-                  <TableCell className="px-4 text-right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => navigate(`/admin/players/${player.uuid}`)}
-                      className="cursor-pointer"
-                    >
-                      View
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -110,23 +102,18 @@ export function OverviewTab({ serverId, serverData }: OverviewTabProps) {
                     {index + 1}
                   </TableCell>
                   <TableCell className="px-4">
-                    <div className="flex items-center gap-3">
+                    <Link
+                      to={`/admin/players/${entry.playerMinecraftUuid}`}
+                      className="group flex items-center gap-3 rounded"
+                    >
                       <MinecraftAvatar
                         uuid={entry.playerMinecraftUuid}
                         username={entry.minecraftUsername}
                       />
-                      <button
-                        type="button"
-                        className="font-medium hover:underline cursor-pointer"
-                        onClick={() =>
-                          navigate(
-                            `/admin/players/${entry.playerMinecraftUuid}`,
-                          )
-                        }
-                      >
+                      <span className="font-medium transition-colors group-hover:text-primary">
                         {entry.minecraftUsername}
-                      </button>
-                    </div>
+                      </span>
+                    </Link>
                   </TableCell>
                   <TableCell className="px-4">
                     {Math.round(Number(entry.totalSeconds) / 3600)}h

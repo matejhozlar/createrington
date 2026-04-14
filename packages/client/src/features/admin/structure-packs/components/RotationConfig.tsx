@@ -217,7 +217,6 @@ export function RotationConfig() {
                 type="time"
                 value={currentTime}
                 onChange={(e) => setTime(e.target.value)}
-                className="[color-scheme:dark]"
               />
             </div>
           </div>
