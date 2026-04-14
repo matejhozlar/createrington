@@ -1,3 +1,8 @@
+## v1.6.1 (2026-04-14)
+
+### @createrington/server (1.6.0 → 1.6.1)
+- Add legacy currency routes (`/api/legacy/currency`) mirroring all `/api/currency` endpoints but returning flat response payloads (no `ApiResponse` envelope) — allows pre-envelope mod clients to keep working by pointing at the legacy base URL via config, without needing a code update
+
 ## v1.6.0 (2026-04-14)
 
 ### @createrington/server (1.5.0 → 1.6.0)
