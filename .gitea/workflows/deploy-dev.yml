@@ -40,14 +40,19 @@ jobs:
           pnpm generate-api-docs
           pnpm deploy-commands
 
-      - name: Check for API spec changes
+      - name: Check for mod API changes
         id: spec-check
         run: |
+          changed=false
           if git diff ${{ github.event.before }}..HEAD --name-only -- '*.api-spec.ts' | grep -q .; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            changed=true
           fi
+          OLD_VERSION=$(git show ${{ github.event.before }}:mod-api/gradle.properties 2>/dev/null | grep '^version=' | cut -d'=' -f2 || echo "")
+          NEW_VERSION=$(grep '^version=' mod-api/gradle.properties | cut -d'=' -f2)
+          if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+            changed=true
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Setup JDK 21
         if: steps.spec-check.outputs.changed == 'true'

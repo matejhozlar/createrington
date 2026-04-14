@@ -141,7 +141,12 @@ Since versions are published from `dev` before the matching server is live on `c
 
 ### Change detection
 
-CI uses `git diff ${{ github.event.before }}..HEAD` to detect spec file changes. This compares the previous branch tip with the new one, so it captures **all changes in a merged PR**, not just the last commit. If no `*.api-spec.ts` files changed, the publish step is skipped entirely. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error.
+CI triggers a publish when **either** of these is true between the previous branch tip and the new one:
+
+- Any `*.api-spec.ts` file changed, or
+- The `version=` line in `mod-api/gradle.properties` changed
+
+This compares `${{ github.event.before }}..HEAD`, so it captures **all changes in a merged PR**, not just the last commit. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
 
 ### Local development
 
