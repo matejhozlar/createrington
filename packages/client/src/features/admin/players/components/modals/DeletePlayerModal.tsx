@@ -39,6 +39,7 @@ export function DeletePlayerModal({
   onSuccess,
 }: DeletePlayerModalProps) {
   const toast = useToastActions();
+  const utils = trpc.useUtils();
 
   const deletePlayer = trpc.admin.players.players.delete.useMutation();
 
@@ -65,6 +66,8 @@ export function DeletePlayerModal({
         id: player.minecraftUuid,
         reason: reason.trim(),
       });
+
+      await utils.admin.players.players.list.invalidate();
 
       toast.success("Player deleted");
       setShowConfirmDialog(false);
