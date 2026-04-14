@@ -24,7 +24,13 @@ export default defineApiSpec({
             type: "string",
             description: "Minecraft player UUID",
           },
-          { name: "name", type: "string", description: "Minecraft username" },
+          {
+            name: "name",
+            type: "string",
+            nullable: true,
+            description:
+              "Minecraft username; optional. Resolved from the player record when omitted.",
+          },
         ],
       },
       response: {
