@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -34,7 +34,6 @@ function formatDuration(seconds: number | null): string {
 }
 
 export function SessionsTab({ serverId }: SessionsTabProps) {
-  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const limit = 20;
 
@@ -117,21 +116,18 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
           {sessions.map((session) => (
             <TableRow key={session.id}>
               <TableCell className="px-4">
-                <div className="flex items-center gap-3">
+                <Link
+                  to={`/admin/players/${session.playerMinecraftUuid}`}
+                  className="group flex items-center gap-3 rounded"
+                >
                   <MinecraftAvatar
                     uuid={session.playerMinecraftUuid}
                     username={session.minecraftUsername}
                   />
-                  <button
-                    type="button"
-                    className="font-medium hover:underline cursor-pointer"
-                    onClick={() =>
-                      navigate(`/admin/players/${session.playerMinecraftUuid}`)
-                    }
-                  >
+                  <span className="font-medium transition-colors group-hover:text-primary">
                     {session.minecraftUsername}
-                  </button>
-                </div>
+                  </span>
+                </Link>
               </TableCell>
               <TableCell className="px-4 text-sm text-muted-foreground">
                 {new Date(session.sessionStart).toLocaleString()}
