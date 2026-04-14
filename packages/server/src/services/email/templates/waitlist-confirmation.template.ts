@@ -54,7 +54,7 @@ export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConf
                 <tr>
                   <td style="padding: 32px 40px;">
                     <p style="margin: 0 0 16px; font-size: 16px; line-height: 1.6; color: #ededf0;">
-                      Hey <strong>${data.discordName}</strong>,
+                      Hey${data.discordName ? ` <strong>${data.discordName}</strong>` : ""},
                     </p>
 
                     <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #a09bab;">
@@ -89,7 +89,7 @@ export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConf
                             What happens next?
                           </h2>
                           <p style="margin: 0 0 24px; font-size: 15px; line-height: 1.7; color: #a09bab;">
-                            When a spot becomes available, we'll send you an invitation email with a verification token and instructions on how to join. In the meantime, feel free to hang out in our Discord community!
+                            When a spot becomes available, we'll send you an invitation email with a personal, single-use Discord invite link and instructions on how to join. In the meantime, feel free to hang out in our Discord community!
                           </p>
 
                           <!-- Discord Button -->
@@ -134,7 +134,7 @@ export class WaitlistConfirmationTemplate extends BaseEmailTemplate<WaitlistConf
 
   protected getText(data: WaitlistConfirmationData): string {
     return `
-Hey ${data.discordName},
+Hey${data.discordName ? ` ${data.discordName}` : ""},
 
 Thanks for your interest in joining Createrington! You've been successfully added to our waitlist.
 
@@ -143,7 +143,7 @@ ${data.position ? `Your current position: #${data.position}` : ""}
 We'll notify you via email as soon as a spot opens up.
 
 What happens next?
-When a spot becomes available, we'll send you an invitation email with a verification token and instructions on how to join.
+When a spot becomes available, we'll send you an invitation email with a personal, single-use Discord invite link and instructions on how to join.
 
 Join our Discord: https://discord.gg/mtF6MDHj4Z
 

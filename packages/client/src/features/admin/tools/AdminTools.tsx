@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Clock,
   Coins,
+  MapPin,
   Megaphone,
   MessageCircleQuestion,
   Paintbrush,
@@ -87,6 +88,13 @@ const TOOL_SECTIONS: ToolSection[] = [
         description: "Tokens, market events, treasury, and economy stats.",
         icon: Coins,
         href: "/admin/tools/crypto",
+      },
+      {
+        title: "Forceloads",
+        description:
+          "View forceloaded chunks by player and party across servers.",
+        icon: MapPin,
+        href: "/admin/tools/forceloads",
       },
     ],
   },

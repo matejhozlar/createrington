@@ -10,14 +10,14 @@ export const WaitlistEmbedPresets = {
    */
   adminNotification(data: {
     id: number;
-    discordName: string;
+    discordName: string | null;
     email: string | null;
   }) {
     const embed = createEmbed()
       .title("📥 New Waitlist Submission")
       .color(EmbedColors.Info)
       .field("🆔 Submission ID", data.id.toString())
-      .field("💬 Discord", data.discordName)
+      .field("💬 Discord", data.discordName || "N/A")
       .field("📧 Email", data.email || "N/A")
       .build();
 
@@ -39,7 +39,7 @@ export const WaitlistEmbedPresets = {
    */
   autoAcceptNotification(data: {
     id: number;
-    discordName: string;
+    discordName: string | null;
     email: string | null;
     botMention: string;
   }) {
@@ -47,7 +47,7 @@ export const WaitlistEmbedPresets = {
       .title("📥 New Waitlist Submission (Auto-Accepted)")
       .color(EmbedColors.Success)
       .field("🆔 Submission ID", data.id.toString())
-      .field("💬 Discord", data.discordName)
+      .field("💬 Discord", data.discordName || "N/A")
       .field("📧 Email", data.email || "N/A")
       .build();
 

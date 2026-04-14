@@ -4,6 +4,7 @@ import { Edit, Trash2, Copy, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PlayerApiData } from "@createrington/shared/db";
 import { mcBodyFront } from "@/lib/external-urls";
+import { formatDimension, tpCommand } from "@/lib/minecraft";
 import { useToastActions } from "@/hooks/use-toast";
 
 interface PlayerHeaderProps {
@@ -176,23 +177,6 @@ function CopyField({
   );
 }
 
-const DIMENSION_LABELS: Record<string, string> = {
-  "minecraft:overworld": "Overworld",
-  "minecraft:the_nether": "Nether",
-  "minecraft:the_end": "The End",
-};
-
-function formatDimension(dimension: string | null): string {
-  if (!dimension) return "Unknown";
-  return (
-    DIMENSION_LABELS[dimension] ??
-    dimension
-      .replace(/^[^:]+:/, "")
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-  );
-}
-
 function LogoutPosition({
   x,
   y,
@@ -206,7 +190,7 @@ function LogoutPosition({
   dimension: string | null;
   onCopy: (text: string, label: string) => void;
 }) {
-  const tpCommand = `/tp ${x} ${y} ${z}`;
+  const tp = tpCommand(dimension ?? "minecraft:overworld", x, y, z);
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -221,10 +205,10 @@ function LogoutPosition({
       </div>
       <button
         type="button"
-        onClick={() => onCopy(tpCommand, "TP command")}
+        onClick={() => onCopy(tp, "TP command")}
         className="group flex cursor-pointer items-center gap-1 rounded border border-border bg-sidebar-accent/50 px-2 py-0.5 text-[11px] font-mono text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
       >
-        {tpCommand}
+        {tp}
         <Copy className="size-3 opacity-50 transition-opacity group-hover:opacity-100" />
       </button>
     </div>

@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.33.0",
@@ -21,7 +21,8 @@
       "brace-expansion@<1.1.13": "^1.1.13",
       "brace-expansion@>=2.0.0 <2.0.3": "^2.0.3",
       "brace-expansion@>=4.0.0 <5.0.5": "^5.0.5",
-      "@esbuild-kit/core-utils>esbuild": "^0.25.0"
+      "@esbuild-kit/core-utils>esbuild": "^0.25.0",
+      "basic-ftp": ">=5.2.2"
     },
     "onlyBuiltDependencies": [
       "@parcel/watcher",
@@ -88,6 +89,6 @@
     "typescript": "^5.9.3"
   },
   "lint-staged": {
-    "packages/**/*.{ts,tsx,js,json,css,md}": "prettier --write"
+    "packages/**/*.{ts,tsx,js,mjs,cjs,json,css,md}": "prettier --write"
   }
 }

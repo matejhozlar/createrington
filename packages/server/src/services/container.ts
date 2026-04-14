@@ -23,6 +23,7 @@ import type { AiService } from "./ai";
 import type { AutoMessageService } from "./discord/auto-message";
 import type { DonationService } from "./donation/donation.service";
 import type { StructurePackRotationService } from "./structure-pack/rotation";
+import type { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 
 /**
  * Service lifecycle states
@@ -442,6 +443,7 @@ export const Services = {
   AUTO_MESSAGE_SERVICE: "discord.autoMessageService",
   DONATION_SERVICE: "donation.service",
   STRUCTURE_PACK_ROTATION: "structurePack.rotationService",
+  WAITLIST_CLEANUP_SERVICE: "waitlist.cleanupService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -476,4 +478,5 @@ export interface ServiceTypeMap {
   [Services.AUTO_MESSAGE_SERVICE]: AutoMessageService;
   [Services.DONATION_SERVICE]: DonationService;
   [Services.STRUCTURE_PACK_ROTATION]: StructurePackRotationService;
+  [Services.WAITLIST_CLEANUP_SERVICE]: WaitlistCleanupService;
 }

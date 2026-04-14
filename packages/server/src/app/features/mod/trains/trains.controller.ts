@@ -1,4 +1,4 @@
-import { BadRequestError } from "@/app/middleware";
+import { BadRequestError, respondSuccess } from "@/app/middleware";
 import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";
@@ -139,6 +139,8 @@ export class TrainsController {
 
     logger.info(`Train crash reported: ${trainName} (${trainId})`);
 
-    res.json({ success: true });
+    respondSuccess(res, {
+      message: `Train crash reported: ${trainName} (${trainId})`,
+    });
   }
 }

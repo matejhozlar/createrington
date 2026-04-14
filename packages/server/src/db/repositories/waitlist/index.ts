@@ -10,13 +10,16 @@ import type {
 import { email, EmailTemplate } from "@/services/email";
 import { DatabaseTable } from "@/generated/db";
 import { AdminEdit } from "@/types";
-import crypto from "node:crypto";
+import {
+  createOneUseInvite,
+  INVITE_MAX_AGE_SECONDS,
+} from "@/discord/bots/main/invites";
 
 /** Result of a waitlist registration attempt */
 interface RegistrationResult {
   entry: WaitlistEntry;
   autoAccepted: boolean;
-  token?: string;
+  inviteUrl?: string;
 }
 
 /** Onboarding progress steps tracked per waitlist entry */
@@ -161,20 +164,23 @@ export class WaitlistRepository {
     const shouldAutoAccept = await this.hasCapacity();
 
     if (shouldAutoAccept) {
-      const token = crypto.randomBytes(32).toString("hex");
+      const { code: inviteCode, url: inviteUrl } = await createOneUseInvite(
+        INVITE_MAX_AGE_SECONDS.AUTO_ACCEPT,
+        "Waitlist auto-accept",
+      );
 
       const entry = await Q.waitlist.entry.createAndReturn({
         email: data.email,
         discordName: data.discordName,
         metadata: data.metadata,
-        token,
+        inviteCode,
         status: "auto_accepted",
         acceptedAt: new Date(),
         acceptedBy: config.discord.bots.main.id,
       });
 
       logger.info(
-        `New waitlist entry (auto-accepted): ${data.discordName} - ID: ${entry.id}`,
+        `New waitlist entry (auto-accepted): ${data.discordName ?? data.email ?? `#${entry.id}`} - ID: ${entry.id}`,
       );
 
       const messageId = await this.notifyAdmins(entry, true);
@@ -185,10 +191,21 @@ export class WaitlistRepository {
         );
       }
 
+      if (data.email) {
+        await email.sendTemplate(
+          data.email,
+          EmailTemplate.WAITLIST_INVITATION,
+          {
+            discordName: data.discordName ?? null,
+            inviteUrl,
+          },
+        );
+      }
+
       return {
         entry,
         autoAccepted: true,
-        token,
+        inviteUrl,
       };
     } else {
       const entry = await Q.waitlist.entry.createAndReturn({
@@ -198,7 +215,7 @@ export class WaitlistRepository {
       });
 
       logger.info(
-        `New waitlist entry (pending): ${data.email} (${data.discordName}) - ID: ${entry.id}`,
+        `New waitlist entry (pending): ${data.email ?? "(no email)"} (${data.discordName ?? "(no discord name)"}) - ID: ${entry.id}`,
       );
 
       const messageId = await this.notifyAdmins(entry, false);
@@ -214,7 +231,7 @@ export class WaitlistRepository {
           data.email,
           EmailTemplate.WAITLIST_CONFIRMATION,
           {
-            discordName: data.discordName,
+            discordName: data.discordName ?? null,
           },
         );
       }
@@ -227,24 +244,70 @@ export class WaitlistRepository {
   }
 
   /**
-   * Manually invites a user (called by admin action)
+   * Creates an auto-accepted waitlist entry for a user who is already a guild
+   * member when they run /register — i.e. they joined via the public Discord
+   * invite rather than the waitlist flow. Marks the entry as already verified
+   * and linked to Discord, and posts the progress embed to the admin channel.
+   *
+   * Caller must have already confirmed capacity.
+   *
+   * @param discordId - Discord user ID to link
+   * @param discordName - Discord username for display
+   * @returns The newly created waitlist entry
+   */
+  async registerForExistingMember(
+    discordId: string,
+    discordName: string,
+  ): Promise<WaitlistEntry> {
+    const entry = await Q.waitlist.entry.createAndReturn({
+      email: null,
+      discordName,
+      discordId,
+      status: "auto_accepted",
+      joinedDiscord: true,
+      verified: true,
+      acceptedAt: new Date(),
+      acceptedBy: config.discord.bots.main.id,
+    });
+
+    logger.info(
+      `Auto-registered existing guild member ${discordName} (${discordId}) as waitlist entry #${entry.id}`,
+    );
+
+    const messageId = await this.notifyAdmins(entry, true);
+    if (messageId) {
+      await Q.waitlist.entry.update(
+        { id: entry.id },
+        { discordMessageId: messageId },
+      );
+      await this.updateProgressEmbed(entry.id);
+    }
+
+    return Q.waitlist.entry.get({ id: entry.id });
+  }
+
+  /**
+   * Manually invites a user (called by admin action).
+   * Generates a one-use Discord invite if none exists, then emails it to the user.
    *
    * @param entryId - Waitlist entry ID
    * @param adminId - Discord ID of admin who approved
-   * @returns Updated waitlist entry with accepted status and generated token
+   * @returns Updated waitlist entry with accepted status and generated invite code
    */
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
 
-    let token = entry.token;
-    if (!token) {
-      token = crypto.randomBytes(32).toString("hex");
-    }
+    // Always mint a fresh invite so we never email a link that's already
+    // expired on Discord's side.
+    const { code: inviteCode, url: inviteUrl } = await createOneUseInvite(
+      INVITE_MAX_AGE_SECONDS.MANUAL_INVITE,
+      `Waitlist manual invite by admin ${adminId}`,
+    );
 
     await Q.waitlist.entry.update(
       { id: entry.id },
       {
-        token,
+        inviteCode,
         status: "accepted",
         acceptedAt: new Date(),
         acceptedBy: adminId,
@@ -254,7 +317,7 @@ export class WaitlistRepository {
     if (entry.email) {
       await email.sendTemplate(entry.email, EmailTemplate.WAITLIST_INVITATION, {
         discordName: entry.discordName,
-        token,
+        inviteUrl,
       });
     }
 
@@ -308,6 +371,61 @@ export class WaitlistRepository {
    */
   async count(filters?: WaitlistEntryFilters): Promise<number> {
     return await Q.waitlist.entry.count(filters);
+  }
+
+  // ============================================================================
+  // AUTO CLEANUP
+  // ============================================================================
+
+  /**
+   * Deletes accepted entries whose single-use Discord invite expired before the
+   * applicant ever joined. Targets rows where `discordId` is still NULL and
+   * `inviteCode` is set, applying the per-status TTL that matches how the
+   * invite was issued:
+   *
+   * - `auto_accepted` — invite is 1 hour, so delete after submission + 1 hour
+   * - `accepted` — invite is 7 days, so delete after acceptance + 7 days
+   *
+   * @returns The number of entries deleted
+   */
+  async sweepExpiredUnclaimedEntries(): Promise<number> {
+    const now = Date.now();
+    const autoAcceptCutoff = new Date(now - 60 * 60 * 1000); // 1 hour
+    const manualAcceptCutoff = new Date(now - 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    const [autoAccepted, adminAccepted] = await Promise.all([
+      Q.waitlist.entry.findAll(
+        {
+          status: "auto_accepted",
+          discordId: { $exists: false },
+          inviteCode: { $exists: true },
+          submittedAt: { $lt: autoAcceptCutoff },
+        },
+        { limit: 1000 },
+      ),
+      Q.waitlist.entry.findAll(
+        {
+          status: "accepted",
+          discordId: { $exists: false },
+          inviteCode: { $exists: true },
+          acceptedAt: { $lt: manualAcceptCutoff },
+        },
+        { limit: 1000 },
+      ),
+    ]);
+
+    const rows = [...autoAccepted, ...adminAccepted];
+    for (const row of rows) {
+      await Q.waitlist.entry.delete({ id: row.id });
+    }
+
+    if (rows.length > 0) {
+      logger.info(
+        `Swept ${rows.length} expired unclaimed waitlist entries (${autoAccepted.length} auto-accepted, ${adminAccepted.length} admin-accepted)`,
+      );
+    }
+
+    return rows.length;
   }
 
   // ============================================================================

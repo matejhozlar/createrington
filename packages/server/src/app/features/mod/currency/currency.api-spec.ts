@@ -7,6 +7,7 @@ export default defineApiSpec({
     "In-game economy operations: balance, payments, deposits, withdrawals, daily rewards, leaderboard, lottery",
   auth: "Server IP + Mod JWT",
   mod: true,
+  enveloped: true,
   endpoints: [
     {
       method: "POST",
@@ -23,7 +24,13 @@ export default defineApiSpec({
             type: "string",
             description: "Minecraft player UUID",
           },
-          { name: "name", type: "string", description: "Minecraft username" },
+          {
+            name: "name",
+            type: "string",
+            nullable: true,
+            description:
+              "Minecraft username; optional. Resolved from the player record when omitted.",
+          },
         ],
       },
       response: {
@@ -78,7 +85,6 @@ export default defineApiSpec({
       response: {
         name: "PayResponse",
         fields: [
-          { name: "success", type: "boolean" },
           {
             name: "newSenderBalance",
             type: "double",
@@ -112,7 +118,6 @@ export default defineApiSpec({
       response: {
         name: "DepositResponse",
         fields: [
-          { name: "success", type: "boolean" },
           {
             name: "newBalance",
             type: "double",
@@ -146,7 +151,6 @@ export default defineApiSpec({
       response: {
         name: "WithdrawResponse",
         fields: [
-          { name: "success", type: "boolean" },
           {
             name: "withdrawn",
             type: "double",
@@ -182,10 +186,17 @@ export default defineApiSpec({
       path: "/daily",
       name: "Daily",
       description:
-        "Claims the daily reward for the authenticated player. Returns 400 with a message if not yet eligible.",
+        "Claims the daily reward for the authenticated player. Returns 400 (with playerMessage on the envelope) when the player is still on cooldown.",
       response: {
         name: "DailyResponse",
-        fields: [{ name: "message", type: "string" }],
+        fields: [
+          {
+            name: "amount",
+            type: "double",
+            nullable: true,
+            description: "Reward amount granted",
+          },
+        ],
       },
     },
     {
@@ -270,8 +281,6 @@ export default defineApiSpec({
       response: {
         name: "LotteryStartResponse",
         fields: [
-          { name: "success", type: "boolean" },
-          { name: "message", type: "string" },
           { name: "entryAmount", type: "double" },
           {
             name: "endsAt",
@@ -293,8 +302,6 @@ export default defineApiSpec({
       response: {
         name: "LotteryJoinResponse",
         fields: [
-          { name: "success", type: "boolean" },
-          { name: "message", type: "string" },
           { name: "entryAmount", type: "double" },
           { name: "totalPot", type: "double" },
           { name: "participantCount", type: "int" },

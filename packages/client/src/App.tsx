@@ -18,11 +18,7 @@ import { Profile } from "./pages/Profile/Profile";
 import { Settings } from "./pages/Settings/Settings";
 import { ServerDetail } from "./pages/ServerDetail/ServerDetail";
 import { ServerStatus } from "./pages/ServerStatus/ServerStatus";
-import { Forum } from "./pages/Forum/Forum";
-import { Leaderboard } from "./pages/Leaderboard/Leaderboard";
-import { Shop } from "./pages/Shop/Shop";
 import { NotFound } from "./pages/not-found";
-import { ComingSoon } from "./pages/ComingSoon";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
 import { AppSidebar } from "./components/app-sidebar";
@@ -34,6 +30,7 @@ import {
 import { Logo } from "./components/logo";
 
 import { ServerChat } from "./components/chat";
+import { AdminChat } from "./components/admin-chat";
 import { AdminLogs } from "./features/admin/AdminLogs";
 import { AdminServers } from "./features/admin/AdminServers";
 import { AdminServerDetail } from "./features/admin/servers/AdminServerDetail";
@@ -55,6 +52,7 @@ import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
 import { AdminDonations } from "./features/admin/donations/AdminDonations";
 import { CommandDocs } from "./features/admin/tools/command-docs/CommandDocs";
 import { StatSearch } from "./features/admin/tools/stat-search/StatSearch";
+import { AdminForceloads } from "./features/admin/tools/forceloads/AdminForceloads";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
 import { Rules } from "./features/rules/Rules";
@@ -195,53 +193,6 @@ function AppContent() {
           <Route path=":symbol" element={<TokenDetail />} />
         </Route>
 
-        {/* Market Routes */}
-        <Route
-          path="/market"
-          element={
-            <ComingSoon
-              title="Market"
-              description="The market dashboard is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/marketplace"
-          element={
-            <ComingSoon
-              title="Marketplace"
-              description="The marketplace is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/companies"
-          element={
-            <ComingSoon
-              title="Companies"
-              description="The companies page is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/shops"
-          element={
-            <ComingSoon
-              title="Shops"
-              description="The shops page is currently under development."
-            />
-          }
-        />
-        <Route
-          path="/market/requests"
-          element={
-            <ComingSoon
-              title="Requests"
-              description="The requests page is currently under development."
-            />
-          }
-        />
-
         {/* Protected Routes */}
         <Route
           path="/profile"
@@ -286,11 +237,6 @@ function AppContent() {
           }
         />
         <Route path="/servers/status" element={<ServerStatus />} />
-
-        {/* Additional Routes */}
-        <Route path="/forum" element={<Forum />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/shop" element={<Shop />} />
 
         {/* Full-screen Routes (no footer) */}
         <Route path="/chat/:serverId" element={<ServerChat />} />
@@ -338,6 +284,10 @@ function AppContent() {
                   <Route path="tools/crypto" element={<AdminCrypto />} />
                   <Route path="tools/command-docs" element={<CommandDocs />} />
                   <Route path="tools/stat-search" element={<StatSearch />} />
+                  <Route
+                    path="tools/forceloads"
+                    element={<AdminForceloads />}
+                  />
                   <Route path="changelog" element={<Changelog />} />
                   <Route path="logs" element={<AdminLogs />} />
                 </Routes>
@@ -387,6 +337,7 @@ function App() {
                           <AppContent />
                         </SidebarProvider>
                       </ErrorBoundary>
+                      <AdminChat />
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>

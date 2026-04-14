@@ -45,22 +45,22 @@ export enum EmailTemplate {
 
 /** Template data for waitlist confirmation emails */
 export interface WaitlistConfirmationData {
-  discordName: string;
+  discordName: string | null;
   position?: number;
 }
 
 /** Template data for waitlist invitation emails */
 export interface WaitlistInvitationData {
-  discordName: string;
-  /** Verification token the user must present to claim their spot */
-  token: string;
+  discordName: string | null;
+  /** Single-use Discord invite URL the user clicks to join the guild */
+  inviteUrl: string;
 }
 
 /** Template data for admin notification emails about new waitlist entries */
 export interface AdminWaitlistNotificationData {
   id: number;
   email: string;
-  discordName: string;
+  discordName: string | null;
 }
 
 /** Maps each EmailTemplate enum value to its corresponding data type */

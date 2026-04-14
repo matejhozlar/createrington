@@ -5,8 +5,9 @@ export default defineApiSpec({
   prefix: "/api/trains",
   description:
     "Train crash event reporting from the Create: Trains Minecraft mod",
-  auth: "Server IP",
+  auth: "Server IP + Mod JWT",
   mod: true,
+  enveloped: true,
   endpoints: [
     {
       method: "POST",
@@ -87,10 +88,6 @@ export default defineApiSpec({
             },
           },
         ],
-      },
-      response: {
-        name: "CrashResponse",
-        fields: [{ name: "success", type: "boolean" }],
       },
     },
   ],

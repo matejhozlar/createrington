@@ -25,6 +25,10 @@ TRUNCATE TABLE player_achievement CASCADE;
 TRUNCATE TABLE player_balance_transaction CASCADE;
 TRUNCATE TABLE player_minecraft_stats CASCADE;
 TRUNCATE TABLE reward_claim CASCADE;
+TRUNCATE TABLE server_forceload_chunk CASCADE;
+TRUNCATE TABLE server_forceload_member CASCADE;
+TRUNCATE TABLE server_forceload_player CASCADE;
+TRUNCATE TABLE server_forceload_party CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -43,6 +47,10 @@ ALTER SEQUENCE faq_welcome_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE leaderboard_message_id_seq RESTART WITH 1;
 ALTER SEQUENCE player_balance_transaction_id_seq RESTART WITH 1;
 ALTER SEQUENCE reward_claim_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_forceload_player_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_forceload_party_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_forceload_member_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_forceload_chunk_id_seq RESTART WITH 1;
 
 -- ============================================================================
 -- SERVERS
@@ -394,7 +402,7 @@ INSERT INTO waitlist_entry (
   email,
   discord_name,
   discord_id,
-  token,
+  invite_code,
   submitted_at,
   discord_message_id,
   status,
@@ -408,49 +416,49 @@ INSERT INTO waitlist_entry (
 -- ======================================================================
 -- COMPLETED (fully onboarded)
 -- ======================================================================
-('mumbo@example.com', 'mumbojumbo', '123456789012345686', 'token_mumbo_019', NOW() - INTERVAL '52 days', '111111111111111201', 'completed', true, true, true, true, NOW() - INTERVAL '51 days', '818819241666281503'),
-('grian@example.com', 'grian', '123456789012345687', 'token_grian_020', NOW() - INTERVAL '47 days', '111111111111111202', 'completed', true, true, true, true, NOW() - INTERVAL '46 days', '547450242090532874'),
-('philza@example.com', 'philza', '123456789012345685', 'token_philza_021', NOW() - INTERVAL '57 days', '111111111111111203', 'completed', true, true, true, true, NOW() - INTERVAL '56 days', '99318080374607872'),
+('mumbo@example.com', 'mumbojumbo', '123456789012345686', 'invite_mumbo_019', NOW() - INTERVAL '52 days', '111111111111111201', 'completed', true, true, true, true, NOW() - INTERVAL '51 days', '818819241666281503'),
+('grian@example.com', 'grian', '123456789012345687', 'invite_grian_020', NOW() - INTERVAL '47 days', '111111111111111202', 'completed', true, true, true, true, NOW() - INTERVAL '46 days', '547450242090532874'),
+('philza@example.com', 'philza', '123456789012345685', 'invite_philza_021', NOW() - INTERVAL '57 days', '111111111111111203', 'completed', true, true, true, true, NOW() - INTERVAL '56 days', '99318080374607872'),
 
 -- ======================================================================
 -- ACCEPTED (in progress)
 -- ======================================================================
-('scar@example.com', 'goodtimeswithscar', '123456789012345688', 'token_scar_022', NOW() - INTERVAL '41 days', '111111111111111204', 'accepted', true, true, true, false, NOW() - INTERVAL '40 days', '818819241666281503'),
-('iskall@example.com', 'iskall85', '123456789012345689', 'token_iskall_023', NOW() - INTERVAL '36 days', '111111111111111205', 'accepted', true, true, false, false, NOW() - INTERVAL '35 days', '547450242090532874'),
-('dream@example.com', 'dream', '123456789012345683', 'token_dream_024', NOW() - INTERVAL '8 days', '111111111111111206', 'accepted', true, false, false, false, NOW() - INTERVAL '7 days', '99318080374607872'),
+('scar@example.com', 'goodtimeswithscar', '123456789012345688', 'invite_scar_022', NOW() - INTERVAL '41 days', '111111111111111204', 'accepted', true, true, true, false, NOW() - INTERVAL '40 days', '818819241666281503'),
+('iskall@example.com', 'iskall85', '123456789012345689', 'invite_iskall_023', NOW() - INTERVAL '36 days', '111111111111111205', 'accepted', true, true, false, false, NOW() - INTERVAL '35 days', '547450242090532874'),
+('dream@example.com', 'dream', '123456789012345683', 'invite_dream_024', NOW() - INTERVAL '8 days', '111111111111111206', 'accepted', true, false, false, false, NOW() - INTERVAL '7 days', '99318080374607872'),
 
 -- Accepted but *hasn't joined Discord yet* (edge case)
-('invite_sent@example.com', 'invite_sent_user', NULL, 'token_invite_025', NOW() - INTERVAL '20 hours', '111111111111111207', 'accepted', false, false, false, false, NOW() - INTERVAL '19 hours', '818819241666281503'),
+('invite_sent@example.com', 'invite_sent_user', NULL, 'invite_sent_025', NOW() - INTERVAL '20 hours', '111111111111111207', 'accepted', false, false, false, false, NOW() - INTERVAL '19 hours', '818819241666281503'),
 
 -- ======================================================================
 -- PENDING (varied progress)
 -- ======================================================================
 -- Pending, not joined discord, no discord_id yet (typical early state)
-('waiter1@example.com', 'waiter_user1', NULL, 'token_wait_026', NOW() - INTERVAL '12 hours', '111111111111111208', 'pending', false, false, false, false, NULL, NULL),
-('waiter2@example.com', 'waiter_user2', NULL, 'token_wait_027', NOW() - INTERVAL '9 hours', '111111111111111209', 'pending', false, false, false, false, NULL, NULL),
+('waiter1@example.com', 'waiter_user1', NULL, NULL, NOW() - INTERVAL '12 hours', '111111111111111208', 'pending', false, false, false, false, NULL, NULL),
+('waiter2@example.com', 'waiter_user2', NULL, NULL, NOW() - INTERVAL '9 hours', '111111111111111209', 'pending', false, false, false, false, NULL, NULL),
 
 -- Pending but joined Discord (discord_id known), not verified yet
-('joined_discord_only@example.com', 'joined_discord_only', '223456789012345690', 'token_wait_028', NOW() - INTERVAL '6 hours', '111111111111111210', 'pending', true, false, false, false, NULL, NULL),
+('joined_discord_only@example.com', 'joined_discord_only', '223456789012345690', NULL, NOW() - INTERVAL '6 hours', '111111111111111210', 'pending', true, false, false, false, NULL, NULL),
 
 -- Pending, joined Discord + verified, but not registered (stuck on registration)
-('verified_not_registered@example.com', 'verified_not_registered', '223456789012345691', 'token_wait_029', NOW() - INTERVAL '5 hours', '111111111111111211', 'pending', true, true, false, false, NULL, NULL),
+('verified_not_registered@example.com', 'verified_not_registered', '223456789012345691', NULL, NOW() - INTERVAL '5 hours', '111111111111111211', 'pending', true, true, false, false, NULL, NULL),
 
 -- Pending, registered but not joined MC yet (stuck before first join)
-('registered_not_joined_mc@example.com', 'registered_not_joined_mc', '223456789012345692', 'token_wait_030', NOW() - INTERVAL '4 hours', '111111111111111212', 'pending', true, true, true, false, NULL, NULL),
+('registered_not_joined_mc@example.com', 'registered_not_joined_mc', '223456789012345692', NULL, NOW() - INTERVAL '4 hours', '111111111111111212', 'pending', true, true, true, false, NULL, NULL),
 
 -- Pending with discord_id set but still not joined_discord (edge/inconsistent but useful for testing)
-('discord_id_but_not_joined@example.com', 'discord_id_but_not_joined', '223456789012345693', 'token_wait_031', NOW() - INTERVAL '3 hours', '111111111111111213', 'pending', false, false, false, false, NULL, NULL),
+('discord_id_but_not_joined@example.com', 'discord_id_but_not_joined', '223456789012345693', NULL, NOW() - INTERVAL '3 hours', '111111111111111213', 'pending', false, false, false, false, NULL, NULL),
 
 -- ======================================================================
 -- DECLINED (with/without discord_id)
 -- ======================================================================
-('declined2@example.com', 'declined_user2', NULL, 'token_decl_032', NOW() - INTERVAL '18 days', '111111111111111214', 'declined', false, false, false, false, NULL, NULL),
+('declined2@example.com', 'declined_user2', NULL, NULL, NOW() - INTERVAL '18 days', '111111111111111214', 'declined', false, false, false, false, NULL, NULL),
 
 -- Declined after joining Discord (discord_id known)
-('declined_after_join@example.com', 'declined_after_join', '223456789012345694', 'token_decl_033', NOW() - INTERVAL '11 days', '111111111111111215', 'declined', true, false, false, false, NULL, NULL),
+('declined_after_join@example.com', 'declined_after_join', '223456789012345694', NULL, NOW() - INTERVAL '11 days', '111111111111111215', 'declined', true, false, false, false, NULL, NULL),
 
 -- Declined after verification (rare but good for edge testing)
-('declined_after_verify@example.com', 'declined_after_verify', '223456789012345695', 'token_decl_034', NOW() - INTERVAL '14 days', '111111111111111216', 'declined', true, true, false, false, NULL, NULL);
+('declined_after_verify@example.com', 'declined_after_verify', '223456789012345695', NULL, NOW() - INTERVAL '14 days', '111111111111111216', 'declined', true, true, false, false, NULL, NULL);
 
 -- ============================================================================
 -- ADMIN LOG ACTIONS
@@ -1314,6 +1322,52 @@ FROM (VALUES
 
 -- Treasury: total fees collected across all trades
 UPDATE crypto_treasury SET total_collected = 237.25, total_burned = 20.43;
+
+-- ============================================================================
+-- SERVER FORCELOADS
+-- ============================================================================
+
+-- Solo players with forceloaded chunks on Cogs SMP (server_id = 1)
+INSERT INTO server_forceload_player (server_id, player_uuid, synced_at) VALUES
+  -- id 1: Notch, synced recently
+  (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '10 minutes'),
+  -- id 2: Herobrine, synced a while ago
+  (1, '550e8400-e29b-41d4-a716-446655440004'::uuid, NOW() - INTERVAL '2 hours'),
+  -- id 3: Dream, synced recently
+  (1, '550e8400-e29b-41d4-a716-446655440006'::uuid, NOW() - INTERVAL '30 minutes');
+
+-- Parties that have (or had) opted in to shared forceloading
+INSERT INTO server_forceload_party (server_id, party_id, party_name, member_count, opted_in, synced_at) VALUES
+  -- id 1: active opted-in party
+  (1, 'aaaaaaaa-0000-4000-8000-000000000001'::uuid, 'Hermitcraft Friends', 3, true,  NOW() - INTERVAL '15 minutes'),
+  -- id 2: party that has since opted out (kept for history/cleanup tests)
+  (1, 'bbbbbbbb-0000-4000-8000-000000000002'::uuid, 'Dream SMP Alliance',  4, false, NOW() - INTERVAL '3 days');
+
+-- Members of the opted-in party (party_id = 1)
+INSERT INTO server_forceload_member (party_id, player_uuid) VALUES
+  -- Mumbo
+  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid),
+  -- Grian
+  (1, '550e8400-e29b-41d4-a716-446655440010'::uuid),
+  -- Scar
+  (1, '550e8400-e29b-41d4-a716-446655440011'::uuid);
+
+-- Forceloaded chunks. Exactly one of (player_id, party_id) is set per row.
+INSERT INTO server_forceload_chunk (player_id, party_id, dimension, x, z, active) VALUES
+  -- Notch (player_id = 1): base + farm in overworld, parked nether chunk
+  (1, NULL, 'minecraft:overworld',   12,  -34, true),
+  (1, NULL, 'minecraft:overworld',   13,  -34, true),
+  (1, NULL, 'minecraft:the_nether',   1,    2, false),
+  -- Herobrine (player_id = 2): single end chunk
+  (2, NULL, 'minecraft:the_end',     -5,    7, true),
+  -- Dream (player_id = 3): two overworld chunks
+  (3, NULL, 'minecraft:overworld',  100,  200, true),
+  (3, NULL, 'minecraft:overworld',  101,  200, true),
+  -- Hermitcraft Friends party (party_id = 1): shared base across dimensions
+  (NULL, 1, 'minecraft:overworld',    0,    0, true),
+  (NULL, 1, 'minecraft:overworld',    1,    0, true),
+  (NULL, 1, 'minecraft:the_nether',   0,    0, true),
+  (NULL, 1, 'minecraft:the_end',     42,  -17, false);
 
 -- Show some sample stats
 SELECT

@@ -40,14 +40,19 @@ jobs:
           pnpm generate-api-docs
           pnpm deploy-commands
 
-      - name: Check for API spec changes
+      - name: Check for mod API changes
         id: spec-check
         run: |
+          changed=false
           if git diff ${{ github.event.before }}..HEAD --name-only -- '*.api-spec.ts' | grep -q .; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
+            changed=true
           fi
+          OLD_VERSION=$(git show ${{ github.event.before }}:mod-api/gradle.properties 2>/dev/null | grep '^version=' | cut -d'=' -f2 || echo "")
+          NEW_VERSION=$(grep '^version=' mod-api/gradle.properties | cut -d'=' -f2)
+          if [ "$OLD_VERSION" != "$NEW_VERSION" ]; then
+            changed=true
+          fi
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
       - name: Setup JDK 21
         if: steps.spec-check.outputs.changed == 'true'
@@ -62,16 +67,15 @@ jobs:
         with:
           gradle-version: '8.12'
 
-      - name: Generate and publish mod API (dev)
+      - name: Generate and publish mod API
         if: steps.spec-check.outputs.changed == 'true'
         run: |
           pnpm generate-mod-api
           cd mod-api
-          sed -i 's/artifact_id=createrington-api/artifact_id=createrington-dev-api/' gradle.properties
           VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)
-          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-dev-api/${VERSION}/createrington-dev-api-${VERSION}.jar"
+          JAR_URL="https://raw.githubusercontent.com/matejhozlar/maven/main/com/saunhardy/createrington-api/${VERSION}/createrington-api-${VERSION}.jar"
           if curl --silent --head --fail "$JAR_URL" > /dev/null 2>&1; then
-            echo "ERROR: createrington-dev-api:${VERSION} already published. Bump version in mod-api/gradle.properties"
+            echo "ERROR: createrington-api:${VERSION} already published. Bump version in mod-api/gradle.properties"
             exit 1
           fi
           gradle publish
@@ -82,7 +86,7 @@ jobs:
           git config user.email "ci@createrington.com"
           git config user.name "CI"
           git add .
-          git diff --cached --quiet || git commit -m "publish createrington-dev-api ${VERSION}"
+          git diff --cached --quiet || git commit -m "publish createrington-api ${VERSION}"
           git push
 
       - name: Build

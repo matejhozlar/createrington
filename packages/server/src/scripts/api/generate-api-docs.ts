@@ -77,7 +77,7 @@ const ROUTE_MODULES: RouteModule[] = [
       "Stripe webhook processing for donation and subscription events.",
     authNote: "Stripe signature",
   },
-  // Currency, Presence, and Trains are generated from API spec files (see MOD_SPECS below)
+  // Currency, Forceloads, Presence, and Trains are generated from API spec files (see MOD_SPECS below)
   {
     name: "Render",
     prefix: "/api/render",
@@ -420,6 +420,7 @@ function extractBodyFromComment(comment: string): string | null {
 
 const MOD_SPECS: ApiModuleSpec[] = [
   (await import("@/app/features/mod/currency/currency.api-spec")).default,
+  (await import("@/app/features/mod/forceloads/forceloads.api-spec")).default,
   (await import("@/app/features/mod/presence/presence.api-spec")).default,
   (await import("@/app/features/mod/trains/trains.api-spec")).default,
 ];
@@ -510,7 +511,43 @@ function generateSpecModulesMarkdown(specs: ApiModuleSpec[]): string {
         if (ep.response.isArray) {
           lines.push(`// Returns: ${prefix}`);
         }
-        lines.push(fieldsToBodyBlock(ep.response.fields));
+        if (spec.enveloped) {
+          const innerLines = fieldsToBodyBlock(ep.response.fields).split("\n");
+          // First line is `{`, last is `}`. Re-indent everything by 2 spaces
+          // and inline the opening brace onto the `data:` key. Wrap in
+          // `[...]` for array-valued responses.
+          const indented = innerLines
+            .slice(1, -1)
+            .map((l) => `  ${l}`)
+            .join("\n");
+          lines.push("{");
+          lines.push("  success: boolean,");
+          lines.push("  message: string,");
+          lines.push("  playerMessage?: string,");
+          if (ep.response.isArray) {
+            lines.push("  data: [{");
+            lines.push(indented);
+            lines.push("  }]");
+          } else {
+            lines.push("  data: {");
+            lines.push(indented);
+            lines.push("  }");
+          }
+          lines.push("}");
+        } else {
+          lines.push(fieldsToBodyBlock(ep.response.fields));
+        }
+        lines.push("```");
+        lines.push("");
+      } else if (spec.enveloped) {
+        lines.push("**Response:**");
+        lines.push("");
+        lines.push("```json");
+        lines.push("{");
+        lines.push("  success: boolean,");
+        lines.push("  message: string,");
+        lines.push("  playerMessage?: string");
+        lines.push("}");
         lines.push("```");
         lines.push("");
       }

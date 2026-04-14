@@ -90,11 +90,10 @@ export function CompareRender() {
     if (hasMissingParams) return;
 
     const url = new URL("/api/render/compare", window.location.origin);
-    url.searchParams.set("secret", secret);
     url.searchParams.set("player1", p1);
     url.searchParams.set("player2", p2);
 
-    fetch(url.toString())
+    fetch(url.toString(), { headers: { "x-render-secret": secret } })
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<CompareData>;

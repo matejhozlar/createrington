@@ -42,7 +42,8 @@ function findEnvUsage(envVar: string, searchDir: string): EnvUsageResult[] {
         .replace(/\/\/.*$/g, "")
         .replace(/\/\*[\s\S]*?\*\//g, "");
 
-      const regex = new RegExp(`process\\.env\\.?${envVar}\\b`);
+      const safeVar = envVar.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`process\\.env\\.?${safeVar}\\b`);
       if (regex.test(cleanLine)) {
         results.push({ file, line: i + 1, content: line.trim() });
       }

@@ -752,26 +752,6 @@
       "env": "prod"
     },
     {
-      "name": "verify",
-      "description": "Verify your token from the email invitation",
-      "category": "public",
-      "options": [
-        {
-          "type": 3,
-          "name": "token",
-          "description": "Your unique verification token",
-          "required": true
-        }
-      ],
-      "defaultMemberPermissions": null,
-      "cooldown": {
-        "duration": 60,
-        "type": "user",
-        "message": "Please wait before trying to verify again!"
-      },
-      "env": "prod"
-    },
-    {
       "name": "donate-panel",
       "description": "Create or update the donation panel",
       "category": "owner",
