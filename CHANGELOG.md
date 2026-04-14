@@ -1,3 +1,27 @@
+## v1.6.0 (2026-04-14)
+
+### @createrington/server (1.5.0 → 1.6.0)
+- Add Createrington Assistant (admin chat) backend proxy — new `/api/admin-chat` routes forward admin requests to the claude-automation upstream over SSE, keeping the shared secret server-side and deriving identity from the authenticated JWT so browsers never see credentials
+- Add forceloads sync endpoint (`POST /api/forceloads/sync`) for the opac-teams Minecraft mod — accepts a full-state payload of player and party chunk data (secured with mod JWT + server IP) and replaces the stored forceload state for the originating server; backed by new DB tables and query classes for forceload parties, members, and chunks
+- Replace waitlist invitation tokens with per-applicant Discord invites — each accepted applicant now receives a unique, expiring Discord invite link (1 hour for auto-accepted, 7 days for manual invites) rather than a one-time token; the bot seeds an invite-use cache on startup and diffs guild invite counts on member-join to identify which invite was consumed and auto-trigger registration
+- Add button + modal registration flow — new Discord interaction handlers allow applicants to self-register via a button in their invite DM, eliminating the need to run a slash command
+- Standardise `/api/currency` endpoints on a shared response envelope — all currency mod endpoints now return `{ success, message, playerMessage?, data? }` via a new `respondSuccess` helper, providing a consistent shape for the Java client to parse
+- Add mod JWT authentication to `POST /api/trains/crash` — the endpoint now requires a valid mod JWT token, bringing it in line with other secured mod endpoints
+- Make `name` optional on `POST /api/currency/login` — the field is now a no-op (username is always taken from the JWT); making it optional prevents breaking existing mod clients that still send it
+- Add forceloads tRPC admin router — new `admin.forceloads` procedures expose per-player and per-party chunk lists and stats for the admin dashboard
+- Add waitlist cleanup service — a scheduled job purges orphaned waitlist entries (applicants who never joined after receiving an invite) and resets their status so the slot is freed
+- Replace Node.js `--watch` with a chokidar-based dev watcher (`scripts/dev-watch.mjs`) — eliminates spurious self-restarts on Windows caused by the native file watcher
+- Fix regex metacharacter injection in CLI scripts — user-supplied strings passed to `RegExp` constructors are now escaped, preventing accidental pattern breakage
+- Move render page secret from query parameter to request header — avoids the secret appearing in server logs or browser history
+- Unify mod-api Maven artifact publishing under `createrington-api` and trigger publication on any version bump to `gradle.properties`
+
+### @createrington/client (0.2.2 → 0.2.3)
+- Add Forceloads admin tool — new admin page displays forceloaded chunks per player and per party, with sortable tables, stats cards, and an empty state; data is fetched from the new `admin.forceloads` tRPC procedures
+- Add Createrington Assistant chat widget — floating chat bubble in the admin area that streams replies from the claude-automation backend via SSE, supports action envelopes (`highlight`, `insert_embed`) to interact with the embed builder, renders markdown replies, persists action cards across sessions, and offers `@-mention` autocomplete for Createrington repos
+- Add footer with social links — site footer now includes Discord and CurseForge icon links
+- Validate Stripe checkout URL hostname strictly — the client now rejects redirect URLs that don't match the expected Stripe hostname, preventing open-redirect abuse
+- Remove stale sidebar components and market entry that were no longer used
+
 ## v1.5.0 (2026-04-11)
 
 ### @createrington/server (1.4.0 → 1.5.0)
