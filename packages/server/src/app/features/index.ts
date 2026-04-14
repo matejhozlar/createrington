@@ -13,6 +13,7 @@ import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
 import legacyCurrencyRoutes from "./legacy/currency/currency.routes";
+import legacyTrainsRoutes from "./legacy/trains/trains.routes";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
 export function registerRoutes(app: Express): void {
@@ -28,6 +29,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/messages`, messageRoutes);
   app.use(`${API_PREFIX}/render`, renderRoutes);
   app.use(`${API_PREFIX}/trains`, trainRoutes);
+  app.use(`${API_PREFIX}/legacy/trains`, legacyTrainsRoutes);
 
   // Internal cross-environment routes (only active when sync secret is set)
   if (config.sync.secret) {
