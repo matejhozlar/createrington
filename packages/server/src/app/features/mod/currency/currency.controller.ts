@@ -1,4 +1,4 @@
-import { BadRequestError } from "@/app/middleware";
+import { BadRequestError, respondSuccess } from "@/app/middleware";
 import config from "@/config";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
@@ -10,11 +10,24 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = config.app.auth.accessToken.secret;
 
+const moneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
+function formatMoney(amount: number): string {
+  return moneyFormatter.format(amount);
+}
+
 /**
  * Currency Controller
  *
  * Handles in-game economy operations from the Minecraft mod:
  * balance checks, payments, deposits, withdrawals, daily rewards, leaderboard
+ *
+ * All responses use the standard envelope: { success, message, playerMessage?, data? }
  */
 export class CurrencyController {
   /**
@@ -36,7 +49,10 @@ export class CurrencyController {
       expiresIn: "10m",
     });
 
-    res.json({ token });
+    respondSuccess(res, {
+      message: `Issued mod JWT for ${name}`,
+      data: { token },
+    });
   }
 
   /**
@@ -45,11 +61,15 @@ export class CurrencyController {
    * Returns the player's current balance.
    */
   static async getBalance(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth!;
+    const { uuid, name } = req.modAuth!;
 
     const balance = await R.balanceRepo.getAmount(uuid);
 
-    res.json({ balance });
+    respondSuccess(res, {
+      message: `Balance retrieved for player ${name}`,
+      playerMessage: `Balance: ${formatMoney(balance)}`,
+      data: { balance },
+    });
   }
 
   /**
@@ -74,17 +94,24 @@ export class CurrencyController {
     try {
       const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
 
-      res.json({
-        success: true,
-        new_sender_balance: result.senderBalance,
+      respondSuccess(res, {
+        message: `Transferred ${amount} from ${senderUuid} to ${toUuid}`,
+        playerMessage: `You sent ${formatMoney(amount)}`,
+        data: {
+          new_sender_balance: result.senderBalance,
+        },
       });
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes("Insufficient balance")) {
-          throw new BadRequestError("Insufficient balance");
+          throw new BadRequestError("Insufficient balance", undefined, {
+            playerMessage: "You don't have enough money!",
+          });
         }
         if (error.message.includes("Cannot transfer to self")) {
-          throw new BadRequestError("Cannot transfer to yourself");
+          throw new BadRequestError("Cannot transfer to yourself", undefined, {
+            playerMessage: "You can't pay yourself.",
+          });
         }
       }
       throw error;
@@ -98,7 +125,7 @@ export class CurrencyController {
    * Adds currency to the authenticated player's balance.
    */
   static async deposit(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth!;
+    const { uuid, name } = req.modAuth!;
     const { amount, reason } = req.body;
 
     if (amount == null) {
@@ -117,11 +144,19 @@ export class CurrencyController {
         BalanceTransactionType.DEPOSIT,
       );
 
-      res.json({ success: true, new_balance: newBalance });
+      respondSuccess(res, {
+        message: `Deposited ${amount} for player ${name}`,
+        playerMessage: `Deposited ${formatMoney(amount)}. New balance: ${formatMoney(newBalance)}`,
+        data: {
+          new_balance: newBalance,
+        },
+      });
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes("would exceed maximum balance")) {
-          throw new BadRequestError("Would exceed maximum balance");
+          throw new BadRequestError("Would exceed maximum balance", undefined, {
+            playerMessage: "Deposit would exceed your maximum balance.",
+          });
         }
       }
       throw error;
@@ -136,7 +171,7 @@ export class CurrencyController {
    * Total withdrawn = denomination * count.
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth!;
+    const { uuid, name } = req.modAuth!;
     const { denomination, count } = req.body;
 
     if (denomination == null || count == null) {
@@ -161,17 +196,22 @@ export class CurrencyController {
         BalanceTransactionType.WITHDRAW,
       );
 
-      res.json({
-        success: true,
-        withdrawn: totalAmount,
-        new_balance: newBalance,
-        denomination,
-        count,
+      respondSuccess(res, {
+        message: `Withdrew ${totalAmount} for player ${name} (${count}x${denomination})`,
+        playerMessage: `Withdrew ${formatMoney(totalAmount)}.`,
+        data: {
+          withdrawn: totalAmount,
+          new_balance: newBalance,
+          denomination,
+          count,
+        },
       });
     } catch (error) {
       if (error instanceof Error) {
         if (error.message.includes("Insufficient balance")) {
-          throw new BadRequestError("Insufficient balance");
+          throw new BadRequestError("Insufficient balance", undefined, {
+            playerMessage: "You don't have enough money to withdraw that.",
+          });
         }
       }
       throw error;
@@ -183,10 +223,13 @@ export class CurrencyController {
    *
    * Returns top 10 players by balance.
    */
-  static async getTop(req: Request, res: Response): Promise<void> {
+  static async getTop(_req: Request, res: Response): Promise<void> {
     const top = await R.balanceRepo.getTop(10);
 
-    res.json(top);
+    respondSuccess(res, {
+      message: `Top ${top.length} players retrieved`,
+      data: top,
+    });
   }
 
   /**
@@ -195,21 +238,26 @@ export class CurrencyController {
    * Claims the daily reward for the authenticated player.
    */
   static async claimDaily(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth!;
+    const { uuid, name } = req.modAuth!;
 
     const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
     if (!result.success) {
-      const message = result.nextClaimTime
+      const playerMessage = result.nextClaimTime
         ? `You can claim again in ${formatDuration(new Date(), result.nextClaimTime)}`
         : (result.error ?? "Daily reward not available");
 
-      res.status(400).json({ message });
-      return;
+      throw new BadRequestError(
+        `Daily reward unavailable for ${name}: ${result.error ?? "cooldown"}`,
+        undefined,
+        { playerMessage },
+      );
     }
 
-    res.json({
-      message: `You claimed your daily reward of $${result.amount}!`,
+    respondSuccess(res, {
+      message: `Daily reward of ${result.amount} claimed by ${name}`,
+      playerMessage: `You claimed your daily reward of ${formatMoney(result.amount ?? 0)}!`,
+      data: { amount: result.amount },
     });
   }
 
@@ -219,7 +267,7 @@ export class CurrencyController {
    * Returns paginated transaction history for the authenticated player.
    */
   static async getHistory(req: Request, res: Response): Promise<void> {
-    const { uuid } = req.modAuth!;
+    const { uuid, name } = req.modAuth!;
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const perPage = Math.min(
       20,
@@ -233,13 +281,16 @@ export class CurrencyController {
       offset,
     );
 
-    res.json({
-      transactions: transactions.map((tx) => ({
-        ...tx,
-        createdAt: tx.createdAt.toISOString(),
-      })),
-      page,
-      hasMore: transactions.length === perPage,
+    respondSuccess(res, {
+      message: `History page ${page} retrieved for ${name} (${transactions.length} entries)`,
+      data: {
+        transactions: transactions.map((tx) => ({
+          ...tx,
+          createdAt: tx.createdAt.toISOString(),
+        })),
+        page,
+        hasMore: transactions.length === perPage,
+      },
     });
   }
 
@@ -267,7 +318,14 @@ export class CurrencyController {
 
     const result = await lotteryService.start(uuid, name, amount);
 
-    res.json(result);
+    respondSuccess(res, {
+      message: `Lottery started by ${name} with entry ${amount}`,
+      playerMessage: result.message,
+      data: {
+        entryAmount: result.entryAmount,
+        endsAt: result.endsAt,
+      },
+    });
   }
 
   /**
@@ -290,6 +348,14 @@ export class CurrencyController {
 
     const result = await lotteryService.join(uuid, name, amount);
 
-    res.json(result);
+    respondSuccess(res, {
+      message: `${name} joined lottery with entry ${amount}`,
+      playerMessage: result.message,
+      data: {
+        entryAmount: result.entryAmount,
+        totalPot: result.totalPot,
+        participantCount: result.participantCount,
+      },
+    });
   }
 }
