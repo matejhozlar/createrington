@@ -259,6 +259,27 @@
   animation: maintenance-pulse 4s ease-in-out infinite;
 }
 
+/* Admin chat highlight action — applied to arbitrary DOM elements via
+   document.querySelector, so the class must live globally rather than
+   inside a component stylesheet. */
+@keyframes ac-highlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--primary);
+  }
+  50% {
+    box-shadow: 0 0 0 6px var(--primary);
+  }
+}
+
+.ac-highlighted {
+  outline: 2px solid var(--primary) !important;
+  outline-offset: 4px !important;
+  border-radius: 4px;
+  animation: ac-highlight-pulse 1s ease-in-out infinite;
+  scroll-margin: 4rem;
+}
+
 /* Team page staggered entrance */
 @keyframes fade-in-up {
   from {
