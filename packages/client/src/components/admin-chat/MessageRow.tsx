@@ -71,7 +71,7 @@ export function MessageRow({
             "flex size-6 shrink-0 items-center justify-center rounded-full",
             isUser
               ? "bg-primary/15 text-primary"
-              : "bg-primary/15 text-primary",
+              : "bg-muted text-muted-foreground",
           )}
           aria-hidden
         >

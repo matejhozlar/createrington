@@ -3,7 +3,7 @@ import { Bot } from "lucide-react";
 export function TypingIndicator(): React.JSX.Element {
   return (
     <div className="flex items-end gap-2 self-start">
-      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+      <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
         <Bot size={14} />
       </div>
       <div className="flex items-center gap-1 rounded-lg rounded-bl-sm bg-muted px-3 py-2.5">

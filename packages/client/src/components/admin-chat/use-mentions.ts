@@ -45,27 +45,36 @@ interface UseMentionsResult {
  */
 export function useMentions(): UseMentionsResult {
   const [repos, setRepos] = useState<RepoSuggestion[] | null>(null);
+  // Mirror of `repos` for the guard inside loadRepos. Using a ref keeps
+  // loadRepos stable across repo-list state transitions, so callbacks
+  // that depend on it (onValueChange, syncFromCursor) don't get fresh
+  // identities on every keystroke after repos finish loading.
+  const reposRef = useRef<RepoSuggestion[] | null>(null);
   const reposLoadingRef = useRef(false);
   const [mention, setMention] = useState<MentionState | null>(null);
   const [index, setIndex] = useState(0);
 
   const loadRepos = useCallback(async (): Promise<void> => {
-    if (repos !== null || reposLoadingRef.current) return;
+    if (reposRef.current !== null || reposLoadingRef.current) return;
     reposLoadingRef.current = true;
     try {
       const res = await claudeFetch("/repos");
       if (!res.ok) {
+        reposRef.current = [];
         setRepos([]);
         return;
       }
       const data = (await res.json()) as { repos?: RepoSuggestion[] };
-      setRepos(data.repos ?? []);
+      const loaded = data.repos ?? [];
+      reposRef.current = loaded;
+      setRepos(loaded);
     } catch {
+      reposRef.current = [];
       setRepos([]);
     } finally {
       reposLoadingRef.current = false;
     }
-  }, [repos]);
+  }, []);
 
   const matches = useMemo<RepoSuggestion[]>(() => {
     if (!mention || !repos) return [];

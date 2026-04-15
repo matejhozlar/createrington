@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/auth";
 import { claudeFetch } from "./api";
 import { ChatPanel } from "./ChatPanel";
 import { ChatToggle } from "./ChatToggle";
-import { useAdminChatSession } from "./useAdminChatSession";
+import { useAdminChatSession } from "./use-admin-chat-session";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
 
