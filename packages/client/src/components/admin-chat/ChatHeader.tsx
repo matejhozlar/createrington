@@ -74,7 +74,7 @@ export function ChatHeader({
                 <Plus size={14} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>New chat</TooltipContent>
+            <TooltipContent className="z-[10000]">New chat</TooltipContent>
           </Tooltip>
         )}
         {sessionActive && (
@@ -89,7 +89,7 @@ export function ChatHeader({
                 <Square size={12} />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>End session</TooltipContent>
+            <TooltipContent className="z-[10000]">End session</TooltipContent>
           </Tooltip>
         )}
         <Tooltip>
@@ -103,7 +103,7 @@ export function ChatHeader({
               {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent className="z-[10000]">
             {expanded ? "Collapse panel" : "Expand panel"}
           </TooltipContent>
         </Tooltip>
@@ -118,7 +118,9 @@ export function ChatHeader({
               <X size={14} />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Close (Ctrl+I to hide)</TooltipContent>
+          <TooltipContent className="z-[10000]">
+            Close (Ctrl+I to hide)
+          </TooltipContent>
         </Tooltip>
       </div>
     </div>
