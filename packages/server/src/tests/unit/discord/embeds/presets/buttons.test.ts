@@ -1,4 +1,24 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// The link button factories (website/adminPanel/modpack/map) read URLs from
+// config.meta.links at module load and pass them to ButtonBuilder.setURL,
+// which throws on undefined. Env vars like WEBSITE_URL aren't set in CI, so
+// mock the config to provide deterministic URLs. Hoisted by Vitest.
+vi.mock("@/config", () => ({
+  default: {
+    meta: {
+      links: {
+        discordInvite: "https://discord.gg/test",
+        website: "https://example.com/website",
+        adminPanel: "https://example.com/admin",
+        modpack: "https://example.com/modpack",
+        map: "https://example.com/map",
+        assets: "https://example.com/assets",
+      },
+    },
+  },
+}));
+
 import { ButtonStyle, type ButtonBuilder } from "discord.js";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 
