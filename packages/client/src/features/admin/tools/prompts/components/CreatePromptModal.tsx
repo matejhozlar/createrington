@@ -49,9 +49,11 @@ const DURATION_PRESETS: Record<string, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
 };
 
-// Sentinel select value — Radix Select can't hold an empty string, so
-// we use a reserved token to represent "don't ping anyone".
+// Sentinel select values — Radix Select can't hold an empty string,
+// so we use reserved tokens for "don't ping anyone" and "fall back to
+// the server default (announcements)" and translate them at submit.
 const NO_ROLE = "__none__";
+const DEFAULT_CHANNEL = "__default__";
 
 export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const toast = useToastActions();
@@ -66,14 +68,14 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const [description, setDescription] = useState("");
   const [durationPreset, setDurationPreset] = useState<string>("24h");
   const [rolePingId, setRolePingId] = useState<string>(NO_ROLE);
-  const [channelId, setChannelId] = useState<string>("");
+  const [channelId, setChannelId] = useState<string>(DEFAULT_CHANNEL);
 
   const reset = () => {
     setQuestion("");
     setDescription("");
     setDurationPreset("24h");
     setRolePingId(NO_ROLE);
-    setChannelId("");
+    setChannelId(DEFAULT_CHANNEL);
   };
 
   const handleClose = () => {
@@ -101,7 +103,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
         description: description.trim() || undefined,
         durationMs,
         rolePingId: rolePingId === NO_ROLE ? undefined : rolePingId,
-        channelId: channelId || undefined,
+        channelId: channelId === DEFAULT_CHANNEL ? undefined : channelId,
       });
       toast.success("Prompt posted to Discord");
       reset();
@@ -177,24 +179,26 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
             <FieldLabel htmlFor="prompt-channel">Channel</FieldLabel>
             <Select value={channelId} onValueChange={setChannelId}>
               <SelectTrigger id="prompt-channel">
-                <SelectValue placeholder="Announcements (default)" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(channelsQuery.data ?? []).map((group) => (
-                  <SelectGroup key={group.category}>
-                    <SelectLabel>{formatName(group.category)}</SelectLabel>
-                    {group.channels.map((ch) => (
-                      <SelectItem key={ch.id} value={ch.id}>
-                        # {formatName(ch.name)}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                ))}
+                <SelectItem value={DEFAULT_CHANNEL}>
+                  Announcements (default)
+                </SelectItem>
+                {(channelsQuery.data ?? [])
+                  .filter((group) => group.channels.length > 0)
+                  .map((group) => (
+                    <SelectGroup key={group.category}>
+                      <SelectLabel>{formatName(group.category)}</SelectLabel>
+                      {group.channels.map((ch) => (
+                        <SelectItem key={ch.id} value={ch.id}>
+                          # {formatName(ch.name)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
               </SelectContent>
             </Select>
-            <FieldDescription>
-              Defaults to announcements when left unset.
-            </FieldDescription>
           </Field>
 
           <Field>
@@ -216,9 +220,8 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
               </SelectContent>
             </Select>
             <FieldDescription>
-              The mention is posted above the embed inside spoiler tags (
-              <code>||@role||</code>), so the channel stays visually clean while
-              the ping still fires.
+              The mention is posted above the embed inside Discord spoiler tags,
+              so the channel stays visually clean while the ping still fires.
             </FieldDescription>
           </Field>
 
