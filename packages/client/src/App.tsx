@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -26,7 +26,7 @@ import {
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
 import { Footer } from "./components/footer";
-import { LoadingScreen } from "./components/loading-spinner";
+import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 
@@ -246,8 +246,9 @@ const AdminForceloads = lazyNamed(
 );
 
 // Admin chat widget — gated on isAdmin below so non-admins never download it.
-const AdminChat = lazy(() =>
-  import("./components/admin-chat").then((m) => ({ default: m.AdminChat })),
+const AdminChat = lazyNamed(
+  () => import("./components/admin-chat"),
+  "AdminChat",
 );
 
 // ==========================================================================
@@ -289,7 +290,18 @@ function AppLayout() {
           <Logo />
         </div>
         <div className="flex flex-1 flex-col gap-4">
-          <Outlet />
+          {/* Inner Suspense so lazy-loading a layout-child route only swaps
+              the content area — the sidebar and mobile top bar stay
+              mounted instead of flashing a full-screen loader. */}
+          <Suspense
+            fallback={
+              <div className="flex flex-1 items-center justify-center p-10">
+                <Loading mode="inline" size="large" />
+              </div>
+            }
+          >
+            <Outlet />
+          </Suspense>
         </div>
         {!hideFooter && <Footer />}
       </SidebarInset>
@@ -304,9 +316,11 @@ function AdminChatGate() {
   const { user } = useAuth();
   if (!user?.isAdmin) return null;
   return (
-    <Suspense fallback={null}>
-      <AdminChat />
-    </Suspense>
+    <ErrorBoundary fallback={null}>
+      <Suspense fallback={null}>
+        <AdminChat />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 

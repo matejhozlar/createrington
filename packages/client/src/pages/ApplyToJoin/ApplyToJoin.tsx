@@ -42,8 +42,9 @@ interface FormValues {
 
 /**
  * Waitlist vs open-enrollment changes which fields are required, so the
- * schema is rebuilt whenever mode changes. Running this once at load is fine
- * — status mode is fetched once and stable for the life of the form.
+ * schema is rebuilt whenever mode changes. The form isn't rendered during
+ * the status query's loading state, so the schema only ever settles once
+ * before the user can submit.
  */
 function buildSchema(isWaitlistMode: boolean) {
   return z
@@ -103,6 +104,7 @@ export function ApplyToJoin() {
     handleSubmit,
     control,
     setError,
+    clearErrors,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -121,6 +123,9 @@ export function ApplyToJoin() {
   const isAutoAccepted = result?.status === "auto_accepted";
 
   const onSubmit = handleSubmit(async (values) => {
+    // Drop any stale server error from a previous failed submit so the
+    // user sees only the outcome of this attempt.
+    clearErrors("root");
     const metadata: Record<string, string> = {};
     if (values.referralSource) {
       metadata.referralSource =
@@ -320,61 +325,72 @@ export function ApplyToJoin() {
                     </Field>
                   )}
 
-                  <div className="flex items-start gap-2">
-                    <Controller
-                      control={control}
-                      name="agreedToTerms"
-                      render={({ field }) => (
-                        <Checkbox
-                          id="agree-terms"
-                          checked={field.value}
-                          onCheckedChange={(checked) =>
-                            field.onChange(checked === true)
-                          }
-                          className="mt-0.5 cursor-pointer"
-                        />
-                      )}
-                    />
-                    <label
-                      htmlFor="agree-terms"
-                      className="text-sm text-muted-foreground cursor-pointer select-none"
-                    >
-                      I agree to the{" "}
-                      <NavLink
-                        to="/privacy"
-                        target="_blank"
-                        className="text-primary hover:underline"
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-start gap-2">
+                      <Controller
+                        control={control}
+                        name="agreedToTerms"
+                        render={({ field }) => (
+                          <Checkbox
+                            id="agree-terms"
+                            checked={field.value}
+                            onCheckedChange={(checked) =>
+                              field.onChange(checked === true)
+                            }
+                            aria-invalid={!!errors.agreedToTerms}
+                            aria-describedby={
+                              errors.agreedToTerms
+                                ? "agree-terms-error"
+                                : undefined
+                            }
+                            className="mt-0.5 cursor-pointer"
+                          />
+                        )}
+                      />
+                      <label
+                        htmlFor="agree-terms"
+                        className="text-sm text-muted-foreground cursor-pointer select-none"
                       >
-                        Privacy Policy
-                      </NavLink>{" "}
-                      and{" "}
-                      <NavLink
-                        to="/terms"
-                        target="_blank"
-                        className="text-primary hover:underline"
-                      >
-                        Terms of Service
-                      </NavLink>
-                    </label>
+                        I agree to the{" "}
+                        <NavLink
+                          to="/privacy"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Privacy Policy
+                        </NavLink>{" "}
+                        and{" "}
+                        <NavLink
+                          to="/terms"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Terms of Service
+                        </NavLink>
+                      </label>
+                    </div>
+                    {errors.agreedToTerms && (
+                      <FieldError id="agree-terms-error" className="pl-6">
+                        {errors.agreedToTerms.message}
+                      </FieldError>
+                    )}
                   </div>
-
-                  {(errors.agreedToTerms || errors.root) && (
-                    <FieldError>
-                      {errors.agreedToTerms?.message ?? errors.root?.message}
-                    </FieldError>
-                  )}
 
                   <Button
                     type="submit"
                     className="w-full cursor-pointer"
-                    disabled={isSubmitting || createMutation.isPending}
+                    disabled={isSubmitting}
                   >
-                    {isSubmitting || createMutation.isPending
+                    {isSubmitting
                       ? "Submitting..."
                       : isWaitlistMode
                         ? "Join Waitlist"
                         : "Apply Now"}
                   </Button>
+
+                  {errors.root && (
+                    <FieldError>{errors.root.message}</FieldError>
+                  )}
                 </form>
               </div>
 
