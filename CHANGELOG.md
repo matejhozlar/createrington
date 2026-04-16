@@ -1,3 +1,15 @@
+## v1.7.2 (2026-04-16)
+
+### @createrington/server (1.7.1 → 1.7.2)
+- Tighten Content Security Policy to allow Cloudflare Insights — `helmet` CSP directives now explicitly permit `https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com` in `connect-src`, fixing blocked analytics requests without weakening the policy elsewhere
+
+### @createrington/client (0.2.4 → 0.2.5)
+- Fix admin chat markdown list rendering — unordered and ordered lists in AI assistant responses now render with visible bullets/numbers (`list-disc`/`list-decimal` + `list-outside`) instead of appearing as unstyled flat text
+- Fix admin chat "End session" button styling — the button now renders in destructive red with a matching hover state, making it visually distinct from neutral actions
+- Fix CSP compatibility with Zod v4 — Zod's JIT compiler is disabled at app entry (`z.config({ jitless: true })`) so the app no longer requires `unsafe-eval` in the Content Security Policy
+- Fix CSP meta tag in `index.html` — client-side CSP now mirrors the server helmet policy, permitting Cloudflare Insights scripts and connections
+- Fix React Hook Form devtools warnings on `ApplyToJoin` — `Select` and `Checkbox` inputs now receive the `name` prop from their field controller, eliminating uncontrolled-component console warnings
+
 ## v1.7.1 (2026-04-16)
 
 ### @createrington/server (1.7.0 → 1.7.1)
