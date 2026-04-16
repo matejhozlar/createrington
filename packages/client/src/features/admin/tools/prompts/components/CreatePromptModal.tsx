@@ -12,12 +12,25 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+
+// Format a camelCase config key ("serverAnnouncements") into the label
+// we show in a picker ("Server Announcements"). Same transform the
+// embed-builder pickers use — mirrored here to avoid cross-feature
+// imports from a modal primitive.
+function formatName(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
 
 interface Props {
   open: boolean;
@@ -36,20 +49,31 @@ const DURATION_PRESETS: Record<string, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
 };
 
+// Sentinel select value — Radix Select can't hold an empty string, so
+// we use a reserved token to represent "don't ping anyone".
+const NO_ROLE = "__none__";
+
 export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const toast = useToastActions();
   const createMutation = trpc.admin.prompts.create.useMutation();
 
+  // Reuse the embed-builder endpoints — they already walk config.discord
+  // and expose channels grouped by category plus a flat role list.
+  const channelsQuery = trpc.admin.embeds.channels.useQuery();
+  const rolesQuery = trpc.admin.embeds.roles.useQuery();
+
   const [question, setQuestion] = useState("");
   const [description, setDescription] = useState("");
   const [durationPreset, setDurationPreset] = useState<string>("24h");
-  const [rolePingId, setRolePingId] = useState("");
+  const [rolePingId, setRolePingId] = useState<string>(NO_ROLE);
+  const [channelId, setChannelId] = useState<string>("");
 
   const reset = () => {
     setQuestion("");
     setDescription("");
     setDurationPreset("24h");
-    setRolePingId("");
+    setRolePingId(NO_ROLE);
+    setChannelId("");
   };
 
   const handleClose = () => {
@@ -76,7 +100,8 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
         question: trimmedQuestion,
         description: description.trim() || undefined,
         durationMs,
-        rolePingId: rolePingId.trim() || undefined,
+        rolePingId: rolePingId === NO_ROLE ? undefined : rolePingId,
+        channelId: channelId || undefined,
       });
       toast.success("Prompt posted to Discord");
       reset();
@@ -149,21 +174,51 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
           </Field>
 
           <Field>
+            <FieldLabel htmlFor="prompt-channel">Channel</FieldLabel>
+            <Select value={channelId} onValueChange={setChannelId}>
+              <SelectTrigger id="prompt-channel">
+                <SelectValue placeholder="Announcements (default)" />
+              </SelectTrigger>
+              <SelectContent>
+                {(channelsQuery.data ?? []).map((group) => (
+                  <SelectGroup key={group.category}>
+                    <SelectLabel>{formatName(group.category)}</SelectLabel>
+                    {group.channels.map((ch) => (
+                      <SelectItem key={ch.id} value={ch.id}>
+                        # {formatName(ch.name)}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldDescription>
+              Defaults to announcements when left unset.
+            </FieldDescription>
+          </Field>
+
+          <Field>
             <FieldLabel htmlFor="prompt-role">
               Role to ping{" "}
               <span className="text-muted-foreground">(optional)</span>
             </FieldLabel>
-            <Input
-              id="prompt-role"
-              value={rolePingId}
-              onChange={(e) => setRolePingId(e.target.value)}
-              placeholder="Discord role ID (digits only)"
-              pattern="\d*"
-              inputMode="numeric"
-            />
+            <Select value={rolePingId} onValueChange={setRolePingId}>
+              <SelectTrigger id="prompt-role">
+                <SelectValue placeholder="No ping" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_ROLE}>No ping</SelectItem>
+                {(rolesQuery.data ?? []).map((role) => (
+                  <SelectItem key={role.id} value={role.id}>
+                    @ {formatName(role.name)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <FieldDescription>
-              Copy the role ID from Discord (Server Settings → Roles →
-              right-click → Copy Role ID). Leave blank to post without a ping.
+              The mention is posted above the embed inside spoiler tags (
+              <code>||@role||</code>), so the channel stays visually clean while
+              the ping still fires.
             </FieldDescription>
           </Field>
 
