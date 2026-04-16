@@ -39,7 +39,6 @@ import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
 import { NavCrypto } from "./nav-crypto";
-import { NavLink } from "react-router-dom";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -179,14 +178,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       <SidebarFooter>
-        {user?.isAdmin && (
-          <NavLink
-            to="/admin/changelog"
-            className="text-muted-foreground hover:text-foreground mx-auto text-xs transition-colors group-data-[state=collapsed]:hidden"
-          >
-            v{__APP_VERSION__}
-          </NavLink>
-        )}
         {user ? <NavUser user={user} /> : <NavDiscordLogin />}
       </SidebarFooter>
 
