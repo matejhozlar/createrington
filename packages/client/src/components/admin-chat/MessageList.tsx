@@ -56,11 +56,23 @@ export function MessageList({
     <div className="relative flex-1 overflow-hidden">
       <div
         ref={scrollRef}
-        className="flex h-full flex-col gap-3 overflow-y-auto px-3 py-3"
+        className="flex h-full flex-col overflow-y-auto px-3 py-3"
       >
-        {messages.map((msg) => (
-          <MessageRow key={msg.id} message={msg} navigate={navigate} />
-        ))}
+        {messages.map((msg, i) => {
+          const prev = messages[i - 1];
+          const next = messages[i + 1];
+          const isGroupStart = !prev || prev.role !== msg.role;
+          const showAvatar = !next || next.role !== msg.role;
+          return (
+            <MessageRow
+              key={msg.id}
+              message={msg}
+              navigate={navigate}
+              showAvatar={showAvatar}
+              isGroupStart={isGroupStart}
+            />
+          );
+        })}
         {awaitingReply && <TypingIndicator />}
         <div ref={endRef} />
       </div>
