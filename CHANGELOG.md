@@ -1,3 +1,8 @@
+## v1.7.1 (2026-04-16)
+
+### @createrington/server (1.7.0 → 1.7.1)
+- Fix cookie collision when a browser holds both a legacy host-only cookie and the newer domain-scoped cookie under the same name — `AccessCookieService` and `RefreshTokenService` now defensively clear the host-only variant before setting or clearing the domain-scoped one; without this the browser could silently deliver the stale host-only value, causing JWT verification failures (access cookie) or false token-theft revocations (refresh cookie)
+
 ## v1.7.0 (2026-04-16)
 
 ### @createrington/server (1.6.2 → 1.7.0)
