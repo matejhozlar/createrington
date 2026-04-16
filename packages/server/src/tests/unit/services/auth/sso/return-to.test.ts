@@ -47,4 +47,17 @@ describe("validateReturnTo", () => {
     expect(validator("javascript:alert(1)")).toBeNull();
     expect(validator("data:text/html,<script>")).toBeNull();
   });
+
+  it("rejects URLs longer than 2048 chars (defense-in-depth ReDoS guard)", () => {
+    const oversized = `https://sandbox.create-rington.com/${"a".repeat(2048)}`;
+    expect(validator(oversized)).toBeNull();
+  });
+
+  it("accepts URLs at exactly 2048 chars", () => {
+    const prefix = "https://sandbox.create-rington.com/";
+    const padding = "a".repeat(2048 - prefix.length);
+    const url = `${prefix}${padding}`;
+    expect(url.length).toBe(2048);
+    expect(validator(url)).toBe(url);
+  });
 });

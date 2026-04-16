@@ -312,8 +312,12 @@ export class AuthController {
       throw new BadRequestError("SSO is not configured on this server");
     }
 
+    // Express parses repeated/nested query params as arrays/objects, so a
+    // typeof check is the honest way to narrow the type. validateReturnTo
+    // accepts undefined and rejects, so the explicit guard is for clarity.
+    const rawReturnTo = req.query.return_to;
     const returnTo = validateReturnTo(
-      req.query.return_to as string | undefined,
+      typeof rawReturnTo === "string" ? rawReturnTo : undefined,
     );
     if (!returnTo) {
       throw new BadRequestError(
@@ -342,13 +346,18 @@ export class AuthController {
    * Discord code, sets both cookies on the configured cookie domain, then
    * redirects the browser to the original `return_to`.
    *
-   * Errors short-circuit to a redirect so users see a clean failure state
-   * in the consumer (sandbox) rather than a JSON blob in the address bar.
+   * Pre-entry validation failures (missing/invalid state) throw a JSON 400
+   * because there's no validated return_to to redirect to. Once the state
+   * resolves, post-entry failures (UNVERIFIED user, Discord call failure)
+   * redirect back to the consumer with `?sso_error=...` so it can render
+   * its own UI instead of stranding the user on a JSON blob.
    */
   static async ssoCallback(req: Request, res: Response): Promise<void> {
     const callbackUrl = config.app.auth.sso.callbackUrl;
-    const code = req.query.code as string | undefined;
-    const state = req.query.state as string | undefined;
+    const rawCode = req.query.code;
+    const rawState = req.query.state;
+    const code = typeof rawCode === "string" ? rawCode : undefined;
+    const state = typeof rawState === "string" ? rawState : undefined;
 
     if (!code || !state) {
       throw new BadRequestError("Missing code or state");
@@ -371,7 +380,7 @@ export class AuthController {
           `Unverified user ${user.username} (${user.discordId}) attempted SSO login`,
         );
         // Bounce back to consumer with an error flag so it can render its own UI
-        res.redirect(`${entry.returnTo}?sso_error=unverified`);
+        res.redirect(redirectWithError(entry.returnTo, "unverified"));
         return;
       }
 
@@ -394,7 +403,27 @@ export class AuthController {
       res.redirect(entry.returnTo);
     } catch (error) {
       logger.error("SSO callback failed:", error);
-      res.redirect(`${entry.returnTo}?sso_error=auth_failed`);
+      res.redirect(redirectWithError(entry.returnTo, "auth_failed"));
     }
+  }
+}
+
+/**
+ * Append `?sso_error=<reason>` to a return_to URL using URL parsing rather
+ * than string concatenation, so URLs that already carry a query string or
+ * fragment stay well-formed (e.g. `/page?foo=bar` becomes
+ * `/page?foo=bar&sso_error=...` instead of `/page?foo=bar?sso_error=...`).
+ *
+ * The whitelist already guarantees the URL parses, so the `new URL()` call
+ * is safe — but if it ever fails we fall back to the raw return_to to keep
+ * users out of an error loop.
+ */
+function redirectWithError(returnTo: string, reason: string): string {
+  try {
+    const url = new URL(returnTo);
+    url.searchParams.set("sso_error", reason);
+    return url.toString();
+  } catch {
+    return returnTo;
   }
 }

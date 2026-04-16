@@ -37,12 +37,20 @@ vi.mock("@/services/auth/jwt", () => ({
 }));
 
 // accessCookieService.extractFromRequest is what the middleware calls when
-// the Authorization header is missing.
+// the Authorization header is missing. isEnabled() gates the fallback so
+// disabled deployments never accept attacker-supplied cookies.
+// vi.hoisted runs before vi.mock factories so we can share these mocks
+// with the test bodies below.
+const { extractFromRequestMock, isEnabledMock } = vi.hoisted(() => ({
+  extractFromRequestMock: vi.fn(
+    (req: { cookies?: Record<string, string> }) => req.cookies?.crt_access,
+  ),
+  isEnabledMock: vi.fn(() => true),
+}));
 vi.mock("@/services/auth/token/access-cookie.service", () => ({
   accessCookieService: {
-    extractFromRequest: vi.fn(
-      (req: { cookies?: Record<string, string> }) => req.cookies?.crt_access,
-    ),
+    extractFromRequest: extractFromRequestMock,
+    isEnabled: isEnabledMock,
   },
 }));
 
@@ -65,6 +73,8 @@ describe("authenticate", () => {
     next = vi.fn((err?: unknown) => {
       if (err) nextErrors.push(err);
     });
+    isEnabledMock.mockReturnValue(true);
+    extractFromRequestMock.mockClear();
   });
 
   it("uses the Bearer header when present", async () => {
@@ -101,6 +111,29 @@ describe("authenticate", () => {
       /Invalid or expired token/,
     );
   });
+
+  describe("when access cookie is disabled (no COOKIE_DOMAIN)", () => {
+    beforeEach(() => {
+      isEnabledMock.mockReturnValue(false);
+    });
+
+    it("does not consult the cookie even when one is present", async () => {
+      await authenticate(makeReq({ cookie: "good" }), {} as Response, next);
+      expect(extractFromRequestMock).not.toHaveBeenCalled();
+      // No header, cookie ignored → unauthorized
+      expect(nextErrors).toHaveLength(1);
+      expect((nextErrors[0] as Error).message).toMatch(
+        /Authentication required/,
+      );
+    });
+
+    it("still accepts the Bearer header", async () => {
+      const req = makeReq({ header: "Bearer good" });
+      await authenticate(req, {} as Response, next);
+      expect(nextErrors).toHaveLength(0);
+      expect(req.user?.username).toBe("alice");
+    });
+  });
 });
 
 describe("optionalAuth", () => {
@@ -108,6 +141,8 @@ describe("optionalAuth", () => {
 
   beforeEach(() => {
     next = vi.fn();
+    isEnabledMock.mockReturnValue(true);
+    extractFromRequestMock.mockClear();
   });
 
   it("attaches user when a valid header token is present", async () => {

@@ -11,6 +11,12 @@ import { AuthRole } from "@/services/discord/oauth/oauth.service";
  *
  * The header wins when both are present so explicit clients (mod API,
  * scripts) can override the ambient browser cookie.
+ *
+ * The cookie fallback is skipped entirely when the cookie service is
+ * disabled (no COOKIE_DOMAIN configured) — without that the server never
+ * sets a crt_access cookie, so accepting an attacker-supplied one would
+ * just waste a JWT verify call. This keeps the disabled path strictly
+ * equivalent to the pre-SSO behavior.
  */
 function extractAccessToken(req: Request): string | undefined {
   const authHeader = req.headers.authorization;
@@ -18,6 +24,7 @@ function extractAccessToken(req: Request): string | undefined {
     ? authHeader.substring(7)
     : authHeader;
   if (headerToken) return headerToken;
+  if (!accessCookieService.isEnabled()) return undefined;
   return accessCookieService.extractFromRequest(req);
 }
 

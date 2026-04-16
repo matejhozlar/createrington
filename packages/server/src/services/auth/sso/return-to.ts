@@ -31,10 +31,19 @@ const compiledPatterns: RegExp[] = config.app.auth.sso.returnToWhitelist.map(
 );
 
 /**
+ * Maximum length of a candidate return_to URL. Defense-in-depth against
+ * pathological-pattern ReDoS — the whitelist is admin-controlled but a
+ * sloppy pattern with nested quantifiers run against an unbounded input
+ * could chew through CPU. 2048 chars is generous for any legitimate
+ * deep-link return URL while still bounding regex execution.
+ */
+const MAX_RETURN_TO_LENGTH = 2048;
+
+/**
  * Validate a candidate return_to URL against the configured whitelist.
  *
  * Rejects:
- * - Anything that doesn't parse as an absolute URL
+ * - Anything missing, longer than MAX_RETURN_TO_LENGTH, or not an absolute URL
  * - Non-https schemes (prevents downgrade attacks)
  * - Anything no whitelist pattern matches
  *
@@ -43,6 +52,7 @@ const compiledPatterns: RegExp[] = config.app.auth.sso.returnToWhitelist.map(
  */
 export function validateReturnTo(candidate: string | undefined): string | null {
   if (!candidate) return null;
+  if (candidate.length > MAX_RETURN_TO_LENGTH) return null;
 
   let parsed: URL;
   try {
@@ -67,6 +77,7 @@ export function makeReturnToValidator(patterns: string[]) {
   const compiled = patterns.map((p) => new RegExp(p));
   return (candidate: string | undefined): string | null => {
     if (!candidate) return null;
+    if (candidate.length > MAX_RETURN_TO_LENGTH) return null;
     let parsed: URL;
     try {
       parsed = new URL(candidate);
