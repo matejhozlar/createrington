@@ -85,6 +85,7 @@ export function ChatHeader({
                 variant="ghost"
                 onClick={onEndSession}
                 aria-label="End session"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 <Square size={12} />
               </Button>
