@@ -6,6 +6,8 @@ export default defineConfig({
     globals: true,
     environment: "node",
     setupFiles: ["./src/tests/setup.ts"],
+    include: ["src/tests/**/*.test.ts"],
+    exclude: ["dist/**", "node_modules/**"],
     env: {
       VALIDATION_MODE: "generation",
     },

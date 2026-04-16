@@ -1,4 +1,24 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterAll, vi } from "vitest";
+
+// Mock the config so this test doesn't depend on env vars or the real
+// production singleton state. The real config requires COGS_AND_STEAM_*
+// env vars that aren't set in CI.
+vi.mock("@/config", () => ({
+  default: {
+    servers: {
+      cogs: {
+        id: 1,
+        name: "Test Server",
+        rcon: {
+          host: "127.0.0.1",
+          port: 25575,
+          password: "test-password",
+        },
+      },
+    },
+  },
+}));
+
 import {
   MinecraftRconManager,
   WhitelistAction,
@@ -8,39 +28,70 @@ import {
 describe("MinecraftRconManager", () => {
   let rconManager: MinecraftRconManager;
 
-  beforeEach(() => {
-    vi.resetModules();
+  beforeEach(async () => {
+    // shutdown() resets the singleton so each test gets a fresh instance.
+    await MinecraftRconManager.getInstance().shutdown();
     rconManager = MinecraftRconManager.getInstance();
   });
 
+  afterAll(async () => {
+    await MinecraftRconManager.getInstance().shutdown();
+  });
+
   describe("Configuration", () => {
-    it("should load server configuration on initialization", () => {
-      const serverIds = rconManager.getServerIds();
-      expect(serverIds).toContain(1);
-      expect(serverIds).toContain(2);
+    it("loads the configured server on initialization", () => {
+      expect(rconManager.getServerIds()).toEqual([1]);
     });
 
-    it("should throw ServerNotFoundError for unknown server", async () => {
+    it("exposes server info for a configured server", () => {
+      const info = rconManager.getServerInfo(1);
+      expect(info).toMatchObject({
+        id: 1,
+        name: "Test Server",
+        rcon: { host: "127.0.0.1", port: 25575, password: "test-password" },
+      });
+    });
+
+    it("reports configured servers via hasServer", () => {
+      expect(rconManager.hasServer(1)).toBe(true);
+      expect(rconManager.hasServer(99)).toBe(false);
+    });
+
+    it("throws ServerNotFoundError for an unknown server", async () => {
       await expect(rconManager.send(0 as ServerId, "list")).rejects.toThrow(
         "Server with ID 0 not found in configuration",
       );
     });
   });
 
+  describe("Dynamic registration", () => {
+    it("registers and unregisters a server at runtime", async () => {
+      rconManager.registerServer(42, "Dynamic", {
+        host: "10.0.0.1",
+        port: 25580,
+        password: "pw",
+      });
+      expect(rconManager.hasServer(42)).toBe(true);
+
+      await rconManager.unregisterServer(42);
+      expect(rconManager.hasServer(42)).toBe(false);
+    });
+  });
+
   describe("Command validation", () => {
-    it("should reject empty commands", async () => {
+    it("rejects empty commands before attempting to connect", async () => {
       await expect(rconManager.send(1, "")).rejects.toThrow(
         "Command cannot be empty",
       );
     });
 
-    it("should reject whitelist without player name", async () => {
+    it("rejects whitelist add/remove without a player name", async () => {
       await expect(
         rconManager.whitelist(1, WhitelistAction.ADD),
       ).rejects.toThrow("Player name is required");
     });
 
-    it("should validate give command parameters", async () => {
+    it("validates give command parameters", async () => {
       await expect(rconManager.give(1, "", "diamond", 1)).rejects.toThrow(
         "Player cannot be empty",
       );
@@ -56,13 +107,18 @@ describe("MinecraftRconManager", () => {
   });
 
   describe("Statistics", () => {
-    it("should return correct stats structure", () => {
+    it("returns the correct stats structure", () => {
       const stats = rconManager.getStats();
 
-      expect(stats).toHaveProperty("totalConfigured");
-      expect(stats).toHaveProperty("activeConnections");
-      expect(stats).toHaveProperty("servers");
-      expect(Array.isArray(stats.servers)).toBe(true);
+      expect(stats.totalConfigured).toBe(1);
+      expect(stats.activeConnections).toBe(0);
+      expect(stats.servers).toEqual([
+        expect.objectContaining({
+          serverId: 1,
+          serverName: "Test Server",
+          connected: false,
+        }),
+      ]);
     });
   });
 });
