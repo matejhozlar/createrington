@@ -11,6 +11,12 @@ import type { ChatMessage } from "./types";
 interface MessageRowProps {
   message: ChatMessage;
   navigate: (to: string) => void;
+  /** True when this message is the last in a same-author run — the avatar
+   * and hover meta row only render on this one to tighten grouped bubbles. */
+  showAvatar: boolean;
+  /** True when the previous message had a different author. Adds extra
+   * breathing room above to visually separate turns. */
+  isGroupStart: boolean;
 }
 
 function formatTime(iso: string): string {
@@ -28,6 +34,8 @@ function formatTime(iso: string): string {
 export function MessageRow({
   message,
   navigate,
+  showAvatar,
+  isGroupStart,
 }: MessageRowProps): React.JSX.Element {
   const { user } = useAuth();
   const isAck = message.kind === "ack";
@@ -68,6 +76,7 @@ export function MessageRow({
       className={cn(
         "group flex flex-col gap-1.5",
         isUser ? "items-end" : "items-start",
+        isGroupStart ? "mt-3 first:mt-0" : "mt-0.5",
       )}
     >
       <div
@@ -76,20 +85,24 @@ export function MessageRow({
           isUser && "flex-row-reverse",
         )}
       >
-        {isUser ? (
-          <img
-            src={user?.minecraftUuid ? mcHeadsAvatar(user.minecraftUuid) : ""}
-            alt={user?.minecraftUsername ?? "You"}
-            className="size-6 shrink-0 rounded bg-muted object-cover"
-            loading="lazy"
-          />
+        {showAvatar ? (
+          isUser ? (
+            <img
+              src={user?.minecraftUuid ? mcHeadsAvatar(user.minecraftUuid) : ""}
+              alt={user?.minecraftUsername ?? "You"}
+              className="size-6 shrink-0 rounded bg-muted object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <img
+              src="/assets/logo/logo.png"
+              alt="Createrington"
+              className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
+              loading="lazy"
+            />
+          )
         ) : (
-          <img
-            src="/assets/logo/logo.png"
-            alt="Createrington"
-            className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
-            loading="lazy"
-          />
+          <div className="size-6 shrink-0" aria-hidden />
         )}
         <div
           className={cn(
@@ -112,7 +125,7 @@ export function MessageRow({
         </div>
       </div>
 
-      {!isUser && !isStreaming && content.length > 0 && (
+      {!isUser && !isStreaming && content.length > 0 && showAvatar && (
         <div
           className={cn(
             "flex items-center gap-2 pl-8 text-[0.625rem] text-muted-foreground",
