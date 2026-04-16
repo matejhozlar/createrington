@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { useParams } from "react-router-dom";
 import { useWebSocket } from "@/contexts/websocket";
@@ -1460,7 +1467,6 @@ export function ServerChat() {
       }
       await subscribe("messages" as SubscriptionType, serverId ?? 0);
       setLoading(false);
-      setTimeout(() => scrollToBottom("instant"), 50);
     }
 
     init();
@@ -1468,14 +1474,19 @@ export function ServerChat() {
       cancelled = true;
       unsubscribe("messages" as SubscriptionType, serverId);
     };
-  }, [
-    isConnected,
-    serverId,
-    requestInitialData,
-    subscribe,
-    unsubscribe,
-    scrollToBottom,
-  ]);
+  }, [isConnected, serverId, requestInitialData, subscribe, unsubscribe]);
+
+  // Pin the scroll to the bottom on the first render after loading resolves.
+  // useLayoutEffect runs synchronously after DOM mutations but before the
+  // browser paints, so the user never sees the messages at scrollTop=0 before
+  // a delayed scroll jumps them down. (The previous setTimeout-based approach
+  // caused a visible top→bottom flicker on route entry.)
+  useLayoutEffect(() => {
+    if (loading) return;
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [loading]);
 
   useEffect(() => {
     if (!isConnected || !serverId) return;
@@ -1529,14 +1540,6 @@ export function ServerChat() {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground">Invalid server ID</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loading size="medium" text="Loading chat..." />
       </div>
     );
   }
@@ -1595,13 +1598,24 @@ export function ServerChat() {
           <div
             className={cn(
               "flex items-center gap-2 rounded-full px-3 py-1.5 text-sm",
-              isConnected
-                ? "bg-green-500/20 text-green-500"
-                : "bg-destructive/20 text-destructive",
+              loading
+                ? "bg-muted/40 text-muted-foreground"
+                : isConnected
+                  ? "bg-green-500/20 text-green-500"
+                  : "bg-destructive/20 text-destructive",
             )}
           >
-            <span className="size-2 rounded-full bg-current"></span>
-            {isConnected ? "Connected" : "Disconnected"}
+            <span
+              className={cn(
+                "size-2 rounded-full bg-current",
+                loading && "animate-pulse",
+              )}
+            />
+            {loading
+              ? "Connecting..."
+              : isConnected
+                ? "Connected"
+                : "Disconnected"}
           </div>
         </div>
       </div>
@@ -1613,7 +1627,11 @@ export function ServerChat() {
           onScroll={handleScroll}
           className="h-full overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
         >
-          {messageGroups.length === 0 ? (
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loading size="medium" text="Loading chat..." />
+            </div>
+          ) : messageGroups.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
                 <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-sidebar-accent">
