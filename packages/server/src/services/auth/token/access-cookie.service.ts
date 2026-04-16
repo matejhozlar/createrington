@@ -32,32 +32,41 @@ class AccessCookieService {
     return AccessCookieService.instance;
   }
 
+  /** True when COOKIE_DOMAIN is configured — the cookie is only useful to cross-subdomain consumers */
+  isEnabled(): boolean {
+    return !!this.cookieDomain;
+  }
+
   /**
    * Set the access token as an httpOnly cookie with the same expiry as the
-   * underlying JWT.
+   * underlying JWT. No-op when COOKIE_DOMAIN is unset — the cookie is
+   * meaningless without a parent domain for cross-subdomain consumers.
    */
   setCookie(res: Response, token: string): void {
+    if (!this.cookieDomain) return;
     res.cookie(this.cookieName, token, {
       httpOnly: true,
       secure: config.envMode.isProd,
       sameSite: "lax",
       path: "/",
       maxAge: this.maxAgeMs,
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
+      domain: this.cookieDomain,
     });
   }
 
   /**
    * Clear the access cookie. Must use the same path/domain/security flags
    * as `setCookie` so the browser matches and removes the existing cookie.
+   * No-op when COOKIE_DOMAIN is unset (no cookie was ever set).
    */
   clearCookie(res: Response): void {
+    if (!this.cookieDomain) return;
     res.clearCookie(this.cookieName, {
       httpOnly: true,
       secure: config.envMode.isProd,
       sameSite: "lax",
       path: "/",
-      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
+      domain: this.cookieDomain,
     });
   }
 

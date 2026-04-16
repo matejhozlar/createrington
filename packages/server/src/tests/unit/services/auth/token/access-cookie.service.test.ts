@@ -127,4 +127,10 @@ describe("AccessCookieService", () => {
       expect(accessCookieService.extractFromRequest(req)).toBeUndefined();
     });
   });
+
+  describe("isEnabled", () => {
+    it("returns true when COOKIE_DOMAIN is configured", () => {
+      expect(accessCookieService.isEnabled()).toBe(true);
+    });
+  });
 });
