@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// auth.middleware imports `AuthRole` from oauth.service, which transitively
+// imports @/db — and @/db calls process.exit(1) at module load when it
+// can't reach Postgres (e.g. in CI). Mock the OAuth service so the import
+// chain stops at a no-op stub and never touches the DB.
+vi.mock("@/services/discord/oauth/oauth.service", () => ({
+  AuthRole: { ADMIN: "admin", USER: "user", UNVERIFIED: "unverified" },
+}));
+
 // jwtService.verify is the only thing we need from the JWT service.
 vi.mock("@/services/auth/jwt", () => ({
   jwtService: {
