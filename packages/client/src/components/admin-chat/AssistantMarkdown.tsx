@@ -12,7 +12,7 @@ export function AssistantMarkdown({
   navigate,
 }: AssistantMarkdownProps): React.JSX.Element {
   return (
-    <div className="prose-sm prose-invert max-w-none [&_:first-child]:mt-0 [&_:last-child]:mb-0 [&_p]:m-0 [&_p:not(:last-child)]:mb-1.5 [&_ul]:mb-1.5 [&_ul]:pl-5 [&_ol]:mb-1.5 [&_ol]:pl-5 [&_li]:my-0.5 [&_li>p]:m-0 [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-[0.9375rem] [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:font-semibold [&_hr]:my-2 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-border [&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:px-2.5 [&_blockquote]:py-1 [&_blockquote]:text-muted-foreground">
+    <div className="prose-sm prose-invert max-w-none [&_:first-child]:mt-0 [&_:last-child]:mb-0 [&_p]:m-0 [&_p:not(:last-child)]:mb-1.5 [&_ul]:mb-1.5 [&_ul]:list-disc [&_ul]:list-outside [&_ul]:pl-5 [&_ol]:mb-1.5 [&_ol]:list-decimal [&_ol]:list-outside [&_ol]:pl-5 [&_li]:my-0.5 [&_li>p]:m-0 [&_h1]:mt-2 [&_h1]:mb-1 [&_h1]:text-base [&_h1]:font-semibold [&_h2]:mt-2 [&_h2]:mb-1 [&_h2]:text-[0.9375rem] [&_h2]:font-semibold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-sm [&_h3]:font-semibold [&_h4]:mt-2 [&_h4]:mb-1 [&_h4]:font-semibold [&_hr]:my-2 [&_hr]:border-0 [&_hr]:border-t [&_hr]:border-border [&_blockquote]:my-1 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:px-2.5 [&_blockquote]:py-1 [&_blockquote]:text-muted-foreground">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={{
