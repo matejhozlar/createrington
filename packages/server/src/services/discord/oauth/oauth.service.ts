@@ -152,7 +152,10 @@ export class DiscordOAuthService {
    * @returns Promise containing the access token, refresh token, and token metadata
    * @throws Error if the token exchange fails
    */
-  async exchange(code: string): Promise<DiscordTokenResponse> {
+  async exchange(
+    code: string,
+    redirectUriOverride?: string,
+  ): Promise<DiscordTokenResponse> {
     try {
       const response = await axios.post<DiscordTokenResponse>(
         "https://discord.com/api/oauth2/token",
@@ -161,7 +164,7 @@ export class DiscordOAuthService {
           client_secret: this.config.clientSecret,
           grant_type: "authorization_code",
           code,
-          redirect_uri: this.config.redirectUri,
+          redirect_uri: redirectUriOverride ?? this.config.redirectUri,
         }),
         {
           headers: {
@@ -250,8 +253,11 @@ export class DiscordOAuthService {
    * @returns Promise containing the authenticated user data
    * @throws Error if any step of the authentication fails
    */
-  async authenticate(code: string): Promise<AuthenticatedUser> {
-    const tokenData = await this.exchange(code);
+  async authenticate(
+    code: string,
+    redirectUriOverride?: string,
+  ): Promise<AuthenticatedUser> {
+    const tokenData = await this.exchange(code, redirectUriOverride);
     const discordUser = await this.getUser(tokenData.access_token);
     const role = await this.getAuthRole(discordUser.id);
 
@@ -291,10 +297,10 @@ export class DiscordOAuthService {
    * @param state - Optional state parameter for CSRF protection
    * @returns The complete Discord authorization URL
    */
-  generateAuthUrl(state?: string): string {
+  generateAuthUrl(state?: string, redirectUriOverride?: string): string {
     const params = new URLSearchParams({
       client_id: this.config.clientId,
-      redirect_uri: this.config.redirectUri,
+      redirect_uri: redirectUriOverride ?? this.config.redirectUri,
       response_type: "code",
       scope: "identify",
     });

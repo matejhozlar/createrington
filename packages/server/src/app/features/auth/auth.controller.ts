@@ -3,7 +3,10 @@ import type { Request, Response } from "express";
 import { BadRequestError, UnauthorizedError } from "@/app/middleware";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
+import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { sessionService } from "@/services/auth/session/session.service";
+import { validateReturnTo } from "@/services/auth/sso/return-to";
+import config from "@/config";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
 import crypto from "node:crypto";
@@ -11,6 +14,16 @@ import crypto from "node:crypto";
 /** In-memory store for OAuth state tokens (state → expiry timestamp) */
 const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * In-memory store for the server-driven SSO flow. Distinct from
+ * `pendingStates` because each entry carries the validated return_to URL
+ * so the callback knows where to send the user after the Discord round-trip.
+ */
+const pendingSsoStates = new Map<
+  string,
+  { expiry: number; returnTo: string }
+>();
 
 /**
  * Authentication controller
@@ -100,6 +113,12 @@ export class AuthController {
       // Set refresh token as httpOnly cookie
       refreshTokenService.setCookie(res, rawRefreshToken);
 
+      // Also expose the access token as a cross-subdomain cookie so SSO
+      // consumers (e.g. sandbox.create-rington.com) can read it without
+      // implementing their own token storage. Existing first-party clients
+      // continue to use the Bearer header from the JSON response below.
+      accessCookieService.setCookie(res, accessToken);
+
       logger.info(
         `User ${user.username} (${user.discordId}) logged in successfully`,
       );
@@ -153,6 +172,7 @@ export class AuthController {
 
     if (!result) {
       refreshTokenService.clearCookie(res);
+      accessCookieService.clearCookie(res);
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
@@ -173,6 +193,7 @@ export class AuthController {
 
     const accessToken = jwtService.generateFromPayload(payload);
     refreshTokenService.setCookie(res, result.rawToken);
+    accessCookieService.setCookie(res, accessToken);
 
     res.json({
       success: true,
@@ -223,6 +244,7 @@ export class AuthController {
     }
 
     refreshTokenService.clearCookie(res);
+    accessCookieService.clearCookie(res);
 
     logger.info(`User ${req.user?.username || "Unknown"} logged out`);
 
@@ -245,6 +267,7 @@ export class AuthController {
 
     await sessionService.revokeAllForUser(req.user.discordId);
     refreshTokenService.clearCookie(res);
+    accessCookieService.clearCookie(res);
 
     logger.info(
       `User ${req.user.username} (${req.user.discordId}) logged out of all sessions`,
@@ -269,5 +292,109 @@ export class AuthController {
         user: req.user || null,
       },
     });
+  }
+
+  /**
+   * GET /api/auth/sso/start?return_to=<url>
+   *
+   * Server-driven SSO entry point for cross-subdomain consumers (e.g. the
+   * sandbox panel). Validates `return_to` against the configured whitelist,
+   * stores it server-side keyed by a fresh state token, and redirects the
+   * browser to Discord's authorization page with the SSO callback URI.
+   *
+   * Distinct from /api/auth/discord because the existing flow expects the
+   * client (main React app) to handle the redirect — that doesn't work
+   * cross-origin, so this endpoint takes ownership of the entire round-trip.
+   */
+  static async ssoStart(req: Request, res: Response): Promise<void> {
+    const callbackUrl = config.app.auth.sso.callbackUrl;
+    if (!callbackUrl) {
+      throw new BadRequestError("SSO is not configured on this server");
+    }
+
+    const returnTo = validateReturnTo(
+      req.query.return_to as string | undefined,
+    );
+    if (!returnTo) {
+      throw new BadRequestError(
+        "return_to is missing or not in the allowed list",
+      );
+    }
+
+    const state = crypto.randomBytes(32).toString("hex");
+    pendingSsoStates.set(state, {
+      expiry: Date.now() + STATE_TTL_MS,
+      returnTo,
+    });
+
+    // Cleanup expired SSO states opportunistically
+    for (const [key, entry] of pendingSsoStates) {
+      if (entry.expiry < Date.now()) pendingSsoStates.delete(key);
+    }
+
+    res.redirect(discordOAuth.generateAuthUrl(state, callbackUrl));
+  }
+
+  /**
+   * GET /api/auth/sso/callback?code=<code>&state=<state>
+   *
+   * Server-side completion of the SSO flow. Validates state, exchanges the
+   * Discord code, sets both cookies on the configured cookie domain, then
+   * redirects the browser to the original `return_to`.
+   *
+   * Errors short-circuit to a redirect so users see a clean failure state
+   * in the consumer (sandbox) rather than a JSON blob in the address bar.
+   */
+  static async ssoCallback(req: Request, res: Response): Promise<void> {
+    const callbackUrl = config.app.auth.sso.callbackUrl;
+    const code = req.query.code as string | undefined;
+    const state = req.query.state as string | undefined;
+
+    if (!code || !state) {
+      throw new BadRequestError("Missing code or state");
+    }
+
+    const entry = pendingSsoStates.get(state);
+    if (!entry) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+    pendingSsoStates.delete(state);
+    if (entry.expiry < Date.now()) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+
+    try {
+      const user = await discordOAuth.authenticate(code, callbackUrl);
+
+      if (user.role === AuthRole.UNVERIFIED) {
+        logger.warn(
+          `Unverified user ${user.username} (${user.discordId}) attempted SSO login`,
+        );
+        // Bounce back to consumer with an error flag so it can render its own UI
+        res.redirect(`${entry.returnTo}?sso_error=unverified`);
+        return;
+      }
+
+      const accessToken = jwtService.generate(user);
+      const rawRefreshToken = await sessionService.createSession({
+        discordId: user.discordId,
+        username: user.username,
+        avatar: user.avatar,
+        ip: req.clientIp || req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      refreshTokenService.setCookie(res, rawRefreshToken);
+      accessCookieService.setCookie(res, accessToken);
+
+      logger.info(
+        `User ${user.username} (${user.discordId}) completed SSO to ${entry.returnTo}`,
+      );
+
+      res.redirect(entry.returnTo);
+    } catch (error) {
+      logger.error("SSO callback failed:", error);
+      res.redirect(`${entry.returnTo}?sso_error=auth_failed`);
+    }
   }
 }

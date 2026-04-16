@@ -20,6 +20,10 @@ router.post(
   "/discord/callback",
   ...route("public", AuthController.handleDiscordCallback),
 );
+// GET /api/auth/sso/start - Server-driven SSO entry for cross-subdomain consumers
+router.get("/sso/start", ...route("public", AuthController.ssoStart));
+// GET /api/auth/sso/callback - Server-side SSO completion (Discord redirects here)
+router.get("/sso/callback", ...route("public", AuthController.ssoCallback));
 // POST /api/auth/refresh - Rotate refresh token (cookie-based, no Bearer needed)
 router.post("/refresh", ...route("public", AuthController.refreshToken));
 // POST /api/auth/logout - Revoke session via cookie + clear cookie
