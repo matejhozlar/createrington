@@ -96,7 +96,7 @@ export function MessageInput({
         className="max-h-24 min-h-9 flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-[0.8125rem] leading-relaxed text-foreground outline-none focus:border-ring"
       />
       <Button
-        size="icon-sm"
+        size="icon"
         onClick={onSubmit}
         disabled={!canSend}
         aria-label="Send message"

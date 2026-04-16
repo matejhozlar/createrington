@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Bot, Check, Copy, User } from "lucide-react";
+import { Check, Copy } from "lucide-react";
+import { useAuth } from "@/contexts/auth";
+import { mcHeadsAvatar } from "@/lib/external-urls";
 import { cn } from "@/lib/utils";
 import { coerceAction, parseActionsFromMessage } from "./actions";
 import { ActionCard } from "./ActionCard";
@@ -27,6 +29,7 @@ export function MessageRow({
   message,
   navigate,
 }: MessageRowProps): React.JSX.Element {
+  const { user } = useAuth();
   const isAck = message.kind === "ack";
   const isProgress = message.kind === "progress";
   const isStreaming = message.kind === "streaming";
@@ -43,7 +46,14 @@ export function MessageRow({
       : { content: message.content, actions: [] };
   const persistedActions = message.actions ?? [];
 
-  const handleCopy = async (): Promise<void> => {
+  const handleCopy = async (
+    e: React.MouseEvent<HTMLButtonElement>,
+  ): Promise<void> => {
+    // Release focus so the hover-to-reveal meta row (which also opens
+    // on focus-within for keyboard users) fades back out once the
+    // cursor leaves. Without this, focus lingers on the copy button
+    // after click and the row stays pinned open.
+    e.currentTarget.blur();
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
@@ -66,17 +76,21 @@ export function MessageRow({
           isUser && "flex-row-reverse",
         )}
       >
-        <div
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded-full",
-            isUser
-              ? "bg-primary/15 text-primary"
-              : "bg-muted text-muted-foreground",
-          )}
-          aria-hidden
-        >
-          {isUser ? <User size={14} /> : <Bot size={14} />}
-        </div>
+        {isUser ? (
+          <img
+            src={user?.minecraftUuid ? mcHeadsAvatar(user.minecraftUuid) : ""}
+            alt={user?.minecraftUsername ?? "You"}
+            className="size-6 shrink-0 rounded bg-muted object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <img
+            src="/assets/logo/logo.png"
+            alt="Createrington"
+            className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
+            loading="lazy"
+          />
+        )}
         <div
           className={cn(
             "max-w-[85%] rounded-lg px-3 py-2 text-[0.8125rem] leading-relaxed break-words",
@@ -108,7 +122,7 @@ export function MessageRow({
           <span>{formatTime(message.createdAt)}</span>
           <button
             type="button"
-            onClick={() => void handleCopy()}
+            onClick={(e) => void handleCopy(e)}
             className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
             aria-label="Copy message"
           >
