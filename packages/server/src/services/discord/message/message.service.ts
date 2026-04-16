@@ -150,6 +150,7 @@ export class DiscordMessageService {
         components: options.components,
         files: options.files,
         flags: options.flags,
+        allowedMentions: options.allowedMentions,
       };
 
       const message = await channel.send(messageOptions);

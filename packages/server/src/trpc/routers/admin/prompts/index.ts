@@ -62,7 +62,16 @@ export const adminPromptsRouter = router({
       const responses = await Q.player.prompt.response.findByPromptIdWithPlayer(
         input.id,
       );
-      return { prompt, responses };
+      // Resolve the creator's Minecraft username so the detail page can
+      // show a human-readable author instead of a raw Discord snowflake.
+      const creator = await Q.player.find({ discordId: prompt.createdBy });
+      return {
+        prompt,
+        responses,
+        creator: creator
+          ? { minecraftUsername: creator.minecraftUsername }
+          : null,
+      };
     }),
 
   create: adminProcedure

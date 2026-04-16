@@ -11,6 +11,14 @@ import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types"
 const MAX_MISSED_CLOSE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
 
 /**
+ * Node clamps setTimeout delays larger than the int32 ceiling
+ * (~2^31 - 1 ms ≈ 24.86 days) to 1 ms and fires immediately. A prompt
+ * scheduled further out than this needs to be woken up in chunks that
+ * fit inside the ceiling.
+ */
+const MAX_TIMER_MS = 2_000_000_000;
+
+/**
  * Player Prompt Service
  *
  * Owns the lifecycle of admin-authored prompts:
@@ -109,10 +117,19 @@ export class PlayerPromptService {
       );
     }
 
-    await Q.player.prompt.update(
-      { id: prompt.id },
-      { messageId: post.messageId },
-    );
+    // Persist the Discord message id. A transaction across the insert
+    // and update wouldn't help here because the Discord post sits
+    // between them, so we retry the update instead — transient pool
+    // exhaustion is the realistic failure mode, and losing the
+    // messageId means closePrompt can't edit the announcement later.
+    try {
+      await this.persistMessageId(prompt.id, post.messageId);
+    } catch (err) {
+      logger.error(
+        `Posted prompt #${prompt.id} to Discord (message ${post.messageId}) but failed to persist messageId. Close-time message edit will be skipped.`,
+        err,
+      );
+    }
 
     this.armClosureTimer(prompt.id, opts.durationMs);
     return { ...prompt, messageId: post.messageId };
@@ -192,7 +209,32 @@ export class PlayerPromptService {
       content: mention,
       embeds: embed,
       components: [row],
+      // Defense in depth — even though the Zod validator already
+      // restricts rolePingId to digits, this ensures Discord will
+      // refuse to ping anything else (especially @everyone/@here)
+      // if a future code path bypasses the validator.
+      allowedMentions: {
+        roles: prompt.rolePingId ? [prompt.rolePingId] : [],
+        parse: [],
+      },
     });
+  }
+
+  /**
+   * One retry on transient DB failure — if the post-Discord update
+   * keeps failing past that, the caller logs and moves on with a
+   * message-id-less row rather than losing the prompt entirely.
+   */
+  private async persistMessageId(
+    promptId: number,
+    messageId: string,
+  ): Promise<void> {
+    try {
+      await Q.player.prompt.update({ id: promptId }, { messageId });
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      await Q.player.prompt.update({ id: promptId }, { messageId });
+    }
   }
 
   private buildActiveEmbed(prompt: PlayerPrompt): EmbedBuilder {
@@ -262,19 +304,30 @@ export class PlayerPromptService {
     );
   }
 
+  /**
+   * Arms a closure timer for `msUntil` ms. If the duration exceeds
+   * `MAX_TIMER_MS`, sets a shorter timer that re-arms itself with the
+   * remainder — guarantees Node never sees an overflowing delay
+   * regardless of prompt length.
+   */
   private armClosureTimer(promptId: number, msUntil: number): void {
     const existing = this.closureTimers.get(promptId);
     if (existing) clearTimeout(existing);
 
-    const timer = setTimeout(() => {
-      this.closurePromptFromTimer(promptId);
-    }, msUntil);
-    this.closureTimers.set(promptId, timer);
-  }
+    if (msUntil <= MAX_TIMER_MS) {
+      const timer = setTimeout(() => {
+        this.closePrompt(promptId).catch((err) =>
+          logger.error(`Scheduled close failed for prompt #${promptId}:`, err),
+        );
+      }, msUntil);
+      this.closureTimers.set(promptId, timer);
+      return;
+    }
 
-  private closurePromptFromTimer(promptId: number): void {
-    this.closePrompt(promptId).catch((err) =>
-      logger.error(`Scheduled close failed for prompt #${promptId}:`, err),
-    );
+    const timer = setTimeout(() => {
+      this.closureTimers.delete(promptId);
+      this.armClosureTimer(promptId, msUntil - MAX_TIMER_MS);
+    }, MAX_TIMER_MS);
+    this.closureTimers.set(promptId, timer);
   }
 }

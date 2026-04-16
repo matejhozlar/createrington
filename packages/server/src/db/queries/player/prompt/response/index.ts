@@ -65,12 +65,16 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
   async findByPromptIdWithPlayer(
     promptId: number,
   ): Promise<PlayerPromptResponseWithPlayer[]> {
+    // Order by whichever of submitted_at / updated_at is newer so a
+    // player editing their response resurfaces them at the top of the
+    // admin review list — otherwise edits stay pinned at the original
+    // submission time and get buried.
     const query = `
       SELECT r.*, p.minecraft_username
       FROM ${this.table} r
       LEFT JOIN player p ON p.minecraft_uuid = r.minecraft_uuid
       WHERE r.prompt_id = $1
-      ORDER BY r.submitted_at DESC`;
+      ORDER BY GREATEST(r.submitted_at, r.updated_at) DESC`;
 
     try {
       const result = await this.db.query<

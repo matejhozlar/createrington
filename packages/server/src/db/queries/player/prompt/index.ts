@@ -73,8 +73,8 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
       WHERE status = 'active'
       ORDER BY ends_at ASC`;
     try {
-      const result = await this.db.query(query);
-      return this.mapRowsToEntities(result.rows as PlayerPrompt[]);
+      const result = await this.db.query<Record<string, unknown>>(query);
+      return result.rows.map((row) => this.mapRowToEntity(row as never));
     } catch (error) {
       logger.error("Failed to find active prompts:", error);
       throw error;

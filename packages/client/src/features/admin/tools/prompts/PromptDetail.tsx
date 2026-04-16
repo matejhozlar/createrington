@@ -61,8 +61,10 @@ export function PromptDetail() {
     );
   }
 
-  const { prompt, responses } = detailQuery.data;
+  const { prompt, responses, creator } = detailQuery.data;
   const isActive = prompt.status === "active";
+  const authorLabel =
+    creator?.minecraftUsername ?? `Discord user ${prompt.createdBy}`;
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
@@ -110,7 +112,8 @@ export function PromptDetail() {
               </p>
             )}
             <p className="text-xs text-muted-foreground">
-              Created {formatTime(prompt.createdAt)} • Closes{" "}
+              Created {formatTime(prompt.createdAt)} by{" "}
+              <span className="font-medium">{authorLabel}</span> • Closes{" "}
               {formatTime(prompt.endsAt)} • {responses.length} response
               {responses.length === 1 ? "" : "s"}
             </p>
