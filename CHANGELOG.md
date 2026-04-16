@@ -1,3 +1,22 @@
+## v1.7.0 (2026-04-16)
+
+### @createrington/server (1.6.2 → 1.7.0)
+- Add cross-subdomain SSO flow with access token cookie — new auth controller issues a short-lived `access_token` cookie on `/auth/sso/token` so the production app and dev subdomain can share a session without re-authenticating; the entire surface is gated on the presence of a `COOKIE_DOMAIN` env var and falls through to the existing JWT flow when absent
+- Add player prompts system — admins can create Discord-modal-based prompts (questions, surveys, acknowledgements) and send them to players; responses are captured via a new Discord button/modal interaction flow, stored in the DB, and browsable in the admin UI with a dedicated Prompts management page including role/channel pickers and per-response detail views
+- Split `db/schema.ts` into per-domain files — the monolithic 1 750-line schema file is broken out into `schema/player.ts`, `schema/discord.ts`, `schema/crypto.ts`, `schema/auth.ts`, etc.; no behaviour change, purely an organisational refactor
+- Add CI test job and bootstrap server unit test suite — Gitea Actions workflow runs `pnpm test:unit` on every push; 30+ unit test files cover format/id helpers, DB error classes, query helpers, embed builders, Discord utilities, crypto services, JWT, SSO, access-cookie service, and more
+
+### @createrington/client (0.2.3 → 0.2.4)
+- Add Admin Prompts management pages — new `AdminPrompts` list page and `PromptDetail` page let admins create, view, and delete prompts; `CreatePromptModal` supports configuring question text, response type (modal/reaction), target role/channel, and scheduling; response rows show per-player answers inline
+- Redesign admin chat UI and split into focused components — `AdminChat.tsx` is decomposed into `ChatPanel`, `MessageList`, `MessageRow`, `MessageInput`, `ChatHeader`, `ChatToggle`, `EmptyState`, `TypingIndicator`, `MentionMenu`, and `AssistantMarkdown`; message grouping for consecutive same-author messages reduces visual noise; tooltips, avatar display, and copy-focus behaviour are improved
+- Add lazy route loading with per-feature error boundaries — all admin route components are now code-split via a `lazyWithBoundary` helper, reducing initial bundle size and containing render crashes to individual feature panels; `ApplyToJoin` is migrated to React Hook Form + Zod validation
+- Polish nav-user dropdown — refined layout, spacing, and avatar presentation in the sidebar user menu
+- Polish base Button component — add press scale animation, destructive-variant icon wiggle, and consistent cursor styling; remove redundant `cursor-pointer` from consuming components
+- Fix input dark color-scheme — base `Input` now explicitly sets `color-scheme: dark` so browser-native controls (date pickers, number spinners) respect the dark theme
+- Fix web chat accents — chat UI accent colors updated from blue to gold to match the site palette
+- Fix web chat entry flicker and loading chrome — prevent flash of unstyled content on initial chat load by showing the chrome skeleton while data is in flight
+- Fix player list cache invalidation after deletion — deleting a player now correctly busts the admin players list query so the removed entry disappears without a manual refresh
+
 ## v1.6.2 (2026-04-14)
 
 ### @createrington/server (1.6.1 → 1.6.2)
