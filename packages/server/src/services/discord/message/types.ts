@@ -23,6 +23,13 @@ export interface SendMessageOptions {
   files?: AttachmentBuilder[];
   /** Optional message flags (e.g. MessageFlags.SuppressNotifications) */
   flags?: MessageCreateOptions["flags"];
+  /**
+   * Optional allowed-mentions guard. Useful when the message content
+   * embeds a role mention built from unvalidated input — passing
+   * `{ parse: [], roles: [...] }` prevents Discord from resolving any
+   * mentions outside the explicit allowlist (e.g. `@everyone`).
+   */
+  allowedMentions?: MessageCreateOptions["allowedMentions"];
 }
 
 /**

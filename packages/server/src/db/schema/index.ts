@@ -7,6 +7,7 @@ export * from "./donation";
 export * from "./faq";
 export * from "./leaderboard";
 export * from "./player";
+export * from "./player-prompt";
 export * from "./server";
 export * from "./structure";
 export * from "./ticket";

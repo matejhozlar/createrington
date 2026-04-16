@@ -45,6 +45,8 @@ export { PlayerMinecraftStatsQueries } from "./player/minecraft/stats";
 export { PlayerPlaytimeDailyQueries } from "./player/playtime/daily";
 export { PlayerPlaytimeHourlyQueries } from "./player/playtime/hourly";
 export { PlayerPlaytimeSummaryQueries } from "./player/playtime/summary";
+export { PlayerPromptQueries } from "./player/prompt";
+export { PlayerPromptResponseQueries } from "./player/prompt/response";
 export { PlayerSessionQueries } from "./player/session";
 export { PlayerStrikeQueries } from "./player/strike";
 export { RewardClaimQueries } from "./reward/claim";
