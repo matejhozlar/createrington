@@ -289,6 +289,7 @@ export function ApplyToJoin() {
                       name="referralSource"
                       render={({ field }) => (
                         <Select
+                          name={field.name}
                           value={field.value}
                           onValueChange={field.onChange}
                         >
@@ -333,6 +334,7 @@ export function ApplyToJoin() {
                         render={({ field }) => (
                           <Checkbox
                             id="agree-terms"
+                            name={field.name}
                             checked={field.value}
                             onCheckedChange={(checked) =>
                               field.onChange(checked === true)
