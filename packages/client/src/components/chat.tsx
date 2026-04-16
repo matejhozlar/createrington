@@ -298,7 +298,7 @@ function ChatMarkdown({
               className={cn(
                 "my-0.5",
                 isTitle
-                  ? "text-sm font-semibold text-sidebar-primary"
+                  ? "text-sm font-semibold text-primary"
                   : isEmbed
                     ? "text-sm text-muted-foreground"
                     : "text-sm text-foreground",
@@ -331,9 +331,7 @@ function ChatMarkdown({
                 rel="noopener noreferrer"
                 className={cn(
                   "hover:underline",
-                  isTitle
-                    ? "text-sidebar-primary font-semibold"
-                    : "text-sidebar-primary",
+                  isTitle ? "text-primary font-semibold" : "text-primary",
                 )}
               >
                 {children}
@@ -352,7 +350,7 @@ function ChatMarkdown({
                 className={cn(
                   "rounded font-mono",
                   isTitle
-                    ? "bg-sidebar-accent px-1.5 py-0.5 text-xs text-sidebar-primary font-semibold"
+                    ? "bg-sidebar-accent px-1.5 py-0.5 text-xs text-primary font-semibold"
                     : isEmbed
                       ? "bg-sidebar-accent px-1.5 py-0.5 text-xs text-muted-foreground"
                       : "bg-sidebar-accent px-1.5 py-0.5 text-sm text-foreground",
@@ -416,9 +414,9 @@ function ChatMarkdown({
           blockquote: ({ children }) => (
             <blockquote
               className={cn(
-                "my-1.5 border-l-2 border-sidebar-primary pl-3 italic",
+                "my-1.5 border-l-2 border-primary pl-3 italic",
                 isEmbed
-                  ? "border-sidebar-primary/50 pl-2 text-xs text-muted-foreground/80"
+                  ? "border-primary/50 pl-2 text-xs text-muted-foreground/80"
                   : "text-muted-foreground",
               )}
             >
@@ -466,7 +464,7 @@ function ChatMarkdown({
               className={cn(
                 "font-semibold",
                 isTitle
-                  ? "text-sidebar-primary"
+                  ? "text-primary"
                   : isEmbed
                     ? "text-muted-foreground"
                     : "text-foreground",
@@ -480,7 +478,7 @@ function ChatMarkdown({
               className={cn(
                 "italic",
                 isTitle
-                  ? "text-sidebar-primary font-semibold"
+                  ? "text-primary font-semibold"
                   : isEmbed
                     ? "text-muted-foreground"
                     : "text-foreground",
@@ -528,7 +526,7 @@ function Avatar({
           onError={() => setBroken(true)}
         />
       ) : (
-        <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-sidebar-primary to-chart-4 text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
+        <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-chart-4 text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
           {initials}
         </div>
       )}
@@ -823,7 +821,7 @@ function MessageRow({
                 borderLeftColor:
                   embed.color !== undefined
                     ? `#${embed.color.toString(16).padStart(6, "0")}`
-                    : "var(--sidebar-primary)",
+                    : "var(--primary)",
               }}
             >
               {embed.author && (
@@ -1133,7 +1131,7 @@ function PlayerRow({
                 onError={() => setBroken(true)}
               />
             ) : (
-              <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-chart-2 to-sidebar-primary text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
+              <div className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-chart-2 to-primary text-xs font-semibold text-white ring-2 ring-sidebar ring-offset-1 ring-offset-background">
                 {initials}
               </div>
             )}
@@ -1226,7 +1224,7 @@ function PlayerListPanel({
       >
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <Users className="size-4 text-sidebar-primary" />
+            <Users className="size-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">
               Online Players
             </h2>
@@ -1585,7 +1583,7 @@ export function ServerChat() {
               className={cn(
                 "flex size-9 items-center justify-center rounded-lg transition-colors cursor-pointer",
                 playerListOpen
-                  ? "bg-sidebar-primary text-white hover:bg-sidebar-primary/90"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "bg-sidebar-accent text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground",
               )}
               title={playerListOpen ? "Close player list" : "Show player list"}
@@ -1674,7 +1672,7 @@ export function ServerChat() {
               className={cn(
                 "pointer-events-auto flex items-center justify-center shadow-lg transition-all duration-150 cursor-pointer",
                 unreadCount > 0
-                  ? "gap-2 rounded-full bg-sidebar-primary px-3.5 py-1.5 text-white hover:bg-sidebar-primary/90"
+                  ? "gap-2 rounded-full bg-primary px-3.5 py-1.5 text-primary-foreground hover:bg-primary/90"
                   : "size-9 rounded-full bg-card ring-1 ring-border hover:bg-sidebar-accent",
               )}
             >
@@ -1746,7 +1744,7 @@ export function ServerChat() {
             type="button"
             onClick={sendMessage}
             disabled={!canSend || (!draft.trim() && !imageFile)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-white transition-colors hover:bg-sidebar-primary/90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
             {sending ? (
               <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
