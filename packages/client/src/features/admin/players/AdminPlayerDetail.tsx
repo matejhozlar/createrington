@@ -115,7 +115,7 @@ export function AdminPlayerDetail() {
           <p className="text-destructive">{error || "Player not found"}</p>
           <Button
             onClick={() => navigate("/admin/players")}
-            className="mt-4 cursor-pointer"
+            className="mt-4"
             variant="outline"
           >
             <ArrowLeft className="size-4" />

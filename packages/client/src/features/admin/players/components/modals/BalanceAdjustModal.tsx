@@ -85,7 +85,6 @@ export function BalanceAdjustModal({
                     prev.startsWith("-") ? prev.slice(1) : `-${prev}`,
                   )
                 }
-                className="cursor-pointer"
               >
                 {amount.startsWith("-") ? (
                   <Plus className="size-4" />
@@ -112,15 +111,11 @@ export function BalanceAdjustModal({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="flex-1 cursor-pointer"
-            onClick={onClose}
-          >
+          <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={handleSubmit}
             disabled={!amount || !reason || adjustBalance.isPending}
           >

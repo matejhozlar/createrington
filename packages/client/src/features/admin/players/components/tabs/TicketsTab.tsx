@@ -96,7 +96,7 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
             <p className="text-destructive">{error}</p>
             <Button
               onClick={() => ticketsQuery.refetch()}
-              className="mt-4 cursor-pointer"
+              className="mt-4"
               variant="outline"
             >
               Try Again
@@ -185,7 +185,6 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                     }}
                     className={cn(
                       page === 0 && "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>
@@ -204,7 +203,6 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                           handlePageChange(item);
                         }}
                         isActive={page === item}
-                        className="cursor-pointer"
                       >
                         {item + 1}
                       </PaginationLink>
@@ -222,7 +220,6 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
                     className={cn(
                       page >= totalPages - 1 &&
                         "pointer-events-none opacity-50",
-                      "cursor-pointer",
                     )}
                   />
                 </PaginationItem>

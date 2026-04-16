@@ -109,7 +109,6 @@ export function EditFaqModal({
                 size="sm"
                 variant={matchMode === "keywords" ? "default" : "outline"}
                 onClick={() => setMatchMode("keywords")}
-                className="cursor-pointer"
               >
                 Keywords
               </Button>
@@ -118,7 +117,6 @@ export function EditFaqModal({
                 size="sm"
                 variant={matchMode === "regex" ? "default" : "outline"}
                 onClick={() => setMatchMode("regex")}
-                className="cursor-pointer"
               >
                 Regex
               </Button>
@@ -223,16 +221,11 @@ export function EditFaqModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="cursor-pointer"
               disabled={updateEntry.isPending}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={updateEntry.isPending}
-            >
+            <Button type="submit" disabled={updateEntry.isPending}>
               {updateEntry.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>

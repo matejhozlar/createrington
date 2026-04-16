@@ -79,14 +79,14 @@ export function RemoveStrikeModal({
         <DialogFooter>
           <Button
             variant="outline"
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={onClose}
             disabled={removeStrike.isPending}
           >
             Cancel
           </Button>
           <Button
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={handleSubmit}
             disabled={!reason.trim() || removeStrike.isPending}
           >

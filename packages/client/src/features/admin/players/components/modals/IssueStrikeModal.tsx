@@ -132,15 +132,11 @@ export function IssueStrikeModal({
         </div>
 
         <DialogFooter>
-          <Button
-            variant="outline"
-            className="flex-1 cursor-pointer"
-            onClick={onClose}
-          >
+          <Button variant="outline" className="flex-1" onClick={onClose}>
             Cancel
           </Button>
           <Button
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={handleSubmit}
             disabled={!description || issueStrike.isPending}
           >

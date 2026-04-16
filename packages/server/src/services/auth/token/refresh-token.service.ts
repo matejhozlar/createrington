@@ -20,10 +20,12 @@ class RefreshTokenService {
 
   private readonly expiresInDays: number;
   private readonly cookieName: string;
+  private readonly cookieDomain: string | undefined;
 
   private constructor() {
     this.expiresInDays = config.app.auth.refreshToken.expiresInDays;
     this.cookieName = config.app.auth.cookie.name;
+    this.cookieDomain = config.app.auth.cookie.domain;
   }
 
   // ==========================================================================
@@ -90,6 +92,7 @@ class RefreshTokenService {
       sameSite: "lax",
       path: "/api/auth",
       maxAge: this.expiresInDays * 86_400_000,
+      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
     });
   }
 
@@ -107,6 +110,7 @@ class RefreshTokenService {
       secure: config.envMode.isProd,
       sameSite: "lax",
       path: "/api/auth",
+      ...(this.cookieDomain ? { domain: this.cookieDomain } : {}),
     });
   }
 

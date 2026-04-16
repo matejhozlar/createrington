@@ -22,31 +22,44 @@ export function EmbedActionPreview({
   const fields = Array.isArray(embed.fields) ? embed.fields : [];
 
   return (
-    <div className="ac-embed-preview">
-      <div className="ac-embed-stripe" style={{ background: stripe }} />
-      <div className="ac-embed-body">
-        {embed.author && <div className="ac-embed-author">{embed.author}</div>}
-        {embed.title && (
-          <div className="ac-embed-title">{String(embed.title)}</div>
+    <div className="flex max-w-full overflow-hidden rounded border border-border bg-muted">
+      <div
+        className="w-[3px] shrink-0"
+        style={{ background: stripe }}
+        aria-hidden
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-1 px-2.5 py-2">
+        {embed.author && (
+          <div className="text-[0.6875rem] font-medium text-muted-foreground">
+            {embed.author}
+          </div>
         )}
-        <div className="ac-embed-main">
-          <div className="ac-embed-text">
+        {embed.title && (
+          <div className="break-words text-[0.8125rem] leading-tight font-semibold text-foreground">
+            {String(embed.title)}
+          </div>
+        )}
+        <div className="flex items-start gap-2">
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
             {embed.description && (
-              <div className="ac-embed-desc">{String(embed.description)}</div>
+              <div className="text-xs leading-snug break-words whitespace-pre-wrap text-muted-foreground">
+                {String(embed.description)}
+              </div>
             )}
             {fields.length > 0 && (
-              <div className="ac-embed-fields">
+              <div className="mt-1 grid grid-cols-1 gap-1">
                 {fields.slice(0, 6).map((f, i) => (
-                  <div
-                    key={i}
-                    className={`ac-embed-field${f.inline ? " ac-embed-field-inline" : ""}`}
-                  >
-                    <div className="ac-embed-field-name">{f.name}</div>
-                    <div className="ac-embed-field-value">{f.value}</div>
+                  <div key={i} className="flex flex-col gap-px">
+                    <div className="text-[0.6875rem] font-semibold text-foreground">
+                      {f.name}
+                    </div>
+                    <div className="text-[0.6875rem] break-words whitespace-pre-wrap text-muted-foreground">
+                      {f.value}
+                    </div>
                   </div>
                 ))}
                 {fields.length > 6 && (
-                  <div className="ac-embed-fields-more">
+                  <div className="text-[0.6875rem] italic text-muted-foreground">
                     +{fields.length - 6} more
                   </div>
                 )}
@@ -55,7 +68,7 @@ export function EmbedActionPreview({
           </div>
           {embed.thumbnailUrl && (
             <img
-              className="ac-embed-thumb"
+              className="size-12 shrink-0 rounded object-cover"
               src={embed.thumbnailUrl}
               alt=""
               loading="lazy"
@@ -64,14 +77,16 @@ export function EmbedActionPreview({
         </div>
         {embed.imageUrl && (
           <img
-            className="ac-embed-image"
+            className="mt-1 max-h-32 w-full rounded object-cover"
             src={embed.imageUrl}
             alt=""
             loading="lazy"
           />
         )}
         {embed.footer && (
-          <div className="ac-embed-footer">{String(embed.footer)}</div>
+          <div className="mt-1 text-[0.6875rem] text-muted-foreground">
+            {String(embed.footer)}
+          </div>
         )}
       </div>
     </div>

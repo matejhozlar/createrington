@@ -39,6 +39,7 @@ import { PlaytimeForwarderService } from "./playtime/forwarder.service";
 import { DonationService } from "./donation/donation.service";
 import { structurePackService } from "./structure-pack";
 import { StructurePackRotationService } from "./structure-pack/rotation";
+import { PlayerPromptService } from "./player-prompt";
 
 /**
  * Registers all application services with the shared container
@@ -237,6 +238,19 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DATABASE] },
+  );
+
+  container.register(
+    Services.PLAYER_PROMPT_SERVICE,
+    async (c) => {
+      const messageService = await c.get(Services.MESSAGE_SERVICE);
+      const service = new PlayerPromptService(messageService);
+      await service.initialize();
+      return service;
+    },
+    {
+      dependencies: [Services.DATABASE, Services.MESSAGE_SERVICE],
+    },
   );
 
   container.register(

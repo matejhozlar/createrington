@@ -174,7 +174,6 @@ export function MaintenanceToggle({
           <Button
             variant="outline"
             size="sm"
-            className="cursor-pointer"
             onClick={() => setCancelDialogOpen(true)}
           >
             <X className="mr-1 size-3.5" />
@@ -189,13 +188,11 @@ export function MaintenanceToggle({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="cursor-pointer">
-                Keep Schedule
-              </AlertDialogCancel>
+              <AlertDialogCancel>Keep Schedule</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleCancelSchedule}
                 disabled={cancelMutation.isPending}
-                className="cursor-pointer bg-destructive hover:bg-destructive/90"
+                className="bg-destructive hover:bg-destructive/90"
               >
                 {cancelMutation.isPending ? "Cancelling..." : "Cancel Schedule"}
               </AlertDialogAction>
@@ -230,7 +227,7 @@ export function MaintenanceToggle({
           <Button
             variant="default"
             size="sm"
-            className="cursor-pointer bg-amber-500 text-white hover:bg-amber-600"
+            className="bg-amber-500 text-white hover:bg-amber-600"
             onClick={() => setDisableDialogOpen(true)}
           >
             Disable
@@ -259,13 +256,10 @@ export function MaintenanceToggle({
               </div>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="cursor-pointer">
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDisable}
                 disabled={toggleMutation.isPending}
-                className="cursor-pointer"
               >
                 {toggleMutation.isPending ? "Processing..." : "Disable"}
               </AlertDialogAction>
@@ -296,7 +290,7 @@ export function MaintenanceToggle({
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="cursor-pointer">
+          <Button variant="outline" size="sm">
             Enable
           </Button>
         </DialogTrigger>
@@ -375,9 +369,7 @@ export function MaintenanceToggle({
                 <Button
                   onClick={handleSchedule}
                   disabled={!scheduledAt || scheduleMutation.isPending}
-                  className={cn(
-                    "cursor-pointer bg-amber-500 hover:bg-amber-600",
-                  )}
+                  className={cn("bg-amber-500 hover:bg-amber-600")}
                 >
                   {scheduleMutation.isPending
                     ? "Scheduling..."
@@ -396,9 +388,7 @@ export function MaintenanceToggle({
                 <Button
                   onClick={handleInstantEnable}
                   disabled={toggleMutation.isPending}
-                  className={cn(
-                    "cursor-pointer bg-amber-500 hover:bg-amber-600",
-                  )}
+                  className={cn("bg-amber-500 hover:bg-amber-600")}
                 >
                   {toggleMutation.isPending
                     ? "Processing..."

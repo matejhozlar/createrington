@@ -107,7 +107,6 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
           size="sm"
           onClick={addField}
           disabled={fields.length >= 25}
-          className="cursor-pointer"
         >
           <Plus className="mr-1 size-3.5" />
           Add Field
@@ -139,7 +138,7 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                         size="sm"
                         onClick={() => moveField(i, -1)}
                         disabled={i === 0}
-                        className="size-7 cursor-pointer p-0"
+                        className="size-7 p-0"
                       >
                         <ArrowUp className="size-3.5" />
                       </Button>
@@ -154,7 +153,7 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                         size="sm"
                         onClick={() => moveField(i, 1)}
                         disabled={i === fields.length - 1}
-                        className="size-7 cursor-pointer p-0"
+                        className="size-7 p-0"
                       >
                         <ArrowDown className="size-3.5" />
                       </Button>
@@ -168,7 +167,7 @@ export function EmbedFieldEditor({ fields, onChange }: EmbedFieldEditorProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => removeField(i)}
-                        className="size-7 cursor-pointer p-0 text-destructive hover:text-destructive"
+                        className="size-7 p-0 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="size-3.5" />
                       </Button>

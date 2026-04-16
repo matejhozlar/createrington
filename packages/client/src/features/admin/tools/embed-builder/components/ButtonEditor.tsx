@@ -101,7 +101,6 @@ export function ButtonEditor({
             size="sm"
             onClick={addLinkButton}
             disabled={totalButtons >= 5}
-            className="cursor-pointer"
           >
             <Plus className="mr-1 size-3.5" />
             Link
@@ -112,7 +111,6 @@ export function ButtonEditor({
             size="sm"
             onClick={addActionButton}
             disabled={totalButtons >= 5}
-            className="cursor-pointer"
           >
             <Plus className="mr-1 size-3.5" />
             Action
@@ -152,7 +150,7 @@ export function ButtonEditor({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeButton(btn, typeIndex)}
-                    className="size-7 cursor-pointer p-0 text-destructive hover:text-destructive"
+                    className="size-7 p-0 text-destructive hover:text-destructive"
                   >
                     <Trash2 className="size-3.5" />
                   </Button>

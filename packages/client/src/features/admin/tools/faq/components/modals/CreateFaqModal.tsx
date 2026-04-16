@@ -113,7 +113,6 @@ export function CreateFaqModal({
                 size="sm"
                 variant={matchMode === "keywords" ? "default" : "outline"}
                 onClick={() => setMatchMode("keywords")}
-                className="cursor-pointer"
               >
                 Keywords
               </Button>
@@ -122,7 +121,6 @@ export function CreateFaqModal({
                 size="sm"
                 variant={matchMode === "regex" ? "default" : "outline"}
                 onClick={() => setMatchMode("regex")}
-                className="cursor-pointer"
               >
                 Regex
               </Button>
@@ -227,16 +225,11 @@ export function CreateFaqModal({
               type="button"
               variant="outline"
               onClick={onClose}
-              className="cursor-pointer"
               disabled={createEntry.isPending}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="cursor-pointer"
-              disabled={createEntry.isPending}
-            >
+            <Button type="submit" disabled={createEntry.isPending}>
               {createEntry.isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>

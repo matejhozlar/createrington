@@ -76,6 +76,25 @@ const config = {
       },
       cookie: {
         name: env.REFRESH_COOKIE_NAME,
+        accessName: env.ACCESS_COOKIE_NAME,
+        // Empty string means host-only (single-domain) cookies — the existing
+        // behavior. Set to a parent domain (e.g. ".create-rington.com") to
+        // enable cross-subdomain SSO consumers.
+        domain: env.COOKIE_DOMAIN || undefined,
+      },
+      sso: {
+        callbackUrl: env.SSO_CALLBACK_URL ?? "",
+        // Defensive `??` because in VALIDATION_MODE=generation (used by tests
+        // and codegen) env vars bypass zod and arrive as raw process.env values
+        // — undefined when unset.
+        returnToWhitelist: (env.SSO_RETURN_TO_WHITELIST ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        corsOrigins: (env.SSO_CORS_ORIGINS ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
       },
       allowedServerIps: {
         local: env.LOCAL_SERVER_IP_ADDRESS,

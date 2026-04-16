@@ -19,14 +19,29 @@ import {
   findButtonHandler,
 } from "../../common/loaders/button-loader";
 import * as registrationModal from "../interactions/modals/registration";
+import * as promptSubmitModal from "../interactions/modals/prompt-submit";
 
 type ModalHandler = {
+  /** Exact customId OR a wildcard prefix ending in `:*` (e.g. `prompt:submit:*`). */
   customId: string;
   execute: (interaction: ModalSubmitInteraction) => Promise<void>;
 };
 
 /** Registry of modal-submit handlers keyed by the modal's customId. */
-const MODAL_HANDLERS: ModalHandler[] = [registrationModal];
+const MODAL_HANDLERS: ModalHandler[] = [registrationModal, promptSubmitModal];
+
+/**
+ * True if `handler` owns the given customId. Supports wildcard suffixes
+ * so dynamic customIds like `prompt:submit:123` can route to a single
+ * handler declared as `prompt:submit:*`.
+ */
+function modalHandlerMatches(handler: ModalHandler, customId: string): boolean {
+  if (handler.customId.endsWith(":*")) {
+    const prefix = handler.customId.slice(0, -1); // keep the trailing ":"
+    return customId.startsWith(prefix);
+  }
+  return handler.customId === customId;
+}
 
 // ==========================================================================
 // HELPERS
@@ -427,8 +442,8 @@ export function registerInteractionHandler(
 async function handleModalSubmit(
   interaction: ModalSubmitInteraction,
 ): Promise<void> {
-  const handler = MODAL_HANDLERS.find(
-    (h) => h.customId === interaction.customId,
+  const handler = MODAL_HANDLERS.find((h) =>
+    modalHandlerMatches(h, interaction.customId),
   );
 
   if (!handler) {

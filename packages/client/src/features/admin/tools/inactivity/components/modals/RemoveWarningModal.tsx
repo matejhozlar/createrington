@@ -116,12 +116,9 @@ export function RemoveWarningModal({
         </Field>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={handleClose} className="cursor-pointer">
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel onClick={handleClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            className="cursor-pointer"
             onClick={handleRemove}
             disabled={!canConfirm || removeWarning.isPending}
           >

@@ -81,11 +81,8 @@ export function ResolveWarningModal({
         </div>
 
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={onClose} className="cursor-pointer">
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            className="cursor-pointer"
             onClick={handleResolve}
             disabled={resolveWarning.isPending}
           >

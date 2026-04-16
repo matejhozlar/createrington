@@ -370,23 +370,14 @@ export function StructurePackDetail() {
                 Enabled
               </Label>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="cursor-pointer"
-              onClick={startEditing}
-            >
+            <Button variant="outline" size="sm" onClick={startEditing}>
               <Pencil className="size-4" />
               Edit
             </Button>
             {!pack.isActive && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="cursor-pointer"
-                  >
+                  <Button variant="destructive" size="sm">
                     <Trash2 className="size-4" />
                     Delete
                   </Button>
@@ -402,11 +393,8 @@ export function StructurePackDetail() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="cursor-pointer">
-                      Cancel
-                    </AlertDialogCancel>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      className="cursor-pointer"
                       onClick={() => deleteMutation.mutate({ id: packId })}
                     >
                       Delete
@@ -431,11 +419,7 @@ export function StructurePackDetail() {
                 CurseForge mods included in this pack
               </p>
             </div>
-            <Button
-              size="sm"
-              className="cursor-pointer"
-              onClick={() => setSearchOpen(true)}
-            >
+            <Button size="sm" onClick={() => setSearchOpen(true)}>
               <Plus className="size-4" />
               Add Mod
             </Button>
@@ -490,7 +474,7 @@ export function StructurePackDetail() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="cursor-pointer text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive"
                         onClick={() =>
                           setRemoveDialog({
                             modId: mod.id,
@@ -648,7 +632,6 @@ export function StructurePackDetail() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="cursor-pointer"
                 onClick={() => setSelectedModId(null)}
               >
                 <ArrowLeft className="mr-1 size-3" />
@@ -829,7 +812,6 @@ export function StructurePackDetail() {
             <Button
               onClick={handleBatchAdd}
               disabled={depsQuery.isLoading || addingBatch}
-              className="cursor-pointer"
             >
               {addingBatch ? (
                 <Loader2 className="size-3.5 animate-spin" />
@@ -968,7 +950,6 @@ export function StructurePackDetail() {
               variant="destructive"
               onClick={handleBatchRemove}
               disabled={checkRemoveDepsQuery.isLoading || removingBatch}
-              className="cursor-pointer"
             >
               {removingBatch ? (
                 <Loader2 className="size-3.5 animate-spin" />

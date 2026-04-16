@@ -1,7 +1,32 @@
 import type { NextFunction, Request, Response } from "express";
 import { ForbiddenError, UnauthorizedError } from "./error-handler";
 import { jwtService } from "@/services/auth/jwt";
+import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
+
+/**
+ * Resolve the access token from either the `Authorization: Bearer <token>`
+ * header (existing first-party clients) or the `crt_access` cookie set by
+ * the SSO flow for cross-subdomain consumers.
+ *
+ * The header wins when both are present so explicit clients (mod API,
+ * scripts) can override the ambient browser cookie.
+ *
+ * The cookie fallback is skipped entirely when the cookie service is
+ * disabled (no COOKIE_DOMAIN configured) — without that the server never
+ * sets a crt_access cookie, so accepting an attacker-supplied one would
+ * just waste a JWT verify call. This keeps the disabled path strictly
+ * equivalent to the pre-SSO behavior.
+ */
+function extractAccessToken(req: Request): string | undefined {
+  const authHeader = req.headers.authorization;
+  const headerToken = authHeader?.startsWith("Bearer ")
+    ? authHeader.substring(7)
+    : authHeader;
+  if (headerToken) return headerToken;
+  if (!accessCookieService.isEnabled()) return undefined;
+  return accessCookieService.extractFromRequest(req);
+}
 
 /**
  * Extracts and verifies JWT token from request
@@ -15,10 +40,7 @@ export const authenticate = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : authHeader;
+    const token = extractAccessToken(req);
 
     if (!token) {
       throw new UnauthorizedError("Authentication required");
@@ -47,10 +69,7 @@ export const optionalAuth = async (
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : authHeader;
+    const token = extractAccessToken(req);
 
     if (token) {
       const payload = jwtService.verify(token);

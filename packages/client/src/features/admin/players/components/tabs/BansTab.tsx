@@ -142,7 +142,6 @@ export function BansTab({
                   size="sm"
                   variant="outline"
                   onClick={() => onUnban(ban.id)}
-                  className="cursor-pointer"
                 >
                   Unban
                 </Button>

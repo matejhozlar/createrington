@@ -131,7 +131,7 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="size-5 cursor-pointer p-0 text-muted-foreground hover:text-foreground"
+              className="size-5 p-0 text-muted-foreground hover:text-foreground"
               aria-label="Insert"
             >
               <Plus className="size-3.5" />

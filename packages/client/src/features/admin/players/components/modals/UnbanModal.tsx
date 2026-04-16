@@ -97,14 +97,14 @@ export function UnbanModal({
         <DialogFooter>
           <Button
             variant="outline"
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={handleClose}
             disabled={unbanPlayer.isPending}
           >
             Cancel
           </Button>
           <Button
-            className="flex-1 cursor-pointer"
+            className="flex-1"
             onClick={handleSubmit}
             disabled={!reason.trim() || unbanPlayer.isPending}
           >
