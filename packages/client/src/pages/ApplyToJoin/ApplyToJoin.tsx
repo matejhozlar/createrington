@@ -1,7 +1,10 @@
 import { CheckCircle, Clock, ExternalLink } from "lucide-react";
 import { DISCORD_INVITE_URL } from "@/lib/external-urls";
-import { useState } from "react";
+import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Loading } from "@/components/loading-spinner";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -29,52 +32,112 @@ const REFERRAL_OPTIONS = [
   "Other",
 ] as const;
 
+interface FormValues {
+  discordName: string;
+  email: string;
+  referralSource: string;
+  referralOther: string;
+  agreedToTerms: boolean;
+}
+
+/**
+ * Waitlist vs open-enrollment changes which fields are required, so the
+ * schema is rebuilt whenever mode changes. The form isn't rendered during
+ * the status query's loading state, so the schema only ever settles once
+ * before the user can submit.
+ */
+function buildSchema(isWaitlistMode: boolean) {
+  return z
+    .object({
+      discordName: z.string(),
+      email: z.string(),
+      referralSource: z.string(),
+      referralOther: z.string(),
+      agreedToTerms: z.boolean(),
+    })
+    .superRefine((values, ctx) => {
+      if (!values.agreedToTerms) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "You must agree to the Privacy Policy and Terms of Service",
+          path: ["agreedToTerms"],
+        });
+      }
+
+      if (isWaitlistMode) {
+        if (!values.email.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Email is required",
+            path: ["email"],
+          });
+        } else if (!z.string().email().safeParse(values.email).success) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Enter a valid email address",
+            path: ["email"],
+          });
+        }
+
+        if (!values.discordName.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Discord username is required",
+            path: ["discordName"],
+          });
+        }
+      }
+    });
+}
+
 export function ApplyToJoin() {
   const statusQuery = trpc.public.waitlists.status.useQuery();
   const createMutation = trpc.public.waitlists.create.useMutation();
 
-  const [discordName, setDiscordName] = useState("");
-  const [email, setEmail] = useState("");
-  const [referralSource, setReferralSource] = useState("");
-  const [referralOther, setReferralOther] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";
+
+  const schema = useMemo(() => buildSchema(isWaitlistMode), [isWaitlistMode]);
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    setError,
+    clearErrors,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      discordName: "",
+      email: "",
+      referralSource: "",
+      referralOther: "",
+      agreedToTerms: false,
+    },
+  });
+
+  const referralSource = useWatch({ control, name: "referralSource" });
 
   const result = createMutation.data;
   const isAutoAccepted = result?.status === "auto_accepted";
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (isWaitlistMode && !email.trim()) {
-      setFormError("Email is required");
-      return;
-    }
-
-    if (isWaitlistMode && !discordName.trim()) {
-      setFormError("Discord username is required");
-      return;
-    }
-
-    if (!agreedToTerms) {
-      setFormError("You must agree to the Privacy Policy and Terms of Service");
-      return;
-    }
-
+  const onSubmit = handleSubmit(async (values) => {
+    // Drop any stale server error from a previous failed submit so the
+    // user sees only the outcome of this attempt.
+    clearErrors("root");
     const metadata: Record<string, string> = {};
-    if (referralSource) {
+    if (values.referralSource) {
       metadata.referralSource =
-        referralSource === "Other" ? referralOther || "Other" : referralSource;
+        values.referralSource === "Other"
+          ? values.referralOther.trim() || "Other"
+          : values.referralSource;
     }
 
     try {
       await createMutation.mutateAsync({
-        discordName: discordName.trim() || undefined,
-        email: email.trim() || undefined,
+        discordName: values.discordName.trim() || undefined,
+        email: values.email.trim() || undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
     } catch (err: unknown) {
@@ -82,9 +145,11 @@ export function ApplyToJoin() {
         err instanceof Error
           ? err.message
           : "Something went wrong. Please try again.";
-      setFormError(message);
+      // Surfaced at the bottom of the form under the submit button, matching
+      // the previous `formError` placement.
+      setError("root", { message });
     }
-  };
+  });
 
   if (statusQuery.isLoading) {
     return (
@@ -181,23 +246,23 @@ export function ApplyToJoin() {
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={onSubmit} className="space-y-4" noValidate>
                   {isWaitlistMode && (
-                    <Field>
+                    <Field data-invalid={!!errors.email}>
                       <FieldLabel htmlFor="email">Email Address</FieldLabel>
                       <Input
                         id="email"
                         type="email"
                         placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
+                        aria-invalid={!!errors.email}
+                        {...register("email")}
                       />
+                      <FieldError>{errors.email?.message}</FieldError>
                     </Field>
                   )}
 
                   {isWaitlistMode && (
-                    <Field>
+                    <Field data-invalid={!!errors.discordName}>
                       <FieldLabel htmlFor="discord-name">
                         Discord Username
                       </FieldLabel>
@@ -205,10 +270,10 @@ export function ApplyToJoin() {
                         id="discord-name"
                         type="text"
                         placeholder="e.g. username"
-                        value={discordName}
-                        onChange={(e) => setDiscordName(e.target.value)}
-                        required
+                        aria-invalid={!!errors.discordName}
+                        {...register("discordName")}
                       />
+                      <FieldError>{errors.discordName?.message}</FieldError>
                     </Field>
                   )}
 
@@ -219,25 +284,31 @@ export function ApplyToJoin() {
                         (optional)
                       </span>
                     </FieldLabel>
-                    <Select
-                      value={referralSource}
-                      onValueChange={setReferralSource}
-                    >
-                      <SelectTrigger id="referral">
-                        <SelectValue placeholder="Select an option" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REFERRAL_OPTIONS.map((option) => (
-                          <SelectItem
-                            key={option}
-                            value={option}
-                            className="cursor-pointer"
-                          >
-                            {option}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Controller
+                      control={control}
+                      name="referralSource"
+                      render={({ field }) => (
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger id="referral">
+                            <SelectValue placeholder="Select an option" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REFERRAL_OPTIONS.map((option) => (
+                              <SelectItem
+                                key={option}
+                                value={option}
+                                className="cursor-pointer"
+                              >
+                                {option}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
                   </Field>
 
                   {referralSource === "Other" && (
@@ -249,57 +320,77 @@ export function ApplyToJoin() {
                         id="referral-other"
                         type="text"
                         placeholder="Where did you hear about us?"
-                        value={referralOther}
-                        onChange={(e) => setReferralOther(e.target.value)}
+                        {...register("referralOther")}
                       />
                     </Field>
                   )}
 
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="agree-terms"
-                      checked={agreedToTerms}
-                      onCheckedChange={(checked) =>
-                        setAgreedToTerms(checked === true)
-                      }
-                      className="mt-0.5 cursor-pointer"
-                    />
-                    <label
-                      htmlFor="agree-terms"
-                      className="text-sm text-muted-foreground cursor-pointer select-none"
-                    >
-                      I agree to the{" "}
-                      <NavLink
-                        to="/privacy"
-                        target="_blank"
-                        className="text-primary hover:underline"
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-start gap-2">
+                      <Controller
+                        control={control}
+                        name="agreedToTerms"
+                        render={({ field }) => (
+                          <Checkbox
+                            id="agree-terms"
+                            checked={field.value}
+                            onCheckedChange={(checked) =>
+                              field.onChange(checked === true)
+                            }
+                            aria-invalid={!!errors.agreedToTerms}
+                            aria-describedby={
+                              errors.agreedToTerms
+                                ? "agree-terms-error"
+                                : undefined
+                            }
+                            className="mt-0.5 cursor-pointer"
+                          />
+                        )}
+                      />
+                      <label
+                        htmlFor="agree-terms"
+                        className="text-sm text-muted-foreground cursor-pointer select-none"
                       >
-                        Privacy Policy
-                      </NavLink>{" "}
-                      and{" "}
-                      <NavLink
-                        to="/terms"
-                        target="_blank"
-                        className="text-primary hover:underline"
-                      >
-                        Terms of Service
-                      </NavLink>
-                    </label>
+                        I agree to the{" "}
+                        <NavLink
+                          to="/privacy"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Privacy Policy
+                        </NavLink>{" "}
+                        and{" "}
+                        <NavLink
+                          to="/terms"
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Terms of Service
+                        </NavLink>
+                      </label>
+                    </div>
+                    {errors.agreedToTerms && (
+                      <FieldError id="agree-terms-error" className="pl-6">
+                        {errors.agreedToTerms.message}
+                      </FieldError>
+                    )}
                   </div>
-
-                  {formError && <FieldError>{formError}</FieldError>}
 
                   <Button
                     type="submit"
                     className="w-full cursor-pointer"
-                    disabled={createMutation.isPending}
+                    disabled={isSubmitting}
                   >
-                    {createMutation.isPending
+                    {isSubmitting
                       ? "Submitting..."
                       : isWaitlistMode
                         ? "Join Waitlist"
                         : "Apply Now"}
                   </Button>
+
+                  {errors.root && (
+                    <FieldError>{errors.root.message}</FieldError>
+                  )}
                 </form>
               </div>
 
