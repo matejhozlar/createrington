@@ -86,6 +86,21 @@ class RefreshTokenService {
    * @param token - The raw refresh token value to store in the cookie
    */
   setCookie(res: Response, token: string): void {
+    // Defensive clear of any leftover host-only cookie from before the
+    // COOKIE_DOMAIN migration. Without this the browser can hold both a
+    // host-only and a domain-scoped cookie under the same name; cookie-parser
+    // picks one non-deterministically, and if it grabs the stale host-only
+    // value the rotation system flags it as token theft and revokes the
+    // user's whole token family. Once each user has logged in once after
+    // this fix ships the legacy cookie is gone forever.
+    if (this.cookieDomain) {
+      res.clearCookie(this.cookieName, {
+        httpOnly: true,
+        secure: config.envMode.isProd,
+        sameSite: "lax",
+        path: "/api/auth",
+      });
+    }
     res.cookie(this.cookieName, token, {
       httpOnly: true,
       secure: config.envMode.isProd,
@@ -100,11 +115,20 @@ class RefreshTokenService {
    * Clear the refresh token cookie from the response
    *
    * Must use the same path and security flags as `setCookie` so the browser
-   * matches and removes the existing cookie.
-   *
-   * @param res - The Express response object to clear the cookie on
+   * matches and removes the existing cookie. Also clears any legacy
+   * host-only cookie left over from before the COOKIE_DOMAIN migration so
+   * logout truly logs the user out (otherwise the host-only cookie sticks
+   * around and confuses subsequent requests).
    */
   clearCookie(res: Response): void {
+    if (this.cookieDomain) {
+      res.clearCookie(this.cookieName, {
+        httpOnly: true,
+        secure: config.envMode.isProd,
+        sameSite: "lax",
+        path: "/api/auth",
+      });
+    }
     res.clearCookie(this.cookieName, {
       httpOnly: true,
       secure: config.envMode.isProd,

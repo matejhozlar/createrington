@@ -99,15 +99,35 @@ describe("AccessCookieService", () => {
   });
 
   describe("clearCookie", () => {
-    it("clears the cookie with matching name, path, and domain", () => {
+    it("clears both the host-only and domain-scoped variants", () => {
+      // Two clears: host-only first (no domain), then domain-scoped. Together
+      // they wipe any leftover legacy cookie from before the COOKIE_DOMAIN
+      // migration plus the current domain-scoped cookie.
       accessCookieService.clearCookie(res);
+      expect(clearCalls).toHaveLength(2);
+
+      const [hostOnlyName, hostOnlyOpts] = clearCalls[0];
+      expect(hostOnlyName).toBe("crt_access");
+      expect(hostOnlyOpts.domain).toBeUndefined();
+      expect(hostOnlyOpts.path).toBe("/");
+
+      const [domainName, domainOpts] = clearCalls[1];
+      expect(domainName).toBe("crt_access");
+      expect(domainOpts.domain).toBe(".create-rington.com");
+      expect(domainOpts.path).toBe("/");
+      expect(domainOpts.httpOnly).toBe(true);
+      expect(domainOpts.sameSite).toBe("lax");
+    });
+  });
+
+  describe("setCookie also clears the legacy host-only variant", () => {
+    it("issues a host-only clearCookie before setting the new domain cookie", () => {
+      accessCookieService.setCookie(res, "fresh-token");
+      // Exactly one clear (host-only) and one set (domain-scoped)
       expect(clearCalls).toHaveLength(1);
-      const [name, opts] = clearCalls[0];
-      expect(name).toBe("crt_access");
-      expect(opts.path).toBe("/");
-      expect(opts.domain).toBe(".create-rington.com");
-      expect(opts.httpOnly).toBe(true);
-      expect(opts.sameSite).toBe("lax");
+      expect(clearCalls[0][1].domain).toBeUndefined();
+      expect(cookieCalls).toHaveLength(1);
+      expect(cookieCalls[0][2].domain).toBe(".create-rington.com");
     });
   });
 

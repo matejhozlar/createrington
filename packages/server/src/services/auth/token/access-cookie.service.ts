@@ -41,9 +41,20 @@ class AccessCookieService {
    * Set the access token as an httpOnly cookie with the same expiry as the
    * underlying JWT. No-op when COOKIE_DOMAIN is unset — the cookie is
    * meaningless without a parent domain for cross-subdomain consumers.
+   *
+   * Defensively clears any leftover host-only cookie of the same name before
+   * setting the domain-scoped one. Without this the browser can hold both,
+   * and cookie-parser may pick the stale host-only value, which silently
+   * fails JWT verification and looks like a logged-out user.
    */
   setCookie(res: Response, token: string): void {
     if (!this.cookieDomain) return;
+    res.clearCookie(this.cookieName, {
+      httpOnly: true,
+      secure: config.envMode.isProd,
+      sameSite: "lax",
+      path: "/",
+    });
     res.cookie(this.cookieName, token, {
       httpOnly: true,
       secure: config.envMode.isProd,
@@ -58,9 +69,18 @@ class AccessCookieService {
    * Clear the access cookie. Must use the same path/domain/security flags
    * as `setCookie` so the browser matches and removes the existing cookie.
    * No-op when COOKIE_DOMAIN is unset (no cookie was ever set).
+   *
+   * Also clears any legacy host-only variant for the same reason as in
+   * `setCookie` — true logout means both shapes go away.
    */
   clearCookie(res: Response): void {
     if (!this.cookieDomain) return;
+    res.clearCookie(this.cookieName, {
+      httpOnly: true,
+      secure: config.envMode.isProd,
+      sameSite: "lax",
+      path: "/",
+    });
     res.clearCookie(this.cookieName, {
       httpOnly: true,
       secure: config.envMode.isProd,
