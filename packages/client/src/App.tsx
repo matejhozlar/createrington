@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -8,16 +8,13 @@ import {
 } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { trpc, trpcClient, queryClient } from "./lib/trpc";
+import { lazyNamed } from "./lib/lazy";
 import { AuthProvider, useAuth } from "./contexts/auth";
 import { WebSocketProvider } from "./contexts/websocket";
 import { ServerDataProvider } from "./contexts/server-data";
 import { PlayerDataProvider } from "./contexts/player-data";
 import { ProtectedRoute } from "./components/protected-route";
 import { Home } from "./pages/Home/Home";
-import { Profile } from "./pages/Profile/Profile";
-import { Settings } from "./pages/Settings/Settings";
-import { ServerDetail } from "./pages/ServerDetail/ServerDetail";
-import { ServerStatus } from "./pages/ServerStatus/ServerStatus";
 import { NotFound } from "./pages/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
 import { ToastProvider } from "./components/ui/toast";
@@ -28,61 +25,230 @@ import {
   SidebarTrigger,
 } from "./components/ui/sidebar";
 import { Logo } from "./components/logo";
-
-import { ServerChat } from "./components/chat";
-import { AdminChat } from "./components/admin-chat";
-import { AdminLogs } from "./features/admin/AdminLogs";
-import { AdminServers } from "./features/admin/AdminServers";
-import { AdminServerDetail } from "./features/admin/servers/AdminServerDetail";
-import { AdminPlayerProvider } from "./contexts/admin";
-import { AdminPlayerDetail } from "./features/admin/players/AdminPlayerDetail";
-import { AdminPlayers } from "./features/admin/AdminPlayers";
-import { AdminWaitlists } from "./features/admin/waitlists/AdminWaitlists";
-import { AdminTools } from "./features/admin/tools/AdminTools";
-import { AdminFaq } from "./features/admin/tools/faq/AdminFaq";
-import { InactivityManagement } from "./features/admin/tools/inactivity/InactivityManagement";
-import { EmbedBuilder } from "./features/admin/tools/embed-builder/EmbedBuilder";
-import { AutoMessages } from "./features/admin/tools/auto-messages/AutoMessages";
-import { Announcements } from "./features/admin/tools/announcements/Announcements";
-import { AdminDashboard } from "./features/admin/AdminDashboard";
-import { Changelog } from "./features/admin/Changelog";
-import { AdminStructurePacks } from "./features/admin/structure-packs/AdminStructurePacks";
-import { StructurePackDetail } from "./features/admin/structure-packs/StructurePackDetail";
-import { AdminCrypto } from "./features/admin/crypto/AdminCrypto";
-import { AdminDonations } from "./features/admin/donations/AdminDonations";
-import { CommandDocs } from "./features/admin/tools/command-docs/CommandDocs";
-import { StatSearch } from "./features/admin/tools/stat-search/StatSearch";
-import { AdminForceloads } from "./features/admin/tools/forceloads/AdminForceloads";
 import { Footer } from "./components/footer";
 import { LoadingScreen } from "./components/loading-spinner";
-import { Rules } from "./features/rules/Rules";
-import { PrivacyPolicy } from "./features/legal/PrivacyPolicy";
-import { TermsOfService } from "./features/legal/TermsOfService";
-import { Team } from "./features/team/Team";
-import { Donate } from "./features/donate/Donate";
-import { DonationSuccess } from "./features/donate/DonationSuccess";
-import { DonationCancel } from "./features/donate/DonationCancel";
-import { BlueMap } from "./pages/BlueMap/BlueMap";
-import { ApplyToJoin } from "./pages/ApplyToJoin/ApplyToJoin";
-import { Achievements } from "./pages/Achievements/Achievements";
-import { Advertisement } from "./pages/Advertisement";
-import { OnlinePlayers } from "./features/online-players/OnlinePlayers";
-import { CompareRender } from "./pages/Render/CompareRender";
-import { CryptoChartRender } from "./pages/Render/CryptoChartRender";
-import { ProfileRender } from "./pages/Render/ProfileRender";
-import { ActivityRender } from "./pages/Render/ActivityRender";
-import { TopRender } from "./pages/Render/TopRender";
+import { AdminPlayerProvider } from "./contexts/admin";
 import { CryptoDataProvider } from "./contexts/crypto-data";
-import { GuideList } from "./features/guides/GuideList";
-import { GuideDetail } from "./features/guides/GuideDetail";
-import { StructurePacks } from "./features/structure-packs/StructurePacks";
-import { CryptoLayout } from "./features/crypto/CryptoLayout";
-import { CryptoMarket } from "./features/crypto/market/CryptoMarket";
-import { TokenDetail } from "./features/crypto/token-detail/TokenDetail";
-import { Portfolio as CryptoPortfolio } from "./features/crypto/portfolio/Portfolio";
-import { TradeHistory as CryptoTradeHistory } from "./features/crypto/TradeHistory";
-import { Leaderboard as CryptoLeaderboard } from "./features/crypto/Leaderboard";
-import { ArticlePage as CryptoArticle } from "./features/crypto/ArticlePage";
+
+// ----------------------------------------------------------------------------
+// Lazy-loaded routes
+//
+// Everything below is code-split. Vite creates a chunk per lazy() call, so a
+// logged-out visitor hitting `/` never downloads the admin, crypto, or
+// puppeteer-render bundles. `Home` stays eagerly imported above so the
+// first-paint experience has no Suspense fallback.
+// ----------------------------------------------------------------------------
+
+// Puppeteer render targets (bot-only, not in user navigation)
+const CompareRender = lazyNamed(
+  () => import("./pages/Render/CompareRender"),
+  "CompareRender",
+);
+const CryptoChartRender = lazyNamed(
+  () => import("./pages/Render/CryptoChartRender"),
+  "CryptoChartRender",
+);
+const ProfileRender = lazyNamed(
+  () => import("./pages/Render/ProfileRender"),
+  "ProfileRender",
+);
+const ActivityRender = lazyNamed(
+  () => import("./pages/Render/ActivityRender"),
+  "ActivityRender",
+);
+const TopRender = lazyNamed(
+  () => import("./pages/Render/TopRender"),
+  "TopRender",
+);
+
+// Public / informational pages
+const Rules = lazyNamed(() => import("./features/rules/Rules"), "Rules");
+const PrivacyPolicy = lazyNamed(
+  () => import("./features/legal/PrivacyPolicy"),
+  "PrivacyPolicy",
+);
+const TermsOfService = lazyNamed(
+  () => import("./features/legal/TermsOfService"),
+  "TermsOfService",
+);
+const Team = lazyNamed(() => import("./features/team/Team"), "Team");
+const GuideList = lazyNamed(
+  () => import("./features/guides/GuideList"),
+  "GuideList",
+);
+const GuideDetail = lazyNamed(
+  () => import("./features/guides/GuideDetail"),
+  "GuideDetail",
+);
+const ApplyToJoin = lazyNamed(
+  () => import("./pages/ApplyToJoin/ApplyToJoin"),
+  "ApplyToJoin",
+);
+const Donate = lazyNamed(() => import("./features/donate/Donate"), "Donate");
+const DonationSuccess = lazyNamed(
+  () => import("./features/donate/DonationSuccess"),
+  "DonationSuccess",
+);
+const DonationCancel = lazyNamed(
+  () => import("./features/donate/DonationCancel"),
+  "DonationCancel",
+);
+const BlueMap = lazyNamed(() => import("./pages/BlueMap/BlueMap"), "BlueMap");
+const OnlinePlayers = lazyNamed(
+  () => import("./features/online-players/OnlinePlayers"),
+  "OnlinePlayers",
+);
+const Advertisement = lazyNamed(
+  () => import("./pages/Advertisement"),
+  "Advertisement",
+);
+
+// Protected user pages
+const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
+const Settings = lazyNamed(
+  () => import("./pages/Settings/Settings"),
+  "Settings",
+);
+const Achievements = lazyNamed(
+  () => import("./pages/Achievements/Achievements"),
+  "Achievements",
+);
+const StructurePacks = lazyNamed(
+  () => import("./features/structure-packs/StructurePacks"),
+  "StructurePacks",
+);
+
+// Server pages
+const ServerDetail = lazyNamed(
+  () => import("./pages/ServerDetail/ServerDetail"),
+  "ServerDetail",
+);
+const ServerStatus = lazyNamed(
+  () => import("./pages/ServerStatus/ServerStatus"),
+  "ServerStatus",
+);
+const ServerChat = lazyNamed(() => import("./components/chat"), "ServerChat");
+
+// Crypto feature
+const CryptoLayout = lazyNamed(
+  () => import("./features/crypto/CryptoLayout"),
+  "CryptoLayout",
+);
+const CryptoMarket = lazyNamed(
+  () => import("./features/crypto/market/CryptoMarket"),
+  "CryptoMarket",
+);
+const TokenDetail = lazyNamed(
+  () => import("./features/crypto/token-detail/TokenDetail"),
+  "TokenDetail",
+);
+const CryptoPortfolio = lazyNamed(
+  () => import("./features/crypto/portfolio/Portfolio"),
+  "Portfolio",
+);
+const CryptoTradeHistory = lazyNamed(
+  () => import("./features/crypto/TradeHistory"),
+  "TradeHistory",
+);
+const CryptoLeaderboard = lazyNamed(
+  () => import("./features/crypto/Leaderboard"),
+  "Leaderboard",
+);
+const CryptoArticle = lazyNamed(
+  () => import("./features/crypto/ArticlePage"),
+  "ArticlePage",
+);
+
+// Admin feature
+const AdminLogs = lazyNamed(
+  () => import("./features/admin/AdminLogs"),
+  "AdminLogs",
+);
+const AdminServers = lazyNamed(
+  () => import("./features/admin/AdminServers"),
+  "AdminServers",
+);
+const AdminServerDetail = lazyNamed(
+  () => import("./features/admin/servers/AdminServerDetail"),
+  "AdminServerDetail",
+);
+const AdminPlayerDetail = lazyNamed(
+  () => import("./features/admin/players/AdminPlayerDetail"),
+  "AdminPlayerDetail",
+);
+const AdminPlayers = lazyNamed(
+  () => import("./features/admin/AdminPlayers"),
+  "AdminPlayers",
+);
+const AdminWaitlists = lazyNamed(
+  () => import("./features/admin/waitlists/AdminWaitlists"),
+  "AdminWaitlists",
+);
+const AdminTools = lazyNamed(
+  () => import("./features/admin/tools/AdminTools"),
+  "AdminTools",
+);
+const AdminFaq = lazyNamed(
+  () => import("./features/admin/tools/faq/AdminFaq"),
+  "AdminFaq",
+);
+const InactivityManagement = lazyNamed(
+  () => import("./features/admin/tools/inactivity/InactivityManagement"),
+  "InactivityManagement",
+);
+const EmbedBuilder = lazyNamed(
+  () => import("./features/admin/tools/embed-builder/EmbedBuilder"),
+  "EmbedBuilder",
+);
+const AutoMessages = lazyNamed(
+  () => import("./features/admin/tools/auto-messages/AutoMessages"),
+  "AutoMessages",
+);
+const Announcements = lazyNamed(
+  () => import("./features/admin/tools/announcements/Announcements"),
+  "Announcements",
+);
+const AdminDashboard = lazyNamed(
+  () => import("./features/admin/AdminDashboard"),
+  "AdminDashboard",
+);
+const Changelog = lazyNamed(
+  () => import("./features/admin/Changelog"),
+  "Changelog",
+);
+const AdminStructurePacks = lazyNamed(
+  () => import("./features/admin/structure-packs/AdminStructurePacks"),
+  "AdminStructurePacks",
+);
+const StructurePackDetail = lazyNamed(
+  () => import("./features/admin/structure-packs/StructurePackDetail"),
+  "StructurePackDetail",
+);
+const AdminCrypto = lazyNamed(
+  () => import("./features/admin/crypto/AdminCrypto"),
+  "AdminCrypto",
+);
+const AdminDonations = lazyNamed(
+  () => import("./features/admin/donations/AdminDonations"),
+  "AdminDonations",
+);
+const CommandDocs = lazyNamed(
+  () => import("./features/admin/tools/command-docs/CommandDocs"),
+  "CommandDocs",
+);
+const StatSearch = lazyNamed(
+  () => import("./features/admin/tools/stat-search/StatSearch"),
+  "StatSearch",
+);
+const AdminForceloads = lazyNamed(
+  () => import("./features/admin/tools/forceloads/AdminForceloads"),
+  "AdminForceloads",
+);
+
+// Admin chat widget — gated on isAdmin below so non-admins never download it.
+const AdminChat = lazy(() =>
+  import("./components/admin-chat").then((m) => ({ default: m.AdminChat })),
+);
 
 // ==========================================================================
 // LAYOUT HELPERS
@@ -131,6 +297,19 @@ function AppLayout() {
   );
 }
 
+// Admin chat renders globally but only for admins. Gating here (instead of
+// the component returning null) means non-admins never download the chat
+// bundle at all.
+function AdminChatGate() {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return null;
+  return (
+    <Suspense fallback={null}>
+      <AdminChat />
+    </Suspense>
+  );
+}
+
 // ==========================================================================
 // ROUTES
 // ==========================================================================
@@ -138,168 +317,191 @@ function AppLayout() {
 /** Declares the full client-side route tree, including public, protected, and admin routes. */
 function AppContent() {
   return (
-    <Routes>
-      {/* Standalone full-screen route (no sidebar/footer) — temporary */}
-      <Route path="/ad" element={<Advertisement />} />
+    <Suspense fallback={<LoadingScreen text="Loading..." />}>
+      <Routes>
+        {/* Standalone full-screen route (no sidebar/footer) — temporary */}
+        <Route path="/ad" element={<Advertisement />} />
 
-      {/* Puppeteer render routes (no layout, screenshot targets) */}
-      <Route path="/render/compare" element={<CompareRender />} />
-      <Route path="/render/profile" element={<ProfileRender />} />
-      <Route path="/render/activity" element={<ActivityRender />} />
-      <Route path="/render/top" element={<TopRender />} />
-      <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
+        {/* Puppeteer render routes (no layout, screenshot targets) */}
+        <Route path="/render/compare" element={<CompareRender />} />
+        <Route path="/render/profile" element={<ProfileRender />} />
+        <Route path="/render/activity" element={<ActivityRender />} />
+        <Route path="/render/top" element={<TopRender />} />
+        <Route path="/render/crypto-chart" element={<CryptoChartRender />} />
 
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Home />} />
-        <Route path="/rules" element={<Rules />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/terms" element={<TermsOfService />} />
-        <Route path="/team" element={<Team />} />
-        <Route path="/guides" element={<GuideList />} />
-        <Route path="/guides/:slug" element={<GuideDetail />} />
-        <Route path="/apply-to-join" element={<ApplyToJoin />} />
-        <Route
-          path="/donate"
-          element={
-            <ProtectedRoute promptLogin>
-              <Donate />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/donate/success" element={<DonationSuccess />} />
-        <Route path="/donate/cancel" element={<DonationCancel />} />
-        <Route path="/blue-map" element={<BlueMap />} />
-        <Route path="/online-players" element={<OnlinePlayers />} />
-        <Route path="/crypto" element={<CryptoLayout />}>
-          <Route index element={<CryptoMarket />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/rules" element={<Rules />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/guides" element={<GuideList />} />
+          <Route path="/guides/:slug" element={<GuideDetail />} />
+          <Route path="/apply-to-join" element={<ApplyToJoin />} />
           <Route
-            path="portfolio"
+            path="/donate"
+            element={
+              <ProtectedRoute promptLogin>
+                <Donate />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/donate/success" element={<DonationSuccess />} />
+          <Route path="/donate/cancel" element={<DonationCancel />} />
+          <Route path="/blue-map" element={<BlueMap />} />
+          <Route path="/online-players" element={<OnlinePlayers />} />
+          <Route
+            path="/crypto"
+            element={
+              <ErrorBoundary>
+                <CryptoLayout />
+              </ErrorBoundary>
+            }
+          >
+            <Route index element={<CryptoMarket />} />
+            <Route
+              path="portfolio"
+              element={
+                <ProtectedRoute>
+                  <CryptoPortfolio />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="history"
+              element={
+                <ProtectedRoute>
+                  <CryptoTradeHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="leaderboard" element={<CryptoLeaderboard />} />
+            <Route path="news/:id" element={<CryptoArticle />} />
+            <Route path=":symbol" element={<TokenDetail />} />
+          </Route>
+
+          {/* Protected Routes */}
+          <Route
+            path="/profile"
             element={
               <ProtectedRoute>
-                <CryptoPortfolio />
+                <Profile />
               </ProtectedRoute>
             }
           />
           <Route
-            path="history"
+            path="/settings"
             element={
               <ProtectedRoute>
-                <CryptoTradeHistory />
+                <Settings />
               </ProtectedRoute>
             }
           />
-          <Route path="leaderboard" element={<CryptoLeaderboard />} />
-          <Route path="news/:id" element={<CryptoArticle />} />
-          <Route path=":symbol" element={<TokenDetail />} />
+          <Route
+            path="/achievements"
+            element={
+              <ProtectedRoute>
+                <Achievements />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/structure-packs"
+            element={
+              <ProtectedRoute>
+                <StructurePacks />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Server Routes */}
+          <Route
+            path="/servers/:serverId"
+            element={
+              <ProtectedRoute>
+                <ServerDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/servers/status" element={<ServerStatus />} />
+
+          {/* Full-screen Routes (no footer) */}
+          <Route path="/chat/:serverId" element={<ServerChat />} />
+
+          {/* Admin Routes (no footer) */}
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute requiresAdmin>
+                <AdminPlayerProvider>
+                  <ErrorBoundary>
+                    <Routes>
+                      <Route path="dashboard" element={<AdminDashboard />} />
+                      <Route path="waitlist" element={<AdminWaitlists />} />
+                      <Route path="players" element={<AdminPlayers />} />
+                      <Route
+                        path="players/:id"
+                        element={<AdminPlayerDetail />}
+                      />
+                      <Route path="servers" element={<AdminServers />} />
+                      <Route
+                        path="servers/:id"
+                        element={<AdminServerDetail />}
+                      />
+                      <Route
+                        path="tools/structure-packs"
+                        element={<AdminStructurePacks />}
+                      />
+                      <Route
+                        path="tools/structure-packs/:id"
+                        element={<StructurePackDetail />}
+                      />
+                      <Route path="tools" element={<AdminTools />} />
+                      <Route path="tools/faq" element={<AdminFaq />} />
+                      <Route
+                        path="tools/inactivity"
+                        element={<InactivityManagement />}
+                      />
+                      <Route
+                        path="tools/embed-builder"
+                        element={<EmbedBuilder />}
+                      />
+                      <Route
+                        path="tools/auto-messages"
+                        element={<AutoMessages />}
+                      />
+                      <Route
+                        path="tools/announcements"
+                        element={<Announcements />}
+                      />
+                      <Route path="donations" element={<AdminDonations />} />
+                      <Route path="tools/crypto" element={<AdminCrypto />} />
+                      <Route
+                        path="tools/command-docs"
+                        element={<CommandDocs />}
+                      />
+                      <Route
+                        path="tools/stat-search"
+                        element={<StatSearch />}
+                      />
+                      <Route
+                        path="tools/forceloads"
+                        element={<AdminForceloads />}
+                      />
+                      <Route path="changelog" element={<Changelog />} />
+                      <Route path="logs" element={<AdminLogs />} />
+                    </Routes>
+                  </ErrorBoundary>
+                </AdminPlayerProvider>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 404 Route */}
+          <Route path="*" element={<NotFound />} />
         </Route>
-
-        {/* Protected Routes */}
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/achievements"
-          element={
-            <ProtectedRoute>
-              <Achievements />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/structure-packs"
-          element={
-            <ProtectedRoute>
-              <StructurePacks />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Server Routes */}
-        <Route
-          path="/servers/:serverId"
-          element={
-            <ProtectedRoute>
-              <ServerDetail />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/servers/status" element={<ServerStatus />} />
-
-        {/* Full-screen Routes (no footer) */}
-        <Route path="/chat/:serverId" element={<ServerChat />} />
-
-        {/* Admin Routes (no footer) */}
-        <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute requiresAdmin>
-              <AdminPlayerProvider>
-                <Routes>
-                  <Route path="dashboard" element={<AdminDashboard />} />
-                  <Route path="waitlist" element={<AdminWaitlists />} />
-                  <Route path="players" element={<AdminPlayers />} />
-                  <Route path="players/:id" element={<AdminPlayerDetail />} />
-                  <Route path="servers" element={<AdminServers />} />
-                  <Route path="servers/:id" element={<AdminServerDetail />} />
-                  <Route
-                    path="tools/structure-packs"
-                    element={<AdminStructurePacks />}
-                  />
-                  <Route
-                    path="tools/structure-packs/:id"
-                    element={<StructurePackDetail />}
-                  />
-                  <Route path="tools" element={<AdminTools />} />
-                  <Route path="tools/faq" element={<AdminFaq />} />
-                  <Route
-                    path="tools/inactivity"
-                    element={<InactivityManagement />}
-                  />
-                  <Route
-                    path="tools/embed-builder"
-                    element={<EmbedBuilder />}
-                  />
-                  <Route
-                    path="tools/auto-messages"
-                    element={<AutoMessages />}
-                  />
-                  <Route
-                    path="tools/announcements"
-                    element={<Announcements />}
-                  />
-                  <Route path="donations" element={<AdminDonations />} />
-                  <Route path="tools/crypto" element={<AdminCrypto />} />
-                  <Route path="tools/command-docs" element={<CommandDocs />} />
-                  <Route path="tools/stat-search" element={<StatSearch />} />
-                  <Route
-                    path="tools/forceloads"
-                    element={<AdminForceloads />}
-                  />
-                  <Route path="changelog" element={<Changelog />} />
-                  <Route path="logs" element={<AdminLogs />} />
-                </Routes>
-              </AdminPlayerProvider>
-            </ProtectedRoute>
-          }
-        />
-
-        {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
-      </Route>
-    </Routes>
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -337,7 +539,7 @@ function App() {
                           <AppContent />
                         </SidebarProvider>
                       </ErrorBoundary>
-                      <AdminChat />
+                      <AdminChatGate />
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>
