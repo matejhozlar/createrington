@@ -202,7 +202,12 @@ export class PlayerPromptService {
   private async postAnnouncement(prompt: PlayerPrompt) {
     const embed = this.buildActiveEmbed(prompt);
     const row = this.buildRespondButtonRow(prompt.id);
-    const mention = prompt.rolePingId ? `<@&${prompt.rolePingId}>` : undefined;
+    // Wrap the role mention in Discord spoiler tags (`||...||`) so the
+    // message looks clean in the channel but still fires the ping. The
+    // mention sits in `content`, which renders above the embed.
+    const mention = prompt.rolePingId
+      ? `||<@&${prompt.rolePingId}>||`
+      : undefined;
 
     return this.messageService.send({
       channelId: prompt.channelId,

@@ -13,6 +13,9 @@ const createInput = z.object({
   description: z.string().max(2000).optional(),
   durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
   rolePingId: z.string().regex(/^\d+$/).optional(),
+  // Optional — defaults to the announcements channel. Admins can target
+  // any configured channel via the client picker.
+  channelId: z.string().regex(/^\d+$/).optional(),
 });
 
 /**
@@ -87,7 +90,9 @@ export const adminPromptsRouter = router({
         description: input.description ?? null,
         durationMs: input.durationMs,
         rolePingId: input.rolePingId ?? null,
-        channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+        channelId:
+          input.channelId ??
+          Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
         createdBy: ctx.user.discordId,
       });
 

@@ -9,7 +9,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -57,33 +56,28 @@ export function AdminPrompts() {
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <NavLink to="/admin/dashboard">Admin</NavLink>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <NavLink to="/admin/tools">Tools</NavLink>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Player Prompts</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="flex flex-1 flex-col gap-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Player Prompts</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="size-5 text-primary" />
-            <CardTitle>Player Prompts</CardTitle>
-          </div>
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-semibold">Player Prompts</h1>
           <div className="flex items-center gap-2">
             <Select
               value={statusFilter}
@@ -118,21 +112,22 @@ export function AdminPrompts() {
               <Plus className="size-4" /> New Prompt
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
-          {listQuery.isLoading ? (
-            <div className="flex items-center justify-center py-10">
-              <Loading mode="inline" size="medium" />
-            </div>
-          ) : !listQuery.data || listQuery.data.items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-              <MessageSquare className="size-10 text-muted-foreground" />
-              <p className="text-muted-foreground">No prompts yet.</p>
-              <p className="text-sm text-muted-foreground/80">
-                Create one to ask players a question in Discord.
-              </p>
-            </div>
-          ) : (
+        </div>
+
+        {listQuery.isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loading mode="inline" size="medium" />
+          </div>
+        ) : !listQuery.data || listQuery.data.items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
+            <MessageSquare className="size-10 text-muted-foreground" />
+            <p className="text-muted-foreground">No prompts yet.</p>
+            <p className="text-sm text-muted-foreground/80">
+              Create one to ask players a question in Discord.
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -177,9 +172,9 @@ export function AdminPrompts() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
 
       <CreatePromptModal
         open={createOpen}

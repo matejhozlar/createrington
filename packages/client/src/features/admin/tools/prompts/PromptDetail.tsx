@@ -8,7 +8,6 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Lock, RefreshCw } from "lucide-react";
@@ -67,41 +66,39 @@ export function PromptDetail() {
     creator?.minecraftUsername ?? `Discord user ${prompt.createdBy}`;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <NavLink to="/admin/dashboard">Admin</NavLink>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <NavLink to="/admin/tools">Tools</NavLink>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <NavLink to="/admin/tools/prompts">Prompts</NavLink>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage className="line-clamp-1 max-w-md">
-              {prompt.question}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="flex flex-1 flex-col gap-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools/prompts">
+                Prompts
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="line-clamp-1 max-w-md">
+                {prompt.question}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-1 flex-col gap-1">
             <div className="flex items-center gap-2">
               <MessageSquare className="size-5 text-primary" />
-              <CardTitle>{prompt.question}</CardTitle>
+              <h1 className="text-2xl font-semibold">{prompt.question}</h1>
               <Badge variant={isActive ? "default" : "secondary"}>
                 {prompt.status}
               </Badge>
@@ -142,62 +139,60 @@ export function PromptDetail() {
               </Button>
             )}
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          {responses.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
-              <MessageSquare className="size-8 text-muted-foreground" />
-              <p className="text-muted-foreground">No responses yet.</p>
-            </div>
-          ) : (
-            <ul className="flex flex-col gap-3">
-              {responses.map((r) => (
-                <li
-                  key={r.id}
-                  className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
-                >
-                  {r.minecraftUuid ? (
-                    <img
-                      src={mcHeadsAvatar(r.minecraftUuid)}
-                      alt={r.minecraftUsername ?? "player"}
-                      className="size-10 shrink-0 rounded bg-muted object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
-                      ?
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-medium">
-                          {r.minecraftUsername ?? `Discord user ${r.discordId}`}
-                        </span>
-                        {!r.minecraftUsername && (
-                          <span className="text-xs text-muted-foreground">
-                            (no linked Minecraft account)
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className="text-xs text-muted-foreground"
-                        title={formatTime(r.submittedAt)}
-                      >
-                        {formatTime(r.submittedAt)}
-                      </span>
-                    </div>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
-                      {r.responseText}
-                    </p>
+        {responses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-center">
+            <MessageSquare className="size-8 text-muted-foreground" />
+            <p className="text-muted-foreground">No responses yet.</p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {responses.map((r) => (
+              <li
+                key={r.id}
+                className="flex gap-3 rounded-lg border border-border/60 bg-card p-3"
+              >
+                {r.minecraftUuid ? (
+                  <img
+                    src={mcHeadsAvatar(r.minecraftUuid)}
+                    alt={r.minecraftUsername ?? "player"}
+                    className="size-10 shrink-0 rounded bg-muted object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted text-xs font-medium text-muted-foreground">
+                    ?
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-medium">
+                        {r.minecraftUsername ?? `Discord user ${r.discordId}`}
+                      </span>
+                      {!r.minecraftUsername && (
+                        <span className="text-xs text-muted-foreground">
+                          (no linked Minecraft account)
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className="text-xs text-muted-foreground"
+                      title={formatTime(r.submittedAt)}
+                    >
+                      {formatTime(r.submittedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-foreground">
+                    {r.responseText}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
