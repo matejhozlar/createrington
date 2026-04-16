@@ -13,6 +13,7 @@ import { inactivityRouter } from "./inactivity";
 import { logsRouter } from "./logs";
 import { adminMetricsRouter } from "./metrics";
 import { adminPlayersRouter } from "./players";
+import { adminPromptsRouter } from "./prompts";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
@@ -52,6 +53,7 @@ export const adminRouter = router({
   logs: logsRouter,
   metrics: adminMetricsRouter,
   players: adminPlayersRouter,
+  prompts: adminPromptsRouter,
   servers: adminServersRouter,
   structurePacks: adminStructurePacksRouter,
   waitlists: waitlistsRouter,

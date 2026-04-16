@@ -105,3 +105,8 @@ export const donationTypeEnum = pgEnum("donation_type", [
   "one_time",
   "monthly",
 ]);
+
+export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
+  "active",
+  "closed",
+]);

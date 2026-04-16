@@ -244,6 +244,14 @@ const AdminForceloads = lazyNamed(
   () => import("./features/admin/tools/forceloads/AdminForceloads"),
   "AdminForceloads",
 );
+const AdminPrompts = lazyNamed(
+  () => import("./features/admin/tools/prompts/AdminPrompts"),
+  "AdminPrompts",
+);
+const PromptDetail = lazyNamed(
+  () => import("./features/admin/tools/prompts/PromptDetail"),
+  "PromptDetail",
+);
 
 // Admin chat widget — gated on isAdmin below so non-admins never download it.
 const AdminChat = lazyNamed(
@@ -501,6 +509,11 @@ function AppContent() {
                       <Route
                         path="tools/forceloads"
                         element={<AdminForceloads />}
+                      />
+                      <Route path="tools/prompts" element={<AdminPrompts />} />
+                      <Route
+                        path="tools/prompts/:id"
+                        element={<PromptDetail />}
                       />
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />
