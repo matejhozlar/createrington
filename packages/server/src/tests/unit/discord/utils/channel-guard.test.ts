@@ -10,8 +10,11 @@ import {
 
 // Minimal Channel-shaped stubs. The guards check for specific structure
 // (a `send` function, a numeric `type`, or `isThread()`/`isDMBased()` methods),
-// so we don't need a real discord.js Channel instance.
-const stubChannel = (overrides: Partial<Channel> & Record<string, unknown>) =>
+// so we don't need a real discord.js Channel instance. The cast goes via
+// `unknown` because the discord.js Channel union has type-predicate methods
+// (`isThread(): this is AnyThreadChannel`) that a plain object literal can't
+// satisfy structurally — but the guards only care about the runtime shape.
+const stubChannel = (overrides: Record<string, unknown>): Channel =>
   overrides as unknown as Channel;
 
 describe("isSendableChannel", () => {

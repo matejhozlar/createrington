@@ -1,17 +1,29 @@
 import { describe, it, expect } from "vitest";
-import { ButtonStyle } from "discord.js";
+import { ButtonStyle, type ButtonBuilder } from "discord.js";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
+
+// discord.js's ButtonBuilder.toJSON() returns APIButtonComponent which is a
+// discriminated union — the SKU variant has no `label`, so the union loses
+// the label field. Widen at the test boundary so we can read individual props.
+type ButtonData = {
+  style?: ButtonStyle;
+  label?: string;
+  custom_id?: string;
+  url?: string;
+  disabled?: boolean;
+};
+const json = (b: ButtonBuilder): ButtonData => b.toJSON() as ButtonData;
 
 describe("ButtonPresets.waitlist", () => {
   it("accept(id) builds a green Success button with the right custom id and label", () => {
-    const data = ButtonPresets.waitlist.accept(42).toJSON();
+    const data = json(ButtonPresets.waitlist.accept(42));
     expect(data.style).toBe(ButtonStyle.Success);
     expect(data.label).toBe("Accept");
     expect(data).toMatchObject({ custom_id: "waitlist:accept:42" });
   });
 
   it("decline(id) builds a red Danger button with the right custom id and label", () => {
-    const data = ButtonPresets.waitlist.decline("xyz").toJSON();
+    const data = json(ButtonPresets.waitlist.decline("xyz"));
     expect(data.style).toBe(ButtonStyle.Danger);
     expect(data.label).toBe("Decline");
     expect(data).toMatchObject({ custom_id: "waitlist:decline:xyz" });
@@ -20,7 +32,7 @@ describe("ButtonPresets.waitlist", () => {
 
 describe("ButtonPresets.common", () => {
   it("confirm() defaults to custom_id='confirm' with Success style", () => {
-    const data = ButtonPresets.common.confirm().toJSON();
+    const data = json(ButtonPresets.common.confirm());
     expect(data).toMatchObject({
       custom_id: "confirm",
       label: "Confirm",
@@ -29,12 +41,12 @@ describe("ButtonPresets.common", () => {
   });
 
   it("confirm(customId) respects an explicit custom id", () => {
-    const data = ButtonPresets.common.confirm("custom-yes").toJSON();
+    const data = json(ButtonPresets.common.confirm("custom-yes"));
     expect(data).toMatchObject({ custom_id: "custom-yes" });
   });
 
   it("cancel() defaults to custom_id='cancel' with Secondary style", () => {
-    const data = ButtonPresets.common.cancel().toJSON();
+    const data = json(ButtonPresets.common.cancel());
     expect(data).toMatchObject({
       custom_id: "cancel",
       label: "Cancel",
@@ -43,7 +55,7 @@ describe("ButtonPresets.common", () => {
   });
 
   it("delete() defaults to custom_id='delete' with Danger style", () => {
-    const data = ButtonPresets.common.delete().toJSON();
+    const data = json(ButtonPresets.common.delete());
     expect(data).toMatchObject({
       custom_id: "delete",
       label: "Delete",
@@ -52,9 +64,7 @@ describe("ButtonPresets.common", () => {
   });
 
   it("link(label, url) builds a Link button with no custom id", () => {
-    const data = ButtonPresets.common
-      .link("Docs", "https://example.com")
-      .toJSON();
+    const data = json(ButtonPresets.common.link("Docs", "https://example.com"));
     expect(data.style).toBe(ButtonStyle.Link);
     expect(data.label).toBe("Docs");
     expect(data).toMatchObject({ url: "https://example.com" });
@@ -62,21 +72,19 @@ describe("ButtonPresets.common", () => {
   });
 
   it("help() defaults to the documented support URL", () => {
-    const data = ButtonPresets.common.help().toJSON();
+    const data = json(ButtonPresets.common.help());
     expect(data.style).toBe(ButtonStyle.Link);
     expect(data.label).toBe("Get Help");
     expect(data).toMatchObject({ url: "https://create-rington.com/support" });
   });
 
   it("help(url) accepts a custom URL override", () => {
-    const data = ButtonPresets.common
-      .help("https://other.example/help")
-      .toJSON();
+    const data = json(ButtonPresets.common.help("https://other.example/help"));
     expect(data).toMatchObject({ url: "https://other.example/help" });
   });
 
   it("disabled(label) builds a Secondary button flagged as disabled", () => {
-    const data = ButtonPresets.common.disabled("Locked").toJSON();
+    const data = json(ButtonPresets.common.disabled("Locked"));
     expect(data).toMatchObject({
       custom_id: "disabled",
       label: "Locked",
@@ -94,7 +102,7 @@ describe("ButtonPresets.links", () => {
       ButtonPresets.links.modpack,
       ButtonPresets.links.map,
     ]) {
-      const data = factory().toJSON();
+      const data = json(factory());
       expect(data.style).toBe(ButtonStyle.Link);
       expect(data).toHaveProperty("url");
     }
@@ -103,7 +111,7 @@ describe("ButtonPresets.links", () => {
 
 describe("ButtonPresets.departedMember", () => {
   it("deleteNow(id) builds a Danger button namespaced to the departed id", () => {
-    const data = ButtonPresets.departedMember.deleteNow(7).toJSON();
+    const data = json(ButtonPresets.departedMember.deleteNow(7));
     expect(data.style).toBe(ButtonStyle.Danger);
     expect(data).toMatchObject({ custom_id: "departed:delete-now:7" });
     expect(data.label).toContain("Yeet");
