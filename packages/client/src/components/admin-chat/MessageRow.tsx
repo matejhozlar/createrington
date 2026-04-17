@@ -98,9 +98,9 @@ export function MessageRow({
             />
           ) : (
             <img
-              src="/assets/logo/logo.png"
+              src="/assets/logo/createrington-bot.webp"
               alt="Createrington"
-              className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
+              className="size-6 shrink-0 rounded-full bg-muted object-cover"
               loading="lazy"
             />
           )

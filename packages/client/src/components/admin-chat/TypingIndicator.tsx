@@ -2,9 +2,9 @@ export function TypingIndicator(): React.JSX.Element {
   return (
     <div className="mt-3 flex items-end gap-2 self-start animate-in fade-in slide-in-from-bottom-1 duration-200">
       <img
-        src="/assets/logo/logo.png"
+        src="/assets/logo/createrington-bot.webp"
         alt="Createrington"
-        className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
+        className="size-6 shrink-0 rounded-full bg-muted object-cover"
         loading="lazy"
       />
       <div className="flex items-center gap-1 rounded-lg rounded-bl-sm bg-muted px-3 py-2.5">
