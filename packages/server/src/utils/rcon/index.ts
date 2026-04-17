@@ -14,4 +14,5 @@ export type {
   ServerInfo,
   TimeValue,
 } from "./types";
+export { RconCommandError, ServerNotFoundError } from "./errors";
 export { MinecraftRconManager, minecraftRcon } from "./manager";
