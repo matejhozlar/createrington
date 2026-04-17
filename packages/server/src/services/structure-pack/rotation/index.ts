@@ -1,105 +1,33 @@
-import path from "node:path";
-import fs from "node:fs/promises";
 import config from "@/config";
 import { Q, db, balanceRepo } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { BadRequestError } from "@/app/middleware/error-handler";
 import {
   isFileOpsAllowed,
-  getLocalPath,
   copyFileToServer,
   deleteFile,
   fileExists,
 } from "@/services/mc-server/file-ops";
-import {
-  downloadModFile as cfDownload,
-  getModFileDownloadUrl,
-} from "@/services/curseforge";
-import type { StructurePackService } from "./index";
+import { getModFileDownloadUrl } from "@/services/curseforge";
+import type { StructurePackService } from "../index";
 import type { StructurePackWithMods } from "@/db/queries/structure/pack";
 import type {
-  StructurePack,
   StructurePackMod,
   StructurePackRotationConfig,
   StructurePackRotation,
   StructurePackBoost,
 } from "@createrington/shared/db";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
-
-const MODS_DIR = "mods";
-const CACHE_DIR = ".structure-pack-cache";
-const T_REF = 7 * 24 * 60 * 60; // one week in seconds
-const DEFAULT_ELAPSED_WEEKS = 4;
-
-type RotationPeriod = "daily" | "weekly" | "monthly";
-
-/** How many milliseconds one period lasts (approximate, for missed-rotation detection). */
-function periodIntervalMs(period: RotationPeriod): number {
-  switch (period) {
-    case "daily":
-      return 24 * 60 * 60 * 1000;
-    case "weekly":
-      return 7 * 24 * 60 * 60 * 1000;
-    case "monthly":
-      return 30 * 24 * 60 * 60 * 1000;
-  }
-}
-
-interface WeightEntry {
-  packId: number;
-  packName: string;
-  weight: number;
-  timeFactor: number;
-  boostFactor: number;
-}
-
-/**
- * Converts a wall-clock time in a given IANA timezone to a UTC Date.
- *
- * Example: dateInTimezone(2026, 0, 5, 12, 0, "Europe/Prague")
- * returns the UTC instant that corresponds to 2026-01-05 12:00 in Prague.
- */
-function dateInTimezone(
-  year: number,
-  month: number,
-  day: number,
-  hours: number,
-  minutes: number,
-  timezone: string,
-): Date {
-  // Build an approximate UTC date, then nudge it so the wall-clock in the
-  // target timezone matches the requested values.
-  const guess = new Date(Date.UTC(year, month, day, hours, minutes, 0, 0));
-
-  // Format the guess in the target timezone to see what wall-clock it produces
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: timezone,
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    hour12: false,
-  }).formatToParts(guess);
-
-  const get = (type: string) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-
-  const wallDate = new Date(
-    Date.UTC(
-      get("year"),
-      get("month") - 1,
-      get("day"),
-      get("hour") === 24 ? 0 : get("hour"),
-      get("minute"),
-    ),
-  );
-
-  // The difference between our guess and what the timezone produced tells us
-  // the UTC offset — apply it to get the correct UTC instant.
-  const offsetMs = guess.getTime() - wallDate.getTime();
-  return new Date(guess.getTime() + offsetMs);
-}
+import { MODS_DIR } from "./constants";
+import { periodIntervalMs } from "./timezone";
+import {
+  checkMissedRotation,
+  computeCycleStart,
+  computeNextRotationTime,
+} from "./scheduling";
+import { computeWeights, selectWeightedRandom } from "./weights";
+import { ensureModsCached, getCachePath } from "./mod-cache";
+import type { RotationPeriod, WeightEntry } from "./types";
 
 /**
  * Structure Pack Rotation Service
@@ -159,7 +87,7 @@ export class StructurePackRotationService {
     // Check for missed rotation
     const lastRotation = await this.getLastRotation();
     if (lastRotation) {
-      const missed = this.checkMissedRotation(
+      const missed = checkMissedRotation(
         rotationConfig,
         lastRotation.rotatedAt,
       );
@@ -201,7 +129,7 @@ export class StructurePackRotationService {
       clearTimeout(this.nextRotationTimer);
     }
 
-    const nextTime = this.computeNextRotationTime(rotationConfig);
+    const nextTime = computeNextRotationTime(rotationConfig);
     const delayMs = nextTime.getTime() - Date.now();
     const period = rotationConfig.period as RotationPeriod;
 
@@ -225,150 +153,6 @@ export class StructurePackRotationService {
     logger.info(
       `Next structure pack rotation scheduled for ${nextTime.toISOString()}`,
     );
-  }
-
-  /**
-   * Returns the next UTC instant at which a rotation should fire for the given config.
-   *
-   * All wall-clock comparisons are performed in the configured IANA timezone so that
-   * DST transitions do not shift the scheduled time.
-   *
-   * @private
-   * @param cfg - The current rotation configuration
-   * @returns UTC Date of the next scheduled rotation
-   */
-  private computeNextRotationTime(cfg: StructurePackRotationConfig): Date {
-    const [hours, minutes] = cfg.time.split(":").map(Number);
-    const now = new Date();
-    const period = cfg.period as RotationPeriod;
-
-    // Get today's date components in the target timezone
-    const todayParts = new Intl.DateTimeFormat("en-US", {
-      timeZone: cfg.timezone,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      weekday: "short",
-    }).formatToParts(now);
-
-    const get = (type: string) =>
-      Number(todayParts.find((p) => p.type === type)?.value ?? 0);
-
-    const todayYear = get("year");
-    const todayMonth = get("month") - 1;
-    const todayDay = get("day");
-
-    if (period === "daily") {
-      // Next occurrence is today at the configured time, or tomorrow
-      const target = dateInTimezone(
-        todayYear,
-        todayMonth,
-        todayDay,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-      if (target.getTime() <= now.getTime()) {
-        return dateInTimezone(
-          todayYear,
-          todayMonth,
-          todayDay + 1,
-          hours,
-          minutes,
-          cfg.timezone,
-        );
-      }
-      return target;
-    }
-
-    if (period === "monthly") {
-      // Next occurrence is on dayOfMonth this month or next month
-      const target = dateInTimezone(
-        todayYear,
-        todayMonth,
-        cfg.dayOfMonth,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-      if (target.getTime() <= now.getTime()) {
-        return dateInTimezone(
-          todayYear,
-          todayMonth + 1,
-          cfg.dayOfMonth,
-          hours,
-          minutes,
-          cfg.timezone,
-        );
-      }
-      return target;
-    }
-
-    // Weekly (default)
-    const weekdayStr =
-      todayParts.find((p) => p.type === "weekday")?.value ?? "";
-    const dayMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-    const currentDay = dayMap[weekdayStr] ?? now.getDay();
-
-    let daysUntil = cfg.dayOfWeek - currentDay;
-    if (daysUntil < 0) daysUntil += 7;
-
-    const targetDate = new Date(
-      Date.UTC(todayYear, todayMonth, todayDay + daysUntil),
-    );
-    const target = dateInTimezone(
-      targetDate.getUTCFullYear(),
-      targetDate.getUTCMonth(),
-      targetDate.getUTCDate(),
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-
-    if (target.getTime() <= now.getTime()) {
-      const nextWeek = new Date(targetDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-      return dateInTimezone(
-        nextWeek.getUTCFullYear(),
-        nextWeek.getUTCMonth(),
-        nextWeek.getUTCDate(),
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-    }
-
-    return target;
-  }
-
-  /**
-   * Returns true if a rotation was missed since the last recorded rotation.
-   *
-   * A rotation is considered missed when the elapsed time since `lastRotatedAt`
-   * exceeds one full period plus the configured grace period.
-   *
-   * @private
-   * @param cfg - The current rotation configuration
-   * @param lastRotatedAt - Timestamp of the most recent recorded rotation
-   * @returns Whether a rotation should have fired and was missed
-   */
-  private checkMissedRotation(
-    cfg: StructurePackRotationConfig,
-    lastRotatedAt: Date,
-  ): boolean {
-    const now = Date.now();
-    const expectedInterval = periodIntervalMs(cfg.period as RotationPeriod);
-    const gracePeriod = cfg.gracePeriodMinutes * 60 * 1000;
-    const timeSinceLastRotation = now - lastRotatedAt.getTime();
-
-    return timeSinceLastRotation > expectedInterval + gracePeriod;
   }
 
   // ===========================================================================
@@ -424,11 +208,11 @@ export class StructurePackRotationService {
       }
 
       // Compute weights
-      const cycleStart = this.computeCycleStart(rotationConfig);
+      const cycleStart = computeCycleStart(rotationConfig);
       const boostData =
         await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
       const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-      const weights = this.computeWeights(
+      const weights = computeWeights(
         eligible,
         boostMap,
         rotationConfig.timeWeightMultiplier,
@@ -436,7 +220,7 @@ export class StructurePackRotationService {
       );
 
       // Select next pack
-      const selectedPackId = this.selectWeightedRandom(weights);
+      const selectedPackId = selectWeightedRandom(weights);
       const incomingPack = await this.packService.getPack(selectedPackId);
 
       logger.info(
@@ -447,7 +231,7 @@ export class StructurePackRotationService {
       if (isFileOpsAllowed()) {
         try {
           // Download uncached mods
-          await this.ensureModsCached(incomingPack.mods);
+          await ensureModsCached(incomingPack.mods);
 
           // Build a set of filenames that the incoming pack owns
           const incomingFileNames = new Set(
@@ -473,7 +257,7 @@ export class StructurePackRotationService {
               logger.info(`Mod already in mods dir: ${mod.fileName}`);
               continue;
             }
-            const cachePath = this.getCachePath(mod.fileName);
+            const cachePath = getCachePath(mod.fileName);
             await copyFileToServer(cachePath, modPath);
             logger.info(`Installed mod file: ${mod.fileName}`);
           }
@@ -542,141 +326,6 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // WEIGHT COMPUTATION
-  // ===========================================================================
-
-  /**
-   * Computes a selection weight for each eligible pack.
-   *
-   * Weight formula per pack:
-   *   `timeFactor * timeWeightMultiplier + boostUnits * boostWeightPerUnit`
-   *
-   * where `timeFactor` is the number of reference weeks (7 days) since the pack was
-   * last active. Packs that have never been active default to 4 elapsed weeks so they
-   * are reasonably competitive on their first rotation.
-   *
-   * @param packs - Eligible packs to weight
-   * @param boosts - Map of packId → total boost units purchased this cycle
-   * @param timeWeightMultiplier - Scalar applied to the time component
-   * @param boostWeightPerUnit - Scalar applied to each boost unit
-   * @returns Array of weight entries, one per pack, in the same order as `packs`
-   */
-  computeWeights(
-    packs: StructurePack[],
-    boosts: Map<number, number>,
-    timeWeightMultiplier = 1.0,
-    boostWeightPerUnit = 1.0,
-  ): WeightEntry[] {
-    const nowSec = Date.now() / 1000;
-    const defaultElapsed = DEFAULT_ELAPSED_WEEKS * T_REF;
-
-    return packs.map((pack) => {
-      const lastActivated = pack.lastActivatedAt
-        ? pack.lastActivatedAt.getTime() / 1000
-        : nowSec - defaultElapsed;
-
-      const timeFactor = (nowSec - lastActivated) / T_REF;
-      const boostFactor = boosts.get(pack.id) ?? 0;
-
-      return {
-        packId: pack.id,
-        packName: pack.name,
-        weight:
-          timeFactor * timeWeightMultiplier + boostFactor * boostWeightPerUnit,
-        timeFactor: Math.round(timeFactor * 100) / 100,
-        boostFactor,
-      };
-    });
-  }
-
-  /**
-   * Selects a pack ID from the weight entries using weighted-random sampling.
-   *
-   * @param weights - Non-empty array of weight entries produced by `computeWeights`
-   * @returns The packId of the selected entry
-   */
-  selectWeightedRandom(weights: WeightEntry[]): number {
-    const totalWeight = weights.reduce((sum, w) => sum + w.weight, 0);
-    let random = Math.random() * totalWeight;
-
-    for (const entry of weights) {
-      random -= entry.weight;
-      if (random <= 0) return entry.packId;
-    }
-
-    // Fallback (shouldn't happen)
-    return weights[weights.length - 1].packId;
-  }
-
-  // ===========================================================================
-  // MOD FILE CACHING
-  // ===========================================================================
-
-  /**
-   * Returns the absolute path to the mod file cache directory.
-   *
-   * Uses the configured local server path when available; falls back to a
-   * `.structure-pack-cache` folder in the process working directory for SFTP mode.
-   *
-   * @private
-   * @returns Absolute path to the cache directory
-   */
-  private getCacheDir(): string {
-    const localPath = getLocalPath();
-    if (localPath) {
-      return path.join(localPath, CACHE_DIR);
-    }
-    // Fallback to temp dir for SFTP mode
-    return path.join(process.cwd(), ".structure-pack-cache");
-  }
-
-  /**
-   * Returns the full path to a specific mod file within the cache directory.
-   *
-   * @private
-   * @param fileName - The mod's filename (e.g. `structurized-1.20.jar`)
-   * @returns Absolute path to the cached file
-   */
-  private getCachePath(fileName: string): string {
-    return path.join(this.getCacheDir(), fileName);
-  }
-
-  /**
-   * Downloads any mods not already present in the local cache.
-   *
-   * Creates the cache directory if it does not exist, then iterates the provided
-   * mod list, skipping files that are already cached and downloading the rest
-   * from CurseForge.
-   *
-   * @private
-   * @param mods - List of mods to ensure are cached
-   * @returns Promise that resolves when all mods are available in the cache
-   */
-  private async ensureModsCached(mods: StructurePackMod[]): Promise<void> {
-    const cacheDir = this.getCacheDir();
-    await fs.mkdir(cacheDir, { recursive: true });
-
-    for (const mod of mods) {
-      const cachePath = this.getCachePath(mod.fileName);
-      try {
-        await fs.access(cachePath);
-        logger.info(`Mod already cached: ${mod.fileName}`);
-      } catch {
-        logger.info(
-          `Downloading mod: ${mod.modName} (${mod.curseforgeModId}/${mod.curseforgeFileId})`,
-        );
-        await cfDownload(
-          mod.curseforgeModId,
-          mod.curseforgeFileId,
-          cacheDir,
-          mod.fileName,
-        );
-        logger.info(`Downloaded: ${mod.fileName}`);
-      }
-    }
-  }
-
-  // ===========================================================================
   // BOOST MANAGEMENT
   // ===========================================================================
 
@@ -707,7 +356,7 @@ export class StructurePackRotationService {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cost = units * rotationConfig.boostUnitPrice;
-    const cycleStart = this.computeCycleStart(rotationConfig);
+    const cycleStart = computeCycleStart(rotationConfig);
 
     // Deduct player balance
     await balanceRepo.deduct(
@@ -736,7 +385,7 @@ export class StructurePackRotationService {
   async getPlayerBoosts(discordId: string): Promise<StructurePackBoost[]> {
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = this.computeCycleStart(rotationConfig);
+    const cycleStart = computeCycleStart(rotationConfig);
     return Q.structure.pack.boost.getPlayerBoostsForCycle(
       discordId,
       cycleStart,
@@ -779,11 +428,11 @@ export class StructurePackRotationService {
 
     const rotationConfig =
       await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = this.computeCycleStart(rotationConfig);
+    const cycleStart = computeCycleStart(rotationConfig);
     const boostData =
       await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
     const boostMap = new Map(boostData.map((b) => [b.packId, b.totalUnits]));
-    const weights = this.computeWeights(
+    const weights = computeWeights(
       eligible,
       boostMap,
       rotationConfig.timeWeightMultiplier,
@@ -815,7 +464,7 @@ export class StructurePackRotationService {
     boostUnitPrice: number;
   }> {
     const cfg = await this.getConfig();
-    const next = this.computeNextRotationTime(cfg);
+    const next = computeNextRotationTime(cfg);
     return {
       nextRotationAt: next.toISOString(),
       boostUnitPrice: cfg.boostUnitPrice,
@@ -884,172 +533,8 @@ export class StructurePackRotationService {
   }
 
   // ===========================================================================
-  // HELPERS
+  // MANUAL ACTIONS
   // ===========================================================================
-
-  /**
-   * Returns the UTC start timestamp of the current rotation cycle.
-   *
-   * The cycle start is the most recent past occurrence of the configured
-   * rotation time (daily, weekly, or monthly). Boost purchases are scoped
-   * to this timestamp so they expire automatically after a rotation fires.
-   *
-   * @private
-   * @param cfg - The current rotation configuration
-   * @returns UTC Date representing the start of the active cycle
-   */
-  private computeCycleStart(cfg: StructurePackRotationConfig): Date {
-    const [hours, minutes] = cfg.time.split(":").map(Number);
-    const now = new Date();
-    const period = cfg.period as RotationPeriod;
-
-    const todayParts = new Intl.DateTimeFormat("en-US", {
-      timeZone: cfg.timezone,
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-      weekday: "short",
-    }).formatToParts(now);
-
-    const get = (type: string) =>
-      Number(todayParts.find((p) => p.type === type)?.value ?? 0);
-
-    const todayYear = get("year");
-    const todayMonth = get("month") - 1;
-    const todayDay = get("day");
-
-    if (period === "daily") {
-      // Cycle started today at the configured time, or yesterday if time hasn't passed
-      const cycleStart = dateInTimezone(
-        todayYear,
-        todayMonth,
-        todayDay,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-      if (cycleStart.getTime() > now.getTime()) {
-        return dateInTimezone(
-          todayYear,
-          todayMonth,
-          todayDay - 1,
-          hours,
-          minutes,
-          cfg.timezone,
-        );
-      }
-      return cycleStart;
-    }
-
-    if (period === "monthly") {
-      // Cycle started on dayOfMonth this month, or last month
-      const cycleStart = dateInTimezone(
-        todayYear,
-        todayMonth,
-        cfg.dayOfMonth,
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-      if (cycleStart.getTime() > now.getTime()) {
-        return dateInTimezone(
-          todayYear,
-          todayMonth - 1,
-          cfg.dayOfMonth,
-          hours,
-          minutes,
-          cfg.timezone,
-        );
-      }
-      return cycleStart;
-    }
-
-    // Weekly (default)
-    const dayMap: Record<string, number> = {
-      Sun: 0,
-      Mon: 1,
-      Tue: 2,
-      Wed: 3,
-      Thu: 4,
-      Fri: 5,
-      Sat: 6,
-    };
-    const weekdayStr =
-      todayParts.find((p) => p.type === "weekday")?.value ?? "";
-    const currentDay = dayMap[weekdayStr] ?? now.getDay();
-
-    let daysDiff = currentDay - cfg.dayOfWeek;
-    if (daysDiff < 0) daysDiff += 7;
-
-    const baseDate = new Date(
-      Date.UTC(todayYear, todayMonth, todayDay - daysDiff),
-    );
-    const cycleStart = dateInTimezone(
-      baseDate.getUTCFullYear(),
-      baseDate.getUTCMonth(),
-      baseDate.getUTCDate(),
-      hours,
-      minutes,
-      cfg.timezone,
-    );
-
-    if (cycleStart.getTime() > now.getTime()) {
-      const prevWeek = new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return dateInTimezone(
-        prevWeek.getUTCFullYear(),
-        prevWeek.getUTCMonth(),
-        prevWeek.getUTCDate(),
-        hours,
-        minutes,
-        cfg.timezone,
-      );
-    }
-
-    return cycleStart;
-  }
-
-  /**
-   * Returns the most recent rotation record, or null if no rotations have occurred.
-   *
-   * @private
-   * @returns The latest rotation record, or null
-   */
-  private async getLastRotation() {
-    const rotations = await Q.structure.pack.rotation.findAll(
-      {},
-      { limit: 1, orderBy: "rotatedAt", orderDirection: "desc" },
-    );
-    return rotations[0] ?? null;
-  }
-
-  /**
-   * Persists a rotation attempt to the database.
-   *
-   * @private
-   * @param outgoingPackId - ID of the pack that was active before this rotation, or null if none
-   * @param incomingPackId - ID of the pack selected for this rotation
-   * @param success - Whether the rotation completed without errors
-   * @param failureReason - Human-readable error message when `success` is false, otherwise null
-   * @param weights - Optional weight snapshot taken at selection time, stored for auditing
-   * @returns Promise that resolves when the record has been written
-   */
-  private async recordRotation(
-    outgoingPackId: number | null,
-    incomingPackId: number,
-    success: boolean,
-    failureReason: string | null,
-    weights?: WeightEntry[],
-  ): Promise<void> {
-    await Q.structure.pack.rotation.create({
-      outgoingPackId,
-      incomingPackId,
-      success,
-      failureReason,
-      weightsSnapshot: weights
-        ? (weights as unknown as Record<string, unknown>)
-        : null,
-    });
-  }
 
   /**
    * Clears the current rotation by deactivating the active pack and removing
@@ -1084,7 +569,7 @@ export class StructurePackRotationService {
 
     // Clear cycle boosts
     const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
-    const cycleStart = this.computeCycleStart(cfg);
+    const cycleStart = computeCycleStart(cfg);
     await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
 
     logger.info(`Rotation cleared: deactivated pack "${activePack.name}"`);
@@ -1105,5 +590,45 @@ export class StructurePackRotationService {
           "The author may have restricted API downloads.",
       );
     }
+  }
+
+  // ===========================================================================
+  // PRIVATE HELPERS
+  // ===========================================================================
+
+  /** Returns the most recent rotation record, or null if no rotations have occurred. */
+  private async getLastRotation() {
+    const rotations = await Q.structure.pack.rotation.findAll(
+      {},
+      { limit: 1, orderBy: "rotatedAt", orderDirection: "desc" },
+    );
+    return rotations[0] ?? null;
+  }
+
+  /**
+   * Persists a rotation attempt to the database.
+   *
+   * @param outgoingPackId - ID of the pack that was active before this rotation, or null if none
+   * @param incomingPackId - ID of the pack selected for this rotation
+   * @param success - Whether the rotation completed without errors
+   * @param failureReason - Human-readable error message when `success` is false, otherwise null
+   * @param weights - Optional weight snapshot taken at selection time, stored for auditing
+   */
+  private async recordRotation(
+    outgoingPackId: number | null,
+    incomingPackId: number,
+    success: boolean,
+    failureReason: string | null,
+    weights?: WeightEntry[],
+  ): Promise<void> {
+    await Q.structure.pack.rotation.create({
+      outgoingPackId,
+      incomingPackId,
+      success,
+      failureReason,
+      weightsSnapshot: weights
+        ? (weights as unknown as Record<string, unknown>)
+        : null,
+    });
   }
 }
