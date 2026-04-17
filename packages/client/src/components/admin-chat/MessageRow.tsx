@@ -12,7 +12,7 @@ interface MessageRowProps {
   message: ChatMessage;
   navigate: (to: string) => void;
   /** True when this message is the last in a same-author run — the avatar
-   * and hover meta row only render on this one to tighten grouped bubbles. */
+   * only renders on this one to tighten grouped bubbles. */
   showAvatar: boolean;
   /** True when the previous message had a different author. Adds extra
    * breathing room above to visually separate turns. */
@@ -71,10 +71,13 @@ export function MessageRow({
     }
   };
 
+  const showMeta = !isStreaming && !isAck && !isProgress && content.length > 0;
+  const hasActions = persistedActions.length > 0 || fenceActions.length > 0;
+
   return (
     <div
       className={cn(
-        "group flex flex-col gap-1.5",
+        "group flex flex-col",
         isUser ? "items-end" : "items-start",
         isGroupStart ? "mt-3 first:mt-0" : "mt-0.5",
       )}
@@ -125,62 +128,73 @@ export function MessageRow({
         </div>
       </div>
 
-      {!isUser && !isStreaming && content.length > 0 && showAvatar && (
+      {showMeta && (
         <div
           className={cn(
-            "flex items-center gap-2 pl-8 text-[0.625rem] text-muted-foreground",
-            "opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100",
+            "grid grid-rows-[0fr] transition-[grid-template-rows] duration-150",
+            "group-hover:grid-rows-[1fr] focus-within:grid-rows-[1fr]",
           )}
         >
-          <span>{formatTime(message.createdAt)}</span>
-          <button
-            type="button"
-            onClick={(e) => void handleCopy(e)}
-            className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
-            aria-label="Copy message"
-          >
-            {copied ? (
-              <>
-                <Check size={10} />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy size={10} />
-                Copy
-              </>
-            )}
-          </button>
+          <div className="overflow-hidden">
+            <div
+              className={cn(
+                "mt-1.5 flex items-center gap-2 text-[0.625rem] text-muted-foreground",
+                isUser ? "flex-row-reverse pr-8" : "pl-8",
+              )}
+            >
+              <span>{formatTime(message.createdAt)}</span>
+              <button
+                type="button"
+                onClick={(e) => void handleCopy(e)}
+                className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
+                aria-label="Copy message"
+              >
+                {copied ? (
+                  <>
+                    <Check size={10} />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy size={10} />
+                    Copy
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <div
-        className={cn(
-          "flex w-full flex-col gap-1.5",
-          isUser ? "items-end" : "items-start",
-        )}
-      >
-        {persistedActions.map((record) => {
-          const coerced = coerceAction(record.payload);
-          if (!coerced) return null;
-          return (
+      {hasActions && (
+        <div
+          className={cn(
+            "mt-1.5 flex w-full flex-col gap-1.5",
+            isUser ? "items-end" : "items-start",
+          )}
+        >
+          {persistedActions.map((record) => {
+            const coerced = coerceAction(record.payload);
+            if (!coerced) return null;
+            return (
+              <ActionCard
+                key={`db-${record.id}`}
+                action={coerced}
+                storageKey={`db-${record.id}`}
+                navigate={navigate}
+              />
+            );
+          })}
+          {fenceActions.map((action, i) => (
             <ActionCard
-              key={`db-${record.id}`}
-              action={coerced}
-              storageKey={`db-${record.id}`}
+              key={`fence-${message.id}:${i}`}
+              action={action}
+              storageKey={`fence-${message.id}:${i}`}
               navigate={navigate}
             />
-          );
-        })}
-        {fenceActions.map((action, i) => (
-          <ActionCard
-            key={`fence-${message.id}:${i}`}
-            action={action}
-            storageKey={`fence-${message.id}:${i}`}
-            navigate={navigate}
-          />
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
