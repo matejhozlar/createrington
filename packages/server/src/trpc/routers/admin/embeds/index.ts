@@ -261,9 +261,9 @@ export const embedsRouter = router({
       const result = await messageService.edit({
         channelId,
         messageId,
-        content: data.content,
-        embeds: embed,
-        components,
+        content: data.content ?? null,
+        embeds: embed ?? null,
+        components: components ?? null,
       });
 
       if (!result.success) {
@@ -328,9 +328,9 @@ export const embedsRouter = router({
         const result = await messageService.edit({
           channelId: link.channelId,
           messageId: link.messageId,
-          content: data.content,
-          embeds: embed,
-          components,
+          content: data.content ?? null,
+          embeds: embed ?? null,
+          components: components ?? null,
         });
 
         if (result.success) {
@@ -385,9 +385,9 @@ export const embedsRouter = router({
       const result = await messageService.edit({
         channelId: link.channelId,
         messageId: link.messageId,
-        content: data.content,
-        embeds: embed,
-        components,
+        content: data.content ?? null,
+        embeds: embed ?? null,
+        components: components ?? null,
       });
 
       if (!result.success) {

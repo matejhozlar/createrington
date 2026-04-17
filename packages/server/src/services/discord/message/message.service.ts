@@ -218,10 +218,18 @@ export class DiscordMessageService {
         };
       }
 
+      // null → explicit clear ([] for arrays, null passes through for content);
+      // undefined → omit from edit payload so Discord.js keeps existing value
       const editOptions: MessageEditOptions = {
         content: options.content,
-        embeds: options.embeds ? [options.embeds] : undefined,
-        components: options.components,
+        embeds:
+          options.embeds === null
+            ? []
+            : options.embeds
+              ? [options.embeds]
+              : undefined,
+        components:
+          options.components === null ? [] : (options.components ?? undefined),
         files: options.files,
       };
 
