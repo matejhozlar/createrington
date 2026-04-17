@@ -12,10 +12,11 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { PackHeader } from "./components/PackHeader";
-import { ModsList, type RemoveTarget } from "./components/ModsList";
+import { ModsList } from "./components/ModsList";
 import { EditPackDialog } from "./components/EditPackDialog";
 import { AddModDialog } from "./components/AddModDialog";
 import { RemoveModDialog } from "./components/RemoveModDialog";
+import type { RemoveTarget } from "./types";
 
 /** Detail view for a single structure pack — displays pack metadata, mod list, and dialogs for adding/removing mods with dependency resolution */
 export function StructurePackDetail() {

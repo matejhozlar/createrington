@@ -13,16 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
+import type { RemoveTarget } from "../types";
 
 interface PackMod {
   id: number;
   curseforgeModId: number;
-}
-
-export interface RemoveTarget {
-  modId: number;
-  modName: string;
-  fileName: string;
 }
 
 export function RemoveModDialog({

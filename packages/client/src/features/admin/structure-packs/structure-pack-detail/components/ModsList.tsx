@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { RemoveTarget } from "../types";
 
 interface Mod {
   id: number;
@@ -16,12 +17,6 @@ interface Mod {
   modUrl?: string | null;
   thumbnailUrl?: string | null;
   curseforgeModId: number;
-}
-
-export interface RemoveTarget {
-  modId: number;
-  modName: string;
-  fileName: string;
 }
 
 export function ModsList({
