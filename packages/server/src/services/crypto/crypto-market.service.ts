@@ -36,7 +36,6 @@ import {
   sendWeeklyMarketReport,
   sendMarketEventNotification,
   sendIpoAnnouncementNotification,
-  sendIpoResultNotification,
   sendPriceAlertDMs,
 } from "./notifications";
 import {
@@ -50,9 +49,18 @@ import {
   EVENT_DEFINITIONS,
   type MarketEventType,
 } from "./events/event-definitions";
-import { createMarketEvent } from "./events/news-feed";
-import { R } from "@/db";
-import { BalanceTransactionType } from "@/db/repositories/balance";
+import {
+  aggregateDailySnapshots,
+  aggregateHourlySnapshots,
+  aggregateMinuteSnapshots,
+  aggregateWeeklySnapshots,
+} from "./aggregation";
+import { MarketCaches } from "./market-caches";
+import {
+  delistToken as performDelistToken,
+  processExpiredSeasonalTokens,
+} from "./lifecycle/seasonal";
+import { transitionEndedIpos } from "./lifecycle/ipo";
 
 /**
  * Crypto Market Service
@@ -94,11 +102,7 @@ export class CryptoMarketService {
   private weeklyReportTimeout: ReturnType<typeof setTimeout> | null = null;
   private wsService: WebSocketService | null = null;
 
-  /** In-memory cache of 24h-ago prices for change% calculation */
-  private prices24hAgo = new Map<number, number>();
-
-  /** In-memory cache of 24h trade volume per token */
-  private volume24h = new Map<number, bigint>();
+  private readonly caches = new MarketCaches();
 
   // ==========================================================================
   // LIFECYCLE
@@ -138,8 +142,8 @@ export class CryptoMarketService {
     }
 
     // Seed initial caches
-    await this.refresh24hPriceCache();
-    await this.refresh24hVolumeCache();
+    await this.caches.refreshPrices();
+    await this.caches.refreshVolumes();
     await refresh24hAverages();
 
     // Restore blue-chip metric state from token metadata (restart resilience)
@@ -272,10 +276,10 @@ export class CryptoMarketService {
     this.minuteAggregationInterval = setInterval(
       async () => {
         try {
-          await this.aggregateMinuteSnapshots();
+          await aggregateMinuteSnapshots();
           // Also refresh caches alongside aggregation
-          await this.refresh24hPriceCache();
-          await this.refresh24hVolumeCache();
+          await this.caches.refreshPrices();
+          await this.caches.refreshVolumes();
           await refresh24hAverages();
         } catch (err) {
           logger.error("Minute aggregation failed:", err);
@@ -290,7 +294,7 @@ export class CryptoMarketService {
     this.hourlyAggregationInterval = setInterval(
       async () => {
         try {
-          await this.aggregateHourlySnapshots();
+          await aggregateHourlySnapshots();
         } catch (err) {
           logger.error("Hourly aggregation failed:", err);
         }
@@ -304,7 +308,7 @@ export class CryptoMarketService {
     this.dailyAggregationInterval = setInterval(
       async () => {
         try {
-          await this.aggregateDailySnapshots();
+          await aggregateDailySnapshots();
         } catch (err) {
           logger.error("Daily aggregation failed:", err);
         }
@@ -318,7 +322,7 @@ export class CryptoMarketService {
     this.weeklyAggregationInterval = setInterval(
       async () => {
         try {
-          await this.aggregateWeeklySnapshots();
+          await aggregateWeeklySnapshots();
         } catch (err) {
           logger.error("Weekly aggregation failed:", err);
         }
@@ -469,71 +473,8 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
-  // 24H CACHES
+  // 24H CACHE DELEGATES
   // ==========================================================================
-
-  /**
-   * Loads the price each token had ~24 hours ago from minute snapshots.
-   * Falls back to the oldest available snapshot when no data exists in the
-   * 24h window. Used to compute change24h in broadcast payloads.
-   * @private
-   */
-  private async refresh24hPriceCache(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    // A window: between 24h ago and 23h ago to find the closest snapshot
-    const windowEnd = new Date(cutoff.getTime() + 60 * 60 * 1000);
-
-    for (const token of tokens) {
-      const snapshots = await Q.crypto.price.snapshot
-        .where({ tokenId: token.id, interval: "minute" })
-        .all();
-
-      // Find the snapshot closest to 24h ago
-      const candidates = snapshots.filter(
-        (s) => s.recordedAt >= cutoff && s.recordedAt <= windowEnd,
-      );
-
-      if (candidates.length > 0) {
-        // Pick the one closest to the cutoff
-        candidates.sort(
-          (a, b) =>
-            Math.abs(a.recordedAt.getTime() - cutoff.getTime()) -
-            Math.abs(b.recordedAt.getTime() - cutoff.getTime()),
-        );
-        this.prices24hAgo.set(token.id, Number(candidates[0].closePrice));
-      } else if (snapshots.length > 0) {
-        // Use the oldest available snapshot
-        snapshots.sort(
-          (a, b) => a.recordedAt.getTime() - b.recordedAt.getTime(),
-        );
-        this.prices24hAgo.set(token.id, Number(snapshots[0].closePrice));
-      }
-    }
-  }
-
-  /**
-   * Calculates the total trade volume per token over the last 24 hours.
-   * Sums absolute transaction amounts to capture both buys and sells.
-   * @private
-   */
-  private async refresh24hVolumeCache(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-    for (const token of tokens) {
-      const transactions = await Q.crypto.transaction
-        .where({ tokenId: token.id })
-        .all();
-
-      const recentTxs = transactions.filter((t) => t.createdAt >= cutoff);
-      let totalVolume = 0n;
-      for (const tx of recentTxs) {
-        totalVolume += tx.amount < 0n ? -tx.amount : tx.amount;
-      }
-      this.volume24h.set(token.id, totalVolume);
-    }
-  }
 
   /**
    * Computes the 24h price change percentage for a token.
@@ -542,9 +483,7 @@ export class CryptoMarketService {
    * @returns Percentage change (e.g. 12.5 for +12.5%), or 0 if no baseline exists
    */
   get24hChange(tokenId: number, currentPrice: string): number {
-    const oldPrice = this.prices24hAgo.get(tokenId);
-    if (!oldPrice || oldPrice === 0) return 0;
-    return ((Number(currentPrice) - oldPrice) / oldPrice) * 100;
+    return this.caches.getChange(tokenId, currentPrice);
   }
 
   // ==========================================================================
@@ -576,8 +515,8 @@ export class CryptoMarketService {
           tokenId: u.tokenId,
           symbol: u.symbol,
           price: u.newPrice,
-          change24h: this.get24hChange(u.tokenId, u.newPrice),
-          volume24h: String(this.volume24h.get(u.tokenId) ?? 0n),
+          change24h: this.caches.getChange(u.tokenId, u.newPrice),
+          volume24h: String(this.caches.getTokenVolume(u.tokenId)),
           availableSupply: String(token.availableSupply),
           isCrashed: u.isCrashed,
         };
@@ -616,7 +555,7 @@ export class CryptoMarketService {
 
     return {
       totalMarketCap: totalMarketCap.toFixed(2),
-      totalVolume24h: String(this.getTotalVolume24h()),
+      totalVolume24h: String(this.caches.getTotalVolume()),
       topGainer,
       topLoser,
     };
@@ -644,8 +583,8 @@ export class CryptoMarketService {
       tokenId: t.id,
       symbol: t.symbol,
       price: t.price,
-      change24h: this.get24hChange(t.id, t.price),
-      volume24h: String(this.volume24h.get(t.id) ?? 0n),
+      change24h: this.caches.getChange(t.id, t.price),
+      volume24h: String(this.caches.getTokenVolume(t.id)),
       availableSupply: String(t.availableSupply),
       isCrashed: t.isCrashed,
     }));
@@ -825,291 +764,6 @@ export class CryptoMarketService {
   }
 
   // ==========================================================================
-  // AGGREGATION
-  // ==========================================================================
-
-  /**
-   * Rolls up tick-level snapshots into minute OHLCV candles and prunes old ticks.
-   *
-   * For each active token, gathers ticks from the last completed minute, computes
-   * open/high/low/close/volume, and inserts a minute-interval snapshot. Duplicate
-   * inserts are silently ignored (unique constraint). Old tick snapshots beyond the
-   * configured retention window are deleted.
-   * @private
-   */
-  private async aggregateMinuteSnapshots(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const now = new Date();
-    // Round to current minute
-    now.setSeconds(0, 0);
-
-    // Look back 5 minutes (matching the aggregation interval) so that
-    // slower-ticking tokens (stablecoins every 10min, blue-chips every 1h)
-    // still produce minute snapshots from their ticks.
-    const lookbackMinutes = 5;
-
-    for (const token of tokens) {
-      for (let m = lookbackMinutes; m >= 1; m--) {
-        const bucketStart = new Date(now.getTime() - m * 60_000);
-        const bucketEnd = new Date(bucketStart.getTime() + 60_000);
-
-        const ticks = await Q.crypto.price.snapshot
-          .where({
-            tokenId: token.id,
-            interval: "tick",
-            recordedAt: { $gte: bucketStart, $lt: bucketEnd },
-          })
-          .orderBy("recordedAt", "asc")
-          .all();
-
-        if (ticks.length === 0) continue;
-
-        const open = ticks[0].openPrice;
-        const close = ticks[ticks.length - 1].closePrice;
-        const high = ticks.reduce(
-          (max, t) => (Number(t.highPrice) > Number(max) ? t.highPrice : max),
-          ticks[0].highPrice,
-        );
-        const low = ticks.reduce(
-          (min, t) => (Number(t.lowPrice) < Number(min) ? t.lowPrice : min),
-          ticks[0].lowPrice,
-        );
-        const volume = ticks.reduce((sum, t) => sum + t.volume, 0n);
-
-        try {
-          await Q.crypto.price.snapshot.create({
-            tokenId: token.id,
-            interval: "minute",
-            openPrice: open,
-            highPrice: high,
-            lowPrice: low,
-            closePrice: close,
-            volume,
-            recordedAt: bucketStart,
-          });
-        } catch {
-          // Ignore duplicate (unique constraint on token+interval+recordedAt)
-        }
-      }
-    }
-
-    // Prune old tick snapshots
-    const tickCutoff = new Date(
-      Date.now() - CRYPTO_CONFIG.RETENTION.TICK * 1000,
-    );
-    await Q.crypto.price.snapshot.deleteAll({
-      interval: "tick",
-      recordedAt: { $lt: tickCutoff },
-    });
-  }
-
-  /**
-   * Rolls up minute-level snapshots into hourly OHLCV candles and prunes old minute snapshots.
-   * @private
-   */
-  private async aggregateHourlySnapshots(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const now = new Date();
-
-    // Round down to start of current hour
-    const currentHourStart = new Date(now);
-    currentHourStart.setMinutes(0, 0, 0);
-
-    // The completed hour: [hourStart, currentHourStart)
-    const hourStart = new Date(currentHourStart.getTime() - 3_600_000);
-
-    for (const token of tokens) {
-      const minutes = await Q.crypto.price.snapshot
-        .where({
-          tokenId: token.id,
-          interval: "minute",
-          recordedAt: { $gte: hourStart, $lt: currentHourStart },
-        })
-        .orderBy("recordedAt", "asc")
-        .all();
-
-      if (minutes.length === 0) continue;
-
-      const open = minutes[0].openPrice;
-      const close = minutes[minutes.length - 1].closePrice;
-      const high = minutes.reduce(
-        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
-        minutes[0].highPrice,
-      );
-      const low = minutes.reduce(
-        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
-        minutes[0].lowPrice,
-      );
-      const volume = minutes.reduce((sum, s) => sum + s.volume, 0n);
-
-      await Q.crypto.price.snapshot.upsert(
-        {
-          tokenId: token.id,
-          interval: "hourly",
-          openPrice: open,
-          highPrice: high,
-          lowPrice: low,
-          closePrice: close,
-          volume,
-          recordedAt: hourStart,
-        },
-        ["tokenId", "interval", "recordedAt"],
-      );
-    }
-
-    // Prune old minute snapshots
-    const minuteCutoff = new Date(
-      Date.now() - CRYPTO_CONFIG.RETENTION.MINUTE * 1000,
-    );
-    await Q.crypto.price.snapshot.deleteAll({
-      interval: "minute",
-      recordedAt: { $lt: minuteCutoff },
-    });
-  }
-
-  /**
-   * Rolls up hourly snapshots into daily OHLCV candles and prunes old hourly snapshots.
-   * Uses midnight-to-midnight UTC boundaries.
-   * @private
-   */
-  private async aggregateDailySnapshots(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const now = new Date();
-
-    // Start of today UTC
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
-    // The completed day: yesterday
-    const dayStart = new Date(todayStart.getTime() - 86_400_000);
-
-    for (const token of tokens) {
-      const hourlySnaps = await Q.crypto.price.snapshot
-        .where({
-          tokenId: token.id,
-          interval: "hourly",
-          recordedAt: { $gte: dayStart, $lt: todayStart },
-        })
-        .orderBy("recordedAt", "asc")
-        .all();
-
-      if (hourlySnaps.length === 0) continue;
-
-      const open = hourlySnaps[0].openPrice;
-      const close = hourlySnaps[hourlySnaps.length - 1].closePrice;
-      const high = hourlySnaps.reduce(
-        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
-        hourlySnaps[0].highPrice,
-      );
-      const low = hourlySnaps.reduce(
-        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
-        hourlySnaps[0].lowPrice,
-      );
-      const volume = hourlySnaps.reduce((sum, s) => sum + s.volume, 0n);
-
-      await Q.crypto.price.snapshot.upsert(
-        {
-          tokenId: token.id,
-          interval: "daily",
-          openPrice: open,
-          highPrice: high,
-          lowPrice: low,
-          closePrice: close,
-          volume,
-          recordedAt: dayStart,
-        },
-        ["tokenId", "interval", "recordedAt"],
-      );
-    }
-
-    // Prune old hourly snapshots
-    const hourlyCutoff = new Date(
-      Date.now() - CRYPTO_CONFIG.RETENTION.HOURLY * 1000,
-    );
-    await Q.crypto.price.snapshot.deleteAll({
-      interval: "hourly",
-      recordedAt: { $lt: hourlyCutoff },
-    });
-  }
-
-  /**
-   * Rolls up daily snapshots into weekly OHLCV candles and prunes old daily snapshots.
-   * Uses Monday-to-Sunday UTC boundaries.
-   * @private
-   */
-  private async aggregateWeeklySnapshots(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
-    const now = new Date();
-
-    // Find this Monday 00:00 UTC
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
-    const dayOfWeek = todayStart.getUTCDay(); // 0=Sun, 1=Mon, ...
-    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-    const thisMonday = new Date(
-      todayStart.getTime() - daysSinceMonday * 86_400_000,
-    );
-    // The completed week: [lastMonday, thisMonday)
-    const lastMonday = new Date(thisMonday.getTime() - 7 * 86_400_000);
-
-    for (const token of tokens) {
-      const dailySnaps = await Q.crypto.price.snapshot
-        .where({
-          tokenId: token.id,
-          interval: "daily",
-          recordedAt: { $gte: lastMonday, $lt: thisMonday },
-        })
-        .orderBy("recordedAt", "asc")
-        .all();
-
-      if (dailySnaps.length === 0) continue;
-
-      const open = dailySnaps[0].openPrice;
-      const close = dailySnaps[dailySnaps.length - 1].closePrice;
-      const high = dailySnaps.reduce(
-        (max, s) => (Number(s.highPrice) > Number(max) ? s.highPrice : max),
-        dailySnaps[0].highPrice,
-      );
-      const low = dailySnaps.reduce(
-        (min, s) => (Number(s.lowPrice) < Number(min) ? s.lowPrice : min),
-        dailySnaps[0].lowPrice,
-      );
-      const volume = dailySnaps.reduce((sum, s) => sum + s.volume, 0n);
-
-      const existing = await Q.crypto.price.snapshot
-        .where({
-          tokenId: token.id,
-          interval: "weekly",
-          recordedAt: lastMonday,
-        })
-        .first();
-
-      if (!existing) {
-        await Q.crypto.price.snapshot.create({
-          tokenId: token.id,
-          interval: "weekly",
-          openPrice: open,
-          highPrice: high,
-          lowPrice: low,
-          closePrice: close,
-          volume,
-          recordedAt: lastMonday,
-        });
-      }
-    }
-
-    // Prune old daily snapshots
-    const dailyCutoff = new Date(
-      Date.now() - CRYPTO_CONFIG.RETENTION.DAILY * 1000,
-    );
-    await Q.crypto.price.snapshot.deleteAll({
-      interval: "daily",
-      recordedAt: { $lt: dailyCutoff },
-    });
-  }
-
-  // ==========================================================================
   // EVENT ENGINE
   // ==========================================================================
 
@@ -1162,7 +816,7 @@ export class CryptoMarketService {
     this.seasonalCheckInterval = setInterval(
       async () => {
         try {
-          await this.checkExpiredSeasonalTokens();
+          await processExpiredSeasonalTokens();
         } catch (err) {
           logger.error("Seasonal token check failed:", err);
         }
@@ -1172,99 +826,13 @@ export class CryptoMarketService {
   }
 
   /**
-   * Checks for seasonal tokens past their delist date and auto-sells all holdings.
-   * @private
-   */
-  private async checkExpiredSeasonalTokens(): Promise<void> {
-    const seasonalTokens = await Q.crypto.token
-      .where({ category: "seasonal" })
-      .all();
-
-    const now = new Date();
-
-    for (const token of seasonalTokens) {
-      if (!token.delistedAt || token.delistedAt > now) continue;
-      if (token.isCrashed) continue; // already processed
-
-      await this.delistToken(token.id);
-    }
-  }
-
-  /**
    * Delists a token: auto-sells all player holdings at current price
    * and marks the token as delisted.
    *
    * @param tokenId - ID of the token to delist
    */
   async delistToken(tokenId: number): Promise<void> {
-    const token = await Q.crypto.token.get({ id: tokenId });
-    if (token.isCrashed) return;
-
-    const finalPrice = Number(token.price);
-
-    // Find all holders
-    const holdings = await Q.crypto.holding.where({ tokenId: token.id }).all();
-
-    // Auto-sell each holder's position at the final price
-    for (const holding of holdings) {
-      const amount = Number(holding.amount);
-      const revenue = Math.floor(amount * finalPrice * 1000) / 1000;
-
-      if (revenue > 0) {
-        await R.balanceRepo.add(
-          { minecraftUuid: holding.playerMinecraftUuid },
-          revenue,
-          `Auto-delist: ${amount} ${token.symbol} @ $${finalPrice.toFixed(4)}`,
-          BalanceTransactionType.CRYPTO_SELL,
-          {
-            tokenId: token.id,
-            tokenSymbol: token.symbol,
-            amount,
-            price: finalPrice,
-            fee: 0,
-            trigger: "auto_delist",
-          },
-        );
-      }
-
-      // Record the transaction
-      await Q.crypto.transaction.create({
-        playerMinecraftUuid: holding.playerMinecraftUuid,
-        tokenId: token.id,
-        type: "sell",
-        trigger: "auto_delist",
-        amount: holding.amount,
-        priceAtExecution: token.price,
-        feeAmount: "0",
-        totalCost: revenue.toFixed(8),
-      });
-
-      // Delete the holding
-      await Q.crypto.holding.delete({ id: holding.id });
-    }
-
-    // Mark token as delisted
-    await Q.crypto.token.update(
-      { id: token.id },
-      {
-        delistedAt: new Date(),
-        isCrashed: true, // prevents further trading
-        crashedAt: new Date(),
-      },
-    );
-
-    // Record news event
-    await createMarketEvent({
-      type: "token_delisted",
-      title: `${token.name} (${token.symbol}) Delisted`,
-      description: `All holdings were auto-sold at $${finalPrice.toFixed(4)}. ${holdings.length} holders received payouts.`,
-      tokenId: token.id,
-      severity: "warning",
-    });
-
-    logger.info(
-      `Delisted token ${token.symbol}: ${holdings.length} holdings auto-sold at $${finalPrice.toFixed(4)}`,
-    );
+    return performDelistToken(tokenId);
   }
 
   // ==========================================================================
@@ -1275,7 +843,7 @@ export class CryptoMarketService {
   private startIpoTransitionCheck(): void {
     this.ipoCheckInterval = setInterval(async () => {
       try {
-        await this.transitionEndedIpos();
+        await transitionEndedIpos();
       } catch (err) {
         logger.error("IPO transition check failed:", err);
       }
@@ -1303,50 +871,6 @@ export class CryptoMarketService {
       }
     } catch (err) {
       logger.error("IPO spawn scheduler failed:", err);
-    }
-  }
-
-  /**
-   * Finds tokens whose IPO has ended and transitions them to normal trading.
-   * Sends result notifications and clears IPO fields so the price engine picks them up.
-   * @private
-   */
-  private async transitionEndedIpos(): Promise<void> {
-    const allMemecoins = await Q.crypto.token
-      .where({ category: "memecoin", isCrashed: false })
-      .all();
-
-    const now = new Date();
-
-    for (const token of allMemecoins) {
-      if (!token.ipoEndsAt || token.ipoEndsAt > now) continue;
-
-      // IPO has ended — gather results before clearing
-      const holdings = await Q.crypto.holding
-        .where({ tokenId: token.id })
-        .all();
-
-      const totalSold = token.totalSupply - token.availableSupply;
-      const participants = holdings.length;
-
-      // Clear IPO fields — token enters normal trading
-      await Q.crypto.token.update({ id: token.id }, { ipoEndsAt: null });
-
-      // Send IPO result notification
-      sendIpoResultNotification(
-        token.name,
-        token.symbol,
-        token.ipoPrice!,
-        totalSold,
-        token.totalSupply,
-        participants,
-      ).catch((err) =>
-        logger.error("Failed to send IPO result notification:", err),
-      );
-
-      logger.info(
-        `IPO ended for ${token.symbol}: ${totalSold} sold to ${participants} participants`,
-      );
     }
   }
 
@@ -1426,16 +950,12 @@ export class CryptoMarketService {
 
   /** Returns the total 24h trading volume across all tokens */
   getTotalVolume24h(): bigint {
-    let total = 0n;
-    for (const vol of this.volume24h.values()) {
-      total += vol;
-    }
-    return total;
+    return this.caches.getTotalVolume();
   }
 
   /** Returns the 24h trading volume for a specific token */
   getTokenVolume24h(tokenId: number): bigint {
-    return this.volume24h.get(tokenId) ?? 0n;
+    return this.caches.getTokenVolume(tokenId);
   }
 
   /**
@@ -1456,7 +976,7 @@ export class CryptoMarketService {
       if (token.delistedAt) continue;
       if (token.ipoEndsAt && token.ipoEndsAt > now) continue;
 
-      const change = this.get24hChange(token.id, token.price);
+      const change = this.caches.getChange(token.id, token.price);
       if (change === 0) continue;
 
       if (!topGainer || change > topGainer.change24h) {
