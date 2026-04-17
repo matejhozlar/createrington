@@ -107,39 +107,32 @@ export function MessageRow({
         ) : (
           <div className="size-6 shrink-0" aria-hidden />
         )}
-        <div
-          className={cn(
-            "max-w-[85%] rounded-lg px-3 py-2 text-[0.8125rem] leading-relaxed break-words",
-            isUser
-              ? "rounded-br-sm bg-primary text-primary-foreground"
-              : "rounded-bl-sm bg-muted text-foreground",
-            isAck && "text-xs italic opacity-60",
-            isProgress && "text-xs opacity-50",
-            isStreaming &&
-              "after:ml-0.5 after:inline-block after:h-3.5 after:w-0.5 after:animate-pulse after:bg-current after:align-middle",
-          )}
-          title={formatTime(message.createdAt)}
-        >
-          {isUser ? (
-            content
-          ) : (
-            <AssistantMarkdown text={content} navigate={navigate} />
-          )}
-        </div>
-      </div>
-
-      {showMeta && (
-        <div
-          className={cn(
-            "grid grid-rows-[0fr] transition-[grid-template-rows] duration-150",
-            "group-hover:grid-rows-[1fr] focus-within:grid-rows-[1fr]",
-          )}
-        >
-          <div className="overflow-hidden">
+        <div className="relative max-w-[85%]">
+          <div
+            className={cn(
+              "rounded-lg px-3 py-2 text-[0.8125rem] leading-relaxed break-words",
+              isUser
+                ? "rounded-br-sm bg-primary text-primary-foreground"
+                : "rounded-bl-sm bg-muted text-foreground",
+              isAck && "text-xs italic opacity-60",
+              isProgress && "text-xs opacity-50",
+              isStreaming &&
+                "after:ml-0.5 after:inline-block after:h-3.5 after:w-0.5 after:animate-pulse after:bg-current after:align-middle",
+            )}
+            title={formatTime(message.createdAt)}
+          >
+            {isUser ? (
+              content
+            ) : (
+              <AssistantMarkdown text={content} navigate={navigate} />
+            )}
+          </div>
+          {showMeta && (
             <div
               className={cn(
-                "mt-1.5 flex items-center gap-2 text-[0.625rem] text-muted-foreground",
-                isUser ? "flex-row-reverse pr-8" : "pl-8",
+                "pointer-events-none absolute top-1/2 flex -translate-y-1/2 items-center gap-1.5 whitespace-nowrap text-[0.625rem] text-muted-foreground opacity-0 transition-opacity duration-100",
+                "group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100",
+                isUser ? "right-full mr-2 flex-row-reverse" : "left-full ml-2",
               )}
             >
               <span>{formatTime(message.createdAt)}</span>
@@ -162,9 +155,9 @@ export function MessageRow({
                 )}
               </button>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {hasActions && (
         <div
