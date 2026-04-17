@@ -50,6 +50,7 @@ interface ChannelConfig {
   };
 
   readonly administration: {
+    readonly mcCommandLogs: string;
     readonly chat: string;
     readonly test: string;
     readonly communityUpdates: string;

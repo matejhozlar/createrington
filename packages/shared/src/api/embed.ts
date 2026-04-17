@@ -25,6 +25,7 @@ export const embedActionButtonSchema = z.object({
 });
 
 export const embedDataSchema = z.object({
+  content: z.string().max(2000).optional(),
   title: z.string().max(256).optional(),
   description: z.string().max(4096).optional(),
   color: z.number().int().min(0).max(0xffffff).optional(),

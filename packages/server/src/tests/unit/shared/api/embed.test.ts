@@ -195,4 +195,15 @@ describe("embedDataSchema", () => {
       embedDataSchema.parse({ description: "x".repeat(4097) }),
     ).toThrow();
   });
+
+  it("accepts an optional plain-text content field", () => {
+    const parsed = embedDataSchema.parse({ content: "Hello everyone" });
+    expect(parsed.content).toBe("Hello everyone");
+  });
+
+  it("rejects content longer than 2000 characters", () => {
+    expect(() =>
+      embedDataSchema.parse({ content: "x".repeat(2001) }),
+    ).toThrow();
+  });
 });
