@@ -59,6 +59,7 @@ function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
     return undefined;
   };
 
+  if ("content" in r && typeof r.content === "string") out.content = r.content;
   if ("title" in r) out.title = stringish(r.title);
   if ("description" in r)
     out.description =
