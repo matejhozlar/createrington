@@ -109,6 +109,7 @@ export function parseActionsFromMessage(raw: string): {
  * we auto-wrap them so the action is still usable.
  */
 const EMBED_FIELDS = new Set([
+  "content",
   "title",
   "description",
   "color",
