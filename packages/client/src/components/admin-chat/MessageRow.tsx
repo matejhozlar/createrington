@@ -80,6 +80,7 @@ export function MessageRow({
         "group flex flex-col",
         isUser ? "items-end" : "items-start",
         isGroupStart ? "mt-2 first:mt-0" : "mt-0",
+        !showMeta && "mb-1.5",
       )}
     >
       <div
