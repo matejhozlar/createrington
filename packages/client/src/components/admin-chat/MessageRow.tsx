@@ -12,7 +12,7 @@ interface MessageRowProps {
   message: ChatMessage;
   navigate: (to: string) => void;
   /** True when this message is the last in a same-author run — the avatar
-   * and hover meta row only render on this one to tighten grouped bubbles. */
+   * only renders on this one to tighten grouped bubbles. */
   showAvatar: boolean;
   /** True when the previous message had a different author. Adds extra
    * breathing room above to visually separate turns. */
