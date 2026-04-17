@@ -294,7 +294,7 @@ function AppLayout() {
     <>
       <AppSidebar />
       <SidebarInset>
-        <div className="flex md:hidden items-center gap-2 p-2">
+        <div className="sticky top-0 z-30 flex md:hidden items-center gap-2 p-2 bg-background border-b">
           <SidebarTrigger />
           <Logo />
         </div>
