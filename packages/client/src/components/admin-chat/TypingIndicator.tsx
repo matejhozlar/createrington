@@ -1,6 +1,6 @@
 export function TypingIndicator(): React.JSX.Element {
   return (
-    <div className="flex items-end gap-2 self-start">
+    <div className="mt-3 flex items-end gap-2 self-start animate-in fade-in slide-in-from-bottom-1 duration-200">
       <img
         src="/assets/logo/logo.png"
         alt="Createrington"

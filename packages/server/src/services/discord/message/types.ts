@@ -34,18 +34,23 @@ export interface SendMessageOptions {
 
 /**
  * Options for editing an existing message
+ *
+ * Semantics for content/embeds/components:
+ * - `undefined` → leave the field untouched on the Discord message
+ * - `null` → clear the field (remove content / remove all embeds / remove all components)
+ * - a value → replace with that value
  */
 export interface EditMessageOptions {
   /** Discord channel ID containing the message */
   channelId: string;
   /** Discord message ID to edit */
   messageId: string;
-  /** Optional new text content */
-  content?: string;
-  /** Optional new embed */
-  embeds?: EmbedBuilder;
-  /** Optional new components */
-  components?: ActionRowBuilder<ButtonBuilder>[];
+  /** New text content. `null` clears existing content. */
+  content?: string | null;
+  /** New embed. `null` clears all existing embeds. */
+  embeds?: EmbedBuilder | null;
+  /** New components. `null` clears all existing components. */
+  components?: ActionRowBuilder<ButtonBuilder>[] | null;
   /** Optional new file attachments */
   files?: AttachmentBuilder[];
 }

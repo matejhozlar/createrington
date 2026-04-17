@@ -1,3 +1,21 @@
+## v1.8.0 (2026-04-17)
+
+### @createrington/shared (1.0.0 → 1.1.0)
+- Add `content` field to `embedDataSchema` — plain message content (up to 2000 chars) is now a first-class field alongside embed title/description, enabling Discord messages that contain text without a rich embed
+
+### @createrington/server (1.7.2 → 1.8.0)
+- Add plain text content support to embed builder — all send/edit/preview embed mutations now accept and forward a `content` field; validation accepts content-only messages (previously required at least a title, description, or field); edit operations explicitly null out content/embeds/components when absent so stale values are cleared on update
+- Modularize structure pack rotation service — `rotation.ts` (~600 LOC) split into focused files: `scheduling.ts`, `weights.ts`, `mod-cache.ts`, `timezone.ts`, `constants.ts`, `types.ts`, and an `index.ts` orchestrator; no behaviour change
+- Modularize crypto market service — `crypto-market.service.ts` (~550 LOC) split into `aggregation.ts`, `market-caches.ts`, `lifecycle/ipo.ts`, and `lifecycle/seasonal.ts`; no behaviour change
+- Modularize RCON utility — monolithic `rcon/index.ts` (~1000 LOC) split into `connection.ts`, `manager.ts`, `enums.ts`, `errors.ts`, and `types.ts`; error classes are re-exported from the barrel so existing imports remain unchanged
+
+### @createrington/client (0.2.5 → 0.2.6)
+- Add plain text content field to embed builder UI — new "Content" textarea appears above the embed form; the normalizer now propagates `insert_embed` content through to the embed data so it survives round-trips through the editor
+- Modularize web chat component — monolithic `chat.tsx` (1777 lines) split into `server-chat.tsx`, `message-row.tsx`, `message-group.tsx`, `message-images.tsx`, `player-list-panel.tsx`, `chat-markdown.tsx`, `avatar.tsx`, `source-badge.tsx`, plus shared `hooks.ts`, `constants.ts`, `types.ts`, and `utils.ts`; no behaviour change
+- Modularize StructurePackDetail admin page — monolithic page component (~970 lines) decomposed into `AddModDialog`, `EditPackDialog`, `ModsList`, `PackHeader`, and `RemoveModDialog` components with a shared `types.ts`; no behaviour change
+- Fix typing indicator spacing and animation — entrance animation and spacing for the typing indicator are corrected
+- Fix copy and timestamp visibility — copy button and timestamp are now shown on every chat message, not just on hover of grouped messages
+
 ## v1.7.2 (2026-04-16)
 
 ### @createrington/server (1.7.1 → 1.7.2)

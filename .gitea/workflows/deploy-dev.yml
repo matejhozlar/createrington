@@ -63,7 +63,7 @@ jobs:
 
       - name: Setup Gradle
         if: steps.spec-check.outputs.changed == 'true'
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v4.4.4
         with:
           gradle-version: '8.12'
 

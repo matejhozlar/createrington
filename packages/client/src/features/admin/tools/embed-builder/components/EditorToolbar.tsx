@@ -68,6 +68,7 @@ export function EditorToolbar({ builder }: EditorToolbarProps) {
       }
 
       setEmbedData({
+        content: parsed.content ?? undefined,
         title: parsed.title ?? undefined,
         description: parsed.description ?? undefined,
         color: parsed.color ?? undefined,

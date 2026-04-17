@@ -23,6 +23,7 @@ export interface ActivePreset {
 }
 
 const DEFAULT_EMBED: EmbedDataInternal = {
+  content: undefined,
   title: undefined,
   description: undefined,
   color: undefined,
@@ -166,6 +167,7 @@ export function useEmbedBuilder() {
   }, [data, activePreset, lastSavedSnapshot]);
 
   const hasContent = !!(
+    data.content ||
     data.title ||
     data.description ||
     data.fields.length > 0
@@ -296,7 +298,7 @@ export function useEmbedBuilder() {
       }
       if (!hasContent) {
         toast.error(
-          "Embed must have a title, description, or at least one field",
+          "Message must have content, a title, a description, or at least one field",
         );
         return;
       }

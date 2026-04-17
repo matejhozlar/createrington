@@ -221,7 +221,8 @@ const AdminStructurePacks = lazyNamed(
   "AdminStructurePacks",
 );
 const StructurePackDetail = lazyNamed(
-  () => import("./features/admin/structure-packs/StructurePackDetail"),
+  () =>
+    import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
   "StructurePackDetail",
 );
 const AdminCrypto = lazyNamed(
