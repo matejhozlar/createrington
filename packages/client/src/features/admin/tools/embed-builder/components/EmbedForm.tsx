@@ -70,6 +70,7 @@ function Section({
 }
 
 export function EmbedForm({ data, onChange }: EmbedFormProps) {
+  const contentRef = useRef<HTMLTextAreaElement>(null);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   function update(updates: Partial<EmbedData>) {
@@ -101,6 +102,30 @@ export function EmbedForm({ data, onChange }: EmbedFormProps) {
 
   return (
     <div className="space-y-1 rounded-lg border border-border bg-card">
+      {/* Message content (plain text above the embed) */}
+      <div className="space-y-2 px-3 pt-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Label>Message content</Label>
+            <InsertMenu
+              onInsert={(text) =>
+                insertAtCursor(contentRef, data.content, text, "content")
+              }
+            />
+          </div>
+          <CharCount value={data.content} max={2000} />
+        </div>
+        <textarea
+          ref={contentRef}
+          placeholder="Plain text sent above the embed (optional). Send this alone for a bare message."
+          value={data.content ?? ""}
+          onChange={(e) => update({ content: e.target.value || undefined })}
+          rows={3}
+          maxLength={2000}
+          className="border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 w-full rounded-md border px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px]"
+        />
+      </div>
+
       {/* Body */}
       <Section title="Body" defaultOpen>
         <div className="space-y-3">

@@ -25,7 +25,21 @@ function getMessageService(bot: "main" | "web" = "main") {
   return DiscordMessageService.getInstance(client);
 }
 
-function buildDiscordEmbed(data: EmbedData): EmbedBuilder {
+function hasEmbedContent(data: EmbedData): boolean {
+  return !!(
+    data.title ||
+    data.description ||
+    data.fields.length > 0 ||
+    data.author ||
+    data.footer ||
+    data.imageUrl ||
+    data.thumbnailUrl
+  );
+}
+
+function buildDiscordEmbed(data: EmbedData): EmbedBuilder | undefined {
+  if (!hasEmbedContent(data)) return undefined;
+
   const embed = new EmbedBuilder();
 
   if (data.title) embed.setTitle(data.title);
@@ -175,9 +189,9 @@ export const embedsRouter = router({
       const { channelId } = input;
       const data = input.embed as EmbedData;
 
-      if (!data.title && !data.description && data.fields.length === 0) {
+      if (!data.content && !hasEmbedContent(data)) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field",
+          "Message must have content, a title, a description, or at least one field",
         );
       }
 
@@ -187,6 +201,7 @@ export const embedsRouter = router({
 
       const result = await messageService.send({
         channelId,
+        content: data.content,
         embeds: embed,
         components,
       });
@@ -233,9 +248,9 @@ export const embedsRouter = router({
       const { channelId, messageId } = input;
       const data = input.embed as EmbedData;
 
-      if (!data.title && !data.description && data.fields.length === 0) {
+      if (!data.content && !hasEmbedContent(data)) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field",
+          "Message must have content, a title, a description, or at least one field",
         );
       }
 
@@ -246,6 +261,7 @@ export const embedsRouter = router({
       const result = await messageService.edit({
         channelId,
         messageId,
+        content: data.content,
         embeds: embed,
         components,
       });
@@ -286,9 +302,9 @@ export const embedsRouter = router({
     .mutation(async ({ input, ctx }) => {
       const data = input.embed as EmbedData;
 
-      if (!data.title && !data.description && data.fields.length === 0) {
+      if (!data.content && !hasEmbedContent(data)) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field",
+          "Message must have content, a title, a description, or at least one field",
         );
       }
 
@@ -312,6 +328,7 @@ export const embedsRouter = router({
         const result = await messageService.edit({
           channelId: link.channelId,
           messageId: link.messageId,
+          content: data.content,
           embeds: embed,
           components,
         });
@@ -348,9 +365,9 @@ export const embedsRouter = router({
     .mutation(async ({ input }) => {
       const data = input.embed as EmbedData;
 
-      if (!data.title && !data.description && data.fields.length === 0) {
+      if (!data.content && !hasEmbedContent(data)) {
         throw trpcError.badRequest(
-          "Embed must have at least a title, description, or one field",
+          "Message must have content, a title, a description, or at least one field",
         );
       }
 
@@ -368,6 +385,7 @@ export const embedsRouter = router({
       const result = await messageService.edit({
         channelId: link.channelId,
         messageId: link.messageId,
+        content: data.content,
         embeds: embed,
         components,
       });
@@ -403,27 +421,31 @@ export const embedsRouter = router({
       }
 
       const embed = result.message.embeds[0];
-      if (!embed) {
-        throw trpcError.notFound("Message has no embeds");
+      const content = result.message.content || undefined;
+
+      if (!embed && !content) {
+        throw trpcError.notFound("Message has no content or embeds");
       }
 
       return {
-        title: embed.title ?? undefined,
-        description: embed.description ?? undefined,
-        color: embed.color ?? undefined,
-        url: embed.url ?? undefined,
-        footer: embed.footer?.text ?? undefined,
-        author: embed.author?.name ?? undefined,
-        authorUrl: embed.author?.url ?? undefined,
-        authorIconUrl: embed.author?.iconURL ?? undefined,
-        thumbnailUrl: embed.thumbnail?.url ?? undefined,
-        imageUrl: embed.image?.url ?? undefined,
-        timestamp: !!embed.timestamp,
-        fields: embed.fields.map((f) => ({
-          name: f.name,
-          value: f.value,
-          inline: f.inline ?? false,
-        })),
+        content,
+        title: embed?.title ?? undefined,
+        description: embed?.description ?? undefined,
+        color: embed?.color ?? undefined,
+        url: embed?.url ?? undefined,
+        footer: embed?.footer?.text ?? undefined,
+        author: embed?.author?.name ?? undefined,
+        authorUrl: embed?.author?.url ?? undefined,
+        authorIconUrl: embed?.author?.iconURL ?? undefined,
+        thumbnailUrl: embed?.thumbnail?.url ?? undefined,
+        imageUrl: embed?.image?.url ?? undefined,
+        timestamp: !!embed?.timestamp,
+        fields:
+          embed?.fields.map((f) => ({
+            name: f.name,
+            value: f.value,
+            inline: f.inline ?? false,
+          })) ?? [],
       };
     }),
 
