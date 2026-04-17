@@ -30,36 +30,44 @@ export function ChatHeader({
 }: ChatHeaderProps): React.JSX.Element {
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-foreground">
-            Createrington Assistant
-          </span>
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.625rem] font-medium",
-              sessionActive
-                ? "bg-success/15 text-success"
-                : "bg-muted text-muted-foreground",
-            )}
-          >
+      <div className="flex min-w-0 items-center gap-2">
+        <img
+          src="/assets/logo/createrington-bot.webp"
+          alt="Createrington Assistant"
+          className="size-7 shrink-0 rounded-full bg-muted object-cover"
+          loading="lazy"
+        />
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground">
+              Createrington Assistant
+            </span>
             <span
               className={cn(
-                "inline-block size-1.5 rounded-full",
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.625rem] font-medium",
                 sessionActive
-                  ? "animate-pulse bg-success"
-                  : "bg-muted-foreground",
+                  ? "bg-success/15 text-success"
+                  : "bg-muted text-muted-foreground",
               )}
-            />
-            {sessionActive ? "Active" : "Idle"}
+            >
+              <span
+                className={cn(
+                  "inline-block size-1.5 rounded-full",
+                  sessionActive
+                    ? "animate-pulse bg-success"
+                    : "bg-muted-foreground",
+                )}
+              />
+              {sessionActive ? "Active" : "Idle"}
+            </span>
+          </div>
+          <span
+            className="max-w-56 overflow-hidden font-mono text-[0.625rem] text-ellipsis whitespace-nowrap text-muted-foreground"
+            title={`Current page: ${breadcrumb}`}
+          >
+            {breadcrumb}
           </span>
         </div>
-        <span
-          className="max-w-56 overflow-hidden font-mono text-[0.625rem] text-ellipsis whitespace-nowrap text-muted-foreground"
-          title={`Current page: ${breadcrumb}`}
-        >
-          {breadcrumb}
-        </span>
       </div>
       <div className="flex shrink-0 items-center gap-0.5">
         {canStartNew && (
