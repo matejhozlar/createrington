@@ -6,6 +6,9 @@
   "exports": {
     "./trpc": {
       "types": "./dist/server/src/trpc/router.d.ts"
+    },
+    "./trpc/panel": {
+      "types": "./dist/server/src/trpc/routers/consumers/panel/index.d.ts"
     }
   },
   "scripts": {
