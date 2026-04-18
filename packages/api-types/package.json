@@ -1,0 +1,38 @@
+{
+  "name": "@createrington/api-types",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/index.d.ts",
+    "README.md"
+  ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm clean && rollup -c",
+    "release": "bash ./publish.sh"
+  },
+  "peerDependencies": {
+    "@trpc/server": "^11"
+  },
+  "devDependencies": {
+    "@createrington/server": "workspace:*",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@trpc/server": "^11.1.0",
+    "rimraf": "^5.0.0",
+    "rollup": "^4.24.0",
+    "rollup-plugin-dts": "^6.1.1",
+    "typescript": "^5.9.3"
+  }
+}

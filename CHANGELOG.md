@@ -1,3 +1,16 @@
+## v1.9.0 (2026-04-18)
+
+### @createrington/server (1.8.1 → 1.9.0)
+- Add consumer tRPC router system — new `consumers` namespace in the root router provides stable, versioned API contracts for external first-party apps (admin panel, bots)
+- Add panel consumer router with `presence.onlineByServer` procedure — returns currently online players for a given server, consumed by the admin panel to render per-server player lists
+- Mount panel router at dedicated `/trpc/consumers/panel` endpoint so external consumers can use natural procedure paths without knowing the internal router nesting
+- Export `PanelRouter` type via new `./trpc/panel` package export for use by `@createrington/api-types`
+
+### @createrington/api-types (new — 0.1.0)
+- New workspace package published to public npm — ships a single bundled `.d.ts` with typed tRPC router contracts for first-party consumer projects
+- Exports `PanelRouter` type for the admin panel to use with `@trpc/client`
+- CI auto-publishes to npm on deploy when the version is bumped, with idempotent skip-if-already-published guard
+
 ## v1.8.1 (2026-04-18)
 
 ### @createrington/server (1.8.0 → 1.8.1)

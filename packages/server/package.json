@@ -1,11 +1,14 @@
 {
   "name": "@createrington/server",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "",
   "main": "server.ts",
   "exports": {
     "./trpc": {
       "types": "./dist/server/src/trpc/router.d.ts"
+    },
+    "./trpc/panel": {
+      "types": "./dist/server/src/trpc/routers/consumers/panel/index.d.ts"
     }
   },
   "scripts": {
