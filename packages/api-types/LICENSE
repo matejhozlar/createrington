@@ -1,0 +1,29 @@
+Copyright (c) 2026 Matej Hozlar. All Rights Reserved.
+
+This software and its accompanying source code, documentation, assets, and any
+related materials (the "Software") are the proprietary and confidential
+property of Matej Hozlar ("the Author") and are protected by copyright law and
+international treaties.
+
+NO LICENSE IS GRANTED.
+
+No part of the Software may be copied, reproduced, modified, merged,
+published, distributed, sublicensed, sold, leased, rented, publicly displayed,
+publicly performed, transmitted, reverse engineered, decompiled, disassembled,
+or otherwise exploited in any form or by any means, in whole or in part,
+without the prior express written permission of the Author.
+
+This package publishes only TypeScript type declarations derived from the
+Createrington server API. Consumers of the published types are granted a
+limited right to use these type declarations solely for the purpose of
+interoperating with authorized Createrington services. No other rights are
+granted, expressly or by implication, estoppel, or otherwise.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+All rights not expressly granted herein are reserved by the Author.
