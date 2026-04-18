@@ -12,7 +12,8 @@
   },
   "files": [
     "dist/index.d.ts",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
