@@ -145,3 +145,41 @@ jobs:
           chown -R 1000:988 /opt/createrington-dev
           chown -R 1000:988 /var/www/createrington-dev
           touch /opt/createrington-dev/.restart-trigger
+
+      # --------------------------------------------------------------------
+      # Publish @createrington/api-types to the Gitea npm registry if the
+      # version in packages/api-types/package.json is not yet on the registry.
+      #
+      # Feature PRs on dev don't bump the version — only the dev → main PR's
+      # changelog automation does. So this step only fires when the contract
+      # actually advances, and the skip-if-already-published guard handles
+      # re-runs idempotently.
+      #
+      # Required Gitea Actions secret: NPM_TOKEN (PAT with write:package
+      # scope on the Createrington org). Note: Gitea reserves the GITEA_
+      # prefix for its own variables, so the secret can't be named GITEA_*.
+      # --------------------------------------------------------------------
+      - name: Check if @createrington/api-types version changed
+        id: api-types-check
+        run: |
+          REGISTRY="https://gitea.matejhoz.com/api/packages/Createrington/npm/"
+          CURRENT=$(node -p "require('./packages/api-types/package.json').version")
+          PUBLISHED=$(npm view @createrington/api-types@$CURRENT version --registry=$REGISTRY 2>/dev/null || echo "")
+          if [ -n "$PUBLISHED" ]; then
+            echo "@createrington/api-types@$CURRENT already on Gitea, skipping publish"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "@createrington/api-types@$CURRENT not on Gitea, will publish"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Publish @createrington/api-types
+        if: steps.api-types-check.outputs.should_publish == 'true'
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//gitea.matejhoz.com/api/packages/Createrington/npm/:_authToken=$NPM_TOKEN" >> .npmrc
+          pnpm --filter @createrington/api-types build
+          pnpm --filter @createrington/api-types publish --no-git-checks
+          echo "Published @createrington/api-types@${{ steps.api-types-check.outputs.version }}"
