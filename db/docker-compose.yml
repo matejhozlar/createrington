@@ -26,7 +26,7 @@ services:
     ports:
       - "5050:80"
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@createrington.com
+      PGADMIN_DEFAULT_EMAIL: admin@create-rington.com
       PGADMIN_DEFAULT_PASSWORD: admin
     volumes:
       - pgadmin_data:/var/lib/pgadmin

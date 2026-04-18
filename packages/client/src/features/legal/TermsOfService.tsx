@@ -292,10 +292,10 @@ const sections = [
       <p>
         If you have questions about these Terms of Service, you can reach us at{" "}
         <a
-          href="mailto:admin@createrington.com"
+          href="mailto:admin@create-rington.com"
           className="text-primary hover:underline"
         >
-          admin@createrington.com
+          admin@create-rington.com
         </a>{" "}
         or through our{" "}
         <a

@@ -52,7 +52,7 @@ This drops everything, rebuilds the container, runs all migrations, and reseeds 
 
 If you prefer a GUI, run `pnpm pgadmin` and open http://localhost:5050 in your browser.
 
-- **Email:** admin@createrington.com
+- **Email:** admin@create-rington.com
 - **Password:** admin
 
 Then add a new server with these details:

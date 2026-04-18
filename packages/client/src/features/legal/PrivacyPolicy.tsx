@@ -215,10 +215,10 @@ const sections = [
         <p className="mt-2">
           To request data deletion, contact us at{" "}
           <a
-            href="mailto:admin@createrington.com"
+            href="mailto:admin@create-rington.com"
             className="text-primary hover:underline"
           >
-            admin@createrington.com
+            admin@create-rington.com
           </a>{" "}
           or through our{" "}
           <a
@@ -281,10 +281,10 @@ const sections = [
         If you have questions about this Privacy Policy or want to exercise your
         data rights, you can reach us at{" "}
         <a
-          href="mailto:admin@createrington.com"
+          href="mailto:admin@create-rington.com"
           className="text-primary hover:underline"
         >
-          admin@createrington.com
+          admin@create-rington.com
         </a>{" "}
         or through our{" "}
         <a

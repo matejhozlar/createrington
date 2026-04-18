@@ -83,7 +83,7 @@ jobs:
           git clone https://x-access-token:${{ secrets.MAVEN_REPO_TOKEN }}@github.com/matejhozlar/maven.git maven-repo
           cp -r mod-api/build/maven-publish/. maven-repo/
           cd maven-repo
-          git config user.email "ci@createrington.com"
+          git config user.email "ci@create-rington.com"
           git config user.name "CI"
           git add .
           git diff --cached --quiet || git commit -m "publish createrington-api ${VERSION}"
