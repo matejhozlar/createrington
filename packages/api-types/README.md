@@ -9,18 +9,11 @@ payloads) are inlined.
 
 ## Install
 
-Add the scope registry to your project's `.npmrc` (package is hosted on
-Gitea):
-
-```
-@createrington:registry=https://gitea.matejhoz.com/api/packages/Createrington/npm/
-```
-
-Then install:
-
 ```
 pnpm add @createrington/api-types
 ```
+
+No extra registry configuration — published on public npm.
 
 ## Usage
 

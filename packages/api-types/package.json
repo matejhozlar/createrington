@@ -15,7 +15,8 @@
     "README.md"
   ],
   "publishConfig": {
-    "registry": "https://gitea.matejhoz.com/api/packages/Createrington/npm/"
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
   },
   "scripts": {
     "clean": "rimraf dist",
