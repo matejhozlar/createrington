@@ -326,7 +326,7 @@ export function Home() {
                   ) : (
                     <Button size="lg" className="text-lg" asChild>
                       <a
-                        href="https://www.curseforge.com/minecraft/modpacks/create-rington"
+                        href="https://www.curseforge.com/minecraft/modpacks/createrington"
                         target="_blank"
                       >
                         <Download />

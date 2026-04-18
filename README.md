@@ -10,7 +10,7 @@
 
 Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
 
-- **Live:** [create-rington.com](https://create-rington.com)
+- **Live:** [createrington.com](https://createrington.com)
 
 ## Project Goals
 
@@ -243,7 +243,7 @@ Key variables:
 | `SMTP_HOST`             | SMTP server host                                                                        |
 | `SMTP_USER`             | SMTP username                                                                           |
 | `SMTP_PASS`             | SMTP password                                                                           |
-| `WEBSITE_URL`           | Public website URL (e.g. `https://create-rington.com`)                                  |
+| `WEBSITE_URL`           | Public website URL (e.g. `https://createrington.com`)                                  |
 
 ### Database Setup
 

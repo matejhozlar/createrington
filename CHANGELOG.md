@@ -1,3 +1,17 @@
+## v1.8.1 (2026-04-18)
+
+### @createrington/server (1.8.0 → 1.8.1)
+- Migrate all URLs, config defaults, comments, and tests from `create-rington.com` to `createrington.com` (domain consolidation)
+- Consolidate welcome image URL to the `assets.createrington.com` subdomain
+- Extract `QueryBuilder` class from `base.queries.ts` into its own `query-builder.ts` module for better separation of concerns; no behaviour change
+
+### @createrington/client (0.2.6 → 0.2.7)
+- Use dedicated bot logo (`createrington-bot.webp`) across all admin chat components — chat header, toggle button, empty state, message rows, and typing indicator now display the bot avatar instead of the generic site logo
+- Migrate all URLs, env files, CSP directives, Open Graph meta tags, and render watermarks from `create-rington.com` to `createrington.com`
+- Fix admin chat message spacing and avatar alignment — adjust group margins, add bottom padding to messages without meta, and align bot avatar with the bubble bottom
+- Float admin chat message meta (timestamp and copy button) on hover using opacity transition instead of the previous grid-row height animation, reducing layout shift
+- Make mobile header sticky so the sidebar trigger and logo remain visible when scrolling
+
 ## v1.8.0 (2026-04-17)
 
 ### @createrington/shared (1.0.0 → 1.1.0)
@@ -131,7 +145,7 @@
 - Add admin inactivity management tRPC router — new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
 - Extract shared `removeInactiveWarning` helper — consolidates the full removal sequence (Discord guild kick → RCON whitelist removal → player DB delete → warning marked removed) into a single reusable function used by both the scheduled cleanup and the new manual-remove endpoint
 - Add owner-only `/force-inactivity-cleanup` Discord slash command to trigger the cleanup cycle on demand without waiting for the next scheduled run
-- Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.create-rington.com, which runs with `NODE_ENV=production`) is excluded
+- Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.createrington.com, which runs with `NODE_ENV=production`) is excluded
 - Fix tsconfig `rootDir` and `baseUrl` deprecation errors — set explicit `rootDir: ".."`, remove deprecated `baseUrl`, and normalize `@/*` path alias to `./src/*`
 
 ### @createrington/client (0.1.2 → 0.2.0)

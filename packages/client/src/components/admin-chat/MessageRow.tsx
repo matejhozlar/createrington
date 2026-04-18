@@ -79,7 +79,8 @@ export function MessageRow({
       className={cn(
         "group flex flex-col",
         isUser ? "items-end" : "items-start",
-        isGroupStart ? "mt-3 first:mt-0" : "mt-0.5",
+        isGroupStart ? "mt-2 first:mt-0" : "mt-0",
+        !showMeta && "mb-1.5",
       )}
     >
       <div
@@ -98,9 +99,9 @@ export function MessageRow({
             />
           ) : (
             <img
-              src="/assets/logo/logo.png"
+              src="/assets/logo/createrington-bot.webp"
               alt="Createrington"
-              className="size-6 shrink-0 rounded-full bg-muted object-contain p-0.5"
+              className="size-6 shrink-0 rounded-full bg-muted object-cover"
               loading="lazy"
             />
           )
@@ -131,38 +132,30 @@ export function MessageRow({
       {showMeta && (
         <div
           className={cn(
-            "grid grid-rows-[0fr] transition-[grid-template-rows] duration-150",
-            "group-hover:grid-rows-[1fr] focus-within:grid-rows-[1fr]",
+            "mt-0.5 flex items-center gap-1.5 text-[0.625rem] text-muted-foreground opacity-0 transition-opacity duration-100",
+            "group-hover:opacity-100 focus-within:opacity-100",
+            isUser ? "flex-row-reverse pr-8" : "pl-8",
           )}
         >
-          <div className="overflow-hidden">
-            <div
-              className={cn(
-                "mt-1.5 flex items-center gap-2 text-[0.625rem] text-muted-foreground",
-                isUser ? "flex-row-reverse pr-8" : "pl-8",
-              )}
-            >
-              <span>{formatTime(message.createdAt)}</span>
-              <button
-                type="button"
-                onClick={(e) => void handleCopy(e)}
-                className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
-                aria-label="Copy message"
-              >
-                {copied ? (
-                  <>
-                    <Check size={10} />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={10} />
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
+          <span>{formatTime(message.createdAt)}</span>
+          <button
+            type="button"
+            onClick={(e) => void handleCopy(e)}
+            className="inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-muted hover:text-foreground"
+            aria-label="Copy message"
+          >
+            {copied ? (
+              <>
+                <Check size={10} />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy size={10} />
+                Copy
+              </>
+            )}
+          </button>
         </div>
       )}
 

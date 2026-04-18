@@ -1,4 +1,4 @@
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const QUICK_PROMPTS: string[] = [
@@ -19,8 +19,13 @@ export function EmptyState({
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
-        <Sparkles size={22} strokeWidth={1.75} />
+      <div className="flex size-12 items-center justify-center overflow-hidden rounded-full bg-primary/15">
+        <img
+          src="/assets/logo/createrington-bot.webp"
+          alt="Createrington Assistant"
+          className="size-full object-cover"
+          loading="lazy"
+        />
       </div>
       <div className="flex flex-col gap-1">
         <p className="text-sm font-semibold text-foreground">
