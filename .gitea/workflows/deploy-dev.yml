@@ -155,8 +155,9 @@ jobs:
       # actually advances, and the skip-if-already-published guard handles
       # re-runs idempotently.
       #
-      # Required Gitea Actions secret: GITEA_NPM_TOKEN (PAT with write:package
-      # scope on the Createrington org).
+      # Required Gitea Actions secret: NPM_TOKEN (PAT with write:package
+      # scope on the Createrington org). Note: Gitea reserves the GITEA_
+      # prefix for its own variables, so the secret can't be named GITEA_*.
       # --------------------------------------------------------------------
       - name: Check if @createrington/api-types version changed
         id: api-types-check
@@ -176,9 +177,9 @@ jobs:
       - name: Publish @createrington/api-types
         if: steps.api-types-check.outputs.should_publish == 'true'
         env:
-          GITEA_NPM_TOKEN: ${{ secrets.GITEA_NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "//gitea.matejhoz.com/api/packages/Createrington/npm/:_authToken=$GITEA_NPM_TOKEN" >> .npmrc
+          echo "//gitea.matejhoz.com/api/packages/Createrington/npm/:_authToken=$NPM_TOKEN" >> .npmrc
           pnpm --filter @createrington/api-types build
           pnpm --filter @createrington/api-types publish --no-git-checks
           echo "Published @createrington/api-types@${{ steps.api-types-check.outputs.version }}"
