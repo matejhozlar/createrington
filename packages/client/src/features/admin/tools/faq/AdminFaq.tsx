@@ -69,19 +69,15 @@ type EnabledFilter = "all" | "enabled" | "disabled";
 export function AdminFaq() {
   const toast = useToastActions();
 
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [enabledFilter, setEnabledFilter] = useState<EnabledFilter>("all");
 
-  // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("priority");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
-  // Modal state
   const [createModal, setCreateModal] = useState(false);
   const [editModal, setEditModal] = useState<{
     open: boolean;
@@ -96,7 +92,6 @@ export function AdminFaq() {
 
   const repostWelcome = trpc.admin.faq.repostWelcome.useMutation();
 
-  // tRPC query
   const entriesQuery = trpc.admin.faq.list.useQuery({
     page,
     limit,

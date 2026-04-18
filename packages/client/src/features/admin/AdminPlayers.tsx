@@ -69,16 +69,13 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { trpc } from "@/lib/trpc";
 import { formatRelativeDate, formatFullDate } from "./format";
 
-// Extended player type with strike and ban counts
 interface PlayerWithCounts extends PlayerApiData {
   activeStrikeCount?: number;
   activeBanCount?: number;
 }
 
-// Sort field type
 type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
-// Violation filter type
 type ViolationFilter = "all" | "strikes" | "bans" | "any";
 
 export function AdminPlayers() {
@@ -87,11 +84,9 @@ export function AdminPlayers() {
 
   const toast = useToastActions();
 
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [onlineFilter, setOnlineFilter] = useState<boolean | undefined>(
     undefined,
@@ -99,13 +94,11 @@ export function AdminPlayers() {
   const [violationFilter, setViolationFilter] =
     useState<ViolationFilter>("all");
 
-  // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("lastSeen");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  // tRPC queries
   const statsQuery = trpc.admin.players.players.stats.useQuery();
 
   const playersQuery = trpc.admin.players.players.list.useQuery({
@@ -130,42 +123,28 @@ export function AdminPlayers() {
   const loading = playersQuery.isLoading;
   const error = playersQuery.error?.message ?? null;
 
-  /**
-   * Handle search
-   */
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
   }, []);
 
-  /**
-   * Handle page change
-   */
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  /**
-   * Handle column sort
-   */
   const handleSort = useCallback(
     (field: SortField) => {
       if (orderBy === field) {
-        // Toggle sort order if same field
         setOrderDirection((prev) => (prev === "asc" ? "desc" : "asc"));
       } else {
-        // Set new field with default desc order
         setOrderBy(field);
         setOrderDirection("asc");
       }
-      setPage(0); // Reset to first page
+      setPage(0);
     },
     [orderBy],
   );
 
-  /**
-   * Copy Discord ID to clipboard
-   */
   const handleCopy = useCallback(
     async (e: React.MouseEvent, text: string, label: string) => {
       e.stopPropagation();
@@ -179,9 +158,6 @@ export function AdminPlayers() {
     [toast],
   );
 
-  /**
-   * Render sort icon for column header
-   */
   const renderSortIcon = useCallback(
     (field: SortField) => {
       if (orderBy !== field) {
@@ -196,28 +172,21 @@ export function AdminPlayers() {
     [orderBy, orderDirection],
   );
 
-  /**
-   * Generate pagination items with ellipsis
-   */
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
 
     if (totalPages <= maxVisible) {
-      // Show all pages if total is less than max visible
       return Array.from({ length: totalPages }, (_, i) => i);
     }
 
-    // Always show first page
     items.push(0);
 
     if (page <= 2) {
-      // Near start: show first few pages
       items.push(1, 2, 3);
       items.push("ellipsis");
       items.push(totalPages - 1);
     } else if (page >= totalPages - 3) {
-      // Near end: show last few pages
       items.push("ellipsis");
       items.push(
         totalPages - 4,
@@ -226,7 +195,6 @@ export function AdminPlayers() {
         totalPages - 1,
       );
     } else {
-      // Middle: show current page and neighbors
       items.push("ellipsis");
       items.push(page - 1, page, page + 1);
       items.push("ellipsis");
@@ -236,10 +204,6 @@ export function AdminPlayers() {
     return items;
   }, [page, totalPages]);
 
-  /**
-   * Get badge info based on strikes and bans
-   * Returns: { count: number, color: 'yellow' | 'red', hasIssues: boolean }
-   */
   const getPlayerBadgeInfo = useCallback((player: PlayerWithCounts) => {
     const strikeCount = player.activeStrikeCount ?? 0;
     const banCount = player.activeBanCount ?? 0;
@@ -249,12 +213,11 @@ export function AdminPlayers() {
       return { count: 0, color: null, hasIssues: false };
     }
 
-    // If player has any bans (with or without strikes), show red
+    // Any bans (with or without strikes) → red; strikes-only → yellow.
     if (banCount > 0) {
       return { count: totalCount, color: "red" as const, hasIssues: true };
     }
 
-    // If player only has strikes, show yellow
     return { count: totalCount, color: "yellow" as const, hasIssues: true };
   }, []);
 
@@ -507,7 +470,6 @@ export function AdminPlayers() {
                   </TableHeader>
                   <TableBody>
                     {players.map((player) => {
-                      // Get real-time online status from socket data
                       const isOnline = isPlayerOnline(player.minecraftUuid);
                       const currentServerId = getPlayerServerId(
                         player.minecraftUuid,

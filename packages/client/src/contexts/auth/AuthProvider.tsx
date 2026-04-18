@@ -18,14 +18,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logoutRef = useRef<(() => Promise<void>) | null>(null);
 
-  // ============================================================================
-  // Authentication Functions
-  // ============================================================================
-
-  /**
-   * Initiate Discord OAuth flow
-   * Redirects user to Discord authorization page
-   */
   const login = useCallback(async () => {
     try {
       setError(null);
@@ -41,7 +33,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Save current path so we can redirect back after login
         sessionStorage.setItem("oauth_redirect", window.location.pathname);
 
-        // Redirect to Discord
         window.location.href = data.data.url;
       } else {
         setError("Failed to initiate login");
@@ -52,10 +43,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  /**
-   * Handle OAuth callback
-   * Exchange code for access token + refresh cookie
-   */
   const handleCallback = useCallback(async (code: string, state?: string) => {
     try {
       setLoading(true);
@@ -79,21 +66,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
 
       if (data.success && data.data?.accessToken) {
-        // Store access token in memory (not localStorage)
+        // Access token lives in memory only — refresh token stays in an httpOnly cookie.
         setAccessToken(data.data.accessToken);
-
-        // Set user data (map server response shape to User type)
         setUser(data.data.user);
 
-        // Clear OAuth state and get redirect path
         sessionStorage.removeItem("oauth_state");
         const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
         sessionStorage.removeItem("oauth_redirect");
 
-        // Clean up old localStorage token if present (migration)
+        // Clean up pre-refresh-cookie migration: old auth_token in localStorage.
         localStorage.removeItem("auth_token");
 
-        // Redirect to the page the user was on (or home)
         window.location.href = redirectPath;
       } else {
         throw new Error(data.error?.message || "Authentication failed");
@@ -104,17 +87,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
       if (import.meta.env.DEV) console.error("Callback error:", error);
 
-      // Redirect to home with error
       window.location.href = "/?error=auth_failed";
     } finally {
       setLoading(false);
     }
   }, []);
 
-  /**
-   * Logout user
-   * Revokes session via cookie and clears in-memory token
-   */
   const logout = useCallback(async () => {
     try {
       await fetch("/api/auth/logout", {
@@ -133,9 +111,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   logoutRef.current = logout;
 
-  /**
-   * Logout from all sessions
-   */
   const logoutAll = useCallback(async () => {
     try {
       const { getAccessToken } = await import("@/services/auth/token-manager");
@@ -180,14 +155,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // ============================================================================
-  // Effects
-  // ============================================================================
-
-  /**
-   * Initialize authentication state on mount
-   * Handle OAuth callback if present in URL, otherwise silent refresh
-   */
+  // On mount: handle OAuth callback if present in the URL, otherwise silent refresh.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
@@ -203,15 +171,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (code) {
       handleCallback(code, state || undefined);
     } else {
-      // Silent refresh: use httpOnly cookie to get a new access token
       silentRefresh().finally(() => setLoading(false));
     }
   }, [handleCallback, silentRefresh]);
 
-  /**
-   * Set up access token refresh interval
-   * Refresh every ~13 minutes (before 15-min access token expiry)
-   */
+  // Refresh ~2 minutes before the 15-minute access token expires.
   useEffect(() => {
     if (!user) return;
 
@@ -225,9 +189,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => clearInterval(refreshInterval);
   }, [user, silentRefresh]);
 
-  /**
-   * Listen for session-expired events (from API client / tRPC)
-   */
+  // Listen for session-expired events dispatched by the API client / tRPC.
   useEffect(() => {
     const handleSessionExpired = () => {
       logoutRef.current?.();
@@ -237,10 +199,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () =>
       window.removeEventListener("auth:session-expired", handleSessionExpired);
   }, []);
-
-  // ============================================================================
-  // Context Value
-  // ============================================================================
 
   const value: AuthContextType = {
     user,

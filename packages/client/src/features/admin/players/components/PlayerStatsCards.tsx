@@ -21,7 +21,6 @@ export function PlayerStatsCards({
   const totalStrikes = player.strikes.totalCount;
   const totalBans = player.bans.totalCount;
 
-  // Calculate total offenses and determine color
   const totalOffenses = activeStrikes + activeBans;
   const allTimeOffenses = totalStrikes + totalBans;
   const hasAnyBans = activeBans > 0;

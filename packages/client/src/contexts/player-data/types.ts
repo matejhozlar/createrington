@@ -1,8 +1,5 @@
 import type { PlayerData } from "@createrington/shared/socket";
 
-/**
- * Player statistics
- */
 export interface PlayerStats {
   total: number;
   byServer: Record<number, number>;
@@ -11,9 +8,6 @@ export interface PlayerStats {
   recentLeaves: number;
 }
 
-/**
- * Player data context type
- */
 export interface PlayerDataContextType {
   // State
   players: PlayerData[];

@@ -96,7 +96,6 @@ export function Portfolio() {
   const realizedPnlPositive = realizedPnl >= 0;
   const totalValue = Number(data.totalValue);
 
-  // Compute allocation percentages for the donut
   const allocations = data.holdings
     .map((h, i) => ({
       name: h.name,

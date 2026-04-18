@@ -1,4 +1,3 @@
-// packages/client/src/components/nav-discord-login.tsx
 import {
   SidebarMenu,
   SidebarMenuItem,

@@ -90,26 +90,21 @@ function getDescription(action: {
 }
 
 export function AdminLogs() {
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [adminFilter, setAdminFilter] = useState<string | undefined>(undefined);
 
-  // Metadata dialog state
   const [metadataAction, setMetadataAction] = useState<
     (typeof actions)[number] | null
   >(null);
 
-  // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("performedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  // tRPC queries
   const adminsQuery = trpc.admin.logs.admins.useQuery();
   const adminList = adminsQuery.data ?? [];
 

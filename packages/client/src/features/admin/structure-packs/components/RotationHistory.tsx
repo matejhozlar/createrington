@@ -23,7 +23,6 @@ export function RotationHistory() {
   });
   const data = historyQuery.data;
 
-  // Need pack names for display — grab the pack list
   const packsQuery = trpc.admin.structurePacks.list.useQuery();
   const packMap = new Map((packsQuery.data ?? []).map((p) => [p.id, p.name]));
 

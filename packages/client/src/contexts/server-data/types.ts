@@ -1,8 +1,5 @@
 import type { ServerStatus } from "@createrington/shared/socket";
 
-/**
- * Server statistics
- */
 export interface ServerStats {
   total: number;
   online: number;
@@ -12,9 +9,6 @@ export interface ServerStats {
   averageLoad: number;
 }
 
-/**
- * Server data context type
- */
 export interface ServerDataContextType {
   // State
   servers: ServerStatus[];

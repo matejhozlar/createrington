@@ -159,7 +159,6 @@ export function ApplyToJoin() {
     );
   }
 
-  // Success state
   if (result) {
     if (isAutoAccepted && "inviteUrl" in result) {
       return (
@@ -191,7 +190,6 @@ export function ApplyToJoin() {
       );
     }
 
-    // Pending state
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-20">
         <div className="w-full max-w-md rounded-lg border border-sidebar-primary bg-sidebar-primary/5 p-8 text-center">
@@ -219,7 +217,6 @@ export function ApplyToJoin() {
     );
   }
 
-  // Form state
   return (
     <div className="flex flex-1 flex-col pb-20">
       <PageHeader

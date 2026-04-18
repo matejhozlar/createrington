@@ -288,24 +288,20 @@ export function PresetSidebar({
   const searchResults = presetsQuery.data?.presets ?? [];
   const categories = categoriesQuery.data ?? [];
 
-  // Unsaved-changes confirmation state
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
 
-  // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<{
     id: number;
     name: string;
     type: "preset" | "category";
   } | null>(null);
 
-  // Rename category state
   const [renameTarget, setRenameTarget] = useState<{
     id: number;
     name: string;
   } | null>(null);
   const [renameName, setRenameName] = useState("");
 
-  // New category state
   const [showNewCategory, setShowNewCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
 

@@ -59,24 +59,20 @@ function formatStatName(key: string): string {
 export function StatSearch() {
   const navigate = useNavigate();
 
-  // Item search
   const [itemInput, setItemInput] = useState("");
   const [selectedItem, setSelectedItem] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debouncedItemInput = useDebouncedValue(itemInput, 300);
 
-  // Category multi-select
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     new Set(["minecraft:picked_up", "minecraft:crafted"]),
   );
 
-  // Item autocomplete
   const itemsQuery = trpc.admin.players.minecraftStats.searchItems.useQuery(
     { query: debouncedItemInput },
     { enabled: debouncedItemInput.length >= 2 },
   );
 
-  // Comparison query
   const categories = useMemo(
     () => Array.from(selectedCategories),
     [selectedCategories],

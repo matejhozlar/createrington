@@ -18,9 +18,7 @@ import {
 import { timeAgo, formatPrice } from "./format";
 import { PriceChart } from "./token-detail/components/PriceChart";
 
-// ---------------------------------------------------------------------------
-// Article data types (mirrors server JSONB shape)
-// ---------------------------------------------------------------------------
+// Article data types mirror the server JSONB shape.
 
 interface ArticleTopHolder {
   name: string;
@@ -51,10 +49,6 @@ interface ArticleData {
   tokenVolume24h?: string;
   totalVolume24h?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Severity config
-// ---------------------------------------------------------------------------
 
 const SEVERITY_CONFIG: Record<
   string,
@@ -89,10 +83,6 @@ const SEVERITY_CONFIG: Record<
   },
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatArticleDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, {
     weekday: "long",
@@ -117,10 +107,6 @@ function parseArticleData(
   if (!metadata?.articleData) return null;
   return metadata.articleData as ArticleData;
 }
-
-// ---------------------------------------------------------------------------
-// Article paragraphs
-// ---------------------------------------------------------------------------
 
 function ArticleParagraphs({ text, accent }: { text: string; accent: string }) {
   const paragraphs = text
@@ -154,10 +140,6 @@ function ArticleParagraphs({ text, accent }: { text: string; accent: string }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Widgets
-// ---------------------------------------------------------------------------
 
 function MarketStatsBar({ articleData }: { articleData: ArticleData }) {
   const stats: {
@@ -335,10 +317,6 @@ function LeaderboardPodium({
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Main page
-// ---------------------------------------------------------------------------
 
 export function ArticlePage() {
   const { id } = useParams<{ id: string }>();

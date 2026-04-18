@@ -26,8 +26,6 @@ const RETREAT_DURATION = 0.7;
 const BOUNCE_SPEED = 200; // px/s
 const HEAD_SPIN_SPEED = 1.5; // rad/s
 
-// Easing
-
 function easeInQuad(t: number): number {
   return t * t;
 }
@@ -39,8 +37,6 @@ function easeOutQuad(t: number): number {
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
 }
-
-// HeadKick animation
 
 export class HeadKickAnimation extends PlayerAnimation {
   private viewer: SkinViewerLib;

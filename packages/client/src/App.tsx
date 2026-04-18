@@ -30,14 +30,10 @@ import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { CryptoDataProvider } from "./contexts/crypto-data";
 
-// ----------------------------------------------------------------------------
-// Lazy-loaded routes
-//
-// Everything below is code-split. Vite creates a chunk per lazy() call, so a
-// logged-out visitor hitting `/` never downloads the admin, crypto, or
+// Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
+// a logged-out visitor hitting `/` never downloads the admin, crypto, or
 // puppeteer-render bundles. `Home` stays eagerly imported above so the
 // first-paint experience has no Suspense fallback.
-// ----------------------------------------------------------------------------
 
 // Puppeteer render targets (bot-only, not in user navigation)
 const CompareRender = lazyNamed(
@@ -260,10 +256,6 @@ const AdminChat = lazyNamed(
   "AdminChat",
 );
 
-// ==========================================================================
-// LAYOUT HELPERS
-// ==========================================================================
-
 /** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -332,10 +324,6 @@ function AdminChatGate() {
     </ErrorBoundary>
   );
 }
-
-// ==========================================================================
-// ROUTES
-// ==========================================================================
 
 /** Declares the full client-side route tree, including public, protected, and admin routes. */
 function AppContent() {
@@ -532,10 +520,6 @@ function AppContent() {
     </Suspense>
   );
 }
-
-// ==========================================================================
-// ROOT
-// ==========================================================================
 
 /**
  * Root application component.

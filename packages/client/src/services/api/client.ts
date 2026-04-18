@@ -4,9 +4,6 @@ import {
   refreshAccessToken,
 } from "@/services/auth/token-manager";
 
-/**
- * Standard API error response structure
- */
 interface ApiErrorResponse {
   message?: string;
   code?: string;
@@ -42,17 +39,14 @@ class ApiClient {
       hooks: {
         beforeRequest: [
           (request) => {
-            // Add auth token from in-memory storage
             const token = getAccessToken();
             if (token) {
               request.headers.set("Authorization", `Bearer ${token}`);
             }
 
-            // Add request ID for tracking
             const requestId = crypto.randomUUID();
             request.headers.set("X-Request-ID", requestId);
 
-            // Log requests in development
             if (import.meta.env.DEV) {
               console.log(
                 `[API] ${request.method} ${request.url}`,
@@ -65,7 +59,6 @@ class ApiClient {
           async (error) => {
             const { response } = error;
 
-            // Parse error body if available
             if (response?.body) {
               try {
                 const errorBody = (await response.json()) as ApiErrorResponse;
@@ -76,7 +69,6 @@ class ApiClient {
               }
             }
 
-            // Log errors in development
             if (import.meta.env.DEV) {
               console.error("[API Error]", {
                 url: response?.url,
@@ -90,21 +82,19 @@ class ApiClient {
         ],
         afterResponse: [
           async (request, options, response) => {
-            // Log successful responses in development
             if (import.meta.env.DEV && response.ok) {
               console.log(`[API] ✓ ${response.status} ${response.url}`);
             }
 
-            // On 401 → attempt silent refresh → retry original request
+            // On 401: attempt silent refresh and retry original request.
             if (response.status === 401) {
-              // Don't retry refresh endpoint itself
+              // Don't retry the refresh endpoint itself — avoids infinite loops.
               if (request.url.includes("/api/auth/refresh")) {
                 return response;
               }
 
               const result = await refreshAccessToken();
               if (result) {
-                // Retry the original request with the new token
                 request.headers.set(
                   "Authorization",
                   `Bearer ${result.accessToken}`,
@@ -112,7 +102,6 @@ class ApiClient {
                 return ky(request, { ...options, hooks: {} });
               }
 
-              // Refresh failed — dispatch session expired event
               window.dispatchEvent(new CustomEvent("auth:session-expired"));
             }
 
@@ -123,9 +112,6 @@ class ApiClient {
     });
   }
 
-  /**
-   * Automatically determine API URL based on environment
-   */
   private getApiUrl(): string {
     const envApiUrl = import.meta.env.VITE_API_URL;
 
@@ -153,9 +139,6 @@ class ApiClient {
     return envApiUrl || "";
   }
 
-  /**
-   * GET request
-   */
   async get<T>(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -167,9 +150,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * POST request
-   */
   async post<T>(
     endpoint: string,
     data?: Record<string, unknown>,
@@ -183,9 +163,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * PUT request
-   */
   async put<T>(
     endpoint: string,
     data?: Record<string, unknown>,
@@ -199,9 +176,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * PATCH request
-   */
   async patch<T>(
     endpoint: string,
     data?: Record<string, unknown>,
@@ -215,9 +189,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * DELETE request
-   */
   async delete<T>(
     endpoint: string,
     data?: Record<string, unknown>,
@@ -231,9 +202,6 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * Upload file(s) with multipart/form-data
-   */
   async upload<T>(
     endpoint: string,
     file: File | File[],
@@ -260,9 +228,7 @@ class ApiClient {
       .json<T>();
   }
 
-  /**
-   * Get raw response (useful for downloads, blobs, etc.)
-   */
+  /** Get raw response — useful for downloads or blobs. */
   async getRaw(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -272,9 +238,6 @@ class ApiClient {
     });
   }
 
-  /**
-   * Download file as blob
-   */
   async download(
     endpoint: string,
     params?: Record<string, string | number | boolean>,
@@ -283,9 +246,6 @@ class ApiClient {
     return response.blob();
   }
 
-  /**
-   * Clean undefined/null params
-   */
   private cleanParams(
     params?: Record<string, string | number | boolean>,
   ): Record<string, string> {
@@ -302,13 +262,10 @@ class ApiClient {
     );
   }
 
-  /**
-   * Get the underlying Ky instance for advanced usage
-   */
+  /** Get the underlying Ky instance for advanced usage. */
   getClient(): KyInstance {
     return this.client;
   }
 }
 
-// Export singleton instance
 export const api = new ApiClient();

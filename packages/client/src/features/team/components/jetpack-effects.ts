@@ -11,8 +11,6 @@ import {
 } from "three";
 import astronautSkinUrl from "@/assets/skins/astronaut.png";
 
-// Smoke texture generator
-
 function createSmokeTexture(): HTMLCanvasElement {
   const size = 32;
   const canvas = document.createElement("canvas");
@@ -36,8 +34,6 @@ function createSmokeTexture(): HTMLCanvasElement {
   ctx.fillRect(0, 0, size, size);
   return canvas;
 }
-
-// Particle system
 
 const PARTICLE_COUNT = 80;
 const PARTICLE_LIFETIME = 1.0;
@@ -189,8 +185,6 @@ export class JetpackParticleSystem {
     this.material.dispose();
   }
 }
-
-// Jetpack animation
 
 type JetpackPhase = "crouch" | "ignition" | "liftoff" | "gone";
 

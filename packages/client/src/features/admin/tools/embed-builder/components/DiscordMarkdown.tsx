@@ -20,8 +20,6 @@ import type { ReactNode } from "react";
  *     - sub item         — nested list (indent 2+ spaces)
  */
 
-// ── Inline parsing ──────────────────────────────────────────────────────
-
 export interface MentionResolver {
   channels: Map<string, string>;
   roles: Map<string, string>;
@@ -301,8 +299,6 @@ function renderInline(text: string, resolver?: MentionResolver): ReactNode[] {
     }
   });
 }
-
-// ── Block parsing ───────────────────────────────────────────────────────
 
 interface DiscordMarkdownProps {
   text: string;
