@@ -52,10 +52,6 @@ export class StructurePackRotationService {
     private messageService: DiscordMessageService | null,
   ) {}
 
-  // ===========================================================================
-  // LIFECYCLE
-  // ===========================================================================
-
   /**
    * Initializes the rotation scheduler
    *
@@ -84,7 +80,6 @@ export class StructurePackRotationService {
       `Structure pack rotation config: ${scheduleDesc} ${rotationConfig.timezone}`,
     );
 
-    // Check for missed rotation
     const lastRotation = await this.getLastRotation();
     if (lastRotation) {
       const missed = checkMissedRotation(
@@ -108,10 +103,6 @@ export class StructurePackRotationService {
       this.nextRotationTimer = null;
     }
   }
-
-  // ===========================================================================
-  // SCHEDULING
-  // ===========================================================================
 
   /**
    * Schedules the next rotation timer using the given config.
@@ -154,10 +145,6 @@ export class StructurePackRotationService {
       `Next structure pack rotation scheduled for ${nextTime.toISOString()}`,
     );
   }
-
-  // ===========================================================================
-  // ROTATION EXECUTION
-  // ===========================================================================
 
   /**
    * Executes a full rotation cycle.
@@ -207,7 +194,6 @@ export class StructurePackRotationService {
         return;
       }
 
-      // Compute weights
       const cycleStart = computeCycleStart(rotationConfig);
       const boostData =
         await Q.structure.pack.boost.getBoostsByPackForCycle(cycleStart);
@@ -219,7 +205,6 @@ export class StructurePackRotationService {
         rotationConfig.boostWeightPerUnit,
       );
 
-      // Select next pack
       const selectedPackId = selectWeightedRandom(weights);
       const incomingPack = await this.packService.getPack(selectedPackId);
 
@@ -227,13 +212,10 @@ export class StructurePackRotationService {
         `Rotation: ${activePack?.name ?? "(none)"} → ${incomingPack.name} (weights: ${JSON.stringify(weights)})`,
       );
 
-      // File operations
       if (isFileOpsAllowed()) {
         try {
-          // Download uncached mods
           await ensureModsCached(incomingPack.mods);
 
-          // Build a set of filenames that the incoming pack owns
           const incomingFileNames = new Set(
             incomingPack.mods.map((m) => m.fileName),
           );
@@ -279,7 +261,6 @@ export class StructurePackRotationService {
         );
       }
 
-      // DB transaction: swap active, record rotation, clear boosts
       await db.inTransaction(async (tx) => {
         if (activePack) {
           await tx.structure.pack.update(
@@ -301,7 +282,6 @@ export class StructurePackRotationService {
         weights,
       );
 
-      // Clear boosts for the completed cycle
       await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
 
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -309,7 +289,6 @@ export class StructurePackRotationService {
         `Rotation complete in ${elapsed}s: ${activePack?.name ?? "(none)"} → ${incomingPack.name}`,
       );
 
-      // Schedule next
       this.scheduleNextRotation(rotationConfig);
     } catch (err) {
       logger.error("Rotation failed:", err);
@@ -324,10 +303,6 @@ export class StructurePackRotationService {
       this.rotationInProgress = false;
     }
   }
-
-  // ===========================================================================
-  // BOOST MANAGEMENT
-  // ===========================================================================
 
   /**
    * Records a player's boost purchase for a structure pack in the current cycle.
@@ -358,7 +333,6 @@ export class StructurePackRotationService {
     const cost = units * rotationConfig.boostUnitPrice;
     const cycleStart = computeCycleStart(rotationConfig);
 
-    // Deduct player balance
     await balanceRepo.deduct(
       { discordId },
       cost,
@@ -449,10 +423,6 @@ export class StructurePackRotationService {
     });
   }
 
-  // ===========================================================================
-  // CONFIG
-  // ===========================================================================
-
   /** Returns the current rotation configuration, creating the default record if none exists. */
   async getConfig(): Promise<StructurePackRotationConfig> {
     return Q.structure.pack.rotation.config.getOrCreateDefault();
@@ -500,16 +470,11 @@ export class StructurePackRotationService {
       data,
     );
 
-    // Reschedule with new config
     this.scheduleNextRotation(updated);
     logger.info("Rotation config updated, next rotation rescheduled");
 
     return updated;
   }
-
-  // ===========================================================================
-  // HISTORY
-  // ===========================================================================
 
   /**
    * Returns a paginated list of past rotation records, ordered most-recent first.
@@ -532,10 +497,6 @@ export class StructurePackRotationService {
     return { rows: result, total };
   }
 
-  // ===========================================================================
-  // MANUAL ACTIONS
-  // ===========================================================================
-
   /**
    * Clears the current rotation by deactivating the active pack and removing
    * its mod files from the server. Cycle boosts are also cleared.
@@ -549,7 +510,6 @@ export class StructurePackRotationService {
       throw new BadRequestError("No active structure pack to clear");
     }
 
-    // Remove mod files from the server
     if (isFileOpsAllowed()) {
       for (const mod of activePack.mods) {
         const modPath = `${MODS_DIR}/${mod.fileName}`;
@@ -564,10 +524,8 @@ export class StructurePackRotationService {
       );
     }
 
-    // Deactivate the pack
     await Q.structure.pack.update({ id: activePack.id }, { isActive: false });
 
-    // Clear cycle boosts
     const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();
     const cycleStart = computeCycleStart(cfg);
     await Q.structure.pack.boost.clearCycleBoosts(cycleStart);
@@ -591,10 +549,6 @@ export class StructurePackRotationService {
       );
     }
   }
-
-  // ===========================================================================
-  // PRIVATE HELPERS
-  // ===========================================================================
 
   /** Returns the most recent rotation record, or null if no rotations have occurred. */
   private async getLastRotation() {

@@ -18,8 +18,6 @@ function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t);
 }
 
-// Moonwalk animation
-
 export class MoonwalkAnimation extends PlayerAnimation {
   private viewer: SkinViewerLib;
   private phase: MoonwalkPhase = "turn";

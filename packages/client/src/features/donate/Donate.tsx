@@ -14,10 +14,6 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
-// =============================================================================
-// Static data
-// =============================================================================
-
 const DONATION_TIERS = [
   { amountCents: 300, label: "€3" },
   { amountCents: 500, label: "€5" },
@@ -75,10 +71,6 @@ const FAQ = [
       "We store your Discord ID, donation amount, and Stripe session and subscription IDs. All payment details (card number, billing address, etc.) are handled entirely by Stripe — we never see or store them.",
   },
 ];
-
-// =============================================================================
-// Component
-// =============================================================================
 
 export function Donate() {
   const toast = useToastActions();

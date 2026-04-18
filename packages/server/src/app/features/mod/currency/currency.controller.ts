@@ -304,10 +304,6 @@ export class CurrencyController {
     });
   }
 
-  // ============================================================================
-  // PLACEHOLDER STUBS
-  // ============================================================================
-
   /**
    * POST /api/currency/lottery/start
    * Body: { amount: number }

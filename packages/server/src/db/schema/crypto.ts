@@ -26,10 +26,6 @@ import {
   cryptoEventSeverityEnum,
 } from "./enums";
 
-// ============================================================================
-// Crypto Market Tables
-// ============================================================================
-
 // --- crypto_token ---
 // Master record for each tradable token: symbol, supply, current price, and crash/delist state.
 

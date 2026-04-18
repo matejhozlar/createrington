@@ -77,22 +77,18 @@ type StatusFilter = "all" | WaitlistStatus;
 export function AdminWaitlists() {
   const toast = useToastActions();
 
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(10);
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [verifiedFilter, setVerifiedFilter] = useState<boolean | undefined>(
     undefined,
   );
 
-  // Sorting state
   const [orderBy, setOrderBy] = useState<SortField>("submittedAt");
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
-  // Modal state
   const [inviteModal, setInviteModal] = useState<{
     open: boolean;
     entry: WaitlistEntry | null;
@@ -104,7 +100,6 @@ export function AdminWaitlists() {
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
 
-  // tRPC queries
   const statsQuery = trpc.admin.waitlists.stats.useQuery();
   const stats = statsQuery.data ?? null;
   const statsLoading = statsQuery.isLoading;
@@ -126,24 +121,15 @@ export function AdminWaitlists() {
   const loading = entriesQuery.isLoading;
   const error = entriesQuery.error?.message ?? null;
 
-  /**
-   * Handle search form submission
-   */
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setPage(0);
   }, []);
 
-  /**
-   * Handle page change
-   */
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
 
-  /**
-   * Handle column sort
-   */
   const handleSort = useCallback(
     (field: SortField) => {
       if (orderBy === field) {
@@ -157,9 +143,6 @@ export function AdminWaitlists() {
     [orderBy],
   );
 
-  /**
-   * Copy email to clipboard
-   */
   const handleCopyEmail = useCallback(
     async (email: string) => {
       try {
@@ -172,41 +155,26 @@ export function AdminWaitlists() {
     [toast],
   );
 
-  /**
-   * Open invite modal
-   */
   const handleInvite = useCallback((entry: WaitlistEntry) => {
     setInviteModal({ open: true, entry });
   }, []);
 
-  /**
-   * Open delete modal
-   */
   const handleDelete = useCallback((entry: WaitlistEntry) => {
     setDeleteModal({ open: true, entry });
   }, []);
 
-  /**
-   * Handle successful invite
-   */
   const handleInviteSuccess = useCallback(() => {
     setInviteModal({ open: false, entry: null });
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
-  /**
-   * Handle successful deletion
-   */
   const handleDeleteSuccess = useCallback(() => {
     setDeleteModal({ open: false, entry: null });
     entriesQuery.refetch();
     statsQuery.refetch();
   }, [entriesQuery, statsQuery]);
 
-  /**
-   * Render sort icon for column header
-   */
   const renderSortIcon = useCallback(
     (field: SortField) => {
       if (orderBy !== field) {
@@ -221,9 +189,6 @@ export function AdminWaitlists() {
     [orderBy, orderDirection],
   );
 
-  /**
-   * Generate pagination items with ellipsis
-   */
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
     const maxVisible = 5;
@@ -256,9 +221,6 @@ export function AdminWaitlists() {
     return items;
   }, [page, totalPages]);
 
-  /**
-   * Get status badge variant and custom classes
-   */
   const getStatusBadgeStyle = useCallback((status: string) => {
     switch (status.toLowerCase()) {
       case "accepted":

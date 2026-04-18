@@ -40,7 +40,6 @@ export class AuthController {
   static async getAuthUrl(req: Request, res: Response): Promise<void> {
     const state = crypto.randomBytes(32).toString("hex");
 
-    // Store state server-side with expiry
     pendingStates.set(state, Date.now() + STATE_TTL_MS);
 
     // Cleanup expired states
@@ -76,7 +75,6 @@ export class AuthController {
       throw new BadRequestError("Authorization code is required");
     }
 
-    // Validate CSRF state parameter
     if (!state || !pendingStates.has(state)) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
@@ -98,10 +96,8 @@ export class AuthController {
         );
       }
 
-      // Generate short-lived access token
       const accessToken = jwtService.generate(user);
 
-      // Create server-side session and get raw refresh token
       const rawRefreshToken = await sessionService.createSession({
         discordId: user.discordId,
         username: user.username,
@@ -110,7 +106,6 @@ export class AuthController {
         userAgent: req.headers["user-agent"],
       });
 
-      // Set refresh token as httpOnly cookie
       refreshTokenService.setCookie(res, rawRefreshToken);
 
       // Also expose the access token as a cross-subdomain cookie so SSO
@@ -176,7 +171,6 @@ export class AuthController {
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
-    // Re-fetch fresh user data from DB
     const player = await Q.player.get({ discordId: result.discordId });
     const isAdmin = await Q.admin.exists({ discordId: result.discordId });
     const role = isAdmin ? AuthRole.ADMIN : AuthRole.USER;

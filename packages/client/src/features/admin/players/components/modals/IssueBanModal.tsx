@@ -104,7 +104,6 @@ export function IssueBanModal({
         toast.success("Player permanently banned and deleted");
       }
 
-      // Reset form
       setReason("");
       setDurationDays(7);
       setBanType("temporary");

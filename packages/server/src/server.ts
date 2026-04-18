@@ -16,10 +16,8 @@ const PORT = env.PORT;
 /** Bootstraps services and starts listening for HTTP requests */
 async function start() {
   try {
-    // Initialize everything
     await initializeServices();
 
-    // Start HTTP server
     const httpServer = await container.get(Services.HTTP_SERVER);
     setupProcessHandlers(httpServer);
     httpServer.listen(PORT, () => {

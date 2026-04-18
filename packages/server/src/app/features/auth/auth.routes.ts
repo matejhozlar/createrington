@@ -11,9 +11,6 @@ const router = Router();
  * Auth routes
  * Base path: /api/auth
  */
-// ============================================================================
-// PUBLIC ROUTES
-// ============================================================================
 // GET /api/auth/discord - Get redirect URI for user
 router.get("/discord", ...route("public", AuthController.getAuthUrl));
 // POST /api/auth/discord/callback - Code exchange with Discord API
@@ -40,9 +37,6 @@ router.post(
   asyncHandler(AuthController.logout),
 );
 
-// ============================================================================
-// USER ROUTES
-// ============================================================================
 // GET /api/auth/me - Returns current user information from JWT
 router.get("/me", ...route("user", AuthController.getCurrentUser));
 

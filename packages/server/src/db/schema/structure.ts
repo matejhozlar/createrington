@@ -11,10 +11,6 @@ import {
   real,
 } from "drizzle-orm/pg-core";
 
-// ============================================================================
-// Structure Packs
-// ============================================================================
-
 // --- structure_pack ---
 // Admin-defined collection of CurseForge mods that can be rotated in/out of the server.
 

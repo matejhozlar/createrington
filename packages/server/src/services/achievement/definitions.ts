@@ -2,9 +2,6 @@ import { AchievementCategory, type AchievementGroup } from "./types";
 
 /** All achievement group definitions, organized by category */
 export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
-  // =========================================================================
-  // MINING
-  // =========================================================================
   {
     id: "mine_stone",
     name: "Stone Miner",
@@ -54,9 +51,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     ],
   },
 
-  // =========================================================================
-  // COMBAT
-  // =========================================================================
   {
     id: "kill_zombie",
     name: "Zombie Slayer",
@@ -106,9 +100,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     ],
   },
 
-  // =========================================================================
-  // EXPLORATION
-  // =========================================================================
   {
     id: "walk_distance",
     name: "Wanderer",
@@ -126,9 +117,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     ],
   },
 
-  // =========================================================================
-  // ECONOMY
-  // =========================================================================
   {
     id: "balance_earned",
     name: "Earner",
@@ -142,9 +130,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     ],
   },
 
-  // =========================================================================
-  // PLAYTIME
-  // =========================================================================
   {
     id: "playtime",
     name: "Dedicated Player",
@@ -158,9 +143,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     ],
   },
 
-  // =========================================================================
-  // TRADING (Crypto Market)
-  // =========================================================================
   {
     id: "crypto_first_trade",
     name: "First Trade",
@@ -242,10 +224,6 @@ export const ACHIEVEMENT_GROUPS: AchievementGroup[] = [
     tiers: [{ tier: 1, threshold: 1, reward: 0 }],
   },
 ];
-
-// ============================================================================
-// HELPERS
-// ============================================================================
 
 // Pre-built at module load for O(1) lookups at runtime
 const groupByIdMap = new Map(ACHIEVEMENT_GROUPS.map((g) => [g.id, g]));

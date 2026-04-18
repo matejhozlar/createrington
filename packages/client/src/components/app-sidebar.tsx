@@ -136,7 +136,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
   };
 
-  // Filter nav items based on auth
   const filteredNavMain = data.navMain.filter(
     (item) => !item.requiresAuth || user,
   );

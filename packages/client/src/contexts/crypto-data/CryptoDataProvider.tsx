@@ -54,7 +54,6 @@ export function CryptoDataProvider({
   const [overview, setOverview] = useState<CryptoMarketOverview | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  /** Merges an incoming batch of price updates into the live price map */
   const handlePriceBroadcast = useCallback((raw: unknown) => {
     const data = raw as CryptoPriceBroadcast;
     setPrices((prev) => {
@@ -67,7 +66,6 @@ export function CryptoDataProvider({
     setOverview(data.overview);
   }, []);
 
-  /** Subscribes to the `crypto:market` WebSocket room and marks the provider as subscribed */
   const subscribeToUpdates = useCallback(async () => {
     try {
       await subscribe("crypto:market" as SubscriptionType);
@@ -78,7 +76,6 @@ export function CryptoDataProvider({
     }
   }, [subscribe]);
 
-  /** Unsubscribes from the `crypto:market` WebSocket room and clears the subscribed flag */
   const unsubscribeFromUpdates = useCallback(async () => {
     try {
       await unsubscribe("crypto:market" as SubscriptionType);
@@ -89,7 +86,6 @@ export function CryptoDataProvider({
     }
   }, [unsubscribe]);
 
-  /** Returns the latest live price payload for a given token symbol, or undefined if not yet received */
   const getPrice = useCallback(
     (symbol: string): CryptoPriceUpdatePayload | undefined => {
       return prices.get(symbol);

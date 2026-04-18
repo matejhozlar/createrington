@@ -349,7 +349,6 @@ async function handlePortfolio(
     .where({ playerMinecraftUuid: playerEntry.minecraftUuid })
     .all();
 
-  // Calculate cumulative realized P&L
   const allSells = await Q.crypto.transaction
     .where({
       playerMinecraftUuid: playerEntry.minecraftUuid,

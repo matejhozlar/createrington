@@ -28,10 +28,6 @@ class RefreshTokenService {
     this.cookieDomain = config.app.auth.cookie.domain;
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /** Returns the singleton instance, creating it on first call */
   static getInstance(): RefreshTokenService {
     if (!RefreshTokenService.instance) {
@@ -39,10 +35,6 @@ class RefreshTokenService {
     }
     return RefreshTokenService.instance;
   }
-
-  // ==========================================================================
-  // TOKEN GENERATION
-  // ==========================================================================
 
   /**
    * Generate a cryptographically random opaque refresh token
@@ -71,10 +63,6 @@ class RefreshTokenService {
   getExpiresAt(): Date {
     return new Date(Date.now() + this.expiresInDays * 86_400_000);
   }
-
-  // ==========================================================================
-  // COOKIE MANAGEMENT
-  // ==========================================================================
 
   /**
    * Set the refresh token as an httpOnly cookie on the response

@@ -255,7 +255,6 @@ export const adminServersRouter = router({
 
       try {
         if (input.enabled) {
-          // Cancel any pending schedule before instant activation
           const pending = maintenanceService.getScheduledMaintenance(
             input.serverId,
           );
@@ -263,7 +262,6 @@ export const adminServersRouter = router({
             await maintenanceService.cancelScheduledMaintenance(input.serverId);
           }
 
-          // Get online player usernames to kick
           const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
           const service = manager.getService(input.serverId);
           const onlinePlayers = (service?.getActiveSessions() ?? []).map(
@@ -274,7 +272,6 @@ export const adminServersRouter = router({
         } else {
           await maintenanceService.disable(input.serverId);
 
-          // Send "maintenance ended" announcement if requested
           if (input.announce) {
             try {
               const embed = EmbedPresets.announcements.maintenanceEnded();
@@ -305,7 +302,6 @@ export const adminServersRouter = router({
         serverId: input.serverId,
       });
 
-      // Broadcast updated server status via WebSocket
       try {
         const ws = await getService(Services.WEBSOCKET_SERVICE);
         await ws.triggerServerStatusUpdate(input.serverId);
@@ -342,7 +338,6 @@ export const adminServersRouter = router({
         throw trpcError.badRequest("Scheduled time must be in the future");
       }
 
-      // Check for existing scheduled/active maintenance
       const existing = maintenanceService.getScheduledMaintenance(
         input.serverId,
       );
@@ -363,7 +358,6 @@ export const adminServersRouter = router({
         scheduledByDiscordId: ctx.user.discordId,
       });
 
-      // Send initial Discord announcement via main bot
       try {
         const embed = EmbedPresets.announcements.maintenance({
           type: input.type,
@@ -379,7 +373,6 @@ export const adminServersRouter = router({
         logger.warn(`Failed to send maintenance announcement: ${err}`);
       }
 
-      // Broadcast server status update
       try {
         const ws = await getService(Services.WEBSOCKET_SERVICE);
         await ws.triggerServerStatusUpdate(input.serverId);
@@ -431,7 +424,6 @@ export const adminServersRouter = router({
         serverId: input.serverId,
       });
 
-      // Broadcast server status update
       try {
         const ws = await getService(Services.WEBSOCKET_SERVICE);
         await ws.triggerServerStatusUpdate(input.serverId);

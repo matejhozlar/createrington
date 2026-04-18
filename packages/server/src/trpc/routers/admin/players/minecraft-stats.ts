@@ -18,7 +18,6 @@ export const minecraftStatsRouter = router({
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
 
-      // Resolve to full player to get minecraftUuid
       const player = await Q.player.find(identifier);
       if (!player) {
         throw trpcError.notFound("Player not found");

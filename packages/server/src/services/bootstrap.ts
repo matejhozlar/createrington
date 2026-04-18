@@ -54,10 +54,6 @@ import { PlayerPromptService } from "./player-prompt";
  * requiring a live Minecraft server connection during local development.
  */
 export function registerServices(): void {
-  // =========================================================================
-  // CORE INFRASTRUCTURE (no dependencies)
-  // =========================================================================
-
   container.register(Services.DATABASE, async () => {
     // Database pool is already initialized, just verify connection
     logger.debug("Verifying database connection...");
@@ -87,10 +83,6 @@ export function registerServices(): void {
   } else {
     logger.warn("OpenAI API key not configured — AI service disabled");
   }
-
-  // =========================================================================
-  // DISCORD BOTS (no dependencies, can initialize in parallel)
-  // =========================================================================
 
   container.register(Services.DISCORD_MAIN_BOT, async () => {
     logger.info("Logging in main Discord bot...");
@@ -123,10 +115,6 @@ export function registerServices(): void {
 
     return webBot;
   });
-
-  // =========================================================================
-  // DISCORD SERVICES (depend on bots)
-  // =========================================================================
 
   container.register(
     Services.MESSAGE_SERVICE,
@@ -303,10 +291,6 @@ export function registerServices(): void {
     },
   );
 
-  // =========================================================================
-  // GAME SERVICES
-  // =========================================================================
-
   container.register(
     Services.PLAYTIME_MANAGER_SERVICE,
     async () => {
@@ -381,10 +365,6 @@ export function registerServices(): void {
     logger.warn("Stripe keys not configured — donation service disabled");
   }
 
-  // =========================================================================
-  // COMMUNICATION SERVICES
-  // =========================================================================
-
   container.register(
     Services.WEBSOCKET_SERVICE,
     async (c) => {
@@ -423,12 +403,7 @@ export function registerServices(): void {
     },
   );
 
-  // =========================================================================
-  // CROSS-SERVICE WIRING (triggered when individual services become ready)
-  // =========================================================================
-
   container.on("serviceReady", async (serviceName) => {
-    // Initialize lottery once the database pool is verified
     if (serviceName === Services.DATABASE) {
       lotteryService
         .initialize()
@@ -513,7 +488,6 @@ export async function initializeServices(): Promise<void> {
 
   registerServices();
 
-  // Initialize all non-lazy services in parallel
   await container.initializeAll();
 
   const states = container.getAllStates();
@@ -541,7 +515,6 @@ export async function initializeServices(): Promise<void> {
     logger.warn(`Maintenance scheduler init failed: ${err}`);
   }
 
-  // Initialize structure pack rotation service
   try {
     let webMessageService: DiscordMessageService | null = null;
     try {

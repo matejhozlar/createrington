@@ -7,10 +7,6 @@
  * - Whether it targets a specific token or is market-wide
  */
 
-// ---------------------------------------------------------------------------
-// TYPES
-// ---------------------------------------------------------------------------
-
 export interface EventEffect {
   /** Multiplier on memecoin volatility (e.g. 1.5 = 50% more volatile) */
   volatilityMultiplier?: number;
@@ -58,10 +54,6 @@ export type MarketEventType =
   | "tax_holiday"
   | "whale_dump"
   | "new_listing_frenzy";
-
-// ---------------------------------------------------------------------------
-// EVENT CATALOG
-// ---------------------------------------------------------------------------
 
 /** Full catalog of all market events, keyed by event type */
 export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {

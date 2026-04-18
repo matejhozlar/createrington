@@ -125,34 +125,18 @@ export function generateBarrelExport(tables: TableInfo[]): string {
 
   return `/**
  * Barrel export for all generated database queries
- * 
+ *
  * Auto-generated from database schema
  * DO NOT EDIT MANUALLY - regenerate with: pnpm generate
  */
 
-// ============================================================================
-// TYPE EXPORTS - Re-export from shared package
-// ============================================================================
-
 export * from "@createrington/shared/db";
 
-// ============================================================================
-// BASE QUERY CLASSES
-// ============================================================================
-
 ${baseExports}
-
-// ============================================================================
-// DATABASE QUERY SINGLETON & HELPERS
-// ============================================================================
 
 export { DatabaseQueries } from "./db";
 export { createQueryInstances, createQueries } from "./queries";
 export type { QueryInstances } from "./queries";
-
-// ============================================================================
-// DATABASE CONSTANTS (Tables & Fields)
-// ============================================================================
 
 export { DatabaseTable } from "./constants";
 export type { TableName, FieldName, CamelFieldName } from "./constants";

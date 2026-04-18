@@ -68,7 +68,6 @@ export function ProfileRender() {
   const player = params.get("player");
   const hasMissingParams = !secret || !player;
 
-  // Fetch profile data
   useEffect(() => {
     if (hasMissingParams) return;
 

@@ -38,7 +38,6 @@ export function NavAdmin({
   const { state } = useSidebar();
   const location = useLocation();
 
-  // Check if we're on an admin page
   const isAdminActive = items.some((item) =>
     location.pathname.startsWith(item.url),
   );

@@ -89,7 +89,6 @@ function buildButtons(
 
   const row = new ActionRowBuilder<ButtonBuilder>();
 
-  // Link buttons
   if (hasLinkButtons) {
     for (const btn of data.buttons) {
       const button = new ButtonBuilder()

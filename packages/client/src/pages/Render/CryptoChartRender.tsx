@@ -11,10 +11,6 @@ import {
   HistogramSeries,
 } from "lightweight-charts";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface ChartData {
   token: {
     name: string;
@@ -42,9 +38,7 @@ interface ChartData {
   }>;
 }
 
-// ---------------------------------------------------------------------------
-// Formatting helpers (inlined to keep render page self-contained)
-// ---------------------------------------------------------------------------
+// Formatting helpers inlined to keep render page self-contained.
 
 function formatPrice(price: string | number): string {
   const num = Number(price);
@@ -84,10 +78,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   blue_chip: "BLUE CHIP",
   seasonal: "SEASONAL",
 };
-
-// ---------------------------------------------------------------------------
-// Chart component
-// ---------------------------------------------------------------------------
 
 function OHLCChart({ data }: { data: ChartData["priceHistory"] }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -193,10 +183,6 @@ function OHLCChart({ data }: { data: ChartData["priceHistory"] }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Stat pill
-// ---------------------------------------------------------------------------
-
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5 px-3 py-1.5 rounded bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
@@ -209,10 +195,6 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Main render page
-// ---------------------------------------------------------------------------
 
 export function CryptoChartRender() {
   const [params] = useSearchParams();

@@ -27,10 +27,6 @@ export class AppError extends Error {
   }
 }
 
-// ==========================================================================
-// HTTP Error Classes
-// ==========================================================================
-
 /** 400 Bad Request */
 export class BadRequestError extends AppError {
   constructor(

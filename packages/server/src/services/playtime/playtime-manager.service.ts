@@ -22,10 +22,6 @@ export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private messageCacheService?: MessageCacheService;
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes playtime services for all configured Minecraft servers
    *
@@ -128,10 +124,6 @@ export class PlaytimeManagerService {
     logger.info("All PlaytimeServices shut down");
   }
 
-  // ==========================================================================
-  // QUERIES
-  // ==========================================================================
-
   /**
    * Returns the PlaytimeService for a specific server
    *
@@ -194,10 +186,6 @@ export class PlaytimeManagerService {
     }
     return status;
   }
-
-  // ==========================================================================
-  // INTEGRATION
-  // ==========================================================================
 
   /**
    * Wires up the MessageCacheService for server lifecycle detection

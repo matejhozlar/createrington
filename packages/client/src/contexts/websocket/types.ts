@@ -5,9 +5,6 @@ import type {
   SubscriptionType,
 } from "@createrington/shared/socket";
 
-/**
- * Connection state
- */
 export type ConnectionState =
   | "disconnected"
   | "connecting"
@@ -15,9 +12,6 @@ export type ConnectionState =
   | "reconnecting"
   | "error";
 
-/**
- * WebSocket statistics
- */
 export interface WebSocketStats {
   /** When connection was established */
   connectedAt: Date | null;
@@ -27,9 +21,6 @@ export interface WebSocketStats {
   latency: number | null;
 }
 
-/**
- * WebSocket configuration
- */
 export interface WebSocketConfig {
   /** WebSocket server URL (defaults to window.location.origin) */
   url?: string;
@@ -49,9 +40,6 @@ export interface WebSocketConfig {
   healthCheckInterval?: number;
 }
 
-/**
- * WebSocket context type
- */
 export interface WebSocketContextType {
   // Connection state
   socket: Socket | null;

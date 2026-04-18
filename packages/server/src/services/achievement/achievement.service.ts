@@ -48,10 +48,6 @@ export class AchievementService {
   /** No-op shutdown — service has no timers or connections to clean up */
   async shutdown(): Promise<void> {}
 
-  // ==========================================================================
-  // EVALUATION
-  // ==========================================================================
-
   /**
    * Evaluate achievements for all players on a server.
    * Called after stats import completes.
@@ -177,10 +173,6 @@ export class AchievementService {
 
     return newCompletions.map((c) => c.description);
   }
-
-  // ==========================================================================
-  // CRYPTO ACHIEVEMENT HOOKS
-  // ==========================================================================
 
   /**
    * Evaluate crypto-related achievements after a trade.
@@ -334,10 +326,6 @@ export class AchievementService {
     );
   }
 
-  // ==========================================================================
-  // PROGRESS
-  // ==========================================================================
-
   /**
    * Get progress for all achievement groups for a player on a server.
    * Runs evaluation first to ensure newly earned tiers are captured.
@@ -416,10 +404,6 @@ export class AchievementService {
       };
     });
   }
-
-  // ==========================================================================
-  // CLAIMING
-  // ==========================================================================
 
   /**
    * Claim reward for a single completed achievement tier.
@@ -511,10 +495,6 @@ export class AchievementService {
 
     return results;
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Load crypto market data for a player in parallel (trade count, holdings, portfolio value).

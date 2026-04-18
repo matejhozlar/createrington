@@ -94,7 +94,6 @@ export function AddModDialog({
 
   const handleDialogOpenChange = (next: boolean) => {
     if (!next) {
-      // Reset everything on close
       setSearchQuery("");
       setSelectedModId(null);
       setSelectedFile(null);
@@ -118,7 +117,6 @@ export function AddModDialog({
         (m) => m.id === selectedModId,
       );
 
-      // Add the main mod
       await addModMutation.mutateAsync({
         packId,
         curseforgeModId: selectedModId,
@@ -129,7 +127,6 @@ export function AddModDialog({
         thumbnailUrl: searchMod?.thumbnailUrl,
       });
 
-      // Add selected deps
       for (const depModId of selectedDeps) {
         const dep = depsQuery.data?.find((d) => d.modId === depModId);
         if (!dep?.bestFile) continue;

@@ -165,7 +165,6 @@ export class PresenceController {
       throw new BadRequestError("players must be an array");
     }
 
-    // Validate each player entry
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -176,7 +175,6 @@ export class PresenceController {
       onlinePlayers.push({ uuid: p.uuid, username: p.username });
     }
 
-    // Resolve target server
     let targetServerId: number | undefined;
 
     if (serverId) {

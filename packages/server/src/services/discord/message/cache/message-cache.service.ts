@@ -88,10 +88,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes the service and sets up event listeners
    */
@@ -211,10 +207,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       );
     }
   }
-
-  // ==========================================================================
-  // EVENT HANDLERS
-  // ==========================================================================
 
   /**
    * Handles new message creation
@@ -356,10 +348,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
     return null;
   }
-
-  // ==========================================================================
-  // MESSAGE PARSING
-  // ==========================================================================
 
   /**
    * Detects the source of a message (System, Discord, Minecraft, Web)
@@ -679,10 +667,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
       cache.shift();
     }
   }
-
-  // ==========================================================================
-  // PUBLIC API
-  // ==========================================================================
 
   /**
    * Retrieves cached messages for a server with optional filtering

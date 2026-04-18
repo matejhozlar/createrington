@@ -12,7 +12,6 @@ import { CRYPTO_CONFIG } from "./crypto.config";
 export async function aggregateMinuteSnapshots(): Promise<void> {
   const tokens = await Q.crypto.token.where({}).all();
   const now = new Date();
-  // Round to current minute
   now.setSeconds(0, 0);
 
   // Look back 5 minutes (matching the aggregation interval) so that
@@ -65,7 +64,6 @@ export async function aggregateMinuteSnapshots(): Promise<void> {
     }
   }
 
-  // Prune old tick snapshots
   const tickCutoff = new Date(Date.now() - CRYPTO_CONFIG.RETENTION.TICK * 1000);
   await Q.crypto.price.snapshot.deleteAll({
     interval: "tick",
@@ -80,7 +78,6 @@ export async function aggregateHourlySnapshots(): Promise<void> {
   const tokens = await Q.crypto.token.where({}).all();
   const now = new Date();
 
-  // Round down to start of current hour
   const currentHourStart = new Date(now);
   currentHourStart.setMinutes(0, 0, 0);
 
@@ -126,7 +123,6 @@ export async function aggregateHourlySnapshots(): Promise<void> {
     );
   }
 
-  // Prune old minute snapshots
   const minuteCutoff = new Date(
     Date.now() - CRYPTO_CONFIG.RETENTION.MINUTE * 1000,
   );
@@ -190,7 +186,6 @@ export async function aggregateDailySnapshots(): Promise<void> {
     );
   }
 
-  // Prune old hourly snapshots
   const hourlyCutoff = new Date(
     Date.now() - CRYPTO_CONFIG.RETENTION.HOURLY * 1000,
   );
@@ -266,7 +261,6 @@ export async function aggregateWeeklySnapshots(): Promise<void> {
     }
   }
 
-  // Prune old daily snapshots
   const dailyCutoff = new Date(
     Date.now() - CRYPTO_CONFIG.RETENTION.DAILY * 1000,
   );

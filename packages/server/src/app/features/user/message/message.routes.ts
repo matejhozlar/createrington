@@ -5,7 +5,6 @@ import { MessageController } from "./message.controller";
 
 const router = Router();
 
-// ---------------------------------------------------------------------------
 // Multer configuration
 //
 // - memoryStorage: files land in req.file.buffer — no disk writes.  We pass
@@ -16,7 +15,6 @@ const router = Router();
 // - fileFilter: rejects non-image MIME types at the stream level.  The
 //   controller does a second check against an allowlist because some clients
 //   send inaccurate Content-Type headers.
-// ---------------------------------------------------------------------------
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -34,10 +32,7 @@ const upload = multer({
   },
 });
 
-// ---------------------------------------------------------------------------
-// Routes
 // Base path: /api/messages
-// ---------------------------------------------------------------------------
 
 /**
  * POST /api/messages

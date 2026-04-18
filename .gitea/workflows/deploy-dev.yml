@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       reset_db:
-        description: 'Reset the database (drop + recreate + seed)'
+        description: "Reset the database (drop + recreate + seed)"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
 
 jobs:
   deploy:
@@ -58,14 +58,14 @@ jobs:
         if: steps.spec-check.outputs.changed == 'true'
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
-          distribution: 'temurin'
+          java-version: "21"
+          distribution: "temurin"
 
       - name: Setup Gradle
         if: steps.spec-check.outputs.changed == 'true'
         uses: gradle/actions/setup-gradle@v4.4.4
         with:
-          gradle-version: '8.12'
+          gradle-version: "8.12"
 
       - name: Generate and publish mod API
         if: steps.spec-check.outputs.changed == 'true'
@@ -146,29 +146,6 @@ jobs:
           chown -R 1000:988 /var/www/createrington-dev
           touch /opt/createrington-dev/.restart-trigger
 
-      # --------------------------------------------------------------------
-      # Publish @createrington/api-types to public npm (registry.npmjs.org)
-      # if the version in packages/api-types/package.json is not yet on the
-      # registry.
-      #
-      # Feature PRs on dev don't bump the version — only the dev → main PR's
-      # changelog automation does. So this step only fires when the contract
-      # actually advances, and the skip-if-already-published guard handles
-      # re-runs idempotently.
-      #
-      # Public npm (not Gitea) because:
-      # - The Gitea instance has REQUIRE_SIGNIN_VIEW = true, so the Gitea
-      #   npm registry needs a PAT even for anonymous reads. Public npm
-      #   needs no auth for installs — zero-friction onboarding for
-      #   teammates and future consumer apps.
-      # - The package is types-only, no secrets, already source-available.
-      # - @createrington/api-types is UNLICENSED — visible but not
-      #   licensed for reuse, same posture as the repo.
-      #
-      # Required Gitea Actions secret: NPM_TOKEN (npmjs.com access token
-      # scoped to publish @createrington/*). Generate at
-      # https://www.npmjs.com/settings/<user>/tokens → Granular token.
-      # --------------------------------------------------------------------
       - name: Check if @createrington/api-types version changed
         id: api-types-check
         run: |
