@@ -210,7 +210,7 @@ export function registerServices(): void {
   );
 
   // Production-only: never run on local dev or the dev deployment
-  // (dev.create-rington.com ships with NODE_ENV=production, so the
+  // (dev.createrington.com ships with NODE_ENV=production, so the
   // isDevDeployment hostname check is required in addition to isProd).
   if (config.envMode.isProd && !config.envMode.isDevDeployment) {
     container.register(

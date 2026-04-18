@@ -107,7 +107,7 @@ const envSchema = z.object({
   REFRESH_COOKIE_NAME: z.string().default("crt_refresh"),
   ACCESS_COOKIE_NAME: z.string().default("crt_access"),
   // Empty string means host-only cookies (the existing behavior). Set to a
-  // parent domain like ".create-rington.com" to enable cross-subdomain SSO.
+  // parent domain like ".createrington.com" to enable cross-subdomain SSO.
   COOKIE_DOMAIN: z.string().default(""),
   // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
   // URI in the Discord developer portal. Used by /api/auth/sso/start +
@@ -115,10 +115,10 @@ const envSchema = z.object({
   SSO_CALLBACK_URL: z.string().default(""),
   // Comma-separated list of regex patterns. After SSO callback, the user is
   // redirected to ?return_to=... only if the URL matches one of these.
-  // Example: "^https://[a-z0-9-]+\\.create-rington\\.com(/.*)?$"
+  // Example: "^https://[a-z0-9-]+\\.createrington\\.com(/.*)?$"
   SSO_RETURN_TO_WHITELIST: z.string().default(""),
   // Comma-separated list of additional CORS origins (e.g.
-  // "https://sandbox.create-rington.com") that are allowed to call the API
+  // "https://sandbox.createrington.com") that are allowed to call the API
   // with credentials. Required for cross-subdomain refresh-token rotation.
   SSO_CORS_ORIGINS: z.string().default(""),
 

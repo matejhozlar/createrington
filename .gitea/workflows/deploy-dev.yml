@@ -92,8 +92,8 @@ jobs:
       - name: Build
         run: |
           VITE_APP_VERSION="$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" \
-          VITE_API_URL=https://dev.create-rington.com \
-          VITE_BLUEMAP_URL=https://map-test.create-rington.com \
+          VITE_API_URL=https://dev.createrington.com \
+          VITE_BLUEMAP_URL=https://map-test.createrington.com \
           pnpm build
 
       - name: Deploy frontend

@@ -354,7 +354,7 @@ export function CryptoChartRender() {
         <div className="flex-1" />
 
         <span className="text-[10px] font-semibold tracking-[0.25em] uppercase text-foreground/10">
-          create-rington.com
+          createrington.com
         </span>
       </div>
     </div>

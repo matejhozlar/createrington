@@ -33,7 +33,7 @@ export interface StatusConfig {
 export const statusConfigs: StatusConfig[] = [
   // Info statuses
   {
-    text: "🌐 create-rington.com",
+    text: "🌐 createrington.com",
     category: StatusCategory.INFO,
   },
   {

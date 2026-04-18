@@ -128,7 +128,7 @@ export function Advertisement() {
                     color: "oklch(0.21 0.01 285.885)",
                   }}
                 >
-                  Apply Now At create-rington.com
+                  Apply Now At createrington.com
                 </div>
 
                 <div className="flex items-center gap-3 text-white/50 text-lg">

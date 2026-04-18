@@ -32,7 +32,7 @@ jobs:
           pnpm deploy-commands
 
       - name: Build
-        run: VITE_API_URL=https://create-rington.com VITE_BLUEMAP_URL=https://create-rington.com/bluemap pnpm build
+        run: VITE_API_URL=https://createrington.com VITE_BLUEMAP_URL=https://createrington.com/bluemap pnpm build
 
       - name: Deploy frontend
         run: |

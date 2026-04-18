@@ -78,7 +78,7 @@ const config = {
         name: env.REFRESH_COOKIE_NAME,
         accessName: env.ACCESS_COOKIE_NAME,
         // Empty string means host-only (single-domain) cookies — the existing
-        // behavior. Set to a parent domain (e.g. ".create-rington.com") to
+        // behavior. Set to a parent domain (e.g. ".createrington.com") to
         // enable cross-subdomain SSO consumers.
         domain: env.COOKIE_DOMAIN || undefined,
       },
@@ -182,7 +182,7 @@ const config = {
             textColor: "#FFFFFF",
             secondaryTextColor: "#99AA5B",
             backgroundImageURL:
-              "https://market-assets.create-rington.com/welcome/welcome.jpg",
+              "https://market-assets.createrington.com/welcome/welcome.jpg",
           },
         },
         autoRole: {

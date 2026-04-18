@@ -213,7 +213,7 @@ export function TopRender() {
       {/* Footer */}
       <div className="pb-3.5 text-center z-10">
         <span className="text-[11px] font-semibold tracking-[0.3em] uppercase text-foreground/15">
-          create-rington.com
+          createrington.com
         </span>
       </div>
     </div>
