@@ -31,7 +31,6 @@ export interface StatusConfig {
  * Organized by category for better maintenance
  */
 export const statusConfigs: StatusConfig[] = [
-  // Info statuses
   {
     text: "🌐 createrington.com",
     category: StatusCategory.INFO,
@@ -45,7 +44,6 @@ export const statusConfigs: StatusConfig[] = [
     category: StatusCategory.INFO,
   },
 
-  // Monitoring statuses
   {
     text: "📊 Dashboard: Online",
     category: StatusCategory.MONITORING,
@@ -67,7 +65,6 @@ export const statusConfigs: StatusConfig[] = [
     category: StatusCategory.MONITORING,
   },
 
-  // Data statuses
   {
     text: "🔗 Database: Synced",
     category: StatusCategory.DATA,
@@ -85,7 +82,6 @@ export const statusConfigs: StatusConfig[] = [
     category: StatusCategory.DATA,
   },
 
-  // Network statuses
   {
     text: "🌐 API Gateway: Online",
     category: StatusCategory.NETWORK,
@@ -103,7 +99,6 @@ export const statusConfigs: StatusConfig[] = [
     category: StatusCategory.NETWORK,
   },
 
-  // Performance statuses
   {
     text: "⏱️ Response: <50ms",
     category: StatusCategory.PERFORMANCE,

@@ -121,14 +121,12 @@ export class InactivityCleanupService {
       Date.now() + this.GRACE_DAYS * 24 * 60 * 60 * 1000,
     );
 
-    // Create warning records for each player
     for (const player of inactivePlayers) {
       await Q.player.inactivity.warning.create({
         playerMinecraftUuid: player.minecraftUuid,
       });
     }
 
-    // Send announcement embed
     try {
       const embed = EmbedPresets.inactivity.warning({
         players: inactivePlayers,
@@ -202,7 +200,6 @@ export class InactivityCleanupService {
       }
     }
 
-    // Send removal announcement if any players were removed
     if (removedUsernames.length > 0) {
       try {
         const embed = EmbedPresets.inactivity.removed({

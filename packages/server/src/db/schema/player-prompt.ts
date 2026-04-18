@@ -11,14 +11,12 @@ import {
 import { player } from "./player";
 import { playerPromptStatusEnum } from "./enums";
 
-// ============================================================================
 // Player Prompt
 //
 // Admin-authored free-text question posted to a Discord channel with a
 // "Respond" button. Clicking the button opens a modal; the submitted text
 // is stored in player_prompt_response keyed on (prompt_id, discord_id) so
 // a player can edit their answer until the prompt closes.
-// ============================================================================
 
 export const playerPrompt = pgTable(
   "player_prompt",
@@ -51,7 +49,6 @@ export const playerPrompt = pgTable(
   ],
 );
 
-// ============================================================================
 // Player Prompt Response
 //
 // One row per (prompt, Discord user). Editable until the parent prompt
@@ -59,7 +56,6 @@ export const playerPrompt = pgTable(
 // resolved opportunistically at submission time via Q.player.find so
 // admins can see the linked Minecraft account when it exists; null means
 // the responder hasn't linked their Discord to a Minecraft account yet.
-// ============================================================================
 
 export const playerPromptResponse = pgTable(
   "player_prompt_response",

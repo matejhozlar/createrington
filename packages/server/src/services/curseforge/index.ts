@@ -382,7 +382,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
 
   ensureApiKey();
 
-  // Get the latest modpack file
   const filesRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files?pageSize=1`,
     { headers: cfHeaders() },
@@ -400,7 +399,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
   // Use server pack if available, otherwise client pack
   const fileId = latestFile.serverPackFileId ?? latestFile.id;
 
-  // Download the zip
   const dlRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files/${fileId}/download-url`,
     { headers: cfHeaders() },
@@ -416,7 +414,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
   }
   const zipBuf = await zipRes.arrayBuffer();
 
-  // Parse manifest
   const zip = await JSZip.loadAsync(zipBuf);
   const manifestFile = zip.file("manifest.json");
   if (!manifestFile) throw new Error("No manifest.json in modpack");

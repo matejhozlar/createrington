@@ -252,12 +252,10 @@ export class RoleManagementService {
       const topPlayer = leaderboard[0];
       const guild = await this.client.guilds.fetch(config.discord.guild.id);
 
-      // Find all members who currently have the role
       const membersWithRole = guild.members.cache.filter((m) =>
         RoleManager.has(m, rule.roleId),
       );
 
-      // Check if the top player already holds the role
       const topPlayerHasRole = membersWithRole.some(
         (m) => m.id === topPlayer.discordId,
       );
@@ -269,7 +267,6 @@ export class RoleManagementService {
         return { assigned: false, removed: false };
       }
 
-      // Remove the role from all current holders
       let removed = false;
       for (const [, member] of membersWithRole) {
         if (member.id !== topPlayer.discordId) {
@@ -282,7 +279,6 @@ export class RoleManagementService {
         }
       }
 
-      // Assign the role to the new top player
       let assigned = false;
       if (!topPlayerHasRole) {
         try {
@@ -364,12 +360,10 @@ export class RoleManagementService {
 
       const guild = await this.client.guilds.fetch(config.discord.guild.id);
 
-      // Find all members who currently have the role
       const membersWithRole = guild.members.cache.filter((m) =>
         RoleManager.has(m, rule.roleId),
       );
 
-      // Check if the top player already holds the role
       const topPlayerHasRole = membersWithRole.some(
         (m) => m.id === topPlayer.discordId,
       );
@@ -381,7 +375,6 @@ export class RoleManagementService {
         return { assigned: false, removed: false };
       }
 
-      // Remove the role from all current holders
       let removed = false;
       for (const [, member] of membersWithRole) {
         if (member.id !== topPlayer.discordId) {
@@ -394,7 +387,6 @@ export class RoleManagementService {
         }
       }
 
-      // Assign the role to the new top player
       let assigned = false;
       if (!topPlayerHasRole) {
         try {

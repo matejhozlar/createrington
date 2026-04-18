@@ -145,7 +145,6 @@ router.get(
     const networth = cashBalance + cryptoValue;
     const fmt = (n: number) => n.toFixed(3).replace(/\.?0+$/, "") || "0";
 
-    // Aggregate Minecraft stats across all servers
     const statsRows = await Q.player.minecraft.stats.findAll({
       minecraftUuid: details.player.minecraftUuid,
     });
@@ -216,7 +215,6 @@ router.get(
     const details = await playerRepo.getDetailed({ discordId: player });
     const uuid = details.player.minecraftUuid;
 
-    // Fetch daily playtime for the last 365 days
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 365);
 
@@ -227,7 +225,6 @@ router.get(
       })
       .all();
 
-    // Aggregate seconds across servers per day
     const dayMap: Record<string, number> = {};
     for (const row of rows) {
       const date =
@@ -253,7 +250,6 @@ router.get(
       check.setDate(check.getDate() - 1);
     }
 
-    // Most active day of week
     const dayTotals = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     for (const [dateStr, seconds] of Object.entries(dayMap)) {
@@ -280,7 +276,6 @@ router.get(
       }
     }
 
-    // Current session duration (if online)
     let currentSessionSeconds: number | null = null;
     if (details.player.online) {
       const activeSession = await Q.player.session

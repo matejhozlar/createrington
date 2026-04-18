@@ -44,12 +44,10 @@ export class PlayerBanRepository extends BasePlayerRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
-    // Validate expiry is in the future
     if (data.expiresAt <= new Date()) {
       throw new Error("Ban expiry must be in the future");
     }
 
-    // Check if player already has an active ban
     const existingBan = await Q.player.ban.getCurrentBan(uuid);
     if (existingBan) {
       throw new Error(
@@ -119,7 +117,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
-    // Check if player already has an active ban
     const existingBan = await Q.player.ban.getCurrentBan(uuid);
     if (existingBan) {
       throw new Error(

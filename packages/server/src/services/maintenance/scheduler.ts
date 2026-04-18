@@ -67,7 +67,6 @@ export class MaintenanceScheduler {
       }
     }
 
-    // Also cache any currently active maintenance rows
     const active = await Q.server.maintenance.schedule.findAll({
       status: "active",
     });
@@ -176,7 +175,6 @@ export class MaintenanceScheduler {
     const timers: NodeJS.Timeout[] = [];
     const scheduledMs = schedule.scheduledAt.getTime();
 
-    // Warning timers
     for (const minutes of WARNING_INTERVALS_MINUTES) {
       const warningMs = scheduledMs - minutes * 60 * 1000;
       const delay = warningMs - Date.now();
@@ -195,7 +193,6 @@ export class MaintenanceScheduler {
 
     this.warningTimers.set(schedule.id, timers);
 
-    // Activation timer
     const activationDelay = scheduledMs - Date.now();
     if (activationDelay > 0) {
       const timer = setTimeout(() => {
@@ -277,7 +274,6 @@ export class MaintenanceScheduler {
     this.clearTimers(schedule.id);
 
     try {
-      // Get online players to kick
       const manager = await getService(Services.PLAYTIME_MANAGER_SERVICE);
       const service = manager.getService(schedule.serverId);
       const onlinePlayers = (service?.getActiveSessions() ?? []).map(
@@ -286,7 +282,6 @@ export class MaintenanceScheduler {
 
       await this.maintenanceService.enable(schedule.serverId, onlinePlayers);
 
-      // Update DB row
       const updated = await Q.server.maintenance.schedule.updateAndReturn(
         { id: schedule.id },
         { status: "active", startedAt: new Date() },
@@ -295,7 +290,6 @@ export class MaintenanceScheduler {
         this.activeSchedules.set(schedule.serverId, updated);
       }
 
-      // Broadcast via WebSocket
       try {
         const ws = await getService(Services.WEBSOCKET_SERVICE);
         await ws.triggerServerStatusUpdate(schedule.serverId);

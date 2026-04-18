@@ -515,7 +515,6 @@ export async function initializeServices(): Promise<void> {
     logger.warn(`Maintenance scheduler init failed: ${err}`);
   }
 
-  // Initialize structure pack rotation service
   try {
     let webMessageService: DiscordMessageService | null = null;
     try {

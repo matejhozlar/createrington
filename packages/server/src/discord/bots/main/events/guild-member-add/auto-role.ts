@@ -70,7 +70,6 @@ export async function execute(
           `Cancelled departure record #${activeDeparture.id} for returning member ${member.user.tag}`,
         );
 
-        // Update the admin notification embed
         if (activeDeparture.notificationMessageId) {
           try {
             const result = await Discord.Messages.fetchMessage({

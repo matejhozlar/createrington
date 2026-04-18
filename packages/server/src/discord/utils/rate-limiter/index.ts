@@ -10,7 +10,6 @@ import { DiscordRateLimiter } from "./rate-limiter";
  */
 export const discordRateLimiter = new DiscordRateLimiter();
 
-// Graceful shutdown handler
 process.on("SIGTERM", async () => {
   await discordRateLimiter.shutdown();
 });

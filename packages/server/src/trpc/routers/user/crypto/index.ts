@@ -202,7 +202,6 @@ export const cryptoRouter = router({
         };
       }
 
-      // Get current token prices for all held tokens
       const tokens = await Q.crypto.token.where({}).all();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
@@ -361,7 +360,6 @@ export const cryptoRouter = router({
         filtered = filtered.filter((tx) => tx.type === input.type);
       }
 
-      // Get token map for symbol lookup/filter
       const tokens = await Q.crypto.token.where({}).all();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 

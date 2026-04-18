@@ -49,7 +49,6 @@ export class MinecraftRconManager {
    * Maps servers by their numeric ID
    */
   private loadServerConfigs(): void {
-    // Load Cogs & Steam server
     if (config.servers?.cogs?.rcon && config.servers.cogs.id) {
       this.serverConfigs.set(config.servers.cogs.id, {
         id: config.servers.cogs.id,

@@ -270,7 +270,6 @@ async function buildTopHoldersSection(
 
   if (holdings.length === 0) return { text: "", holders: [] };
 
-  // Sort by amount descending
   const sorted = [...holdings].sort((a, b) => Number(b.amount - a.amount));
   const top5 = sorted.slice(0, 5);
 
@@ -490,7 +489,6 @@ async function buildMarketContext(
 
   const { topGainer, topLoser } = await cryptoService.getTopMovers();
 
-  // Build sorted token list with change data
   const sorted = activeTokens
     .map((t) => {
       const change24h = cryptoService.get24hChange(t.id, t.price);
@@ -556,7 +554,6 @@ async function buildMarketContext(
   const treasuryText = await buildTreasurySection();
   if (treasuryText) lines.push(treasuryText);
 
-  // Initialize article data
   const articleData: ArticleData = {
     topHolders: [],
     recentTrades: [],
@@ -683,7 +680,6 @@ async function generateArticleForEvent(
     maxTokens: 1200,
   });
 
-  // Persist article text and structured data
   const enrichedMetadata = {
     ...(metadata ?? {}),
     articleData,

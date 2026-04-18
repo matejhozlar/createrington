@@ -147,7 +147,6 @@ export async function triggerEvent(
   eventType: MarketEventType,
   tokenId?: number,
 ): Promise<ActiveEvent | null> {
-  // Remove existing event of the same type if any
   const existingIdx = activeEvents.findIndex((e) => e.type === eventType);
   if (existingIdx !== -1) {
     const existing = activeEvents[existingIdx];
@@ -195,7 +194,6 @@ async function executeEvent(
     }
   }
 
-  // Calculate duration
   let activeUntil: Date | null = null;
   if (def.durationMs) {
     const [minMs, maxMs] = def.durationMs;
@@ -217,7 +215,6 @@ async function executeEvent(
     await applyInstantEffects(def.effects, targetToken);
   }
 
-  // Record to database
   const dbEvent = await createMarketEvent({
     type: eventType,
     title: def.name,
@@ -297,7 +294,6 @@ async function applyInstantEffects(
   effects: EventEffect,
   token: CryptoToken,
 ): Promise<void> {
-  // Instant price change
   if (effects.instantPriceChange !== undefined) {
     const currentPrice = Number(token.price);
     // Randomize around the defined value (e.g. -0.35 becomes range -0.20 to -0.50)
@@ -320,7 +316,6 @@ async function applyInstantEffects(
     );
   }
 
-  // Instant supply burn
   if (effects.instantSupplyChange !== undefined) {
     const currentSupply = Number(token.availableSupply);
     const magnitude = Math.abs(effects.instantSupplyChange);

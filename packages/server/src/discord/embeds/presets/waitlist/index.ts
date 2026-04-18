@@ -21,7 +21,6 @@ export const WaitlistEmbedPresets = {
       .field("📧 Email", data.email || "N/A")
       .build();
 
-    // Use reusable button presets
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       ButtonPresets.waitlist.accept(data.id),
       ButtonPresets.waitlist.decline(data.id),

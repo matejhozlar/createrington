@@ -62,7 +62,6 @@ export const db = new DatabaseQueries(pool);
 /** Pre-built query instances sharing the pool -- use for non-transactional reads/writes */
 export const Q = createQueryInstances(pool);
 
-// Individual exports for convenience
 export const {
   player,
   discord,

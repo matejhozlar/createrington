@@ -77,17 +77,14 @@ export class TypedResponse {
       return obj as Serialize<T>;
     }
 
-    // Handle Date objects
     if (obj instanceof Date) {
       return obj.toISOString() as Serialize<T>;
     }
 
-    // Handle arrays
     if (Array.isArray(obj)) {
       return obj.map((item) => this.serialize(item)) as Serialize<T>;
     }
 
-    // Handle objects
     if (typeof obj === "object") {
       const serialized: Record<string, unknown> = {};
       for (const key in obj) {
@@ -98,7 +95,6 @@ export class TypedResponse {
       return serialized as Serialize<T>;
     }
 
-    // Primitives
     return obj as Serialize<T>;
   }
 }

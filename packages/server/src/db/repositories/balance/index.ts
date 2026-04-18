@@ -568,7 +568,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,
@@ -621,7 +620,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,
@@ -674,7 +672,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,

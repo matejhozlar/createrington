@@ -40,7 +40,6 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        // Filtering
         discordId: z.string().optional(),
         minecraftUuid: z.string().optional(),
         minecraftUsername: z.string().optional(),

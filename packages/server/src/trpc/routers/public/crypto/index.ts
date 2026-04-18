@@ -49,7 +49,6 @@ export const cryptoRouter = router({
         tokens = tokens.filter((t) => t.category === input.category);
       }
 
-      // Filter out delisted tokens
       tokens = tokens.filter((t) => !t.delistedAt);
 
       const cryptoService = await getService(Services.CRYPTO_MARKET_SERVICE);

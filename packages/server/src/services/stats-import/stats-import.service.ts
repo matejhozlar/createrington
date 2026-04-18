@@ -187,7 +187,6 @@ export class StatsImportService {
         password: cfg.sftp.password,
       });
 
-      // List *.json files in the stats directory
       const fileList = await sftp.list(cfg.sftp.statsPath);
       const jsonFiles = fileList.filter(
         (f) => f.type === "-" && f.name.endsWith(".json"),
@@ -200,13 +199,11 @@ export class StatsImportService {
         return;
       }
 
-      // Load known player UUIDs from DB
       const players = await Q.player.findAll(undefined, {
         select: ["minecraftUuid"],
       });
       const knownUuids = new Set(players.map((p) => p.minecraftUuid));
 
-      // Download and parse stats for known players
       const statsToUpsert: StatsUpsertEntry[] = [];
       let skipped = 0;
 
@@ -243,7 +240,6 @@ export class StatsImportService {
         return;
       }
 
-      // Batch upsert via query layer
       await Q.player.minecraft.stats.batchUpsert(serverId, statsToUpsert);
 
       const duration = Date.now() - startTime;

@@ -48,7 +48,6 @@ export const discordCommandsRouter = router({
         (cmd) => cmd.category === "user" || cmd.category === "public",
       );
 
-      // Group commands
       const grouped = new Map<string, RawCommand[]>();
       for (const cmd of playerCommands) {
         const group = COMMAND_GROUPS[cmd.name] ?? "Other";
@@ -57,13 +56,11 @@ export const discordCommandsRouter = router({
         grouped.set(group, list);
       }
 
-      // Return in defined order
       const groups = GROUP_ORDER.filter((g) => grouped.has(g)).map((g) => ({
         name: g,
         commands: grouped.get(g)!,
       }));
 
-      // Append any ungrouped commands
       const ungrouped = grouped.get("Other");
       if (ungrouped) {
         groups.push({ name: "Other", commands: ungrouped });

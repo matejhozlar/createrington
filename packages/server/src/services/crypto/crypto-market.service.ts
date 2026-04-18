@@ -690,7 +690,6 @@ export class CryptoMarketService {
         `Price alert triggered: ${alert.tokenSymbol} ${alert.direction} $${alert.targetPrice} (now $${alert.currentPrice})`,
       );
 
-      // Broadcast alert trigger via WebSocket to the specific user
       if (this.wsService) {
         this.wsService.broadcastToRoom(
           RoomManager.getCryptoMarketRoom(),

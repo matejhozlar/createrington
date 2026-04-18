@@ -117,7 +117,6 @@ export class LotteryService {
       timer,
     };
 
-    // Deduct balance and persist to DB
     try {
       await R.balanceRepo.deduct(
         uuid,
@@ -191,7 +190,6 @@ export class LotteryService {
     this.activeLottery.participants.push(participant);
     this.activeLottery.totalPot += amount;
 
-    // Deduct balance and persist to DB
     try {
       await R.balanceRepo.deduct(
         uuid,
@@ -277,7 +275,6 @@ export class LotteryService {
           `Lottery cancelled, refunded ${solo.minecraftUsername} $${solo.amount}`,
         );
       } else {
-        // Pick weighted winner
         const winner = this.pickWeightedWinner(participants);
 
         await R.balanceRepo.add(
@@ -302,12 +299,10 @@ export class LotteryService {
         );
       }
 
-      // Clear DB table
       await db.lottery.participant.drop();
     } catch (err) {
       logger.error("Lottery resolution error:", err);
     } finally {
-      // Reset in-memory state
       this.activeLottery = null;
       this.resolving = false;
     }

@@ -67,7 +67,6 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   const { presetId, buttonIndex } = parsed;
 
-  // Load the preset to get the action config
   const preset = await Q.discord.embed.preset.find({ id: presetId });
   if (!preset) {
     await interaction.reply({
@@ -143,7 +142,6 @@ async function handleCreateThread(
     );
     const threadMessage = applyTemplate(config.threadMessage, userId, username);
 
-    // Create thread in the target channel
     if (
       targetChannel.type === ChannelType.GuildText ||
       targetChannel.type === ChannelType.GuildAnnouncement

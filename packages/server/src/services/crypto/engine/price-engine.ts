@@ -460,7 +460,6 @@ export async function recordTickSnapshot(
   volume: bigint = 0n,
 ): Promise<void> {
   const now = new Date();
-  // Round to nearest 30s boundary
   now.setMilliseconds(0);
   now.setSeconds(now.getSeconds() - (now.getSeconds() % 30));
 
