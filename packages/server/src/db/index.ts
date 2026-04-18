@@ -42,10 +42,6 @@ try {
 // export const poolMonitor = new PoolMonitor(pool);
 // poolMonitor.start();
 
-// ============================================================================
-// UNIFIED DATABASE QUERIES
-// ============================================================================
-
 /**
  * Primary database interface with transaction support
  *
@@ -63,10 +59,6 @@ try {
  */
 export const db = new DatabaseQueries(pool);
 
-// ============================================================================
-// QUERY SINGLETONS (for normal usage)
-// ============================================================================
-
 /** Pre-built query instances sharing the pool -- use for non-transactional reads/writes */
 export const Q = createQueryInstances(pool);
 
@@ -82,25 +74,13 @@ export const {
   faq,
 } = Q;
 
-// ============================================================================
-// QUERY FACTORY (for transactions)
-// ============================================================================
-
 export { createQueries };
-
-// ============================================================================
-// RE-EXPORT ALL ACTUAL QUERY CLASSES
-// ============================================================================
 
 /**
  * Export all actual query classes from the auto-generated barrel
  * This allows: import { PlayerQueries, AdminQueries } from "@/db"
  */
 export * from "./queries";
-
-// ============================================================================
-// REPOSITORIES
-// ============================================================================
 
 export const waitlistRepo = new repositories.WaitlistRepository();
 
@@ -135,10 +115,6 @@ export const R = {
   playerTicketRepo,
   playerStrikeRepo,
 };
-
-// ============================================================================
-// EXPORTS
-// ============================================================================
 
 export default pool;
 export { transaction, Transaction } from "./utils/transactions";

@@ -94,10 +94,6 @@ export class DiscordOAuthService {
     this.validate();
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /** Returns the singleton instance, creating it on first call */
   public static getInstance(): DiscordOAuthService {
     if (!DiscordOAuthService.instance) {
@@ -105,10 +101,6 @@ export class DiscordOAuthService {
     }
     return DiscordOAuthService.instance;
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Validate that all required OAuth configuration values are present
@@ -137,10 +129,6 @@ export class DiscordOAuthService {
       );
     }
   }
-
-  // ==========================================================================
-  // TOKEN EXCHANGE
-  // ==========================================================================
 
   /**
    * Exchange an authorization code for a Discord access token
@@ -180,10 +168,6 @@ export class DiscordOAuthService {
       throw new Error("Failed to exchange authorization code");
     }
   }
-
-  // ==========================================================================
-  // USER DATA
-  // ==========================================================================
 
   /**
    * Fetch Discord user information using an access token
@@ -283,10 +267,6 @@ export class DiscordOAuthService {
 
     return authenticatedUser;
   }
-
-  // ==========================================================================
-  // AUTHORIZATION
-  // ==========================================================================
 
   /**
    * Generate a Discord OAuth authorization URL

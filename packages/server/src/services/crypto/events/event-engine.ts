@@ -20,10 +20,6 @@ import {
 import { createMarketEvent } from "./news-feed";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 
-// ---------------------------------------------------------------------------
-// TYPES
-// ---------------------------------------------------------------------------
-
 export interface ActiveEvent {
   /** Database event ID */
   eventId: number;
@@ -49,15 +45,7 @@ export interface ResolvedEffects {
   stablecoinInflationMultiplier: number;
 }
 
-// ---------------------------------------------------------------------------
-// IN-MEMORY STATE
-// ---------------------------------------------------------------------------
-
 const activeEvents: ActiveEvent[] = [];
-
-// ---------------------------------------------------------------------------
-// PUBLIC API: Event state
-// ---------------------------------------------------------------------------
 
 /** Returns all currently active (non-expired) events */
 export function getActiveEventsInMemory(): ActiveEvent[] {
@@ -111,10 +99,6 @@ export function resolveEffects(tokenId?: number): ResolvedEffects {
 export function getEventFeeMultiplier(): number {
   return resolveEffects().feeMultiplier;
 }
-
-// ---------------------------------------------------------------------------
-// PUBLIC API: Event rolling
-// ---------------------------------------------------------------------------
 
 /**
  * Rolls for random market events. Called once per hour.
@@ -178,10 +162,6 @@ export async function triggerEvent(
 
   return executeEvent(eventType, tokenId);
 }
-
-// ---------------------------------------------------------------------------
-// INTERNAL: Event execution
-// ---------------------------------------------------------------------------
 
 /**
  * Executes a market event end-to-end: resolves the target token, calculates
@@ -279,10 +259,6 @@ async function executeEvent(
 
   return event;
 }
-
-// ---------------------------------------------------------------------------
-// INTERNAL: Helpers
-// ---------------------------------------------------------------------------
 
 /**
  * Picks a random non-crashed, non-delisted token from the event's allowed

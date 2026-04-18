@@ -26,10 +26,6 @@ import { sendWhaleAlertNotification } from "../notifications";
 import { triggerTradeAchievements } from "./achievement-triggers";
 import { getService, Services } from "@/services";
 
-// ==========================================================================
-// TYPES
-// ==========================================================================
-
 export interface TradeResult {
   transactionId: number;
   tokenId: number;
@@ -59,10 +55,6 @@ export function getCooldownExpiresAt(
   const expiresAt = lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
   return expiresAt > Date.now() ? expiresAt : null;
 }
-
-// ==========================================================================
-// HELPERS
-// ==========================================================================
 
 /**
  * Enforces a per-token trade cooldown per player (matches old system's 3-minute per-token cooldown).
@@ -183,10 +175,6 @@ async function hasMarketVeteranAchievement(
   }
 }
 
-// ==========================================================================
-// HELPERS: Transaction support
-// ==========================================================================
-
 /**
  * Locks a token row with SELECT FOR UPDATE within a transaction,
  * then re-fetches fresh data. Prevents concurrent trades from
@@ -207,10 +195,6 @@ async function lockAndFetchToken(
   ]);
   return tx.crypto.token.get({ id: tokenId });
 }
-
-// ==========================================================================
-// BUY
-// ==========================================================================
 
 /**
  * Returns true if the token is currently in its IPO window.
@@ -244,7 +228,6 @@ export async function executeBuy(
   token: CryptoToken,
   amount: bigint,
 ): Promise<TradeResult> {
-  // Quick pre-checks (no DB needed)
   if (token.isCrashed) {
     throw new Error(
       `Token ${token.symbol} has crashed and cannot be purchased`,
@@ -268,7 +251,6 @@ export async function executeBuy(
   ]);
 
   const tradeResult = await db.inTransaction(async (tx) => {
-    // Lock token row and get fresh data
     const freshToken = await lockAndFetchToken(tx, token.id);
 
     if (amount > freshToken.availableSupply) {
@@ -413,10 +395,6 @@ export async function executeBuy(
   return tradeResult;
 }
 
-// ==========================================================================
-// SELL
-// ==========================================================================
-
 /**
  * Executes a sell order: credits player balance (minus fees), returns tokens
  * to available supply, adjusts cost basis proportionally, calculates realized
@@ -436,7 +414,6 @@ export async function executeSell(
   token: CryptoToken,
   amount: bigint,
 ): Promise<TradeResult> {
-  // Quick pre-checks (no DB needed)
   if (isInIpo(token)) {
     throw new Error(
       `${token.symbol} is in its IPO phase — selling is not allowed until trading opens`,
@@ -456,7 +433,6 @@ export async function executeSell(
   ]);
 
   const tradeResult = await db.inTransaction(async (tx) => {
-    // Lock token row and get fresh data
     const freshToken = await lockAndFetchToken(tx, token.id);
 
     // Verify holdings within the transaction
@@ -575,10 +551,6 @@ export async function executeSell(
 
   return tradeResult;
 }
-
-// ==========================================================================
-// TREASURY
-// ==========================================================================
 
 /**
  * Updates the fee treasury with the fee collected from a trade.

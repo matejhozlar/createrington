@@ -37,10 +37,6 @@ import type {
 export class PlaytimeRepository {
   constructor() {}
 
-  // ============================================================================
-  // SESSION LIFECYCLE
-  // ============================================================================
-
   /**
    * Start a new session for a player
    * Called when PlaytimeService emits 'sessionStart' event
@@ -299,10 +295,6 @@ export class PlaytimeRepository {
     }
   }
 
-  // ============================================================================
-  // PLAYER STATISTICS
-  // ============================================================================
-
   /**
    * Get comprehensive player statistics
    *
@@ -471,10 +463,6 @@ export class PlaytimeRepository {
     }
   }
 
-  // ============================================================================
-  // SERVER STATISTICS
-  // ============================================================================
-
   /**
    * Get server-wide statistics
    *
@@ -598,10 +586,6 @@ export class PlaytimeRepository {
     }
   }
 
-  // ============================================================================
-  // INTERNAL HELPERS
-  // ============================================================================
-
   /**
    * Aggregates a completed session into daily, hourly, and summary tables
    *
@@ -684,10 +668,6 @@ export class PlaytimeRepository {
       );
     }
   }
-
-  // ============================================================================
-  // INTEGRATION WITH PLAYTIME SERVICE
-  // ============================================================================
 
   /**
    * Connect this repository to a PlaytimeService instance

@@ -35,10 +35,6 @@ export class PlayerPromptService {
 
   constructor(private messageService: DiscordMessageService) {}
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Reload every active prompt and either close it (if overdue) or re-arm
    * its closure timer. Called once on service bootstrap.
@@ -81,10 +77,6 @@ export class PlayerPromptService {
     }
     this.closureTimers.clear();
   }
-
-  // ==========================================================================
-  // PUBLIC API
-  // ==========================================================================
 
   async createPrompt(opts: {
     question: string;
@@ -194,10 +186,6 @@ export class PlayerPromptService {
 
     logger.info(`Closed prompt #${promptId} with ${responseCount} responses`);
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   private async postAnnouncement(prompt: PlayerPrompt) {
     const embed = this.buildActiveEmbed(prompt);

@@ -1,9 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 
-// ============================================================================
-// Enums
-// ============================================================================
-
 export const banTypeEnum = pgEnum("ban_type", ["temporary", "permanent"]);
 
 export const strikeClassificationEnum = pgEnum("strike_classification", [
@@ -38,10 +34,6 @@ export const discordAutoMessageRotationEnum = pgEnum(
   "discord_auto_message_rotation",
   ["sequential", "random"],
 );
-
-// ============================================================================
-// Crypto Market Enums
-// ============================================================================
 
 // Token categories drive price engine behaviour (volatility, floor, demand curve)
 export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [

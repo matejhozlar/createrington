@@ -12,10 +12,6 @@ const router = Router();
  * forceloadable chunks and party state for the originating server.
  */
 
-// ============================================================================
-// MOD ROUTES (JWT + IP verification required)
-// ============================================================================
-
 /**
  * POST /api/forceloads/sync
  *

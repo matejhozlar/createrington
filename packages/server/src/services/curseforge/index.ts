@@ -27,10 +27,6 @@ function ensureApiKey(): void {
   }
 }
 
-// =============================================================================
-// Types
-// =============================================================================
-
 export interface CurseForgeSearchResult {
   id: number;
   name: string;
@@ -76,10 +72,6 @@ export interface RemovableDep {
   safe: boolean;
   neededBy: string[];
 }
-
-// =============================================================================
-// API functions
-// =============================================================================
 
 /**
  * Search CurseForge mods by name, filtered to NeoForge mods for the default game version
@@ -257,10 +249,6 @@ export async function getModFileDownloadUrl(
   return body.data;
 }
 
-// =============================================================================
-// Dependency resolution
-// =============================================================================
-
 /**
  * Resolve a list of dependency mod IDs to their display info and best compatible file
  *
@@ -377,10 +365,6 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   }));
 }
 
-// =============================================================================
-// Published modpack mod list (cached)
-// =============================================================================
-
 let modpackCache: { modIds: Set<number>; fetchedAt: number } | null = null;
 
 /**
@@ -450,10 +434,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
 
   return modIds;
 }
-
-// =============================================================================
-// File downloads
-// =============================================================================
 
 /**
  * Download a mod file from CurseForge and save it to disk using a stream pipeline

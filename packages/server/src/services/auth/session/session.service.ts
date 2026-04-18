@@ -41,10 +41,6 @@ class SessionService {
     );
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /** Returns the singleton instance, creating it on first call */
   static getInstance(): SessionService {
     if (!SessionService.instance) {
@@ -52,10 +48,6 @@ class SessionService {
     }
     return SessionService.instance;
   }
-
-  // ==========================================================================
-  // SESSION MANAGEMENT
-  // ==========================================================================
 
   /**
    * Create a new session for a user after login
@@ -165,10 +157,6 @@ class SessionService {
     };
   }
 
-  // ==========================================================================
-  // REVOCATION
-  // ==========================================================================
-
   /**
    * Revoke a single session by its raw refresh token
    *
@@ -193,10 +181,6 @@ class SessionService {
     await auth.session.revokeAllForUser(discordId);
     logger.info(`Revoked all sessions for user ${discordId}`);
   }
-
-  // ==========================================================================
-  // MAINTENANCE
-  // ==========================================================================
 
   /**
    * Delete all expired sessions from the database

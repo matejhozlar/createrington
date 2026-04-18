@@ -13,10 +13,6 @@ import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_
 const WHITELIST_FILE = "whitelist.json";
 const WHITELIST_BACKUP = "whitelist.json.bak";
 
-// =============================================================================
-// Service
-// =============================================================================
-
 /**
  * Maintenance Mode Service
  *

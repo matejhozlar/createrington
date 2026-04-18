@@ -40,10 +40,6 @@ export enum ProgressStep {
  * - Admin queries, deletion, and statistics
  */
 export class WaitlistRepository {
-  // ============================================================================
-  // CAPACITY CHECK
-  // ============================================================================
-
   /**
    * Checks if the server has capacity for new players
    * Based on current player count vs limit
@@ -69,10 +65,6 @@ export class WaitlistRepository {
       return false;
     }
   }
-
-  // ============================================================================
-  // PRIVATE HELPERS
-  // ============================================================================
 
   /**
    * Notifies admins in Discord about new waitlist entry
@@ -145,10 +137,6 @@ export class WaitlistRepository {
 
     await this.updateProgressEmbed(entry.id);
   }
-
-  // ============================================================================
-  // REGISTRATION & INVITATION
-  // ============================================================================
 
   /**
    * Registers a new user to the waitlist with full notification flow
@@ -330,10 +318,6 @@ export class WaitlistRepository {
     return Q.waitlist.entry.get({ id: entryId });
   }
 
-  // ============================================================================
-  // ADMIN RETRIEVAL
-  // ============================================================================
-
   /**
    * Gets detailed waitlist entry information for admin panel
    *
@@ -372,10 +356,6 @@ export class WaitlistRepository {
   async count(filters?: WaitlistEntryFilters): Promise<number> {
     return await Q.waitlist.entry.count(filters);
   }
-
-  // ============================================================================
-  // AUTO CLEANUP
-  // ============================================================================
 
   /**
    * Deletes accepted entries whose single-use Discord invite expired before the
@@ -428,10 +408,6 @@ export class WaitlistRepository {
     return rows.length;
   }
 
-  // ============================================================================
-  // ADMIN DELETION
-  // ============================================================================
-
   /**
    * Deletes a waitlist entry with admin audit logging
    *
@@ -474,10 +450,6 @@ export class WaitlistRepository {
       );
     });
   }
-
-  // ============================================================================
-  // PROGRESS TRACKING
-  // ============================================================================
 
   /**
    * Updates the Discord message with current progress
@@ -556,10 +528,6 @@ export class WaitlistRepository {
   async markJoinedMinecraft(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.JOINED_MINECRAFT);
   }
-
-  // ============================================================================
-  // STATISTICS
-  // ============================================================================
 
   /**
    * Gets overall waitlist statistics for admin dashboard

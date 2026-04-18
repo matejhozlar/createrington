@@ -333,10 +333,6 @@ export class MinecraftRconManager {
     };
   }
 
-  // ============================================================================
-  // CONVENIENCE METHODS (single server operations)
-  // ============================================================================
-
   /** Sets the in-game time on a server */
   public async time(serverId: ServerId, time: TimeValue): Promise<string> {
     return this.send(serverId, `time set ${this.timeToString(time)}`);
@@ -529,10 +525,6 @@ export class MinecraftRconManager {
     const playerArg = playerName ? ` ${playerName}` : "";
     return this.send(serverId, `whitelist ${action}${playerArg}`);
   }
-
-  // ============================================================================
-  // BROADCAST METHODS (multiple server operations)
-  // ============================================================================
 
   /**
    * Broadcasts to specific servers

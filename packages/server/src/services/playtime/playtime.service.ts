@@ -79,10 +79,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     };
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes the service and performs recovery sync
    *
@@ -307,10 +303,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     }
   }
 
-  // ==========================================================================
-  // MOD NOTIFICATIONS
-  // ==========================================================================
-
   /**
    * Handles player join notification from Minecraft mod
    *
@@ -447,10 +439,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     );
   }
 
-  // ==========================================================================
-  // SERVER STATE
-  // ==========================================================================
-
   /**
    * Handles server shutdown detected by message cache
    *
@@ -492,10 +480,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
     this.serverState = ServerState.ONLINE;
     this.emit("serverOnline");
   }
-
-  // ==========================================================================
-  // HEARTBEAT RECONCILIATION
-  // ==========================================================================
 
   /**
    * Reconciles in-memory sessions against the actual player list from the mod heartbeat.
@@ -552,10 +536,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       this.emit("serverOnline");
     }
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Fetches current server status via minecraft-server-util library
@@ -686,10 +666,6 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
 
     this.activeSessions.clear();
   }
-
-  // ==========================================================================
-  // PUBLIC API
-  // ==========================================================================
 
   /**
    * Associates a database session ID with an active in-memory session

@@ -42,10 +42,6 @@ export class StatsImportService {
     private readonly configs: StatsImportServerConfig[],
   ) {}
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Register a callback to be invoked after a successful stats import.
    * The callback receives the server ID and the list of player UUIDs that were imported.
@@ -114,10 +110,6 @@ export class StatsImportService {
     this.debounceTimers.clear();
     logger.info("StatsImportService shut down");
   }
-
-  // ==========================================================================
-  // IMPORT
-  // ==========================================================================
 
   /**
    * Schedules a debounced stats import for a specific server

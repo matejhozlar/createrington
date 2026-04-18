@@ -164,10 +164,6 @@ export class MaintenanceScheduler {
     this.activeSchedules.clear();
   }
 
-  // ---------------------------------------------------------------------------
-  // Private
-  // ---------------------------------------------------------------------------
-
   /**
    * Creates warning and activation setTimeout handles for a schedule row.
    * Warning timers fire at each interval in WARNING_INTERVALS_MINUTES that

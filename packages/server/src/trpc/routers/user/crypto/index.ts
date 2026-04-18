@@ -399,10 +399,6 @@ export const cryptoRouter = router({
       };
     }),
 
-  // ==========================================================================
-  // IPO
-  // ==========================================================================
-
   ipoAllocation: userProcedure
     .meta({ description: "Get remaining IPO allocation for a token" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
@@ -441,10 +437,6 @@ export const cryptoRouter = router({
         remaining: String(remaining < 0n ? 0n : remaining),
       };
     }),
-
-  // ==========================================================================
-  // WATCHLIST
-  // ==========================================================================
 
   watchlistList: userProcedure
     .meta({ description: "Get user's watchlist" })
@@ -511,10 +503,6 @@ export const cryptoRouter = router({
         );
       }
     }),
-
-  // ==========================================================================
-  // PRICE ALERTS
-  // ==========================================================================
 
   alertList: userProcedure
     .meta({ description: "List active price alerts" })
@@ -593,10 +581,6 @@ export const cryptoRouter = router({
         );
       }
     }),
-
-  // ==========================================================================
-  // PORTFOLIO HISTORY
-  // ==========================================================================
 
   portfolioHistory: userProcedure
     .meta({ description: "Get daily portfolio value history" })

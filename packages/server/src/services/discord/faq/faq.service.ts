@@ -34,10 +34,6 @@ export class FaqService {
 
   constructor(private readonly bot: Client) {}
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes the service by loading FAQ patterns and ensuring
    * the welcome message exists in the questions channel
@@ -65,10 +61,6 @@ export class FaqService {
       logger.info("FaqService repost timer stopped");
     }
   }
-
-  // ==========================================================================
-  // MESSAGE HANDLING
-  // ==========================================================================
 
   /**
    * Handles an incoming message in the questions channel
@@ -142,10 +134,6 @@ export class FaqService {
     logger.info(`Loaded ${this.patterns.length} FAQ patterns`);
   }
 
-  // ==========================================================================
-  // WELCOME MESSAGE
-  // ==========================================================================
-
   /**
    * Deletes the existing welcome message and posts a fresh one
    *
@@ -198,10 +186,6 @@ export class FaqService {
       logger.error("Failed to repost FAQ welcome message:", error);
     }
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Finds the first FAQ pattern matching the message content

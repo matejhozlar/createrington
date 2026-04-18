@@ -11,19 +11,11 @@ const router = Router();
  * These endpoints are called by the Minecraft mod for in-game economy operations.
  */
 
-// ============================================================================
-// LOGIN (server IP only — creates the mod JWT)
-// ============================================================================
-
 // POST /api/currency/login — issue a short-lived mod JWT
 router.post(
   "/login",
   ...customRoute([verifyServerIP], CurrencyController.login),
 );
-
-// ============================================================================
-// BALANCE & TRANSACTIONS (server IP + mod JWT)
-// ============================================================================
 
 // GET /api/currency/balance — current balance for the authenticated player
 router.get(
@@ -61,19 +53,11 @@ router.get(
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.getTop),
 );
 
-// ============================================================================
-// DAILY REWARD
-// ============================================================================
-
 // POST /api/currency/daily — claim the daily reward
 router.post(
   "/daily",
   ...customRoute([verifyServerIP, verifyModJWT], CurrencyController.claimDaily),
 );
-
-// ============================================================================
-// LOTTERY & VOTE (placeholder stubs)
-// ============================================================================
 
 router.post(
   "/lottery/start",

@@ -29,10 +29,6 @@ export interface PriceUpdate {
   isCrashed: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// IN-MEMORY STATE (per token, reset on server restart)
-// ---------------------------------------------------------------------------
-
 /** Tracks the last N price movement directions for momentum calculation */
 interface MomentumState {
   /** Number of consecutive same-direction ticks (positive = up streak, negative = down streak) */
@@ -52,10 +48,6 @@ const bluechipPreviousMetrics = new Map<string, number>();
 
 /** Stores the baseline daily average metric for normalization (symbol → avg) */
 const bluechipBaselineMetrics = new Map<string, number>();
-
-// ---------------------------------------------------------------------------
-// PUBLIC API: volume tracking (called from trade executor)
-// ---------------------------------------------------------------------------
 
 /**
  * Records a trade's volume contribution for demand pressure calculation.
@@ -91,10 +83,6 @@ function consumeNetVolume(tokenId: number): number {
   return vol;
 }
 
-// ---------------------------------------------------------------------------
-// PUBLIC API: 24h average price cache
-// ---------------------------------------------------------------------------
-
 /**
  * Refreshes the 24h average price cache for all active tokens.
  * Call this periodically (e.g. every 5 minutes alongside minute aggregation).
@@ -120,10 +108,6 @@ export async function refresh24hAverages(): Promise<void> {
     avgPrice24hMap.set(token.id, sum / recent.length);
   }
 }
-
-// ---------------------------------------------------------------------------
-// PURE HELPERS
-// ---------------------------------------------------------------------------
 
 /**
  * Determines which volatility tier a price falls into.
@@ -156,10 +140,6 @@ function randomBetween(min: number, max: number): number {
   return min + Math.random() * (max - min);
 }
 
-// ---------------------------------------------------------------------------
-// MEMECOIN PRICE TICK
-// ---------------------------------------------------------------------------
-
 /**
  * Computes the next price for a memecoin token using the multi-factor model:
  *
@@ -179,7 +159,6 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   // Resolve active event effects for this token
   const eventEffects = resolveEffects(token.id);
 
-  // --- 1. Random walk component (with event volatility multiplier) ---
   const tier = getVolatilityTier(currentPrice);
   const { minChange, maxChange, upwardBias } = CRYPTO_CONFIG.VOLATILITY[tier];
   const volatility =
@@ -187,7 +166,6 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   const direction = Math.random() < upwardBias ? 1 : -1;
   const baseChange = direction * volatility;
 
-  // --- 2. Momentum component ---
   const state = momentumMap.get(token.id) ?? { streak: 0 };
   let momentumBias = 0;
 
@@ -210,7 +188,6 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
   }
   momentumMap.set(token.id, state);
 
-  // --- 3. Demand pressure component (capped to prevent low-supply manipulation) ---
   const netVolume = consumeNetVolume(token.id);
   const availableSupply = Number(token.availableSupply);
   let demandPressure = 0;
@@ -221,7 +198,6 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
     demandPressure = Math.max(-cap, Math.min(cap, rawPressure));
   }
 
-  // --- 4. Mean reversion component ---
   let meanReversion = 0;
   const avg24h = avgPrice24hMap.get(token.id);
   if (avg24h && avg24h > 0) {
@@ -233,10 +209,8 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
     }
   }
 
-  // --- 5. Event direction bias ---
   const eventBias = eventEffects.directionBias;
 
-  // --- 6. Final price ---
   const totalChange =
     baseChange + momentumBias + demandPressure + meanReversion + eventBias;
   let newPrice = currentPrice * (1 + totalChange);
@@ -257,10 +231,6 @@ export function tickMemecoinPrice(token: CryptoToken): PriceUpdate {
     isCrashed,
   };
 }
-
-// ---------------------------------------------------------------------------
-// STABLECOIN PRICE TICK
-// ---------------------------------------------------------------------------
 
 /**
  * Computes the next price for a stablecoin token.
@@ -304,10 +274,6 @@ export function tickStablecoinPrice(
     isCrashed: false,
   };
 }
-
-// ---------------------------------------------------------------------------
-// BLUE-CHIP PRICE TICK
-// ---------------------------------------------------------------------------
 
 /**
  * Aggregates a metric from player_minecraft_stats for blue-chip pricing.
@@ -459,10 +425,6 @@ export function getBluechipState(symbol: string): {
     baseline: bluechipBaselineMetrics.get(symbol),
   };
 }
-
-// ---------------------------------------------------------------------------
-// PERSISTENCE
-// ---------------------------------------------------------------------------
 
 /**
  * Persists a price update to the crypto_token table, marking as crashed if applicable.

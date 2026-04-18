@@ -71,10 +71,6 @@ export class TicketService {
     }
   }
 
-  // ==========================================================================
-  // TICKET LIFECYCLE
-  // ==========================================================================
-
   /**
    * Creates a new ticket with dedicated Discord channel
    *
@@ -109,10 +105,6 @@ export class TicketService {
 
     return { ticket, channel };
   }
-
-  // ==========================================================================
-  // CHANNEL MANAGEMENT
-  // ==========================================================================
 
   /**
    * Creates the Discord channel for the ticket
@@ -362,10 +354,6 @@ export class TicketService {
     ];
   }
 
-  // ==========================================================================
-  // QUERIES
-  // ==========================================================================
-
   /**
    * Finds a ticket by identifier
    *
@@ -375,10 +363,6 @@ export class TicketService {
   async find(identifier: TicketIdentifier): Promise<Ticket | null> {
     return await Q.ticket.find(identifier);
   }
-
-  // ==========================================================================
-  // TICKET ACTIONS
-  // ==========================================================================
 
   /**
    * Reopens a closed ticket and restores full channel functionality
@@ -476,10 +460,6 @@ export class TicketService {
   async deleteTicket(ticketId: number, deletedBy: string): Promise<void> {
     await this.repository.delete(ticketId, deletedBy);
   }
-
-  // ==========================================================================
-  // TRANSCRIPTS
-  // ==========================================================================
 
   /**
    * Generates an HTML transcript of ticket conversation

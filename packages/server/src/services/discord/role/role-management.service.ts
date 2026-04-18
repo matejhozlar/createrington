@@ -35,10 +35,6 @@ export class RoleManagementService {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initialize the service
    * Called by the service container during startup
@@ -63,10 +59,6 @@ export class RoleManagementService {
     this.stopDailyScheduler();
     logger.info("RoleManagementService stopped");
   }
-
-  // ==========================================================================
-  // REALTIME CHECKING
-  // ==========================================================================
 
   /**
    * Sets up realtime role checking for a playtime service
@@ -109,10 +101,6 @@ export class RoleManagementService {
 
     logger.info(`Realtime role checking setup for server ${serverId}`);
   }
-
-  // ==========================================================================
-  // DAILY SCHEDULER
-  // ==========================================================================
 
   /**
    * Start the daily role scheduler
@@ -238,10 +226,6 @@ export class RoleManagementService {
     }
   }
 
-  // ==========================================================================
-  // TOP PLAYTIME (COMPETITIVE)
-  // ==========================================================================
-
   /**
    * Processes a competitive top-playtime role
    *
@@ -343,10 +327,6 @@ export class RoleManagementService {
       return { assigned: false, removed: false };
     }
   }
-
-  // ==========================================================================
-  // TOP CRYPTO NETWORTH (COMPETITIVE)
-  // ==========================================================================
 
   /**
    * Processes a competitive top-crypto-networth role
@@ -463,10 +443,6 @@ export class RoleManagementService {
       return { assigned: false, removed: false };
     }
   }
-
-  // ==========================================================================
-  // MANUAL TRIGGERS
-  // ==========================================================================
 
   /**
    * Manually triggers a role check for a specific player

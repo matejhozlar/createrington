@@ -11,10 +11,6 @@ const router = Router();
  * These endpoints are called by the Minecraft mod to report player presence
  */
 
-// ============================================================================
-// MOD ROUTES (JWT + IP verification required)
-// ============================================================================
-
 /**
  * POST /api/presence
  *

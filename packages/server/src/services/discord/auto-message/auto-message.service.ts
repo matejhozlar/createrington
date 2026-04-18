@@ -19,10 +19,6 @@ export class AutoMessageService {
 
   constructor(private readonly messageService: DiscordMessageService) {}
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /** Initializes the service by loading and starting all enabled configs */
   async initialize(): Promise<void> {
     await this.loadAndStartAll();
@@ -38,10 +34,6 @@ export class AutoMessageService {
     this.timers.clear();
     logger.info("AutoMessageService stopped");
   }
-
-  // ==========================================================================
-  // CONFIG MANAGEMENT
-  // ==========================================================================
 
   /**
    * Loads all enabled auto-message configs and starts their timers
@@ -101,10 +93,6 @@ export class AutoMessageService {
     this.stopConfig(configId);
     await this.startConfig(configId);
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Creates and registers the interval timer for a config
