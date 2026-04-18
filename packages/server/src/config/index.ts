@@ -181,8 +181,7 @@ const config = {
             accentColor: "#7289DA",
             textColor: "#FFFFFF",
             secondaryTextColor: "#99AA5B",
-            backgroundImageURL:
-              "https://market-assets.createrington.com/welcome/welcome.jpg",
+            backgroundImageURL: "https://assets.createrington.com/welcome.jpg",
           },
         },
         autoRole: {
