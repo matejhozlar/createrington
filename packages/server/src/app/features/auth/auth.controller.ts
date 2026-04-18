@@ -373,8 +373,7 @@ export class AuthController {
         logger.warn(
           `Unverified user ${user.username} (${user.discordId}) attempted SSO login`,
         );
-        // Bounce back to consumer with an error flag so it can render its own UI
-        res.redirect(redirectWithError(entry.returnTo, "unverified"));
+        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
         return;
       }
 
@@ -394,10 +393,10 @@ export class AuthController {
         `User ${user.username} (${user.discordId}) completed SSO to ${entry.returnTo}`,
       );
 
-      res.redirect(entry.returnTo);
+      safeSsoRedirect(res, entry.returnTo);
     } catch (error) {
       logger.error("SSO callback failed:", error);
-      res.redirect(redirectWithError(entry.returnTo, "auth_failed"));
+      safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }
   }
 }
@@ -420,4 +419,21 @@ function redirectWithError(returnTo: string, reason: string): string {
   } catch {
     return returnTo;
   }
+}
+
+/**
+ * Revalidates the redirect target against the SSO whitelist before sending
+ * the response. The URL was already validated when the SSO flow was
+ * initiated (via `validateReturnTo` in `ssoStart`), so this is pure
+ * defense-in-depth: it protects against any future path that lets an
+ * unvalidated URL into `pendingSsoStates`, and it gives static-analysis
+ * tools an explicit sanitizer on every `res.redirect` call site, closing
+ * out CWE-601 warnings.
+ */
+function safeSsoRedirect(res: Response, url: string): void {
+  const validated = validateReturnTo(url);
+  if (!validated) {
+    throw new BadRequestError("Invalid return_to URL");
+  }
+  res.redirect(validated);
 }
