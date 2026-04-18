@@ -131,7 +131,7 @@
 - Add admin inactivity management tRPC router — new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
 - Extract shared `removeInactiveWarning` helper — consolidates the full removal sequence (Discord guild kick → RCON whitelist removal → player DB delete → warning marked removed) into a single reusable function used by both the scheduled cleanup and the new manual-remove endpoint
 - Add owner-only `/force-inactivity-cleanup` Discord slash command to trigger the cleanup cycle on demand without waiting for the next scheduled run
-- Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.create-rington.com, which runs with `NODE_ENV=production`) is excluded
+- Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.createrington.com, which runs with `NODE_ENV=production`) is excluded
 - Fix tsconfig `rootDir` and `baseUrl` deprecation errors — set explicit `rootDir: ".."`, remove deprecated `baseUrl`, and normalize `@/*` path alias to `./src/*`
 
 ### @createrington/client (0.1.2 → 0.2.0)

@@ -114,7 +114,7 @@ export class AuthController {
       refreshTokenService.setCookie(res, rawRefreshToken);
 
       // Also expose the access token as a cross-subdomain cookie so SSO
-      // consumers (e.g. sandbox.create-rington.com) can read it without
+      // consumers (e.g. sandbox.createrington.com) can read it without
       // implementing their own token storage. Existing first-party clients
       // continue to use the Bearer header from the JSON response below.
       accessCookieService.setCookie(res, accessToken);

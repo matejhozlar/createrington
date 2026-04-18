@@ -83,7 +83,7 @@ jobs:
           git clone https://x-access-token:${{ secrets.MAVEN_REPO_TOKEN }}@github.com/matejhozlar/maven.git maven-repo
           cp -r mod-api/build/maven-publish/. maven-repo/
           cd maven-repo
-          git config user.email "ci@createrington.com"
+          git config user.email "ci@create-rington.com"
           git config user.name "CI"
           git add .
           git diff --cached --quiet || git commit -m "publish createrington-api ${VERSION}"
@@ -92,8 +92,8 @@ jobs:
       - name: Build
         run: |
           VITE_APP_VERSION="$(node -p 'require("./package.json").version')-dev.$(git rev-parse --short HEAD)" \
-          VITE_API_URL=https://dev.create-rington.com \
-          VITE_BLUEMAP_URL=https://map-test.create-rington.com \
+          VITE_API_URL=https://dev.createrington.com \
+          VITE_BLUEMAP_URL=https://map-test.createrington.com \
           pnpm build
 
       - name: Deploy frontend

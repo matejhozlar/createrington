@@ -120,7 +120,7 @@ export async function runRegistration(params: {
       if (!hasCapacity) {
         steps[currentStep].error = "No waitlist entry found";
         throw new Error(
-          "The server is currently at capacity. Please apply at https://create-rington.com/apply-to-join to join the waitlist.",
+          "The server is currently at capacity. Please apply at https://createrington.com/apply-to-join to join the waitlist.",
         );
       }
       entry = await waitlistRepo.registerForExistingMember(discordId, username);

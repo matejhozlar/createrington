@@ -79,7 +79,7 @@ export const ButtonPresets = {
     /**
      * Help/Support button
      */
-    help(url: string = "https://create-rington.com/support"): ButtonBuilder {
+    help(url: string = "https://createrington.com/support"): ButtonBuilder {
       return new ButtonBuilder()
         .setLabel("Get Help")
         .setEmoji("❓")

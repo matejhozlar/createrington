@@ -137,7 +137,7 @@ Published to `https://github.com/matejhozlar/maven` via CI. A version is only ev
 
 ### Version safety for mod releases
 
-Since versions are published from `dev` before the matching server is live on `create-rington.com`, a version existing in Maven does not mean prod serves it yet. A mod bound for production users must pin a version that has **already been deployed to prod** (i.e. merged to `main` and the prod deploy has succeeded). Development mods targeting `dev.create-rington.com` can pin any published version.
+Since versions are published from `dev` before the matching server is live on `createrington.com`, a version existing in Maven does not mean prod serves it yet. A mod bound for production users must pin a version that has **already been deployed to prod** (i.e. merged to `main` and the prod deploy has succeeded). Development mods targeting `dev.createrington.com` can pin any published version.
 
 ### Change detection
 
@@ -168,7 +168,7 @@ This is the full flow for making API changes and shipping them to mods.
 2. **Make the server changes** — modify the controller, service, routes, etc.
 3. **Update the spec file** — edit the corresponding `*.api-spec.ts` alongside the controller
 4. **Bump the version** in `mod-api/gradle.properties` (e.g. `1.0.0` → `1.1.0`)
-5. **PR to `dev`** — on merge, CI publishes `createrington-api:1.1.0` and deploys it to `dev.create-rington.com`
+5. **PR to `dev`** — on merge, CI publishes `createrington-api:1.1.0` and deploys it to `dev.createrington.com`
 
 ### Phase 2: Update CRNet (CRNet repo)
 
@@ -192,24 +192,24 @@ This is the full flow for making API changes and shipping them to mods.
 
 9. **Create a feature branch** in the mod repo
 10. **Use the new types** — replace manual Gson with the typed records, use `Endpoints` constants
-11. **Test against the dev server** (`dev.create-rington.com`) to verify everything works end-to-end
+11. **Test against the dev server** (`dev.createrington.com`) to verify everything works end-to-end
 
 ### Phase 4: Ship to production
 
 Once satisfied with the dev cycle:
 
-12. **Createrington app** — PR from `dev` to `main`. On merge, CI deploys the server to `create-rington.com`. No new artifact is published — `createrington-api:1.1.0` was already published in Phase 1.
+12. **Createrington app** — PR from `dev` to `main`. On merge, CI deploys the server to `createrington.com`. No new artifact is published — `createrington-api:1.1.0` was already published in Phase 1.
 13. **CRNet** — already on `createrington-api:1.1.0` from Phase 2, so nothing to change here unless you want to bump CRNet itself. Publish CRNet if needed.
 14. **Mod** — update CRNet version in the mod's `build.gradle` if it changed, build, and publish the mod.
 
-> Only pin prod-bound mod releases to a `createrington-api` version once that version is live on `create-rington.com` (Phase 4 step 12 complete). Before that, the artifact exists in Maven but prod still serves the previous version.
+> Only pin prod-bound mod releases to a `createrington-api` version once that version is live on `createrington.com` (Phase 4 step 12 complete). Before that, the artifact exists in Maven but prod still serves the previous version.
 
 ### Quick reference
 
 ```
 Spec change → dev merge → createrington-api published + dev server deployed
                 ↓
-          CRNet picks up artifact → mod develops against it on dev.create-rington.com
+          CRNet picks up artifact → mod develops against it on dev.createrington.com
                 ↓
        main merge → prod server deploys (same version, no re-publish)
                 ↓

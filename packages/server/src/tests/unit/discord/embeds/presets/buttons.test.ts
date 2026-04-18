@@ -95,7 +95,7 @@ describe("ButtonPresets.common", () => {
     const data = json(ButtonPresets.common.help());
     expect(data.style).toBe(ButtonStyle.Link);
     expect(data.label).toBe("Get Help");
-    expect(data).toMatchObject({ url: "https://create-rington.com/support" });
+    expect(data).toMatchObject({ url: "https://createrington.com/support" });
   });
 
   it("help(url) accepts a custom URL override", () => {

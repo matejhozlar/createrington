@@ -10,7 +10,7 @@ vi.mock("@/config", () => ({
         cookie: {
           name: "crt_refresh",
           accessName: "crt_access",
-          domain: ".create-rington.com",
+          domain: ".createrington.com",
         },
       },
     },
@@ -89,7 +89,7 @@ describe("AccessCookieService", () => {
 
     it("scopes the cookie to the configured domain", () => {
       accessCookieService.setCookie(res, "x");
-      expect(cookieCalls[0][2].domain).toBe(".create-rington.com");
+      expect(cookieCalls[0][2].domain).toBe(".createrington.com");
     });
 
     it("uses maxAge matching JWT_ACCESS_EXPIRES_IN (15m → 900_000ms)", () => {
@@ -113,7 +113,7 @@ describe("AccessCookieService", () => {
 
       const [domainName, domainOpts] = clearCalls[1];
       expect(domainName).toBe("crt_access");
-      expect(domainOpts.domain).toBe(".create-rington.com");
+      expect(domainOpts.domain).toBe(".createrington.com");
       expect(domainOpts.path).toBe("/");
       expect(domainOpts.httpOnly).toBe(true);
       expect(domainOpts.sameSite).toBe("lax");
@@ -127,7 +127,7 @@ describe("AccessCookieService", () => {
       expect(clearCalls).toHaveLength(1);
       expect(clearCalls[0][1].domain).toBeUndefined();
       expect(cookieCalls).toHaveLength(1);
-      expect(cookieCalls[0][2].domain).toBe(".create-rington.com");
+      expect(cookieCalls[0][2].domain).toBe(".createrington.com");
     });
   });
 
