@@ -49,10 +49,6 @@ export enum BalanceTransactionType {
 export class BalanceRepository {
   constructor() {}
 
-  // ============================================================================
-  // PRIVATE HELPERS
-  // ============================================================================
-
   /**
    * Resolves various player identifier formats to a Minecraft UUID
    *
@@ -107,10 +103,6 @@ export class BalanceRepository {
       `Balance transaction: ${data.transactionType} - ${BalanceUtils.format(data.amount)} for ${data.playerMinecraftUuid}`,
     );
   }
-
-  // ============================================================================
-  // QUERY METHODS
-  // ============================================================================
 
   /**
    * Gets player balance record
@@ -262,10 +254,6 @@ export class BalanceRepository {
 
     return created;
   }
-
-  // ============================================================================
-  // TRANSACTION METHODS
-  // ============================================================================
 
   /**
    * Adds balance to player's account
@@ -547,10 +535,6 @@ export class BalanceRepository {
     });
   }
 
-  // ============================================================================
-  // ADMIN METHODS
-  // ============================================================================
-
   /**
    * Admin grants balance to a player
    * Logs action to admin_log_action
@@ -584,7 +568,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,
@@ -637,7 +620,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,
@@ -690,7 +672,6 @@ export class BalanceRepository {
       },
     );
 
-    // Log to admin_log_action
     await db.admin.log.action.logAction({
       adminDiscordId,
       adminUsername,
@@ -706,10 +687,6 @@ export class BalanceRepository {
 
     return newBalance;
   }
-
-  // ============================================================================
-  // TRANSACTION HISTORY
-  // ============================================================================
 
   /**
    * Gets transaction history for a player

@@ -11,10 +11,6 @@ import {
 import { player } from "./player";
 import { donationTypeEnum } from "./enums";
 
-// =============================================================================
-// DONATIONS
-// =============================================================================
-
 export const donation = pgTable(
   "donation",
   {

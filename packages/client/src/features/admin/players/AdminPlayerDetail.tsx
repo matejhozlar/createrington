@@ -48,10 +48,8 @@ export function AdminPlayerDetail() {
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
 
-  // Active tab
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  // Modals state
   const [showBalanceModal, setShowBalanceModal] = useState(false);
   const [showStrikeModal, setShowStrikeModal] = useState(false);
   const [showBanModal, setShowBanModal] = useState(false);
@@ -82,7 +80,6 @@ export function AdminPlayerDetail() {
     setSelectedBanId(null);
   };
 
-  // tRPC query for player data
   const playerQuery = trpc.admin.players.players.get.useQuery(
     { id: id! },
     { enabled: !!id },

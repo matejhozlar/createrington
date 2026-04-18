@@ -27,10 +27,6 @@ export class PlayerRepository extends BasePlayerRepository {
     super();
   }
 
-  // ============================================================================
-  // PLAYER RETRIEVAL
-  // ============================================================================
-
   /**
    * Gets detailed player information for admin panel
    * Includes balance, playtime summary, and other related data
@@ -159,10 +155,6 @@ export class PlayerRepository extends BasePlayerRepository {
     return await Q.player.count(filters);
   }
 
-  // ============================================================================
-  // PLAYER UPDATES
-  // ============================================================================
-
   /**
    * Updates player data with admin audit logging
    *
@@ -210,10 +202,6 @@ export class PlayerRepository extends BasePlayerRepository {
       return await tx.player.get({ minecraftUuid: uuid });
     });
   }
-
-  // ============================================================================
-  // PLAYER DELETION
-  // ============================================================================
 
   /**
    * Completely deletes a player and all associated data
@@ -263,10 +251,6 @@ export class PlayerRepository extends BasePlayerRepository {
       );
     });
   }
-
-  // ============================================================================
-  // STATISTICS
-  // ============================================================================
 
   /**
    * Gets overall player statistics for admin dashboard

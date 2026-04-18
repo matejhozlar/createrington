@@ -61,7 +61,6 @@ export function EditPlayerModal({
   const validateForm = (): boolean => {
     const newErrors: typeof errors = {};
 
-    // Check if anything changed
     const hasChanges =
       minecraftUsername !== player.minecraftUsername ||
       discordId !== player.discordId;
@@ -72,7 +71,6 @@ export function EditPlayerModal({
       return false;
     }
 
-    // Validate minecraft username
     if (minecraftUsername.trim().length === 0) {
       newErrors.minecraftUsername = "Minecraft username is required";
     } else if (minecraftUsername.trim().length < 3) {
@@ -84,14 +82,12 @@ export function EditPlayerModal({
         "Username can only contain letters, numbers, and underscores";
     }
 
-    // Validate discord ID
     if (discordId.trim().length === 0) {
       newErrors.discordId = "Discord ID is required";
     } else if (!/^\d{17,20}$/.test(discordId.trim())) {
       newErrors.discordId = "Discord ID must be 17-20 digits";
     }
 
-    // Validate reason
     if (reason.trim().length === 0) {
       newErrors.reason = "Reason is required for player updates";
     } else if (reason.trim().length < 5) {
@@ -127,7 +123,6 @@ export function EditPlayerModal({
         input.discordId = discordId.trim();
       }
 
-      // Check if at least one field is being updated
       if (!input.minecraftUsername && !input.discordId) {
         toast.error("No changes to save");
         return;
@@ -148,7 +143,6 @@ export function EditPlayerModal({
   };
 
   const handleCancel = () => {
-    // Reset form to original values
     setMinecraftUsername(player.minecraftUsername);
     setDiscordId(player.discordId);
     setReason("");

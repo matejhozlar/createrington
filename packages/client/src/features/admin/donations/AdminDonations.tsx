@@ -59,10 +59,6 @@ type Donation = RouterOutput["admin"]["donations"]["list"]["donations"][number];
 type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
 type DonationType = "one_time" | "monthly";
 
-// =============================================================================
-// Static data
-// =============================================================================
-
 const STATUS_STYLES: Record<string, string> = {
   completed: "bg-green-500/10 text-green-500 border-green-500/20",
   pending: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
@@ -74,10 +70,6 @@ const TYPE_LABELS: Record<string, string> = {
   one_time: "One-time",
   monthly: "Monthly",
 };
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 function formatAmount(cents: number, currency: string) {
   return new Intl.NumberFormat("de-DE", {
@@ -93,10 +85,6 @@ function formatDate(iso: string) {
     year: "numeric",
   });
 }
-
-// =============================================================================
-// Main component
-// =============================================================================
 
 export function AdminDonations() {
   const [page, setPage] = useState(0);

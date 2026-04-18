@@ -1,3 +1,15 @@
+## v1.9.1 (2026-04-18)
+
+### @createrington/server (1.9.0 → 1.9.1)
+- Fix SSO open-redirect vulnerability — all `res.redirect` calls in the SSO callback now re-validate the target URL against the SSO whitelist before redirecting, adding defense-in-depth against CWE-601 (closes #532, #533, #534)
+- Remove redundant and AI-generated comments across services, routes, controllers, repositories, middleware, and utilities
+
+### @createrington/client (0.2.7 → 0.2.8)
+- Remove redundant and AI-generated comments across contexts, features, pages, and services
+
+### @createrington/shared (1.1.0 → 1.1.1)
+- Mark package as UNLICENSED with proprietary license
+
 ## v1.9.0 (2026-04-18)
 
 ### @createrington/server (1.8.1 → 1.9.0)

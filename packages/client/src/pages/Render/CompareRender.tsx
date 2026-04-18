@@ -102,7 +102,6 @@ export function CompareRender() {
       .catch(() => setFetchError("Failed to load comparison data"));
   }, [hasMissingParams, secret, p1, p2]);
 
-  // Load skin images once data arrives — both in parallel
   useEffect(() => {
     if (!data) return;
     loadSkin(data.player1.uuid, poseLeft).then(setSkinLeft);

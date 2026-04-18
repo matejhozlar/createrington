@@ -13,10 +13,6 @@ import type { ServerMaintenanceSchedule } from "@createrington/shared/db/server_
 const WHITELIST_FILE = "whitelist.json";
 const WHITELIST_BACKUP = "whitelist.json.bak";
 
-// =============================================================================
-// Service
-// =============================================================================
-
 /**
  * Maintenance Mode Service
  *
@@ -131,7 +127,6 @@ export class MaintenanceService {
     const rcon = MinecraftRconManager.getInstance();
     await rcon.whitelist(serverId, WhitelistAction.RELOAD);
 
-    // Kick all online players
     for (const username of onlinePlayers) {
       try {
         await rcon.kick(serverId, username, "Server entering maintenance mode");
@@ -158,7 +153,6 @@ export class MaintenanceService {
       throw new Error(`Server ${serverId} is not in maintenance mode`);
     }
 
-    // Delete the empty whitelist.json
     await deleteFile(WHITELIST_FILE);
 
     // Rename whitelist.json.bak → whitelist.json

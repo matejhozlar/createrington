@@ -78,7 +78,6 @@ export async function placeOrder(
     throw new Error("Target price must be positive");
   }
 
-  // Check pending order limit
   const pendingCount = await Q.crypto.order
     .where({
       playerMinecraftUuid: playerUuid,
@@ -109,7 +108,6 @@ export async function placeOrder(
     const totalReserve = rawCost + fee;
     reservedBalance = totalReserve.toFixed(8);
 
-    // Check and reserve balance
     await R.balanceRepo.deduct(
       { minecraftUuid: playerUuid },
       totalReserve,
@@ -164,7 +162,6 @@ export async function placeOrder(
     }
   }
 
-  // Validate order type logic
   const currentPrice = Number(token.price);
   const target = Number(targetPrice);
 
@@ -234,7 +231,6 @@ export async function cancelOrder(
     { status: "cancelled", cancelledAt: new Date() },
   );
 
-  // Release reserved balance/tokens
   if (order.type === "limit_buy" && Number(order.reservedBalance) > 0) {
     await R.balanceRepo.add(
       { minecraftUuid: playerUuid },
@@ -325,7 +321,6 @@ export async function expireOrders(): Promise<number> {
         { status: "expired", cancelledAt: now },
       );
 
-      // Release reserved balance
       if (order.type === "limit_buy" && Number(order.reservedBalance) > 0) {
         const token = await Q.crypto.token.get({ id: order.tokenId });
         await R.balanceRepo.add(
@@ -359,10 +354,6 @@ export async function getPlayerOrders(
     .all();
 }
 
-// ==========================================================================
-// INTERNAL HELPERS
-// ==========================================================================
-
 /**
  * @private Executes a triggered order at the current market price.
  *
@@ -390,7 +381,6 @@ async function fillOrder(
       : order.type;
 
   return await db.inTransaction(async (tx) => {
-    // Lock token row and get fresh data
     const client = tx.getDb();
     await client.query("SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE", [
       token.id,
@@ -419,13 +409,11 @@ async function fillOrder(
         );
       }
 
-      // Update token supply atomically
       await tx.crypto.token.update(
         { id: freshToken.id },
         { availableSupply: freshToken.availableSupply - amount },
       );
 
-      // Upsert holding
       const existingHolding = await tx.crypto.holding
         .where({
           playerMinecraftUuid: order.playerMinecraftUuid,
@@ -453,7 +441,6 @@ async function fillOrder(
         });
       }
 
-      // Record cost basis lot
       await recordCostBasisLot(
         order.playerMinecraftUuid,
         freshToken.id,
@@ -480,7 +467,6 @@ async function fillOrder(
       const netRevenue = rawRevenue - feeAmount;
       totalCost = netRevenue;
 
-      // Credit player balance
       await R.balanceRepo.add(
         { minecraftUuid: order.playerMinecraftUuid },
         netRevenue,
@@ -497,13 +483,11 @@ async function fillOrder(
         tx,
       );
 
-      // Update token supply atomically
       await tx.crypto.token.update(
         { id: freshToken.id },
         { availableSupply: freshToken.availableSupply + amount },
       );
 
-      // Consume cost basis FIFO and calculate realized P&L
       const costBasisConsumed = await consumeCostBasis(
         order.playerMinecraftUuid,
         freshToken.id,
@@ -512,7 +496,6 @@ async function fillOrder(
       );
       realizedPnl = rawRevenue - costBasisConsumed;
 
-      // Update holding
       const holding = await tx.crypto.holding
         .where({
           playerMinecraftUuid: order.playerMinecraftUuid,
@@ -539,7 +522,6 @@ async function fillOrder(
       }
     }
 
-    // Record transaction
     await tx.crypto.transaction.createAndReturn({
       playerMinecraftUuid: order.playerMinecraftUuid,
       tokenId: freshToken.id,
@@ -553,13 +535,11 @@ async function fillOrder(
       orderId: order.id,
     });
 
-    // Update order status
     await tx.crypto.order.update(
       { id: order.id },
       { status: "filled", filledAt: new Date() },
     );
 
-    // Update treasury
     if (feeAmount > 0) {
       await updateTreasury(feeAmount, freshToken.category, tx);
     }

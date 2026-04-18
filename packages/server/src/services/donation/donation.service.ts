@@ -20,10 +20,6 @@ export class DonationService {
     this.stripe = new Stripe(config.stripe.secretKey);
   }
 
-  // ==========================================================================
-  // CHECKOUT
-  // ==========================================================================
-
   /**
    * Creates a Stripe checkout session and a pending donation record.
    *
@@ -70,10 +66,6 @@ export class DonationService {
 
     return { sessionId: session.id, url: session.url! };
   }
-
-  // ==========================================================================
-  // SUBSCRIPTION MANAGEMENT
-  // ==========================================================================
 
   /**
    * Returns the user's active subscription details from Stripe,
@@ -221,10 +213,6 @@ export class DonationService {
     return anchor;
   }
 
-  // ==========================================================================
-  // WEBHOOK HANDLERS
-  // ==========================================================================
-
   /**
    * Handles checkout.session.completed — creates the donation record
    * and grants the supporter role if possible.
@@ -286,10 +274,6 @@ export class DonationService {
     );
   }
 
-  // ==========================================================================
-  // ROLE ASSIGNMENT
-  // ==========================================================================
-
   /**
    * Grants the supporter role to a Discord member.
    * Silently skips if the role is not configured or the member is not found.
@@ -326,10 +310,6 @@ export class DonationService {
       logger.error(`Failed to grant supporter role to ${discordId}:`, error);
     }
   }
-
-  // ==========================================================================
-  // WEBHOOK SIGNATURE VERIFICATION
-  // ==========================================================================
 
   /**
    * Verifies a Stripe webhook signature and returns the parsed event.

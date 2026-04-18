@@ -1,7 +1,9 @@
 {
   "name": "@createrington/server",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "",
+  "private": true,
+  "license": "UNLICENSED",
   "main": "server.ts",
   "exports": {
     "./trpc": {
@@ -49,7 +51,6 @@
   },
   "keywords": [],
   "author": "Matej Hozlar",
-  "license": "ISC",
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.39.2",

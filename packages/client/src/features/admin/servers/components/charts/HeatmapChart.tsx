@@ -17,7 +17,6 @@ const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 export function HeatmapChart({ data }: HeatmapChartProps) {
   const { grid, maxPlayers } = useMemo(() => {
-    // Aggregate data by day-of-week and hour
     const buckets: Record<string, number> = {};
     let max = 0;
 

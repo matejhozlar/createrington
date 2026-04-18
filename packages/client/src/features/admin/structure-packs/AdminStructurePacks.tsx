@@ -73,7 +73,6 @@ export function AdminStructurePacks() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
@@ -105,7 +104,6 @@ export function AdminStructurePacks() {
     return result;
   }, [packs, searchQuery, statusFilter, activeFilter]);
 
-  // Import
   const importMutation = trpc.admin.structurePacks.importPacks.useMutation({
     onSuccess: (result) => {
       const parts: string[] = [];

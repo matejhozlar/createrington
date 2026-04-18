@@ -20,10 +20,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     super();
   }
 
-  // ============================================================================
-  // BAN ISSUANCE
-  // ============================================================================
-
   /**
    * Issue a temporary ban to a player
    * Temporary bans expire after a specified duration and only affect Minecraft server access
@@ -48,12 +44,10 @@ export class PlayerBanRepository extends BasePlayerRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
-    // Validate expiry is in the future
     if (data.expiresAt <= new Date()) {
       throw new Error("Ban expiry must be in the future");
     }
 
-    // Check if player already has an active ban
     const existingBan = await Q.player.ban.getCurrentBan(uuid);
     if (existingBan) {
       throw new Error(
@@ -123,7 +117,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });
 
-    // Check if player already has an active ban
     const existingBan = await Q.player.ban.getCurrentBan(uuid);
     if (existingBan) {
       throw new Error(
@@ -144,7 +137,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
         metadata: data.metadata || {},
       });
 
-      // Log the ban action before deletion
       await tx.admin.log.action.create({
         adminDiscordId,
         adminUsername,
@@ -174,10 +166,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
       return ban;
     });
   }
-
-  // ============================================================================
-  // UNBAN OPERATIONS
-  // ============================================================================
 
   /**
    * Unban/pardon a player
@@ -254,10 +242,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     });
   }
 
-  // ============================================================================
-  // BAN QUERIES
-  // ============================================================================
-
   /**
    * Check if a player is currently banned
    *
@@ -319,10 +303,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
     return await Q.player.ban.getActiveBanCounts(playerUuids);
   }
 
-  // ============================================================================
-  // ADMIN QUERIES
-  // ============================================================================
-
   /**
    * Get all bans by type
    *
@@ -360,10 +340,6 @@ export class PlayerBanRepository extends BasePlayerRepository {
   ): Promise<PlayerBan[]> {
     return await Q.player.ban.getRecent(limit, activeOnly);
   }
-
-  // ============================================================================
-  // UTILITY METHODS
-  // ============================================================================
 
   /**
    * Get all expired temporary bans that need cleanup

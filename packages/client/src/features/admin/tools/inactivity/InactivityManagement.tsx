@@ -82,15 +82,12 @@ function toIso(value: string | Date): string {
 export function InactivityManagement() {
   const toast = useToastActions();
 
-  // Pagination state
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
 
-  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WarningStatusFilter>("all");
 
-  // Modal state
   const [resolveModal, setResolveModal] = useState<{
     open: boolean;
     warning: Warning | null;

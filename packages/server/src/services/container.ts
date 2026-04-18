@@ -84,10 +84,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
   private services: Map<string, ServiceDefinition> = new Map();
   private initializationPromises: Map<string, Promise<unknown>> = new Map();
 
-  // ==========================================================================
-  // REGISTRATION
-  // ==========================================================================
-
   /**
    * Registers a service with its factory function and optional dependencies
    *
@@ -121,10 +117,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
 
     logger.debug(`Registered service: ${name}`);
   }
-
-  // ==========================================================================
-  // ACCESS
-  // ==========================================================================
 
   /**
    * Returns a fully-initialised service instance, initialising it on first access
@@ -166,10 +158,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     return this.initializeService(name);
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initialises a service and all of its declared dependencies
    *
@@ -187,14 +175,12 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
       throw new Error(`Service ${name} not found`);
     }
 
-    // Check for circular dependencies
     this.checkCircularDependency(name, new Set());
 
     service.state = ServiceState.INITIALIZING;
 
     const initPromise = (async () => {
       try {
-        // Initialize dependencies first (in parallel)
         if (service.dependencies && service.dependencies.length > 0) {
           logger.debug(
             `Initializing dependencies for ${name}: ${service.dependencies.join(", ")}`,
@@ -202,7 +188,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
           await Promise.all(service.dependencies.map((dep) => this.get(dep)));
         }
 
-        // Initialize the service
         logger.info(`Initializing service: ${name}`);
         const instance = await service.factory(this);
 
@@ -270,10 +255,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     this.emit("allReady");
   }
 
-  // ==========================================================================
-  // HELPERS
-  // ==========================================================================
-
   /**
    * Throws if the given service is part of a circular dependency chain
    *
@@ -306,10 +287,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
       this.checkCircularDependency(dep, new Set(visited), [...path]);
     }
   }
-
-  // ==========================================================================
-  // INTROSPECTION
-  // ==========================================================================
 
   /**
    * Returns a fully-initialised service instance synchronously
@@ -365,10 +342,6 @@ export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitt
     }
     return states;
   }
-
-  // ==========================================================================
-  // SHUTDOWN
-  // ==========================================================================
 
   /**
    * Shuts down all services in reverse registration order

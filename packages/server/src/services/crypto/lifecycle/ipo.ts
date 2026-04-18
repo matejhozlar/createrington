@@ -24,7 +24,6 @@ export async function transitionEndedIpos(): Promise<void> {
     // Clear IPO fields — token enters normal trading
     await Q.crypto.token.update({ id: token.id }, { ipoEndsAt: null });
 
-    // Send IPO result notification
     sendIpoResultNotification(
       token.name,
       token.symbol,

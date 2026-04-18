@@ -117,7 +117,6 @@ export function TopRender() {
       .catch(() => setFetchError("Failed to load leaderboard data"));
   }, [hasMissingParams, secret, category, item]);
 
-  // Load skins once data arrives
   useEffect(() => {
     if (!data) return;
     const promises =

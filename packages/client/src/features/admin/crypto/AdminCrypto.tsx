@@ -69,10 +69,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ---------------------------------------------------------------------------
-// CONSTANTS
-// ---------------------------------------------------------------------------
-
 const CATEGORY_OPTIONS = [
   { value: "memecoin", label: "Memecoin" },
   { value: "seasonal", label: "Seasonal" },
@@ -154,10 +150,6 @@ const SEVERITY_COLORS: Record<string, string> = {
   critical: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-// ---------------------------------------------------------------------------
-// STAT CARD
-// ---------------------------------------------------------------------------
-
 function StatCard({
   label,
   value,
@@ -181,10 +173,6 @@ function StatCard({
     </Card>
   );
 }
-
-// ---------------------------------------------------------------------------
-// CREATE TOKEN DIALOG
-// ---------------------------------------------------------------------------
 
 function CreateTokenDialog() {
   const [open, setOpen] = useState(false);
@@ -417,10 +405,6 @@ function CreateTokenDialog() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// TRIGGER EVENT DIALOG
-// ---------------------------------------------------------------------------
-
 function TriggerEventDialog({
   tokens,
 }: {
@@ -553,10 +537,7 @@ function TriggerEventDialog({
   );
 }
 
-// ---------------------------------------------------------------------------
-// DELIST BUTTON (per-row mutation to avoid shared pending state)
-// ---------------------------------------------------------------------------
-
+// Per-row mutation to avoid shared pending state across rows.
 function DelistButton({
   tokenId,
   tokenSymbol,
@@ -605,10 +586,6 @@ function DelistButton({
     </AlertDialog>
   );
 }
-
-// ---------------------------------------------------------------------------
-// MAIN PAGE
-// ---------------------------------------------------------------------------
 
 export function AdminCrypto() {
   const toast = useToastActions();

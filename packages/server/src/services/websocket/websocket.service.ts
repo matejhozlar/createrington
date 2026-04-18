@@ -56,10 +56,6 @@ export class WebSocketService {
     this.setupConnectionHandlers();
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes the service by wiring up data providers and service event listeners
    *
@@ -87,10 +83,6 @@ export class WebSocketService {
     logger.info("WebSocketService initialized");
   }
 
-  // ==========================================================================
-  // CONNECTION HANDLERS
-  // ==========================================================================
-
   /**
    * Registers Socket.IO connection, subscription, and error handlers on the server
    *
@@ -102,7 +94,6 @@ export class WebSocketService {
 
       this.clientSockets.set(socket.id, new Set());
 
-      // Handle subscription requests
       socket.on(
         SocketEvent.SUBSCRIBE,
         (request: SubscriptionRequest, callback) => {
@@ -110,7 +101,6 @@ export class WebSocketService {
         },
       );
 
-      // Handle unsubscription requests
       socket.on(
         SocketEvent.UNSUBSCRIBE,
         (request: SubscriptionRequest, callback) => {
@@ -118,7 +108,6 @@ export class WebSocketService {
         },
       );
 
-      // Handle initial data requests
       socket.on(
         SocketEvent.REQUEST_INITIAL_DATA,
         (request: InitialDataRequest, callback) => {
@@ -126,13 +115,11 @@ export class WebSocketService {
         },
       );
 
-      // Handle disconnection
       socket.on(SocketEvent.DISCONNECT, () => {
         logger.info(`Client disconnected: ${socket.id}`);
         this.clientSockets.delete(socket.id);
       });
 
-      // Handle errors
       socket.on(SocketEvent.ERROR, (error: Error) => {
         logger.error(`Socket error for ${socket.id}:`, error);
       });
@@ -159,7 +146,6 @@ export class WebSocketService {
     callback?: (response: SubscriptionConfirmation) => void,
   ): Promise<void> {
     try {
-      // Validate server-specific subscriptions
       if (
         request.type !== SubscriptionType.ALL &&
         request.serverId === undefined &&
@@ -176,7 +162,6 @@ export class WebSocketService {
         request.serverId,
       );
 
-      // Join all relevant rooms
       for (const room of rooms) {
         await socket.join(room);
         this.clientSockets.get(socket.id)?.add(room);
@@ -188,7 +173,6 @@ export class WebSocketService {
         `Client ${socket.id} subscribed to ${request.type}${request.serverId ? ` (server: ${request.serverId})` : ""} - rooms: ${rooms.join(", ")}`,
       );
 
-      // Send acknowledgment
       const confirmation: SubscriptionConfirmation = {
         type: request.type,
         serverId: request.serverId,
@@ -202,7 +186,7 @@ export class WebSocketService {
 
       socket.emit(SocketEvent.SUBSCRIBED, confirmation);
 
-      // Push an immediate price snapshot so the client doesn't wait for the next tick
+      // Push immediate price snapshot so client doesn't wait for the next tick
       if (request.type === SubscriptionType.CRYPTO_MARKET) {
         this.sendCryptoInitialSnapshot(socket).catch((err) =>
           logger.error(
@@ -270,7 +254,6 @@ export class WebSocketService {
         request.serverId,
       );
 
-      // Leave all relevant rooms
       for (const room of rooms) {
         await socket.leave(room);
         this.clientSockets.get(socket.id)?.delete(room);
@@ -339,7 +322,6 @@ export class WebSocketService {
       let data: InitialDataPayload | ServerInitialDataPayload;
 
       if (request.serverId !== undefined) {
-        // Server-specific data
         data = await this.dataProvider.getServerInitialData(
           request.serverId,
           includeMessages,
@@ -350,7 +332,6 @@ export class WebSocketService {
           `Sent initial data for server ${request.serverId} to client ${socket.id}`,
         );
       } else {
-        // All servers data
         data = await this.dataProvider.getInitialData(
           includeMessages,
           messageLimit,
@@ -376,10 +357,6 @@ export class WebSocketService {
     }
   }
 
-  // ==========================================================================
-  // SERVICE INTEGRATION
-  // ==========================================================================
-
   /**
    * Subscribes to events from MessageCacheService and PlaytimeManagerService
    * and wires them to the corresponding broadcast methods
@@ -393,7 +370,6 @@ export class WebSocketService {
     messageCacheService: MessageCacheService,
     playtimeManagerService: PlaytimeManagerService,
   ): void {
-    // Message cache events
     messageCacheService.on("messageCreate", (serverId, message) => {
       this.broadcastMessageUpdate(serverId, "new", message);
     });
@@ -414,7 +390,6 @@ export class WebSocketService {
       this.broadcastServerStatusUpdate(serverId, false);
     });
 
-    // Playtime service events
     for (const [
       serverId,
       playtimeService,
@@ -430,10 +405,6 @@ export class WebSocketService {
 
     logger.debug("Connected to external services");
   }
-
-  // ==========================================================================
-  // BROADCASTING
-  // ==========================================================================
 
   /**
    * Broadcasts a server online/offline status update to all subscribed clients
@@ -461,12 +432,10 @@ export class WebSocketService {
         timestamp: new Date(),
       };
 
-      // Broadcast to server-specific room
       this.io
         .to(RoomManager.getServerStatusRoom(serverId))
         .emit(SocketEvent.UPDATE_SERVER_STATUS, payload);
 
-      // Broadcast to global room
       this.io
         .to(RoomManager.getServerStatusRoom())
         .emit(SocketEvent.UPDATE_SERVER_STATUS, payload);
@@ -504,12 +473,10 @@ export class WebSocketService {
       timestamp: new Date(),
     };
 
-    // Broadcast to server-specific room
     this.io
       .to(RoomManager.getPlayersRoom(serverId))
       .emit(SocketEvent.UPDATE_PLAYERS, payload);
 
-    // Broadcast to global room
     this.io
       .to(RoomManager.getPlayersRoom())
       .emit(SocketEvent.UPDATE_PLAYERS, payload);
@@ -518,7 +485,6 @@ export class WebSocketService {
       `Broadcast player join: ${event.username} on server ${serverId}`,
     );
 
-    // Also update server status (player count increased)
     this.broadcastServerStatusUpdate(serverId, true);
   }
 
@@ -544,12 +510,10 @@ export class WebSocketService {
       timestamp: new Date(),
     };
 
-    // Broadcast to server-specific room
     this.io
       .to(RoomManager.getPlayersRoom(serverId))
       .emit(SocketEvent.UPDATE_PLAYERS, payload);
 
-    // Broadcast to global room
     this.io
       .to(RoomManager.getPlayersRoom())
       .emit(SocketEvent.UPDATE_PLAYERS, payload);
@@ -558,7 +522,6 @@ export class WebSocketService {
       `Broadcast player leave: ${event.username} from server ${serverId}`,
     );
 
-    // Also update server status (player count decreased)
     this.broadcastServerStatusUpdate(serverId, true);
   }
 
@@ -586,12 +549,10 @@ export class WebSocketService {
       timestamp: new Date(),
     };
 
-    // Broadcast to server-specific room
     this.io
       .to(RoomManager.getMessagesRoom(serverId))
       .emit(SocketEvent.UPDATE_MESSAGE, payload);
 
-    // Broadcast to global room
     this.io
       .to(RoomManager.getMessagesRoom())
       .emit(SocketEvent.UPDATE_MESSAGE, payload);
@@ -600,10 +561,6 @@ export class WebSocketService {
       `Broadcast message ${type}: ${messageId || message?.messageId} on server ${serverId}`,
     );
   }
-
-  // ==========================================================================
-  // STATS & CLEANUP
-  // ==========================================================================
 
   /**
    * Returns runtime statistics including connected client count, room sizes, and uptime
@@ -620,17 +577,15 @@ export class WebSocketService {
       [SubscriptionType.CRYPTO_MARKET]: 0,
     };
 
-    // Count clients in each room
     const socketRooms = await this.io.sockets.adapter.rooms;
     for (const [roomName, socketIds] of socketRooms.entries()) {
-      // Skip individual socket rooms (these are created by Socket.IO automatically)
+      // Skip individual socket rooms (created by Socket.IO automatically)
       if (socketIds.size === 1 && socketIds.has(roomName)) {
         continue;
       }
 
       rooms[roomName] = socketIds.size;
 
-      // Count subscriptions by type
       const parsed = RoomManager.parseRoom(roomName);
       if (parsed.type in subscriptions) {
         subscriptions[parsed.type as SubscriptionType] += socketIds.size;

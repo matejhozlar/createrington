@@ -40,7 +40,6 @@ export class AuthController {
   static async getAuthUrl(req: Request, res: Response): Promise<void> {
     const state = crypto.randomBytes(32).toString("hex");
 
-    // Store state server-side with expiry
     pendingStates.set(state, Date.now() + STATE_TTL_MS);
 
     // Cleanup expired states
@@ -76,7 +75,6 @@ export class AuthController {
       throw new BadRequestError("Authorization code is required");
     }
 
-    // Validate CSRF state parameter
     if (!state || !pendingStates.has(state)) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
@@ -98,10 +96,8 @@ export class AuthController {
         );
       }
 
-      // Generate short-lived access token
       const accessToken = jwtService.generate(user);
 
-      // Create server-side session and get raw refresh token
       const rawRefreshToken = await sessionService.createSession({
         discordId: user.discordId,
         username: user.username,
@@ -110,7 +106,6 @@ export class AuthController {
         userAgent: req.headers["user-agent"],
       });
 
-      // Set refresh token as httpOnly cookie
       refreshTokenService.setCookie(res, rawRefreshToken);
 
       // Also expose the access token as a cross-subdomain cookie so SSO
@@ -176,7 +171,6 @@ export class AuthController {
       throw new UnauthorizedError("Invalid or expired refresh token");
     }
 
-    // Re-fetch fresh user data from DB
     const player = await Q.player.get({ discordId: result.discordId });
     const isAdmin = await Q.admin.exists({ discordId: result.discordId });
     const role = isAdmin ? AuthRole.ADMIN : AuthRole.USER;
@@ -379,8 +373,7 @@ export class AuthController {
         logger.warn(
           `Unverified user ${user.username} (${user.discordId}) attempted SSO login`,
         );
-        // Bounce back to consumer with an error flag so it can render its own UI
-        res.redirect(redirectWithError(entry.returnTo, "unverified"));
+        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
         return;
       }
 
@@ -400,10 +393,10 @@ export class AuthController {
         `User ${user.username} (${user.discordId}) completed SSO to ${entry.returnTo}`,
       );
 
-      res.redirect(entry.returnTo);
+      safeSsoRedirect(res, entry.returnTo);
     } catch (error) {
       logger.error("SSO callback failed:", error);
-      res.redirect(redirectWithError(entry.returnTo, "auth_failed"));
+      safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }
   }
 }
@@ -426,4 +419,21 @@ function redirectWithError(returnTo: string, reason: string): string {
   } catch {
     return returnTo;
   }
+}
+
+/**
+ * Revalidates the redirect target against the SSO whitelist before sending
+ * the response. The URL was already validated when the SSO flow was
+ * initiated (via `validateReturnTo` in `ssoStart`), so this is pure
+ * defense-in-depth: it protects against any future path that lets an
+ * unvalidated URL into `pendingSsoStates`, and it gives static-analysis
+ * tools an explicit sanitizer on every `res.redirect` call site, closing
+ * out CWE-601 warnings.
+ */
+function safeSsoRedirect(res: Response, url: string): void {
+  const validated = validateReturnTo(url);
+  if (!validated) {
+    throw new BadRequestError("Invalid return_to URL");
+  }
+  res.redirect(validated);
 }

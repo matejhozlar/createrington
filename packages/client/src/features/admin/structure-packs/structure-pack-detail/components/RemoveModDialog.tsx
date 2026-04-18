@@ -80,7 +80,6 @@ export function RemoveModDialog({
     if (!target) return;
     setRemovingBatch(true);
     try {
-      // Remove selected deps first
       for (const depModId of selectedRemoveDeps) {
         const packMod = packMods.find((m) => m.curseforgeModId === depModId);
         if (!packMod) continue;
@@ -90,11 +89,10 @@ export function RemoveModDialog({
             modId: packMod.id,
           });
         } catch {
-          // Continue
+          // Swallow individual dep failures so other removals still run
         }
       }
 
-      // Remove the target mod
       await removeModMutation.mutateAsync({
         packId,
         modId: target.modId,

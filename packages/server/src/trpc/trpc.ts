@@ -24,8 +24,6 @@ const t = initTRPC
 export const router = t.router;
 export const middleware = t.middleware;
 
-// ─── Procedures ──────────────────────────────────────────────
-
 /** Procedure with no authentication requirement. */
 export const publicProcedure = t.procedure;
 

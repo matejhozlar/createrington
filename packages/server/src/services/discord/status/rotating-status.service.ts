@@ -33,10 +33,6 @@ export class RotatingStatusService {
     this.statuses = statusConfigs;
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initialize the service and start status rotation
    * Called by the service container during startup
@@ -85,10 +81,6 @@ export class RotatingStatusService {
       logger.info("RotatingStatusService stopped");
     }
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Rotates to the next status
@@ -140,10 +132,6 @@ export class RotatingStatusService {
 
     logger.debug(`Set bot status to: "${status}"`);
   }
-
-  // ==========================================================================
-  // CONTROLS
-  // ==========================================================================
 
   /**
    * Manually triggers a status rotation

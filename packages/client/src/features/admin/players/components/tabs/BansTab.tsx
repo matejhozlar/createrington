@@ -23,9 +23,6 @@ export function BansTab({
   const removedBans = player.bans.history.filter((b) => b.unbannedAt);
   const currentBan = player.bans.current;
 
-  /**
-   * Format expiry date or show "Never" for permanent bans
-   */
   const formatExpiry = (expiresAt: string | null) => {
     if (!expiresAt) return "Never (Permanent)";
     const date = new Date(expiresAt);
@@ -36,9 +33,6 @@ export function BansTab({
     return date.toLocaleDateString();
   };
 
-  /**
-   * Check if ban is expired
-   */
   const isExpired = (expiresAt: string | null) => {
     if (!expiresAt) return false;
     return new Date(expiresAt) < new Date();

@@ -50,25 +50,16 @@ export function PlayerDataProvider({
   const { isConnected, on, subscribe, unsubscribe, requestInitialData } =
     websocketContext;
 
-  // Player map: uuid -> PlayerData
   const [players, setPlayers] = useState<Map<string, PlayerData>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Subscription tracking
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Recent events for notifications
+  // Recent events for notifications.
   const [recentJoins, setRecentJoins] = useState<PlayerData[]>([]);
   const [recentLeaves, setRecentLeaves] = useState<PlayerData[]>([]);
 
-  // ============================================================================
-  // Data Loading
-  // ============================================================================
-
-  /**
-   * Load initial player data
-   */
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -107,13 +98,6 @@ export function PlayerDataProvider({
     }
   }, [requestInitialData, serverIds]);
 
-  // ============================================================================
-  // Real-time Updates
-  // ============================================================================
-
-  /**
-   * Handle player update from WebSocket
-   */
   const handlePlayersUpdate = useCallback(
     (payload: PlayersUpdatePayload) => {
       // Filter by serverIds if provided
@@ -194,13 +178,6 @@ export function PlayerDataProvider({
     [serverIds],
   );
 
-  // ============================================================================
-  // Subscription Management
-  // ============================================================================
-
-  /**
-   * Subscribe to player updates
-   */
   const subscribeToUpdates = useCallback(async () => {
     try {
       if (serverIds) {
@@ -225,9 +202,6 @@ export function PlayerDataProvider({
     }
   }, [subscribe, serverIds]);
 
-  /**
-   * Unsubscribe from player updates
-   */
   const unsubscribeFromUpdates = useCallback(async () => {
     try {
       if (serverIds) {
@@ -245,13 +219,6 @@ export function PlayerDataProvider({
     }
   }, [unsubscribe, serverIds]);
 
-  // ============================================================================
-  // Data Access Methods
-  // ============================================================================
-
-  /**
-   * Get player by UUID
-   */
   const getPlayer = useCallback(
     (uuid: string): PlayerData | undefined => {
       return players.get(uuid);
@@ -259,9 +226,7 @@ export function PlayerDataProvider({
     [players],
   );
 
-  /**
-   * Get player by username (case-insensitive)
-   */
+  /** Case-insensitive lookup by username. */
   const getPlayerByUsername = useCallback(
     (username: string): PlayerData | undefined => {
       const lowerUsername = username.toLowerCase();
@@ -272,16 +237,10 @@ export function PlayerDataProvider({
     [players],
   );
 
-  /**
-   * Get all players as array
-   */
   const getAllPlayers = useCallback((): PlayerData[] => {
     return Array.from(players.values());
   }, [players]);
 
-  /**
-   * Get players on specific server
-   */
   const getServerPlayers = useCallback(
     (serverId: number): PlayerData[] => {
       return Array.from(players.values()).filter(
@@ -291,9 +250,6 @@ export function PlayerDataProvider({
     [players],
   );
 
-  /**
-   * Check if player is online
-   */
   const isPlayerOnline = useCallback(
     (uuid: string): boolean => {
       return players.has(uuid);
@@ -301,9 +257,6 @@ export function PlayerDataProvider({
     [players],
   );
 
-  /**
-   * Get player count for server
-   */
   const getServerPlayerCount = useCallback(
     (serverId: number): number => {
       return getServerPlayers(serverId).length;
@@ -311,24 +264,14 @@ export function PlayerDataProvider({
     [getServerPlayers],
   );
 
-  /**
-   * Refresh player data
-   */
   const refresh = useCallback(async () => {
     await loadInitialData();
   }, [loadInitialData]);
 
-  /**
-   * Clear recent join/leave history
-   */
   const clearRecentEvents = useCallback(() => {
     setRecentJoins([]);
     setRecentLeaves([]);
   }, []);
-
-  // ============================================================================
-  // Computed Statistics
-  // ============================================================================
 
   const stats = useMemo(() => {
     const allPlayers = Array.from(players.values());
@@ -364,11 +307,6 @@ export function PlayerDataProvider({
     };
   }, [players, recentJoins, recentLeaves]);
 
-  // ============================================================================
-  // Lifecycle
-  // ============================================================================
-
-  // Load initial data when connected
   useEffect(() => {
     if (isConnected) {
       loadInitialData();
@@ -398,10 +336,6 @@ export function PlayerDataProvider({
       }
     };
   }, [isSubscribed, unsubscribeFromUpdates]);
-
-  // ============================================================================
-  // Context Value
-  // ============================================================================
 
   const value: PlayerDataContextType = {
     players: Array.from(players.values()),

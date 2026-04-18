@@ -61,10 +61,6 @@ function getDefaultBasePath(): string {
   return getBasePath(config.servers.cogs.id);
 }
 
-// =============================================================================
-// File operations — local or SFTP, selected by config
-// =============================================================================
-
 export async function renameFile(from: string, to: string): Promise<void> {
   const localPath = getLocalPath();
   if (localPath) {

@@ -84,7 +84,6 @@ export function createApp(): Express {
     //   utilization: dbStats.utilization,
     // };
 
-    // Discord bots component
     const discordBots: Record<string, unknown> = {};
     for (const [key, serviceKey] of [
       ["mainBot", Services.DISCORD_MAIN_BOT],
@@ -102,7 +101,6 @@ export function createApp(): Express {
       }
     }
 
-    // WebSocket component
     let websocket: Record<string, unknown>;
     try {
       const ws = getServiceSync(Services.WEBSOCKET_SERVICE);
@@ -118,7 +116,6 @@ export function createApp(): Express {
       websocket = { available: false };
     }
 
-    // Playtime component
     let playtime: Record<string, unknown>;
     try {
       const pm = getServiceSync(Services.PLAYTIME_MANAGER_SERVICE);

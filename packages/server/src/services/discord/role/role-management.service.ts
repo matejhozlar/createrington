@@ -35,10 +35,6 @@ export class RoleManagementService {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initialize the service
    * Called by the service container during startup
@@ -63,10 +59,6 @@ export class RoleManagementService {
     this.stopDailyScheduler();
     logger.info("RoleManagementService stopped");
   }
-
-  // ==========================================================================
-  // REALTIME CHECKING
-  // ==========================================================================
 
   /**
    * Sets up realtime role checking for a playtime service
@@ -109,10 +101,6 @@ export class RoleManagementService {
 
     logger.info(`Realtime role checking setup for server ${serverId}`);
   }
-
-  // ==========================================================================
-  // DAILY SCHEDULER
-  // ==========================================================================
 
   /**
    * Start the daily role scheduler
@@ -238,10 +226,6 @@ export class RoleManagementService {
     }
   }
 
-  // ==========================================================================
-  // TOP PLAYTIME (COMPETITIVE)
-  // ==========================================================================
-
   /**
    * Processes a competitive top-playtime role
    *
@@ -268,12 +252,10 @@ export class RoleManagementService {
       const topPlayer = leaderboard[0];
       const guild = await this.client.guilds.fetch(config.discord.guild.id);
 
-      // Find all members who currently have the role
       const membersWithRole = guild.members.cache.filter((m) =>
         RoleManager.has(m, rule.roleId),
       );
 
-      // Check if the top player already holds the role
       const topPlayerHasRole = membersWithRole.some(
         (m) => m.id === topPlayer.discordId,
       );
@@ -285,7 +267,6 @@ export class RoleManagementService {
         return { assigned: false, removed: false };
       }
 
-      // Remove the role from all current holders
       let removed = false;
       for (const [, member] of membersWithRole) {
         if (member.id !== topPlayer.discordId) {
@@ -298,7 +279,6 @@ export class RoleManagementService {
         }
       }
 
-      // Assign the role to the new top player
       let assigned = false;
       if (!topPlayerHasRole) {
         try {
@@ -344,10 +324,6 @@ export class RoleManagementService {
     }
   }
 
-  // ==========================================================================
-  // TOP CRYPTO NETWORTH (COMPETITIVE)
-  // ==========================================================================
-
   /**
    * Processes a competitive top-crypto-networth role
    *
@@ -384,12 +360,10 @@ export class RoleManagementService {
 
       const guild = await this.client.guilds.fetch(config.discord.guild.id);
 
-      // Find all members who currently have the role
       const membersWithRole = guild.members.cache.filter((m) =>
         RoleManager.has(m, rule.roleId),
       );
 
-      // Check if the top player already holds the role
       const topPlayerHasRole = membersWithRole.some(
         (m) => m.id === topPlayer.discordId,
       );
@@ -401,7 +375,6 @@ export class RoleManagementService {
         return { assigned: false, removed: false };
       }
 
-      // Remove the role from all current holders
       let removed = false;
       for (const [, member] of membersWithRole) {
         if (member.id !== topPlayer.discordId) {
@@ -414,7 +387,6 @@ export class RoleManagementService {
         }
       }
 
-      // Assign the role to the new top player
       let assigned = false;
       if (!topPlayerHasRole) {
         try {
@@ -463,10 +435,6 @@ export class RoleManagementService {
       return { assigned: false, removed: false };
     }
   }
-
-  // ==========================================================================
-  // MANUAL TRIGGERS
-  // ==========================================================================
 
   /**
    * Manually triggers a role check for a specific player

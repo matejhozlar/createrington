@@ -28,10 +28,6 @@ function readMoreButton(eventId: number): ActionRowBuilder<ButtonBuilder>[] {
   ];
 }
 
-// ==========================================================================
-// HELPERS
-// ==========================================================================
-
 /**
  * Formats a price with appropriate decimal precision based on magnitude.
  *
@@ -47,10 +43,6 @@ function formatPrice(price: string | number): string {
   if (num < 1000) return `$${num.toFixed(2)}`;
   return `$${num.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
-
-// ==========================================================================
-// EVENT NOTIFICATIONS
-// ==========================================================================
 
 /**
  * Sends a Discord embed announcing a newly listed token and records a news feed event.
@@ -282,10 +274,6 @@ export async function sendWhaleAlertNotification(
   }
 }
 
-// ==========================================================================
-// MARKET EVENT NOTIFICATIONS
-// ==========================================================================
-
 /**
  * Sends a Discord embed announcing a market event (bull run, bear market, etc.).
  *
@@ -338,10 +326,6 @@ export async function sendMarketEventNotification(
     logger.error("Failed to send market event notification to Discord:", err);
   }
 }
-
-// ==========================================================================
-// MARKET SUMMARY
-// ==========================================================================
 
 /**
  * Queries the database and returns a live market summary snapshot.
@@ -396,10 +380,6 @@ export async function getMarketSummary() {
     uniqueTraders,
   };
 }
-
-// ==========================================================================
-// SCHEDULED REPORTS
-// ==========================================================================
 
 /**
  * Generates and sends a weekly market summary to the bot-spam channel.
@@ -472,10 +452,6 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     logger.error("Failed to send weekly market report:", err);
   }
 }
-
-// ==========================================================================
-// PRICE ALERT DM NOTIFICATIONS
-// ==========================================================================
 
 /**
  * Sends Discord DMs to players whose price alerts have been triggered.

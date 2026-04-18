@@ -56,8 +56,6 @@ function toExternalData(data: EmbedDataInternal): EmbedData {
   return { ...data, fields: stripFieldIds(data.fields) };
 }
 
-// --- Draft persistence ---
-
 const DRAFT_KEY = "embed-builder-draft";
 
 interface DraftState {
@@ -134,7 +132,7 @@ function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
 export function useEmbedBuilder() {
   const toast = useToastActions();
 
-  // --- State (initialized from draft if available) ---
+  // State initialized from draft if available.
   const draft = useRef(loadDraft());
   const [data, setData] = useState<EmbedDataInternal>(() =>
     draft.current
@@ -173,7 +171,6 @@ export function useEmbedBuilder() {
     data.fields.length > 0
   );
 
-  // --- Notify on draft restore ---
   useEffect(() => {
     if (draft.current) {
       toast.info("Draft restored from your last session");
@@ -182,7 +179,7 @@ export function useEmbedBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- Auto-save draft to localStorage (debounced) ---
+  // Auto-save draft to localStorage (debounced).
   useEffect(() => {
     const id = window.setTimeout(() => {
       if (hasContent || activePreset) {
@@ -209,7 +206,6 @@ export function useEmbedBuilder() {
     hasContent,
   ]);
 
-  // --- Queries ---
   const utils = trpc.useUtils();
 
   const categoriesQuery = trpc.admin.embeds.presets.categories.list.useQuery();
@@ -236,7 +232,6 @@ export function useEmbedBuilder() {
     return map;
   }, [channelsQuery.data]);
 
-  // --- Mutations ---
   const sendEmbed = trpc.admin.embeds.send.useMutation();
   const createPreset = trpc.admin.embeds.presets.create.useMutation();
   const updatePreset = trpc.admin.embeds.presets.update.useMutation();
@@ -257,7 +252,6 @@ export function useEmbedBuilder() {
   const isPending =
     sendEmbed.isPending || createPreset.isPending || updatePreset.isPending;
 
-  // --- Data setter that works with internal type ---
   const setEmbedData = useCallback(
     (updater: EmbedData | ((prev: EmbedData) => EmbedData)) => {
       setData((prev) => {
@@ -289,7 +283,6 @@ export function useEmbedBuilder() {
     [],
   );
 
-  // --- Handlers ---
   const handleSend = useCallback(
     async (opts?: { linkToPreset?: boolean }) => {
       if (!channelId) {

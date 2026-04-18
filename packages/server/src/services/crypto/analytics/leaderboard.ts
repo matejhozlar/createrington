@@ -9,10 +9,6 @@ export interface LeaderboardEntry {
 
 type LeaderboardType = "networth" | "pnl" | "volume";
 
-// ==========================================================================
-// PUBLIC
-// ==========================================================================
-
 /**
  * Computes the crypto trading leaderboard for the requested metric.
  *
@@ -38,10 +34,6 @@ export async function getLeaderboard(
       return getVolumeLeaderboard(limit);
   }
 }
-
-// ==========================================================================
-// PRIVATE
-// ==========================================================================
 
 /**
  * Ranks players by the current market value of their holdings.

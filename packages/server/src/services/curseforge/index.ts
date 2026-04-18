@@ -27,10 +27,6 @@ function ensureApiKey(): void {
   }
 }
 
-// =============================================================================
-// Types
-// =============================================================================
-
 export interface CurseForgeSearchResult {
   id: number;
   name: string;
@@ -76,10 +72,6 @@ export interface RemovableDep {
   safe: boolean;
   neededBy: string[];
 }
-
-// =============================================================================
-// API functions
-// =============================================================================
 
 /**
  * Search CurseForge mods by name, filtered to NeoForge mods for the default game version
@@ -257,10 +249,6 @@ export async function getModFileDownloadUrl(
   return body.data;
 }
 
-// =============================================================================
-// Dependency resolution
-// =============================================================================
-
 /**
  * Resolve a list of dependency mod IDs to their display info and best compatible file
  *
@@ -377,10 +365,6 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   }));
 }
 
-// =============================================================================
-// Published modpack mod list (cached)
-// =============================================================================
-
 let modpackCache: { modIds: Set<number>; fetchedAt: number } | null = null;
 
 /**
@@ -398,7 +382,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
 
   ensureApiKey();
 
-  // Get the latest modpack file
   const filesRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files?pageSize=1`,
     { headers: cfHeaders() },
@@ -416,7 +399,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
   // Use server pack if available, otherwise client pack
   const fileId = latestFile.serverPackFileId ?? latestFile.id;
 
-  // Download the zip
   const dlRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files/${fileId}/download-url`,
     { headers: cfHeaders() },
@@ -432,7 +414,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
   }
   const zipBuf = await zipRes.arrayBuffer();
 
-  // Parse manifest
   const zip = await JSZip.loadAsync(zipBuf);
   const manifestFile = zip.file("manifest.json");
   if (!manifestFile) throw new Error("No manifest.json in modpack");
@@ -450,10 +431,6 @@ export async function getModpackModIds(): Promise<Set<number>> {
 
   return modIds;
 }
-
-// =============================================================================
-// File downloads
-// =============================================================================
 
 /**
  * Download a mod file from CurseForge and save it to disk using a stream pipeline

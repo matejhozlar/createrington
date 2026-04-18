@@ -20,10 +20,6 @@ export class ServerStatsService {
     private readonly config: ServerStatsConfig,
   ) {}
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initialize the service and start stat tracking
    * Called by the service container during startup
@@ -57,10 +53,6 @@ export class ServerStatsService {
   async shutdown(): Promise<void> {
     logger.info("ServerStatsService stopped");
   }
-
-  // ==========================================================================
-  // PRIVATE
-  // ==========================================================================
 
   /**
    * Ensures guild members are fetched and cached
@@ -210,10 +202,6 @@ export class ServerStatsService {
       logger.error("Failed to update server stats:", error);
     }
   }
-
-  // ==========================================================================
-  // PUBLIC API
-  // ==========================================================================
 
   /**
    * Manually triggers a stats update

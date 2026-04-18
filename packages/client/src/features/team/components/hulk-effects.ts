@@ -2,8 +2,6 @@ import type { PlayerObject, SkinViewer as SkinViewerLib } from "skinview3d";
 import { PlayerAnimation } from "skinview3d";
 import hulkSkinUrl from "@/assets/skins/hulk.png";
 
-// Hulk transformation animation
-
 type HulkPhase = "anger" | "transform" | "grow" | "idle";
 
 const ANGER_DURATION = 0.8;

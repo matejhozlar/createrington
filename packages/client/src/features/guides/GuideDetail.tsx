@@ -35,7 +35,6 @@ export function GuideDetail() {
     [setCurrentStep],
   );
 
-  // Reset visibility when guide changes
   useEffect(() => {
     requestAnimationFrame(() => setVisible(true));
   }, [slug]);

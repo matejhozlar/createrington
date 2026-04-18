@@ -32,7 +32,6 @@ export function StructurePackDetail() {
   );
   const pack = packQuery.data;
 
-  // Dialog visibility state
   const [editing, setEditing] = useState(false);
   const [addModOpen, setAddModOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<RemoveTarget | null>(null);

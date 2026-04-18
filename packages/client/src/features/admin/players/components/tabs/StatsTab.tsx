@@ -89,7 +89,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
   const loading = statsQuery.isLoading;
   const error = statsQuery.error?.message ?? null;
 
-  // Build available servers
   const serverOptions = useMemo(() => {
     return statsEntries.map((entry) => ({
       id: entry.serverId,
@@ -124,7 +123,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     return (entry?.stats as Record<string, Record<string, number>>) ?? null;
   }, [statsEntries, selectedServer]);
 
-  // Flatten and filter stats for search
   const { flatStats, categories } = useMemo(() => {
     if (!activeStats) return { flatStats: [], categories: [] };
 
@@ -164,7 +162,6 @@ export function StatsTab({ playerId, getServerName }: StatsTabProps) {
     return result.sort((a, b) => b.value - a.value);
   }, [flatStats, selectedCategory, debouncedSearch]);
 
-  // Group filtered stats by category
   const groupedStats = useMemo(() => {
     const groups: Record<string, FlatStat[]> = {};
     for (const stat of filteredStats) {

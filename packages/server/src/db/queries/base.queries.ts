@@ -33,10 +33,6 @@ export abstract class BaseQueries<
   protected readonly VALID_IDENTIFIER_FIELDS?: Set<string>;
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
-  // ============================================================================
-  // SINGLETON REGISTRY FOR CHILD QUERIES
-  // ============================================================================
-
   /**
    * Global registry for query instances, keyed by pool
    * Uses WeakMap so instances are garbage collected when pool is destroyed
@@ -450,10 +446,6 @@ export abstract class BaseQueries<
     }
   }
 
-  // ============================================================================
-  // SINGLE ENTITY OPERATIONS (by unique identifiers)
-  // ============================================================================
-
   /**
    * Finds a single entity by unique identifier
    * Returns null if not found
@@ -493,7 +485,6 @@ export abstract class BaseQueries<
     );
     const { whereClause, values } = this.getColumnMapping(extracted);
 
-    // Build column selection
     const columns = options?.select
       ? options.select
           .map((field) => this.getColumnName(field as string))
@@ -807,10 +798,6 @@ export abstract class BaseQueries<
     ) => Promise<TConfig["Entity"][K]>;
   };
 
-  // ============================================================================
-  // QUERY BUILDER (Fluent Interface)
-  // ============================================================================
-
   /**
    * Create a query builder for fluent, composable queries
    *
@@ -927,10 +914,6 @@ export abstract class BaseQueries<
     ).paginate(page, pageSize);
   }
 
-  // ============================================================================
-  // MULTIPLE ENTITY OPERATIONS (by non-unique filters)
-  // ============================================================================
-
   /**
    * Finds all entities matching the filter criteria
    *
@@ -991,7 +974,6 @@ export abstract class BaseQueries<
       ? this.buildFilterClause(filters)
       : { whereClause: "1=1", params: [] as unknown[] };
 
-    // Build column selection
     const columns = options?.select
       ? options.select
           .map((field) => this.getColumnName(field as string))
@@ -1191,10 +1173,6 @@ export abstract class BaseQueries<
     }
   }
 
-  // ============================================================================
-  // CREATE OPERATIONS
-  // ============================================================================
-
   /**
    * Creates and persists a new entity record in the database
    *
@@ -1304,10 +1282,6 @@ export abstract class BaseQueries<
     }
   }
 
-  // ============================================================================
-  // UTILITY METHODS
-  // ============================================================================
-
   /**
    * Counts entities matching the filter criteria
    *
@@ -1355,10 +1329,6 @@ export abstract class BaseQueries<
       throw error;
     }
   }
-
-  // ============================================================================
-  // TRANSACTION SUPPORT
-  // ============================================================================
 
   /**
    * Create a new instance of this query class using a transaction client

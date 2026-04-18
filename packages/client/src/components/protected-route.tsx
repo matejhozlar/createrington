@@ -21,12 +21,10 @@ export function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
 
-  // Show loading state
   if (loading) {
     return <Loading mode="fullscreen" size="large" text="Loading..." />;
   }
 
-  // Check authentication requirement
   if (requiresAuth && !user) {
     if (promptLogin) {
       return <LoginPrompt />;
@@ -34,7 +32,6 @@ export function ProtectedRoute({
     return fallback || <NotFound />;
   }
 
-  // Check admin requirement
   if (requiresAdmin && user && !user.isAdmin) {
     return (
       fallback || (

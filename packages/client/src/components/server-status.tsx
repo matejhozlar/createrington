@@ -22,7 +22,6 @@ function ServerStatus({
     loading: serversLoading,
   } = useServerData();
 
-  // Check if single server or multiple
   const isSingleServer = servers.length === 1;
   const singleServer = isSingleServer ? servers[0] : null;
 

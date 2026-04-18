@@ -1,10 +1,6 @@
 import { createEmbed } from "../../embed-builder";
 import { EmbedColors } from "../../colors";
 
-// ==========================================================================
-// NOTIFICATIONS (sent to crypto news channel)
-// ==========================================================================
-
 export interface NewListingData {
   name: string;
   symbol: string;
@@ -39,10 +35,6 @@ export interface WeeklyReportData {
   totalTrades: string;
   topTraders: string;
 }
-
-// ==========================================================================
-// COMMAND RESPONSES (ephemeral replies to /crypto subcommands)
-// ==========================================================================
 
 export interface BuyData {
   symbol: string;

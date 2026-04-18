@@ -32,7 +32,6 @@ export function ButtonEditor({
 }: ButtonEditorProps) {
   const totalButtons = buttons.length + actionButtons.length;
 
-  // Merge both arrays into a unified list for display, tracking source
   const allButtons: AnyButton[] = [
     ...buttons.map((b) => ({ _type: "link" as const, ...b })),
     ...actionButtons.map((b) => ({ _type: "action" as const, ...b })),

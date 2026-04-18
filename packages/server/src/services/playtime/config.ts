@@ -19,7 +19,6 @@ export interface ServerInfo {
  * know which server it's from.
  */
 export const MINECRAFT_SERVER_MAPPING: Record<string, ServerInfo> = {
-  // Map each server's IP to its info
   [config.servers.cogs.ip]: {
     serverId: config.servers.cogs.id,
     serverName: config.servers.cogs.name,

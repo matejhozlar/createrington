@@ -16,10 +16,8 @@ export async function delistToken(tokenId: number): Promise<void> {
 
   const finalPrice = Number(token.price);
 
-  // Find all holders
   const holdings = await Q.crypto.holding.where({ tokenId: token.id }).all();
 
-  // Auto-sell each holder's position at the final price
   for (const holding of holdings) {
     const amount = Number(holding.amount);
     const revenue = Math.floor(amount * finalPrice * 1000) / 1000;
@@ -41,7 +39,6 @@ export async function delistToken(tokenId: number): Promise<void> {
       );
     }
 
-    // Record the transaction
     await Q.crypto.transaction.create({
       playerMinecraftUuid: holding.playerMinecraftUuid,
       tokenId: token.id,
@@ -53,11 +50,9 @@ export async function delistToken(tokenId: number): Promise<void> {
       totalCost: revenue.toFixed(8),
     });
 
-    // Delete the holding
     await Q.crypto.holding.delete({ id: holding.id });
   }
 
-  // Mark token as delisted
   await Q.crypto.token.update(
     { id: token.id },
     {
@@ -67,7 +62,6 @@ export async function delistToken(tokenId: number): Promise<void> {
     },
   );
 
-  // Record news event
   await createMarketEvent({
     type: "token_delisted",
     title: `${token.name} (${token.symbol}) Delisted`,

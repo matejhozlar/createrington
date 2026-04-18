@@ -71,13 +71,7 @@ export function WebSocketProvider({
   const connectRef = useRef<(() => void) | null>(null);
   const disconnectRef = useRef<(() => void) | null>(null);
 
-  // ============================================================================
-  // Event Management (defined early to avoid hoisting issues)
-  // ============================================================================
-
-  /**
-   * Emit event to registered listeners
-   */
+  // Event management — defined early to avoid hoisting issues.
   const emitToListeners = useCallback((event: string, data: unknown) => {
     const listeners = eventListenersRef.current.get(event);
     if (listeners) {
@@ -92,9 +86,6 @@ export function WebSocketProvider({
     }
   }, []);
 
-  /**
-   * Subscribe to WebSocket event
-   */
   const on = useCallback(
     (event: string, callback: (data: unknown) => void) => {
       if (!eventListenersRef.current.has(event)) {
@@ -128,9 +119,6 @@ export function WebSocketProvider({
     [socket],
   );
 
-  /**
-   * Unsubscribe from WebSocket event
-   */
   const off = useCallback(
     (event: string, callback: (data: unknown) => void) => {
       const listeners = eventListenersRef.current.get(event);
@@ -148,9 +136,6 @@ export function WebSocketProvider({
     [socket],
   );
 
-  /**
-   * Emit event to server
-   */
   const emit = useCallback(
     (event: string, data?: unknown, callback?: (response: unknown) => void) => {
       if (!socket?.connected) {
@@ -170,13 +155,7 @@ export function WebSocketProvider({
     [socket],
   );
 
-  // ============================================================================
-  // Connection Management
-  // ============================================================================
-
-  /**
-   * Handle reconnection with exponential backoff
-   */
+  // Handle reconnection with exponential backoff.
   const handleReconnect = useCallback(() => {
     if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
       if (import.meta.env.DEV)
@@ -211,9 +190,6 @@ export function WebSocketProvider({
     }, delay);
   }, [maxReconnectAttempts, reconnectDelay]);
 
-  /**
-   * Initialize WebSocket connection
-   */
   const connect = useCallback(() => {
     if (socket?.connected) {
       if (import.meta.env.DEV) console.warn("WebSocket already connected");
@@ -308,9 +284,6 @@ export function WebSocketProvider({
     return newSocket;
   }, [config, emitToListeners, handleReconnect, socket?.connected]);
 
-  /**
-   * Disconnect from WebSocket server
-   */
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -336,9 +309,6 @@ export function WebSocketProvider({
     disconnectRef.current = disconnect;
   }, [connect, disconnect]);
 
-  /**
-   * Check connection health (send ping)
-   */
   const ping = useCallback(() => {
     if (socket?.connected) {
       const start = Date.now();
@@ -352,13 +322,6 @@ export function WebSocketProvider({
     }
   }, [socket]);
 
-  // ============================================================================
-  // Subscription Management
-  // ============================================================================
-
-  /**
-   * Subscribe to data stream
-   */
   const subscribe = useCallback(
     (
       type: SubscriptionType,
@@ -394,9 +357,6 @@ export function WebSocketProvider({
     [socket],
   );
 
-  /**
-   * Unsubscribe from data stream
-   */
   const unsubscribe = useCallback(
     (
       type: SubscriptionType,
@@ -432,9 +392,6 @@ export function WebSocketProvider({
     [socket],
   );
 
-  /**
-   * Request initial data
-   */
   const requestInitialData = useCallback(
     (
       serverId?: number,
@@ -469,10 +426,6 @@ export function WebSocketProvider({
     [socket],
   );
 
-  // ============================================================================
-  // Lifecycle
-  // ============================================================================
-
   // Auto-connect on mount if enabled
   useEffect(() => {
     if (config.autoConnect !== false) {
@@ -496,10 +449,6 @@ export function WebSocketProvider({
 
     return () => clearInterval(interval);
   }, [config.healthCheckInterval, connectionState, ping]);
-
-  // ============================================================================
-  // Context Value
-  // ============================================================================
 
   const value: WebSocketContextType = useMemo(
     () => ({

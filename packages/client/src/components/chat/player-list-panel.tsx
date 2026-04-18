@@ -124,7 +124,6 @@ export function PlayerListPanel({
     [getServerPlayers, serverId],
   );
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {

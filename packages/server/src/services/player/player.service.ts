@@ -77,10 +77,6 @@ export class PlayerService {
     this.bans = new PlayerBanRepository();
   }
 
-  // ============================================================================
-  // CONVENIENCE METHODS - AGGREGATED VIEWS
-  // ============================================================================
-
   /**
    * Gets comprehensive player data for admin panel
    * Aggregates data from multiple repositories

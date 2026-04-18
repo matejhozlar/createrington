@@ -48,7 +48,6 @@ function formatCommand(cmd: RawCommand): string {
   const subs = cmd.options.filter((o) => o.type === 1 || o.type === 2);
 
   if (subs.length > 0) {
-    // Show each subcommand with its description
     return subs
       .map((s) => `</${cmd.name} ${s.name}:0> — ${s.description ?? ""}`)
       .join("\n");
@@ -110,7 +109,6 @@ export async function execute(
       (cmd) => cmd.category === "user" || cmd.category === "public",
     );
 
-    // Group commands
     const grouped = new Map<string, RawCommand[]>();
     for (const cmd of playerCommands) {
       const group = COMMAND_GROUPS[cmd.name] ?? "Other";
@@ -119,7 +117,6 @@ export async function execute(
       grouped.set(group, list);
     }
 
-    // Build embed with fields per group
     const guideUrl = `${config.meta.links.website}/guides/discord-commands`;
 
     const embed = createEmbed()
@@ -146,7 +143,6 @@ export async function execute(
 
     embed.footer(`${playerCommands.length} commands available`);
 
-    // Link button to the guide
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setLabel("Full Command Guide")

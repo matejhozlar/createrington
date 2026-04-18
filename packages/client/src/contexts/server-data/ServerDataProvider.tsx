@@ -49,21 +49,12 @@ export function ServerDataProvider({
   const { isConnected, on, subscribe, unsubscribe, requestInitialData } =
     websocketContext;
 
-  // Server status map: serverId -> ServerStatus
   const [servers, setServers] = useState<Map<number, ServerStatus>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Subscription tracking
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // ============================================================================
-  // Data Loading
-  // ============================================================================
-
-  /**
-   * Load initial server data
-   */
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -102,13 +93,6 @@ export function ServerDataProvider({
     }
   }, [requestInitialData, serverIds]);
 
-  // ============================================================================
-  // Real-time Updates
-  // ============================================================================
-
-  /**
-   * Handle server status update from WebSocket
-   */
   const handleServerStatusUpdate = useCallback(
     (payload: ServerStatusUpdatePayload) => {
       // Filter by serverIds if provided
@@ -140,13 +124,6 @@ export function ServerDataProvider({
     [serverIds],
   );
 
-  // ============================================================================
-  // Subscription Management
-  // ============================================================================
-
-  /**
-   * Subscribe to server status updates
-   */
   const subscribeToUpdates = useCallback(async () => {
     try {
       if (serverIds) {
@@ -171,9 +148,6 @@ export function ServerDataProvider({
     }
   }, [subscribe, serverIds]);
 
-  /**
-   * Unsubscribe from server status updates
-   */
   const unsubscribeFromUpdates = useCallback(async () => {
     try {
       if (serverIds) {
@@ -191,13 +165,6 @@ export function ServerDataProvider({
     }
   }, [unsubscribe, serverIds]);
 
-  // ============================================================================
-  // Data Access Methods
-  // ============================================================================
-
-  /**
-   * Get server by ID
-   */
   const getServer = useCallback(
     (serverId: number): ServerStatus | undefined => {
       return servers.get(serverId);
@@ -205,30 +172,18 @@ export function ServerDataProvider({
     [servers],
   );
 
-  /**
-   * Get all servers as array
-   */
   const getAllServers = useCallback((): ServerStatus[] => {
     return Array.from(servers.values());
   }, [servers]);
 
-  /**
-   * Get only online servers
-   */
   const getOnlineServers = useCallback((): ServerStatus[] => {
     return Array.from(servers.values()).filter((server) => server.online);
   }, [servers]);
 
-  /**
-   * Get only offline servers
-   */
   const getOfflineServers = useCallback((): ServerStatus[] => {
     return Array.from(servers.values()).filter((server) => !server.online);
   }, [servers]);
 
-  /**
-   * Check if server is online
-   */
   const isServerOnline = useCallback(
     (serverId: number): boolean => {
       return servers.get(serverId)?.online ?? false;
@@ -236,16 +191,9 @@ export function ServerDataProvider({
     [servers],
   );
 
-  /**
-   * Refresh server data
-   */
   const refresh = useCallback(async () => {
     await loadInitialData();
   }, [loadInitialData]);
-
-  // ============================================================================
-  // Computed Statistics
-  // ============================================================================
 
   const stats = useMemo(() => {
     const allServers = Array.from(servers.values());
@@ -267,11 +215,6 @@ export function ServerDataProvider({
     };
   }, [servers]);
 
-  // ============================================================================
-  // Lifecycle
-  // ============================================================================
-
-  // Load initial data when connected
   useEffect(() => {
     if (isConnected) {
       loadInitialData();
@@ -301,10 +244,6 @@ export function ServerDataProvider({
       }
     };
   }, [isSubscribed, unsubscribeFromUpdates]);
-
-  // ============================================================================
-  // Context Value
-  // ============================================================================
 
   const value: ServerDataContextType = {
     servers: Array.from(servers.values()),

@@ -20,10 +20,8 @@ import { Services } from "@/services/container";
 import { getLeaderboard } from "../analytics/leaderboard";
 import type { CryptoMarketService } from "../crypto-market.service";
 
-// ---------------------------------------------------------------------------
-// Serial queue — ensures only one article generates at a time to avoid
-// parallel OpenAI calls and redundant DB snapshots when events burst
-// ---------------------------------------------------------------------------
+// Serial queue — only one article generates at a time to avoid parallel
+// OpenAI calls and redundant DB snapshots when events burst
 
 type QueuedArticle = {
   eventId: number;
@@ -59,10 +57,6 @@ async function processQueue(): Promise<void> {
 
   processing = false;
 }
-
-// ---------------------------------------------------------------------------
-// Types for structured article data persisted alongside the article text
-// ---------------------------------------------------------------------------
 
 interface ArticleTopHolder {
   name: string;
@@ -103,10 +97,6 @@ interface ArticleData {
   priceHistory: ArticlePriceCandle[];
 }
 
-// ---------------------------------------------------------------------------
-// System prompt
-// ---------------------------------------------------------------------------
-
 const SYSTEM_PROMPT = `You are a seasoned financial journalist writing for the Createrington Exchange — a fictional cryptocurrency market on a Minecraft server powered by the Create mod.
 
 Your articles read like real Bloomberg or WSJ coverage, but with a fun Minecraft twist. Players trade memecoins, speculate on volatile tokens, and react to market events — all within a blocky economy of redstone, contraptions, and cobblestone fortunes.
@@ -125,10 +115,6 @@ Style guide:
 - Do not use markdown formatting — plain text with paragraph breaks only
 - Do not include a headline or title — it is provided separately
 - Only reference tokens from the provided token list — never invent token names or symbols`;
-
-// ---------------------------------------------------------------------------
-// Player name resolution
-// ---------------------------------------------------------------------------
 
 type PlayerNameMap = Map<string, string>;
 
@@ -161,10 +147,6 @@ function resolvePlayerName(
 ): string {
   return playerNameMap.get(minecraftUuid) ?? "Unknown Trader";
 }
-
-// ---------------------------------------------------------------------------
-// Context section builders
-// ---------------------------------------------------------------------------
 
 /**
  * Builds a formatted 24-hour volume section for the AI prompt.
@@ -288,7 +270,6 @@ async function buildTopHoldersSection(
 
   if (holdings.length === 0) return { text: "", holders: [] };
 
-  // Sort by amount descending
   const sorted = [...holdings].sort((a, b) => Number(b.amount - a.amount));
   const top5 = sorted.slice(0, 5);
 
@@ -460,10 +441,6 @@ async function buildPriceHistoryData(
   }));
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 /**
  * Converts a past date to a human-readable relative string (e.g. "5m ago", "2h ago").
  *
@@ -481,10 +458,6 @@ function relativeTimeAgo(date: Date): string {
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
-
-// ---------------------------------------------------------------------------
-// Main context builder
-// ---------------------------------------------------------------------------
 
 /**
  * Builds a full market snapshot to ground the AI prompt in real data.
@@ -516,7 +489,6 @@ async function buildMarketContext(
 
   const { topGainer, topLoser } = await cryptoService.getTopMovers();
 
-  // Build sorted token list with change data
   const sorted = activeTokens
     .map((t) => {
       const change24h = cryptoService.get24hChange(t.id, t.price);
@@ -582,7 +554,6 @@ async function buildMarketContext(
   const treasuryText = await buildTreasurySection();
   if (treasuryText) lines.push(treasuryText);
 
-  // Initialize article data
   const articleData: ArticleData = {
     topHolders: [],
     recentTrades: [],
@@ -648,10 +619,6 @@ async function buildMarketContext(
   return { context: lines.join("\n"), articleData };
 }
 
-// ---------------------------------------------------------------------------
-// Article generation
-// ---------------------------------------------------------------------------
-
 /**
  * Generates an AI article for a market event and persists it to the database.
  *
@@ -713,7 +680,6 @@ async function generateArticleForEvent(
     maxTokens: 1200,
   });
 
-  // Persist article text and structured data
   const enrichedMetadata = {
     ...(metadata ?? {}),
     articleData,

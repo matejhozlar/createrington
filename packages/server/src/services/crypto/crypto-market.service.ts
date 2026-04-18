@@ -104,10 +104,6 @@ export class CryptoMarketService {
 
   private readonly caches = new MarketCaches();
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
-
   /**
    * Initializes the crypto market service.
    *
@@ -119,7 +115,6 @@ export class CryptoMarketService {
   async initialize(): Promise<void> {
     logger.info("CryptoMarketService initializing...");
 
-    // Ensure treasury row exists
     const treasury = await Q.crypto.treasury.where({}).first();
     if (!treasury) {
       await Q.crypto.treasury.create({
@@ -128,11 +123,10 @@ export class CryptoMarketService {
       });
     }
 
-    // Load active tokens to verify DB state
     const tokens = await Q.crypto.token.where({ isCrashed: false }).all();
     logger.info(`Loaded ${tokens.length} active crypto tokens`);
 
-    // Try to get WebSocket service (may not be ready yet)
+    // WebSocket service may not be ready yet; retry on first tick
     try {
       this.wsService = await getService(Services.WEBSOCKET_SERVICE);
     } catch {
@@ -141,7 +135,6 @@ export class CryptoMarketService {
       );
     }
 
-    // Seed initial caches
     await this.caches.refreshPrices();
     await this.caches.refreshVolumes();
     await refresh24hAverages();
@@ -159,10 +152,8 @@ export class CryptoMarketService {
       }
     }
 
-    // Restore active market events from DB
     await restoreActiveEvents();
 
-    // Start price engine intervals
     this.startMemecoinTicker();
     this.startStablecoinTicker();
     this.startBluechipTicker();
@@ -208,10 +199,6 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService shutdown complete");
   }
 
-  // ==========================================================================
-  // TICKER INTERVALS
-  // ==========================================================================
-
   /** @private Starts the memecoin price ticker with an immediate first tick */
   private startMemecoinTicker(): void {
     this.memecoinInterval = setInterval(async () => {
@@ -222,7 +209,6 @@ export class CryptoMarketService {
       }
     }, CRYPTO_CONFIG.MEMECOIN_TICK_INTERVAL_MS);
 
-    // Run initial tick
     this.tickMemecoins().catch((err) =>
       logger.error("Initial memecoin tick failed:", err),
     );
@@ -277,7 +263,6 @@ export class CryptoMarketService {
       async () => {
         try {
           await aggregateMinuteSnapshots();
-          // Also refresh caches alongside aggregation
           await this.caches.refreshPrices();
           await this.caches.refreshVolumes();
           await refresh24hAverages();
@@ -331,10 +316,6 @@ export class CryptoMarketService {
     );
   }
 
-  // ==========================================================================
-  // PRICE TICKING
-  // ==========================================================================
-
   /**
    * Calculates new prices for all active memecoins, broadcasts updates,
    * sends crash notifications, and checks pending orders for fills.
@@ -372,17 +353,14 @@ export class CryptoMarketService {
       }
     }
 
-    // Broadcast price updates via WebSocket
     await this.broadcastPriceUpdates(updates);
 
-    // Check and fill pending orders against new prices
     const updatedTokens = await Promise.all(
       updates.map((u) => Q.crypto.token.get({ id: u.tokenId })),
     );
     const fillResults = await checkAndFillOrders(updatedTokens);
     this.notifyOrderFills(fillResults);
 
-    // Check price alerts
     const tokenPrices = new Map(
       updates.map((u) => [u.tokenId, { price: u.newPrice, symbol: u.symbol }]),
     );
@@ -402,7 +380,6 @@ export class CryptoMarketService {
 
     if (stablecoins.length === 0) return;
 
-    // Get active player count for stablecoin pricing
     const activePlayers = await Q.player.where({ online: true }).count();
 
     const updates: PriceUpdate[] = [];
@@ -462,7 +439,6 @@ export class CryptoMarketService {
 
     await this.broadcastPriceUpdates(updates);
 
-    // Check and fill pending orders against new blue-chip prices
     if (updates.length > 0) {
       const updatedTokens = await Promise.all(
         updates.map((u) => Q.crypto.token.get({ id: u.tokenId })),
@@ -471,10 +447,6 @@ export class CryptoMarketService {
       this.notifyOrderFills(fillResults);
     }
   }
-
-  // ==========================================================================
-  // 24H CACHE DELEGATES
-  // ==========================================================================
 
   /**
    * Computes the 24h price change percentage for a token.
@@ -485,10 +457,6 @@ export class CryptoMarketService {
   get24hChange(tokenId: number, currentPrice: string): number {
     return this.caches.getChange(tokenId, currentPrice);
   }
-
-  // ==========================================================================
-  // BROADCASTING
-  // ==========================================================================
 
   /**
    * Sends price update payloads to all WebSocket crypto market subscribers.
@@ -590,10 +558,6 @@ export class CryptoMarketService {
     }));
   }
 
-  // ==========================================================================
-  // ORDER MANAGEMENT
-  // ==========================================================================
-
   /** @private Expires stale pending orders every 5 minutes */
   private startOrderExpiryJob(): void {
     this.orderExpiryInterval = setInterval(
@@ -639,10 +603,6 @@ export class CryptoMarketService {
     }
   }
 
-  // ==========================================================================
-  // PORTFOLIO SNAPSHOTS
-  // ==========================================================================
-
   /**
    * Schedules the daily portfolio snapshot at the configured hour.
    * Reschedules itself for the next day after completing.
@@ -679,14 +639,9 @@ export class CryptoMarketService {
         logger.error("Diamond Hands evaluation failed:", err);
       }
 
-      // Reschedule for tomorrow
       this.schedulePortfolioSnapshot();
     }, delayMs);
   }
-
-  // ==========================================================================
-  // WEEKLY REPORT
-  // ==========================================================================
 
   /**
    * Schedules the weekly market report for Sunday at 18:00.
@@ -717,14 +672,9 @@ export class CryptoMarketService {
       } catch (err) {
         logger.error("Weekly market report failed:", err);
       }
-      // Reschedule for next week
       this.scheduleWeeklyReport();
     }, delayMs);
   }
-
-  // ==========================================================================
-  // ALERT NOTIFICATIONS
-  // ==========================================================================
 
   /**
    * Sends WebSocket notifications to the crypto market room for triggered price alerts.
@@ -740,7 +690,6 @@ export class CryptoMarketService {
         `Price alert triggered: ${alert.tokenSymbol} ${alert.direction} $${alert.targetPrice} (now $${alert.currentPrice})`,
       );
 
-      // Broadcast alert trigger via WebSocket to the specific user
       if (this.wsService) {
         this.wsService.broadcastToRoom(
           RoomManager.getCryptoMarketRoom(),
@@ -762,10 +711,6 @@ export class CryptoMarketService {
       logger.error("Failed to send price alert DMs:", err);
     });
   }
-
-  // ==========================================================================
-  // EVENT ENGINE
-  // ==========================================================================
 
   /** @private Rolls for random market events every hour */
   private startEventRoller(): void {
@@ -807,10 +752,6 @@ export class CryptoMarketService {
     );
   }
 
-  // ==========================================================================
-  // SEASONAL TOKEN MANAGEMENT
-  // ==========================================================================
-
   /** @private Checks for expired seasonal tokens every 10 minutes */
   private startSeasonalTokenCheck(): void {
     this.seasonalCheckInterval = setInterval(
@@ -834,10 +775,6 @@ export class CryptoMarketService {
   async delistToken(tokenId: number): Promise<void> {
     return performDelistToken(tokenId);
   }
-
-  // ==========================================================================
-  // IPO LIFECYCLE
-  // ==========================================================================
 
   /** @private Checks for ended IPOs every 30 seconds and transitions them to normal trading */
   private startIpoTransitionCheck(): void {
@@ -873,10 +810,6 @@ export class CryptoMarketService {
       logger.error("IPO spawn scheduler failed:", err);
     }
   }
-
-  // ==========================================================================
-  // PUBLIC API
-  // ==========================================================================
 
   /**
    * Generates a new random memecoin from the catalog and sends a Discord
@@ -1036,13 +969,11 @@ export class CryptoMarketService {
     floorPrice?: string;
     delistedAt?: Date;
   }): Promise<CryptoToken> {
-    // Check for duplicate symbol
     const existing = await Q.crypto.token.find({ symbol: params.symbol });
     if (existing) {
       throw new Error(`Token with symbol ${params.symbol} already exists`);
     }
 
-    // Enforce memecoin cap
     if (params.category === "memecoin") {
       const activeMemecoins = await Q.crypto.token
         .where({
