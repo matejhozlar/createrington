@@ -119,6 +119,22 @@ OpenAI generates in-character market news articles for the crypto economy, publi
 
 ![Admin Crypto Token Management](screenshots/admin-crypto.webp)
 
+### Player Profile Render
+
+![Player Profile Render](screenshots/render-profile.webp)
+
+### Leaderboard Render
+
+![Player Leaderboard Render](screenshots/render-top.webp)
+
+### Activity Render
+
+![Player Activity Heatmap Render](screenshots/render-activty.webp)
+
+### Player Comparison Render
+
+![Player Comparison Render](screenshots/render-compare.webp)
+
 ---
 
 ## Architecture Overview

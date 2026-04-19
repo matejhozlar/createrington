@@ -2,6 +2,7 @@
   "name": "createrington-marketing",
   "version": "1.0.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Remotion marketing video for Createrington (Cogs & Steam)",
   "scripts": {
     "sync-assets": "node scripts/sync-assets.mjs",
