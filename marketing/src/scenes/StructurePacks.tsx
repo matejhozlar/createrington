@@ -66,13 +66,6 @@ const PACKS = [
   },
 ];
 
-const CAPABILITIES = [
-  "Seed rotates on schedule",
-  "Cloned from your server's worldgen",
-  "Auto map-mod cleanup",
-  "Pre-generated, TPS-aware",
-];
-
 // ——— Icons (lucide-react SVG paths inlined, matching the app's PackCard) ———
 
 const iconBase = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -578,42 +571,6 @@ export const StructurePacks: React.FC = () => {
           </div>
         </div>
 
-        {/* Capability chips */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 10,
-            flexWrap: "wrap",
-            marginTop: 14,
-          }}
-        >
-          {CAPABILITIES.map((c, i) => {
-            const t = spring({
-              frame: frame - (80 + i * 6),
-              fps,
-              config: { damping: 20, stiffness: 90 },
-            });
-            return (
-              <div
-                key={c}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 999,
-                  background: "rgba(30, 28, 35, 0.85)",
-                  border: `1px solid ${theme.border}`,
-                  color: theme.foreground,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  opacity: t,
-                  transform: `translateY(${(1 - t) * 8}px)`,
-                }}
-              >
-                {c}
-              </div>
-            );
-          })}
-        </div>
       </AbsoluteFill>
     </AbsoluteFill>
   );
