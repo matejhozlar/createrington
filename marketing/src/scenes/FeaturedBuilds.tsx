@@ -5,18 +5,20 @@ import { Background } from "../components/Background";
 
 const BUILDS = [
   {
-    image: "assets/hero/metro.webp",
-    title: "Underground Metro",
-    meta: "Public transit · signal network",
-    panX: -40,
-    panY: 12,
-  },
-  {
     image: "assets/hero/space-station.webp",
     title: "Orbital Launch Complex",
     meta: "Spaceport · multi-pad",
     panX: 24,
     panY: 0,
+    credit: { uuid: "3e0db446-147a-4692-87fd-c3facc4341db", name: "Agent772" },
+  },
+  {
+    image: "assets/hero/metro.webp",
+    title: "Underground Metro",
+    meta: "Public transit · signal network",
+    panX: -40,
+    panY: 12,
+    credit: { uuid: "32ff995f-cf92-417b-b745-891738346120", name: "Tetsuoken" },
   },
   {
     image: "assets/hero/high-speed-train.webp",
@@ -24,6 +26,7 @@ const BUILDS = [
     meta: "Long-haul · 200+ km/h",
     panX: -20,
     panY: -8,
+    credit: { uuid: "3910d895-2da6-48ed-9116-9b2b0fa94220", name: "Tony_Pixel" },
   },
   {
     image: "assets/hero/royal-albert-hall.webp",
@@ -31,6 +34,7 @@ const BUILDS = [
     meta: "Concert hall · community gathering",
     panX: 14,
     panY: -4,
+    credit: { uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f", name: "diablothe2nd" },
   },
 ];
 
@@ -130,42 +134,75 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
           right: large ? 32 : 18,
           bottom: large ? 28 : 16,
           color: theme.foreground,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: large ? 20 : 12,
         }}
       >
-        <div
-          style={{
-            width: large ? 48 : 28,
-            height: 2,
-            background: theme.primary,
-            marginBottom: large ? 14 : 8,
-            borderRadius: 1,
-            boxShadow: `0 0 8px ${theme.primaryGlow}`,
-            transform: `scaleX(${cardIn})`,
-            transformOrigin: "left center",
-          }}
-        />
-        <div
-          style={{
-            fontSize: large ? 40 : 20,
-            fontWeight: 700,
-            letterSpacing: -0.5,
-            lineHeight: 1.1,
-            textShadow: "0 2px 10px rgba(0,0,0,0.7)",
-          }}
-        >
-          {build.title}
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div
+            style={{
+              width: large ? 48 : 28,
+              height: 2,
+              background: theme.primary,
+              marginBottom: large ? 14 : 8,
+              borderRadius: 1,
+              boxShadow: `0 0 8px ${theme.primaryGlow}`,
+              transform: `scaleX(${cardIn})`,
+              transformOrigin: "left center",
+            }}
+          />
+          <div
+            style={{
+              fontSize: large ? 40 : 20,
+              fontWeight: 700,
+              letterSpacing: -0.5,
+              lineHeight: 1.1,
+              textShadow: "0 2px 10px rgba(0,0,0,0.7)",
+            }}
+          >
+            {build.title}
+          </div>
+          <div
+            style={{
+              marginTop: large ? 8 : 4,
+              fontSize: large ? 16 : 12,
+              color: "#d2d0d8",
+              fontFamily: theme.fontMono,
+              letterSpacing: 0.5,
+              textShadow: "0 1px 6px rgba(0,0,0,0.8)",
+            }}
+          >
+            {build.meta}
+          </div>
         </div>
+
         <div
           style={{
-            marginTop: large ? 8 : 4,
-            fontSize: large ? 16 : 12,
-            color: "#d2d0d8",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: large ? 10 : 7,
             fontFamily: theme.fontMono,
-            letterSpacing: 0.5,
-            textShadow: "0 1px 6px rgba(0,0,0,0.8)",
+            fontSize: large ? 14 : 11,
+            letterSpacing: 0.3,
+            color: theme.foreground,
+            textShadow: "0 1px 6px rgba(0,0,0,0.85)",
+            whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
         >
-          {build.meta}
+          <Img
+            src={`https://mc-heads.net/avatar/${build.credit.uuid}/${large ? 64 : 44}`}
+            style={{
+              width: large ? 32 : 22,
+              height: large ? 32 : 22,
+              display: "block",
+              imageRendering: "pixelated",
+              filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.7))",
+            }}
+          />
+          <span>{build.credit.name}</span>
         </div>
       </div>
     </div>
