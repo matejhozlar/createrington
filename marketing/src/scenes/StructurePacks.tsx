@@ -1,50 +1,67 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { AnimatedCounter } from "../components/AnimatedCounter";
 import { PortalTile } from "../components/PortalTile";
 
-// Modeled after packages/client/src/features/structure-packs/components/PackCard.tsx:
-// each pack is a themed bundle of world-gen mods applied to the next
-// Parallel Worlds dimension rotation. Players spend in-game currency to
-// "boost" their favorite pack; weight → probability it wins.
+// Real structure-pack data pulled from the Createrington admin config.
+// Descriptions are null in the source, so cards show the top mods instead.
+// Weights/boosts/chance are illustrative — the video never claims live
+// counts, but the voting mechanic itself is part of the real feature.
 const PACKS = [
   {
-    name: "Ancient Ruins",
-    description: "Lost temples, desert cities, forgotten libraries.",
-    mods: 12,
-    weight: 4.25,
+    name: "YUNG's",
+    modCount: 10,
+    topMods: [
+      "YUNG's Better Mineshafts",
+      "YUNG's Better Dungeons",
+      "YUNG's Better Strongholds",
+    ],
+    weight: 4.20,
     boosts: 31,
     probability: 42,
     tint: theme.primary,
-    active: true,
+    leading: true,
   },
   {
-    name: "Deep Dark Expedition",
-    description: "Reinforced deep-dark with ancient city variants.",
-    mods: 9,
-    weight: 2.80,
+    name: "Cities",
+    modCount: 5,
+    topMods: ["Big Lost City", "The Lost City", "Abandoned Urban Remaster"],
+    weight: 2.45,
     boosts: 18,
-    probability: 28,
+    probability: 25,
     tint: theme.chart.purple,
   },
   {
-    name: "Arctic Wastes",
-    description: "Frozen tundra biomes with ruined outposts.",
-    mods: 7,
-    weight: 1.95,
+    name: "Vanilla Revive",
+    modCount: 5,
+    topMods: ["Yeehaw Towns!", "Adventure Dungeons", "Explorify"],
+    weight: 1.80,
     boosts: 12,
-    probability: 19,
+    probability: 18,
     tint: theme.chart.blue,
   },
   {
-    name: "Nether Gateway",
-    description: "High-density nether variants and rare loot.",
-    mods: 8,
-    weight: 1.10,
+    name: "Vanilla +",
+    modCount: 3,
+    topMods: [
+      "Dungeons and Taverns",
+      "ChoiceTheorem's Overhauled Village",
+      "Lithostitched",
+    ],
+    weight: 0.95,
     boosts: 6,
-    probability: 11,
+    probability: 10,
+    tint: theme.chart.green,
+  },
+  {
+    name: "Mo",
+    modCount: 2,
+    topMods: ["Mo' Structures", "Omega Config"],
+    weight: 0.50,
+    boosts: 3,
+    probability: 5,
     tint: theme.destructive,
   },
 ];
@@ -56,62 +73,53 @@ const CAPABILITIES = [
   "Pre-generated, TPS-aware",
 ];
 
-// Faithful Parallel Worlds portal: a 4×5 block glass frame wrapping a 2×3
-// interior that plays the actual pw_portal.png atlas with the mod's
-// animation metadata (16 frames · frametime 3 · interpolate true).
-//
-// The mod's default ignition block is glass (configurable per server), so
-// the frame mimics a pixel-art glass block — transparent panes with the
-// characteristic vanilla glass edge highlights.
-// Small "asset card" framing a real mod texture with its resource name below.
-const AssetSwatch: React.FC<{
-  label: string;
-  contents: React.ReactNode;
-  rotate?: number;
-}> = ({ label, contents, rotate = 0 }) => (
-  <div
-    style={{
-      width: 96,
-      borderRadius: 10,
-      border: `1px solid ${theme.border}`,
-      background: theme.card,
-      padding: 8,
-      transform: `rotate(${rotate}deg)`,
-      boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 4,
-    }}
-  >
-    <div
-      style={{
-        width: 72,
-        height: 72,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {contents}
-    </div>
-    <div
-      style={{
-        fontSize: 9,
-        color: theme.mutedForeground,
-        fontFamily: theme.fontMono,
-        letterSpacing: 1,
-        textTransform: "uppercase",
-      }}
-    >
-      {label}
-    </div>
-  </div>
+// ——— Icons (lucide-react SVG paths inlined, matching the app's PackCard) ———
+
+const iconBase = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+const BlocksIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconBase}>
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+    <path d="M3 3h7v7H3z" />
+    <path d="M14 3h3a4 4 0 0 1 4 4v3" />
+    <path d="M10 21H7a4 4 0 0 1-4-4v-3" />
+  </svg>
 );
 
-// 16×16 pixel-art obsidian tile encoded as an inline SVG data URI. Classic
-// vanilla palette — near-black base with scattered deep-purple specks,
-// rendered crisply via shape-rendering="crispEdges".
+const RocketIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconBase}>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </svg>
+);
+
+const TrendingUpIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconBase}>
+    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+    <polyline points="16 7 22 7 22 13" />
+  </svg>
+);
+
+const PackageIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconBase}>
+    <path d="M16.5 9.4 7.55 4.24" />
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+    <polyline points="3.29 7 12 12 20.71 7" />
+    <line x1="12" y1="22" x2="12" y2="12" />
+  </svg>
+);
+
+const ClockIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...iconBase}>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </svg>
+);
+
+// ——— Obsidian block texture (inline SVG data URI) ———
+
 const OBSIDIAN_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'>
 <rect width='16' height='16' fill='#0a0612'/>
 <rect x='0' y='0' width='16' height='1' fill='#120a1f'/>
@@ -143,8 +151,6 @@ const OBSIDIAN_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height=
 </svg>`;
 const OBSIDIAN_URI = `url("data:image/svg+xml;utf8,${encodeURIComponent(OBSIDIAN_SVG)}")`;
 
-// Obsidian portal-frame block. Tiles the SVG at 1:1 to the cell size;
-// imageRendering: pixelated keeps edges crisp when scaled.
 const ObsidianBlock: React.FC<{ size: number }> = ({ size }) => (
   <div
     style={{
@@ -154,25 +160,26 @@ const ObsidianBlock: React.FC<{ size: number }> = ({ size }) => (
       backgroundSize: `${size}px ${size}px`,
       backgroundRepeat: "no-repeat",
       imageRendering: "pixelated",
-      boxShadow:
-        "inset 0 0 0 1px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.035)",
+      boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.035)",
     }}
   />
 );
 
+// ——— Portal ———
+
+// Standard 4×5-block gate, 2×3 interior. Interior is an SVG <pattern> that
+// tiles the real pw_portal.png frame seamlessly at 1 block per tile, so the
+// viewer sees six discrete animated blocks instead of one stretched piece.
 const Portal: React.FC<{ progress: number }> = ({ progress }) => {
   const frame = useCurrentFrame();
   const breath = 0.55 + ((Math.sin(frame / 9) + 1) / 2) * 0.45;
 
-  // Standard nether-portal dimensions in blocks: 4 wide × 5 tall outer,
-  // 2 × 3 inner. We render at blockSize pixels per block.
   const blockSize = 96;
   const cols = 4;
   const rows = 5;
   const outerW = cols * blockSize;
   const outerH = rows * blockSize;
 
-  // Interior: 2×3 blocks, offset by 1 block in both axes.
   const interiorX = blockSize;
   const interiorY = blockSize;
   const interiorW = blockSize * 2;
@@ -188,7 +195,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         opacity: progress,
       }}
     >
-      {/* Outer amber aura around the whole gate */}
+      {/* Purple aura */}
       <div
         style={{
           position: "absolute",
@@ -199,7 +206,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         }}
       />
 
-      {/* 4×5 grid of obsidian frame blocks (skip interior cells) */}
+      {/* Obsidian frame */}
       <div
         style={{
           position: "absolute",
@@ -218,10 +225,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         })}
       </div>
 
-      {/* Portal interior — single seamless animated face across the full
-          2×3 opening (no inter-block seams). The 16×16 source stretches to
-          fill, which matches how adjacent portal blocks read as one surface
-          in-game. */}
+      {/* 2×3 tiled interior — SVG pattern, seamless at block edges */}
       <div
         style={{
           position: "absolute",
@@ -233,10 +237,10 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
           boxShadow: `inset 0 0 60px rgba(168, 85, 247, ${0.55 * breath}), inset 0 0 0 1px rgba(200, 180, 255, 0.25)`,
         }}
       >
-        <PortalTile width={interiorW} height={interiorH} />
+        <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
       </div>
 
-      {/* Additional outer glow ring */}
+      {/* Outer glow / drop shadow */}
       <div
         style={{
           position: "absolute",
@@ -248,6 +252,165 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
     </div>
   );
 };
+
+// ——— Pack card ———
+// Mirrors packages/client/src/features/structure-packs/components/PackCard.tsx:
+// name + chance% on the right, progress bar, and the Blocks/Rocket/TrendingUp
+// icon row along the bottom.
+
+type Pack = (typeof PACKS)[number];
+
+const PackCard: React.FC<{ pack: Pack; delay: number }> = ({ pack, delay }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const cardIn = spring({ frame: frame - delay, fps, config: { damping: 18, stiffness: 100 } });
+  const barProgress = interpolate(
+    frame,
+    [delay + 8, delay + 42],
+    [0, pack.probability / 100],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+  );
+
+  const pctColor = pack.leading ? theme.primary : theme.foreground;
+
+  return (
+    <div
+      style={{
+        background: pack.leading ? "rgba(245, 185, 33, 0.05)" : "rgba(30, 28, 35, 0.85)",
+        border: `1px solid ${pack.leading ? `${theme.primary}55` : theme.border}`,
+        borderRadius: 14,
+        padding: "14px 18px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        opacity: cardIn,
+        transform: `translateX(${(1 - cardIn) * -40}px)`,
+        boxShadow: pack.leading ? `0 0 40px ${theme.primaryGlow}` : "0 8px 24px rgba(0,0,0,0.35)",
+      }}
+    >
+      {/* Top row: name + chance */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                fontSize: 20,
+                fontWeight: 700,
+                color: theme.foreground,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {pack.name}
+            </div>
+            {pack.leading && (
+              <div
+                style={{
+                  padding: "1px 8px",
+                  borderRadius: 5,
+                  background: theme.primary,
+                  color: theme.backgroundDeep,
+                  fontSize: 10,
+                  fontWeight: 800,
+                  letterSpacing: 1,
+                  textTransform: "uppercase",
+                }}
+              >
+                Leading
+              </div>
+            )}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: theme.mutedForeground,
+              marginTop: 4,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {pack.topMods.slice(0, 3).join(" · ")}
+          </div>
+        </div>
+        <div style={{ textAlign: "right", minWidth: 64 }}>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: pctColor,
+              fontFamily: theme.fontMono,
+              lineHeight: 1,
+            }}
+          >
+            <AnimatedCounter to={pack.probability} durationInFrames={26} delay={delay + 4} suffix="%" />
+          </div>
+          <div
+            style={{
+              fontSize: 9,
+              color: theme.mutedForeground,
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+              marginTop: 2,
+            }}
+          >
+            Chance
+          </div>
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+        <div
+          style={{
+            width: `${Math.min(100, barProgress * 100)}%`,
+            height: "100%",
+            background: pack.tint,
+            borderRadius: 2,
+            boxShadow: `0 0 8px ${pack.tint}`,
+          }}
+        />
+      </div>
+
+      {/* Bottom icon row (matches real PackCard) */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          fontSize: 12,
+          color: theme.mutedForeground,
+          fontFamily: theme.fontMono,
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <BlocksIcon size={12} /> {pack.modCount} mod{pack.modCount !== 1 ? "s" : ""}
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <RocketIcon size={12} /> {pack.boosts} boost{pack.boosts !== 1 ? "s" : ""}
+        </span>
+        {pack.leading && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
+              color: theme.primary,
+            }}
+          >
+            <TrendingUpIcon size={12} /> trending
+          </span>
+        )}
+        <span style={{ marginLeft: "auto", fontFamily: theme.fontMono }}>
+          w: {pack.weight.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+// ——— Scene ———
 
 export const StructurePacks: React.FC = () => {
   const frame = useCurrentFrame();
@@ -274,7 +437,6 @@ export const StructurePacks: React.FC = () => {
         durationInFrames={194}
       />
 
-      {/* Ambient purple wash to hint at the portal dimension */}
       <AbsoluteFill
         style={{
           background:
@@ -289,7 +451,7 @@ export const StructurePacks: React.FC = () => {
           style={{
             opacity: headerIn,
             transform: `translateY(${(1 - headerIn) * 20}px)`,
-            maxWidth: 1000,
+            maxWidth: 1100,
           }}
         >
           <div
@@ -300,9 +462,13 @@ export const StructurePacks: React.FC = () => {
               fontWeight: 600,
               textTransform: "uppercase",
               marginBottom: 12,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
             }}
           >
-            Structure Packs · Parallel Worlds
+            <PackageIcon size={18} />
+            Structure Packs · Parallel Worlds by Agent772
           </div>
           <h2
             style={{
@@ -334,220 +500,31 @@ export const StructurePacks: React.FC = () => {
           style={{
             flex: 1,
             minHeight: 0,
-            marginTop: 32,
+            marginTop: 28,
             display: "grid",
             gridTemplateColumns: "1.1fr 1fr",
             gap: 40,
             alignItems: "stretch",
           }}
         >
-          {/* Pack cards */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {PACKS.map((p, i) => {
-              const delay = 22 + i * 10;
-              const cardIn = spring({
-                frame: frame - delay,
-                fps,
-                config: { damping: 18, stiffness: 100 },
-              });
-              const barProgress = interpolate(
-                frame,
-                [delay + 8, delay + 44],
-                [0, p.probability / 60], // max bar ≈ 70%
-                { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
-              );
-              return (
-                <div
-                  key={p.name}
-                  style={{
-                    background: p.active
-                      ? "rgba(245, 185, 33, 0.06)"
-                      : "rgba(30, 28, 35, 0.85)",
-                    border: `1px solid ${p.active ? `${theme.primary}55` : theme.border}`,
-                    borderRadius: 16,
-                    padding: "18px 22px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 10,
-                    opacity: cardIn,
-                    transform: `translateX(${(1 - cardIn) * -40}px)`,
-                    boxShadow: p.active
-                      ? `0 0 40px ${theme.primaryGlow}`
-                      : "0 10px 30px rgba(0,0,0,0.35)",
-                  }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: 16,
-                    }}
-                  >
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          marginBottom: 4,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 22,
-                            fontWeight: 700,
-                            color: theme.foreground,
-                          }}
-                        >
-                          {p.name}
-                        </div>
-                        {p.active && (
-                          <div
-                            style={{
-                              padding: "2px 10px",
-                              borderRadius: 6,
-                              background: theme.primary,
-                              color: theme.backgroundDeep,
-                              fontSize: 11,
-                              fontWeight: 800,
-                              letterSpacing: 1,
-                              textTransform: "uppercase",
-                            }}
-                          >
-                            Leading
-                          </div>
-                        )}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          color: theme.mutedForeground,
-                          lineHeight: 1.4,
-                        }}
-                      >
-                        {p.description}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right", minWidth: 80 }}>
-                      <div
-                        style={{
-                          fontSize: 28,
-                          fontWeight: 800,
-                          color: p.active ? theme.primary : theme.foreground,
-                          fontFamily: theme.fontMono,
-                          lineHeight: 1,
-                        }}
-                      >
-                        <AnimatedCounter
-                          to={p.probability}
-                          durationInFrames={30}
-                          delay={delay + 6}
-                          suffix="%"
-                        />
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 10,
-                          color: theme.mutedForeground,
-                          textTransform: "uppercase",
-                          letterSpacing: 1.5,
-                          marginTop: 2,
-                        }}
-                      >
-                        Chance
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Weight bar */}
-                  <div
-                    style={{
-                      height: 5,
-                      borderRadius: 3,
-                      background: "rgba(255,255,255,0.06)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${Math.min(100, barProgress * 100)}%`,
-                        height: "100%",
-                        background: p.tint,
-                        borderRadius: 3,
-                        boxShadow: `0 0 8px ${p.tint}`,
-                      }}
-                    />
-                  </div>
-
-                  {/* Meta row */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 20,
-                      fontSize: 13,
-                      color: theme.mutedForeground,
-                      fontFamily: theme.fontMono,
-                    }}
-                  >
-                    <span>{p.mods} mods</span>
-                    <span>{p.boosts} boosts</span>
-                    <span style={{ marginLeft: "auto" }}>w: {p.weight.toFixed(2)}</span>
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {PACKS.map((p, i) => (
+              <PackCard key={p.name} pack={p} delay={22 + i * 9} />
+            ))}
           </div>
 
-          {/* Portal + context */}
+          {/* Portal + countdown */}
           <div
             style={{
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              gap: 24,
-              position: "relative",
+              gap: 20,
             }}
           >
-            {/* Floating mod-asset callouts: real animated portal tile + item */}
-            <div
-              style={{
-                position: "absolute",
-                top: 6,
-                right: 10,
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                opacity: portalIn * 0.9,
-                transform: `translateY(${(1 - portalIn) * -20}px)`,
-              }}
-            >
-              <AssetSwatch
-                label="pw_portal"
-                rotate={6}
-                contents={<PortalTile width={72} />}
-              />
-              <AssetSwatch
-                label="death_recall_token"
-                rotate={-6}
-                contents={
-                  <Img
-                    src={staticFile("assets/parallel-worlds/death_recall_token.png")}
-                    style={{
-                      width: 72,
-                      height: 72,
-                      imageRendering: "pixelated",
-                      objectFit: "contain",
-                    }}
-                  />
-                }
-              />
-            </div>
-
             <Portal progress={portalIn} />
 
-            {/* Countdown */}
             <div
               style={{
                 textAlign: "center",
@@ -557,24 +534,28 @@ export const StructurePacks: React.FC = () => {
             >
               <div
                 style={{
-                  fontSize: 13,
+                  fontSize: 12,
                   color: theme.mutedForeground,
                   textTransform: "uppercase",
                   letterSpacing: 3,
                   marginBottom: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
+                <ClockIcon size={12} />
                 Next rotation in
               </div>
               <div
                 style={{
-                  fontSize: 40,
+                  fontSize: 38,
                   fontFamily: theme.fontMono,
                   fontWeight: 800,
                   color: theme.foreground,
                   letterSpacing: 2,
                   display: "flex",
-                  gap: 16,
+                  gap: 14,
                   justifyContent: "center",
                 }}
               >
@@ -586,13 +567,13 @@ export const StructurePacks: React.FC = () => {
 
             <div
               style={{
-                fontSize: 13,
+                fontSize: 12,
                 color: theme.mutedForeground,
                 fontFamily: theme.fontMono,
                 opacity: portalIn * 0.7,
               }}
             >
-              Powered by Parallel Worlds · NeoForge 1.21.1
+              Powered by Parallel Worlds by Agent772 · NeoForge 1.21.1
             </div>
           </div>
         </div>
@@ -604,7 +585,7 @@ export const StructurePacks: React.FC = () => {
             justifyContent: "center",
             gap: 10,
             flexWrap: "wrap",
-            marginTop: 18,
+            marginTop: 14,
           }}
         >
           {CAPABILITIES.map((c, i) => {

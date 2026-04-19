@@ -32,58 +32,54 @@ export const HeroTagline: React.FC = () => {
         durationInFrames={134}
       />
 
-      {/* Top-left logo badge */}
-      <div
+      {/* Top-left logo — matches homepage `h-24 lg` (96px) 1:1 */}
+      <Img
+        src={staticFile(LOGOS.cogsAndSteam)}
         style={{
           position: "absolute",
           top: 64,
           left: 72,
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
+          height: 96,
+          width: "auto",
+          objectFit: "contain",
+          filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))",
           opacity: badgeIn,
           transform: `translateY(${(1 - badgeIn) * -12}px)`,
         }}
-      >
-        <Img
-          src={staticFile(LOGOS.cogsAndSteam)}
-          style={{ width: 120, height: "auto", filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.5))" }}
-        />
-      </div>
+      />
 
-      {/* Top-right LIVE badge */}
+      {/* Top-right online pill — mirrors the homepage Shadcn outline Badge
+          (bg-zinc-900/70 text-lg px-4 py-2 gap-2, size-4 pulsing dot). */}
       <div
         style={{
           position: "absolute",
           top: 84,
           right: 80,
-          display: "flex",
+          display: "inline-flex",
           alignItems: "center",
-          gap: 10,
-          padding: "10px 20px",
-          borderRadius: 999,
-          background: "rgba(15,14,18,0.7)",
-          backdropFilter: "blur(12px)",
-          border: `1px solid ${theme.success}55`,
-          color: theme.success,
-          fontSize: 16,
-          fontWeight: 600,
-          letterSpacing: 2,
-          textTransform: "uppercase",
+          justifyContent: "center",
+          gap: 8,                                    // gap-2
+          padding: "8px 16px",                       // py-2 px-4
+          borderRadius: 6,                           // rounded-md
+          background: "rgba(24, 24, 27, 0.7)",       // bg-zinc-900/70
+          border: `1px solid ${theme.border}`,       // outline variant → border-input
+          color: "#22c55e",                          // text-green-500
+          fontSize: 18,                              // text-lg
+          fontWeight: 500,                           // badge default
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", // shadow-md
           opacity: badgeIn,
         }}
       >
         <span
           style={{
-            width: 10,
-            height: 10,
+            width: 16,                               // size-4
+            height: 16,
             borderRadius: "50%",
-            background: theme.success,
-            opacity: statusPulse,
-            boxShadow: `0 0 ${4 + statusPulse * 10}px ${theme.success}`,
+            background: "#22c55e",                   // bg-green-500
+            opacity: statusPulse,                    // animate-pulse
           }}
         />
-        Server Online
+        Online
       </div>
 
       {/* Main tagline */}

@@ -7,6 +7,7 @@ import { SCREENSHOTS } from "../components/assets";
 
 // Stacked, parallaxed browser frames — similar to Linear / Vercel marketing
 // pages — each tilted slightly and offset to feel like product stills.
+// Player-facing screenshots only — no admin dashboards here.
 const FRAMES = [
   {
     src: SCREENSHOTS.homepage,
@@ -20,8 +21,8 @@ const FRAMES = [
     z: 1,
   },
   {
-    src: SCREENSHOTS.adminDashboard,
-    url: "createrington.com/admin",
+    src: SCREENSHOTS.cryptoMarket,
+    url: "createrington.com/crypto",
     width: 1000,
     height: 620,
     top: 220,
@@ -31,8 +32,8 @@ const FRAMES = [
     z: 2,
   },
   {
-    src: SCREENSHOTS.cryptoMarket,
-    url: "createrington.com/crypto",
+    src: SCREENSHOTS.webChat,
+    url: "createrington.com/chat",
     width: 900,
     height: 560,
     top: 380,
@@ -42,13 +43,6 @@ const FRAMES = [
     z: 3,
   },
 ] as const;
-
-const HIGHLIGHTS = [
-  "End-to-end type safety (tRPC)",
-  "Real-time WebSocket sync",
-  "Shadcn/ui · Radix · OkLCH",
-  "Discord OAuth + JWT",
-];
 
 export const WebShowcase: React.FC = () => {
   const frame = useCurrentFrame();
@@ -116,44 +110,9 @@ export const WebShowcase: React.FC = () => {
               color: theme.mutedForeground,
             }}
           >
-            Browse servers, manage your portfolio, chat with players, and moderate
-            the community — all from one polished, type-safe interface.
-          </div>
-
-          <div
-            style={{
-              marginTop: 28,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-            }}
-          >
-            {HIGHLIGHTS.map((h, i) => {
-              const t = spring({
-                frame: frame - (24 + i * 6),
-                fps,
-                config: { damping: 20, stiffness: 90 },
-              });
-              return (
-                <div
-                  key={h}
-                  style={{
-                    padding: "10px 16px",
-                    borderRadius: 999,
-                    background: "rgba(30, 28, 35, 0.75)",
-                    border: `1px solid ${theme.border}`,
-                    color: theme.foreground,
-                    fontSize: 15,
-                    fontWeight: 500,
-                    letterSpacing: 0.3,
-                    opacity: t,
-                    transform: `translateY(${(1 - t) * 10}px)`,
-                  }}
-                >
-                  {h}
-                </div>
-              );
-            })}
+            Browse servers, trade on the in-game market, chat with players
+            across Minecraft and Discord, and track your playtime — all from
+            one polished interface.
           </div>
         </div>
 
