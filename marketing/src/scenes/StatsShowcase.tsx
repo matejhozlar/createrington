@@ -26,6 +26,13 @@ const STATS = [
     title: "Curated Mods",
     description: "Hand-picked for balance and performance",
   },
+  {
+    icon: "download",
+    target: 300,
+    suffix: "K+",
+    title: "Mod Downloads",
+    description: "Our team's published mods on Curseforge & Modrinth",
+  },
 ];
 
 const iconBase = {
@@ -53,6 +60,15 @@ const Icon: React.FC<{ kind: string; size: number }> = ({ kind, size }) => {
       <svg viewBox="0 0 24 24" {...common}>
         <circle cx="12" cy="12" r="10" />
         <polyline points="12 6 12 12 16 14" />
+      </svg>
+    );
+  }
+  if (kind === "download") {
+    return (
+      <svg viewBox="0 0 24 24" {...common}>
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
     );
   }
@@ -214,16 +230,16 @@ export const StatsShowcase: React.FC = () => {
 
         <div
           style={{
-            marginTop: 72,
+            marginTop: 64,
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 28,
+            gridTemplateColumns: `repeat(${STATS.length}, 1fr)`,
+            gap: 22,
             width: "100%",
-            maxWidth: 1440,
+            maxWidth: 1680,
           }}
         >
           {STATS.map((s, i) => {
-            const delay = 18 + i * 14;
+            const delay = 18 + i * 10;
             const cardIn = spring({
               frame: frame - delay,
               fps,
