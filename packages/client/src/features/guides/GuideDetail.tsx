@@ -39,7 +39,7 @@ export function GuideDetail() {
         }
 
         requestAnimationFrame(() => setIsTransitioning(false));
-      }, 150);
+      }, 200);
     },
     [currentStep, setCurrentStep],
   );
