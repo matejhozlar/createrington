@@ -68,15 +68,17 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           {url}
         </div>
       </div>
-      {/* Screenshot */}
-      <div style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+      {/* Screenshot — objectFit "contain" so the sidebar isn't cropped;
+          the card's dark background already matches the app palette, so
+          any letterboxing blends in. */}
+      <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: theme.card }}>
         <Img
           src={staticFile(src)}
           style={{
             width: "100%",
             height: "100%",
-            objectFit: "cover",
-            objectPosition: "top",
+            objectFit: "contain",
+            objectPosition: "center",
           }}
         />
       </div>
