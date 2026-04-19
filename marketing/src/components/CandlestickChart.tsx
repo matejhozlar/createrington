@@ -2,9 +2,9 @@ import React from "react";
 import { interpolate, useCurrentFrame } from "remotion";
 import { theme } from "../theme";
 
-type Candle = { o: number; h: number; l: number; c: number };
+export type Candle = { o: number; h: number; l: number; c: number };
 
-const CANDLES: Candle[] = [
+const DEFAULT_CANDLES: Candle[] = [
   { o: 42, c: 45, h: 47, l: 41 },
   { o: 45, c: 44, h: 47, l: 43 },
   { o: 44, c: 48, h: 50, l: 44 },
@@ -32,39 +32,61 @@ type ChartProps = {
   height: number;
   startFrame?: number;
   candleDuration?: number;
+  candles?: Candle[];
+  priceRange?: [number, number];
+  gridPrices?: number[];
+  currency?: string;                                  // prefix for y-axis labels, e.g. "$"
+  formatPrice?: (n: number) => string;                // defaults to 2-decimal
 };
+
+const EMERALD = "#34d399";                            // tailwind emerald-400 (matches app)
 
 export const CandlestickChart: React.FC<ChartProps> = ({
   width,
   height,
   startFrame = 0,
   candleDuration = 5,
+  candles = DEFAULT_CANDLES,
+  priceRange,
+  gridPrices: gridPricesProp,
+  currency = "$",
+  formatPrice,
 }) => {
   const frame = useCurrentFrame();
-  const padding = { top: 20, right: 40, bottom: 20, left: 40 };
+  const padding = { top: 20, right: 44, bottom: 20, left: 40 };
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
 
-  const minPrice = 38;
-  const maxPrice = 95;
+  // Auto-range from the provided candles if caller didn't override.
+  const derived = React.useMemo(() => {
+    const hi = Math.max(...candles.map((c) => c.h));
+    const lo = Math.min(...candles.map((c) => c.l));
+    const pad = (hi - lo) * 0.08;
+    return [lo - pad, hi + pad] as [number, number];
+  }, [candles]);
+  const [minPrice, maxPrice] = priceRange ?? derived;
   const priceToY = (p: number) =>
     padding.top + innerH - ((p - minPrice) / (maxPrice - minPrice)) * innerH;
 
-  const candleW = innerW / CANDLES.length;
+  const candleW = innerW / candles.length;
   const bodyW = candleW * 0.6;
 
   const visibleCount = Math.min(
-    CANDLES.length,
+    candles.length,
     Math.max(0, Math.floor((frame - startFrame) / candleDuration)),
   );
 
-  // Gridlines
-  const gridPrices = [40, 50, 60, 70, 80, 90];
+  // Gridlines: 5 evenly spaced across the range by default.
+  const gridPrices =
+    gridPricesProp ??
+    Array.from({ length: 5 }, (_, i) => minPrice + ((maxPrice - minPrice) * (i + 0.5)) / 5);
+
+  const fmt = formatPrice ?? ((n: number) => n.toFixed(2));
 
   // Animated price cursor on the latest visible candle
   const cursorCandleIdx = Math.max(0, visibleCount - 1);
-  const cursorCandle = CANDLES[cursorCandleIdx];
-  const cursorPrice = cursorCandle?.c ?? CANDLES[0]!.c;
+  const cursorCandle = candles[cursorCandleIdx];
+  const cursorPrice = cursorCandle?.c ?? candles[0]!.c;
   const cursorY = priceToY(cursorPrice);
 
   return (
@@ -99,15 +121,16 @@ export const CandlestickChart: React.FC<ChartProps> = ({
             fill={theme.mutedForeground}
             fontFamily={theme.fontMono}
           >
-            ${p.toFixed(2)}
+            {currency}
+            {fmt(p)}
           </text>
         </g>
       ))}
 
       {/* Candles */}
-      {CANDLES.slice(0, visibleCount).map((c, i) => {
+      {candles.slice(0, visibleCount).map((c, i) => {
         const up = c.c >= c.o;
-        const color = up ? theme.success : theme.destructive;
+        const color = up ? EMERALD : theme.destructive;
         const x = padding.left + i * candleW + candleW / 2;
         const appearFrame = startFrame + i * candleDuration;
         const t = interpolate(frame, [appearFrame, appearFrame + candleDuration], [0, 1], {
@@ -169,7 +192,8 @@ export const CandlestickChart: React.FC<ChartProps> = ({
             fill={theme.backgroundDeep}
             textAnchor="middle"
           >
-            ${cursorPrice.toFixed(2)}
+            {currency}
+            {fmt(cursorPrice)}
           </text>
         </g>
       )}

@@ -2,16 +2,81 @@ import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { theme } from "../theme";
 import { Background } from "../components/Background";
-import { BrowserFrame } from "../components/BrowserFrame";
-import { CandlestickChart } from "../components/CandlestickChart";
-import { SCREENSHOTS } from "../components/assets";
+import { CandlestickChart, type Candle } from "../components/CandlestickChart";
 
+// Palette pulled from packages/client/src/features/crypto/market/components/TokenList.tsx:
+//   stable    → emerald-400 (bg-emerald-400)
+//   memecoin  → orange-400  (bg-orange-400)
+//   positive 24h change → emerald-400 / text-emerald-400
+//   negative 24h change → destructive
+const COLORS = {
+  emerald: "#34d399",   // tailwind emerald-400
+  orange: "#fb923c",    // tailwind orange-400
+  blue: "#60a5fa",      // tailwind blue-400 (for blue_chip if we add one later)
+  purple: "#c084fc",    // tailwind purple-400 (seasonal)
+} as const;
+
+// Real seed data from db/data/test-data.sql — Ringcoin (RGC) is the
+// stable backbone, followed by the five initial memecoins.
 const TICKERS = [
-  { sym: "DGOLD", name: "Digital Gold", price: 128.42, change: 4.2, tier: "blue-chip", tint: theme.chart.amber },
-  { sym: "CRTN", name: "Createrington", price: 88.17, change: 12.6, tier: "blue-chip", tint: theme.chart.blue },
-  { sym: "MEMEX", name: "Memecoin-X", price: 2.04, change: -18.3, tier: "meme", tint: theme.chart.red },
-  { sym: "PEG", name: "Stable Peg", price: 1.0, change: 0.0, tier: "stable", tint: theme.chart.green },
+  { sym: "RGC", name: "Ringcoin",      price: 1.00,  change: 2.1,   category: "stable"   as const, tag: "pegged"  as const },
+  { sym: "DDG", name: "DiamondDoge",   price: 15.00, change: 22.1,  category: "memecoin" as const, tag: "rocket"  as const },
+  { sym: "CRP", name: "CreeperCash",   price: 2.50,  change: -15.4, category: "memecoin" as const, tag: "normal"  as const },
+  { sym: "RSR", name: "RedstoneRuble", price: 5.00,  change: 4.7,   category: "memecoin" as const, tag: "normal"  as const },
+  { sym: "FLF", name: "FluffCoin",     price: 0.50,  change: 8.2,   category: "memecoin" as const, tag: "normal"  as const },
+  { sym: "END", name: "EnderToken",    price: 0.01,  change: -32.8, category: "memecoin" as const, tag: "crash"   as const },
 ];
+
+// RGC candles — 20 bars telling a gradual-appreciation story, fitting
+// "Pegged to server activity" (more activity over time → the peg target
+// drifts up). Starts ~$0.62, ends ~$1.08, final 24h change ~+12%.
+const RGC_CANDLES: Candle[] = [
+  { o: 0.62, c: 0.65, h: 0.67, l: 0.60 },
+  { o: 0.65, c: 0.64, h: 0.68, l: 0.62 },
+  { o: 0.64, c: 0.68, h: 0.70, l: 0.63 },
+  { o: 0.68, c: 0.72, h: 0.73, l: 0.67 },
+  { o: 0.72, c: 0.71, h: 0.74, l: 0.70 },
+  { o: 0.71, c: 0.69, h: 0.72, l: 0.67 },
+  { o: 0.69, c: 0.73, h: 0.75, l: 0.68 },
+  { o: 0.73, c: 0.78, h: 0.80, l: 0.72 },
+  { o: 0.78, c: 0.77, h: 0.81, l: 0.75 },
+  { o: 0.77, c: 0.82, h: 0.83, l: 0.76 },
+  { o: 0.82, c: 0.86, h: 0.88, l: 0.81 },
+  { o: 0.86, c: 0.84, h: 0.87, l: 0.82 },
+  { o: 0.84, c: 0.89, h: 0.91, l: 0.83 },
+  { o: 0.89, c: 0.93, h: 0.95, l: 0.88 },
+  { o: 0.93, c: 0.91, h: 0.95, l: 0.90 },
+  { o: 0.91, c: 0.96, h: 0.98, l: 0.90 },
+  { o: 0.96, c: 1.00, h: 1.02, l: 0.95 },
+  { o: 1.00, c: 0.98, h: 1.03, l: 0.96 },
+  { o: 0.98, c: 1.04, h: 1.06, l: 0.97 },
+  { o: 1.04, c: 1.08, h: 1.10, l: 1.03 },
+];
+
+// ——— Icons (lucide paths inlined) ———
+const svgBase = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+
+const RocketIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...svgBase}>
+    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </svg>
+);
+const SkullIcon: React.FC<{ size: number }> = ({ size }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...svgBase}>
+    <path d="M12 2a9 9 0 0 0-9 9v4l2 3v3h4v-2h6v2h4v-3l2-3v-4a9 9 0 0 0-9-9z" />
+    <circle cx="9" cy="12" r="1.5" fill="currentColor" />
+    <circle cx="15" cy="12" r="1.5" fill="currentColor" />
+    <path d="M10 16h4" />
+  </svg>
+);
+
+// ——— Scene ———
+
+const categoryColor = (c: string) =>
+  c === "stable" ? COLORS.emerald : c === "blue_chip" ? COLORS.blue : c === "seasonal" ? COLORS.purple : COLORS.orange;
 
 export const CryptoMarket: React.FC = () => {
   const frame = useCurrentFrame();
@@ -25,7 +90,6 @@ export const CryptoMarket: React.FC = () => {
 
   const headerIn = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
   const chartIn = spring({ frame: frame - 18, fps, config: { damping: 20, stiffness: 90 } });
-  const screenshotIn = spring({ frame: frame - 60, fps, config: { damping: 20, stiffness: 80 } });
   const tickPulse = (Math.sin(frame / 6) + 1) / 2;
 
   return (
@@ -86,8 +150,9 @@ export const CryptoMarket: React.FC = () => {
                 maxWidth: 900,
               }}
             >
-              Memecoins, stablecoins, blue-chips. Limit orders, stop-loss, IPOs,
-              and AI-generated news — streamed in real time.
+              Ringcoin anchors the economy. Memecoins swing on community hype.
+              Limit orders, stop-loss, IPOs, and AI-generated news — streamed
+              in real time.
             </div>
           </div>
 
@@ -98,9 +163,9 @@ export const CryptoMarket: React.FC = () => {
               gap: 10,
               padding: "10px 18px",
               borderRadius: 999,
-              background: `${theme.success}1a`,
-              border: `1px solid ${theme.success}55`,
-              color: theme.success,
+              background: `${COLORS.emerald}1a`,
+              border: `1px solid ${COLORS.emerald}55`,
+              color: COLORS.emerald,
               fontSize: 16,
               fontFamily: theme.fontMono,
               opacity: headerIn,
@@ -111,20 +176,20 @@ export const CryptoMarket: React.FC = () => {
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: theme.success,
+                background: COLORS.emerald,
                 opacity: 0.4 + tickPulse * 0.6,
-                boxShadow: `0 0 ${4 + tickPulse * 12}px ${theme.success}`,
+                boxShadow: `0 0 ${4 + tickPulse * 12}px ${COLORS.emerald}`,
               }}
             />
             LIVE · TICKING
           </div>
         </div>
 
-        {/* Main display: custom chart panel + ticker column */}
+        {/* Chart + ticker list */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "1.6fr 1fr",
+            gridTemplateColumns: "1.55fr 1fr",
             gap: 24,
             alignItems: "stretch",
             opacity: chartIn,
@@ -133,7 +198,7 @@ export const CryptoMarket: React.FC = () => {
             minHeight: 0,
           }}
         >
-          {/* Chart + screenshot pip */}
+          {/* Chart panel — RGC / $ */}
           <div
             style={{
               background: theme.card,
@@ -154,22 +219,22 @@ export const CryptoMarket: React.FC = () => {
                   width: 44,
                   height: 44,
                   borderRadius: 12,
-                  background: theme.primarySoft,
-                  border: `1px solid ${theme.primary}55`,
+                  background: `${COLORS.emerald}1a`,
+                  border: `1px solid ${COLORS.emerald}55`,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: theme.primary,
+                  color: COLORS.emerald,
                   fontWeight: 800,
                   fontSize: 16,
                   fontFamily: theme.fontMono,
                 }}
               >
-                CRT
+                RGC
               </div>
               <div>
                 <div style={{ fontSize: 22, fontWeight: 700, color: theme.foreground }}>
-                  Createrington · CRTN / €
+                  Ringcoin · RGC / $
                 </div>
                 <div
                   style={{
@@ -178,7 +243,7 @@ export const CryptoMarket: React.FC = () => {
                     fontFamily: theme.fontMono,
                   }}
                 >
-                  1m · OHLCV · order book matched
+                  Stablecoin · pegged to server activity
                 </div>
               </div>
               <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -190,10 +255,10 @@ export const CryptoMarket: React.FC = () => {
                     fontFamily: theme.fontMono,
                   }}
                 >
-                  €88.17
+                  $1.08
                 </div>
-                <div style={{ fontSize: 14, color: theme.success, fontFamily: theme.fontMono }}>
-                  +12.60% · 24h
+                <div style={{ fontSize: 14, color: COLORS.emerald, fontFamily: theme.fontMono }}>
+                  +11.34% · 24h
                 </div>
               </div>
             </div>
@@ -203,118 +268,146 @@ export const CryptoMarket: React.FC = () => {
                 height={460}
                 startFrame={20}
                 candleDuration={7}
+                candles={RGC_CANDLES}
+                currency="$"
+                formatPrice={(n) => n.toFixed(2)}
               />
             </div>
           </div>
 
-          {/* Right column: tickers (top) + real screenshot of portfolio (bottom) */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {TICKERS.map((t, i) => {
-                const delay = 28 + i * 10;
-                const tickerIn = spring({
-                  frame: frame - delay,
-                  fps,
-                  config: { damping: 18, stiffness: 110 },
-                });
-                const positive = t.change > 0;
-                const flash = (Math.sin((frame - i * 4) / 8) + 1) / 2;
-                return (
+          {/* Ticker column — all 6 seed tokens */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+            {TICKERS.map((t, i) => {
+              const delay = 28 + i * 9;
+              const tickerIn = spring({
+                frame: frame - delay,
+                fps,
+                config: { damping: 18, stiffness: 110 },
+              });
+              const positive = t.change > 0;
+              const flash = (Math.sin((frame - i * 4) / 8) + 1) / 2;
+              const dotColor = categoryColor(t.category);
+              const changeColor =
+                t.change === 0 ? theme.mutedForeground : positive ? COLORS.emerald : theme.destructive;
+              const stable = t.category === "stable";
+
+              // Adaptive precision — matches packages/client/.../format.ts
+              const priceStr =
+                t.price < 0.01
+                  ? t.price.toFixed(6)
+                  : t.price < 1
+                    ? t.price.toFixed(4)
+                    : t.price.toFixed(2);
+
+              return (
+                <div
+                  key={t.sym}
+                  style={{
+                    background: stable ? `${COLORS.emerald}0d` : theme.card,
+                    border: `1px solid ${stable ? `${COLORS.emerald}44` : theme.border}`,
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    opacity: tickerIn,
+                    transform: `translateX(${(1 - tickerIn) * 40}px)`,
+                    boxShadow: stable ? `0 0 24px ${COLORS.emerald}22` : undefined,
+                  }}
+                >
+                  {/* Category dot + trend icon */}
                   <div
-                    key={t.sym}
                     style={{
-                      background: theme.card,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: 14,
-                      padding: "14px 18px",
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: `${dotColor}1a`,
+                      border: `1px solid ${dotColor}55`,
                       display: "flex",
                       alignItems: "center",
-                      gap: 14,
-                      opacity: tickerIn,
-                      transform: `translateX(${(1 - tickerIn) * 40}px)`,
+                      justifyContent: "center",
+                      color: dotColor,
+                      fontFamily: theme.fontMono,
+                      fontWeight: 700,
+                      fontSize: 12,
+                      position: "relative",
                     }}
                   >
+                    {t.sym}
+                  </div>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 10,
-                        background: `${t.tint}1a`,
-                        border: `1px solid ${t.tint}55`,
+                        fontSize: 15,
+                        color: theme.foreground,
+                        fontWeight: 600,
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: "center",
-                        color: t.tint,
-                        fontFamily: theme.fontMono,
-                        fontWeight: 700,
-                        fontSize: 13,
+                        gap: 6,
                       }}
                     >
-                      {t.sym.slice(0, 3)}
+                      {t.name}
+                      {t.tag === "rocket" && (
+                        <span style={{ color: theme.primary, opacity: 0.7 + flash * 0.3 }}>
+                          <RocketIcon size={13} />
+                        </span>
+                      )}
+                      {t.tag === "crash" && (
+                        <span style={{ color: `${theme.destructive}cc` }}>
+                          <SkullIcon size={13} />
+                        </span>
+                      )}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 17, color: theme.foreground, fontWeight: 600 }}>
-                        {t.sym}
-                      </div>
-                      <div
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: theme.mutedForeground,
+                        textTransform: "capitalize",
+                        fontFamily: theme.fontMono,
+                        marginTop: 1,
+                      }}
+                    >
+                      <span
                         style={{
-                          fontSize: 12,
-                          color: theme.mutedForeground,
-                          textTransform: "capitalize",
+                          display: "inline-block",
+                          width: 6,
+                          height: 6,
+                          borderRadius: "50%",
+                          background: dotColor,
+                          marginRight: 6,
+                          verticalAlign: "middle",
                         }}
-                      >
-                        {t.tier}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div
-                        style={{
-                          fontSize: 17,
-                          fontFamily: theme.fontMono,
-                          color: theme.foreground,
-                          fontWeight: 600,
-                        }}
-                      >
-                        €{t.price.toFixed(2)}
-                      </div>
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontFamily: theme.fontMono,
-                          color:
-                            t.change === 0
-                              ? theme.mutedForeground
-                              : positive
-                              ? theme.success
-                              : theme.destructive,
-                          opacity: 0.7 + flash * 0.3,
-                        }}
-                      >
-                        {positive ? "▲" : t.change === 0 ? "·" : "▼"}{" "}
-                        {Math.abs(t.change).toFixed(1)}%
-                      </div>
+                      />
+                      {t.category}
                     </div>
                   </div>
-                );
-              })}
-            </div>
 
-            {/* Real screenshot pip — shows that this is a real running app */}
-            <div
-              style={{
-                flex: 1,
-                minHeight: 0,
-                opacity: screenshotIn,
-                transform: `translateY(${(1 - screenshotIn) * 24}px) perspective(1400px) rotateY(-4deg)`,
-                transformOrigin: "right center",
-              }}
-            >
-              <BrowserFrame
-                src={SCREENSHOTS.cryptoPortfolio}
-                url="createrington.com/crypto/portfolio"
-                style={{ width: "100%", height: "100%" }}
-              />
-            </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div
+                      style={{
+                        fontSize: 16,
+                        fontFamily: theme.fontMono,
+                        color: theme.foreground,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ${priceStr}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontFamily: theme.fontMono,
+                        color: changeColor,
+                        opacity: 0.7 + flash * 0.3,
+                      }}
+                    >
+                      {positive ? "▲" : t.change === 0 ? "·" : "▼"} {Math.abs(t.change).toFixed(1)}%
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </AbsoluteFill>
