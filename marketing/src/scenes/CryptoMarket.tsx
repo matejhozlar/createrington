@@ -2,7 +2,15 @@ import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { theme } from "../theme";
 import { Background } from "../components/Background";
+import { BrowserFrame } from "../components/BrowserFrame";
 import { CandlestickChart, type Candle } from "../components/CandlestickChart";
+import { SCREENSHOTS } from "../components/assets";
+
+// Warmer, more neutral card surface for this scene — the global theme.card
+// skews blue-purple (OkLCH hue 285°) which reads cold against the emerald
+// tickers and amber accents here.
+const CARD = "#1e1c22";
+const CARD_BORDER = "rgba(255, 255, 255, 0.08)";
 
 // Palette pulled from packages/client/src/features/crypto/market/components/TokenList.tsx:
 //   stable    → emerald-400 (bg-emerald-400)
@@ -201,9 +209,9 @@ export const CryptoMarket: React.FC = () => {
           {/* Chart panel — RGC / $ */}
           <div
             style={{
-              background: theme.card,
+              background: CARD,
               borderRadius: 20,
-              border: `1px solid ${theme.border}`,
+              border: `1px solid ${CARD_BORDER}`,
               padding: 22,
               display: "flex",
               flexDirection: "column",
@@ -275,8 +283,9 @@ export const CryptoMarket: React.FC = () => {
             </div>
           </div>
 
-          {/* Ticker column — all 6 seed tokens */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 0 }}>
+          {/* Right column: compact ticker list + portfolio screenshot pip */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {TICKERS.map((t, i) => {
               const delay = 28 + i * 9;
               const tickerIn = spring({
@@ -303,10 +312,10 @@ export const CryptoMarket: React.FC = () => {
                 <div
                   key={t.sym}
                   style={{
-                    background: stable ? `${COLORS.emerald}0d` : theme.card,
-                    border: `1px solid ${stable ? `${COLORS.emerald}44` : theme.border}`,
+                    background: stable ? `${COLORS.emerald}0d` : CARD,
+                    border: `1px solid ${stable ? `${COLORS.emerald}44` : CARD_BORDER}`,
                     borderRadius: 12,
-                    padding: "12px 16px",
+                    padding: "10px 14px",
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
@@ -408,6 +417,27 @@ export const CryptoMarket: React.FC = () => {
                 </div>
               );
             })}
+            </div>
+
+            {/* Portfolio screenshot — anchors the scene in the real app UI */}
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                opacity: interpolate(frame, [60, 84], [0, 1], {
+                  extrapolateLeft: "clamp",
+                  extrapolateRight: "clamp",
+                }),
+                transform: `perspective(1400px) rotateY(-4deg)`,
+                transformOrigin: "right center",
+              }}
+            >
+              <BrowserFrame
+                src={SCREENSHOTS.cryptoPortfolio}
+                url="createrington.com/crypto/portfolio"
+                style={{ width: "100%", height: "100%" }}
+              />
+            </div>
           </div>
         </div>
       </AbsoluteFill>
