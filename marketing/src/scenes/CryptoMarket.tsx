@@ -4,6 +4,8 @@ import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { BrowserFrame } from "../components/BrowserFrame";
 import { CandlestickChart, type Candle } from "../components/CandlestickChart";
+import { Sparkline } from "../components/Sparkline";
+import { TradeStream } from "../components/TradeStream";
 import { SCREENSHOTS } from "../components/assets";
 
 // Warmer, more neutral card surface for this scene — the global theme.card
@@ -59,6 +61,22 @@ const RGC_CANDLES: Candle[] = [
   { o: 1.00, c: 0.98, h: 1.03, l: 0.96 },
   { o: 0.98, c: 1.04, h: 1.06, l: 0.97 },
   { o: 1.04, c: 1.08, h: 1.10, l: 1.03 },
+];
+
+// Simulated fills for the bottom trade-stream marquee. Names drawn from
+// the test-data.sql seed ("saunhardy" etc), tokens from the real seed
+// list above. They just need to feel plausible — the video never claims
+// these are live.
+const TRADES = [
+  { player: "saunhardy",  side: "buy"  as const, amount: 500,  sym: "RGC", symColor: COLORS.emerald, price: 1.08 },
+  { player: "matejhoz",   side: "sell" as const, amount: 12,   sym: "CRP", symColor: COLORS.orange,  price: 2.50 },
+  { player: "pixelkind",  side: "buy"  as const, amount: 50,   sym: "DDG", symColor: COLORS.orange,  price: 14.95 },
+  { player: "ironrails",  side: "sell" as const, amount: 2500, sym: "END", symColor: COLORS.orange,  price: 0.0105 },
+  { player: "steamfox",   side: "buy"  as const, amount: 120,  sym: "RSR", symColor: COLORS.orange,  price: 5.02 },
+  { player: "cogwarden",  side: "buy"  as const, amount: 800,  sym: "FLF", symColor: COLORS.orange,  price: 0.5048 },
+  { player: "saunhardy",  side: "sell" as const, amount: 40,   sym: "DDG", symColor: COLORS.orange,  price: 15.10 },
+  { player: "aetherdust", side: "buy"  as const, amount: 1200, sym: "RGC", symColor: COLORS.emerald, price: 1.08 },
+  { player: "flintspark", side: "buy"  as const, amount: 75,   sym: "CRP", symColor: COLORS.orange,  price: 2.48 },
 ];
 
 // ——— Icons (lucide paths inlined) ———
@@ -308,6 +326,12 @@ export const CryptoMarket: React.FC = () => {
                     ? t.price.toFixed(4)
                     : t.price.toFixed(2);
 
+              // Staggered "price tick" flash — each ticker's price number
+              // briefly glows its change color on its own phase, like a
+              // real market feed.
+              const pulsePhase = (frame + i * 23) % 48;
+              const priceFlash = pulsePhase < 10 ? (10 - pulsePhase) / 10 : 0;
+
               return (
                 <div
                   key={t.sym}
@@ -392,13 +416,30 @@ export const CryptoMarket: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ textAlign: "right" }}>
+                  {/* Sparkline — mini trend line, direction matches 24h change */}
+                  <div style={{ width: 70, height: 32, flexShrink: 0 }}>
+                    <Sparkline
+                      width={70}
+                      height={32}
+                      change={t.change}
+                      seed={i}
+                      color={changeColor}
+                      delay={delay + 6}
+                    />
+                  </div>
+
+                  <div style={{ textAlign: "right", minWidth: 82 }}>
                     <div
                       style={{
                         fontSize: 16,
                         fontFamily: theme.fontMono,
                         color: theme.foreground,
                         fontWeight: 600,
+                        textShadow:
+                          priceFlash > 0
+                            ? `0 0 ${8 * priceFlash}px ${changeColor}`
+                            : "none",
+                        transition: "text-shadow 60ms linear",
                       }}
                     >
                       ${priceStr}
@@ -438,6 +479,57 @@ export const CryptoMarket: React.FC = () => {
                 style={{ width: "100%", height: "100%" }}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Bottom trade stream — scrolling marquee of simulated fills */}
+        <div
+          style={{
+            marginTop: 16,
+            padding: "10px 18px",
+            background: CARD,
+            border: `1px solid ${CARD_BORDER}`,
+            borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            opacity: interpolate(frame, [40, 64], [0, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            }),
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "4px 10px",
+              borderRadius: 6,
+              background: `${theme.primary}1a`,
+              border: `1px solid ${theme.primary}55`,
+              color: theme.primary,
+              fontSize: 11,
+              fontFamily: theme.fontMono,
+              fontWeight: 700,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              flexShrink: 0,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: theme.primary,
+                opacity: 0.4 + tickPulse * 0.6,
+              }}
+            />
+            Trades
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TradeStream trades={TRADES} width={1600} speedPxPerSec={90} />
           </div>
         </div>
       </AbsoluteFill>
