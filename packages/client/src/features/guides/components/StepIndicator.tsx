@@ -1,36 +1,29 @@
-import { cn } from "@/lib/utils";
-
 type StepIndicatorProps = {
   steps: { title: string }[];
   currentStep: number;
-  onStepClick: (index: number) => void;
 };
 
-export function StepIndicator({
-  steps,
-  currentStep,
-  onStepClick,
-}: StepIndicatorProps) {
-  return (
-    <div className="flex md:hidden items-center justify-center gap-2 py-2">
-      {steps.map((step, index) => {
-        const isCompleted = index < currentStep;
-        const isCurrent = index === currentStep;
+export function StepIndicator({ steps, currentStep }: StepIndicatorProps) {
+  const total = steps.length;
+  const progress = total > 1 ? (currentStep / (total - 1)) * 100 : 100;
+  const currentTitle = steps[currentStep]?.title;
 
-        return (
-          <button
-            key={step.title}
-            onClick={() => onStepClick(index)}
-            className={cn(
-              "size-2.5 rounded-full transition-colors",
-              isCurrent && "bg-primary scale-125",
-              isCompleted && "bg-primary/50",
-              !isCurrent && !isCompleted && "bg-muted-foreground/30",
-            )}
-            aria-label={`Step ${index + 1}: ${step.title}`}
-          />
-        );
-      })}
+  return (
+    <div className="md:hidden pb-4">
+      <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+        <span>
+          Step {currentStep + 1} of {total}
+        </span>
+        <span className="truncate max-w-[60%] text-right text-foreground/80 font-medium">
+          {currentTitle}
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-muted-foreground/15 overflow-hidden">
+        <div
+          className="h-full bg-primary transition-[width] duration-500 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
     </div>
   );
 }
