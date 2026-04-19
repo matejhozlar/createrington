@@ -39,6 +39,7 @@ export const DURATIONS = {
   cryptoMarket: 210,
   ecosystem: 180,
   callToAction: 120,
+  credits: 180,
 } as const;
 
 export const TOTAL_DURATION = Object.values(DURATIONS).reduce((a, b) => a + b, 0);

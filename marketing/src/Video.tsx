@@ -12,6 +12,7 @@ import { WebShowcase } from "./scenes/WebShowcase";
 import { CryptoMarket } from "./scenes/CryptoMarket";
 import { Ecosystem } from "./scenes/Ecosystem";
 import { CallToAction } from "./scenes/CallToAction";
+import { Credits } from "./scenes/Credits";
 
 export type VideoProps = {
   audio: boolean;
@@ -31,6 +32,7 @@ export const Video: React.FC<VideoProps> = ({ audio }) => {
     crypto: (cursor += DURATIONS.webShowcase),
     ecosystem: (cursor += DURATIONS.cryptoMarket),
     cta: (cursor += DURATIONS.ecosystem),
+    credits: (cursor += DURATIONS.callToAction),
   };
 
   const OVERLAP = 14;
@@ -79,8 +81,12 @@ export const Video: React.FC<VideoProps> = ({ audio }) => {
         <Ecosystem />
       </Sequence>
 
-      <Sequence from={starts.cta} durationInFrames={DURATIONS.callToAction}>
+      <Sequence from={starts.cta} durationInFrames={DURATIONS.callToAction + OVERLAP}>
         <CallToAction />
+      </Sequence>
+
+      <Sequence from={starts.credits} durationInFrames={DURATIONS.credits}>
+        <Credits />
       </Sequence>
     </AbsoluteFill>
   );
