@@ -29,11 +29,11 @@ const BUILDS = [
     panY: -8,
   },
   {
-    image: "assets/hero/mountains-train-station.webp",
-    title: "Alpine Junction",
-    meta: "Mountain terminal · 3-line",
-    panX: 18,
-    panY: -6,
+    image: "assets/hero/royal-albert-hall.webp",
+    title: "Royal Albert Hall",
+    meta: "Concert hall · community gathering",
+    panX: 14,
+    panY: -4,
   },
 ];
 
@@ -260,7 +260,8 @@ export const FeaturedBuilds: React.FC = () => {
             </div>
           </div>
 
-          {/* Decorative spec pill, right aligned */}
+          {/* Decorative pill — context that fits the "look what they built"
+              story: everything in the mosaic was built by hand, in survival. */}
           <div
             style={{
               display: "inline-flex",
@@ -286,7 +287,7 @@ export const FeaturedBuilds: React.FC = () => {
                 boxShadow: `0 0 8px ${theme.primary}`,
               }}
             />
-            Survival · 1.21.1
+            Built in survival · block by block
           </div>
         </div>
 
