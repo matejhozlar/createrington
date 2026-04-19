@@ -212,10 +212,17 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
           width: interiorW,
           height: interiorH,
           overflow: "hidden",
-          boxShadow: `inset 0 0 60px rgba(85, 168, 247, ${0.55 * breath}), inset 0 0 0 1px rgba(180, 200, 255, 0.25)`,
         }}
       >
         <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            boxShadow: `inset 0 0 60px rgba(85, 168, 247, ${0.55 * breath}), inset 0 0 0 1px rgba(180, 200, 255, 0.25)`,
+            pointerEvents: "none",
+          }}
+        />
       </div>
 
       <div
