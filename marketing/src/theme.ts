@@ -37,6 +37,7 @@ export const DURATIONS = {
   featuresGrid: 180,     // 6.0s
   featuredBuilds: 180,   // 6.0s — community builds mosaic
   structurePacks: 180,   // 6.0s — NEW: parallel-worlds voting
+  playerRenders: 180,    // 6.0s — Puppeteer-rendered Discord cards
   webShowcase: 150,      // 5.0s — real screenshots showcase
   cryptoMarket: 210,     // 7.0s
   ecosystem: 180,        // 6.0s

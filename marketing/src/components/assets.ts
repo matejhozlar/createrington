@@ -59,4 +59,8 @@ export const SCREENSHOTS = {
   adminPlayers: "screenshots/admin-players.webp",
   onlinePlayers: "screenshots/online-players.webp",
   webChat: "screenshots/web-chat.webp",
+  renderProfile: "screenshots/render-profile.webp",
+  renderTop: "screenshots/render-top.webp",
+  renderActivity: "screenshots/render-activty.webp",
+  renderCompare: "screenshots/render-compare.webp",
 } as const;

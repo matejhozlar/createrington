@@ -7,6 +7,7 @@ import { StatsShowcase } from "./scenes/StatsShowcase";
 import { FeaturesGrid } from "./scenes/FeaturesGrid";
 import { FeaturedBuilds } from "./scenes/FeaturedBuilds";
 import { StructurePacks } from "./scenes/StructurePacks";
+import { PlayerRenders } from "./scenes/PlayerRenders";
 import { WebShowcase } from "./scenes/WebShowcase";
 import { CryptoMarket } from "./scenes/CryptoMarket";
 import { Ecosystem } from "./scenes/Ecosystem";
@@ -21,7 +22,8 @@ export const Video: React.FC = () => {
     features: (cursor += DURATIONS.statsShowcase),
     builds: (cursor += DURATIONS.featuresGrid),
     packs: (cursor += DURATIONS.featuredBuilds),
-    web: (cursor += DURATIONS.structurePacks),
+    renders: (cursor += DURATIONS.structurePacks),
+    web: (cursor += DURATIONS.playerRenders),
     crypto: (cursor += DURATIONS.webShowcase),
     ecosystem: (cursor += DURATIONS.cryptoMarket),
     cta: (cursor += DURATIONS.ecosystem),
@@ -54,6 +56,10 @@ export const Video: React.FC = () => {
 
       <Sequence from={starts.packs} durationInFrames={DURATIONS.structurePacks + OVERLAP}>
         <StructurePacks />
+      </Sequence>
+
+      <Sequence from={starts.renders} durationInFrames={DURATIONS.playerRenders + OVERLAP}>
+        <PlayerRenders />
       </Sequence>
 
       <Sequence from={starts.web} durationInFrames={DURATIONS.webShowcase + OVERLAP}>
