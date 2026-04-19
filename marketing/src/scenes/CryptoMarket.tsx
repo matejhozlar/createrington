@@ -19,7 +19,7 @@ const COLORS = {
 } as const;
 
 const TICKERS = [
-  { sym: "RGC", name: "Ringcoin",      price: 1.00,  change: 2.1,   category: "stable"   as const, tag: "pegged"  as const },
+  { sym: "RGC", name: "Ringcoin",      price: 1.08,  change: 11.34, category: "stable"   as const, tag: "pegged"  as const },
   { sym: "DDG", name: "DiamondDoge",   price: 15.00, change: 22.1,  category: "memecoin" as const, tag: "rocket"  as const },
   { sym: "CRP", name: "CreeperCash",   price: 2.50,  change: -15.4, category: "memecoin" as const, tag: "normal"  as const },
   { sym: "RSR", name: "RedstoneRuble", price: 5.00,  change: 4.7,   category: "memecoin" as const, tag: "normal"  as const },

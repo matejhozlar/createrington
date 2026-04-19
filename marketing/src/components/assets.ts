@@ -39,7 +39,7 @@ export const FEATURE_CARDS = [
   {
     title: "Curated, Not Bloated",
     description:
-      "100+ mods chosen for balance and performance. No kitchen-sink chaos — every mod earns its place.",
+      "200+ mods chosen for balance and performance. No kitchen-sink chaos — every mod earns its place.",
     background: "assets/features/modpack.webp",
     icon: "assets/features/chipped-workbench.webp",
   },
