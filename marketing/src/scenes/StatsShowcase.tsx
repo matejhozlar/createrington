@@ -2,28 +2,31 @@ import React from "react";
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { theme } from "../theme";
 import { Background } from "../components/Background";
+import { NumberCountUp } from "../components/NumberCountUp";
 
-// Numbers are deliberately approximated ("100+", "10k+") so the video
-// doesn't drift when the real numbers move. If we ever re-render on a
-// schedule, swap to a pre-render fetch via delayRender()/continueRender().
-// See packages/client/src/pages/Home/Home.tsx "Join a Thriving Community"
-// — same icon set, same layout conventions.
+// Numbers are deliberately approximated so the video doesn't drift when
+// the real numbers move. If we ever re-render on a schedule, swap to a
+// pre-render fetch via delayRender()/continueRender(). Layout mirrors the
+// homepage's "Join a Thriving Community" section (3 centered cards).
 const STATS = [
   {
     icon: "users",
-    value: "100+",
+    target: 100,
+    suffix: "+",
     title: "Registered Members",
     description: "Verified community members",
   },
   {
     icon: "clock",
-    value: "10k+",
+    target: 10000,
+    suffix: "+",
     title: "Hours Played",
     description: "Total playtime across all players",
   },
   {
     icon: "package",
-    value: "200+",
+    target: 200,
+    suffix: "+",
     title: "Curated Mods",
     description: "Hand-picked for balance and performance",
   },
@@ -64,6 +67,100 @@ const Icon: React.FC<{ kind: string; size: number }> = ({ kind, size }) => {
       <polyline points="3.29 7 12 12 20.71 7" />
       <line x1="12" y1="22" x2="12" y2="12" />
     </svg>
+  );
+};
+
+// Animated ring that draws around the icon badge — circumference dash-offset
+// interpolates from "full hidden" to "full drawn" over the entrance.
+const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+
+  const badgeIn = spring({
+    frame: frame - delay,
+    fps,
+    config: { damping: 16, stiffness: 140 },
+  });
+  const ringProgress = interpolate(frame, [delay + 6, delay + 52], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const breath = 0.65 + ((Math.sin(frame / 14) + 1) / 2) * 0.35;
+
+  const outer = 96;            // overall badge diameter
+  const ringR = outer / 2 - 2; // inside of stroke
+  const circ = 2 * Math.PI * ringR;
+
+  return (
+    <div
+      style={{
+        width: outer,
+        height: outer,
+        position: "relative",
+        transform: `scale(${0.6 + badgeIn * 0.4})`,
+        opacity: badgeIn,
+      }}
+    >
+      {/* Soft amber halo behind the whole badge */}
+      <div
+        style={{
+          position: "absolute",
+          inset: -22,
+          borderRadius: "50%",
+          background: `radial-gradient(circle, ${theme.primaryGlow} 0%, transparent 65%)`,
+          opacity: breath * 0.9,
+          filter: "blur(6px)",
+        }}
+      />
+
+      {/* Base disc */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "50%",
+          background: theme.primarySoft,
+        }}
+      />
+
+      {/* Drawn-in ring */}
+      <svg
+        width={outer}
+        height={outer}
+        style={{
+          position: "absolute",
+          inset: 0,
+          transform: "rotate(-90deg)",
+        }}
+      >
+        <circle
+          cx={outer / 2}
+          cy={outer / 2}
+          r={ringR}
+          fill="none"
+          stroke={theme.primary}
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={circ * (1 - ringProgress)}
+          opacity={0.85}
+        />
+      </svg>
+
+      {/* Icon centred */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: theme.primary,
+        }}
+      >
+        <Icon kind={kind} size={44} />
+      </div>
+    </div>
   );
 };
 
@@ -114,7 +211,7 @@ export const StatsShowcase: React.FC = () => {
         </h2>
         <p
           style={{
-            marginTop: 16,
+            marginTop: 14,
             fontSize: 26,
             color: theme.primary,
             textAlign: "center",
@@ -126,73 +223,101 @@ export const StatsShowcase: React.FC = () => {
           Our server is home to a vibrant community of builders and creators
         </p>
 
-        {/* Three-up grid — mirrors homepage md:grid-cols-3 gap-6 */}
+        {/* Three-up grid */}
         <div
           style={{
             marginTop: 72,
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 24,
+            gap: 28,
             width: "100%",
             maxWidth: 1440,
           }}
         >
           {STATS.map((s, i) => {
-            const delay = 18 + i * 10;
+            const delay = 18 + i * 14;
             const cardIn = spring({
               frame: frame - delay,
               fps,
               config: { damping: 16, stiffness: 110 },
             });
+            // Value pops with a quick overshoot once the counter lands.
+            const valueSettle = interpolate(frame, [delay + 40, delay + 56, delay + 72], [0.9, 1.06, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            });
+            // Bottom accent bar sweeps in after the value lands.
+            const accentProgress = interpolate(frame, [delay + 44, delay + 78], [0, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            });
+
             return (
               <div
                 key={s.title}
                 style={{
-                  background: theme.backgroundDeep,
+                  position: "relative",
+                  background:
+                    "linear-gradient(180deg, rgba(30, 28, 35, 0.92) 0%, rgba(15, 14, 18, 0.92) 100%)",
                   border: `1px solid ${theme.border}`,
-                  borderRadius: 20,
-                  padding: "48px 32px",
+                  borderRadius: 24,
+                  padding: "44px 32px 40px",
                   textAlign: "center",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: 16,
+                  gap: 20,
                   opacity: cardIn,
                   transform: `translateY(${(1 - cardIn) * 40}px) scale(${0.96 + cardIn * 0.04})`,
-                  boxShadow: "0 20px 60px rgba(0,0,0,0.45)",
+                  boxShadow: "0 30px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04)",
+                  overflow: "hidden",
                 }}
               >
-                {/* Round icon badge — bg-primary/10, text-primary, w-16 h-16 */}
+                {/* Corner amber glow */}
                 <div
                   style={{
-                    width: 64,
-                    height: 64,
+                    position: "absolute",
+                    top: -80,
+                    right: -80,
+                    width: 220,
+                    height: 220,
                     borderRadius: "50%",
-                    background: theme.primarySoft,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: theme.primary,
+                    background: `radial-gradient(circle, ${theme.primarySoft} 0%, transparent 70%)`,
+                    pointerEvents: "none",
                   }}
-                >
-                  <Icon kind={s.icon} size={32} />
+                />
+
+                <IconBadge kind={s.icon} delay={delay + 4} />
+
+                {/* Value with soft glow behind it */}
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "baseline" }}>
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: -20,
+                      background: `radial-gradient(ellipse at center, ${theme.primaryGlow} 0%, transparent 60%)`,
+                      filter: "blur(12px)",
+                      opacity: cardIn * 0.7,
+                      pointerEvents: "none",
+                    }}
+                  />
+                  <NumberCountUp
+                    to={s.target}
+                    delay={delay + 10}
+                    durationInFrames={54}
+                    suffix={s.suffix}
+                    style={{
+                      fontSize: 96,
+                      fontWeight: 800,
+                      color: theme.foreground,
+                      letterSpacing: -3,
+                      lineHeight: 1,
+                      transform: `scale(${valueSettle})`,
+                      textShadow: `0 0 40px ${theme.primaryGlow}`,
+                    }}
+                  />
                 </div>
 
-                {/* Value — text-5xl font-bold */}
-                <div
-                  style={{
-                    fontSize: 72,
-                    fontWeight: 700,
-                    color: theme.foreground,
-                    lineHeight: 1,
-                    letterSpacing: -2,
-                    fontVariantNumeric: "tabular-nums",
-                  }}
-                >
-                  {s.value}
-                </div>
-
-                {/* Title — text-xl */}
                 <div
                   style={{
                     fontSize: 24,
@@ -203,15 +328,37 @@ export const StatsShowcase: React.FC = () => {
                   {s.title}
                 </div>
 
-                {/* Description — text-base text-muted-foreground */}
                 <div
                   style={{
-                    fontSize: 18,
+                    fontSize: 17,
                     color: theme.mutedForeground,
                     lineHeight: 1.4,
+                    maxWidth: 300,
                   }}
                 >
                   {s.description}
+                </div>
+
+                {/* Animated bottom accent — sweeps in from the left */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 32,
+                    right: 32,
+                    bottom: 20,
+                    height: 2,
+                    background: "rgba(255,255,255,0.06)",
+                    borderRadius: 1,
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: `${accentProgress * 100}%`,
+                      height: "100%",
+                      background: `linear-gradient(90deg, transparent 0%, ${theme.primary} 50%, transparent 100%)`,
+                    }}
+                  />
                 </div>
               </div>
             );
