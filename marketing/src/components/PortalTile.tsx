@@ -40,13 +40,12 @@ export const PortalTile: React.FC<PortalTileProps> = ({
   const src = staticFile("assets/parallel-worlds/pw_portal.png");
 
   if (tileSize) {
-    const patternCurr = `pw-${patternKey}-${currentIdx}`;
-    const patternNext = `pw-${patternKey}-${nextIdx}-b`;
+    const patternId = `pw-${patternKey}`;
     return (
-      <svg width={width} height={h} style={{ display: "block" }}>
+      <svg width={width} height={h} style={{ display: "block" }} shapeRendering="crispEdges">
         <defs>
           <pattern
-            id={patternCurr}
+            id={patternId}
             x={0}
             y={0}
             width={tileSize}
@@ -61,16 +60,8 @@ export const PortalTile: React.FC<PortalTileProps> = ({
               height={tileSize * TOTAL_FRAMES}
               preserveAspectRatio="none"
               style={{ imageRendering: "pixelated" }}
+              opacity={1 - lerp}
             />
-          </pattern>
-          <pattern
-            id={patternNext}
-            x={0}
-            y={0}
-            width={tileSize}
-            height={tileSize}
-            patternUnits="userSpaceOnUse"
-          >
             <image
               href={src}
               x={0}
@@ -79,11 +70,11 @@ export const PortalTile: React.FC<PortalTileProps> = ({
               height={tileSize * TOTAL_FRAMES}
               preserveAspectRatio="none"
               style={{ imageRendering: "pixelated" }}
+              opacity={lerp}
             />
           </pattern>
         </defs>
-        <rect width={width} height={h} fill={`url(#${patternCurr})`} opacity={1 - lerp} />
-        <rect width={width} height={h} fill={`url(#${patternNext})`} opacity={lerp} />
+        <rect width={width} height={h} fill={`url(#${patternId})`} />
       </svg>
     );
   }

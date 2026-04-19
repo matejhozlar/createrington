@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
+import { AbsoluteFill, Easing, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { LOGOS } from "../components/assets";
@@ -58,16 +58,17 @@ export const Ecosystem: React.FC = () => {
   const coreBreath = 0.6 + ((Math.sin(frame / 14) + 1) / 2) * 0.4;
 
   const nodePositions: Record<string, NodePosition> = {};
+  const ENTER_DURATION = 34;
   NODES.forEach((n, i) => {
     const delay = 30 + i * 9;
-    const t = spring({
-      frame: frame - delay,
-      fps,
-      config: { damping: 15, stiffness: 70 },
+    const t = interpolate(frame, [delay, delay + ENTER_DURATION], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
     });
     const rAtT = interpolate(t, [0, 1], [ORBIT_R * 2.3, ORBIT_R]);
     const angleOffsetAtT = interpolate(t, [0, 1], [40, 0]);
-    const driftFrames = Math.max(0, frame - (delay + 24));
+    const driftFrames = Math.max(0, frame - (delay + ENTER_DURATION));
     const finalAngle = n.angleDeg + driftFrames * ORBIT_DRIFT_PER_FRAME;
     const pos = polar(finalAngle + angleOffsetAtT, rAtT);
     nodePositions[n.key] = { x: pos.x, y: pos.y, scale: 0.5 + t * 0.5, opacity: t };
