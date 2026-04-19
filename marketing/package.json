@@ -11,6 +11,8 @@
     "prebuild": "node scripts/sync-assets.mjs",
     "prebuild:webm": "node scripts/sync-assets.mjs",
     "prebuild:audio": "node scripts/build-audio.mjs && node scripts/sync-assets.mjs",
+    "prebuild:fast:audio": "node scripts/build-audio.mjs && node scripts/sync-assets.mjs",
+    "prebuild:webm:audio": "node scripts/build-audio.mjs && node scripts/sync-assets.mjs",
     "prepreview": "node scripts/sync-assets.mjs",
     "dev": "remotion studio",
     "build": "remotion render CreateringtonPromo out/createrington-promo.mp4 --scale=2 --crf=16",
@@ -19,6 +21,8 @@
     "build:webm": "remotion render CreateringtonPromo out/createrington-promo.webm --codec=vp9 --scale=2 --crf=16",
     "build:prores": "remotion render CreateringtonPromo out/createrington-promo.mov --codec=prores --prores-profile=4444 --scale=2",
     "build:audio": "remotion render CreateringtonPromo out/createrington-promo-audio.mp4 --scale=2 --crf=16 --props=./scripts/props.audio.json",
+    "build:fast:audio": "remotion render CreateringtonPromo out/createrington-promo-fast-audio.mp4 --crf=16 --props=./scripts/props.audio.json",
+    "build:webm:audio": "remotion render CreateringtonPromo out/createrington-promo-audio.webm --codec=vp9 --scale=2 --crf=16 --props=./scripts/props.audio.json",
     "preview": "remotion preview",
     "upgrade": "remotion upgrade"
   },
