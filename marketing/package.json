@@ -11,8 +11,10 @@
     "prebuild:webm": "node scripts/sync-assets.mjs",
     "prepreview": "node scripts/sync-assets.mjs",
     "dev": "remotion studio",
-    "build": "remotion render CreateringtonPromo out/createrington-promo.mp4",
-    "build:webm": "remotion render CreateringtonPromo out/createrington-promo.webm --codec=vp9",
+    "build": "remotion render CreateringtonPromo out/createrington-promo.mp4 --scale=2",
+    "build:fast": "remotion render CreateringtonPromo out/createrington-promo.mp4",
+    "build:webm": "remotion render CreateringtonPromo out/createrington-promo.webm --codec=vp9 --scale=2",
+    "build:prores": "remotion render CreateringtonPromo out/createrington-promo.mov --codec=prores --prores-profile=4444 --scale=2",
     "preview": "remotion preview",
     "upgrade": "remotion upgrade"
   },
