@@ -107,33 +107,33 @@ const ClockIcon: React.FC<{ size: number }> = ({ size }) => (
 
 
 const OBSIDIAN_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'>
-<rect width='16' height='16' fill='#0a0612'/>
-<rect x='0' y='0' width='16' height='1' fill='#120a1f'/>
-<rect x='2' y='1' width='1' height='1' fill='#1c1233'/>
-<rect x='6' y='0' width='1' height='1' fill='#261844'/>
-<rect x='11' y='1' width='2' height='1' fill='#1a1030'/>
-<rect x='14' y='0' width='1' height='1' fill='#2c1c4a'/>
-<rect x='1' y='3' width='1' height='1' fill='#24154a'/>
-<rect x='4' y='4' width='2' height='1' fill='#180e2b'/>
-<rect x='8' y='3' width='1' height='1' fill='#301e55'/>
-<rect x='12' y='4' width='1' height='1' fill='#1c1034'/>
-<rect x='0' y='6' width='1' height='1' fill='#2a1848'/>
-<rect x='3' y='6' width='1' height='1' fill='#14091f'/>
-<rect x='6' y='7' width='2' height='1' fill='#281a48'/>
-<rect x='10' y='6' width='1' height='1' fill='#180e2a'/>
-<rect x='14' y='7' width='1' height='1' fill='#241640'/>
-<rect x='2' y='9' width='1' height='1' fill='#1e1238'/>
-<rect x='5' y='9' width='1' height='1' fill='#30205a'/>
-<rect x='9' y='10' width='2' height='1' fill='#1a1030'/>
-<rect x='13' y='10' width='1' height='1' fill='#241640'/>
-<rect x='0' y='12' width='2' height='1' fill='#180e2b'/>
-<rect x='4' y='12' width='1' height='1' fill='#2e1e52'/>
-<rect x='7' y='12' width='1' height='1' fill='#1c1236'/>
-<rect x='11' y='13' width='1' height='1' fill='#281a48'/>
-<rect x='3' y='14' width='1' height='1' fill='#241640'/>
-<rect x='8' y='14' width='2' height='1' fill='#180e2a'/>
-<rect x='13' y='14' width='1' height='1' fill='#1e1236'/>
-<rect x='0' y='15' width='16' height='1' fill='#06030b'/>
+<rect width='16' height='16' fill='#060a12'/>
+<rect x='0' y='0' width='16' height='1' fill='#0a121f'/>
+<rect x='2' y='1' width='1' height='1' fill='#121c33'/>
+<rect x='6' y='0' width='1' height='1' fill='#182644'/>
+<rect x='11' y='1' width='2' height='1' fill='#101a30'/>
+<rect x='14' y='0' width='1' height='1' fill='#1c2c4a'/>
+<rect x='1' y='3' width='1' height='1' fill='#15244a'/>
+<rect x='4' y='4' width='2' height='1' fill='#0e182b'/>
+<rect x='8' y='3' width='1' height='1' fill='#1e3055'/>
+<rect x='12' y='4' width='1' height='1' fill='#101c34'/>
+<rect x='0' y='6' width='1' height='1' fill='#182a48'/>
+<rect x='3' y='6' width='1' height='1' fill='#09141f'/>
+<rect x='6' y='7' width='2' height='1' fill='#1a2848'/>
+<rect x='10' y='6' width='1' height='1' fill='#0e182a'/>
+<rect x='14' y='7' width='1' height='1' fill='#162440'/>
+<rect x='2' y='9' width='1' height='1' fill='#121e38'/>
+<rect x='5' y='9' width='1' height='1' fill='#20305a'/>
+<rect x='9' y='10' width='2' height='1' fill='#101a30'/>
+<rect x='13' y='10' width='1' height='1' fill='#162440'/>
+<rect x='0' y='12' width='2' height='1' fill='#0e182b'/>
+<rect x='4' y='12' width='1' height='1' fill='#1e2e52'/>
+<rect x='7' y='12' width='1' height='1' fill='#121c36'/>
+<rect x='11' y='13' width='1' height='1' fill='#1a2848'/>
+<rect x='3' y='14' width='1' height='1' fill='#162440'/>
+<rect x='8' y='14' width='2' height='1' fill='#0e182a'/>
+<rect x='13' y='14' width='1' height='1' fill='#121e36'/>
+<rect x='0' y='15' width='16' height='1' fill='#03060b'/>
 </svg>`;
 const OBSIDIAN_URI = `url("data:image/svg+xml;utf8,${encodeURIComponent(OBSIDIAN_SVG)}")`;
 
@@ -180,7 +180,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         style={{
           position: "absolute",
           inset: -40,
-          background: `radial-gradient(ellipse at center, rgba(168, 85, 247, ${0.4 * breath}) 0%, transparent 60%)`,
+          background: `radial-gradient(ellipse at center, rgba(85, 168, 247, ${0.4 * breath}) 0%, transparent 60%)`,
           filter: "blur(20px)",
           pointerEvents: "none",
         }}
@@ -212,7 +212,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
           width: interiorW,
           height: interiorH,
           overflow: "hidden",
-          boxShadow: `inset 0 0 60px rgba(168, 85, 247, ${0.55 * breath}), inset 0 0 0 1px rgba(200, 180, 255, 0.25)`,
+          boxShadow: `inset 0 0 60px rgba(85, 168, 247, ${0.55 * breath}), inset 0 0 0 1px rgba(180, 200, 255, 0.25)`,
         }}
       >
         <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
@@ -222,7 +222,7 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         style={{
           position: "absolute",
           inset: 0,
-          boxShadow: `0 0 80px rgba(168, 85, 247, ${0.35 * breath}), 0 30px 80px rgba(0,0,0,0.7)`,
+          boxShadow: `0 0 80px rgba(85, 168, 247, ${0.35 * breath}), 0 30px 80px rgba(0,0,0,0.7)`,
           pointerEvents: "none",
         }}
       />
@@ -407,7 +407,7 @@ export const StructurePacks: React.FC = () => {
       <AbsoluteFill
         style={{
           background:
-            "radial-gradient(ellipse at 65% 55%, rgba(107, 33, 168, 0.25) 0%, transparent 55%)",
+            "radial-gradient(ellipse at 65% 55%, rgba(33, 107, 168, 0.25) 0%, transparent 55%)",
           pointerEvents: "none",
         }}
       />
