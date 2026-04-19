@@ -38,7 +38,7 @@ export const DURATIONS = {
   webShowcase: 150,
   cryptoMarket: 210,
   ecosystem: 180,
-  callToAction: 120,
+  callToAction: 168,
   credits: 180,
 } as const;
 

@@ -17,7 +17,7 @@ export const CallToAction: React.FC = () => {
   const pulseScale = 1 + ((Math.sin(frame / 5) + 1) / 2) * 0.03;
   const glow = 0.4 + ((Math.sin(frame / 5) + 1) / 2) * 0.4;
 
-  const finalFade = interpolate(frame, [96, 118], [1, 0], {
+  const finalFade = interpolate(frame, [140, 166], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -29,7 +29,7 @@ export const CallToAction: React.FC = () => {
         zoom={[1.08, 1.2]}
         darken={0.72}
         gradient="both"
-        durationInFrames={120}
+        durationInFrames={168}
       />
 
       <AbsoluteFill
