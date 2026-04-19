@@ -156,8 +156,8 @@ export const CryptoMarket: React.FC = () => {
               }}
             >
               Ringcoin anchors the economy. Memecoins swing on community hype.
-              Limit orders, stop-loss, IPOs, and AI-generated news — streamed
-              in real time.
+              Limit orders, stop-loss, IPOs, generated news, and weekly
+              reports — streamed in real time.
             </div>
           </div>
 
