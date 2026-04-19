@@ -4,14 +4,14 @@
 // and can be invoked directly with `pnpm sync-assets`.
 //
 // Sources:
-//   1. packages/client/public/           → marketing/public/
+//   1. packages/client/public/  → marketing/public/
 //      (hero, features, logo, render — everything served by the live site)
-//   2. screenshots/                      → marketing/public/screenshots/
+//   2. screenshots/             → marketing/public/screenshots/
 //      (README product shots — used by WebShowcase + CryptoMarket)
-//   3. ../parallel-worlds/.../textures   → marketing/public/assets/parallel-worlds/
-//      (sibling-checkout mod repo; optional so the build still works
-//       when the mod repo isn't cloned locally — a stale copy under
-//       git is fine as a fallback)
+//   3. marketing/assets/        → marketing/public/assets/
+//      (marketing-only assets that don't ship with the client app —
+//       e.g. parallel-worlds mod textures. Merged over the client
+//       mirror so mod sub-folders sit alongside hero/ and features/.)
 
 import fs from "node:fs";
 import path from "node:path";
@@ -20,18 +20,6 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const MARKETING_ROOT = path.resolve(path.dirname(__filename), "..");
 const REPO_ROOT = path.resolve(MARKETING_ROOT, "..");
-
-const PW_MOD_BLOCK_DIR = path.resolve(
-  REPO_ROOT,
-  "..",
-  "parallel-worlds",
-  "src",
-  "main",
-  "resources",
-  "assets",
-  "parallelworlds",
-  "textures",
-);
 
 const MIRRORS = [
   {
@@ -45,17 +33,9 @@ const MIRRORS = [
     dest: path.join(MARKETING_ROOT, "public", "screenshots"),
   },
   {
-    label: "parallel-worlds/block",
-    src: path.join(PW_MOD_BLOCK_DIR, "block"),
-    dest: path.join(MARKETING_ROOT, "public", "assets", "parallel-worlds"),
-    optional: true,
-    merge: true,
-  },
-  {
-    label: "parallel-worlds/item",
-    src: path.join(PW_MOD_BLOCK_DIR, "item"),
-    dest: path.join(MARKETING_ROOT, "public", "assets", "parallel-worlds"),
-    optional: true,
+    label: "marketing/assets (local-only)",
+    src: path.join(MARKETING_ROOT, "assets"),
+    dest: path.join(MARKETING_ROOT, "public", "assets"),
     merge: true,
   },
 ];
@@ -74,15 +54,9 @@ function copyDir(src, dest) {
   }
 }
 
-let skipped = 0;
 for (const m of MIRRORS) {
   if (!fs.existsSync(m.src)) {
-    if (m.optional) {
-      console.log(`[sync-assets] skip ${m.label} (source not found: ${m.src})`);
-      skipped++;
-      continue;
-    }
-    console.error(`[sync-assets] ERROR: required source missing: ${m.src}`);
+    console.error(`[sync-assets] ERROR: source missing: ${m.src}`);
     process.exit(1);
   }
   if (!m.merge) rimraf(m.dest);
@@ -90,4 +64,4 @@ for (const m of MIRRORS) {
   console.log(`[sync-assets] ${m.label} → ${path.relative(MARKETING_ROOT, m.dest)}`);
 }
 
-console.log(`[sync-assets] done${skipped > 0 ? ` (${skipped} optional skipped)` : ""}`);
+console.log("[sync-assets] done");
