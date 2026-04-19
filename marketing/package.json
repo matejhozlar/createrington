@@ -13,6 +13,7 @@
     "dev": "remotion studio",
     "build": "remotion render CreateringtonPromo out/createrington-promo.mp4 --scale=2 --crf=16",
     "build:fast": "remotion render CreateringtonPromo out/createrington-promo.mp4 --crf=16",
+    "build:web": "remotion render CreateringtonPromo out/createrington-promo-web.mp4 --crf=23 --pixel-format=yuv420p",
     "build:webm": "remotion render CreateringtonPromo out/createrington-promo.webm --codec=vp9 --scale=2 --crf=16",
     "build:prores": "remotion render CreateringtonPromo out/createrington-promo.mov --codec=prores --prores-profile=4444 --scale=2",
     "preview": "remotion preview",
