@@ -241,7 +241,7 @@ export const Ecosystem: React.FC = () => {
           </svg>
 
           <Img
-            src={staticFile("assets/logo/logo.webp")}
+            src={staticFile("assets/logo/logo.png")}
             style={{
               position: "absolute",
               left: `${(CENTER.x / 1920) * 100}%`,
