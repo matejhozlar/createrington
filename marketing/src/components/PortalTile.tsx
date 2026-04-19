@@ -29,7 +29,7 @@ export const PortalTile: React.FC<PortalTileProps> = ({
   const currentIdx = Math.floor(cyclePos);
   const lerp = cyclePos - currentIdx;
   const nextIdx = (currentIdx + 1) % TOTAL_FRAMES;
-  const src = staticFile("assets/parallel-worlds/pw_portal.png");
+  const src = staticFile("assets/parallel-worlds/pw-portal.png");
 
   if (tileSize) {
     const patternId = `pw-${patternKey}`;

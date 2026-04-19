@@ -5,7 +5,7 @@ Reproduces Minecraft's procedural two-spiral nether-portal algorithm on a
 the output tiles cleanly and loops without a seam. Color is blue instead of
 vanilla purple.
 
-Writes to assets/parallel-worlds/pw_portal.png (the marketing-local staging
+Writes to assets/parallel-worlds/pw-portal.png (the marketing-local staging
 dir that scripts/sync-assets.mjs merges into public/).
 
     python scripts/make-procedural-portal.py
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image
 
-OUT = Path("assets/parallel-worlds/pw_portal.png")
+OUT = Path("assets/parallel-worlds/pw-portal.png")
 
 FRAME = 16
 N_FRAMES = 32

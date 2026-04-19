@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Sequence } from "remotion";
+import { AbsoluteFill, Audio, Sequence, staticFile } from "remotion";
 import { DURATIONS, theme } from "./theme";
 import { LogoIntro } from "./scenes/LogoIntro";
 import { HeroTagline } from "./scenes/HeroTagline";
@@ -13,7 +13,11 @@ import { CryptoMarket } from "./scenes/CryptoMarket";
 import { Ecosystem } from "./scenes/Ecosystem";
 import { CallToAction } from "./scenes/CallToAction";
 
-export const Video: React.FC = () => {
+export type VideoProps = {
+  audio: boolean;
+};
+
+export const Video: React.FC<VideoProps> = ({ audio }) => {
   let cursor = 0;
   const starts = {
     logo: cursor,
@@ -33,6 +37,8 @@ export const Video: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: theme.backgroundDeep, fontFamily: theme.fontSans }}>
+      {audio && <Audio src={staticFile("assets/audio/brass-railworks.m4a")} />}
+
       <Sequence from={starts.logo} durationInFrames={DURATIONS.logoIntro + OVERLAP}>
         <LogoIntro />
       </Sequence>
