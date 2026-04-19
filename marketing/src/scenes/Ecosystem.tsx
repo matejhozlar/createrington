@@ -24,7 +24,7 @@ const ORBIT_R = 320;
 
 const NODES: NodeSpec[] = [
   { key: "web",     label: "Web Portal", sub: "createrington.com", color: theme.primary, angleDeg: -90,  render: "globe" },
-  { key: "discord", label: "Discord",    sub: "OAuth · Bots",      color: theme.discord, angleDeg: 30,   render: "image", logo: LOGOS.discord },
+  { key: "discord", label: "Discord",    sub: "Chat · Community",  color: theme.discord, angleDeg: 30,   render: "image", logo: LOGOS.discord },
   { key: "mc",      label: "Minecraft",  sub: "Create · 1.21.1",   color: "#6aaa48",     angleDeg: 150,  render: "image", logo: LOGOS.cogsAndSteam },
 ];
 
@@ -143,8 +143,8 @@ export const Ecosystem: React.FC = () => {
               margin: "14px auto 0",
             }}
           >
-            Minecraft · Discord · Web — connected by a type-safe Node.js backend
-            with real-time chat, OAuth, and automatic role sync.
+            Log in once. Your balance, playtime, and conversations follow
+            you between the server, the chat, and the web — automatically.
           </div>
         </div>
 
