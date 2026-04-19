@@ -145,7 +145,7 @@ export const CryptoMarket: React.FC = () => {
                 margin: 0,
               }}
             >
-              A live <span style={{ color: theme.primary }}>crypto market</span>.
+              A simulated <span style={{ color: theme.primary }}>crypto market</span>.
             </h2>
             <div
               style={{
@@ -155,9 +155,9 @@ export const CryptoMarket: React.FC = () => {
                 maxWidth: 900,
               }}
             >
-              Ringcoin anchors the economy. Memecoins swing on community hype.
-              Limit orders, stop-loss, IPOs, generated news, and weekly
-              reports — streamed in real time.
+              Fictional tokens, no real money. Ringcoin anchors the economy;
+              memecoins swing on community hype. Limit orders, stop-loss, IPOs,
+              generated news, and weekly reports — all streamed in real time.
             </div>
           </div>
 

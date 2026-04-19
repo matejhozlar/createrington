@@ -33,7 +33,7 @@ export const Credits: React.FC = () => {
   const { fps } = useVideoConfig();
 
   const fadeIn = interpolate(frame, [0, 14], [0, 1], { extrapolateRight: "clamp" });
-  const fadeOut = interpolate(frame, [160, 180], [1, 0], {
+  const fadeOut = interpolate(frame, [140, 172], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
