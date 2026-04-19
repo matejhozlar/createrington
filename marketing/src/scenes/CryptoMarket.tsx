@@ -163,30 +163,31 @@ export const CryptoMarket: React.FC = () => {
 
           <div
             style={{
-              display: "flex",
+              display: "inline-flex",
               alignItems: "center",
-              gap: 10,
-              padding: "10px 18px",
-              borderRadius: 999,
-              background: `${COLORS.emerald}1a`,
-              border: `1px solid ${COLORS.emerald}55`,
+              justifyContent: "center",
+              gap: 8,
+              padding: "8px 16px",
+              borderRadius: 6,
+              background: "rgba(24, 24, 27, 0.7)",
+              border: `1px solid ${theme.border}`,
               color: COLORS.emerald,
-              fontSize: 16,
-              fontFamily: theme.fontMono,
+              fontSize: 18,
+              fontWeight: 500,
+              boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)",
               opacity: headerIn,
             }}
           >
-            <div
+            <span
               style={{
-                width: 10,
-                height: 10,
+                width: 16,
+                height: 16,
                 borderRadius: "50%",
                 background: COLORS.emerald,
                 opacity: 0.4 + tickPulse * 0.6,
-                boxShadow: `0 0 ${4 + tickPulse * 12}px ${COLORS.emerald}`,
               }}
             />
-            LIVE · TICKING
+            Live
           </div>
         </div>
 
