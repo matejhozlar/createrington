@@ -5,6 +5,7 @@ import { LogoIntro } from "./scenes/LogoIntro";
 import { HeroTagline } from "./scenes/HeroTagline";
 import { StatsShowcase } from "./scenes/StatsShowcase";
 import { FeaturesGrid } from "./scenes/FeaturesGrid";
+import { FeaturedBuilds } from "./scenes/FeaturedBuilds";
 import { StructurePacks } from "./scenes/StructurePacks";
 import { WebShowcase } from "./scenes/WebShowcase";
 import { CryptoMarket } from "./scenes/CryptoMarket";
@@ -18,7 +19,8 @@ export const Video: React.FC = () => {
     hero: (cursor += DURATIONS.logoIntro),
     stats: (cursor += DURATIONS.heroTagline),
     features: (cursor += DURATIONS.statsShowcase),
-    packs: (cursor += DURATIONS.featuresGrid),
+    builds: (cursor += DURATIONS.featuresGrid),
+    packs: (cursor += DURATIONS.featuredBuilds),
     web: (cursor += DURATIONS.structurePacks),
     crypto: (cursor += DURATIONS.webShowcase),
     ecosystem: (cursor += DURATIONS.cryptoMarket),
@@ -44,6 +46,10 @@ export const Video: React.FC = () => {
 
       <Sequence from={starts.features} durationInFrames={DURATIONS.featuresGrid + OVERLAP}>
         <FeaturesGrid />
+      </Sequence>
+
+      <Sequence from={starts.builds} durationInFrames={DURATIONS.featuredBuilds + OVERLAP}>
+        <FeaturedBuilds />
       </Sequence>
 
       <Sequence from={starts.packs} durationInFrames={DURATIONS.structurePacks + OVERLAP}>

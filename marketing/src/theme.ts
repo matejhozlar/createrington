@@ -35,6 +35,7 @@ export const DURATIONS = {
   heroTagline: 120,      // 4.0s
   statsShowcase: 150,    // 5.0s
   featuresGrid: 180,     // 6.0s
+  featuredBuilds: 180,   // 6.0s — community builds mosaic
   structurePacks: 180,   // 6.0s — NEW: parallel-worlds voting
   webShowcase: 150,      // 5.0s — real screenshots showcase
   cryptoMarket: 210,     // 7.0s
