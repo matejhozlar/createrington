@@ -30,7 +30,7 @@ export const FPS = 30;
 export const DURATIONS = {
   logoIntro: 90,
   heroTagline: 120,
-  statsShowcase: 150,
+  statsShowcase: 240,
   featuresGrid: 180,
   featuredBuilds: 180,
   structurePacks: 180,
