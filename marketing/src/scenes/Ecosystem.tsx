@@ -4,22 +4,30 @@ import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { LOGOS } from "../components/assets";
 
+// Every piece of this scene is circular — the core, the three client
+// nodes, the broadcasting rings, even the flight paths. The three
+// clients are placed equidistantly on a single orbit around the core,
+// and fly inward along their radial before the connection lines draw.
+
 type NodeSpec = {
   key: string;
   label: string;
   sub: string;
-  protocol: string;           // short label that sits on the connection line
   color: string;
-  x: number;
-  y: number;
-  render: "image" | "globe";  // image = staticFile logo, globe = custom SVG
-  logo?: string;              // required when render === "image"
+  angleDeg: number;           // polar angle on the orbit (0° = right, 90° = down)
+  render: "image" | "globe";
+  logo?: string;
 };
 
-// Custom globe SVG for the Web Portal node — the createrington logo now
-// lives at the center of the diagram as "the platform", so the Web node
-// needs its own distinct visual. A wire-frame globe reads unambiguously
-// as "the web" at this size.
+const CENTER = { x: 960, y: 460 };
+const ORBIT_R = 320;
+
+const NODES: NodeSpec[] = [
+  { key: "web",     label: "Web Portal", sub: "createrington.com", color: theme.primary, angleDeg: -90,  render: "globe" },
+  { key: "discord", label: "Discord",    sub: "OAuth · Bots",      color: theme.discord, angleDeg: 30,   render: "image", logo: LOGOS.discord },
+  { key: "mc",      label: "Minecraft",  sub: "Create · 1.21.1",   color: "#6aaa48",     angleDeg: 150,  render: "image", logo: LOGOS.cogsAndSteam },
+];
+
 const GlobeGlyph: React.FC<{ size: number; color: string }> = ({ size, color }) => (
   <svg viewBox="0 0 100 100" width={size} height={size} style={{ display: "block" }}>
     <circle cx="50" cy="50" r="44" fill="none" stroke={color} strokeWidth={3} />
@@ -31,20 +39,17 @@ const GlobeGlyph: React.FC<{ size: number; color: string }> = ({ size, color }) 
   </svg>
 );
 
-const NODES: NodeSpec[] = [
-  { key: "mc",      label: "Minecraft",  sub: "Create · 1.21.1",   protocol: "Plugin · RCON",    color: "#6aaa48",       x: 280,  y: 560, render: "image", logo: LOGOS.cogsAndSteam },
-  { key: "web",     label: "Web Portal", sub: "createrington.com", protocol: "tRPC · HTTPS",     color: theme.primary,   x: 960,  y: 240, render: "globe" },
-  { key: "discord", label: "Discord",    sub: "OAuth · Bots",      protocol: "OAuth · Webhooks", color: theme.discord,   x: 1640, y: 560, render: "image", logo: LOGOS.discord },
-];
+type NodePosition = { x: number; y: number; scale: number; opacity: number };
 
-const CENTER = { x: 960, y: 560 };
+// Convert polar (angle, radius) to cartesian relative to CENTER.
+const polar = (angleDeg: number, r: number) => {
+  const a = (angleDeg * Math.PI) / 180;
+  return { x: CENTER.x + Math.cos(a) * r, y: CENTER.y + Math.sin(a) * r };
+};
 
-const CAPABILITIES = [
-  { label: "Real-time chat bridge",      color: theme.primary },
-  { label: "Discord OAuth verification", color: theme.discord },
-  { label: "Auto role assignment",       color: theme.chart.green },
-  { label: "Live player tracking",       color: theme.chart.blue },
-];
+// Ongoing gentle orbital rotation applied to all nodes after they settle —
+// makes the diagram feel alive without implying the user can interact.
+const ORBIT_DRIFT_PER_FRAME = 0.08;   // degrees per frame
 
 export const Ecosystem: React.FC = () => {
   const frame = useCurrentFrame();
@@ -57,15 +62,41 @@ export const Ecosystem: React.FC = () => {
   });
 
   const headerIn = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
-  const coreIn = spring({ frame: frame - 18, fps, config: { damping: 16, stiffness: 90 } });
+  const coreIn = spring({ frame: frame - 10, fps, config: { damping: 14, stiffness: 90 } });
   const coreBreath = 0.6 + ((Math.sin(frame / 14) + 1) / 2) * 0.4;
+
+  // Per-node enter animations: each starts at double the orbit radius
+  // (far outside) and spirals inward to its resting slot, staggered
+  // 10 frames apart after the core has landed.
+  const nodePositions: Record<string, NodePosition> = {};
+  NODES.forEach((n, i) => {
+    const delay = 30 + i * 9;
+    const t = spring({
+      frame: frame - delay,
+      fps,
+      config: { damping: 15, stiffness: 70 },
+    });
+    const rAtT = interpolate(t, [0, 1], [ORBIT_R * 2.3, ORBIT_R]);
+    const angleOffsetAtT = interpolate(t, [0, 1], [40, 0]); // spirals into place
+    const driftFrames = Math.max(0, frame - (delay + 24));
+    const finalAngle = n.angleDeg + driftFrames * ORBIT_DRIFT_PER_FRAME;
+    const pos = polar(finalAngle + angleOffsetAtT, rAtT);
+    nodePositions[n.key] = { x: pos.x, y: pos.y, scale: 0.5 + t * 0.5, opacity: t };
+  });
+
+  // Connection lines draw after nodes settle.
+  const lineProgressFor = (i: number) =>
+    interpolate(frame, [60 + i * 6, 90 + i * 6], [0, 1], {
+      extrapolateLeft: "clamp",
+      extrapolateRight: "clamp",
+    });
 
   return (
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut }}>
       <Background
         image="assets/hero/dark-warehouse.webp"
-        zoom={[1.05, 1.12]}
-        blur={22}
+        zoom={[1.04, 1.1]}
+        blur={26}
         darken={0.9}
         gradient="none"
         durationInFrames={194}
@@ -118,222 +149,148 @@ export const Ecosystem: React.FC = () => {
         </div>
 
         {/* Diagram */}
-        <div style={{ position: "relative", flex: 1, marginTop: 20, minHeight: 0 }}>
+        <div style={{ position: "relative", flex: 1, marginTop: 24, minHeight: 0 }}>
           <svg
-            viewBox="0 0 1920 840"
+            viewBox="0 0 1920 920"
             preserveAspectRatio="none"
             style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
           >
-            {/* Broadcasting rings — three staggered, expand + fade */}
+            {/* Broadcasting waves — continuous expand-and-fade from the core */}
             {[0, 1, 2].map((i) => {
-              const cycle = 72;                           // frames per pulse
+              const cycle = 84;
               const phase = (frame + i * (cycle / 3)) % cycle;
               const progress = phase / cycle;
-              const r = 120 + progress * 280;
-              const ringOpacity = (1 - progress) * 0.35 * coreIn;
+              const r = 100 + progress * (ORBIT_R + 80);
+              const op = (1 - progress) * 0.32 * coreIn;
               return (
                 <circle
-                  key={`ring-${i}`}
+                  key={`wave-${i}`}
                   cx={CENTER.x}
                   cy={CENTER.y}
                   r={r}
                   fill="none"
                   stroke={theme.primary}
                   strokeWidth={1.5}
-                  opacity={ringOpacity}
+                  opacity={op}
                 />
               );
             })}
 
-            {/* Connection lines + flowing data dots */}
+            {/* Faint orbital guide circle the nodes rest on */}
+            <circle
+              cx={CENTER.x}
+              cy={CENTER.y}
+              r={ORBIT_R}
+              fill="none"
+              stroke={theme.primary}
+              strokeWidth={1}
+              strokeDasharray="2 10"
+              opacity={coreIn * 0.22}
+            />
+
+            {/* Rotating dashed rings hugging the core */}
+            <circle
+              cx={CENTER.x}
+              cy={CENTER.y}
+              r={112}
+              fill="none"
+              stroke={theme.primary}
+              strokeWidth={1.5}
+              strokeDasharray="4 12"
+              opacity={coreIn * 0.6}
+              transform={`rotate(${frame * 0.6} ${CENTER.x} ${CENTER.y})`}
+            />
+            <circle
+              cx={CENTER.x}
+              cy={CENTER.y}
+              r={96}
+              fill="none"
+              stroke={theme.primary}
+              strokeWidth={1}
+              strokeDasharray="2 8"
+              opacity={coreIn * 0.4}
+              transform={`rotate(${-frame * 0.9} ${CENTER.x} ${CENTER.y})`}
+            />
+            {/* Soft halo under the core plate */}
+            <circle
+              cx={CENTER.x}
+              cy={CENTER.y}
+              r={82 + coreBreath * 10}
+              fill={theme.primary}
+              opacity={0.1 * coreIn}
+            />
+
+            {/* Connection lines + flowing data dots — drawn once nodes settle */}
             {NODES.map((n, i) => {
-              const appear = spring({
-                frame: frame - (30 + i * 8),
-                fps,
-                config: { damping: 22, stiffness: 80 },
-              });
+              const pos = nodePositions[n.key]!;
+              const lineT = lineProgressFor(i);
+              // Only start drawing once the line progress is > 0 AND the
+              // node is mostly in place; otherwise you'd see a line
+              // chasing the node through the air.
+              const visualProgress = lineT * (pos.opacity > 0.6 ? 1 : 0);
+              const x2 = CENTER.x + (pos.x - CENTER.x) * visualProgress;
+              const y2 = CENTER.y + (pos.y - CENTER.y) * visualProgress;
               return (
                 <g key={`line-${n.key}`}>
                   <line
                     x1={CENTER.x}
                     y1={CENTER.y}
-                    x2={n.x}
-                    y2={n.y}
+                    x2={x2}
+                    y2={y2}
                     stroke={n.color}
                     strokeWidth={2.5}
                     strokeDasharray="8 10"
-                    opacity={appear * 0.6}
+                    opacity={0.6}
                   />
-                  {[0, 33, 66].map((offset, dotI) => {
-                    const flow = ((frame * 1.8 + offset + i * 20) % 100) / 100;
-                    return (
-                      <circle
-                        key={dotI}
-                        cx={CENTER.x + (n.x - CENTER.x) * flow}
-                        cy={CENTER.y + (n.y - CENTER.y) * flow}
-                        r={5}
-                        fill={n.color}
-                        opacity={appear * (1 - Math.abs(flow - 0.5) * 0.4)}
-                      />
-                    );
-                  })}
+                  {visualProgress > 0.95 &&
+                    [0, 33, 66].map((offset, dotI) => {
+                      const flow = ((frame * 1.8 + offset + i * 20) % 100) / 100;
+                      return (
+                        <circle
+                          key={dotI}
+                          cx={CENTER.x + (pos.x - CENTER.x) * flow}
+                          cy={CENTER.y + (pos.y - CENTER.y) * flow}
+                          r={5}
+                          fill={n.color}
+                          opacity={1 - Math.abs(flow - 0.5) * 0.4}
+                        />
+                      );
+                    })}
                 </g>
               );
             })}
-
-            {/* Rotating dashed ring around the core */}
-            <circle
-              cx={CENTER.x}
-              cy={CENTER.y}
-              r={118}
-              fill="none"
-              stroke={theme.primary}
-              strokeWidth={1.5}
-              strokeDasharray="4 12"
-              opacity={coreIn * 0.55}
-              transform={`rotate(${frame * 0.6} ${CENTER.x} ${CENTER.y})`}
-            />
-            {/* Counter-rotating inner ring */}
-            <circle
-              cx={CENTER.x}
-              cy={CENTER.y}
-              r={102}
-              fill="none"
-              stroke={theme.primary}
-              strokeWidth={1}
-              strokeDasharray="2 8"
-              opacity={coreIn * 0.35}
-              transform={`rotate(${-frame * 0.9} ${CENTER.x} ${CENTER.y})`}
-            />
-            {/* Solid halo underneath the logo plate */}
-            <circle
-              cx={CENTER.x}
-              cy={CENTER.y}
-              r={80 + coreBreath * 8}
-              fill={theme.primary}
-              opacity={0.08 * coreIn}
-            />
           </svg>
 
-          {/* Protocol pills — overlaid at the midpoint of each line */}
-          {NODES.map((n, i) => {
-            const midX = (CENTER.x + n.x) / 2;
-            const midY = (CENTER.y + n.y) / 2;
-            const appear = spring({
-              frame: frame - (40 + i * 8),
-              fps,
-              config: { damping: 20, stiffness: 90 },
-            });
-            const left = `${(midX / 1920) * 100}%`;
-            const top = `${(midY / 840) * 100}%`;
-            return (
-              <div
-                key={`label-${n.key}`}
-                style={{
-                  position: "absolute",
-                  left,
-                  top,
-                  transform: `translate(-50%, -50%) scale(${appear})`,
-                  opacity: appear,
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  background: "rgba(15, 14, 18, 0.92)",
-                  border: `1px solid ${n.color}66`,
-                  color: theme.foreground,
-                  fontSize: 13,
-                  fontFamily: theme.fontMono,
-                  fontWeight: 600,
-                  letterSpacing: 0.5,
-                  whiteSpace: "nowrap",
-                  boxShadow: `0 0 20px ${n.color}33`,
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: n.color,
-                    marginRight: 8,
-                    verticalAlign: "middle",
-                    boxShadow: `0 0 6px ${n.color}`,
-                  }}
-                />
-                {n.protocol}
-              </div>
-            );
-          })}
-
-          {/* Central core — Createrington logo */}
-          <div
+          {/* Core — the round Createrington logo rendered standalone (no
+              plate/card). Halo and rings are drawn in the SVG above; we
+              just need the image itself with a soft drop-shadow glow. */}
+          <Img
+            src={staticFile("assets/logo/logo.webp")}
             style={{
               position: "absolute",
               left: `${(CENTER.x / 1920) * 100}%`,
-              top: `${(CENTER.y / 840) * 100}%`,
-              transform: `translate(-50%, -50%) scale(${0.7 + coreIn * 0.3})`,
+              top: `${(CENTER.y / 920) * 100}%`,
+              width: 200,
+              height: 200,
+              objectFit: "contain",
+              transform: `translate(-50%, -50%) scale(${0.6 + coreIn * 0.4})`,
               opacity: coreIn,
+              filter: `drop-shadow(0 0 ${40 + coreBreath * 30}px ${theme.primaryGlow}) drop-shadow(0 16px 50px rgba(0,0,0,0.6))`,
             }}
-          >
-            <div
-              style={{
-                width: 180,
-                height: 180,
-                borderRadius: 40,
-                background: theme.backgroundDeep,
-                border: `2px solid ${theme.primary}`,
-                boxShadow: `0 0 ${60 + coreBreath * 40}px ${theme.primaryGlow}, 0 20px 60px rgba(0,0,0,0.6)`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 24,
-                position: "relative",
-              }}
-            >
-              <Img
-                src={staticFile(LOGOS.createrington)}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-              />
-            </div>
-            {/* "Core" tagline below the logo plate */}
-            <div
-              style={{
-                marginTop: 18,
-                textAlign: "center",
-                fontSize: 13,
-                letterSpacing: 4,
-                textTransform: "uppercase",
-                color: theme.primary,
-                fontFamily: theme.fontMono,
-                fontWeight: 700,
-              }}
-            >
-              · Platform Core ·
-            </div>
-          </div>
+          />
 
-          {/* HTML-positioned client nodes */}
-          {NODES.map((n, i) => {
-            const appear = spring({
-              frame: frame - (20 + i * 10),
-              fps,
-              config: { damping: 16, stiffness: 100 },
-            });
-            const left = `${(n.x / 1920) * 100}%`;
-            const top = `${(n.y / 840) * 100}%`;
+          {/* Orbiting client nodes — round plates */}
+          {NODES.map((n) => {
+            const pos = nodePositions[n.key]!;
             return (
               <div
                 key={n.key}
                 style={{
                   position: "absolute",
-                  left,
-                  top,
-                  transform: `translate(-50%, -50%) scale(${appear})`,
-                  opacity: appear,
+                  left: `${(pos.x / 1920) * 100}%`,
+                  top: `${(pos.y / 920) * 100}%`,
+                  transform: `translate(-50%, -50%) scale(${pos.scale})`,
+                  opacity: pos.opacity,
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -342,12 +299,12 @@ export const Ecosystem: React.FC = () => {
               >
                 <div
                   style={{
-                    width: 160,
-                    height: 160,
-                    borderRadius: 32,
+                    width: 148,
+                    height: 148,
+                    borderRadius: "50%",
                     background: "rgba(30, 28, 35, 0.92)",
                     border: `2px solid ${n.color}`,
-                    boxShadow: `0 0 80px ${n.color}55, 0 20px 50px rgba(0,0,0,0.5)`,
+                    boxShadow: `0 0 70px ${n.color}55, 0 20px 50px rgba(0,0,0,0.5)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -361,16 +318,16 @@ export const Ecosystem: React.FC = () => {
                       style={{ width: "100%", height: "100%", objectFit: "contain" }}
                     />
                   ) : (
-                    <GlobeGlyph size={114} color={n.color} />
+                    <GlobeGlyph size={104} color={n.color} />
                   )}
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 26, fontWeight: 700, color: theme.foreground }}>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: theme.foreground }}>
                     {n.label}
                   </div>
                   <div
                     style={{
-                      fontSize: 14,
+                      fontSize: 13,
                       color: theme.mutedForeground,
                       fontFamily: theme.fontMono,
                       marginTop: 2,
@@ -379,55 +336,6 @@ export const Ecosystem: React.FC = () => {
                     {n.sub}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Capability chips */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 12,
-            flexWrap: "wrap",
-            marginTop: 10,
-          }}
-        >
-          {CAPABILITIES.map((c, i) => {
-            const t = spring({
-              frame: frame - (60 + i * 6),
-              fps,
-              config: { damping: 20, stiffness: 90 },
-            });
-            return (
-              <div
-                key={c.label}
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "rgba(30, 28, 35, 0.85)",
-                  border: `1px solid ${c.color}55`,
-                  color: theme.foreground,
-                  fontSize: 15,
-                  fontWeight: 500,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  opacity: t,
-                  transform: `translateY(${(1 - t) * 10}px)`,
-                }}
-              >
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: c.color,
-                    boxShadow: `0 0 8px ${c.color}`,
-                  }}
-                />
-                {c.label}
               </div>
             );
           })}
