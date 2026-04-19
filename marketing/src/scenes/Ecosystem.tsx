@@ -4,17 +4,12 @@ import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { LOGOS } from "../components/assets";
 
-// Every piece of this scene is circular — the core, the three client
-// nodes, the broadcasting rings, even the flight paths. The three
-// clients are placed equidistantly on a single orbit around the core,
-// and fly inward along their radial before the connection lines draw.
-
 type NodeSpec = {
   key: string;
   label: string;
   sub: string;
   color: string;
-  angleDeg: number;           // polar angle on the orbit (0° = right, 90° = down)
+  angleDeg: number;
   render: "image" | "globe";
   logo?: string;
 };
@@ -41,15 +36,12 @@ const GlobeGlyph: React.FC<{ size: number; color: string }> = ({ size, color }) 
 
 type NodePosition = { x: number; y: number; scale: number; opacity: number };
 
-// Convert polar (angle, radius) to cartesian relative to CENTER.
 const polar = (angleDeg: number, r: number) => {
   const a = (angleDeg * Math.PI) / 180;
   return { x: CENTER.x + Math.cos(a) * r, y: CENTER.y + Math.sin(a) * r };
 };
 
-// Ongoing gentle orbital rotation applied to all nodes after they settle —
-// makes the diagram feel alive without implying the user can interact.
-const ORBIT_DRIFT_PER_FRAME = 0.08;   // degrees per frame
+const ORBIT_DRIFT_PER_FRAME = 0.08;
 
 export const Ecosystem: React.FC = () => {
   const frame = useCurrentFrame();
@@ -65,9 +57,6 @@ export const Ecosystem: React.FC = () => {
   const coreIn = spring({ frame: frame - 10, fps, config: { damping: 14, stiffness: 90 } });
   const coreBreath = 0.6 + ((Math.sin(frame / 14) + 1) / 2) * 0.4;
 
-  // Per-node enter animations: each starts at double the orbit radius
-  // (far outside) and spirals inward to its resting slot, staggered
-  // 10 frames apart after the core has landed.
   const nodePositions: Record<string, NodePosition> = {};
   NODES.forEach((n, i) => {
     const delay = 30 + i * 9;
@@ -77,14 +66,13 @@ export const Ecosystem: React.FC = () => {
       config: { damping: 15, stiffness: 70 },
     });
     const rAtT = interpolate(t, [0, 1], [ORBIT_R * 2.3, ORBIT_R]);
-    const angleOffsetAtT = interpolate(t, [0, 1], [40, 0]); // spirals into place
+    const angleOffsetAtT = interpolate(t, [0, 1], [40, 0]);
     const driftFrames = Math.max(0, frame - (delay + 24));
     const finalAngle = n.angleDeg + driftFrames * ORBIT_DRIFT_PER_FRAME;
     const pos = polar(finalAngle + angleOffsetAtT, rAtT);
     nodePositions[n.key] = { x: pos.x, y: pos.y, scale: 0.5 + t * 0.5, opacity: t };
   });
 
-  // Connection lines draw after nodes settle.
   const lineProgressFor = (i: number) =>
     interpolate(frame, [60 + i * 6, 90 + i * 6], [0, 1], {
       extrapolateLeft: "clamp",
@@ -103,7 +91,6 @@ export const Ecosystem: React.FC = () => {
       />
 
       <AbsoluteFill style={{ padding: "70px 100px" }}>
-        {/* Header */}
         <div
           style={{
             opacity: headerIn,
@@ -148,14 +135,12 @@ export const Ecosystem: React.FC = () => {
           </div>
         </div>
 
-        {/* Diagram */}
         <div style={{ position: "relative", flex: 1, marginTop: 24, minHeight: 0 }}>
           <svg
             viewBox="0 0 1920 920"
             preserveAspectRatio="none"
             style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
           >
-            {/* Broadcasting waves — continuous expand-and-fade from the core */}
             {[0, 1, 2].map((i) => {
               const cycle = 84;
               const phase = (frame + i * (cycle / 3)) % cycle;
@@ -176,7 +161,6 @@ export const Ecosystem: React.FC = () => {
               );
             })}
 
-            {/* Faint orbital guide circle the nodes rest on */}
             <circle
               cx={CENTER.x}
               cy={CENTER.y}
@@ -188,7 +172,6 @@ export const Ecosystem: React.FC = () => {
               opacity={coreIn * 0.22}
             />
 
-            {/* Rotating dashed rings hugging the core */}
             <circle
               cx={CENTER.x}
               cy={CENTER.y}
@@ -211,7 +194,6 @@ export const Ecosystem: React.FC = () => {
               opacity={coreIn * 0.4}
               transform={`rotate(${-frame * 0.9} ${CENTER.x} ${CENTER.y})`}
             />
-            {/* Soft halo under the core plate */}
             <circle
               cx={CENTER.x}
               cy={CENTER.y}
@@ -220,13 +202,9 @@ export const Ecosystem: React.FC = () => {
               opacity={0.1 * coreIn}
             />
 
-            {/* Connection lines + flowing data dots — drawn once nodes settle */}
             {NODES.map((n, i) => {
               const pos = nodePositions[n.key]!;
               const lineT = lineProgressFor(i);
-              // Only start drawing once the line progress is > 0 AND the
-              // node is mostly in place; otherwise you'd see a line
-              // chasing the node through the air.
               const visualProgress = lineT * (pos.opacity > 0.6 ? 1 : 0);
               const x2 = CENTER.x + (pos.x - CENTER.x) * visualProgress;
               const y2 = CENTER.y + (pos.y - CENTER.y) * visualProgress;
@@ -261,9 +239,6 @@ export const Ecosystem: React.FC = () => {
             })}
           </svg>
 
-          {/* Core — the round Createrington logo rendered standalone (no
-              plate/card). Halo and rings are drawn in the SVG above; we
-              just need the image itself with a soft drop-shadow glow. */}
           <Img
             src={staticFile("assets/logo/logo.webp")}
             style={{
@@ -279,7 +254,6 @@ export const Ecosystem: React.FC = () => {
             }}
           />
 
-          {/* Orbiting client nodes — round plates */}
           {NODES.map((n) => {
             const pos = nodePositions[n.key]!;
             return (

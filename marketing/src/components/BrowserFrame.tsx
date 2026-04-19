@@ -3,15 +3,13 @@ import { Img, staticFile } from "remotion";
 import { theme } from "../theme";
 
 type BrowserFrameProps = {
-  src: string;          // staticFile path
+  src: string;
   url?: string;
   width?: number | string;
   height?: number | string;
   style?: React.CSSProperties;
 };
 
-// A Safari/Chrome-like browser chrome wrapping a screenshot. Keeps the
-// real UI centered in the frame and gives it a grounded, product-shot feel.
 export const BrowserFrame: React.FC<BrowserFrameProps> = ({
   src,
   url = "createrington.com",
@@ -36,7 +34,6 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
         ...style,
       }}
     >
-      {/* Chrome bar */}
       <div
         style={{
           height: chromeHeight,
@@ -68,8 +65,6 @@ export const BrowserFrame: React.FC<BrowserFrameProps> = ({
           {url}
         </div>
       </div>
-      {/* Screenshot — cover with left-top anchor: sidebar and top nav are
-          preserved, any aspect-ratio mismatch crops the bottom-right. */}
       <div style={{ flex: 1, minHeight: 0, overflow: "hidden", background: theme.card }}>
         <Img
           src={staticFile(src)}

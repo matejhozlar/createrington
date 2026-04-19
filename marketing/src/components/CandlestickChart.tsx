@@ -35,11 +35,11 @@ type ChartProps = {
   candles?: Candle[];
   priceRange?: [number, number];
   gridPrices?: number[];
-  currency?: string;                                  // prefix for y-axis labels, e.g. "$"
-  formatPrice?: (n: number) => string;                // defaults to 2-decimal
+  currency?: string;
+  formatPrice?: (n: number) => string;
 };
 
-const EMERALD = "#34d399";                            // tailwind emerald-400 (matches app)
+const EMERALD = "#34d399";
 
 export const CandlestickChart: React.FC<ChartProps> = ({
   width,
@@ -57,7 +57,6 @@ export const CandlestickChart: React.FC<ChartProps> = ({
   const innerW = width - padding.left - padding.right;
   const innerH = height - padding.top - padding.bottom;
 
-  // Auto-range from the provided candles if caller didn't override.
   const derived = React.useMemo(() => {
     const hi = Math.max(...candles.map((c) => c.h));
     const lo = Math.min(...candles.map((c) => c.l));
@@ -76,14 +75,12 @@ export const CandlestickChart: React.FC<ChartProps> = ({
     Math.max(0, Math.floor((frame - startFrame) / candleDuration)),
   );
 
-  // Gridlines: 5 evenly spaced across the range by default.
   const gridPrices =
     gridPricesProp ??
     Array.from({ length: 5 }, (_, i) => minPrice + ((maxPrice - minPrice) * (i + 0.5)) / 5);
 
   const fmt = formatPrice ?? ((n: number) => n.toFixed(2));
 
-  // Animated price cursor on the latest visible candle
   const cursorCandleIdx = Math.max(0, visibleCount - 1);
   const cursorCandle = candles[cursorCandleIdx];
   const cursorPrice = cursorCandle?.c ?? candles[0]!.c;
@@ -91,7 +88,6 @@ export const CandlestickChart: React.FC<ChartProps> = ({
 
   return (
     <svg width={width} height={height} style={{ overflow: "visible" }}>
-      {/* Background panel */}
       <rect x={0} y={0} width={width} height={height} rx={16} fill={theme.card} />
       <rect
         x={0}
@@ -103,7 +99,6 @@ export const CandlestickChart: React.FC<ChartProps> = ({
         stroke={theme.border}
       />
 
-      {/* Gridlines + labels */}
       {gridPrices.map((p) => (
         <g key={p}>
           <line
@@ -127,7 +122,6 @@ export const CandlestickChart: React.FC<ChartProps> = ({
         </g>
       ))}
 
-      {/* Candles */}
       {candles.slice(0, visibleCount).map((c, i) => {
         const up = c.c >= c.o;
         const color = up ? EMERALD : theme.destructive;
@@ -162,7 +156,6 @@ export const CandlestickChart: React.FC<ChartProps> = ({
         );
       })}
 
-      {/* Live price cursor */}
       {visibleCount > 0 && (
         <g>
           <line

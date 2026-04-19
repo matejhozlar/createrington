@@ -98,7 +98,6 @@ export const FeaturesGrid: React.FC = () => {
                   boxShadow: `0 25px 60px rgba(0,0,0,0.55)`,
                 }}
               >
-                {/* Background image block (like homepage feature cards) */}
                 <div style={{ padding: 8 }}>
                   <div
                     style={{

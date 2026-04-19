@@ -8,26 +8,16 @@ import { Sparkline } from "../components/Sparkline";
 import { TradeStream } from "../components/TradeStream";
 import { SCREENSHOTS } from "../components/assets";
 
-// Warmer, more neutral card surface for this scene — the global theme.card
-// skews blue-purple (OkLCH hue 285°) which reads cold against the emerald
-// tickers and amber accents here.
 const CARD = "#1e1c22";
 const CARD_BORDER = "rgba(255, 255, 255, 0.08)";
 
-// Palette pulled from packages/client/src/features/crypto/market/components/TokenList.tsx:
-//   stable    → emerald-400 (bg-emerald-400)
-//   memecoin  → orange-400  (bg-orange-400)
-//   positive 24h change → emerald-400 / text-emerald-400
-//   negative 24h change → destructive
 const COLORS = {
-  emerald: "#34d399",   // tailwind emerald-400
-  orange: "#fb923c",    // tailwind orange-400
-  blue: "#60a5fa",      // tailwind blue-400 (for blue_chip if we add one later)
-  purple: "#c084fc",    // tailwind purple-400 (seasonal)
+  emerald: "#34d399",
+  orange: "#fb923c",
+  blue: "#60a5fa",
+  purple: "#c084fc",
 } as const;
 
-// Real seed data from db/data/test-data.sql — Ringcoin (RGC) is the
-// stable backbone, followed by the five initial memecoins.
 const TICKERS = [
   { sym: "RGC", name: "Ringcoin",      price: 1.00,  change: 2.1,   category: "stable"   as const, tag: "pegged"  as const },
   { sym: "DDG", name: "DiamondDoge",   price: 15.00, change: 22.1,  category: "memecoin" as const, tag: "rocket"  as const },
@@ -37,9 +27,6 @@ const TICKERS = [
   { sym: "END", name: "EnderToken",    price: 0.01,  change: -32.8, category: "memecoin" as const, tag: "crash"   as const },
 ];
 
-// RGC candles — 20 bars telling a gradual-appreciation story, fitting
-// "Pegged to server activity" (more activity over time → the peg target
-// drifts up). Starts ~$0.62, ends ~$1.08, final 24h change ~+12%.
 const RGC_CANDLES: Candle[] = [
   { o: 0.62, c: 0.65, h: 0.67, l: 0.60 },
   { o: 0.65, c: 0.64, h: 0.68, l: 0.62 },
@@ -63,10 +50,6 @@ const RGC_CANDLES: Candle[] = [
   { o: 1.04, c: 1.08, h: 1.10, l: 1.03 },
 ];
 
-// Simulated fills for the bottom trade-stream marquee. Names drawn from
-// the test-data.sql seed ("saunhardy" etc), tokens from the real seed
-// list above. They just need to feel plausible — the video never claims
-// these are live.
 const TRADES = [
   { player: "saunhardy",  side: "buy"  as const, amount: 500,  sym: "RGC", symColor: COLORS.emerald, price: 1.08 },
   { player: "matejhoz",   side: "sell" as const, amount: 12,   sym: "CRP", symColor: COLORS.orange,  price: 2.50 },
@@ -79,7 +62,6 @@ const TRADES = [
   { player: "flintspark", side: "buy"  as const, amount: 75,   sym: "CRP", symColor: COLORS.orange,  price: 2.48 },
 ];
 
-// ——— Icons (lucide paths inlined) ———
 const svgBase = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 const RocketIcon: React.FC<{ size: number }> = ({ size }) => (
@@ -98,8 +80,6 @@ const SkullIcon: React.FC<{ size: number }> = ({ size }) => (
     <path d="M10 16h4" />
   </svg>
 );
-
-// ——— Scene ———
 
 const categoryColor = (c: string) =>
   c === "stable" ? COLORS.emerald : c === "blue_chip" ? COLORS.blue : c === "seasonal" ? COLORS.purple : COLORS.orange;
@@ -130,7 +110,6 @@ export const CryptoMarket: React.FC = () => {
       />
 
       <AbsoluteFill style={{ padding: "70px 90px" }}>
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -211,7 +190,6 @@ export const CryptoMarket: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart + ticker list */}
         <div
           style={{
             display: "grid",
@@ -224,7 +202,6 @@ export const CryptoMarket: React.FC = () => {
             minHeight: 0,
           }}
         >
-          {/* Chart panel — RGC / $ */}
           <div
             style={{
               background: CARD,
@@ -301,7 +278,6 @@ export const CryptoMarket: React.FC = () => {
             </div>
           </div>
 
-          {/* Right column: compact ticker list + portfolio screenshot pip */}
           <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {TICKERS.map((t, i) => {
@@ -318,7 +294,6 @@ export const CryptoMarket: React.FC = () => {
                 t.change === 0 ? theme.mutedForeground : positive ? COLORS.emerald : theme.destructive;
               const stable = t.category === "stable";
 
-              // Adaptive precision — matches packages/client/.../format.ts
               const priceStr =
                 t.price < 0.01
                   ? t.price.toFixed(6)
@@ -326,9 +301,6 @@ export const CryptoMarket: React.FC = () => {
                     ? t.price.toFixed(4)
                     : t.price.toFixed(2);
 
-              // Staggered "price tick" flash — each ticker's price number
-              // briefly glows its change color on its own phase, like a
-              // real market feed.
               const pulsePhase = (frame + i * 23) % 48;
               const priceFlash = pulsePhase < 10 ? (10 - pulsePhase) / 10 : 0;
 
@@ -348,7 +320,6 @@ export const CryptoMarket: React.FC = () => {
                     boxShadow: stable ? `0 0 24px ${COLORS.emerald}22` : undefined,
                   }}
                 >
-                  {/* Category dot + trend icon */}
                   <div
                     style={{
                       width: 36,
@@ -416,7 +387,6 @@ export const CryptoMarket: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Sparkline — mini trend line, direction matches 24h change */}
                   <div style={{ width: 70, height: 32, flexShrink: 0 }}>
                     <Sparkline
                       width={70}
@@ -460,7 +430,6 @@ export const CryptoMarket: React.FC = () => {
             })}
             </div>
 
-            {/* Portfolio screenshot — anchors the scene in the real app UI */}
             <div
               style={{
                 flex: 1,
@@ -482,7 +451,6 @@ export const CryptoMarket: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom trade stream — scrolling marquee of simulated fills */}
         <div
           style={{
             marginTop: 16,

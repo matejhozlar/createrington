@@ -17,7 +17,6 @@ export const LogoIntro: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  // Pulsing amber glow behind the logo
   const glowPulse = 0.6 + ((Math.sin(frame / 12) + 1) / 2) * 0.4;
 
   return (
@@ -40,7 +39,6 @@ export const LogoIntro: React.FC = () => {
             position: "relative",
           }}
         >
-          {/* Amber glow puck behind logo */}
           <div
             style={{
               position: "absolute",
@@ -54,7 +52,6 @@ export const LogoIntro: React.FC = () => {
             }}
           />
 
-          {/* Real Cogs & Steam logo */}
           <Img
             src={staticFile(LOGOS.cogsAndSteam)}
             style={{
@@ -68,7 +65,6 @@ export const LogoIntro: React.FC = () => {
             }}
           />
 
-          {/* Animated underline accent */}
           <div
             style={{
               marginTop: 40,
@@ -79,7 +75,6 @@ export const LogoIntro: React.FC = () => {
             }}
           />
 
-          {/* Tagline */}
           <div
             style={{
               marginTop: 28,

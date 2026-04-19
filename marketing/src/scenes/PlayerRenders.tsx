@@ -4,10 +4,6 @@ import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { SCREENSHOTS } from "../components/assets";
 
-// The four Puppeteer-generated player render cards the Discord bot posts
-// when someone runs the matching slash command. Each tile shows the real
-// rendered PNG with its command label so the scene reads as:
-//   "here's what a player card looks like · this is how you get it".
 const RENDERS = [
   {
     command: "/profile",
@@ -60,7 +56,6 @@ export const PlayerRenders: React.FC = () => {
       />
 
       <AbsoluteFill style={{ padding: "70px 100px 60px" }}>
-        {/* Header */}
         <div
           style={{
             opacity: headerIn,
@@ -109,7 +104,6 @@ export const PlayerRenders: React.FC = () => {
           </div>
         </div>
 
-        {/* 2x2 grid of render cards */}
         <div
           style={{
             flex: 1,
@@ -128,7 +122,6 @@ export const PlayerRenders: React.FC = () => {
               config: { damping: 17, stiffness: 95 },
             });
 
-            // Subtle ken-burns zoom on the render so it doesn't feel static.
             const zoom = interpolate(frame, [0, SCENE], [1.0, 1.03], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
@@ -149,7 +142,6 @@ export const PlayerRenders: React.FC = () => {
                   transformOrigin: "center center",
                 }}
               >
-                {/* Command label — monospace, left-aligned, no pill */}
                 <div
                   style={{
                     display: "flex",
@@ -180,7 +172,6 @@ export const PlayerRenders: React.FC = () => {
                   </span>
                 </div>
 
-                {/* Render image with drop shadow */}
                 <div
                   style={{
                     flex: 1,
@@ -202,7 +193,6 @@ export const PlayerRenders: React.FC = () => {
                       transform: `scale(${zoom})`,
                     }}
                   />
-                  {/* Corner glow */}
                   <div
                     style={{
                       position: "absolute",

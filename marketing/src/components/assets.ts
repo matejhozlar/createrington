@@ -1,7 +1,3 @@
-// Central registry of the real app assets copied into marketing/public.
-// Using paths (strings) not staticFile() — callers pass these into Remotion's
-// staticFile() themselves so HMR in the studio picks up changes.
-
 export const HERO_IMAGES = [
   "assets/hero/gondola-station.webp",
   "assets/hero/dark-warehouse.webp",

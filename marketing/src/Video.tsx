@@ -29,7 +29,6 @@ export const Video: React.FC = () => {
     cta: (cursor += DURATIONS.ecosystem),
   };
 
-  // Short crossfade overlap between neighboring scenes.
   const OVERLAP = 14;
 
   return (

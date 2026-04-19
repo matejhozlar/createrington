@@ -22,7 +22,6 @@ export const HeroTagline: React.FC = () => {
 
   return (
     <AbsoluteFill style={{ opacity: fadeIn * fadeOut }}>
-      {/* Single calm hero — same gondola-station shot the site leads with */}
       <Background
         image="assets/hero/gondola-station.webp"
         zoom={[1.03, 1.07]}
@@ -32,7 +31,6 @@ export const HeroTagline: React.FC = () => {
         durationInFrames={134}
       />
 
-      {/* Top-left logo — matches homepage `h-24 lg` (96px) 1:1 */}
       <Img
         src={staticFile(LOGOS.cogsAndSteam)}
         style={{
@@ -48,8 +46,6 @@ export const HeroTagline: React.FC = () => {
         }}
       />
 
-      {/* Top-right online pill — mirrors the homepage Shadcn outline Badge
-          (bg-zinc-900/70 text-lg px-4 py-2 gap-2, size-4 pulsing dot). */}
       <div
         style={{
           position: "absolute",
@@ -58,31 +54,30 @@ export const HeroTagline: React.FC = () => {
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 8,                                    // gap-2
-          padding: "8px 16px",                       // py-2 px-4
-          borderRadius: 6,                           // rounded-md
-          background: "rgba(24, 24, 27, 0.7)",       // bg-zinc-900/70
-          border: `1px solid ${theme.border}`,       // outline variant → border-input
-          color: "#22c55e",                          // text-green-500
-          fontSize: 18,                              // text-lg
-          fontWeight: 500,                           // badge default
-          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)", // shadow-md
+          gap: 8,
+          padding: "8px 16px",
+          borderRadius: 6,
+          background: "rgba(24, 24, 27, 0.7)",
+          border: `1px solid ${theme.border}`,
+          color: "#22c55e",
+          fontSize: 18,
+          fontWeight: 500,
+          boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)",
           opacity: badgeIn,
         }}
       >
         <span
           style={{
-            width: 16,                               // size-4
+            width: 16,
             height: 16,
             borderRadius: "50%",
-            background: "#22c55e",                   // bg-green-500
-            opacity: statusPulse,                    // animate-pulse
+            background: "#22c55e",
+            opacity: statusPulse,
           }}
         />
         Online
       </div>
 
-      {/* Main tagline */}
       <AbsoluteFill
         style={{
           justifyContent: "flex-end",

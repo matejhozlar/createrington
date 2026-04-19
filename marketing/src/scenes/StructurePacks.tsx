@@ -5,10 +5,6 @@ import { Background } from "../components/Background";
 import { AnimatedCounter } from "../components/AnimatedCounter";
 import { PortalTile } from "../components/PortalTile";
 
-// Real structure-pack data pulled from the Createrington admin config.
-// Descriptions are null in the source, so cards show the top mods instead.
-// Weights/boosts/chance are illustrative — the video never claims live
-// counts, but the voting mechanic itself is part of the real feature.
 const PACKS = [
   {
     name: "YUNG's",
@@ -66,8 +62,6 @@ const PACKS = [
   },
 ];
 
-// ——— Icons (lucide-react SVG paths inlined, matching the app's PackCard) ———
-
 const iconBase = { fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
 
 const BlocksIcon: React.FC<{ size: number }> = ({ size }) => (
@@ -111,7 +105,6 @@ const ClockIcon: React.FC<{ size: number }> = ({ size }) => (
   </svg>
 );
 
-// ——— Obsidian block texture (inline SVG data URI) ———
 
 const OBSIDIAN_SVG = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'>
 <rect width='16' height='16' fill='#0a0612'/>
@@ -158,11 +151,6 @@ const ObsidianBlock: React.FC<{ size: number }> = ({ size }) => (
   />
 );
 
-// ——— Portal ———
-
-// Standard 4×5-block gate, 2×3 interior. Interior is an SVG <pattern> that
-// tiles the real pw_portal.png frame seamlessly at 1 block per tile, so the
-// viewer sees six discrete animated blocks instead of one stretched piece.
 const Portal: React.FC<{ progress: number }> = ({ progress }) => {
   const frame = useCurrentFrame();
   const breath = 0.55 + ((Math.sin(frame / 9) + 1) / 2) * 0.45;
@@ -188,7 +176,6 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         opacity: progress,
       }}
     >
-      {/* Purple aura */}
       <div
         style={{
           position: "absolute",
@@ -199,7 +186,6 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         }}
       />
 
-      {/* Obsidian frame */}
       <div
         style={{
           position: "absolute",
@@ -218,7 +204,6 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         })}
       </div>
 
-      {/* 2×3 tiled interior — SVG pattern, seamless at block edges */}
       <div
         style={{
           position: "absolute",
@@ -233,7 +218,6 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
         <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
       </div>
 
-      {/* Outer glow / drop shadow */}
       <div
         style={{
           position: "absolute",
@@ -245,11 +229,6 @@ const Portal: React.FC<{ progress: number }> = ({ progress }) => {
     </div>
   );
 };
-
-// ——— Pack card ———
-// Mirrors packages/client/src/features/structure-packs/components/PackCard.tsx:
-// name + chance% on the right, progress bar, and the Blocks/Rocket/TrendingUp
-// icon row along the bottom.
 
 type Pack = (typeof PACKS)[number];
 
@@ -281,7 +260,6 @@ const PackCard: React.FC<{ pack: Pack; delay: number }> = ({ pack, delay }) => {
         boxShadow: pack.leading ? `0 0 40px ${theme.primaryGlow}` : "0 8px 24px rgba(0,0,0,0.35)",
       }}
     >
-      {/* Top row: name + chance */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -353,7 +331,6 @@ const PackCard: React.FC<{ pack: Pack; delay: number }> = ({ pack, delay }) => {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
         <div
           style={{
@@ -366,7 +343,6 @@ const PackCard: React.FC<{ pack: Pack; delay: number }> = ({ pack, delay }) => {
         />
       </div>
 
-      {/* Bottom icon row (matches real PackCard) */}
       <div
         style={{
           display: "flex",
@@ -403,8 +379,6 @@ const PackCard: React.FC<{ pack: Pack; delay: number }> = ({ pack, delay }) => {
   );
 };
 
-// ——— Scene ———
-
 export const StructurePacks: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -439,7 +413,6 @@ export const StructurePacks: React.FC = () => {
       />
 
       <AbsoluteFill style={{ padding: "70px 100px" }}>
-        {/* Header */}
         <div
           style={{
             opacity: headerIn,
@@ -488,7 +461,6 @@ export const StructurePacks: React.FC = () => {
           </div>
         </div>
 
-        {/* Body: cards (left) + portal (right) */}
         <div
           style={{
             flex: 1,
@@ -506,7 +478,6 @@ export const StructurePacks: React.FC = () => {
             ))}
           </div>
 
-          {/* Portal + countdown */}
           <div
             style={{
               display: "flex",

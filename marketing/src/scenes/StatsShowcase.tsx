@@ -4,10 +4,6 @@ import { theme } from "../theme";
 import { Background } from "../components/Background";
 import { NumberCountUp } from "../components/NumberCountUp";
 
-// Numbers are deliberately approximated so the video doesn't drift when
-// the real numbers move. If we ever re-render on a schedule, swap to a
-// pre-render fetch via delayRender()/continueRender(). Layout mirrors the
-// homepage's "Join a Thriving Community" section (3 centered cards).
 const STATS = [
   {
     icon: "users",
@@ -70,8 +66,6 @@ const Icon: React.FC<{ kind: string; size: number }> = ({ kind, size }) => {
   );
 };
 
-// Animated ring that draws around the icon badge — circumference dash-offset
-// interpolates from "full hidden" to "full drawn" over the entrance.
 const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -101,7 +95,6 @@ const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) =
         opacity: badgeIn,
       }}
     >
-      {/* Soft amber halo behind the whole badge */}
       <div
         style={{
           position: "absolute",
@@ -113,7 +106,6 @@ const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) =
         }}
       />
 
-      {/* Base disc */}
       <div
         style={{
           position: "absolute",
@@ -123,7 +115,6 @@ const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) =
         }}
       />
 
-      {/* Drawn-in ring */}
       <svg
         width={outer}
         height={outer}
@@ -147,7 +138,6 @@ const IconBadge: React.FC<{ kind: string; delay: number }> = ({ kind, delay }) =
         />
       </svg>
 
-      {/* Icon centred */}
       <div
         style={{
           position: "absolute",
@@ -194,7 +184,6 @@ export const StatsShowcase: React.FC = () => {
           padding: "0 120px",
         }}
       >
-        {/* Heading — matches homepage copy 1:1 */}
         <h2
           style={{
             fontSize: 76,
@@ -223,7 +212,6 @@ export const StatsShowcase: React.FC = () => {
           Our server is home to a vibrant community of builders and creators
         </p>
 
-        {/* Three-up grid */}
         <div
           style={{
             marginTop: 72,
@@ -241,12 +229,10 @@ export const StatsShowcase: React.FC = () => {
               fps,
               config: { damping: 16, stiffness: 110 },
             });
-            // Value pops with a quick overshoot once the counter lands.
             const valueSettle = interpolate(frame, [delay + 40, delay + 56, delay + 72], [0.9, 1.06, 1], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
             });
-            // Bottom accent bar sweeps in after the value lands.
             const accentProgress = interpolate(frame, [delay + 44, delay + 78], [0, 1], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
@@ -273,7 +259,6 @@ export const StatsShowcase: React.FC = () => {
                   overflow: "hidden",
                 }}
               >
-                {/* Corner amber glow */}
                 <div
                   style={{
                     position: "absolute",
@@ -289,7 +274,6 @@ export const StatsShowcase: React.FC = () => {
 
                 <IconBadge kind={s.icon} delay={delay + 4} />
 
-                {/* Value with soft glow behind it */}
                 <div style={{ position: "relative", display: "inline-flex", alignItems: "baseline" }}>
                   <div
                     style={{
@@ -339,7 +323,6 @@ export const StatsShowcase: React.FC = () => {
                   {s.description}
                 </div>
 
-                {/* Animated bottom accent — sweeps in from the left */}
                 <div
                   style={{
                     position: "absolute",

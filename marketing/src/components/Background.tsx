@@ -3,22 +3,20 @@ import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame } from "rem
 import { theme } from "../theme";
 
 type BackgroundProps = {
-  image?: string;                  // staticFile path, e.g. "assets/hero/dark-warehouse.webp"
-  images?: string[];               // crossfade between multiple
-  zoom?: [number, number];         // start, end scale (default 1 → 1.08)
-  pan?: { x: number; y: number };  // translation in pixels across the scene
-  blur?: number;                   // pixels
-  darken?: number;                 // 0..1, strength of dark overlay
-  tint?: string;                   // optional color wash
+  image?: string;
+  images?: string[];
+  zoom?: [number, number];
+  pan?: { x: number; y: number };
+  blur?: number;
+  darken?: number;
+  tint?: string;
   gradient?: "bottom" | "both" | "radial" | "none";
   showGrid?: boolean;
-  // Scene-local duration (so Ken-Burns math spans the scene, not the whole composition).
-  // Defaults to a safe 180 frames (6s).
+  // Scene-local duration so Ken-Burns math spans this scene, not the
+  // whole composition (useVideoConfig returns composition duration).
   durationInFrames?: number;
 };
 
-// Ken-Burns image background with heavy cinematic grading to match the
-// dark + amber app palette. Used as the backdrop for every scene.
 export const Background: React.FC<BackgroundProps> = ({
   image,
   images,
@@ -42,7 +40,6 @@ export const Background: React.FC<BackgroundProps> = ({
   const tx = pan.x * progress;
   const ty = pan.y * progress;
 
-  // Crossfade over list
   const segLen = list.length > 0 ? durationInFrames / list.length : 0;
 
   return (
@@ -80,10 +77,8 @@ export const Background: React.FC<BackgroundProps> = ({
         );
       })}
 
-      {/* Dark overlay */}
       <AbsoluteFill style={{ backgroundColor: `rgba(15, 14, 18, ${darken})` }} />
 
-      {/* Optional amber color wash */}
       {tint && (
         <AbsoluteFill
           style={{
@@ -94,7 +89,6 @@ export const Background: React.FC<BackgroundProps> = ({
         />
       )}
 
-      {/* Bottom gradient so text is always legible */}
       {(gradient === "bottom" || gradient === "both") && (
         <AbsoluteFill
           style={{
@@ -117,7 +111,6 @@ export const Background: React.FC<BackgroundProps> = ({
         />
       )}
 
-      {/* Subtle noise-like tech grid, very faint */}
       {showGrid && (
         <AbsoluteFill
           style={{
@@ -131,7 +124,6 @@ export const Background: React.FC<BackgroundProps> = ({
         />
       )}
 
-      {/* Amber glow accent (subtle) */}
       <AbsoluteFill
         style={{
           background: `radial-gradient(ellipse at 70% 30%, ${theme.primarySoft} 0%, transparent 45%)`,

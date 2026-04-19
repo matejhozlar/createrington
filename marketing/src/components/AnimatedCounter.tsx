@@ -25,7 +25,6 @@ export const AnimatedCounter: React.FC<CounterProps> = ({
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  // Ease-out cubic
   const eased = 1 - Math.pow(1 - progress, 3);
   const current = from + (to - from) * eased;
   const display = formatFn ? formatFn(current) : Math.round(current).toLocaleString();

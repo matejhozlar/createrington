@@ -4,22 +4,16 @@ import { interpolate, useCurrentFrame } from "remotion";
 type SparklineProps = {
   width: number;
   height: number;
-  // change % drives overall drift direction; a seed offsets the noise so
-  // each ticker has its own shape without needing real price history.
   change: number;
   seed?: number;
   color: string;
   delay?: number;
 };
 
-// Cheap deterministic "price path" — a drift line proportional to the
-// 24h change, plus a couple of sine waves for volatility. Renders as a
-// polyline that draws in via stroke-dashoffset.
 function buildPath(width: number, height: number, change: number, seed: number): string {
   const N = 24;
   const padding = 2;
   const innerH = height - padding * 2;
-  // Normalize — drift spans ±40% of the chart height for a ±25% change.
   const clampedChange = Math.max(-30, Math.min(30, change));
   const drift = (clampedChange / 30) * (innerH * 0.4);
   const amp = innerH * 0.18;
@@ -28,7 +22,6 @@ function buildPath(width: number, height: number, change: number, seed: number):
     const t = i / (N - 1);
     const x = padding + t * (width - padding * 2);
     const wave = Math.sin(i * 1.3 + seed) * amp * 0.5 + Math.sin(i * 0.7 + seed * 2) * amp * 0.5;
-    // Baseline centered; drift shifts the END to the target direction.
     const y = padding + innerH / 2 - t * drift + wave * (1 - t * 0.3);
     pts.push(`${x.toFixed(1)},${Math.max(padding, Math.min(height - padding, y)).toFixed(1)}`);
   }
@@ -49,10 +42,7 @@ export const Sparkline: React.FC<SparklineProps> = ({
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  // Rough path length estimate — good enough for dasharray trick on a 24-point polyline.
   const approxLen = width + Math.abs(change) * 2 + 20;
-
-  // Gradient fill below the line for a stock-ticker vibe.
   const gradId = `sparkfill-${seed}`;
 
   return (
@@ -63,13 +53,11 @@ export const Sparkline: React.FC<SparklineProps> = ({
           <stop offset="100%" stopColor={color} stopOpacity={0} />
         </linearGradient>
       </defs>
-      {/* Filled area under curve */}
       <polygon
         points={`${path} ${width - 2},${height - 2} 2,${height - 2}`}
         fill={`url(#${gradId})`}
         opacity={progress}
       />
-      {/* Line itself — draws in via dashoffset */}
       <polyline
         points={path}
         fill="none"
@@ -80,7 +68,6 @@ export const Sparkline: React.FC<SparklineProps> = ({
         strokeDasharray={approxLen}
         strokeDashoffset={approxLen * (1 - progress)}
       />
-      {/* Tip dot on the latest point */}
       {progress > 0.95 && (
         <circle
           cx={width - 2}

@@ -40,7 +40,6 @@ export const CallToAction: React.FC = () => {
           textAlign: "center",
         }}
       >
-        {/* Small logo at top */}
         <Img
           src={staticFile(LOGOS.cogsAndSteam)}
           style={{

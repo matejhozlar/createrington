@@ -1,5 +1,3 @@
-// Pulled from packages/client/src/index.css — OkLCH values converted to
-// approximate hex so Remotion's Chromium renderer handles them everywhere.
 export const theme = {
   background: "#1b1a20",
   backgroundDeep: "#0f0e12",
@@ -29,19 +27,18 @@ export const theme = {
 
 export const FPS = 30;
 
-// Scene durations in frames (30fps)
 export const DURATIONS = {
-  logoIntro: 90,         // 3.0s
-  heroTagline: 120,      // 4.0s
-  statsShowcase: 150,    // 5.0s
-  featuresGrid: 180,     // 6.0s
-  featuredBuilds: 180,   // 6.0s — community builds mosaic
-  structurePacks: 180,   // 6.0s — NEW: parallel-worlds voting
-  playerRenders: 180,    // 6.0s — Puppeteer-rendered Discord cards
-  webShowcase: 150,      // 5.0s — real screenshots showcase
-  cryptoMarket: 210,     // 7.0s
-  ecosystem: 180,        // 6.0s
-  callToAction: 120,     // 4.0s
+  logoIntro: 90,
+  heroTagline: 120,
+  statsShowcase: 150,
+  featuresGrid: 180,
+  featuredBuilds: 180,
+  structurePacks: 180,
+  playerRenders: 180,
+  webShowcase: 150,
+  cryptoMarket: 210,
+  ecosystem: 180,
+  callToAction: 120,
 } as const;
 
 export const TOTAL_DURATION = Object.values(DURATIONS).reduce((a, b) => a + b, 0);

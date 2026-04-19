@@ -5,9 +5,6 @@ import { Background } from "../components/Background";
 import { BrowserFrame } from "../components/BrowserFrame";
 import { SCREENSHOTS } from "../components/assets";
 
-// Stacked, parallaxed browser frames — similar to Linear / Vercel marketing
-// pages — each tilted slightly and offset to feel like product stills.
-// Player-facing screenshots only — no admin dashboards here.
 const FRAMES = [
   {
     src: SCREENSHOTS.homepage,
@@ -56,7 +53,6 @@ export const WebShowcase: React.FC = () => {
 
   const headerIn = spring({ frame, fps, config: { damping: 18, stiffness: 100 } });
 
-  // Slow floating drift
   const drift = Math.sin(frame / 50) * 6;
 
   return (
@@ -116,7 +112,6 @@ export const WebShowcase: React.FC = () => {
           </div>
         </div>
 
-        {/* Browser frames */}
         <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
           {FRAMES.map((f, i) => {
             const inSpring = spring({

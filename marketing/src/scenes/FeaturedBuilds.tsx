@@ -3,9 +3,6 @@ import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, us
 import { theme } from "../theme";
 import { Background } from "../components/Background";
 
-// Hand-picked build shots — the two newest hero images (metro + space
-// station) lead, with two of the unused train-station shots filling the
-// column. Every tile is a real in-world screenshot.
 const BUILDS = [
   {
     image: "assets/hero/metro.webp",
@@ -58,7 +55,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
     config: { damping: 18, stiffness: 95 },
   });
 
-  // Ken-burns: independent zoom + pan per tile, timed to the whole scene.
   const t = interpolate(frame, [0, sceneDuration], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -84,7 +80,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
         background: theme.backgroundDeep,
       }}
     >
-      {/* Image — ken-burns zoom + pan */}
       <Img
         src={staticFile(build.image)}
         style={{
@@ -98,7 +93,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
         }}
       />
 
-      {/* Bottom gradient so text stays readable */}
       <div
         style={{
           position: "absolute",
@@ -109,7 +103,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
         }}
       />
 
-      {/* Top-right index pill — magazine-style "01 / 04" */}
       <div
         style={{
           position: "absolute",
@@ -130,7 +123,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
         {String(index + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
       </div>
 
-      {/* Caption block */}
       <div
         style={{
           position: "absolute",
@@ -140,7 +132,6 @@ const BuildTile: React.FC<TileProps> = ({ build, index, total, delay, large, sce
           color: theme.foreground,
         }}
       >
-        {/* Thin amber accent line above title */}
         <div
           style={{
             width: large ? 48 : 28,
@@ -210,7 +201,6 @@ export const FeaturedBuilds: React.FC = () => {
       />
 
       <AbsoluteFill style={{ padding: "70px 100px 64px" }}>
-        {/* Header */}
         <div
           style={{
             opacity: headerIn,
@@ -260,8 +250,6 @@ export const FeaturedBuilds: React.FC = () => {
             </div>
           </div>
 
-          {/* Decorative pill — context that fits the "look what they built"
-              story: everything in the mosaic was built by hand, in survival. */}
           <div
             style={{
               display: "inline-flex",
@@ -291,7 +279,6 @@ export const FeaturedBuilds: React.FC = () => {
           </div>
         </div>
 
-        {/* Growing amber hairline under the header */}
         <div
           style={{
             width: `${lineGrow * 100}%`,
@@ -303,7 +290,6 @@ export const FeaturedBuilds: React.FC = () => {
           }}
         />
 
-        {/* Asymmetric mosaic: one large hero tile + three stacked thumbs */}
         <div
           style={{
             flex: 1,

@@ -1,18 +1,3 @@
-// Populates marketing/public/ by mirroring the authoritative asset
-// locations so we don't check in duplicate binaries. Runs automatically
-// before `pnpm dev` / `pnpm build` / `pnpm preview` via `pre*` hooks,
-// and can be invoked directly with `pnpm sync-assets`.
-//
-// Sources:
-//   1. packages/client/public/  → marketing/public/
-//      (hero, features, logo, render — everything served by the live site)
-//   2. screenshots/             → marketing/public/screenshots/
-//      (README product shots — used by WebShowcase + CryptoMarket)
-//   3. marketing/assets/        → marketing/public/assets/
-//      (marketing-only assets that don't ship with the client app —
-//       e.g. parallel-worlds mod textures. Merged over the client
-//       mirror so mod sub-folders sit alongside hero/ and features/.)
-
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

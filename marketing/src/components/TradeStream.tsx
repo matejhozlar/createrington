@@ -13,16 +13,13 @@ type Trade = {
 
 type TradeStreamProps = {
   trades: Trade[];
-  width: number;       // visible width — used to compute the marquee distance
+  width: number;
   speedPxPerSec?: number;
 };
 
 const formatPrice = (p: number) =>
   p < 0.01 ? p.toFixed(6) : p < 1 ? p.toFixed(4) : p.toFixed(2);
 
-// A horizontally-scrolling marquee of simulated fills. Rendered in two
-// concatenated copies so the loop is seamless as the first copy exits
-// the left edge.
 export const TradeStream: React.FC<TradeStreamProps> = ({
   trades,
   width,
@@ -32,9 +29,6 @@ export const TradeStream: React.FC<TradeStreamProps> = ({
   const { fps } = useVideoConfig();
 
   const seconds = frame / fps;
-  // Approximate the single-copy width from item count. We let the CSS
-  // render determine actual size, but use a generous estimate for the
-  // modulo so the marquee loops cleanly.
   const approxCopyWidth = trades.length * 320;
   const shift = -((seconds * speedPxPerSec) % approxCopyWidth);
 
@@ -78,7 +72,6 @@ export const TradeStream: React.FC<TradeStreamProps> = ({
         width,
         overflow: "hidden",
         position: "relative",
-        // Edge fades so entries slide in/out behind a soft gradient.
         maskImage: "linear-gradient(to right, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)",
         WebkitMaskImage:
           "linear-gradient(to right, transparent 0, black 40px, black calc(100% - 40px), transparent 100%)",
