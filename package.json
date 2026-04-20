@@ -44,7 +44,7 @@
     "dev:client": "pnpm --filter @createrington/client dev",
     "dev:server": "pnpm --filter @createrington/server dev",
     "dev:types": "pnpm --filter @createrington/server dev:types",
-    "dev": "concurrently -n \"types,client,server\" -c \"yellow,green,blue\" \"pnpm dev:types\" \"pnpm dev:client\" \"node scripts/delay.mjs 5000 && pnpm dev:server\"",
+    "dev": "concurrently -n \"types,client,server\" -c \"yellow,green,blue\" \"pnpm dev:types\" \"pnpm dev:client\" \"pnpm dev:server\"",
     "build:client": "pnpm --filter @createrington/client build",
     "build:server": "pnpm --filter @createrington/server build",
     "build:shared": "pnpm --filter @createrington/shared build",
