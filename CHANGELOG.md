@@ -1,3 +1,16 @@
+## v1.9.2 (2026-04-20)
+
+### @createrington/client (0.2.8 → 0.2.9)
+- Polish guides UI with smoother step transitions — replace opacity toggle with a new `AutoHeight` wrapper that animates content height changes via ResizeObserver, add a progress bar indicator for mobile, and only scroll when the content anchor is above the viewport
+- Restyle guide cards with hover effects, gradient overlays, estimated reading time badges, and image zoom on hover
+- Refine step sidebar and navigation — widen sidebar, add hover states to non-active steps, use a top border separator on the nav footer, and show a checkmark icon on the Finish button
+- Add new hero images (metro, space-station, royal-albert-hall) and update the site logo
+
+### Other
+- Add Remotion marketing video package (`marketing/`) — multi-scene promotional video with procedural animations, Minecraft build showcases, crypto terminal mockup, player card renders, stats counters, credits sequence, and optional soundtrack support
+- Remove the startup delay script and simplify the root `dev` command to run all services concurrently without artificial delays
+- Add player render screenshots to the repository and update README with render examples
+
 ## v1.9.1 (2026-04-18)
 
 ### @createrington/server (1.9.0 → 1.9.1)
