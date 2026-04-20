@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type StepNavigationProps = {
@@ -20,9 +20,9 @@ export function StepNavigation({
   const isLast = currentStep === totalSteps - 1;
 
   return (
-    <div className="flex items-center justify-between pt-6">
+    <div className="mt-10 pt-6 border-t border-border/60 flex items-center justify-between gap-3">
       <Button
-        variant="outline"
+        variant="ghost"
         onClick={onPrev}
         disabled={isFirst}
         className="gap-1"
@@ -31,12 +31,15 @@ export function StepNavigation({
         Previous
       </Button>
 
-      <span className="text-sm text-muted-foreground">
-        {currentStep + 1} / {totalSteps}
+      <span className="text-xs text-muted-foreground tabular-nums hidden sm:block">
+        Step {currentStep + 1} of {totalSteps}
       </span>
 
       {isLast ? (
-        <Button onClick={onFinish}>Finish</Button>
+        <Button onClick={onFinish} className="gap-1">
+          <Check className="size-4" />
+          Finish
+        </Button>
       ) : (
         <Button onClick={onNext} className="gap-1">
           Next

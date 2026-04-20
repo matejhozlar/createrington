@@ -2,7 +2,7 @@
   "name": "@createrington/client",
   "proxy": "http://localhost:5001",
   "private": true,
-  "version": "0.2.8",
+  "version": "0.2.9",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
