@@ -75,9 +75,10 @@ export function MaintenanceToggle({
     [dialogOpen],
   );
 
-  const { data: status } = trpc.admin.servers.maintenanceStatus.useQuery({
-    serverId,
-  });
+  const { data: status } = trpc.admin.servers.maintenanceStatus.useQuery(
+    { serverId },
+    { refetchInterval: 15_000 },
+  );
 
   const schedule = status?.schedule ?? null;
   const countdown = useCountdown(schedule?.scheduledAt ?? null);
@@ -117,10 +118,12 @@ export function MaintenanceToggle({
     trpc.admin.servers.cancelScheduledMaintenance.useMutation({
       onSuccess: () => {
         toast.success("Scheduled maintenance cancelled");
+      },
+      onError: (err: { message: string }) => toast.error(err.message),
+      onSettled: () => {
         invalidate();
         setCancelDialogOpen(false);
       },
-      onError: (err: { message: string }) => toast.error(err.message),
     });
 
   function handleInstantEnable() {
