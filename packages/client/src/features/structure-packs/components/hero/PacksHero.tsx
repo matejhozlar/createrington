@@ -143,6 +143,15 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
         </div>
       </div>
 
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
+        style={{
+          background:
+            "linear-gradient(to bottom, transparent 0%, oklch(0.17 0.0075 285.942 / 0.5) 60%, var(--background) 100%)",
+        }}
+      />
+
       <button
         type="button"
         onClick={() => scrollTo(poolRef)}
