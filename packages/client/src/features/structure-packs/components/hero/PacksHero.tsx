@@ -94,10 +94,9 @@ export function PacksHero({
     // overflow — if the blue box-shadow fades in while the filter is
     // active, its reach gets clipped and pops out to full when the
     // filter is removed. Waiting for the filter to end avoids that.
-    const glowId = window.setTimeout(() => setIdleGlow(true), 600);
+    setIdleGlow(true);
     return () => {
       window.clearTimeout(lightingUpId);
-      window.clearTimeout(glowId);
     };
   }, [portalHidden]);
 

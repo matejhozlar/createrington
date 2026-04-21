@@ -427,6 +427,15 @@
   transition:
     transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 300ms ease-out;
+  /* Apply a no-op filter (and a zero drop-shadow of the same shape as
+     the hover drop-shadow) at idle. This keeps the filter compositing
+     layer genuinely active — not just hinted via will-change — so hover
+     only updates the filter value instead of having to set up the
+     drop-shadow rasterization region from scratch. Without this, Chrome
+     needs 1–2 frames to allocate the layer on first hover, which reads
+     as a visible delay before the glow begins to ramp. */
+  filter: brightness(1) drop-shadow(0 0 0 transparent);
+  will-change: filter;
 }
 
 /* One-shot "lights up" animation, added to the portal wrapper for a short
