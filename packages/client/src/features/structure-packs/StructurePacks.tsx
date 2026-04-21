@@ -59,10 +59,7 @@ export function StructurePacks() {
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <section ref={activePackRef} className="space-y-3 scroll-mt-6">
-            <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
-              Active Pack
-            </h2>
+          <section ref={activePackRef} className="scroll-mt-6">
             <ActivePack />
           </section>
         </div>
