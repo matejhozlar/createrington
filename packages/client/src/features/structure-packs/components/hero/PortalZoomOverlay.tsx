@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Package, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +29,7 @@ interface PoolEntry {
 interface PortalZoomOverlayProps {
   open: boolean;
   onClose: () => void;
+  onClosed?: () => void;
   sourceRect: DOMRect | null;
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
@@ -61,6 +62,7 @@ type Phase =
 export function PortalZoomOverlay({
   open,
   onClose,
+  onClosed,
   sourceRect,
   pool,
   isLoading,
@@ -69,6 +71,10 @@ export function PortalZoomOverlay({
   boostUnitPrice,
 }: PortalZoomOverlayProps) {
   const [phase, setPhase] = useState<Phase>("closed");
+  const onClosedRef = useRef(onClosed);
+  useEffect(() => {
+    onClosedRef.current = onClosed;
+  }, [onClosed]);
   const [viewport, setViewport] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 0,
     h: typeof window !== "undefined" ? window.innerHeight : 0,
@@ -107,7 +113,10 @@ export function PortalZoomOverlay({
       return () => window.clearTimeout(id);
     }
     if (phase === "shrinking") {
-      const id = window.setTimeout(() => setPhase("closed"), SCALE_MS);
+      const id = window.setTimeout(() => {
+        setPhase("closed");
+        onClosedRef.current?.();
+      }, SCALE_MS);
       return () => window.clearTimeout(id);
     }
   }, [phase]);
@@ -189,7 +198,10 @@ export function PortalZoomOverlay({
           transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${CARDS_FADE_MS}ms ease-out`,
         }}
       >
-        <PortalFrame blockSize={PORTAL_BLOCK_SIZE} />
+        <PortalFrame
+          blockSize={PORTAL_BLOCK_SIZE}
+          className="packs-hero-portal-frozen"
+        />
       </div>
 
       <div

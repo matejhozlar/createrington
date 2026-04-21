@@ -317,17 +317,12 @@
   animation: packs-hero-float-y 6s ease-in-out infinite;
 }
 
-@keyframes packs-hero-breathe {
-  0%,
-  100% {
-    filter: brightness(0.9);
-  }
-  50% {
-    filter: brightness(1.15);
-  }
-}
+/* Breathing disabled: the brightness swing (0.9 → 1.15) was causing a
+   visible glow mismatch between the frozen state used during the zoom
+   overlay and the idle hero after it closed. The class is kept so existing
+   markup still compiles, but no longer animates. */
 .packs-hero-breathe {
-  animation: packs-hero-breathe 3.2s ease-in-out infinite;
+  animation: none;
 }
 
 @keyframes packs-hero-rise {
@@ -432,6 +427,25 @@
   transition:
     transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
     filter 300ms ease-out;
+}
+
+/* Freeze all CSS animations on the portal (float, breathing) while the zoom
+   overlay is open. The frozen state is the default (no animation) state, so
+   the overlay's untouched PortalFrame lands at the same visual state when
+   the overlay unmounts — no position snap, no brightness flicker. */
+.packs-hero-portal-frozen,
+.packs-hero-portal-frozen *,
+.packs-hero-portal-frozen *::before,
+.packs-hero-portal-frozen *::after {
+  animation: none !important;
+}
+/* Also cancel the interactive hover/focus scale + brightness + transition
+   on the frozen root, so getBoundingClientRect measures the portal at its
+   true resting size (no 2% hover bump baked into the source rect). */
+.packs-hero-portal-frozen {
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
 }
 .packs-hero-portal-interactive:hover,
 .packs-hero-portal-interactive:focus-visible {

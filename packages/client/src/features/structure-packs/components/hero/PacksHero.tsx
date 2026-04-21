@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
@@ -48,6 +48,11 @@ export function PacksHero({
   const enterPortal = () => {
     const el = desktopPortalRef.current;
     if (el) {
+      // Freeze the portal's CSS animations (float, breathing) before we
+      // measure. Otherwise the hero keeps drifting mid-float while the
+      // overlay is open, and the close animation lands at stale coordinates
+      // — visible as a snap + brightness flicker at hand-off.
+      el.classList.add("packs-hero-portal-frozen");
       onEnterPortal(el.getBoundingClientRect());
       return;
     }
@@ -61,6 +66,14 @@ export function PacksHero({
     );
     onEnterPortal(rect);
   };
+
+  useEffect(() => {
+    if (portalHidden) return;
+    // Overlay has fully unmounted (portalHidden is gated on the overlay's
+    // onClosed now, not on the close click), so it's safe to unfreeze
+    // immediately without any stacking/hover race.
+    desktopPortalRef.current?.classList.remove("packs-hero-portal-frozen");
+  }, [portalHidden]);
 
   return (
     <section className="relative h-[calc(100svh-var(--mobile-nav-height))] w-full overflow-hidden text-foreground">
@@ -152,21 +165,23 @@ export function PacksHero({
           onSecondary={() => scrollTo(activePackRef)}
         />
 
-        <div
-          className={cn(
-            "relative hidden flex-col items-center justify-center gap-6 transition-opacity lg:flex",
-            portalHidden ? "opacity-0" : "opacity-100",
-          )}
-          style={{ transitionDuration: portalHidden ? "120ms" : "400ms" }}
-        >
-          <PortalFrame
-            ref={desktopPortalRef}
-            blockSize={72}
-            className="packs-hero-float-y"
-            interactive
-            onActivate={enterPortal}
-            ariaLabel="Enter portal to vote for next rotation"
-          />
+        <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
+          <div
+            className={cn(
+              "transition-opacity",
+              portalHidden ? "opacity-0" : "opacity-100",
+            )}
+            style={{ transitionDuration: portalHidden ? "120ms" : "0ms" }}
+          >
+            <PortalFrame
+              ref={desktopPortalRef}
+              blockSize={72}
+              className="packs-hero-float-y"
+              interactive
+              onActivate={enterPortal}
+              ariaLabel="Enter portal to vote for next rotation"
+            />
+          </div>
           <div className="w-full max-w-[360px]">
             <LeadingPeek pool={pool} isLoading={poolLoading} />
           </div>

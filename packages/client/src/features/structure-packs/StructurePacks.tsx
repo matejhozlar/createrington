@@ -14,6 +14,12 @@ export function StructurePacks() {
 
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomSource, setZoomSource] = useState<DOMRect | null>(null);
+  // Kept true while the overlay is ANIMATING (enter + open + close). Used to
+  // keep the hero's portal opacity-0 so its glow doesn't stack on top of the
+  // overlay's glow during the close — otherwise both box-shadow halos
+  // render at the same spot and collapse to a single halo when the overlay
+  // unmounts, which reads as a sudden brightness drop.
+  const [overlayActive, setOverlayActive] = useState(false);
 
   const { data: pool, isLoading: poolLoading } =
     trpc.user.structurePacks.pool.useQuery(undefined, {
@@ -39,6 +45,7 @@ export function StructurePacks() {
   const handleEnterPortal = (rect: DOMRect) => {
     setZoomSource(rect);
     setZoomOpen(true);
+    setOverlayActive(true);
   };
 
   const handleExitPortal = () => {
@@ -50,7 +57,7 @@ export function StructurePacks() {
       <PacksHero
         activePackRef={activePackRef}
         onEnterPortal={handleEnterPortal}
-        portalHidden={zoomOpen}
+        portalHidden={overlayActive}
       />
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
@@ -67,6 +74,7 @@ export function StructurePacks() {
       <PortalZoomOverlay
         open={zoomOpen}
         onClose={handleExitPortal}
+        onClosed={() => setOverlayActive(false)}
         sourceRect={zoomSource}
         pool={pool}
         isLoading={poolLoading}

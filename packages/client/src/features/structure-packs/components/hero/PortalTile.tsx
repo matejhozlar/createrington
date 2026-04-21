@@ -40,7 +40,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(cachedSprite);
   const rafRef = useRef<number>(0);
-  const startRef = useRef<number>(0);
   const [ready, setReady] = useState(!!cachedSprite);
   const [visible, setVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(
@@ -146,9 +145,13 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     }
     if (!visible) return;
 
-    startRef.current = performance.now();
+    // Anchor the animation clock to performance.now() directly (a monotonic
+    // clock shared by every PortalTile on the page) so two instances — the
+    // hero's and the zoom overlay's — stay phase-synced. Otherwise each
+    // tile starts counting from its own mount time and the ripple looks
+    // like it "restarts" when the overlay unmounts and the hero reappears.
     const draw = () => {
-      const elapsed = performance.now() - startRef.current;
+      const elapsed = performance.now();
       const cyclePos = (elapsed / FRAME_DURATION_MS) % TOTAL_FRAMES;
       const cur = Math.floor(cyclePos);
       const next = (cur + 1) % TOTAL_FRAMES;
