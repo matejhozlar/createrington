@@ -1,9 +1,17 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
-import { Q } from "@/db";
+import { Q, db } from "@/db";
 import { trpcError } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
+
+const MAX_FOLLOWUPS_PER_MESSAGE = 5;
+
+const followupInputSchema = z.object({
+  content: z.string().min(1).max(2000),
+  delaySeconds: z.number().int().min(1).max(3600),
+  enabled: z.boolean().default(true),
+});
 
 /** Helper to log auto-message admin actions */
 async function logAutoMessageAction(
@@ -90,7 +98,17 @@ export const autoMessagesRouter = router({
           .orderBy("sortOrder", "asc")
           .all();
 
-        return { ...config, messages };
+        const messagesWithFollowups = await Promise.all(
+          messages.map(async (m) => {
+            const followups = await Q.discord.auto.message.followup
+              .where({ messageId: m.id })
+              .orderBy("sortOrder", "asc")
+              .all();
+            return { ...m, followups };
+          }),
+        );
+
+        return { ...config, messages: messagesWithFollowups };
       }),
 
     create: adminProcedure
@@ -193,6 +211,10 @@ export const autoMessagesRouter = router({
           content: z.string().min(1).max(2000),
           sortOrder: z.number().int().default(0),
           enabled: z.boolean().default(true),
+          followups: z
+            .array(followupInputSchema)
+            .max(MAX_FOLLOWUPS_PER_MESSAGE)
+            .default([]),
         }),
       )
       .mutation(async ({ input }) => {
@@ -201,14 +223,27 @@ export const autoMessagesRouter = router({
         });
         if (!config) throw trpcError.notFound("Config not found");
 
-        const created = await Q.discord.auto.message.createAndReturn({
-          configId: input.configId,
-          content: input.content,
-          sortOrder: input.sortOrder,
-          enabled: input.enabled,
-        });
+        return await db.inTransaction(async (tx) => {
+          const created = await tx.discord.auto.message.createAndReturn({
+            configId: input.configId,
+            content: input.content,
+            sortOrder: input.sortOrder,
+            enabled: input.enabled,
+          });
 
-        return created;
+          for (let i = 0; i < input.followups.length; i++) {
+            const f = input.followups[i];
+            await tx.discord.auto.message.followup.create({
+              messageId: created.id,
+              content: f.content,
+              delaySeconds: f.delaySeconds,
+              enabled: f.enabled,
+              sortOrder: i,
+            });
+          }
+
+          return created;
+        });
       }),
 
     update: adminProcedure
@@ -219,14 +254,40 @@ export const autoMessagesRouter = router({
           content: z.string().min(1).max(2000).optional(),
           sortOrder: z.number().int().optional(),
           enabled: z.boolean().optional(),
+          followups: z
+            .array(followupInputSchema)
+            .max(MAX_FOLLOWUPS_PER_MESSAGE)
+            .optional(),
         }),
       )
       .mutation(async ({ input }) => {
         const existing = await Q.discord.auto.message.find({ id: input.id });
         if (!existing) throw trpcError.notFound("Message not found");
 
-        const { id, ...updates } = input;
-        await Q.discord.auto.message.update({ id }, updates);
+        const { id, followups, ...updates } = input;
+
+        await db.inTransaction(async (tx) => {
+          if (Object.keys(updates).length > 0) {
+            await tx.discord.auto.message.update({ id }, updates);
+          }
+
+          if (followups !== undefined) {
+            await tx.discord.auto.message.followup.deleteAll({
+              messageId: id,
+            });
+
+            for (let i = 0; i < followups.length; i++) {
+              const f = followups[i];
+              await tx.discord.auto.message.followup.create({
+                messageId: id,
+                content: f.content,
+                delaySeconds: f.delaySeconds,
+                enabled: f.enabled,
+                sortOrder: i,
+              });
+            }
+          }
+        });
 
         return { message: "Message updated" };
       }),

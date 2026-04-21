@@ -183,6 +183,13 @@
       "when": 1776342066224,
       "tag": "0025_mute_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776766314203,
+      "tag": "0026_broad_network",
+      "breakpoints": true
     }
   ]
 }
