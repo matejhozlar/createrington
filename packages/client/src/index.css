@@ -330,34 +330,6 @@
   animation: packs-hero-breathe 3.2s ease-in-out infinite;
 }
 
-@keyframes packs-hero-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateY(6px);
-    opacity: 1;
-  }
-}
-.packs-hero-bob {
-  animation: packs-hero-bob 2.2s ease-in-out infinite;
-}
-
-@keyframes packs-hero-pulse-dot {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-.packs-hero-pulse-dot {
-  animation: packs-hero-pulse-dot 1.6s ease-in-out infinite;
-}
-
 @keyframes packs-hero-rise {
   0% {
     transform: translate3d(var(--x0), 0, 0) scale(0.9);
@@ -459,8 +431,6 @@
 @media (prefers-reduced-motion: reduce) {
   .packs-hero-float-y,
   .packs-hero-breathe,
-  .packs-hero-bob,
-  .packs-hero-pulse-dot,
   .packs-hero-dust,
   .packs-hero-grain::after {
     animation: none !important;

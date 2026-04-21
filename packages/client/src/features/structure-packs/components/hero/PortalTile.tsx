@@ -18,7 +18,10 @@ function loadSprite(): Promise<HTMLImageElement> {
       cachedSprite = img;
       resolve(img);
     };
-    img.onerror = reject;
+    img.onerror = () => {
+      spritePromise = null;
+      reject(new Error("Failed to load portal sprite"));
+    };
   });
   return spritePromise;
 }
