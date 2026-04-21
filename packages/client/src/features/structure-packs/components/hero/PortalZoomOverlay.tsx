@@ -182,7 +182,11 @@ export function PortalZoomOverlay({
           height: PORTAL_NATIVE_H,
           transformOrigin: "top left",
           transform,
-          transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+          // Blur the scaled-up ripple once we're inside the portal — softens
+          // the per-tile pixel artifacts into the overall shimmer so they
+          // read as part of the atmosphere instead of a rendering bug.
+          filter: cardsVisible ? "blur(0.5px)" : "blur(0px)",
+          transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${CARDS_FADE_MS}ms ease-out`,
         }}
       >
         <PortalFrame blockSize={PORTAL_BLOCK_SIZE} />
