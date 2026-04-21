@@ -107,8 +107,9 @@ export const PortalFrame = forwardRef<HTMLDivElement, PortalFrameProps>(
           <div
             className="packs-hero-breathe pointer-events-none absolute inset-0"
             style={{
-              boxShadow:
-                "inset 0 0 60px oklch(0.62 0.19 255 / 0.55), inset 0 0 0 1px oklch(0.9 0.02 255 / 0.3)",
+              background:
+                "radial-gradient(ellipse at center, oklch(0.62 0.19 255 / 0.18) 0%, oklch(0.62 0.19 255 / 0.3) 55%, oklch(0.62 0.19 255 / 0.55) 100%)",
+              boxShadow: "inset 0 0 0 1px oklch(0.9 0.02 255 / 0.3)",
             }}
           />
 
@@ -121,7 +122,7 @@ export const PortalFrame = forwardRef<HTMLDivElement, PortalFrameProps>(
             boxShadow:
               variant === "ambient"
                 ? "0 0 120px oklch(0.62 0.19 255 / 0.35)"
-                : "0 0 90px oklch(0.62 0.19 255 / 0.35), 0 30px 80px rgba(0,0,0,0.7)",
+                : "0 30px 80px rgba(0,0,0,0.7)",
           }}
         />
       </div>
