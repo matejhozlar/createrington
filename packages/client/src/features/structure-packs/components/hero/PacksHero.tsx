@@ -46,7 +46,7 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
   };
 
   return (
-    <section className="relative h-screen w-full overflow-hidden text-foreground">
+    <section className="relative h-[calc(100dvh-var(--mobile-nav-height))] w-full overflow-hidden text-foreground">
       <div className="absolute inset-0">
         <img
           src={HERO_IMAGE}

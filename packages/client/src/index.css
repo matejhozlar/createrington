@@ -48,6 +48,11 @@
 }
 
 :root {
+  /* Height of the mobile top nav (SidebarTrigger + Logo + padding + border,
+     rendered in App.tsx). Zeroed at md where the nav is hidden. Use via
+     `calc(100dvh - var(--mobile-nav-height))` for full-viewport sections. */
+  --mobile-nav-height: 3.5rem;
+
   --radius: 0.75rem;
   --background: oklch(0.17 0.0075 285.942);
   --foreground: oklch(0.985 0.002 285.885);
@@ -83,6 +88,14 @@
   --sidebar-ring: oklch(0.551 0.008 285.885);
   --discord: oklch(0.577 0.209 273.854);
   --discord-foreground: oklch(0.85 0.08 274);
+}
+
+/* Nav is hidden at md and up, so zero out the offset so full-viewport
+   sections stretch across the whole viewport. */
+@media (min-width: 48rem) {
+  :root {
+    --mobile-nav-height: 0rem;
+  }
 }
 
 @layer base {
