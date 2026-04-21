@@ -23,9 +23,6 @@ function loadSprite(): Promise<HTMLImageElement> {
   return spritePromise;
 }
 
-// Kick off the fetch at module-import time so the sprite is usually ready
-// before the canvas mounts. Silently swallow errors — the canvas falls back
-// to a static gradient if the asset can't load.
 if (typeof window !== "undefined") {
   void loadSprite().catch(() => {});
 }
@@ -42,6 +39,12 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
   const [ready, setReady] = useState(!!cachedSprite);
+  const [visible, setVisible] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
 
   useEffect(() => {
     if (cachedSprite) return;
@@ -52,12 +55,28 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
         imgRef.current = img;
         setReady(true);
       })
-      .catch(() => {
-        /* network error — portal stays on solid fallback */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const onChange = () => setReducedMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(canvas);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -77,20 +96,9 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     const cols = Math.ceil(width / tileSize) + 1;
     const rows = Math.ceil(height / tileSize) + 1;
 
-    startRef.current = performance.now();
-
-    const draw = () => {
+    const drawFrame = (cur: number, next: number, lerp: number) => {
       const img = imgRef.current;
-      if (!img) {
-        rafRef.current = requestAnimationFrame(draw);
-        return;
-      }
-      const elapsed = performance.now() - startRef.current;
-      const cyclePos = (elapsed / FRAME_DURATION_MS) % TOTAL_FRAMES;
-      const cur = Math.floor(cyclePos);
-      const next = (cur + 1) % TOTAL_FRAMES;
-      const lerp = cyclePos - cur;
-
+      if (!img) return;
       ctx.clearRect(0, 0, width, height);
 
       ctx.globalAlpha = 1;
@@ -127,13 +135,27 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
         }
       }
       ctx.globalAlpha = 1;
-
-      rafRef.current = requestAnimationFrame(draw);
     };
 
+    if (reducedMotion) {
+      drawFrame(0, 0, 0);
+      return;
+    }
+    if (!visible) return;
+
+    startRef.current = performance.now();
+    const draw = () => {
+      const elapsed = performance.now() - startRef.current;
+      const cyclePos = (elapsed / FRAME_DURATION_MS) % TOTAL_FRAMES;
+      const cur = Math.floor(cyclePos);
+      const next = (cur + 1) % TOTAL_FRAMES;
+      const lerp = cyclePos - cur;
+      drawFrame(cur, next, lerp);
+      rafRef.current = requestAnimationFrame(draw);
+    };
     rafRef.current = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [width, height, tileSize, ready]);
+  }, [width, height, tileSize, ready, visible, reducedMotion]);
 
   return (
     <canvas
@@ -143,8 +165,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
         height,
         display: "block",
         imageRendering: "pixelated",
-        // Fallback matches the portal's dominant hue so the hole doesn't
-        // flash transparent while the sprite atlas is still loading.
         background:
           "radial-gradient(ellipse at center, oklch(0.35 0.18 280) 0%, oklch(0.18 0.1 275) 80%, oklch(0.12 0.05 275) 100%)",
       }}

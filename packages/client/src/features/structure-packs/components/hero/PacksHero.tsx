@@ -56,11 +56,6 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
         />
       </div>
 
-      {/* Blue radial wash — offset to the portal on lg, centered on smaller
-          screens where the portal is behind the copy. Multi-stop gradient
-          with a slight indigo bias gives the atmosphere depth rather than
-          a flat single-stop fade. The ellipse is taller than wide on
-          mobile so it reaches the top and bottom of the portal. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 lg:hidden"
@@ -69,9 +64,6 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
             "radial-gradient(ellipse 80% 95% at 50% 55%, oklch(0.5 0.22 260 / 0.38) 0%, oklch(0.4 0.18 258 / 0.22) 28%, oklch(0.3 0.12 255 / 0.1) 60%, transparent 88%)",
         }}
       />
-      {/* Edge splashes — linear gradients from each edge add subtle blue
-          accents so the portal feels surrounded by atmosphere rather than
-          isolated. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 lg:hidden"
@@ -85,8 +77,6 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
           mixBlendMode: "screen",
         }}
       />
-      {/* Inner bloom — a tighter, richer blue pool that reads as the
-          portal's atmospheric emanation */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 lg:hidden"
@@ -105,10 +95,6 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
         }}
       />
 
-      {/* Background portal — visible below lg where the split layout has
-          collapsed. Uses the `ambient` variant (no dark drop shadow) and a
-          soft outer mask so the obsidian frame and interior read as a
-          portal while the outer blue glow dissolves into the atmosphere. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"

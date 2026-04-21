@@ -4,11 +4,6 @@ import { PortalTile } from "./PortalTile";
 interface PortalFrameProps {
   blockSize?: number;
   className?: string;
-  /**
-   * `hero` — sharp, includes a heavy dark drop shadow (default).
-   * `ambient` — skips the rectangular drop shadow so the portal can blend
-   * into a blurred background without reading as a flat rectangle.
-   */
   variant?: "hero" | "ambient";
 }
 
@@ -33,7 +28,6 @@ export function PortalFrame({
       className={cn("relative", className)}
       style={{ width: outerW, height: outerH }}
     >
-      {/* Outer soft glow */}
       <div
         className="packs-hero-breathe pointer-events-none absolute"
         style={{
@@ -44,7 +38,6 @@ export function PortalFrame({
         }}
       />
 
-      {/* Obsidian grid */}
       <div
         className="absolute inset-0 grid"
         style={{
@@ -66,7 +59,6 @@ export function PortalFrame({
         })}
       </div>
 
-      {/* Portal interior */}
       <div
         className="absolute overflow-hidden"
         style={{
@@ -78,7 +70,6 @@ export function PortalFrame({
       >
         <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
 
-        {/* Inner rim glow */}
         <div
           className="packs-hero-breathe pointer-events-none absolute inset-0"
           style={{
@@ -87,13 +78,9 @@ export function PortalFrame({
           }}
         />
 
-        {/* Scanlines */}
         <div className="packs-hero-scanlines absolute inset-0" />
       </div>
 
-      {/* Outer rim shadow — the hero variant adds a heavy dark drop shadow
-          for depth; the ambient variant drops it so the portal can dissolve
-          into a blurred background without a rectangular silhouette. */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
