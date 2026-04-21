@@ -71,8 +71,17 @@ export function PacksHero({
     if (portalHidden) return;
     // Overlay has fully unmounted (portalHidden is gated on the overlay's
     // onClosed now, not on the close click), so it's safe to unfreeze
-    // immediately without any stacking/hover race.
-    desktopPortalRef.current?.classList.remove("packs-hero-portal-frozen");
+    // immediately without any stacking/hover race. Add the short "lights
+    // up" animation class so the hero ramps from ~0.96 → 1.0 brightness
+    // over ~550ms rather than snapping on at full.
+    const el = desktopPortalRef.current;
+    if (!el) return;
+    el.classList.remove("packs-hero-portal-frozen");
+    el.classList.add("packs-hero-portal-lighting-up");
+    const id = window.setTimeout(() => {
+      el.classList.remove("packs-hero-portal-lighting-up");
+    }, 550);
+    return () => window.clearTimeout(id);
   }, [portalHidden]);
 
   return (

@@ -429,6 +429,21 @@
     filter 300ms ease-out;
 }
 
+/* One-shot "lights up" animation, added to the portal wrapper for a short
+   moment after the zoom overlay closes. The long brighten ramp stays on
+   an animation (no transition on filter) so hover remains snappy. */
+@keyframes packs-hero-portal-light-up {
+  0% {
+    filter: brightness(0.96);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.packs-hero-portal-lighting-up {
+  animation: packs-hero-portal-light-up 550ms ease-out;
+}
+
 /* Freeze all CSS animations on the portal (float, breathing) while the zoom
    overlay is open. The frozen state is the default (no animation) state, so
    the overlay's untouched PortalFrame lands at the same visual state when
@@ -439,9 +454,11 @@
 .packs-hero-portal-frozen *::after {
   animation: none !important;
 }
-/* Also cancel the interactive hover/focus scale + brightness + transition
-   on the frozen root, so getBoundingClientRect measures the portal at its
-   true resting size (no 2% hover bump baked into the source rect). */
+/* Cancel the interactive hover/focus scale + transition on the frozen root
+   so getBoundingClientRect measures the portal at its true resting size
+   (no 2% hover bump baked into the source rect). Brightness ramp-up on
+   unfreeze is driven by the .packs-hero-portal-lighting-up animation so
+   hover transitions stay snappy. */
 .packs-hero-portal-frozen {
   transform: none !important;
   filter: none !important;
