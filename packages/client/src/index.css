@@ -428,11 +428,30 @@
   pointer-events: none;
 }
 
+.packs-hero-portal-interactive {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 300ms ease-out;
+}
+.packs-hero-portal-interactive:hover,
+.packs-hero-portal-interactive:focus-visible {
+  transform: scale(1.02);
+  filter: brightness(1.08) drop-shadow(0 0 24px oklch(0.62 0.19 255 / 0.55));
+}
+.packs-hero-portal-interactive:focus-visible {
+  outline: 2px solid oklch(0.62 0.19 255 / 0.7);
+  outline-offset: 12px;
+  border-radius: 6px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .packs-hero-float-y,
   .packs-hero-breathe,
   .packs-hero-dust,
   .packs-hero-grain::after {
     animation: none !important;
+  }
+  .packs-hero-portal-interactive {
+    transition: none !important;
   }
 }
