@@ -217,7 +217,12 @@ export class AutoMessageService {
       accumulatedDelayMs += followup.delaySeconds * 1000;
 
       setTimeout(() => {
-        void this.sendFollowup(followup.id, channelId);
+        this.sendFollowup(followup.id, channelId).catch((error) => {
+          logger.error(
+            `Error sending auto-message follow-up ${followup.id}:`,
+            error,
+          );
+        });
       }, accumulatedDelayMs);
     }
   }
@@ -236,7 +241,7 @@ export class AutoMessageService {
     followupId: number,
     channelId: string,
   ): Promise<void> {
-    const followup = await Q.discord.auto.message.followup.get({
+    const followup = await Q.discord.auto.message.followup.find({
       id: followupId,
     });
     if (!followup || !followup.enabled) return;
