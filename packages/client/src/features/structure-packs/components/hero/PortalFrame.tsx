@@ -9,6 +9,14 @@ interface PortalFrameProps {
   interactive?: boolean;
   onActivate?: () => void;
   ariaLabel?: string;
+  /* Adds the blue ambient glow box-shadow to the hero variant. Kept off
+     while the portal is moving (inside the zoom overlay) because the
+     zero-offset large-blur shadow rasterizes differently across
+     compositing contexts in Chrome GPU, which produced a visible snap
+     at hand-off. Parent toggles it on once the hero is at idle — the
+     box-shadow transition fades the glow in smoothly, avoiding any
+     instantaneous change. */
+  idleGlow?: boolean;
 }
 
 const COLS = 4;
@@ -26,6 +34,7 @@ export const PortalFrame = forwardRef<HTMLDivElement, PortalFrameProps>(
       interactive = false,
       onActivate,
       ariaLabel,
+      idleGlow = false,
     },
     ref,
   ) {
@@ -122,7 +131,10 @@ export const PortalFrame = forwardRef<HTMLDivElement, PortalFrameProps>(
             boxShadow:
               variant === "ambient"
                 ? "0 0 120px oklch(0.62 0.19 255 / 0.35)"
-                : "0 30px 80px rgba(0,0,0,0.7)",
+                : idleGlow
+                  ? "0 0 90px oklch(0.62 0.19 255 / 0.35), 0 30px 80px rgba(0,0,0,0.7)"
+                  : "0 30px 80px rgba(0,0,0,0.7)",
+            transition: "box-shadow 600ms ease-out",
           }}
         />
       </div>
