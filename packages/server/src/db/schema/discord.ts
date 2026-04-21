@@ -181,3 +181,32 @@ export const discordAutoMessage = pgTable(
     index("idx_discord_auto_message_sort").on(table.configId, table.sortOrder),
   ],
 );
+
+// --- discord_auto_message_followup ---
+
+export const discordAutoMessageFollowup = pgTable(
+  "discord_auto_message_followup",
+  {
+    id: serial("id").primaryKey(),
+    messageId: integer("message_id")
+      .notNull()
+      .references(() => discordAutoMessage.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    delaySeconds: integer("delay_seconds").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_discord_auto_message_followup_message").on(table.messageId),
+    index("idx_discord_auto_message_followup_sort").on(
+      table.messageId,
+      table.sortOrder,
+    ),
+  ],
+);
