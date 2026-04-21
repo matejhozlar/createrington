@@ -1,0 +1,374 @@
+import type { RefObject } from "react";
+import { useMemo, useState } from "react";
+import {
+  ArrowRight,
+  ChevronDown,
+  Clock,
+  Package,
+  Rocket,
+  TrendingUp,
+} from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/auth";
+import { useCountdown } from "@/hooks/use-countdown";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { PortalFrame } from "./PortalFrame";
+
+const HERO_IMAGE = "/assets/hero/dark-warehouse.webp";
+const PARTICLE_COUNT = 30;
+const LEADING_PEEK_LIMIT = 5;
+
+interface PacksHeroProps {
+  poolRef: RefObject<HTMLElement | null>;
+  activePackRef: RefObject<HTMLElement | null>;
+}
+
+export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
+  const { user } = useAuth();
+
+  const { data: pool, isLoading: poolLoading } =
+    trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
+
+  const { data: rotationInfo } = trpc.user.structurePacks.rotationInfo.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+
+  const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
+
+  const totalBoosts =
+    pool?.reduce((sum, entry) => sum + entry.boostUnits, 0) ?? 0;
+
+  const scrollTo = (ref: RefObject<HTMLElement | null>) => {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  return (
+    <section className="relative h-screen w-full overflow-hidden text-foreground">
+      <div className="absolute inset-0">
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          className="h-full w-full object-cover"
+          style={{ filter: "grayscale(0.5) blur(2px) brightness(0.35)" }}
+        />
+      </div>
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 80% at 72% 55%, oklch(0.4 0.15 255 / 0.38) 0%, transparent 55%)",
+        }}
+      />
+
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, transparent 40%, oklch(0.13 0.005 285 / 0.8) 100%)",
+        }}
+      />
+
+      <Particles count={PARTICLE_COUNT} />
+
+      <div className="packs-hero-grain" aria-hidden />
+
+      <div className="relative mx-auto grid h-full w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 md:px-10 lg:grid-cols-[1.1fr_1fr]">
+        <HeroCopy
+          countdown={countdown}
+          poolCount={pool?.length ?? 0}
+          totalBoosts={totalBoosts}
+          poolLoading={poolLoading}
+          onPrimary={() => scrollTo(poolRef)}
+          onSecondary={() => scrollTo(activePackRef)}
+        />
+
+        <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
+          <PortalFrame blockSize={72} className="packs-hero-float-y" />
+          <div className="w-full max-w-[360px]">
+            <LeadingPeek pool={pool} isLoading={poolLoading} />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => scrollTo(poolRef)}
+        className="group absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <span>Scroll to vote</span>
+        <ChevronDown className="size-3.5 transition-transform group-hover:translate-y-0.5" />
+      </button>
+    </section>
+  );
+}
+
+interface HeroCopyProps {
+  countdown: string | null;
+  poolCount: number;
+  totalBoosts: number;
+  poolLoading: boolean;
+  onPrimary: () => void;
+  onSecondary: () => void;
+}
+
+function HeroCopy({
+  countdown,
+  poolCount,
+  totalBoosts,
+  poolLoading,
+  onPrimary,
+  onSecondary,
+}: HeroCopyProps) {
+  return (
+    <div className="flex max-w-2xl flex-col items-start gap-6 text-left">
+      <h1
+        className="text-5xl font-bold leading-[1.02] tracking-[-0.02em] md:text-6xl lg:text-7xl"
+        style={{ textWrap: "balance" }}
+      >
+        Shape the <span className="text-primary">next world</span>.
+      </h1>
+
+      <p
+        className="max-w-xl text-base text-muted-foreground md:text-lg"
+        style={{ textWrap: "pretty" }}
+      >
+        Mining dimensions rotate on a schedule. Spend in-game currency to boost
+        the themed pack you want next — weighted voting decides what appears
+        through the portal.
+      </p>
+
+      <div className="grid w-full grid-cols-2 gap-3 sm:grid-cols-3">
+        <Stat
+          icon={Clock}
+          label="Next rotation"
+          value={countdown ?? "—"}
+          mono
+        />
+        <Stat
+          icon={Package}
+          label="Packs in pool"
+          value={poolLoading ? null : `${poolCount} themed`}
+        />
+        <Stat
+          icon={Rocket}
+          label="Boosts spent"
+          value={poolLoading ? null : `${totalBoosts} this cycle`}
+          mono
+        />
+      </div>
+
+      <div className="mt-1 flex flex-wrap items-center gap-3">
+        <Button size="lg" className="group text-base" onClick={onPrimary}>
+          <Rocket />
+          Vote &amp; boost a pack
+          <ArrowRight className="group-hover:translate-x-0.5" />
+        </Button>
+
+        <Button
+          size="lg"
+          variant="outline"
+          className="text-base"
+          onClick={onSecondary}
+        >
+          View active pack
+        </Button>
+
+        <span className="ml-1 text-xs text-muted-foreground">
+          Boosts reset each rotation
+        </span>
+      </div>
+    </div>
+  );
+}
+
+interface StatProps {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | null;
+  mono?: boolean;
+}
+
+function Stat({ icon: Icon, label, value, mono }: StatProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 backdrop-blur-sm">
+      <div className="grid size-8 place-items-center rounded-lg bg-white/5 text-white/70">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+          {label}
+        </div>
+        {value === null ? (
+          <Skeleton className="mt-0.5 h-4 w-20" />
+        ) : (
+          <div
+            className={cn(
+              "truncate text-sm font-semibold tabular-nums",
+              mono && "font-mono",
+            )}
+          >
+            {value}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface PoolEntry {
+  pack: { id: number; name: string };
+  weight: number;
+  boostUnits: number;
+}
+
+interface LeadingPeekProps {
+  pool: PoolEntry[] | undefined;
+  isLoading: boolean;
+}
+
+function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
+  const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
+
+  const sorted = useMemo(() => {
+    if (!pool) return [];
+    return [...pool]
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, LEADING_PEEK_LIMIT);
+  }, [pool]);
+
+  const leader = sorted[0];
+  const leaderPct =
+    leader && totalWeight > 0
+      ? Math.round((leader.weight / totalWeight) * 100)
+      : 0;
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/[0.06] to-transparent p-4 backdrop-blur-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="packs-hero-pulse-dot size-1.5 rounded-full bg-primary" />
+          <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">
+            Leading the vote
+          </span>
+        </div>
+        <TrendingUp className="size-3.5 text-primary" />
+      </div>
+
+      {isLoading || !leader ? (
+        <>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-7 w-12" />
+          </div>
+          <div className="space-y-1.5">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-3 w-full" />
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="mb-3 flex items-baseline justify-between gap-3">
+            <div className="text-2xl font-bold">{leader.pack.name}</div>
+            <div className="font-mono text-2xl font-bold tabular-nums text-primary">
+              {leaderPct}%
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {sorted.map((entry, idx) => {
+              const pct =
+                totalWeight > 0
+                  ? Math.round((entry.weight / totalWeight) * 100)
+                  : 0;
+              const leading = idx === 0;
+              return (
+                <div
+                  key={entry.pack.id}
+                  className="flex items-center gap-2 text-xs"
+                >
+                  <div className="w-24 truncate text-muted-foreground">
+                    {entry.pack.name}
+                  </div>
+                  <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${pct}%`,
+                        background: leading
+                          ? "var(--primary)"
+                          : "oklch(0.62 0.12 255)",
+                        boxShadow: leading
+                          ? "0 0 10px var(--primary)"
+                          : "0 0 6px oklch(0.62 0.19 255 / 0.5)",
+                      }}
+                    />
+                  </div>
+                  <div className="w-8 text-right font-mono tabular-nums text-muted-foreground">
+                    {pct}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface Particle {
+  x0: string;
+  x1: string;
+  d: string;
+  delay: string;
+  o: number;
+  size: number;
+}
+
+function Particles({ count }: { count: number }) {
+  const [items] = useState<Particle[]>(() =>
+    Array.from({ length: count }).map(() => {
+      const x0 = Math.random() * 100;
+      const drift = (Math.random() - 0.5) * 20;
+      return {
+        x0: `${x0}vw`,
+        x1: `${x0 + drift}vw`,
+        d: `${14 + Math.random() * 16}s`,
+        delay: `${-Math.random() * 20}s`,
+        o: 0.25 + Math.random() * 0.55,
+        size: Math.random() < 0.2 ? 3 : 2,
+      };
+    }),
+  );
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      aria-hidden
+    >
+      {items.map((p, i) => (
+        <span
+          key={i}
+          className="packs-hero-dust"
+          style={
+            {
+              "--x0": p.x0,
+              "--x1": p.x1,
+              "--d": p.d,
+              "--delay": p.delay,
+              "--o": p.o,
+              width: p.size,
+              height: p.size,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}

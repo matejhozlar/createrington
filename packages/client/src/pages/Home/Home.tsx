@@ -304,7 +304,8 @@ export function Home() {
               <div className="space-y-6 pt-12">
                 {/* Tagline */}
                 <h1 className="max-w-4xl text-5xl md:text-5xl lg:text-6xl font-bold text-white drop-shadow-lg">
-                  Build Big. Automate Everything.
+                  Build <span className="text-primary">Big</span>. Automate{" "}
+                  <span className="text-primary">Everything</span>.
                 </h1>
 
                 <p className="text-lg md:text-xl lg:text-2xl text-gray-200 max-w-2xl leading-relaxed drop-shadow-md">

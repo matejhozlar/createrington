@@ -1,17 +1,19 @@
+import { useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
-import { useCountdown } from "@/hooks/use-countdown";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Package, Clock, Info } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
+import { Package } from "lucide-react";
 import { ActivePack } from "./components/ActivePack";
 import { PackCard } from "./components/PackCard";
+import { PacksHero } from "./components/hero/PacksHero";
 
 const DEFAULT_BOOST_UNIT_PRICE = 50;
 
 export function StructurePacks() {
   const { user } = useAuth();
+
+  const poolSectionRef = useRef<HTMLElement | null>(null);
+  const activePackRef = useRef<HTMLElement | null>(null);
 
   const { data: pool, isLoading: poolLoading } =
     trpc.user.structurePacks.pool.useQuery(undefined, {
@@ -28,56 +30,26 @@ export function StructurePacks() {
       enabled: !!user,
     });
 
-  const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
-
   const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
 
   const myBoostMap = new Map((myBoosts ?? []).map((b) => [b.packId, b.units]));
 
   return (
     <div>
-      <PageHeader
-        title="Packs"
-        description="Vote on which pack gets activated next by spending in-game currency to boost your favorites."
-        imageSrc="/assets/hero/dark-warehouse.webp"
-      />
+      <PacksHero poolRef={poolSectionRef} activePackRef={activePackRef} />
 
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Next rotation info */}
-          {rotationLoading ? (
-            <Skeleton className="h-10 w-full" />
-          ) : (
-            rotationInfo && (
-              <div className="flex items-center gap-2 rounded-md border bg-muted/30 px-4 py-2.5 text-sm">
-                <Clock className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-muted-foreground">Next rotation in</span>
-                <span className="font-semibold font-mono">
-                  {countdown ?? "any moment now"}
-                </span>
-              </div>
-            )
-          )}
-
-          {/* Boost reset notice */}
-          <Alert>
-            <Info className="size-4" />
-            <AlertDescription>
-              All boosts reset when the next rotation occurs. Boosts are
-              non-refundable — spend wisely!
-            </AlertDescription>
-          </Alert>
-
           {/* Active pack */}
-          <div className="space-y-3">
+          <section ref={activePackRef} className="space-y-3 scroll-mt-6">
             <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
               Active Pack
             </h2>
             <ActivePack />
-          </div>
+          </section>
 
           {/* Pool */}
-          <div className="space-y-3">
+          <section ref={poolSectionRef} className="space-y-3 scroll-mt-6">
             <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
               Vote for Next Rotation
             </h2>
@@ -110,7 +82,7 @@ export function StructurePacks() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </div>
       </section>
     </div>

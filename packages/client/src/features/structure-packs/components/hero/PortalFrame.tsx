@@ -1,0 +1,94 @@
+import { cn } from "@/lib/utils";
+import { PortalTile } from "./PortalTile";
+
+interface PortalFrameProps {
+  blockSize?: number;
+  className?: string;
+}
+
+const COLS = 4;
+const ROWS = 5;
+
+const isInterior = (r: number, c: number) =>
+  r >= 1 && r <= 3 && c >= 1 && c <= 2;
+
+export function PortalFrame({ blockSize = 72, className }: PortalFrameProps) {
+  const outerW = COLS * blockSize;
+  const outerH = ROWS * blockSize;
+  const interiorW = blockSize * 2;
+  const interiorH = blockSize * 3;
+
+  return (
+    <div
+      className={cn("relative", className)}
+      style={{ width: outerW, height: outerH }}
+    >
+      {/* Outer soft glow */}
+      <div
+        className="packs-hero-breathe pointer-events-none absolute"
+        style={{
+          inset: -blockSize * 0.9,
+          background:
+            "radial-gradient(ellipse at center, oklch(0.62 0.19 255 / 0.45) 0%, oklch(0.62 0.19 255 / 0.15) 35%, transparent 65%)",
+          filter: "blur(28px)",
+        }}
+      />
+
+      {/* Obsidian grid */}
+      <div
+        className="absolute inset-0 grid"
+        style={{
+          gridTemplateColumns: `repeat(${COLS}, ${blockSize}px)`,
+          gridTemplateRows: `repeat(${ROWS}, ${blockSize}px)`,
+        }}
+      >
+        {Array.from({ length: ROWS * COLS }).map((_, i) => {
+          const r = Math.floor(i / COLS);
+          const c = i % COLS;
+          if (isInterior(r, c)) return <div key={i} />;
+          return (
+            <div
+              key={i}
+              className="packs-hero-obsidian"
+              style={{ width: blockSize, height: blockSize }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Portal interior */}
+      <div
+        className="absolute overflow-hidden"
+        style={{
+          top: blockSize,
+          left: blockSize,
+          width: interiorW,
+          height: interiorH,
+        }}
+      >
+        <PortalTile width={interiorW} height={interiorH} tileSize={blockSize} />
+
+        {/* Inner rim glow */}
+        <div
+          className="packs-hero-breathe pointer-events-none absolute inset-0"
+          style={{
+            boxShadow:
+              "inset 0 0 60px oklch(0.62 0.19 255 / 0.55), inset 0 0 0 1px oklch(0.9 0.02 255 / 0.3)",
+          }}
+        />
+
+        {/* Scanlines */}
+        <div className="packs-hero-scanlines absolute inset-0" />
+      </div>
+
+      {/* Outer rim hard shadow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          boxShadow:
+            "0 0 90px oklch(0.62 0.19 255 / 0.35), 0 30px 80px rgba(0,0,0,0.7)",
+        }}
+      />
+    </div>
+  );
+}
