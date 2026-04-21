@@ -307,7 +307,6 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
     <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/[0.06] to-transparent p-4 backdrop-blur-sm">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="packs-hero-pulse-dot size-1.5 rounded-full bg-primary" />
           <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary/90">
             Leading the vote
           </span>
@@ -373,6 +372,16 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
           </div>
         </>
       )}
+
+      <a
+        href="https://www.curseforge.com/minecraft/mc-mods/parallel-worlds-by-agent772"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 block border-t border-white/10 pt-2.5 text-center text-[10px] uppercase tracking-[0.22em] text-muted-foreground transition-colors hover:text-foreground"
+      >
+        Parallel Worlds by{" "}
+        <span className="font-semibold text-primary/90">Agent772</span>
+      </a>
     </div>
   );
 }
