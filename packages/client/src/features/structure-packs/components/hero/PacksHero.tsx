@@ -56,14 +56,75 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
         />
       </div>
 
+      {/* Blue radial wash — offset to the portal on lg, centered on smaller
+          screens where the portal is behind the copy. Multi-stop gradient
+          with a slight indigo bias gives the atmosphere depth rather than
+          a flat single-stop fade. The ellipse is taller than wide on
+          mobile so it reaches the top and bottom of the portal. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        className="pointer-events-none absolute inset-0 lg:hidden"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 95% at 50% 55%, oklch(0.5 0.22 260 / 0.38) 0%, oklch(0.4 0.18 258 / 0.22) 28%, oklch(0.3 0.12 255 / 0.1) 60%, transparent 88%)",
+        }}
+      />
+      {/* Edge splashes — linear gradients from each edge add subtle blue
+          accents so the portal feels surrounded by atmosphere rather than
+          isolated. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 lg:hidden"
+        style={{
+          background: [
+            "linear-gradient(to bottom, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
+            "linear-gradient(to top, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
+            "linear-gradient(to right, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
+            "linear-gradient(to left, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
+          ].join(", "),
+          mixBlendMode: "screen",
+        }}
+      />
+      {/* Inner bloom — a tighter, richer blue pool that reads as the
+          portal's atmospheric emanation */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 lg:hidden"
+        style={{
+          background:
+            "radial-gradient(ellipse 45% 40% at 50% 55%, oklch(0.62 0.2 258 / 0.16) 0%, transparent 70%)",
+          mixBlendMode: "screen",
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 hidden lg:block"
         style={{
           background:
             "radial-gradient(ellipse 60% 80% at 72% 55%, oklch(0.4 0.15 255 / 0.38) 0%, transparent 55%)",
         }}
       />
+
+      {/* Background portal — visible below lg where the split layout has
+          collapsed. Uses the `ambient` variant (no dark drop shadow) and a
+          soft outer mask so the obsidian frame and interior read as a
+          portal while the outer blue glow dissolves into the atmosphere. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
+      >
+        <div
+          className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
+          style={{
+            maskImage:
+              "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
+          }}
+        >
+          <PortalFrame blockSize={120} variant="ambient" />
+        </div>
+      </div>
 
       <div
         aria-hidden
@@ -127,11 +188,10 @@ function HeroCopy({
 }: HeroCopyProps) {
   return (
     <div className="flex max-w-2xl flex-col items-start gap-6 text-left">
-      <h1
-        className="text-5xl font-bold leading-[1.02] tracking-[-0.02em] md:text-6xl lg:text-7xl"
-        style={{ textWrap: "balance" }}
-      >
-        Shape the <span className="text-primary">next world</span>.
+      <h1 className="text-5xl font-bold leading-[1.02] tracking-[-0.02em] md:text-6xl lg:text-7xl">
+        Shape the
+        <br />
+        <span className="text-primary">next world</span>.
       </h1>
 
       <p

@@ -4,6 +4,12 @@ import { PortalTile } from "./PortalTile";
 interface PortalFrameProps {
   blockSize?: number;
   className?: string;
+  /**
+   * `hero` — sharp, includes a heavy dark drop shadow (default).
+   * `ambient` — skips the rectangular drop shadow so the portal can blend
+   * into a blurred background without reading as a flat rectangle.
+   */
+  variant?: "hero" | "ambient";
 }
 
 const COLS = 4;
@@ -12,7 +18,11 @@ const ROWS = 5;
 const isInterior = (r: number, c: number) =>
   r >= 1 && r <= 3 && c >= 1 && c <= 2;
 
-export function PortalFrame({ blockSize = 72, className }: PortalFrameProps) {
+export function PortalFrame({
+  blockSize = 72,
+  className,
+  variant = "hero",
+}: PortalFrameProps) {
   const outerW = COLS * blockSize;
   const outerH = ROWS * blockSize;
   const interiorW = blockSize * 2;
@@ -81,12 +91,16 @@ export function PortalFrame({ blockSize = 72, className }: PortalFrameProps) {
         <div className="packs-hero-scanlines absolute inset-0" />
       </div>
 
-      {/* Outer rim hard shadow */}
+      {/* Outer rim shadow — the hero variant adds a heavy dark drop shadow
+          for depth; the ambient variant drops it so the portal can dissolve
+          into a blurred background without a rectangular silhouette. */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
           boxShadow:
-            "0 0 90px oklch(0.62 0.19 255 / 0.35), 0 30px 80px rgba(0,0,0,0.7)",
+            variant === "ambient"
+              ? "0 0 120px oklch(0.62 0.19 255 / 0.35)"
+              : "0 0 90px oklch(0.62 0.19 255 / 0.35), 0 30px 80px rgba(0,0,0,0.7)",
         }}
       />
     </div>
