@@ -1,5 +1,12 @@
 import type { RefObject } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
@@ -19,206 +26,213 @@ interface PacksHeroProps {
   portalHidden: boolean;
 }
 
-export function PacksHero({
-  activePackRef,
-  onEnterPortal,
-  portalHidden,
-}: PacksHeroProps) {
-  const { user } = useAuth();
+export interface PacksHeroHandle {
+  openPortal: () => void;
+}
 
-  const desktopPortalRef = useRef<HTMLDivElement | null>(null);
-  const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
-  const idleGlow = !portalHidden;
+export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
+  function PacksHero(
+    { activePackRef, onEnterPortal, portalHidden },
+    externalRef,
+  ) {
+    const { user } = useAuth();
 
-  const { data: pool, isLoading: poolLoading } =
-    trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
+    const desktopPortalRef = useRef<HTMLDivElement | null>(null);
+    const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
+    const idleGlow = !portalHidden;
 
-  const { data: rotationInfo } = trpc.user.structurePacks.rotationInfo.useQuery(
-    undefined,
-    { enabled: !!user },
-  );
+    const { data: pool, isLoading: poolLoading } =
+      trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
 
-  const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
+    const { data: rotationInfo } =
+      trpc.user.structurePacks.rotationInfo.useQuery(undefined, {
+        enabled: !!user,
+      });
 
-  const totalBoosts =
-    pool?.reduce((sum, entry) => sum + entry.boostUnits, 0) ?? 0;
+    const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
 
-  const scrollTo = (ref: RefObject<HTMLElement | null>) => {
-    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+    const totalBoosts =
+      pool?.reduce((sum, entry) => sum + entry.boostUnits, 0) ?? 0;
 
-  const enterPortal = () => {
-    const desktopEl = desktopPortalRef.current;
-    if (desktopEl && desktopEl.offsetWidth > 0) {
-      desktopEl.classList.add("packs-hero-portal-frozen");
-    }
-    onEnterPortal(() => {
-      const desktop = desktopPortalRef.current;
-      if (desktop && desktop.offsetWidth > 0) {
-        return desktop.getBoundingClientRect();
-      }
-      const mobile = mobileAmbientRef.current;
-      if (mobile && mobile.offsetWidth > 0) {
-        return mobile.getBoundingClientRect();
-      }
-      const w = 240;
-      const h = 300;
-      return new DOMRect(
-        (window.innerWidth - w) / 2,
-        (window.innerHeight - h) / 2,
-        w,
-        h,
-      );
-    });
-  };
-
-  useEffect(() => {
-    if (portalHidden) return;
-    const el = desktopPortalRef.current;
-    if (!el) return;
-    el.classList.remove("packs-hero-portal-frozen");
-    el.classList.add("packs-hero-portal-lighting-up");
-    const lightingUpId = window.setTimeout(() => {
-      el.classList.remove("packs-hero-portal-lighting-up");
-    }, 550);
-    return () => {
-      window.clearTimeout(lightingUpId);
+    const scrollTo = (ref: RefObject<HTMLElement | null>) => {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     };
-  }, [portalHidden]);
 
-  return (
-    <section className="relative h-[calc(100svh-var(--mobile-nav-height))] w-full overflow-hidden text-foreground">
-      <div className="absolute inset-0">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="h-full w-full object-cover"
-          style={{ filter: "grayscale(0.5) blur(2px) brightness(0.35)" }}
-        />
-      </div>
+    const enterPortal = () => {
+      const desktopEl = desktopPortalRef.current;
+      if (desktopEl && desktopEl.offsetWidth > 0) {
+        desktopEl.classList.add("packs-hero-portal-frozen");
+      }
+      onEnterPortal(() => {
+        const desktop = desktopPortalRef.current;
+        if (desktop && desktop.offsetWidth > 0) {
+          return desktop.getBoundingClientRect();
+        }
+        const mobile = mobileAmbientRef.current;
+        if (mobile && mobile.offsetWidth > 0) {
+          return mobile.getBoundingClientRect();
+        }
+        const w = 240;
+        const h = 300;
+        return new DOMRect(
+          (window.innerWidth - w) / 2,
+          (window.innerHeight - h) / 2,
+          w,
+          h,
+        );
+      });
+    };
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 lg:hidden"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 95% at 50% 55%, oklch(0.5 0.22 260 / 0.38) 0%, oklch(0.4 0.18 258 / 0.22) 28%, oklch(0.3 0.12 255 / 0.1) 60%, transparent 88%)",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 lg:hidden"
-        style={{
-          background: [
-            "linear-gradient(to bottom, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
-            "linear-gradient(to top, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
-            "linear-gradient(to right, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
-            "linear-gradient(to left, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
-          ].join(", "),
-          mixBlendMode: "screen",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 lg:hidden"
-        style={{
-          background:
-            "radial-gradient(ellipse 45% 40% at 50% 55%, oklch(0.62 0.2 258 / 0.16) 0%, transparent 70%)",
-          mixBlendMode: "screen",
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 hidden lg:block"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 80% at 72% 55%, oklch(0.4 0.15 255 / 0.38) 0%, transparent 55%)",
-        }}
-      />
+    useImperativeHandle(externalRef, () => ({ openPortal: enterPortal }));
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
-      >
-        <div
-          ref={mobileAmbientRef}
-          className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
-          style={{
-            maskImage:
-              "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
-            WebkitMaskImage:
-              "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
-          }}
-        >
-          <PortalFrame blockSize={120} variant="ambient" />
-        </div>
-      </div>
+    useEffect(() => {
+      if (portalHidden) return;
+      const el = desktopPortalRef.current;
+      if (!el) return;
+      el.classList.remove("packs-hero-portal-frozen");
+      el.classList.add("packs-hero-portal-lighting-up");
+      const lightingUpId = window.setTimeout(() => {
+        el.classList.remove("packs-hero-portal-lighting-up");
+      }, 550);
+      return () => {
+        window.clearTimeout(lightingUpId);
+      };
+    }, [portalHidden]);
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 40%, oklch(0.13 0.005 285 / 0.8) 100%)",
-        }}
-      />
-
-      <Particles count={PARTICLE_COUNT} />
-
-      <div className="packs-hero-grain" aria-hidden />
-
-      <div className="relative mx-auto grid h-full w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 md:px-10 lg:grid-cols-[1.1fr_1fr]">
-        <div
-          className={cn(
-            "transition-opacity duration-500 ease-out lg:opacity-100",
-            portalHidden ? "opacity-0" : "opacity-100",
-          )}
-        >
-          <HeroCopy
-            countdown={countdown}
-            poolCount={pool?.length ?? 0}
-            totalBoosts={totalBoosts}
-            poolLoading={poolLoading}
-            onPrimary={enterPortal}
-            onSecondary={() => scrollTo(activePackRef)}
+    return (
+      <section className="relative h-[calc(100svh-var(--mobile-nav-height))] w-full overflow-hidden text-foreground">
+        <div className="absolute inset-0">
+          <img
+            src={HERO_IMAGE}
+            alt=""
+            className="h-full w-full object-cover"
+            style={{ filter: "grayscale(0.5) blur(2px) brightness(0.35)" }}
           />
         </div>
 
-        <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 lg:hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse 80% 95% at 50% 55%, oklch(0.5 0.22 260 / 0.38) 0%, oklch(0.4 0.18 258 / 0.22) 28%, oklch(0.3 0.12 255 / 0.1) 60%, transparent 88%)",
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 lg:hidden"
+          style={{
+            background: [
+              "linear-gradient(to bottom, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
+              "linear-gradient(to top, oklch(0.45 0.2 260 / 0.14) 0%, transparent 28%)",
+              "linear-gradient(to right, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
+              "linear-gradient(to left, oklch(0.45 0.18 258 / 0.09) 0%, transparent 18%)",
+            ].join(", "),
+            mixBlendMode: "screen",
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 lg:hidden"
+          style={{
+            background:
+              "radial-gradient(ellipse 45% 40% at 50% 55%, oklch(0.62 0.2 258 / 0.16) 0%, transparent 70%)",
+            mixBlendMode: "screen",
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden lg:block"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 72% 55%, oklch(0.4 0.15 255 / 0.38) 0%, transparent 55%)",
+          }}
+        />
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
+        >
           <div
-            className={cn(
-              "transition-opacity",
-              portalHidden ? "opacity-0" : "opacity-100",
-            )}
-            style={{ transitionDuration: portalHidden ? "120ms" : "0ms" }}
+            ref={mobileAmbientRef}
+            className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
+            style={{
+              maskImage:
+                "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
+              WebkitMaskImage:
+                "radial-gradient(ellipse 95% 90% at center, black 70%, transparent 100%)",
+            }}
           >
-            <PortalFrame
-              ref={desktopPortalRef}
-              blockSize={72}
-              className="packs-hero-float-y"
-              interactive
-              onActivate={enterPortal}
-              ariaLabel="Enter portal to vote for next rotation"
-              idleGlow={idleGlow}
-            />
-          </div>
-          <div className="w-full max-w-[360px]">
-            <LeadingPeek pool={pool} isLoading={poolLoading} />
+            <PortalFrame blockSize={120} variant="ambient" />
           </div>
         </div>
-      </div>
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
-        style={{
-          background:
-            "linear-gradient(to bottom, transparent 0%, oklch(0.17 0.0075 285.942 / 0.5) 60%, var(--background) 100%)",
-        }}
-      />
-    </section>
-  );
-}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, transparent 40%, oklch(0.13 0.005 285 / 0.8) 100%)",
+          }}
+        />
+
+        <Particles count={PARTICLE_COUNT} />
+
+        <div className="packs-hero-grain" aria-hidden />
+
+        <div className="relative mx-auto grid h-full w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 md:px-10 lg:grid-cols-[1.1fr_1fr]">
+          <div
+            className={cn(
+              "transition-opacity duration-500 ease-out lg:opacity-100",
+              portalHidden ? "opacity-0" : "opacity-100",
+            )}
+          >
+            <HeroCopy
+              countdown={countdown}
+              poolCount={pool?.length ?? 0}
+              totalBoosts={totalBoosts}
+              poolLoading={poolLoading}
+              onPrimary={enterPortal}
+              onSecondary={() => scrollTo(activePackRef)}
+            />
+          </div>
+
+          <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
+            <div
+              className={cn(
+                "transition-opacity",
+                portalHidden ? "opacity-0" : "opacity-100",
+              )}
+              style={{ transitionDuration: portalHidden ? "120ms" : "0ms" }}
+            >
+              <PortalFrame
+                ref={desktopPortalRef}
+                blockSize={72}
+                className="packs-hero-float-y"
+                interactive
+                onActivate={enterPortal}
+                ariaLabel="Enter portal to vote for next rotation"
+                idleGlow={idleGlow}
+              />
+            </div>
+            <div className="w-full max-w-[360px]">
+              <LeadingPeek pool={pool} isLoading={poolLoading} />
+            </div>
+          </div>
+        </div>
+
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent 0%, oklch(0.17 0.0075 285.942 / 0.5) 60%, var(--background) 100%)",
+          }}
+        />
+      </section>
+    );
+  },
+);
 
 interface HeroCopyProps {
   countdown: string | null;

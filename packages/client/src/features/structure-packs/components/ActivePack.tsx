@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { PackModsDialog } from "./PackModsDialog";
 
-const HERO_IMAGE = "/assets/hero/dark-warehouse.webp";
+const HERO_IMAGE = "/assets/hero/space-station.webp";
 const DUST_COUNT = 22;
 
 const HEADING_CLASSES =
@@ -38,11 +38,6 @@ const VIGNETTE_STYLE: React.CSSProperties = {
     "radial-gradient(ellipse at 70% 50%, transparent 30%, oklch(0.13 0.005 285 / .92) 80%)",
 };
 
-const BOTTOM_FADE_STYLE: React.CSSProperties = {
-  background:
-    "linear-gradient(to bottom, transparent, oklch(0.17 0.0075 285.942 / 0.6) 70%, var(--background) 100%)",
-};
-
 function useMinuteTick(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -64,7 +59,11 @@ function formatRotatedIn(ms: number): string {
   return "just now";
 }
 
-export function ActivePack() {
+interface ActivePackProps {
+  onOpenPortal?: () => void;
+}
+
+export function ActivePack({ onOpenPortal }: ActivePackProps) {
   const { user } = useAuth();
 
   const { data: activePack, isLoading } =
@@ -87,7 +86,7 @@ export function ActivePack() {
   }
 
   if (!activePack) {
-    return <ActivePackEmpty />;
+    return <ActivePackEmpty onOpenPortal={onOpenPortal} />;
   }
 
   const modCount = activePack.mods.length;
@@ -229,12 +228,6 @@ export function ActivePack() {
               </div>
             </div>
           </div>
-
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 z-10"
-            style={BOTTOM_FADE_STYLE}
-          />
         </div>
       </div>
 
@@ -367,7 +360,7 @@ function ActivePackLoading() {
   );
 }
 
-function ActivePackEmpty() {
+function ActivePackEmpty({ onOpenPortal }: { onOpenPortal?: () => void }) {
   return (
     <>
       <h2 className={HEADING_CLASSES}>Active Pack</h2>
@@ -398,19 +391,16 @@ function ActivePackEmpty() {
             <p className="max-w-md text-muted-foreground">
               The next rotation will load a new dimension.
             </p>
-            <Button asChild>
-              <a href="#pool">
-                View pool
-                <ArrowRight />
-              </a>
+            <Button
+              type="button"
+              className="group"
+              onClick={onOpenPortal}
+              disabled={!onOpenPortal}
+            >
+              View pool
+              <ArrowRight className="group-hover:translate-x-0.5" />
             </Button>
           </div>
-
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-24 z-10"
-            style={BOTTOM_FADE_STYLE}
-          />
         </div>
       </div>
     </>

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { ActivePack } from "./components/ActivePack";
-import { PacksHero } from "./components/hero/PacksHero";
+import { PacksHero, type PacksHeroHandle } from "./components/hero/PacksHero";
 import { PortalZoomOverlay } from "./components/hero/PortalZoomOverlay";
 
 const DEFAULT_BOOST_UNIT_PRICE = 50;
@@ -11,6 +11,7 @@ export function StructurePacks() {
   const { user } = useAuth();
 
   const activePackRef = useRef<HTMLElement | null>(null);
+  const heroRef = useRef<PacksHeroHandle>(null);
 
   const [zoomOpen, setZoomOpen] = useState(false);
   const [getZoomSource, setGetZoomSource] = useState<(() => DOMRect) | null>(
@@ -45,6 +46,23 @@ export function StructurePacks() {
     setOverlayActive(true);
   };
 
+  const handleOpenPortalFromHero = () => {
+    if (window.scrollY === 0) {
+      heroRef.current?.openPortal();
+      return;
+    }
+    let opened = false;
+    const openAfterScroll = () => {
+      if (opened) return;
+      opened = true;
+      window.removeEventListener("scrollend", openAfterScroll);
+      heroRef.current?.openPortal();
+    };
+    window.addEventListener("scrollend", openAfterScroll);
+    window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    window.setTimeout(openAfterScroll, 1200);
+  };
+
   const handleExitPortal = () => {
     setZoomOpen(false);
   };
@@ -52,6 +70,7 @@ export function StructurePacks() {
   return (
     <div>
       <PacksHero
+        ref={heroRef}
         activePackRef={activePackRef}
         onEnterPortal={handleEnterPortal}
         portalHidden={overlayActive}
@@ -60,7 +79,7 @@ export function StructurePacks() {
       <section className="pb-12 md:py-16 px-5 md:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <section ref={activePackRef} className="scroll-mt-6">
-            <ActivePack />
+            <ActivePack onOpenPortal={handleOpenPortalFromHero} />
           </section>
         </div>
       </section>
