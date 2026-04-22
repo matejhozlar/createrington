@@ -53,7 +53,7 @@ export function BoostDialog({
       toast.success(
         `Boosted "${packName}" with ${units} unit${units > 1 ? "s" : ""}`,
       );
-      utils.user.structurePacks.pool.invalidate();
+      utils.public.structurePacks.pool.invalidate();
       utils.user.structurePacks.myBoosts.invalidate();
       utils.user.crypto.balance.invalidate();
       onOpenChange(false);

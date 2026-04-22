@@ -27,21 +27,15 @@ export function StructurePacks() {
   const [overlayActive, setOverlayActive] = useState(false);
 
   const { data: pool, isLoading: poolLoading } =
-    trpc.user.structurePacks.pool.useQuery(undefined, {
-      enabled: !!user,
-    });
+    trpc.public.structurePacks.pool.useQuery();
 
   const { data: myBoosts } = trpc.user.structurePacks.myBoosts.useQuery(
     undefined,
     { enabled: !!user },
   );
 
-  const { data: rotationInfo } = trpc.user.structurePacks.rotationInfo.useQuery(
-    undefined,
-    {
-      enabled: !!user,
-    },
-  );
+  const { data: rotationInfo } =
+    trpc.public.structurePacks.rotationInfo.useQuery();
 
   const totalWeight = pool?.reduce((sum, entry) => sum + entry.weight, 0) ?? 0;
 
@@ -114,6 +108,7 @@ export function StructurePacks() {
         }
         nextRotationAt={rotationInfo?.nextRotationAt ?? null}
         cycleNumber={rotationInfo?.cycle ?? null}
+        canBoost={!!user}
       />
     </div>
   );

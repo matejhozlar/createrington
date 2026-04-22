@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
-import { structurePackService } from "@/services/structure-pack";
 import { getService, Services } from "@/services";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation";
 
@@ -9,19 +8,6 @@ async function getRotationService(): Promise<StructurePackRotationService> {
 }
 
 export const userStructurePacksRouter = router({
-  current: userProcedure
-    .meta({ description: "Get the currently active structure pack" })
-    .query(async () => {
-      return structurePackService.getActivePack();
-    }),
-
-  pool: userProcedure
-    .meta({ description: "Get eligible packs with their current weights" })
-    .query(async () => {
-      const service = await getRotationService();
-      return service.getPoolWithWeights();
-    }),
-
   boost: userProcedure
     .meta({ description: "Purchase boost units for a structure pack" })
     .input(
@@ -44,14 +30,5 @@ export const userStructurePacksRouter = router({
     .query(async ({ ctx }) => {
       const service = await getRotationService();
       return service.getPlayerBoosts(ctx.user.discordId);
-    }),
-
-  rotationInfo: userProcedure
-    .meta({
-      description: "Get next scheduled rotation time and boost pricing config",
-    })
-    .query(async () => {
-      const service = await getRotationService();
-      return service.getNextRotationInfo();
     }),
 });

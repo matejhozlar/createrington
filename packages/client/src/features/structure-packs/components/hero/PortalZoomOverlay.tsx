@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Blocks, Info, Package, Rocket, TrendingUp, X } from "lucide-react";
+import {
+  Blocks,
+  Info,
+  LogIn,
+  Package,
+  Rocket,
+  TrendingUp,
+  X,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
 import { BoostDialog } from "../BoostDialog";
 import { PackModsDialog } from "../PackModsDialog";
@@ -42,6 +51,7 @@ interface PortalZoomOverlayProps {
   boostUnitPrice: number;
   nextRotationAt: string | null;
   cycleNumber: number | null;
+  canBoost: boolean;
 }
 
 const PORTAL_BLOCK_SIZE = 72;
@@ -81,6 +91,7 @@ export function PortalZoomOverlay({
   boostUnitPrice,
   nextRotationAt,
   cycleNumber,
+  canBoost,
 }: PortalZoomOverlayProps) {
   const [phase, setPhase] = useState<Phase>("closed");
   const onClosedRef = useRef(onClosed);
@@ -269,6 +280,7 @@ export function PortalZoomOverlay({
             totalWeight={totalWeight}
             myBoostMap={myBoostMap}
             boostUnitPrice={boostUnitPrice}
+            canBoost={canBoost}
           />
         </div>
       </div>
@@ -366,6 +378,7 @@ interface OverlayBodyProps {
   totalWeight: number;
   myBoostMap: Map<number, number>;
   boostUnitPrice: number;
+  canBoost: boolean;
 }
 
 function OverlayBody({
@@ -374,6 +387,7 @@ function OverlayBody({
   totalWeight,
   myBoostMap,
   boostUnitPrice,
+  canBoost,
 }: OverlayBodyProps) {
   const sortedPool = useMemo(() => {
     if (!pool) return [];
@@ -408,6 +422,7 @@ function OverlayBody({
               boostUnitPrice={boostUnitPrice}
               rank={i + 1}
               leader={entry.pack.id === leaderId}
+              canBoost={canBoost}
             />
           ))}
         </div>
@@ -438,6 +453,7 @@ interface PackRowV3Props {
   boostUnitPrice: number;
   rank: number;
   leader: boolean;
+  canBoost: boolean;
 }
 
 function PackRowV3({
@@ -449,7 +465,9 @@ function PackRowV3({
   boostUnitPrice,
   rank,
   leader,
+  canBoost,
 }: PackRowV3Props) {
+  const { login } = useAuth();
   const [boostOpen, setBoostOpen] = useState(false);
   const [modsOpen, setModsOpen] = useState(false);
   const modCount = pack.mods.length;
@@ -530,13 +548,24 @@ function PackRowV3({
           >
             Inspect
           </button>
-          <button
-            type="button"
-            onClick={() => setBoostOpen(true)}
-            className="flex-1 rounded-md bg-[var(--blue)] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--blue-bright)]"
-          >
-            Boost
-          </button>
+          {canBoost ? (
+            <button
+              type="button"
+              onClick={() => setBoostOpen(true)}
+              className="flex-1 rounded-md bg-[var(--blue)] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--blue-bright)]"
+            >
+              Boost
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void login()}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md bg-[var(--blue)] px-3 py-1.5 text-[12px] font-semibold text-white transition-colors hover:bg-[var(--blue-bright)]"
+            >
+              <LogIn className="size-3" />
+              Log in to boost
+            </button>
+          )}
         </div>
       </div>
 
