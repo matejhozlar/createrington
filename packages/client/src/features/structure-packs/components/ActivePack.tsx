@@ -17,13 +17,6 @@ const HEADING_CLASSES =
 const PANEL_CLASSES =
   "relative rounded-[calc(var(--radius)+8px)] overflow-hidden bg-card";
 
-const RUNNER_GLOW_STYLE: React.CSSProperties = {
-  background:
-    "conic-gradient(from 210deg, transparent 0deg, oklch(0.62 0.19 255 / .55) 40deg, transparent 90deg, transparent 260deg, oklch(0.82 0.19 84 / .55) 300deg, transparent 340deg)",
-  filter: "blur(12px)",
-  opacity: 0.7,
-};
-
 const BACKING_IMAGE_STYLE: React.CSSProperties = {
   filter: "grayscale(0.55) blur(2px) brightness(0.38)",
 };
@@ -101,12 +94,6 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
       <h2 className={HEADING_CLASSES}>Active Pack</h2>
 
       <div className="relative">
-        <div
-          aria-hidden
-          className="absolute -inset-0.5 rounded-[calc(var(--radius)+8px)] pointer-events-none z-0 active-pack-runner-rotate"
-          style={RUNNER_GLOW_STYLE}
-        />
-
         <div className={PANEL_CLASSES}>
           <div aria-hidden className="absolute inset-0 z-0 overflow-hidden">
             <img

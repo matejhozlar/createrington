@@ -487,17 +487,6 @@
   opacity: 0 !important;
 }
 
-/* Active Pack cinematic panel — runner glow */
-@keyframes active-pack-runner-rotate {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.active-pack-runner-rotate {
-  animation: active-pack-runner-rotate 18s linear infinite;
-  transform-origin: 50% 50%;
-}
-
 /* Thin scrollbar for the inline mod list */
 .active-pack-scroll::-webkit-scrollbar {
   width: 6px;
@@ -515,8 +504,7 @@
   .packs-hero-float-y,
   .packs-hero-breathe,
   .packs-hero-dust,
-  .packs-hero-grain::after,
-  .active-pack-runner-rotate {
+  .packs-hero-grain::after {
     animation: none !important;
   }
   .packs-hero-portal-interactive,
