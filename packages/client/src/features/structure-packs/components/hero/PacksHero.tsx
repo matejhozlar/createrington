@@ -138,17 +138,7 @@ export function PacksHero({
 
       <div
         aria-hidden
-        className={cn(
-          "pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity ease-out lg:hidden",
-          portalHidden ? "opacity-0" : "opacity-100",
-        )}
-        style={{
-          transitionDuration: "500ms",
-          // Hold the ambient visible while the hero copy fades out, then
-          // cross-fade with the overlay's unblurring. On close, fade back
-          // in immediately during the overlay's reblurring.
-          transitionDelay: portalHidden ? "500ms" : "0ms",
-        }}
+        className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
       >
         <div
           ref={mobileAmbientRef}
