@@ -96,7 +96,10 @@ export function PortalZoomOverlay({
     h: typeof window !== "undefined" ? window.innerHeight : 0,
   }));
 
-  const sourceRect = getSourceRect?.() ?? null;
+  const sourceRect = useMemo(() => {
+    void viewport;
+    return getSourceRect?.() ?? null;
+  }, [getSourceRect, viewport]);
 
   useEffect(() => {
     if (open && phase === "closed") {
@@ -108,10 +111,6 @@ export function PortalZoomOverlay({
   }, [open, phase]);
 
   useEffect(() => {
-    // On viewports without the real hero portal (< lg) the open/close
-    // sequence is staged: hero fades out → blurred portal stays visible
-    // for a beat → unblurs → zooms. On larger screens the stages collapse
-    // to a single frame each so desktop stays snappy.
     const ambientMode = window.innerWidth < 1024;
     const enterMs = ambientMode ? HERO_FADE_MS : 16;
     const rampMs = ambientMode ? RAMP_MS : 16;
@@ -194,39 +193,21 @@ export function PortalZoomOverlay({
   if (!sourceRect) return null;
 
   const sourceScale = sourceRect.width / PORTAL_NATIVE_W;
-  // translate3d (not translate) forces a dedicated GPU compositor layer.
-  // Without it, Chrome can tile-rasterize a large transformed element and
-  // show a diagonal seam mid-transition where adjacent tiles were
-  // captured at slightly different transform snapshots.
   const sourceTransform = `translate3d(${sourceRect.left}px, ${sourceRect.top}px, 0) scale(${sourceScale})`;
   const targetTransform = `translate3d(${target.outer.left}px, ${target.outer.top}px, 0) scale(${target.scale})`;
 
-  // transform is at target during the fullscreen phases; source otherwise.
   const transformIsTarget =
     phase === "scaling" || phase === "open" || phase === "closing";
-  // source-filter/opacity only at the very first and very last stages —
-  // matching the hero's ambient portal on mobile. unblurring onward is
-  // the "sharp" state.
   const atSourceLook = phase === "entering" || phase === "reblurring";
   const cardsVisible = phase === "open";
   const transform = transformIsTarget ? targetTransform : sourceTransform;
 
-  // Both filters are intentionally only applied on the ambient (mobile)
-  // path. On desktop the overlay portal hands off to the real hero portal,
-  // which has no filter; keeping filter undefined throughout avoids a
-  // compositor-layer create/destroy pop that rasterizes the inner
-  // box-shadows differently at hand-off.
   const sourceIsAmbient = viewport.w < 1024;
   const sourceFilter = sourceIsAmbient
     ? "blur(13px) saturate(0.8) brightness(0.75)"
     : undefined;
   const targetFilter = sourceIsAmbient ? "blur(0.5px)" : undefined;
   const portalFilter = atSourceLook ? sourceFilter : targetFilter;
-  // Fully fade the overlay portal out at final source state on mobile so
-  // it cross-fades with the ambient re-appearing underneath. Stacking two
-  // portals (each with their own glow) during reblurring was the "snap"
-  // — now the overlay reaches opacity 0 exactly when the ambient is
-  // fully visible, so the unmount has no visible delta.
   const portalOpacity =
     sourceIsAmbient && (phase === "entering" || phase === "reblurring") ? 0 : 1;
 
@@ -272,17 +253,13 @@ export function PortalZoomOverlay({
       />
 
       <div
-        className="pointer-events-none absolute inset-0 flex flex-col transition-opacity"
+        className="absolute inset-0 flex flex-col transition-opacity"
         style={{
           opacity: cardsVisible ? 1 : 0,
           transitionDuration: `${CARDS_FADE_MS}ms`,
         }}
-        onClick={() => phase === "open" && onClose()}
       >
-        <div
-          className="pointer-events-auto flex h-full w-full flex-col"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="flex h-full w-full flex-col">
           <OverlayHeader cycleNumber={cycleNumber} onClose={onClose} />
           <OverlayHero pool={pool} nextRotationAt={nextRotationAt} />
           <div className="mx-10 h-px bg-white/10" />
