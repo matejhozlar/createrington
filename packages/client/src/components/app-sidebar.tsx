@@ -95,7 +95,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Packs",
         url: "/structure-packs",
         icon: Package,
-        requiresAuth: true,
       },
       {
         title: "Chat",
@@ -136,9 +135,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ],
   };
 
-  const filteredNavMain = data.navMain.filter(
-    (item) => !item.requiresAuth || user,
-  );
+  const filteredNavMain = data.navMain;
 
   return (
     <Sidebar collapsible="icon" {...props}>

@@ -28,6 +28,7 @@ import {
   ChevronDown,
   ChevronRight,
   MessageSquare,
+  ArrowDown,
 } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -304,6 +305,34 @@ export function AutoMessages() {
                                   >
                                     Disabled
                                   </Badge>
+                                )}
+                                {msg.followups.length > 0 && (
+                                  <div className="mt-2 space-y-1 border-l-2 border-border/60 pl-3">
+                                    {msg.followups.map((f) => (
+                                      <div
+                                        key={f.id}
+                                        className="flex items-start gap-2 text-xs"
+                                      >
+                                        <ArrowDown className="mt-0.5 size-3 shrink-0 text-muted-foreground" />
+                                        <div className="min-w-0 flex-1">
+                                          <span className="text-muted-foreground">
+                                            +{f.delaySeconds}s:
+                                          </span>{" "}
+                                          <span className="whitespace-pre-wrap break-words">
+                                            {f.content}
+                                          </span>
+                                          {!f.enabled && (
+                                            <Badge
+                                              variant="outline"
+                                              className="ml-2 border-muted-foreground bg-muted-foreground/10 text-muted-foreground text-[10px]"
+                                            >
+                                              Disabled
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                               <div className="flex gap-1 shrink-0">

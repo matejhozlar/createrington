@@ -30,26 +30,29 @@ export function PackModsDialog({
 }: PackModsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent
+        className="border-white/10 bg-white/[0.03] text-white shadow-2xl shadow-black/40 backdrop-blur-2xl sm:max-w-lg"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>{packName}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-white">{packName}</DialogTitle>
+          <DialogDescription className="text-white/55">
             {mods.length} {mods.length === 1 ? "mod" : "mods"} included in this
             pack
           </DialogDescription>
         </DialogHeader>
 
         {mods.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-8 text-white/50">
             <Package className="mb-2 size-8 opacity-50" />
             <p className="text-sm">No mods in this pack yet</p>
           </div>
         ) : (
-          <div className="max-h-[60vh] overflow-y-auto rounded-md border divide-y">
+          <div className="max-h-[60vh] divide-y divide-white/10 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.02]">
             {mods.map((mod) => (
               <div
                 key={mod.id}
-                className="flex items-center gap-3 p-3 hover:bg-muted/30 transition-colors"
+                className="flex items-center gap-3 p-3 transition-colors hover:bg-white/[0.04]"
               >
                 {mod.thumbnailUrl ? (
                   <img
@@ -58,15 +61,15 @@ export function PackModsDialog({
                     className="size-10 shrink-0 rounded object-cover"
                   />
                 ) : (
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded bg-muted">
-                    <Blocks className="size-5 text-muted-foreground" />
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded bg-white/5">
+                    <Blocks className="size-5 text-white/50" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-sm truncate">
+                  <div className="truncate text-sm font-medium text-white">
                     {mod.modName}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
+                  <div className="truncate text-xs text-white/45">
                     {mod.fileName}
                   </div>
                 </div>
@@ -75,7 +78,7 @@ export function PackModsDialog({
                     href={mod.modUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    className="flex shrink-0 items-center gap-1 text-xs text-white/55 transition-colors hover:text-[var(--blue-bright)]"
                   >
                     CurseForge
                     <ExternalLink className="size-3" />

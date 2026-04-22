@@ -1,3 +1,23 @@
+## v1.10.0 (2026-04-22)
+
+### @createrington/server (1.9.1 → 1.10.0)
+- Add auto-message follow-ups — each auto-message can now have up to 5 follow-up messages that fire sequentially after configurable delays; follow-ups are stored in a new `discord_auto_message_followup` table with cascade delete, and the service schedules them via in-memory timeouts with additive delays along the chain
+- Admin CRUD for follow-ups — the `createMessage` and `updateMessage` tRPC mutations accept an inline `followups` array; updates replace all existing follow-ups in a transaction, and the `getConfig` query now returns follow-ups nested under each message
+- Move structure pack read endpoints to the public router — `current`, `pool`, and `rotationInfo` queries no longer require authentication, enabling the packs page to load for logged-out visitors
+
+### @createrington/client (0.2.9 → 0.2.10)
+- Add Parallel Worlds portal hero to `/packs` — animated Nether portal canvas rendered from a sprite sheet with idle shimmer, hover glow, and reduced-motion support; the hero section uses `svh` units for stable mobile viewport sizing and pauses the canvas when offscreen for performance
+- Add portal zoom overlay for pack voting — clicking the portal triggers a cinematic zoom sequence that reveals voting cards inside the portal frame, with staged open/close transitions, brightness ramping, and subtle blur effects
+- Redesign active pack panel with cinematic styling — the currently active pack is displayed with floating dust particles, a glow backdrop, and a call-to-action that opens the portal overlay when no pack is active
+- Add inline enable/disable and delete actions to the admin packs list, replacing the need to navigate into each pack to toggle state
+- Add Assistant sidebar trigger — the admin chat widget can now be opened from a sidebar menu item instead of only the floating bubble
+- Open the structure packs page to logged-out visitors by switching data queries from the authenticated user router to the new public endpoints
+- Add follow-up message editing UI to auto-messages — the message dialog now includes a follow-ups section where admins can add, reorder, and remove timed follow-up messages
+- Fix mobile chat viewport height — use `dvh` (dynamic viewport height) for the chat container so the input stays visible when the mobile keyboard opens
+- Clean up sidebar collapsible chevrons — standardize rotation direction and transition timing across all collapsible nav sections
+- Fix stuck maintenance cancel dialog caused by stale WebSocket status — the dialog now resets correctly when the server status changes while it is open
+- Update site logo with an enhanced version and remove the unused webp variant
+
 ## v1.9.2 (2026-04-20)
 
 ### @createrington/client (0.2.8 → 0.2.9)

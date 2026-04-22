@@ -29,6 +29,7 @@ import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { CryptoDataProvider } from "./contexts/crypto-data";
+import { AdminChatProvider } from "./components/admin-chat/AdminChatProvider";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
 // a logged-out visitor hitting `/` never downloads the admin, crypto, or
@@ -416,14 +417,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/structure-packs"
-            element={
-              <ProtectedRoute>
-                <StructurePacks />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/structure-packs" element={<StructurePacks />} />
 
           {/* Server Routes */}
           <Route
@@ -546,12 +540,14 @@ function App() {
                   <CryptoDataProvider autoSubscribe>
                     <BrowserRouter>
                       <ScrollToTop />
-                      <ErrorBoundary>
-                        <SidebarProvider>
-                          <AppContent />
-                        </SidebarProvider>
-                      </ErrorBoundary>
-                      <AdminChatGate />
+                      <AdminChatProvider>
+                        <ErrorBoundary>
+                          <SidebarProvider>
+                            <AppContent />
+                          </SidebarProvider>
+                        </ErrorBoundary>
+                        <AdminChatGate />
+                      </AdminChatProvider>
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>

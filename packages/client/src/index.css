@@ -48,6 +48,8 @@
 }
 
 :root {
+  --mobile-nav-height: 3.5rem;
+
   --radius: 0.75rem;
   --background: oklch(0.17 0.0075 285.942);
   --foreground: oklch(0.985 0.002 285.885);
@@ -83,6 +85,14 @@
   --sidebar-ring: oklch(0.551 0.008 285.885);
   --discord: oklch(0.577 0.209 273.854);
   --discord-foreground: oklch(0.85 0.08 274);
+  --blue: oklch(0.62 0.19 255);
+  --blue-bright: oklch(0.72 0.2 255);
+}
+
+@media (min-width: 48rem) {
+  :root {
+    --mobile-nav-height: 0rem;
+  }
 }
 
 @layer base {
@@ -289,5 +299,216 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* ============================================================================
+   Structure Packs hero — Parallel Worlds portal
+   ============================================================================ */
+
+.nice-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+@keyframes packs-hero-float-y {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.packs-hero-float-y {
+  animation: packs-hero-float-y 6s ease-in-out infinite;
+}
+
+.packs-hero-breathe {
+  animation: none;
+}
+
+@keyframes packs-hero-rise {
+  0% {
+    transform: translate3d(var(--x0), 0, 0) scale(0.9);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--o);
+  }
+  90% {
+    opacity: var(--o);
+  }
+  100% {
+    transform: translate3d(var(--x1), -140vh, 0) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@keyframes packs-hero-grain {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  10% {
+    transform: translate(-2%, -1%);
+  }
+  20% {
+    transform: translate(1%, 2%);
+  }
+  30% {
+    transform: translate(-1%, 1%);
+  }
+  40% {
+    transform: translate(2%, -2%);
+  }
+  50% {
+    transform: translate(-2%, 2%);
+  }
+  60% {
+    transform: translate(1%, -1%);
+  }
+  70% {
+    transform: translate(-1%, -2%);
+  }
+  80% {
+    transform: translate(2%, 1%);
+  }
+  90% {
+    transform: translate(-2%, -1%);
+  }
+}
+
+.packs-hero-dust {
+  position: absolute;
+  bottom: -20px;
+  border-radius: 50%;
+  background: rgba(120, 170, 255, 0.9);
+  box-shadow: 0 0 8px rgba(120, 170, 255, 0.8);
+  animation: packs-hero-rise var(--d, 18s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  pointer-events: none;
+}
+
+.packs-hero-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.packs-hero-grain::after {
+  content: "";
+  position: absolute;
+  inset: -50%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>");
+  opacity: 0.06;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  animation: packs-hero-grain 1.4s steps(6) infinite;
+}
+
+.packs-hero-obsidian {
+  image-rendering: pixelated;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' shape-rendering='crispEdges'><rect width='16' height='16' fill='%23060a12'/><rect x='0' y='0' width='16' height='1' fill='%230a121f'/><rect x='2' y='1' width='1' height='1' fill='%23121c33'/><rect x='6' y='0' width='1' height='1' fill='%23182644'/><rect x='11' y='1' width='2' height='1' fill='%23101a30'/><rect x='14' y='0' width='1' height='1' fill='%231c2c4a'/><rect x='1' y='3' width='1' height='1' fill='%2315244a'/><rect x='4' y='4' width='2' height='1' fill='%230e182b'/><rect x='8' y='3' width='1' height='1' fill='%231e3055'/><rect x='12' y='4' width='1' height='1' fill='%23101c34'/><rect x='0' y='6' width='1' height='1' fill='%23182a48'/><rect x='3' y='6' width='1' height='1' fill='%2309141f'/><rect x='6' y='7' width='2' height='1' fill='%231a2848'/><rect x='10' y='6' width='1' height='1' fill='%230e182a'/><rect x='14' y='7' width='1' height='1' fill='%23162440'/><rect x='2' y='9' width='1' height='1' fill='%23121e38'/><rect x='5' y='9' width='1' height='1' fill='%2320305a'/><rect x='9' y='10' width='2' height='1' fill='%23101a30'/><rect x='13' y='10' width='1' height='1' fill='%23162440'/><rect x='0' y='12' width='2' height='1' fill='%230e182b'/><rect x='4' y='12' width='1' height='1' fill='%231e2e52'/><rect x='7' y='12' width='1' height='1' fill='%23121c36'/><rect x='11' y='13' width='1' height='1' fill='%231a2848'/><rect x='3' y='14' width='1' height='1' fill='%23162440'/><rect x='8' y='14' width='2' height='1' fill='%230e182a'/><rect x='13' y='14' width='1' height='1' fill='%23121e36'/><rect x='0' y='15' width='16' height='1' fill='%2303060b'/></svg>");
+  background-size: 100% 100%;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.packs-hero-scanlines {
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.04) 0 2px,
+    transparent 2px 4px
+  );
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+.packs-hero-portal-interactive {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease-out;
+  filter: brightness(1);
+  will-change: filter;
+}
+
+.packs-hero-portal-glow {
+  opacity: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 60px 4px oklch(0.62 0.19 255 / 0.55);
+  transition: opacity 220ms ease-out;
+}
+
+.packs-hero-portal-root:hover .packs-hero-portal-interactive {
+  transform: scale(1.02);
+  filter: brightness(1.08);
+}
+.packs-hero-portal-root:hover .packs-hero-portal-glow {
+  opacity: 1;
+}
+
+@keyframes packs-hero-portal-light-up {
+  0% {
+    filter: brightness(0.96);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.packs-hero-portal-lighting-up {
+  animation: packs-hero-portal-light-up 550ms ease-out;
+}
+
+.packs-hero-portal-frozen,
+.packs-hero-portal-frozen *,
+.packs-hero-portal-frozen *::before,
+.packs-hero-portal-frozen *::after {
+  animation: none !important;
+}
+.packs-hero-portal-frozen,
+.packs-hero-portal-frozen .packs-hero-portal-interactive {
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+.packs-hero-portal-frozen .packs-hero-portal-glow {
+  opacity: 0 !important;
+}
+
+/* Thin scrollbar for the inline mod list */
+.active-pack-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+.active-pack-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+.active-pack-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .packs-hero-float-y,
+  .packs-hero-breathe,
+  .packs-hero-dust,
+  .packs-hero-grain::after {
+    animation: none !important;
+  }
+  .packs-hero-portal-interactive,
+  .packs-hero-portal-glow {
+    transition: none !important;
   }
 }

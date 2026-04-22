@@ -1,9 +1,4 @@
-import {
-  type LucideIcon,
-  ChevronDown,
-  ChevronRight,
-  Shield,
-} from "lucide-react";
+import { type LucideIcon, ChevronRight, Shield, Sparkles } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
 import {
@@ -25,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
 
 export function NavAdmin({
   items,
@@ -35,8 +31,18 @@ export function NavAdmin({
     icon?: LucideIcon;
   }[];
 }) {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
+  const {
+    enabled: assistantEnabled,
+    drawerOpen: assistantOpen,
+    toggleDrawer: toggleAssistantDrawer,
+  } = useAdminChat();
+
+  const toggleAssistant = () => {
+    toggleAssistantDrawer();
+    if (isMobile) setOpenMobile(false);
+  };
 
   const isAdminActive = items.some((item) =>
     location.pathname.startsWith(item.url),
@@ -57,34 +63,23 @@ export function NavAdmin({
                   isAdminActive && "bg-destructive/20 font-medium",
                 )}
               >
-                <div className="relative">
-                  <Shield
-                    className={cn(
-                      "size-6! transition-all text-destructive",
-                      state === "collapsed" && "ml-3",
-                    )}
-                  />
-
-                  {state === "collapsed" && (
-                    <span className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-destructive ring-2 ring-background">
-                      <ChevronRight
-                        className={cn(
-                          "size-2.5 text-white transition-transform duration-300 ease-in-out",
-                          isOpen && "rotate-90",
-                        )}
-                      />
-                    </span>
+                <Shield
+                  className={cn(
+                    "size-6! transition-all text-destructive",
+                    state === "collapsed" && "ml-3",
                   )}
-                </div>
+                />
 
                 <span>Admin</span>
 
-                <ChevronDown
-                  className={cn(
-                    "ml-auto size-4 transition-transform duration-300 ease-in-out",
-                    isOpen && "rotate-180",
-                  )}
-                />
+                {state === "expanded" && (
+                  <ChevronRight
+                    className={cn(
+                      "ml-auto size-4 transition-transform duration-300 ease-in-out",
+                      isOpen && "rotate-90",
+                    )}
+                  />
+                )}
               </SidebarMenuButton>
             </CollapsibleTrigger>
           </TooltipTrigger>
@@ -120,6 +115,23 @@ export function NavAdmin({
                   </SidebarMenuSubItem>
                 );
               })}
+              {assistantEnabled && (
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild>
+                    <button
+                      type="button"
+                      onClick={toggleAssistant}
+                      className={cn(
+                        "w-full transition-colors duration-150",
+                        assistantOpen && "text-destructive bg-destructive/10",
+                      )}
+                    >
+                      <Sparkles className="size-4" />
+                      <span>Assistant</span>
+                    </button>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              )}
             </SidebarMenuSub>
           )}
 
@@ -150,6 +162,26 @@ export function NavAdmin({
                   </Tooltip>
                 );
               })}
+              {assistantEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={toggleAssistant}
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-md transition-colors",
+                        "text-destructive hover:bg-destructive/10",
+                        assistantOpen && "bg-destructive/20 font-medium",
+                      )}
+                    >
+                      <Sparkles className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-destructive font-semibold">Assistant</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
         </CollapsibleContent>

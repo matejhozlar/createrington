@@ -180,9 +180,88 @@ export class AutoMessageService {
       logger.debug(
         `Sent auto-message to channel ${config.channelId} (config ${configId})`,
       );
+      await this.scheduleFollowups(message.id, config.channelId);
     } else {
       logger.warn(
         `Failed to send auto-message to channel ${config.channelId}: ${result.error}`,
+      );
+    }
+  }
+
+  /**
+   * Schedules enabled follow-up messages for a primary message.
+   *
+   * Each follow-up's delay is additive along the chain: follow-up #1 fires at
+   * t=delay₁, follow-up #2 at t=delay₁+delay₂, and so on. Scheduling uses
+   * in-memory `setTimeout` — if the server restarts mid-chain, pending
+   * follow-ups are dropped (acceptable for the short delays this feature
+   * targets).
+   *
+   * @param messageId - The primary message whose follow-ups should fire
+   * @param channelId - Discord channel to send the follow-ups to
+   * @private
+   */
+  private async scheduleFollowups(
+    messageId: number,
+    channelId: string,
+  ): Promise<void> {
+    const followups = await Q.discord.auto.message.followup
+      .where({ messageId, enabled: true })
+      .orderBy("sortOrder", "asc")
+      .all();
+
+    if (followups.length === 0) return;
+
+    let accumulatedDelayMs = 0;
+    for (const followup of followups) {
+      accumulatedDelayMs += followup.delaySeconds * 1000;
+
+      setTimeout(() => {
+        this.sendFollowup(followup.id, channelId).catch((error) => {
+          logger.error(
+            `Error sending auto-message follow-up ${followup.id}:`,
+            error,
+          );
+        });
+      }, accumulatedDelayMs);
+    }
+  }
+
+  /**
+   * Sends a single follow-up message.
+   *
+   * Re-fetches the follow-up just before sending so that a disable or edit
+   * made during the delay window still takes effect.
+   *
+   * @param followupId - Database ID of the follow-up to send
+   * @param channelId - Discord channel to send to
+   * @private
+   */
+  private async sendFollowup(
+    followupId: number,
+    channelId: string,
+  ): Promise<void> {
+    const followup = await Q.discord.auto.message.followup.find({
+      id: followupId,
+    });
+    if (!followup || !followup.enabled) return;
+
+    const resolvedContent = await this.resolveTemplateVariables(
+      followup.content,
+    );
+
+    const result = await this.messageService.send({
+      channelId,
+      content: resolvedContent,
+    });
+
+    if (result.success) {
+      logger.debug(
+        `Sent auto-message follow-up ${followupId} to channel ${channelId}`,
+      );
+    } else {
+      logger.warn(
+        `Failed to send auto-message follow-up ${followupId} to channel ${channelId}: ${result.error}`,
       );
     }
   }
