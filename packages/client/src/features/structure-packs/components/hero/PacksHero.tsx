@@ -8,7 +8,6 @@ import {
 } from "react";
 import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,19 +34,15 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
     { activePackRef, onEnterPortal, portalHidden },
     externalRef,
   ) {
-    const { user } = useAuth();
-
     const desktopPortalRef = useRef<HTMLDivElement | null>(null);
     const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
     const idleGlow = !portalHidden;
 
     const { data: pool, isLoading: poolLoading } =
-      trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
+      trpc.public.structurePacks.pool.useQuery();
 
     const { data: rotationInfo } =
-      trpc.user.structurePacks.rotationInfo.useQuery(undefined, {
-        enabled: !!user,
-      });
+      trpc.public.structurePacks.rotationInfo.useQuery();
 
     const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
 

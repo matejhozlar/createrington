@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, ExternalLink, Eye, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,17 +57,11 @@ interface ActivePackProps {
 }
 
 export function ActivePack({ onOpenPortal }: ActivePackProps) {
-  const { user } = useAuth();
-
   const { data: activePack, isLoading } =
-    trpc.user.structurePacks.current.useQuery(undefined, {
-      enabled: !!user,
-    });
+    trpc.public.structurePacks.current.useQuery();
 
-  const { data: rotationInfo } = trpc.user.structurePacks.rotationInfo.useQuery(
-    undefined,
-    { enabled: !!user },
-  );
+  const { data: rotationInfo } =
+    trpc.public.structurePacks.rotationInfo.useQuery();
 
   const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
   const now = useMinuteTick();

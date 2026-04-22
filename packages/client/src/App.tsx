@@ -416,14 +416,7 @@ function AppContent() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/structure-packs"
-            element={
-              <ProtectedRoute>
-                <StructurePacks />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/structure-packs" element={<StructurePacks />} />
 
           {/* Server Routes */}
           <Route
