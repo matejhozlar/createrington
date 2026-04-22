@@ -428,16 +428,19 @@ export class StructurePackRotationService {
     return Q.structure.pack.rotation.config.getOrCreateDefault();
   }
 
-  /** Returns the next scheduled rotation time as a UTC Date, along with the boost unit price. */
+  /** Returns the next scheduled rotation time, boost unit price, and current cycle number. */
   async getNextRotationInfo(): Promise<{
     nextRotationAt: string;
     boostUnitPrice: number;
+    cycle: number;
   }> {
     const cfg = await this.getConfig();
     const next = computeNextRotationTime(cfg);
+    const pastRotations = await Q.structure.pack.rotation.count();
     return {
       nextRotationAt: next.toISOString(),
       boostUnitPrice: cfg.boostUnitPrice,
+      cycle: pastRotations + 1,
     };
   }
 

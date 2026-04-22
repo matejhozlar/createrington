@@ -78,6 +78,8 @@ export function StructurePacks() {
         boostUnitPrice={
           rotationInfo?.boostUnitPrice ?? DEFAULT_BOOST_UNIT_PRICE
         }
+        nextRotationAt={rotationInfo?.nextRotationAt ?? null}
+        cycleNumber={rotationInfo?.cycle ?? null}
       />
     </div>
   );

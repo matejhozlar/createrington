@@ -27,7 +27,7 @@ export function PacksHero({
   const { user } = useAuth();
 
   const desktopPortalRef = useRef<HTMLDivElement | null>(null);
-  const [idleGlow, setIdleGlow] = useState(!portalHidden);
+  const idleGlow = !portalHidden;
 
   const { data: pool, isLoading: poolLoading } =
     trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
@@ -65,10 +65,7 @@ export function PacksHero({
   };
 
   useEffect(() => {
-    if (portalHidden) {
-      setIdleGlow(false);
-      return;
-    }
+    if (portalHidden) return;
     const el = desktopPortalRef.current;
     if (!el) return;
     el.classList.remove("packs-hero-portal-frozen");
@@ -76,7 +73,6 @@ export function PacksHero({
     const lightingUpId = window.setTimeout(() => {
       el.classList.remove("packs-hero-portal-lighting-up");
     }, 550);
-    setIdleGlow(true);
     return () => {
       window.clearTimeout(lightingUpId);
     };
