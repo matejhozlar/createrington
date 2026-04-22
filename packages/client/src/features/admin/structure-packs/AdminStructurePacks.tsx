@@ -12,6 +12,9 @@ import {
   MoreHorizontal,
   Eye,
   Copy,
+  CheckCircle2,
+  XCircle,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,8 +45,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -76,6 +90,11 @@ export function AdminStructurePacks() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>("all");
+
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
 
   const filteredPacks = useMemo(() => {
     let result = packs;
@@ -157,6 +176,24 @@ export function AdminStructurePacks() {
       setName("");
       setDescription("");
       navigate(`/admin/tools/structure-packs/${pack.id}`);
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const toggleEnabledMutation =
+    trpc.admin.structurePacks.toggleEnabled.useMutation({
+      onSuccess: (_data, variables) => {
+        toast.success(variables.enabled ? "Pack enabled" : "Pack disabled");
+        utils.admin.structurePacks.list.invalidate();
+      },
+      onError: (err) => toast.error(err.message),
+    });
+
+  const deleteMutation = trpc.admin.structurePacks.delete.useMutation({
+    onSuccess: () => {
+      toast.success("Pack deleted");
+      utils.admin.structurePacks.list.invalidate();
+      setDeleteTarget(null);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -368,6 +405,43 @@ export function AdminStructurePacks() {
                               <Copy className="mr-2 size-4" />
                               Copy
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={
+                                pack.isActive || toggleEnabledMutation.isPending
+                              }
+                              onClick={() =>
+                                toggleEnabledMutation.mutate({
+                                  id: pack.id,
+                                  enabled: !pack.enabled,
+                                })
+                              }
+                            >
+                              {pack.enabled ? (
+                                <>
+                                  <XCircle className="mr-2 size-4" />
+                                  Disable
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="mr-2 size-4" />
+                                  Enable
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={pack.isActive}
+                              onClick={() =>
+                                setDeleteTarget({
+                                  id: pack.id,
+                                  name: pack.name,
+                                })
+                              }
+                            >
+                              <Trash2 className="mr-2 size-4" />
+                              Delete
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -379,6 +453,39 @@ export function AdminStructurePacks() {
           )}
         </Card>
       </div>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete &quot;{deleteTarget?.name}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the pack from the rotation pool. Historical data
+              will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteMutation.isPending}
+              onClick={() => {
+                if (deleteTarget) {
+                  deleteMutation.mutate({ id: deleteTarget.id });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
