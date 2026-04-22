@@ -194,8 +194,12 @@ export function PortalZoomOverlay({
   if (!sourceRect) return null;
 
   const sourceScale = sourceRect.width / PORTAL_NATIVE_W;
-  const sourceTransform = `translate(${sourceRect.left}px, ${sourceRect.top}px) scale(${sourceScale})`;
-  const targetTransform = `translate(${target.outer.left}px, ${target.outer.top}px) scale(${target.scale})`;
+  // translate3d (not translate) forces a dedicated GPU compositor layer.
+  // Without it, Chrome can tile-rasterize a large transformed element and
+  // show a diagonal seam mid-transition where adjacent tiles were
+  // captured at slightly different transform snapshots.
+  const sourceTransform = `translate3d(${sourceRect.left}px, ${sourceRect.top}px, 0) scale(${sourceScale})`;
+  const targetTransform = `translate3d(${target.outer.left}px, ${target.outer.top}px, 0) scale(${target.scale})`;
 
   // transform is at target during the fullscreen phases; source otherwise.
   const transformIsTarget =
@@ -237,6 +241,7 @@ export function PortalZoomOverlay({
           transform,
           filter: portalFilter,
           opacity: portalOpacity,
+          backfaceVisibility: "hidden",
           transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${RAMP_MS}ms ease-out, opacity ${RAMP_MS}ms ease-out`,
         }}
       >
