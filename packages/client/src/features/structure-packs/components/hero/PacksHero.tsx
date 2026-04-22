@@ -49,10 +49,6 @@ export function PacksHero({
   const enterPortal = () => {
     const el = desktopPortalRef.current;
     if (el) {
-      // Freeze the portal's CSS animations (float, breathing) before we
-      // measure. Otherwise the hero keeps drifting mid-float while the
-      // overlay is open, and the close animation lands at stale coordinates
-      // — visible as a snap + brightness flicker at hand-off.
       el.classList.add("packs-hero-portal-frozen");
       onEnterPortal(el.getBoundingClientRect());
       return;
@@ -70,17 +66,9 @@ export function PacksHero({
 
   useEffect(() => {
     if (portalHidden) {
-      // Turn the blue ambient glow off immediately when the overlay
-      // opens so the hero's box-shadow matches the moving portal's
-      // during the animation (neither has it).
       setIdleGlow(false);
       return;
     }
-    // Overlay has fully unmounted (portalHidden is gated on the overlay's
-    // onClosed now, not on the close click), so it's safe to unfreeze
-    // immediately without any stacking/hover race. Add the short "lights
-    // up" animation class so the hero ramps from ~0.96 → 1.0 brightness
-    // over ~550ms rather than snapping on at full.
     const el = desktopPortalRef.current;
     if (!el) return;
     el.classList.remove("packs-hero-portal-frozen");
@@ -88,12 +76,6 @@ export function PacksHero({
     const lightingUpId = window.setTimeout(() => {
       el.classList.remove("packs-hero-portal-lighting-up");
     }, 550);
-    // Delay turning the blue glow back on until the lighting-up
-    // brightness filter has ended. That filter creates a compositing
-    // layer on the PortalFrame root which clips descendants' visual
-    // overflow — if the blue box-shadow fades in while the filter is
-    // active, its reach gets clipped and pops out to full when the
-    // filter is removed. Waiting for the filter to end avoids that.
     setIdleGlow(true);
     return () => {
       window.clearTimeout(lightingUpId);

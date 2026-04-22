@@ -145,11 +145,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     }
     if (!visible) return;
 
-    // Anchor the animation clock to performance.now() directly (a monotonic
-    // clock shared by every PortalTile on the page) so two instances — the
-    // hero's and the zoom overlay's — stay phase-synced. Otherwise each
-    // tile starts counting from its own mount time and the ripple looks
-    // like it "restarts" when the overlay unmounts and the hero reappears.
     const draw = () => {
       const elapsed = performance.now();
       const cyclePos = (elapsed / FRAME_DURATION_MS) % TOTAL_FRAMES;

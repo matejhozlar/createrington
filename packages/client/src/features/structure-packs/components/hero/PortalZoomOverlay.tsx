@@ -43,7 +43,6 @@ const PORTAL_COLS = 4;
 const PORTAL_ROWS = 5;
 const PORTAL_NATIVE_W = PORTAL_COLS * PORTAL_BLOCK_SIZE;
 const PORTAL_NATIVE_H = PORTAL_ROWS * PORTAL_BLOCK_SIZE;
-// Interior lives at (1,1) through (2,3) in grid coords → offset 1 block, size 2×3 blocks.
 const INTERIOR_OFFSET = PORTAL_BLOCK_SIZE;
 const INTERIOR_W = 2 * PORTAL_BLOCK_SIZE;
 const INTERIOR_H = 3 * PORTAL_BLOCK_SIZE;
@@ -154,14 +153,9 @@ export function PortalZoomOverlay({
   }, []);
 
   const target = useMemo(() => {
-    // "Step through" scale: the interior (purple ripple) covers the full
-    // viewport. Scale to whichever axis needs more zoom so the interior fully
-    // contains the viewport rect; the obsidian frame then extends off-screen
-    // on every side and is never visible at rest.
     const scale = Math.max(viewport.w / INTERIOR_W, viewport.h / INTERIOR_H);
     const outerW = PORTAL_NATIVE_W * scale;
     const outerH = PORTAL_NATIVE_H * scale;
-    // Place the outer so the interior is centered on the viewport.
     const left = viewport.w / 2 - (INTERIOR_OFFSET + INTERIOR_W / 2) * scale;
     const top = viewport.h / 2 - (INTERIOR_OFFSET + INTERIOR_H / 2) * scale;
     return {
@@ -191,13 +185,6 @@ export function PortalZoomOverlay({
           height: PORTAL_NATIVE_H,
           transformOrigin: "top left",
           transform,
-          // Blur the scaled-up ripple once we're inside the portal — softens
-          // the per-tile pixel artifacts into the overall shimmer so they
-          // read as part of the atmosphere instead of a rendering bug. Drop
-          // the filter entirely (not just "blur(0px)") when we're not at
-          // the open state so the overlay doesn't keep a compositor layer
-          // around, which would render ever so slightly dimmer than the
-          // hero's plain canvas and reveal a pop at hand-off.
           filter: cardsVisible ? "blur(0.5px)" : undefined,
           transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${CARDS_FADE_MS}ms ease-out`,
         }}

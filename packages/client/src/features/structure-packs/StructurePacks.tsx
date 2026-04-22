@@ -14,11 +14,6 @@ export function StructurePacks() {
 
   const [zoomOpen, setZoomOpen] = useState(false);
   const [zoomSource, setZoomSource] = useState<DOMRect | null>(null);
-  // Kept true while the overlay is ANIMATING (enter + open + close). Used to
-  // keep the hero's portal opacity-0 so its glow doesn't stack on top of the
-  // overlay's glow during the close — otherwise both box-shadow halos
-  // render at the same spot and collapse to a single halo when the overlay
-  // unmounts, which reads as a sudden brightness drop.
   const [overlayActive, setOverlayActive] = useState(false);
 
   const { data: pool, isLoading: poolLoading } =
