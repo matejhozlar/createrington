@@ -27,6 +27,7 @@ export function PacksHero({
   const { user } = useAuth();
 
   const desktopPortalRef = useRef<HTMLDivElement | null>(null);
+  const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
   const idleGlow = !portalHidden;
 
   const { data: pool, isLoading: poolLoading } =
@@ -47,13 +48,19 @@ export function PacksHero({
   };
 
   const enterPortal = () => {
-    const el = desktopPortalRef.current;
-    if (el) {
-      el.classList.add("packs-hero-portal-frozen");
-      onEnterPortal(() => el.getBoundingClientRect());
-      return;
+    const desktopEl = desktopPortalRef.current;
+    if (desktopEl && desktopEl.offsetWidth > 0) {
+      desktopEl.classList.add("packs-hero-portal-frozen");
     }
     onEnterPortal(() => {
+      const desktop = desktopPortalRef.current;
+      if (desktop && desktop.offsetWidth > 0) {
+        return desktop.getBoundingClientRect();
+      }
+      const mobile = mobileAmbientRef.current;
+      if (mobile && mobile.offsetWidth > 0) {
+        return mobile.getBoundingClientRect();
+      }
       const w = 240;
       const h = 300;
       return new DOMRect(
@@ -131,9 +138,20 @@ export function PacksHero({
 
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
+        className={cn(
+          "pointer-events-none absolute inset-0 flex items-center justify-center transition-opacity ease-out lg:hidden",
+          portalHidden ? "opacity-0" : "opacity-100",
+        )}
+        style={{
+          transitionDuration: "500ms",
+          // Hold the ambient visible while the hero copy fades out, then
+          // cross-fade with the overlay's unblurring. On close, fade back
+          // in immediately during the overlay's reblurring.
+          transitionDelay: portalHidden ? "500ms" : "0ms",
+        }}
       >
         <div
+          ref={mobileAmbientRef}
           className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
           style={{
             maskImage:
@@ -160,14 +178,21 @@ export function PacksHero({
       <div className="packs-hero-grain" aria-hidden />
 
       <div className="relative mx-auto grid h-full w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 md:px-10 lg:grid-cols-[1.1fr_1fr]">
-        <HeroCopy
-          countdown={countdown}
-          poolCount={pool?.length ?? 0}
-          totalBoosts={totalBoosts}
-          poolLoading={poolLoading}
-          onPrimary={enterPortal}
-          onSecondary={() => scrollTo(activePackRef)}
-        />
+        <div
+          className={cn(
+            "transition-opacity duration-500 ease-out lg:opacity-100",
+            portalHidden ? "opacity-0" : "opacity-100",
+          )}
+        >
+          <HeroCopy
+            countdown={countdown}
+            poolCount={pool?.length ?? 0}
+            totalBoosts={totalBoosts}
+            poolLoading={poolLoading}
+            onPrimary={enterPortal}
+            onSecondary={() => scrollTo(activePackRef)}
+          />
+        </div>
 
         <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
           <div

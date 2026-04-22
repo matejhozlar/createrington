@@ -33,6 +33,7 @@ interface PortalZoomOverlayProps {
   open: boolean;
   onClose: () => void;
   onClosed?: () => void;
+  onReblurring?: () => void;
   getSourceRect: (() => DOMRect) | null;
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
@@ -52,21 +53,26 @@ const INTERIOR_OFFSET = PORTAL_BLOCK_SIZE;
 const INTERIOR_W = 2 * PORTAL_BLOCK_SIZE;
 const INTERIOR_H = 3 * PORTAL_BLOCK_SIZE;
 
-const SCALE_MS = 700;
-const CARDS_FADE_MS = 360;
+const SCALE_MS = 1200;
+const CARDS_FADE_MS = 500;
+const HERO_FADE_MS = 500;
+const RAMP_MS = 500;
 
 type Phase =
   | "closed"
   | "entering"
+  | "unblurring"
   | "scaling"
   | "open"
   | "closing"
-  | "shrinking";
+  | "shrinking"
+  | "reblurring";
 
 export function PortalZoomOverlay({
   open,
   onClose,
   onClosed,
+  onReblurring,
   getSourceRect,
   pool,
   isLoading,
@@ -78,9 +84,13 @@ export function PortalZoomOverlay({
 }: PortalZoomOverlayProps) {
   const [phase, setPhase] = useState<Phase>("closed");
   const onClosedRef = useRef(onClosed);
+  const onReblurringRef = useRef(onReblurring);
   useEffect(() => {
     onClosedRef.current = onClosed;
   }, [onClosed]);
+  useEffect(() => {
+    onReblurringRef.current = onReblurring;
+  }, [onReblurring]);
   const [viewport, setViewport] = useState(() => ({
     w: typeof window !== "undefined" ? window.innerWidth : 0,
     h: typeof window !== "undefined" ? window.innerHeight : 0,
@@ -98,19 +108,21 @@ export function PortalZoomOverlay({
   }, [open, phase]);
 
   useEffect(() => {
+    // On viewports without the real hero portal (< lg) the open/close
+    // sequence is staged: hero fades out → blurred portal stays visible
+    // for a beat → unblurs → zooms. On larger screens the stages collapse
+    // to a single frame each so desktop stays snappy.
+    const ambientMode = window.innerWidth < 1024;
+    const enterMs = ambientMode ? HERO_FADE_MS : 16;
+    const rampMs = ambientMode ? RAMP_MS : 16;
+
     if (phase === "entering") {
-      let cancelled = false;
-      const id1 = requestAnimationFrame(() => {
-        if (cancelled) return;
-        requestAnimationFrame(() => {
-          if (cancelled) return;
-          setPhase("scaling");
-        });
-      });
-      return () => {
-        cancelled = true;
-        cancelAnimationFrame(id1);
-      };
+      const id = window.setTimeout(() => setPhase("unblurring"), enterMs);
+      return () => window.clearTimeout(id);
+    }
+    if (phase === "unblurring") {
+      const id = window.setTimeout(() => setPhase("scaling"), rampMs);
+      return () => window.clearTimeout(id);
     }
     if (phase === "scaling") {
       const id = window.setTimeout(() => setPhase("open"), SCALE_MS);
@@ -121,10 +133,15 @@ export function PortalZoomOverlay({
       return () => window.clearTimeout(id);
     }
     if (phase === "shrinking") {
+      const id = window.setTimeout(() => setPhase("reblurring"), SCALE_MS);
+      return () => window.clearTimeout(id);
+    }
+    if (phase === "reblurring") {
+      onReblurringRef.current?.();
       const id = window.setTimeout(() => {
         setPhase("closed");
         onClosedRef.current?.();
-      }, SCALE_MS);
+      }, rampMs);
       return () => window.clearTimeout(id);
     }
   }, [phase]);
@@ -180,10 +197,34 @@ export function PortalZoomOverlay({
   const sourceTransform = `translate(${sourceRect.left}px, ${sourceRect.top}px) scale(${sourceScale})`;
   const targetTransform = `translate(${target.outer.left}px, ${target.outer.top}px) scale(${target.scale})`;
 
-  const atZoomed =
+  // transform is at target during the fullscreen phases; source otherwise.
+  const transformIsTarget =
     phase === "scaling" || phase === "open" || phase === "closing";
+  // source-filter/opacity only at the very first and very last stages —
+  // matching the hero's ambient portal on mobile. unblurring onward is
+  // the "sharp" state.
+  const atSourceLook = phase === "entering" || phase === "reblurring";
   const cardsVisible = phase === "open";
-  const transform = atZoomed ? targetTransform : sourceTransform;
+  const transform = transformIsTarget ? targetTransform : sourceTransform;
+
+  // Both filters are intentionally only applied on the ambient (mobile)
+  // path. On desktop the overlay portal hands off to the real hero portal,
+  // which has no filter; keeping filter undefined throughout avoids a
+  // compositor-layer create/destroy pop that rasterizes the inner
+  // box-shadows differently at hand-off.
+  const sourceIsAmbient = viewport.w < 1024;
+  const sourceFilter = sourceIsAmbient
+    ? "blur(13px) saturate(0.8) brightness(0.75)"
+    : undefined;
+  const targetFilter = sourceIsAmbient ? "blur(0.5px)" : undefined;
+  const portalFilter = atSourceLook ? sourceFilter : targetFilter;
+  // Fully fade the overlay portal out at final source state on mobile so
+  // it cross-fades with the ambient re-appearing underneath. Stacking two
+  // portals (each with their own glow) during reblurring was the "snap"
+  // — now the overlay reaches opacity 0 exactly when the ambient is
+  // fully visible, so the unmount has no visible delta.
+  const portalOpacity =
+    sourceIsAmbient && (phase === "entering" || phase === "reblurring") ? 0 : 1;
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden text-white">
@@ -194,11 +235,16 @@ export function PortalZoomOverlay({
           height: PORTAL_NATIVE_H,
           transformOrigin: "top left",
           transform,
-          filter: cardsVisible ? "blur(0.5px)" : undefined,
-          transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${CARDS_FADE_MS}ms ease-out`,
+          filter: portalFilter,
+          opacity: portalOpacity,
+          transition: `transform ${SCALE_MS}ms cubic-bezier(0.22, 1, 0.36, 1), filter ${RAMP_MS}ms ease-out, opacity ${RAMP_MS}ms ease-out`,
         }}
       >
-        <PortalFrame blockSize={PORTAL_BLOCK_SIZE} />
+        <PortalFrame
+          blockSize={PORTAL_BLOCK_SIZE}
+          variant={sourceIsAmbient ? "ambient" : "hero"}
+          idleGlow={false}
+        />
       </div>
 
       <div
@@ -384,12 +430,12 @@ function OverlayBody({
           ))}
         </div>
       )}
-      <div className="mt-6 flex items-center justify-between text-[11px] text-white/40">
+      <div className="mt-6 flex items-center justify-between gap-4 text-[11px] text-white/40">
         <span className="inline-flex items-center gap-1.5">
           <Info className="size-3" />
           Weights refresh every minute · boosts locked until next rotation
         </span>
-        <span>
+        <span className="hidden shrink-0 md:inline">
           Press{" "}
           <kbd className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px]">
             Esc

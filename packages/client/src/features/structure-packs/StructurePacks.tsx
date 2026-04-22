@@ -71,7 +71,7 @@ export function StructurePacks() {
       <PortalZoomOverlay
         open={zoomOpen}
         onClose={handleExitPortal}
-        onClosed={() => setOverlayActive(false)}
+        onReblurring={() => setOverlayActive(false)}
         getSourceRect={getZoomSource}
         pool={pool}
         isLoading={poolLoading}
