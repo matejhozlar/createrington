@@ -1,6 +1,5 @@
 import {
   type LucideIcon,
-  ChevronDown,
   ChevronRight,
   Coins,
   History,
@@ -84,35 +83,24 @@ export function NavCrypto() {
                   isCryptoActive && "text-primary! bg-primary/5!",
                 )}
               >
-                <div className="relative">
-                  <Coins
-                    className={cn(
-                      "size-6! transition-all",
-                      state === "collapsed" && "ml-3",
-                      isCryptoActive ? "text-primary/75!" : "text-zinc-400!",
-                    )}
-                  />
-
-                  {state === "collapsed" && (
-                    <span className="absolute -right-1 -top-1 flex size-3 items-center justify-center rounded-full bg-primary ring-2 ring-background">
-                      <ChevronRight
-                        className={cn(
-                          "size-2.5 text-white transition-transform duration-300 ease-in-out",
-                          isOpen && "rotate-90",
-                        )}
-                      />
-                    </span>
+                <Coins
+                  className={cn(
+                    "size-6! transition-all",
+                    state === "collapsed" && "ml-3",
+                    isCryptoActive ? "text-primary/75!" : "text-zinc-400!",
                   )}
-                </div>
+                />
 
                 <span>Crypto</span>
 
-                <ChevronDown
-                  className={cn(
-                    "ml-auto size-4 transition-transform duration-300 ease-in-out",
-                    isOpen && "rotate-180",
-                  )}
-                />
+                {state === "expanded" && (
+                  <ChevronRight
+                    className={cn(
+                      "ml-auto size-4 transition-transform duration-300 ease-in-out",
+                      isOpen && "rotate-90",
+                    )}
+                  />
+                )}
               </SidebarMenuButton>
             </CollapsibleTrigger>
           </TooltipTrigger>
