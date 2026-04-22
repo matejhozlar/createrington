@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useState } from "react";
@@ -25,6 +26,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
 
 export function NavAdmin({
   items,
@@ -35,8 +37,18 @@ export function NavAdmin({
     icon?: LucideIcon;
   }[];
 }) {
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
+  const {
+    enabled: assistantEnabled,
+    drawerOpen: assistantOpen,
+    toggleDrawer: toggleAssistantDrawer,
+  } = useAdminChat();
+
+  const toggleAssistant = () => {
+    toggleAssistantDrawer();
+    if (isMobile) setOpenMobile(false);
+  };
 
   const isAdminActive = items.some((item) =>
     location.pathname.startsWith(item.url),
@@ -120,6 +132,23 @@ export function NavAdmin({
                   </SidebarMenuSubItem>
                 );
               })}
+              {assistantEnabled && (
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild>
+                    <button
+                      type="button"
+                      onClick={toggleAssistant}
+                      className={cn(
+                        "w-full transition-colors duration-150",
+                        assistantOpen && "text-destructive bg-destructive/10",
+                      )}
+                    >
+                      <Sparkles className="size-4" />
+                      <span>Assistant</span>
+                    </button>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              )}
             </SidebarMenuSub>
           )}
 
@@ -150,6 +179,26 @@ export function NavAdmin({
                   </Tooltip>
                 );
               })}
+              {assistantEnabled && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={toggleAssistant}
+                      className={cn(
+                        "flex size-8 items-center justify-center rounded-md transition-colors",
+                        "text-destructive hover:bg-destructive/10",
+                        assistantOpen && "bg-destructive/20 font-medium",
+                      )}
+                    >
+                      <Sparkles className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-destructive font-semibold">Assistant</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
         </CollapsibleContent>
