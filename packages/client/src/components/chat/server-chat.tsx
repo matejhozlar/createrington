@@ -278,7 +278,7 @@ export function ServerChat() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col bg-card/50 md:h-screen select-none">
+    <div className="flex h-[calc(100dvh-var(--mobile-nav-height))] flex-col bg-card/50 select-none">
       {/* Player-list slide-over — only rendered on desktop (md+) */}
       {!isMobile && serverId && (
         <PlayerListPanel
@@ -354,7 +354,7 @@ export function ServerChat() {
       </div>
 
       {/* Messages */}
-      <div className="relative flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
           ref={messagesContainerRef}
           onScroll={handleScroll}
@@ -427,11 +427,6 @@ export function ServerChat() {
                   : "size-9 rounded-full bg-card ring-1 ring-border hover:bg-sidebar-accent",
               )}
             >
-              {unreadCount > 0 && (
-                <span className="inline-flex size-4.5 items-center justify-center rounded-full bg-white/20 text-[11px] font-semibold">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              )}
               {unreadCount > 0 && (
                 <span className="text-xs font-medium">New messages</span>
               )}
