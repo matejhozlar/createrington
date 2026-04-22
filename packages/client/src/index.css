@@ -451,19 +451,12 @@
   transition: opacity 220ms ease-out;
 }
 
-.packs-hero-portal-root:hover .packs-hero-portal-interactive,
-.packs-hero-portal-root:focus-visible .packs-hero-portal-interactive {
+.packs-hero-portal-root:hover .packs-hero-portal-interactive {
   transform: scale(1.02);
   filter: brightness(1.08);
 }
-.packs-hero-portal-root:hover .packs-hero-portal-glow,
-.packs-hero-portal-root:focus-visible .packs-hero-portal-glow {
+.packs-hero-portal-root:hover .packs-hero-portal-glow {
   opacity: 1;
-}
-.packs-hero-portal-root:focus-visible {
-  outline: 2px solid oklch(0.62 0.19 255 / 0.7);
-  outline-offset: 12px;
-  border-radius: 6px;
 }
 
 @keyframes packs-hero-portal-light-up {

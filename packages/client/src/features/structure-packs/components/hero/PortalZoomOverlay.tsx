@@ -33,7 +33,7 @@ interface PortalZoomOverlayProps {
   open: boolean;
   onClose: () => void;
   onClosed?: () => void;
-  sourceRect: DOMRect | null;
+  getSourceRect: (() => DOMRect) | null;
   pool: PoolEntry[] | undefined;
   isLoading: boolean;
   totalWeight: number;
@@ -67,7 +67,7 @@ export function PortalZoomOverlay({
   open,
   onClose,
   onClosed,
-  sourceRect,
+  getSourceRect,
   pool,
   isLoading,
   totalWeight,
@@ -85,6 +85,8 @@ export function PortalZoomOverlay({
     w: typeof window !== "undefined" ? window.innerWidth : 0,
     h: typeof window !== "undefined" ? window.innerHeight : 0,
   }));
+
+  const sourceRect = getSourceRect?.() ?? null;
 
   useEffect(() => {
     if (open && phase === "closed") {

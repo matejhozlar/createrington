@@ -13,7 +13,9 @@ export function StructurePacks() {
   const activePackRef = useRef<HTMLElement | null>(null);
 
   const [zoomOpen, setZoomOpen] = useState(false);
-  const [zoomSource, setZoomSource] = useState<DOMRect | null>(null);
+  const [getZoomSource, setGetZoomSource] = useState<(() => DOMRect) | null>(
+    null,
+  );
   const [overlayActive, setOverlayActive] = useState(false);
 
   const { data: pool, isLoading: poolLoading } =
@@ -37,8 +39,8 @@ export function StructurePacks() {
 
   const myBoostMap = new Map((myBoosts ?? []).map((b) => [b.packId, b.units]));
 
-  const handleEnterPortal = (rect: DOMRect) => {
-    setZoomSource(rect);
+  const handleEnterPortal = (getRect: () => DOMRect) => {
+    setGetZoomSource(() => getRect);
     setZoomOpen(true);
     setOverlayActive(true);
   };
@@ -70,7 +72,7 @@ export function StructurePacks() {
         open={zoomOpen}
         onClose={handleExitPortal}
         onClosed={() => setOverlayActive(false)}
-        sourceRect={zoomSource}
+        getSourceRect={getZoomSource}
         pool={pool}
         isLoading={poolLoading}
         totalWeight={totalWeight}

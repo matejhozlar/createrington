@@ -15,7 +15,7 @@ const LEADING_PEEK_LIMIT = 5;
 
 interface PacksHeroProps {
   activePackRef: RefObject<HTMLElement | null>;
-  onEnterPortal: (rect: DOMRect) => void;
+  onEnterPortal: (getRect: () => DOMRect) => void;
   portalHidden: boolean;
 }
 
@@ -50,18 +50,19 @@ export function PacksHero({
     const el = desktopPortalRef.current;
     if (el) {
       el.classList.add("packs-hero-portal-frozen");
-      onEnterPortal(el.getBoundingClientRect());
+      onEnterPortal(() => el.getBoundingClientRect());
       return;
     }
-    const w = 240;
-    const h = 300;
-    const rect = new DOMRect(
-      (window.innerWidth - w) / 2,
-      (window.innerHeight - h) / 2,
-      w,
-      h,
-    );
-    onEnterPortal(rect);
+    onEnterPortal(() => {
+      const w = 240;
+      const h = 300;
+      return new DOMRect(
+        (window.innerWidth - w) / 2,
+        (window.innerHeight - h) / 2,
+        w,
+        h,
+      );
+    });
   };
 
   useEffect(() => {
