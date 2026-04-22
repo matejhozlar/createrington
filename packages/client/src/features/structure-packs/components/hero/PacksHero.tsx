@@ -1,13 +1,6 @@
 import type { RefObject } from "react";
-import { useMemo, useState } from "react";
-import {
-  ArrowRight,
-  ChevronDown,
-  Clock,
-  Package,
-  Rocket,
-  TrendingUp,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -21,12 +14,21 @@ const PARTICLE_COUNT = 30;
 const LEADING_PEEK_LIMIT = 5;
 
 interface PacksHeroProps {
-  poolRef: RefObject<HTMLElement | null>;
   activePackRef: RefObject<HTMLElement | null>;
+  onEnterPortal: (getRect: () => DOMRect) => void;
+  portalHidden: boolean;
 }
 
-export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
+export function PacksHero({
+  activePackRef,
+  onEnterPortal,
+  portalHidden,
+}: PacksHeroProps) {
   const { user } = useAuth();
+
+  const desktopPortalRef = useRef<HTMLDivElement | null>(null);
+  const mobileAmbientRef = useRef<HTMLDivElement | null>(null);
+  const idleGlow = !portalHidden;
 
   const { data: pool, isLoading: poolLoading } =
     trpc.user.structurePacks.pool.useQuery(undefined, { enabled: !!user });
@@ -44,6 +46,45 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
   const scrollTo = (ref: RefObject<HTMLElement | null>) => {
     ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  const enterPortal = () => {
+    const desktopEl = desktopPortalRef.current;
+    if (desktopEl && desktopEl.offsetWidth > 0) {
+      desktopEl.classList.add("packs-hero-portal-frozen");
+    }
+    onEnterPortal(() => {
+      const desktop = desktopPortalRef.current;
+      if (desktop && desktop.offsetWidth > 0) {
+        return desktop.getBoundingClientRect();
+      }
+      const mobile = mobileAmbientRef.current;
+      if (mobile && mobile.offsetWidth > 0) {
+        return mobile.getBoundingClientRect();
+      }
+      const w = 240;
+      const h = 300;
+      return new DOMRect(
+        (window.innerWidth - w) / 2,
+        (window.innerHeight - h) / 2,
+        w,
+        h,
+      );
+    });
+  };
+
+  useEffect(() => {
+    if (portalHidden) return;
+    const el = desktopPortalRef.current;
+    if (!el) return;
+    el.classList.remove("packs-hero-portal-frozen");
+    el.classList.add("packs-hero-portal-lighting-up");
+    const lightingUpId = window.setTimeout(() => {
+      el.classList.remove("packs-hero-portal-lighting-up");
+    }, 550);
+    return () => {
+      window.clearTimeout(lightingUpId);
+    };
+  }, [portalHidden]);
 
   return (
     <section className="relative h-[calc(100svh-var(--mobile-nav-height))] w-full overflow-hidden text-foreground">
@@ -100,6 +141,7 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
         className="pointer-events-none absolute inset-0 flex items-center justify-center lg:hidden"
       >
         <div
+          ref={mobileAmbientRef}
           className="opacity-70 [filter:blur(13px)_saturate(0.8)_brightness(0.75)]"
           style={{
             maskImage:
@@ -126,17 +168,40 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
       <div className="packs-hero-grain" aria-hidden />
 
       <div className="relative mx-auto grid h-full w-full max-w-7xl grid-cols-1 items-center gap-10 px-6 md:px-10 lg:grid-cols-[1.1fr_1fr]">
-        <HeroCopy
-          countdown={countdown}
-          poolCount={pool?.length ?? 0}
-          totalBoosts={totalBoosts}
-          poolLoading={poolLoading}
-          onPrimary={() => scrollTo(poolRef)}
-          onSecondary={() => scrollTo(activePackRef)}
-        />
+        <div
+          className={cn(
+            "transition-opacity duration-500 ease-out lg:opacity-100",
+            portalHidden ? "opacity-0" : "opacity-100",
+          )}
+        >
+          <HeroCopy
+            countdown={countdown}
+            poolCount={pool?.length ?? 0}
+            totalBoosts={totalBoosts}
+            poolLoading={poolLoading}
+            onPrimary={enterPortal}
+            onSecondary={() => scrollTo(activePackRef)}
+          />
+        </div>
 
         <div className="relative hidden flex-col items-center justify-center gap-6 lg:flex">
-          <PortalFrame blockSize={72} className="packs-hero-float-y" />
+          <div
+            className={cn(
+              "transition-opacity",
+              portalHidden ? "opacity-0" : "opacity-100",
+            )}
+            style={{ transitionDuration: portalHidden ? "120ms" : "0ms" }}
+          >
+            <PortalFrame
+              ref={desktopPortalRef}
+              blockSize={72}
+              className="packs-hero-float-y"
+              interactive
+              onActivate={enterPortal}
+              ariaLabel="Enter portal to vote for next rotation"
+              idleGlow={idleGlow}
+            />
+          </div>
           <div className="w-full max-w-[360px]">
             <LeadingPeek pool={pool} isLoading={poolLoading} />
           </div>
@@ -151,15 +216,6 @@ export function PacksHero({ poolRef, activePackRef }: PacksHeroProps) {
             "linear-gradient(to bottom, transparent 0%, oklch(0.17 0.0075 285.942 / 0.5) 60%, var(--background) 100%)",
         }}
       />
-
-      <button
-        type="button"
-        onClick={() => scrollTo(poolRef)}
-        className="group absolute bottom-6 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <span>Scroll to vote</span>
-        <ChevronDown className="size-3.5 transition-transform group-hover:translate-y-0.5" />
-      </button>
     </section>
   );
 }

@@ -76,23 +76,30 @@ export function BoostDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent
+        className="border-white/10 bg-white/[0.03] text-white shadow-2xl shadow-black/40 backdrop-blur-2xl sm:max-w-md"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogHeader>
-          <DialogTitle>Boost "{packName}"</DialogTitle>
-          <DialogDescription>
-            Purchase boost units to increase this pack's selection odds for the
-            next rotation. All boosts reset when the rotation occurs.
+          <DialogTitle className="text-white">
+            Boost &ldquo;{packName}&rdquo;
+          </DialogTitle>
+          <DialogDescription className="text-white/55">
+            Purchase boost units to increase this pack&apos;s selection odds for
+            the next rotation. All boosts reset when the rotation occurs.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Boost Units</Label>
+            <Label className="text-[10px] uppercase tracking-[0.22em] text-white/45">
+              Boost Units
+            </Label>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
-                className="size-8"
+                className="size-8 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white disabled:opacity-40"
                 onClick={() => adjustUnits(-1)}
                 disabled={units <= 1}
               >
@@ -110,12 +117,12 @@ export function BoostDialog({
                   );
                   setUnits(val);
                 }}
-                className="w-20 text-center font-mono"
+                className="w-20 border-white/15 bg-white/5 text-center font-mono text-white"
               />
               <Button
                 variant="outline"
                 size="icon"
-                className="size-8"
+                className="size-8 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white disabled:opacity-40"
                 onClick={() => adjustUnits(1)}
                 disabled={units >= 100}
               >
@@ -124,21 +131,25 @@ export function BoostDialog({
             </div>
           </div>
 
-          <div className="rounded-md border bg-muted/30 p-3 space-y-1.5 text-sm">
+          <div className="space-y-1.5 rounded-md border border-white/10 bg-white/[0.03] p-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price per unit</span>
-              <span className="font-mono">
+              <span className="text-white/55">Price per unit</span>
+              <span className="font-mono tabular-nums text-white/85">
                 ${boostUnitPrice.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between font-medium">
-              <span>Total cost</span>
-              <span className="font-mono">${totalCost.toLocaleString()}</span>
+              <span className="text-white">Total cost</span>
+              <span className="font-mono tabular-nums text-white">
+                ${totalCost.toLocaleString()}
+              </span>
             </div>
-            <div className="border-t pt-1.5 flex justify-between">
-              <span className="text-muted-foreground">Your balance</span>
+            <div className="flex justify-between border-t border-white/10 pt-1.5">
+              <span className="text-white/55">Your balance</span>
               <span
-                className={`font-mono ${canAfford ? "text-emerald-400" : "text-destructive"}`}
+                className={`font-mono tabular-nums ${
+                  canAfford ? "text-[var(--blue-bright)]" : "text-destructive"
+                }`}
               >
                 $
                 {balance.toLocaleString(undefined, {
@@ -150,12 +161,17 @@ export function BoostDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            className="border-white/15 bg-transparent text-white/75 hover:bg-white/5 hover:text-white"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!canAfford || boostMutation.isPending}
+            className="bg-[var(--blue)] text-white hover:bg-[var(--blue-bright)] disabled:opacity-50"
           >
             {boostMutation.isPending ? "Boosting..." : "Confirm Boost"}
           </Button>

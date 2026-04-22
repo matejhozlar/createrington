@@ -85,6 +85,8 @@
   --sidebar-ring: oklch(0.551 0.008 285.885);
   --discord: oklch(0.577 0.209 273.854);
   --discord-foreground: oklch(0.85 0.08 274);
+  --blue: oklch(0.62 0.19 255);
+  --blue-bright: oklch(0.72 0.2 255);
 }
 
 @media (min-width: 48rem) {
@@ -304,6 +306,21 @@
    Structure Packs hero — Parallel Worlds portal
    ============================================================================ */
 
+.nice-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.nice-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nice-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.nice-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
 @keyframes packs-hero-float-y {
   0%,
   100% {
@@ -317,17 +334,8 @@
   animation: packs-hero-float-y 6s ease-in-out infinite;
 }
 
-@keyframes packs-hero-breathe {
-  0%,
-  100% {
-    filter: brightness(0.9);
-  }
-  50% {
-    filter: brightness(1.15);
-  }
-}
 .packs-hero-breathe {
-  animation: packs-hero-breathe 3.2s ease-in-out infinite;
+  animation: none;
 }
 
 @keyframes packs-hero-rise {
@@ -428,11 +436,66 @@
   pointer-events: none;
 }
 
+.packs-hero-portal-interactive {
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 220ms ease-out;
+  filter: brightness(1);
+  will-change: filter;
+}
+
+.packs-hero-portal-glow {
+  opacity: 0;
+  border-radius: 2px;
+  box-shadow: 0 0 60px 4px oklch(0.62 0.19 255 / 0.55);
+  transition: opacity 220ms ease-out;
+}
+
+.packs-hero-portal-root:hover .packs-hero-portal-interactive {
+  transform: scale(1.02);
+  filter: brightness(1.08);
+}
+.packs-hero-portal-root:hover .packs-hero-portal-glow {
+  opacity: 1;
+}
+
+@keyframes packs-hero-portal-light-up {
+  0% {
+    filter: brightness(0.96);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.packs-hero-portal-lighting-up {
+  animation: packs-hero-portal-light-up 550ms ease-out;
+}
+
+.packs-hero-portal-frozen,
+.packs-hero-portal-frozen *,
+.packs-hero-portal-frozen *::before,
+.packs-hero-portal-frozen *::after {
+  animation: none !important;
+}
+.packs-hero-portal-frozen,
+.packs-hero-portal-frozen .packs-hero-portal-interactive {
+  transform: none !important;
+  filter: none !important;
+  transition: none !important;
+}
+.packs-hero-portal-frozen .packs-hero-portal-glow {
+  opacity: 0 !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .packs-hero-float-y,
   .packs-hero-breathe,
   .packs-hero-dust,
   .packs-hero-grain::after {
     animation: none !important;
+  }
+  .packs-hero-portal-interactive,
+  .packs-hero-portal-glow {
+    transition: none !important;
   }
 }

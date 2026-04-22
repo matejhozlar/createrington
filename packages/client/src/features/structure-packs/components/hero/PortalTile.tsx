@@ -40,7 +40,6 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(cachedSprite);
   const rafRef = useRef<number>(0);
-  const startRef = useRef<number>(0);
   const [ready, setReady] = useState(!!cachedSprite);
   const [visible, setVisible] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(
@@ -146,9 +145,8 @@ export function PortalTile({ width, height, tileSize = 96 }: PortalTileProps) {
     }
     if (!visible) return;
 
-    startRef.current = performance.now();
     const draw = () => {
-      const elapsed = performance.now() - startRef.current;
+      const elapsed = performance.now();
       const cyclePos = (elapsed / FRAME_DURATION_MS) % TOTAL_FRAMES;
       const cur = Math.floor(cyclePos);
       const next = (cur + 1) % TOTAL_FRAMES;
