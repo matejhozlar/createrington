@@ -5,7 +5,6 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { ArrowRight, Clock, Package, Rocket, TrendingUp } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -14,6 +13,7 @@ import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { FloatingDust } from "../FloatingDust";
 import { PortalFrame } from "./PortalFrame";
 
 const HERO_IMAGE = "/assets/hero/dark-warehouse.webp";
@@ -176,7 +176,7 @@ export const PacksHero = forwardRef<PacksHeroHandle, PacksHeroProps>(
           }}
         />
 
-        <Particles count={PARTICLE_COUNT} />
+        <FloatingDust count={PARTICLE_COUNT} unit="vw" />
 
         <div className="packs-hero-grain" aria-hidden />
 
@@ -452,57 +452,6 @@ function LeadingPeek({ pool, isLoading }: LeadingPeekProps) {
         Parallel Worlds by{" "}
         <span className="font-semibold text-primary/90">Agent772</span>
       </a>
-    </div>
-  );
-}
-
-interface Particle {
-  x0: string;
-  x1: string;
-  d: string;
-  delay: string;
-  o: number;
-  size: number;
-}
-
-function Particles({ count }: { count: number }) {
-  const [items] = useState<Particle[]>(() =>
-    Array.from({ length: count }).map(() => {
-      const x0 = Math.random() * 100;
-      const drift = (Math.random() - 0.5) * 20;
-      return {
-        x0: `${x0}vw`,
-        x1: `${x0 + drift}vw`,
-        d: `${14 + Math.random() * 16}s`,
-        delay: `${-Math.random() * 20}s`,
-        o: 0.25 + Math.random() * 0.55,
-        size: Math.random() < 0.2 ? 3 : 2,
-      };
-    }),
-  );
-
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 overflow-hidden"
-      aria-hidden
-    >
-      {items.map((p, i) => (
-        <span
-          key={i}
-          className="packs-hero-dust"
-          style={
-            {
-              "--x0": p.x0,
-              "--x1": p.x1,
-              "--d": p.d,
-              "--delay": p.delay,
-              "--o": p.o,
-              width: p.size,
-              height: p.size,
-            } as React.CSSProperties
-          }
-        />
-      ))}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
+import { FloatingDust } from "./FloatingDust";
 import { PackModsDialog } from "./PackModsDialog";
 
 const HERO_IMAGE = "/assets/hero/space-station.webp";
@@ -114,7 +115,7 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
             />
           </div>
 
-          <Dust count={DUST_COUNT} />
+          <FloatingDust count={DUST_COUNT} />
 
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 p-8 md:p-10">
             <div className="flex flex-col gap-6">
@@ -252,57 +253,6 @@ function Stat({ label, value, mono, emphasis }: StatProps) {
           {value}
         </div>
       </div>
-    </div>
-  );
-}
-
-interface DustParticle {
-  x0: string;
-  x1: string;
-  d: string;
-  delay: string;
-  o: number;
-  size: number;
-}
-
-function Dust({ count }: { count: number }) {
-  const [items] = useState<DustParticle[]>(() =>
-    Array.from({ length: count }).map(() => {
-      const x0 = Math.random() * 100;
-      const drift = (Math.random() - 0.5) * 20;
-      return {
-        x0: `${x0}%`,
-        x1: `${x0 + drift}%`,
-        d: `${14 + Math.random() * 16}s`,
-        delay: `${-Math.random() * 20}s`,
-        o: 0.25 + Math.random() * 0.55,
-        size: Math.random() < 0.2 ? 3 : 2,
-      };
-    }),
-  );
-
-  return (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden z-0"
-    >
-      {items.map((p, i) => (
-        <span
-          key={i}
-          className="packs-hero-dust"
-          style={
-            {
-              "--x0": p.x0,
-              "--x1": p.x1,
-              "--d": p.d,
-              "--delay": p.delay,
-              "--o": p.o,
-              width: p.size,
-              height: p.size,
-            } as React.CSSProperties
-          }
-        />
-      ))}
     </div>
   );
 }

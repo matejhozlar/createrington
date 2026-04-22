@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { ActivePack } from "./components/ActivePack";
@@ -12,6 +12,13 @@ export function StructurePacks() {
 
   const activePackRef = useRef<HTMLElement | null>(null);
   const heroRef = useRef<PacksHeroHandle>(null);
+  const cancelPendingScrollRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      cancelPendingScrollRef.current?.();
+    };
+  }, []);
 
   const [zoomOpen, setZoomOpen] = useState(false);
   const [getZoomSource, setGetZoomSource] = useState<(() => DOMRect) | null>(
@@ -51,16 +58,25 @@ export function StructurePacks() {
       heroRef.current?.openPortal();
       return;
     }
+    cancelPendingScrollRef.current?.();
+
     let opened = false;
-    const openAfterScroll = () => {
+    const onDone = () => {
       if (opened) return;
       opened = true;
-      window.removeEventListener("scrollend", openAfterScroll);
+      cleanup();
       heroRef.current?.openPortal();
     };
-    window.addEventListener("scrollend", openAfterScroll);
+    const cleanup = () => {
+      window.removeEventListener("scrollend", onDone);
+      window.clearTimeout(timeoutId);
+      cancelPendingScrollRef.current = null;
+    };
+
+    window.addEventListener("scrollend", onDone);
+    const timeoutId = window.setTimeout(onDone, 1200);
+    cancelPendingScrollRef.current = cleanup;
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-    window.setTimeout(openAfterScroll, 1200);
   };
 
   const handleExitPortal = () => {
