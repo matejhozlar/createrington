@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, ExternalLink, Eye, Package } from "lucide-react";
+import { ArrowRight, ExternalLink, Package } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useCountdown } from "@/hooks/use-countdown";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { CURSEFORGE_MODPACK_URL } from "@/lib/external-urls";
 import { FloatingDust } from "./FloatingDust";
-import { PackModsDialog } from "./PackModsDialog";
 
 const HERO_IMAGE = "/assets/hero/space-station.webp";
 const DUST_COUNT = 22;
@@ -65,8 +64,6 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
 
   const countdown = useCountdown(rotationInfo?.nextRotationAt ?? null);
   const now = useMinuteTick();
-
-  const [modsOpen, setModsOpen] = useState(false);
 
   if (isLoading) {
     return <ActivePackLoading />;
@@ -159,15 +156,6 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
                     <ArrowRight className="group-hover:translate-x-0.5" />
                   </a>
                 </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setModsOpen(true)}
-                  disabled={modCount === 0}
-                  className="border-white/15 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:text-foreground"
-                >
-                  <Eye />
-                  Inspect
-                </Button>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                   Rotation locked — vote to influence the next
                 </span>
@@ -200,7 +188,18 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
                             {String(i + 1).padStart(2, "0")}
                           </span>
                           <span className="size-1.5 rounded-full bg-[oklch(0.62_0.19_255/0.8)] shrink-0" />
-                          <span className="truncate">{mod.modName}</span>
+                          {mod.modUrl ? (
+                            <a
+                              href={mod.modUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate transition-colors hover:text-[oklch(0.62_0.19_255/0.9)]"
+                            >
+                              {mod.modName}
+                            </a>
+                          ) : (
+                            <span className="truncate">{mod.modName}</span>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -211,13 +210,6 @@ export function ActivePack({ onOpenPortal }: ActivePackProps) {
           </div>
         </div>
       </div>
-
-      <PackModsDialog
-        open={modsOpen}
-        onOpenChange={setModsOpen}
-        packName={activePack.name}
-        mods={activePack.mods}
-      />
     </>
   );
 }
