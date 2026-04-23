@@ -235,6 +235,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@createrington/logger':
+        specifier: ^0.1.2
+        version: 0.1.2
       '@createrington/shared':
         specifier: workspace:*
         version: link:../shared
@@ -500,6 +503,9 @@ packages:
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
     engines: {node: '>=0.1.90'}
+
+  '@createrington/logger@0.1.2':
+    resolution: {integrity: sha512-zX0FUY0AOwhTTrZ5ZODUL4L6u28pn/PxRumsif1YvllvdN3LZvPj3BeTXuW/GhMUBCCvDPTp2K3y7KDZBn0ywQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.1.2/logger-0.1.2.tgz}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -3155,8 +3161,8 @@ packages:
   dom-helpers@5.2.1:
     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
 
-  dompurify@3.3.3:
-    resolution: {integrity: sha512-Oj6pzI2+RqBfFG+qOaOLbFXLQ90ARpcGG6UePL82bJLtdsa6CYJD7nmiU8MW9nQNOtCHV3lZ/Bzq1X0QYbBZCA==}
+  dompurify@3.4.1:
+    resolution: {integrity: sha512-JahakDAIg1gyOm7dlgWSDjV4n7Ip2PKR55NIT6jrMfIgLFgWo81vdr1/QGqWtFNRqXP9UV71oVePtjqS2ebnPw==}
 
   dotenv@17.3.1:
     resolution: {integrity: sha512-IO8C/dzEb6O3F9/twg6ZLXz164a2fhTnEWb95H23Dm4OuN+92NmEAlTrupP9VW6Jm3sO26tQlqyvyi4CsnY9GA==}
@@ -5892,6 +5898,10 @@ snapshots:
 
   '@colors/colors@1.6.0': {}
 
+  '@createrington/logger@0.1.2':
+    dependencies:
+      winston: 3.19.0
+
   '@dabh/diagnostics@2.0.8':
     dependencies:
       '@so-ric/colorspace': 1.1.6
@@ -8455,7 +8465,7 @@ snapshots:
       '@babel/runtime': 7.29.2
       csstype: 3.2.3
 
-  dompurify@3.3.3:
+  dompurify@3.4.1:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -9860,7 +9870,7 @@ snapshots:
 
   monaco-editor@0.55.1:
     dependencies:
-      dompurify: 3.3.3
+      dompurify: 3.4.1
       marked: 14.0.0
 
   mrmime@2.0.1: {}

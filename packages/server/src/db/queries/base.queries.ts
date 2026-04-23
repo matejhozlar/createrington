@@ -1,5 +1,5 @@
 import type { Pool, PoolClient, QueryResultRow } from "pg";
-import logger from "@/logger";
+import logger from "@/logger.global";
 import { createNotFoundError } from "../utils/query-helpers";
 import type { FilterValue } from "@createrington/shared/db/base.types";
 import { QueryBuilder } from "./query-builder";
