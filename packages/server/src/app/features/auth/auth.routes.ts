@@ -1,7 +1,10 @@
 import { AuthController } from "./auth.controller";
 import { route } from "@/app/middleware";
 import { Router } from "express";
-import { optionalAuth } from "@/app/middleware/auth.middleware";
+import {
+  optionalAuth,
+  requireTrustedOrigin,
+} from "@/app/middleware/auth.middleware";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 
@@ -29,10 +32,15 @@ if (config.app.auth.sso.callbackUrl) {
   router.get("/sso/callback", ...route("public", AuthController.ssoCallback));
 }
 // POST /api/auth/refresh - Rotate refresh token (cookie-based, no Bearer needed)
-router.post("/refresh", ...route("public", AuthController.refreshToken));
+router.post(
+  "/refresh",
+  requireTrustedOrigin,
+  ...route("public", AuthController.refreshToken),
+);
 // POST /api/auth/logout - Revoke session via cookie + clear cookie
 router.post(
   "/logout",
+  requireTrustedOrigin,
   asyncHandler(optionalAuth),
   asyncHandler(AuthController.logout),
 );

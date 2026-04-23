@@ -1,4 +1,9 @@
-import { customRoute, verifyModJWT, verifyServerIP } from "@/app/middleware";
+import {
+  customRoute,
+  modLoginLimiter,
+  verifyModJWT,
+  verifyServerIP,
+} from "@/app/middleware";
 import { Router } from "express";
 import { CurrencyController } from "./currency.controller";
 
@@ -14,6 +19,7 @@ const router = Router();
 // POST /api/currency/login — issue a short-lived mod JWT
 router.post(
   "/login",
+  modLoginLimiter,
   ...customRoute([verifyServerIP], CurrencyController.login),
 );
 
