@@ -248,13 +248,8 @@ const config = {
   },
 
   email: {
-    host: env.EMAIL_HOST,
-    port: env.EMAIL_PORT,
-    secure: env.EMAIL_SECURE,
-    auth: {
-      user: env.EMAIL_ADDRESS,
-      pass: env.EMAIL_PASS,
-    },
+    apiKey: env.RESEND_API_KEY,
+    fromEmail: env.RESEND_FROM_EMAIL,
   },
 
   puppeteer: {
