@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { Resend } from "resend";
 import type { CreateEmailOptions } from "resend";
 import config from "@/config";
@@ -61,17 +62,31 @@ export class EmailService {
   // nodemailer legacy); Resend uses `contentId` for the same purpose. Resend
   // resolves `<img src="cid:foo">` against any attachment whose `contentId`
   // matches `foo`, so the templates don't need to change.
+  //
+  // Resend's `path` field is remote-only (http/https). For attachments that
+  // reference a local filesystem path, we read the file and pass `content`
+  // instead — keeps the template API (filesystem paths) unchanged.
   private toResendAttachments(
     attachments?: EmailAttachment[],
   ): CreateEmailOptions["attachments"] {
     if (!attachments?.length) return undefined;
-    return attachments.map((a) => ({
-      filename: a.filename,
-      path: a.path,
-      content: a.content,
-      contentType: a.contentType,
-      contentId: a.cid,
-    }));
+    return attachments.map((a) => {
+      const isRemoteUrl =
+        !!a.path &&
+        (a.path.startsWith("http://") || a.path.startsWith("https://"));
+
+      const content =
+        a.content ??
+        (a.path && !isRemoteUrl ? fs.readFileSync(a.path) : undefined);
+
+      return {
+        filename: a.filename,
+        path: isRemoteUrl ? a.path : undefined,
+        content,
+        contentType: a.contentType,
+        contentId: a.cid,
+      };
+    });
   }
 
   async send(options: EmailOptions): Promise<EmailResult> {
