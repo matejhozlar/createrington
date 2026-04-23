@@ -235,6 +235,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@createrington/logger':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@createrington/shared':
         specifier: workspace:*
         version: link:../shared
@@ -500,6 +503,9 @@ packages:
   '@colors/colors@1.6.0':
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
     engines: {node: '>=0.1.90'}
+
+  '@createrington/logger@0.1.0':
+    resolution: {integrity: sha512-oUV0jGUmTiaj3znwBx1axAalqL8IgW23unkoLLbPwzC8cYx/u7ZKkViBRCLjAnQXtOZt+e6/iTvPFbQp4Uerzg==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.1.0/logger-0.1.0.tgz}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -5891,6 +5897,10 @@ snapshots:
       '@babel/helper-validator-identifier': 7.28.5
 
   '@colors/colors@1.6.0': {}
+
+  '@createrington/logger@0.1.0':
+    dependencies:
+      winston: 3.19.0
 
   '@dabh/diagnostics@2.0.8':
     dependencies:

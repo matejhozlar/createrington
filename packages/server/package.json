@@ -82,6 +82,7 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
+    "@createrington/logger": "^0.1.0",
     "@createrington/shared": "workspace:*",
     "@trpc/server": "^11.1.0",
     "axios": "^1.15.0",
