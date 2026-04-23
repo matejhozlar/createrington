@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
+  type GuildMember,
   MessageFlags,
 } from "discord.js";
 import {
@@ -14,8 +15,63 @@ import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { isAdmin } from "@/discord/utils/admin-guard";
 import { TicketSystemIds } from "@/services/discord/tickets";
 import { getService, Services } from "@/services";
+
+// A ticket button's customId carries the ticket ID, so it is attacker-spoofable — every mutation must re-check ownership.
+async function authorizeTicketAction(
+  interaction: ButtonInteraction,
+  ticketId: number,
+): Promise<{ creatorDiscordId: string } | null> {
+  const ticket = await Q.ticket.find({ id: ticketId });
+  if (!ticket) {
+    await respondDenied(interaction, "Ticket not found");
+    return null;
+  }
+
+  if (interaction.user.id === ticket.creatorDiscordId) {
+    return ticket;
+  }
+
+  const member = interaction.member as GuildMember | null;
+  if (
+    member &&
+    typeof member.roles !== "string" &&
+    !Array.isArray(member.roles) &&
+    (await isAdmin(member))
+  ) {
+    return ticket;
+  }
+
+  logger.warn(
+    `User ${interaction.user.id} attempted ticket action on ticket ${ticketId} owned by ${ticket.creatorDiscordId}`,
+  );
+  await respondDenied(interaction, "You can't perform this action");
+  return null;
+}
+
+async function respondDenied(
+  interaction: ButtonInteraction,
+  message: string,
+): Promise<void> {
+  const embed = EmbedPresets.error("Permission denied", message);
+  try {
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({
+        embeds: [embed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+    } else {
+      await interaction.reply({
+        embeds: [embed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  } catch (error) {
+    logger.error("Failed to send ticket permission-denied reply:", error);
+  }
+}
 
 /**
  * Handles ticket-related buttons
@@ -112,6 +168,8 @@ async function handleTranscript(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
@@ -243,6 +301,8 @@ async function handleClose(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   await interaction.deferUpdate();
 
   if (!interaction.channel || !isSendableChannel(interaction.channel)) {
@@ -280,6 +340,8 @@ async function handleConfirmClose(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   const ticketService = await getService(Services.TICKET_SERVICE);
   await interaction.deferUpdate();
 
@@ -328,6 +390,8 @@ async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   const ticketService = await getService(Services.TICKET_SERVICE);
   await ticketService.reopenTicket(ticketId, interaction.user.id);
 }
@@ -347,6 +411,8 @@ async function handleDelete(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   try {
     const ticketService = await getService(Services.TICKET_SERVICE);
     const channel = interaction.channel;

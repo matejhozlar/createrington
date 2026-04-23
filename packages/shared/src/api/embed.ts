@@ -3,6 +3,14 @@ import { z } from "zod";
 export const embedBotSchema = z.enum(["main", "web"]);
 export type EmbedBot = z.infer<typeof embedBotSchema>;
 
+// http(s) only — `z.string().url()` would otherwise accept `javascript:`, `data:`, `file:` schemes.
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), {
+    message: "URL must start with http:// or https://",
+  });
+
 export const embedFieldSchema = z.object({
   name: z.string().min(1).max(256),
   value: z.string().min(1).max(1024),
@@ -11,7 +19,7 @@ export const embedFieldSchema = z.object({
 
 export const embedLinkButtonSchema = z.object({
   label: z.string().min(1).max(80),
-  url: z.string().url(),
+  url: httpUrl,
   emoji: z.string().max(32).optional(),
 });
 
@@ -29,14 +37,14 @@ export const embedDataSchema = z.object({
   title: z.string().max(256).optional(),
   description: z.string().max(4096).optional(),
   color: z.number().int().min(0).max(0xffffff).optional(),
-  url: z.string().url().optional().or(z.literal("")),
+  url: httpUrl.optional().or(z.literal("")),
   fields: z.array(embedFieldSchema).max(25).default([]),
   footer: z.string().max(2048).optional(),
   author: z.string().max(256).optional(),
-  authorUrl: z.string().url().optional().or(z.literal("")),
-  authorIconUrl: z.string().url().optional().or(z.literal("")),
-  thumbnailUrl: z.string().url().optional().or(z.literal("")),
-  imageUrl: z.string().url().optional().or(z.literal("")),
+  authorUrl: httpUrl.optional().or(z.literal("")),
+  authorIconUrl: httpUrl.optional().or(z.literal("")),
+  thumbnailUrl: httpUrl.optional().or(z.literal("")),
+  imageUrl: httpUrl.optional().or(z.literal("")),
   timestamp: z.boolean().default(false),
   buttons: z.array(embedLinkButtonSchema).max(5).default([]),
   actionButtons: z.array(embedActionButtonSchema).max(5).default([]),

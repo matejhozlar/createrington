@@ -162,7 +162,7 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
  * @param getUserId - Function to extract the user ID from the request
  */
 export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
-  return (req: Request, _res: Response, _next: NextFunction): void => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
     if (!req.user) {
       throw new UnauthorizedError("Authentication required");
     }
@@ -175,5 +175,7 @@ export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
       );
       throw new ForbiddenError("Access denied");
     }
+
+    next();
   };
 };
