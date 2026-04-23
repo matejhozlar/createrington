@@ -2,7 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { PageHeader } from "../../components/page-header";
 import { Separator } from "../../components/ui/separator";
-import { DISCORD_INVITE_URL } from "@/lib/external-urls";
+import { CONTACT_EMAIL, DISCORD_INVITE_URL } from "@/lib/external-urls";
 
 const sections = [
   {
@@ -292,10 +292,10 @@ const sections = [
       <p>
         If you have questions about these Terms of Service, you can reach us at{" "}
         <a
-          href="mailto:admin@create-rington.com"
+          href={`mailto:${CONTACT_EMAIL}`}
           className="text-primary hover:underline"
         >
-          admin@create-rington.com
+          {CONTACT_EMAIL}
         </a>{" "}
         or through our{" "}
         <a
