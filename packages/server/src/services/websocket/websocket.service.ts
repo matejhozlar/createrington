@@ -19,6 +19,26 @@ import { RoomManager } from "./room-manager";
 import { WebSocketDataProvider } from "./data-provider";
 import type { CachedMessage } from "../discord/message/cache";
 import type { SessionEndEvent, SessionStartEvent } from "../playtime";
+import { jwtService } from "@/services/auth/jwt";
+import type { JWTPayload } from "@createrington/shared/auth";
+
+const MAX_CONNECTIONS_PER_IP = 20;
+const EVENTS_PER_SOCKET_PER_MIN = 60;
+
+// Mirrors the HTTP gate in server-ip.middleware — nginx terminates on
+// loopback and sets X-Real-IP to the real client. Without this the per-IP
+// cap would see every proxied socket as 127.0.0.1 and cap the server at 20.
+function getSocketClientIp(socket: Socket): string {
+  const raw = socket.handshake.address ?? "";
+  const peer = raw.startsWith("::ffff:") ? raw.slice(7) : raw;
+  if (peer === "127.0.0.1" || peer === "::1") {
+    const realIp = socket.handshake.headers["x-real-ip"];
+    if (typeof realIp === "string" && realIp.length > 0) {
+      return realIp.trim();
+    }
+  }
+  return peer || "unknown";
+}
 
 /**
  * WebSocket Service
@@ -39,6 +59,9 @@ export class WebSocketService {
   private startTime: Date;
 
   private clientSockets: Map<string, Set<string>> = new Map(); // socketId -> Set<rooms>
+  private connectionsByIp: Map<string, number> = new Map();
+  private eventBuckets: Map<string, { count: number; windowStart: number }> =
+    new Map();
 
   constructor(
     httpServer: HttpServer,
@@ -53,7 +76,52 @@ export class WebSocketService {
     });
 
     this.startTime = new Date();
+    this.setupHandshakeGate();
     this.setupConnectionHandlers();
+  }
+
+  private setupHandshakeGate(): void {
+    this.io.use((socket, next) => {
+      const ip = getSocketClientIp(socket);
+      const current = this.connectionsByIp.get(ip) ?? 0;
+      if (current >= MAX_CONNECTIONS_PER_IP) {
+        logger.warn(
+          `[ws] rejecting connection from ${ip} — ${current} concurrent sockets already open`,
+        );
+        return next(new Error("Too many connections"));
+      }
+
+      // Optional auth — unauthenticated sockets are allowed (public data),
+      // but when the client passes a Bearer-style token via handshake.auth,
+      // verify it so future per-user rooms can read socket.data.user.
+      const token =
+        typeof socket.handshake.auth?.token === "string"
+          ? socket.handshake.auth.token
+          : undefined;
+      if (token) {
+        try {
+          socket.data.user = jwtService.verify(token) satisfies JWTPayload;
+        } catch {
+          // Invalid/expired token — treat as unauthenticated, don't reject.
+        }
+      }
+
+      next();
+    });
+  }
+
+  // Returns true if the socket is within its per-minute event budget.
+  // Per-socket (not per-IP) so one noisy socket can't starve other tabs from
+  // the same client.
+  private allowSocketEvent(socketId: string): boolean {
+    const now = Date.now();
+    const bucket = this.eventBuckets.get(socketId);
+    if (!bucket || now - bucket.windowStart >= 60_000) {
+      this.eventBuckets.set(socketId, { count: 1, windowStart: now });
+      return true;
+    }
+    bucket.count += 1;
+    return bucket.count <= EVENTS_PER_SOCKET_PER_MIN;
   }
 
   /**
@@ -90,6 +158,8 @@ export class WebSocketService {
    */
   private setupConnectionHandlers(): void {
     this.io.on(SocketEvent.CONNECTION, (socket: Socket) => {
+      const ip = getSocketClientIp(socket);
+      this.connectionsByIp.set(ip, (this.connectionsByIp.get(ip) ?? 0) + 1);
       logger.info(`Client connected: ${socket.id}`);
 
       this.clientSockets.set(socket.id, new Set());
@@ -97,6 +167,17 @@ export class WebSocketService {
       socket.on(
         SocketEvent.SUBSCRIBE,
         (request: SubscriptionRequest, callback) => {
+          if (!this.allowSocketEvent(socket.id)) {
+            logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
+            callback?.({
+              type: request.type,
+              serverId: request.serverId,
+              room: "",
+              success: false,
+              error: "Rate limited",
+            });
+            return;
+          }
           this.handleSubscribe(socket, request, callback);
         },
       );
@@ -104,6 +185,17 @@ export class WebSocketService {
       socket.on(
         SocketEvent.UNSUBSCRIBE,
         (request: SubscriptionRequest, callback) => {
+          if (!this.allowSocketEvent(socket.id)) {
+            logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
+            callback?.({
+              type: request.type,
+              serverId: request.serverId,
+              room: "",
+              success: false,
+              error: "Rate limited",
+            });
+            return;
+          }
           this.handleUnsubscribe(socket, request, callback);
         },
       );
@@ -111,6 +203,16 @@ export class WebSocketService {
       socket.on(
         SocketEvent.REQUEST_INITIAL_DATA,
         (request: InitialDataRequest, callback) => {
+          if (!this.allowSocketEvent(socket.id)) {
+            logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
+            // Callback type is data-only; signal via ERROR event instead so
+            // the client can detect it without hanging on the ack.
+            socket.emit(SocketEvent.ERROR, {
+              message: "Rate limited",
+              event: SocketEvent.REQUEST_INITIAL_DATA,
+            });
+            return;
+          }
           this.handleInitialDataRequest(socket, request, callback);
         },
       );
@@ -118,6 +220,13 @@ export class WebSocketService {
       socket.on(SocketEvent.DISCONNECT, () => {
         logger.info(`Client disconnected: ${socket.id}`);
         this.clientSockets.delete(socket.id);
+        this.eventBuckets.delete(socket.id);
+        const remaining = (this.connectionsByIp.get(ip) ?? 1) - 1;
+        if (remaining <= 0) {
+          this.connectionsByIp.delete(ip);
+        } else {
+          this.connectionsByIp.set(ip, remaining);
+        }
       });
 
       socket.on(SocketEvent.ERROR, (error: Error) => {
@@ -616,6 +725,8 @@ export class WebSocketService {
 
     await this.io.close();
     this.clientSockets.clear();
+    this.connectionsByIp.clear();
+    this.eventBuckets.clear();
     this.isInitialized = false;
 
     logger.info("WebSocketService closed");

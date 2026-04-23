@@ -36,3 +36,12 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   handler: rateLimitHandler,
 });
+
+/** Mod login rate limiter — 30 requests per minute per IP (brute-force guard on /api/currency/login) */
+export const modLoginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
