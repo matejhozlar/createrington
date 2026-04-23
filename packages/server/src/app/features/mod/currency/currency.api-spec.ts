@@ -60,7 +60,8 @@ export default defineApiSpec({
       method: "POST",
       path: "/pay",
       name: "Pay",
-      description: "Transfers currency between two players.",
+      description:
+        "Transfers currency from the authenticated player to the recipient.",
       request: {
         name: "PayRequest",
         fields: [
@@ -73,12 +74,6 @@ export default defineApiSpec({
             name: "amount",
             type: "double",
             description: "Positive amount to transfer",
-          },
-          {
-            name: "fromUuid",
-            type: "string",
-            nullable: true,
-            description: "Sender UUID; defaults to authenticated player",
           },
         ],
       },
