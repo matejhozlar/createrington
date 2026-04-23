@@ -252,6 +252,12 @@ const config = {
     fromEmail: env.RESEND_FROM_EMAIL,
   },
 
+  storage: {
+    // Resolved against CWD so relative paths work predictably across the
+    // dev server (runs from repo root) and prod (runs from /opt/...)
+    path: path.resolve(env.STORAGE_PATH),
+  },
+
   puppeteer: {
     secret: env.PUPPETEER_SECRET,
     executablePath: env.PUPPETEER_EXECUTABLE_PATH,

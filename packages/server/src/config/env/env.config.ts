@@ -187,6 +187,9 @@ const envSchema = z.object({
     .string()
     .email("Must be valid email address")
     .default("admin@createrington.com"),
+
+  // Storage — server-writable directory for transcripts and other runtime artifacts
+  STORAGE_PATH: z.string().min(1, "Storage path is required"),
 });
 
 /**
