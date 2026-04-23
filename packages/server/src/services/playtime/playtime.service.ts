@@ -17,6 +17,11 @@ import {
   MessageSource,
 } from "../discord/message/cache";
 
+// Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks and
+// sometimes returned in the server-list-ping sample for non-player entries.
+// Never belongs in session tracking — rejected at every ingress point below.
+const NIL_UUID = "00000000-0000-0000-0000-000000000000";
+
 export interface PlaytimeServiceEvents {
   sessionStart: (event: SessionStartEvent) => void;
   sessionEnd: (event: SessionEndEvent) => void;
@@ -312,6 +317,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * @param data - Player join data from mod
    */
   public async handlePlayerJoinFromMod(data: ModPlayerJoinData): Promise<void> {
+    if (data.uuid === NIL_UUID) {
+      logger.debug(
+        `Ignoring join for nil UUID (fakeplayer or placeholder): ${data.username}`,
+      );
+      return;
+    }
+
     if (this.activeSessions.has(data.uuid)) {
       logger.warn(
         `Player ${data.username} (${data.uuid}) already has an active session. Ignoring duplicate join.`,
@@ -362,6 +374,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
   public async handlePlayerLeaveFromMod(
     data: ModPlayerLeaveData,
   ): Promise<void> {
+    if (data.uuid === NIL_UUID) {
+      logger.debug(
+        `Ignoring leave for nil UUID (fakeplayer or placeholder): ${data.username}`,
+      );
+      return;
+    }
+
     const session = this.activeSessions.get(data.uuid);
     const sessionEnd = data.timestamp || new Date();
 
@@ -557,12 +576,16 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
       },
     );
 
-    const onlinePlayers: MinecraftPlayer[] = (
-      response.players.sample || []
-    ).map((player) => ({
-      uuid: player.id,
-      username: player.name,
-    }));
+    // The server-list-ping sample can include entries for fakeplayers /
+    // CommandBlocks / chunkloaders that were placed on the player list. Drop
+    // nil-UUID entries here so recovery sync never feeds them into the
+    // sessionStart/sessionEnd pipeline.
+    const onlinePlayers: MinecraftPlayer[] = (response.players.sample || [])
+      .filter((player) => player.id !== NIL_UUID)
+      .map((player) => ({
+        uuid: player.id,
+        username: player.name,
+      }));
 
     return {
       onlinePlayers,

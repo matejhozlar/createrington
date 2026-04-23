@@ -646,6 +646,13 @@ export class PlaytimeRepository {
     lastSeen: Date,
     metadata?: SessionMetadata,
   ): Promise<void> {
+    // Defensive: upstream service-layer guards should already prevent nil
+    // UUIDs from reaching here, but a leak would otherwise surface as a
+    // NotFoundError when the update misses a non-existent player row.
+    if (playerMinecraftUuid === "00000000-0000-0000-0000-000000000000") {
+      return;
+    }
+
     const remaining = await Q.player.session.findAll({
       playerMinecraftUuid,
       sessionEnd: null,
