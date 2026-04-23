@@ -169,6 +169,13 @@ export class WebSocketService {
         (request: SubscriptionRequest, callback) => {
           if (!this.allowSocketEvent(socket.id)) {
             logger.warn(`[ws] rate-limited ${socket.id} on subscribe`);
+            callback?.({
+              type: request.type,
+              serverId: request.serverId,
+              room: "",
+              success: false,
+              error: "Rate limited",
+            });
             return;
           }
           this.handleSubscribe(socket, request, callback);
@@ -180,6 +187,13 @@ export class WebSocketService {
         (request: SubscriptionRequest, callback) => {
           if (!this.allowSocketEvent(socket.id)) {
             logger.warn(`[ws] rate-limited ${socket.id} on unsubscribe`);
+            callback?.({
+              type: request.type,
+              serverId: request.serverId,
+              room: "",
+              success: false,
+              error: "Rate limited",
+            });
             return;
           }
           this.handleUnsubscribe(socket, request, callback);
@@ -191,6 +205,12 @@ export class WebSocketService {
         (request: InitialDataRequest, callback) => {
           if (!this.allowSocketEvent(socket.id)) {
             logger.warn(`[ws] rate-limited ${socket.id} on initialDataRequest`);
+            // Callback type is data-only; signal via ERROR event instead so
+            // the client can detect it without hanging on the ack.
+            socket.emit(SocketEvent.ERROR, {
+              message: "Rate limited",
+              event: SocketEvent.REQUEST_INITIAL_DATA,
+            });
             return;
           }
           this.handleInitialDataRequest(socket, request, callback);
@@ -705,6 +725,8 @@ export class WebSocketService {
 
     await this.io.close();
     this.clientSockets.clear();
+    this.connectionsByIp.clear();
+    this.eventBuckets.clear();
     this.isInitialized = false;
 
     logger.info("WebSocketService closed");

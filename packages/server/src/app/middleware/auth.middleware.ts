@@ -162,6 +162,25 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
  *
  * @param getUserId - Function to extract the user ID from the request
  */
+export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    const resourceUserId = getUserId(req);
+
+    if (req.user.discordId !== resourceUserId && !req.user.isAdmin) {
+      logger.warn(
+        `User ${req.user.minecraftUsername} attempted to access resource owned by ${resourceUserId}`,
+      );
+      throw new ForbiddenError("Access denied");
+    }
+
+    next();
+  };
+};
+
 // Parse an origin URL safely; returns only the `scheme://host[:port]` portion.
 function safeOrigin(raw: string | undefined): string | undefined {
   if (!raw) return undefined;
@@ -172,11 +191,14 @@ function safeOrigin(raw: string | undefined): string | undefined {
   }
 }
 
+// Config is immutable at runtime — cache after first call.
+let cachedAllowedAuthOrigins: string[] | undefined;
 function allowedAuthOrigins(): string[] {
-  if (config.envMode.isProd) {
-    return [config.meta.links.website, ...config.app.auth.sso.corsOrigins];
-  }
-  return ["http://localhost:3000"];
+  if (cachedAllowedAuthOrigins) return cachedAllowedAuthOrigins;
+  cachedAllowedAuthOrigins = config.envMode.isProd
+    ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
+    : ["http://localhost:3000"];
+  return cachedAllowedAuthOrigins;
 }
 
 /**
@@ -211,23 +233,4 @@ export const requireTrustedOrigin = (
   }
 
   next();
-};
-
-export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    const resourceUserId = getUserId(req);
-
-    if (req.user.discordId !== resourceUserId && !req.user.isAdmin) {
-      logger.warn(
-        `User ${req.user.minecraftUsername} attempted to access resource owned by ${resourceUserId}`,
-      );
-      throw new ForbiddenError("Access denied");
-    }
-
-    next();
-  };
 };
