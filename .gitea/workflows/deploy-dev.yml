@@ -149,14 +149,14 @@ jobs:
       - name: Check if @createrington/api-types version changed
         id: api-types-check
         run: |
-          REGISTRY="https://registry.npmjs.org/"
+          REGISTRY="https://gitea.matejhoz.com/api/packages/createrington/npm/"
           CURRENT=$(node -p "require('./packages/api-types/package.json').version")
           PUBLISHED=$(npm view @createrington/api-types@$CURRENT version --registry=$REGISTRY 2>/dev/null || echo "")
           if [ -n "$PUBLISHED" ]; then
-            echo "@createrington/api-types@$CURRENT already on npm, skipping publish"
+            echo "@createrington/api-types@$CURRENT already on Gitea, skipping publish"
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           else
-            echo "@createrington/api-types@$CURRENT not on npm, will publish"
+            echo "@createrington/api-types@$CURRENT not on Gitea, will publish"
             echo "should_publish=true" >> "$GITHUB_OUTPUT"
           fi
           echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
@@ -164,9 +164,9 @@ jobs:
       - name: Publish @createrington/api-types
         if: steps.api-types-check.outputs.should_publish == 'true'
         env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGES_TOKEN: ${{ secrets.PACKAGES_TOKEN }}
         run: |
-          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+          echo "//gitea.matejhoz.com/api/packages/createrington/npm/:_authToken=$PACKAGES_TOKEN" >> .npmrc
           pnpm --filter @createrington/api-types build
           pnpm --filter @createrington/api-types publish --no-git-checks
           echo "Published @createrington/api-types@${{ steps.api-types-check.outputs.version }}"

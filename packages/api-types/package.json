@@ -16,7 +16,7 @@
     "LICENSE"
   ],
   "publishConfig": {
-    "registry": "https://registry.npmjs.org/",
+    "registry": "https://gitea.matejhoz.com/api/packages/createrington/npm/",
     "access": "public"
   },
   "scripts": {
