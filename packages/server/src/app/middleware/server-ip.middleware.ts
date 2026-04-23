@@ -11,26 +11,35 @@ const ALLOWED_IPS = {
 };
 
 /**
- * Extract real IP from the request, honoring X-Forwarded-For and X-Real-IP proxy headers
+ * Extract the true client IP for the mod-API allowlist.
  *
- * @param req - Express request
- * @returns The resolved client IP address, or "unknown" if it cannot be determined
+ * When the immediate TCP peer is localhost we are terminating behind our own
+ * nginx, which unconditionally overwrites `X-Real-IP` with `$remote_addr`.
+ * Combined with `real_ip_header CF-Connecting-IP` + the Cloudflare subnet
+ * allowlist in nginx, `$remote_addr` has already been rewritten to the true
+ * originating client IP before it reaches this header — so `X-Real-IP` on
+ * a loopback request is safe to trust.
+ *
+ * We deliberately ignore `X-Forwarded-For`: nginx uses
+ * `$proxy_add_x_forwarded_for` which APPENDS to any XFF the client sent,
+ * leaving the leftmost entries attacker-controlled.
+ *
+ * When the peer is NOT localhost, something other than our nginx is talking
+ * to the Node process (e.g. a direct connection from the Minecraft host).
+ * In that case we trust only the raw socket peer and ignore all headers.
  */
 function getClientIp(req: Request): string {
-  const forwardedFor = req.headers["x-forwarded-for"];
-  if (forwardedFor) {
-    const ips = Array.isArray(forwardedFor)
-      ? forwardedFor[0]
-      : forwardedFor.split(",")[0];
-    return ips.trim();
+  const peer = req.socket.remoteAddress ?? "";
+  const normalizedPeer = normalizeIp(peer);
+
+  if (normalizedPeer === "127.0.0.1" || normalizedPeer === "::1") {
+    const realIp = req.headers["x-real-ip"];
+    if (typeof realIp === "string" && realIp.length > 0) {
+      return realIp.trim();
+    }
   }
 
-  const realIp = req.headers["x-real-ip"];
-  if (realIp && typeof realIp === "string") {
-    return realIp.trim();
-  }
-
-  return req.socket.remoteAddress || "unknown";
+  return peer || "unknown";
 }
 
 /**

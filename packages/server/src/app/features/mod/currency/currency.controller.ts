@@ -84,12 +84,14 @@ export class CurrencyController {
 
   /**
    * POST /api/currency/pay
-   * Body: { toUuid: string, amount: number, fromUuid?: string }
+   * Body: { toUuid: string, amount: number }
    *
-   * Transfers currency between two players.
+   * Transfers currency from the authenticated player to `toUuid`. The sender
+   * is always the JWT subject — any `fromUuid` in the body is ignored so a
+   * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid, amount, fromUuid } = req.body;
+    const { toUuid, amount } = req.body;
 
     if (!toUuid || amount == null) {
       throw new BadRequestError("toUuid and amount are required");
@@ -99,7 +101,7 @@ export class CurrencyController {
       throw new BadRequestError("amount must be a positive number");
     }
 
-    const senderUuid = fromUuid || req.modAuth!.uuid;
+    const senderUuid = req.modAuth!.uuid;
 
     try {
       const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
