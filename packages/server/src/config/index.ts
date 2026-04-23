@@ -254,8 +254,10 @@ const config = {
 
   storage: {
     // Resolved against CWD so relative paths work predictably across the
-    // dev server (runs from repo root) and prod (runs from /opt/...)
-    path: path.resolve(env.STORAGE_PATH),
+    // dev server (runs from repo root) and prod (runs from /opt/...).
+    // Empty string when validation is skipped (generate scripts, unit tests)
+    // since no consumer that needs the path runs in those modes.
+    path: env.STORAGE_PATH ? path.resolve(env.STORAGE_PATH) : "",
   },
 
   puppeteer: {
