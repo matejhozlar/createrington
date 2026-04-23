@@ -181,29 +181,12 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
-  // Email
-  EMAIL_HOST: z
-    .string()
-    .min(1, "Email host is required")
-    .refine(
-      (host) => {
-        if (host === "localhost" || host === "127.0.0.1") return true;
-        return /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/.test(
-          host,
-        );
-      },
-      { message: "Email host must be a valid hostname or IP address" },
-    ),
-  EMAIL_PORT: port("Email port").default(587),
-  EMAIL_SECURE: z.coerce.boolean().default(false),
-  EMAIL_ADDRESS: z
+  // Email — Resend transactional API
+  RESEND_API_KEY: z.string().min(1, "Resend API key is required"),
+  RESEND_FROM_EMAIL: z
     .string()
     .email("Must be valid email address")
-    .min(1, "Email address is required"),
-  EMAIL_PASS: z
-    .string()
-    .min(1, "Email password is required")
-    .min(8, "Email password should be at least 8 characters for security"),
+    .default("admin@createrington.com"),
 });
 
 /**

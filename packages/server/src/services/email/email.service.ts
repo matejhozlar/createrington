@@ -1,7 +1,9 @@
-import nodemailer from "nodemailer";
-import type { Transporter } from "nodemailer";
+import { Resend } from "resend";
+import type { CreateEmailOptions } from "resend";
 import config from "@/config";
 import type {
+  EmailAddress,
+  EmailAttachment,
   EmailOptions,
   EmailResult,
   EmailTemplate,
@@ -12,7 +14,7 @@ import { EmailTemplateRegistry } from "./templates";
 /**
  * Email Service
  *
- * Sends transactional emails via Nodemailer:
+ * Sends transactional emails via Resend:
  * - Plain emails with full header control (to, cc, bcc, replyTo, attachments)
  * - Template-based emails rendered from the EmailTemplateRegistry
  * - Convenience methods for delivering notifications directly to the admin
@@ -23,120 +25,96 @@ import { EmailTemplateRegistry } from "./templates";
  */
 export class EmailService {
   private static instance: EmailService;
-  private transporter: Transporter;
+  private resend: Resend;
   private fromEmail: string;
   private fromName: string;
 
   private constructor() {
-    this.fromEmail = config.email.auth.user;
+    this.fromEmail = config.email.fromEmail;
     this.fromName = config.meta.author.name;
 
-    this.transporter = nodemailer.createTransport(config.email);
+    this.resend = new Resend(config.email.apiKey);
   }
 
-  /** Returns the singleton instance, creating it on first call */
   public static getInstance(): EmailService {
     if (!EmailService.instance) {
       EmailService.instance = new EmailService();
     }
     return EmailService.instance;
   }
-  /**
-   * Normalizes a single email address into a formatted string.
-   *
-   * Converts `{ email, name? }` objects into `"Name <email>"` format;
-   * plain strings are returned as-is.
-   *
-   * @private
-   * @param email - Email as string or object with email and optional name
-   * @returns Formatted email string
-   */
-  private normalizeEmail(
-    email: string | { email: string; name?: string },
-  ): string {
+
+  /** @private Formats an address input as "Name <email>" or plain email */
+  private normalizeEmail(email: string | EmailAddress): string {
     if (typeof email === "string") return email;
     return email.name ? `${email.name} <${email.email}>` : email.email;
   }
 
-  /**
-   * Normalizes one or more email addresses into an array of formatted strings.
-   *
-   * Accepts a single value or array of strings/objects and delegates each
-   * element to `normalizeEmail`. Used internally for the to, cc, and bcc fields.
-   *
-   * @private
-   * @param emails - Single email, email object, or array of either
-   * @returns Array of formatted email strings
-   */
+  /** @private Normalizes a single or array input into an array of "Name <email>" strings */
   private normalizeEmails(
-    emails:
-      | string
-      | { email: string; name?: string }
-      | Array<string | { email: string; name?: string }>,
+    emails: string | EmailAddress | Array<string | EmailAddress>,
   ): string[] {
     const emailArray = Array.isArray(emails) ? emails : [emails];
     return emailArray.map((e) => this.normalizeEmail(e));
   }
-  /**
-   * Sends an email with the specified options.
-   *
-   * All recipient fields (to, cc, bcc, replyTo) are normalized before dispatch.
-   * Falls back to the configured author name and email if `from` is not provided.
-   *
-   * @param options - Full email options including recipients, subject, and body
-   * @returns Result with `success` flag and either `messageId` or `error` message
-   */
+
+  // Our EmailAttachment uses `cid` for inline-image references (RFC 2392 /
+  // nodemailer legacy); Resend uses `contentId` for the same purpose. Resend
+  // resolves `<img src="cid:foo">` against any attachment whose `contentId`
+  // matches `foo`, so the templates don't need to change.
+  private toResendAttachments(
+    attachments?: EmailAttachment[],
+  ): CreateEmailOptions["attachments"] {
+    if (!attachments?.length) return undefined;
+    return attachments.map((a) => ({
+      filename: a.filename,
+      path: a.path,
+      content: a.content,
+      contentType: a.contentType,
+      contentId: a.cid,
+    }));
+  }
+
   async send(options: EmailOptions): Promise<EmailResult> {
-    try {
-      const info = await this.transporter.sendMail({
-        from: options.from
-          ? this.normalizeEmail(options.from)
-          : `${this.fromName} <${this.fromEmail}>`,
-        to: this.normalizeEmails(options.to).join(", "),
-        cc: options.cc
-          ? this.normalizeEmails(options.cc).join(", ")
-          : undefined,
-        bcc: options.bcc
-          ? this.normalizeEmails(options.bcc).join(", ")
-          : undefined,
-        replyTo: options.replyTo
-          ? this.normalizeEmail(options.replyTo)
-          : undefined,
-        subject: options.subject,
-        text: options.text,
-        html: options.html,
-        attachments: options.attachments,
-      });
+    const payload: CreateEmailOptions = {
+      from: options.from
+        ? this.normalizeEmail(options.from)
+        : `${this.fromName} <${this.fromEmail}>`,
+      to: this.normalizeEmails(options.to),
+      cc: options.cc ? this.normalizeEmails(options.cc) : undefined,
+      bcc: options.bcc ? this.normalizeEmails(options.bcc) : undefined,
+      replyTo: options.replyTo
+        ? this.normalizeEmail(options.replyTo)
+        : undefined,
+      subject: options.subject,
+      html: options.html ?? "",
+      text: options.text ?? "",
+      attachments: this.toResendAttachments(options.attachments),
+    };
 
-      logger.info(
-        `Email sent successfully: ${info.messageId} to ${this.normalizeEmails(
-          options.to,
-        ).join(", ")}`,
-      );
+    const { data, error } = await this.resend.emails.send(payload);
 
-      return {
-        success: true,
-        messageId: info.messageId,
-      };
-    } catch (error) {
+    if (error) {
       logger.error("Failed to send email:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error.message ?? "Unknown error",
       };
     }
+
+    logger.info(
+      `Email sent successfully: ${data?.id} to ${this.normalizeEmails(
+        options.to,
+      ).join(", ")}`,
+    );
+
+    return {
+      success: true,
+      messageId: data?.id,
+    };
   }
 
-  /**
-   * Renders a template and sends the resulting email to a recipient.
-   *
-   * @param to - Recipient email address or `{ email, name }` object
-   * @param template - Template identifier from the EmailTemplate enum
-   * @param data - Type-safe data object required by the chosen template
-   * @returns Result with `success` flag and either `messageId` or `error` message
-   */
   async sendTemplate<T extends EmailTemplate>(
-    to: string | { email: string; name?: string },
+    to: string | EmailAddress,
     template: T,
     data: EmailTemplateDataMap[T],
   ): Promise<EmailResult> {
@@ -161,14 +139,6 @@ export class EmailService {
     }
   }
 
-  /**
-   * Sends a plain email to the configured admin address.
-   *
-   * @param subject - Email subject line
-   * @param html - HTML body
-   * @param text - Optional plain-text fallback
-   * @returns Result with `success` flag and either `messageId` or `error` message
-   */
   async sendToAdmin(
     subject: string,
     html: string,
@@ -181,30 +151,28 @@ export class EmailService {
       text,
     });
   }
-  /**
-   * Renders a template and sends the resulting email to the configured admin address.
-   *
-   * @param template - Template identifier from the EmailTemplate enum
-   * @param data - Type-safe data object required by the chosen template
-   * @returns Result with `success` flag and either `messageId` or `error` message
-   */
+
   async sendTemplateToAdmin<T extends EmailTemplate>(
     template: EmailTemplate,
     data: EmailTemplateDataMap[T],
   ): Promise<EmailResult> {
     return this.sendTemplate(config.meta.author.email, template, data);
   }
+
   /**
-   * Verifies the SMTP transporter connection.
+   * Lightweight health check — lists domains via the Resend API.
    *
-   * Useful for startup health checks to confirm the mail server is reachable
-   * before the application begins accepting traffic.
-   *
-   * @returns `true` if the connection is successful, `false` otherwise
+   * Resend is HTTPS-only, so there's no SMTP-style connection to verify;
+   * this just exercises the API key at a low cost to confirm credentials
+   * are usable before the application begins accepting traffic.
    */
   async verify(): Promise<boolean> {
     try {
-      await this.transporter.verify();
+      const { error } = await this.resend.domains.list();
+      if (error) {
+        logger.error("Email verification failed:", error);
+        return false;
+      }
       logger.info("Email connection verified");
       return true;
     } catch (error) {
