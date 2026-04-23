@@ -605,6 +605,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * @private
    */
   private handlePlayerJoin(player: MinecraftPlayer): void {
+    if (player.uuid === NIL_UUID) {
+      logger.debug(
+        `Ignoring internal join for nil UUID (fakeplayer or placeholder): ${player.username}`,
+      );
+      return;
+    }
+
     if (this.serverState !== ServerState.ONLINE) {
       logger.info(
         `Server ${this.config.serverId} marked as ONLINE (player join received)`,
@@ -644,6 +651,13 @@ export class PlaytimeService extends (EventEmitter as new () => TypedEventEmitte
    * @private
    */
   private handlePlayerLeave(session: ActiveSession): void {
+    if (session.uuid === NIL_UUID) {
+      logger.debug(
+        `Ignoring internal leave for nil UUID (fakeplayer or placeholder): ${session.username}`,
+      );
+      return;
+    }
+
     const now = new Date();
     const secondsPlayed = Math.floor(
       (now.getTime() - session.sessionStart.getTime()) / 1000,
