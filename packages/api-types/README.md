@@ -9,11 +9,19 @@ payloads) are inlined.
 
 ## Install
 
+Add the Createrington registry line to the consumer's `.npmrc`:
+
+```ini
+@createrington:registry=https://gitea.matejhoz.com/api/packages/createrington/npm/
+```
+
+Then:
+
 ```
 pnpm add @createrington/api-types
 ```
 
-No extra registry configuration — published on public npm.
+No auth token required — the registry is anonymously readable for anyone on VPN.
 
 ## Usage
 

@@ -83,7 +83,7 @@ export function generateDatabaseQueries(hierarchy: TableStructure[]): string {
   const rootTables = getRootStructures(hierarchy);
 
   return `import type { Pool, PoolClient } from "pg";
-import logger from "@/logger";
+import logger from "@/logger.global";
 ${generateImports(rootTables)}
 
 /**

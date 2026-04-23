@@ -1,3 +1,17 @@
+## v1.10.1 (2026-04-23)
+
+### @createrington/server (1.10.0 → 1.10.1)
+- Migrate transactional email from nodemailer to Resend — the email service now uses the Resend HTTP API instead of SMTP, simplifying config (single API key replaces host/port/user/pass), handling local file attachments by reading them into buffers, and mapping inline `cid` references to Resend's `contentId` field so existing templates work unchanged
+- Replace the inline Winston logger with the shared `@createrington/logger` package — the 276-line `DailyFolderLogger` class is removed in favour of a `createLogger()` call from the extracted library, keeping the same daily-folder rotation and global `logger` registration behaviour
+- Make the server-writable storage directory configurable via `STORAGE_PATH` env var — ticket transcript paths now resolve from `config.storage.path` instead of walking up from `import.meta.url`, and the env schema tolerates a missing value when validation is skipped (generate scripts, unit tests)
+
+### @createrington/client (0.2.10 → 0.2.11)
+- Make mod names in the active structure pack clickable — each mod with a URL now links directly to its CurseForge/Modrinth page, and the separate "Inspect" dialog button is removed in favour of inline links
+- Fix contact email across legal pages — privacy policy and terms of service now use the canonical `createrington.com` domain instead of the old `create-rington.com`
+
+### @createrington/api-types (0.1.0 → 0.1.1)
+- Switch package registry from public npm to the internal Gitea npm registry — `publishConfig.registry` now points to `gitea.matejhoz.com` and the README documents the `.npmrc` setup for consumers
+
 ## v1.10.0 (2026-04-22)
 
 ### @createrington/server (1.9.1 → 1.10.0)
