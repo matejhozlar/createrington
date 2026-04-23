@@ -364,8 +364,10 @@ async function handleConfirmClose(
  */
 async function handleCancelClose(
   interaction: ButtonInteraction,
-  _ticketId: number,
+  ticketId: number,
 ): Promise<void> {
+  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+
   try {
     await interaction.message
       .delete()
