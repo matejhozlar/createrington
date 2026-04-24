@@ -227,9 +227,11 @@ export class InactivityCleanupService {
   /**
    * Run only the resolve and remove phases (no new warnings).
    * Used on startup to handle expired grace periods without sending
-   * duplicate warning announcements on frequent deploys.
+   * duplicate warning announcements on frequent deploys, and from the
+   * admin panel when admins want to process overdue players without
+   * triggering new warning announcements in #announcements.
    */
-  private async resolveAndRemoveOnly(): Promise<void> {
+  async resolveAndRemoveOnly(): Promise<void> {
     try {
       await this.resolveReturned();
       await this.removeExpired();
@@ -242,6 +244,11 @@ export class InactivityCleanupService {
   async triggerManualCleanup(): Promise<void> {
     logger.info("Manual inactivity cleanup triggered");
     await this.runCycle();
+  }
+
+  async triggerResolveAndRemove(): Promise<void> {
+    logger.info("Manual inactivity resolve+remove triggered (no new warnings)");
+    await this.resolveAndRemoveOnly();
   }
 
   /**

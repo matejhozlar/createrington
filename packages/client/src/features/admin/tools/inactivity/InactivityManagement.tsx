@@ -50,10 +50,12 @@ import {
 import {
   Clock,
   Filter,
+  Loader2,
   RefreshCw,
   Search,
   Trash2,
   UserCheck,
+  UserX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -109,6 +111,8 @@ export function InactivityManagement() {
   });
 
   const triggerCleanup = trpc.admin.inactivity.triggerCleanup.useMutation();
+  const triggerResolveRemove =
+    trpc.admin.inactivity.triggerResolveRemove.useMutation();
 
   // Destructure refetch so the callbacks below have stable deps — the
   // full query object is a new reference on every render.
@@ -162,6 +166,21 @@ export function InactivityManagement() {
       );
     }
   }, [triggerCleanup, toast, refetchList, refetchStats]);
+
+  const handleProcessOverdue = useCallback(async () => {
+    try {
+      await triggerResolveRemove.mutateAsync();
+      toast.success("Overdue warnings processed");
+      refetchList();
+      refetchStats();
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Failed to process overdue warnings",
+      );
+    }
+  }, [triggerResolveRemove, toast, refetchList, refetchStats]);
 
   const getPaginationItems = useCallback(() => {
     const items: (number | "ellipsis")[] = [];
@@ -236,6 +255,29 @@ export function InactivityManagement() {
                 <span>
                   <Button
                     variant="outline"
+                    onClick={handleProcessOverdue}
+                    disabled={!canMutate || triggerResolveRemove.isPending}
+                  >
+                    {triggerResolveRemove.isPending ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <UserX className="mr-2 size-4" />
+                    )}
+                    Process Overdue
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {canMutate
+                  ? "Run resolve + remove phases only — no new warning announcements"
+                  : "Only available on the production deployment"}
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button
+                    variant="outline"
                     onClick={handleTriggerCleanup}
                     disabled={!canMutate || triggerCleanup.isPending}
                   >
@@ -249,11 +291,11 @@ export function InactivityManagement() {
                   </Button>
                 </span>
               </TooltipTrigger>
-              {!canMutate && (
-                <TooltipContent>
-                  Only available on the production deployment
-                </TooltipContent>
-              )}
+              <TooltipContent>
+                {canMutate
+                  ? "Run the full cycle: resolve → warn → remove"
+                  : "Only available on the production deployment"}
+              </TooltipContent>
             </Tooltip>
           </div>
         </div>
