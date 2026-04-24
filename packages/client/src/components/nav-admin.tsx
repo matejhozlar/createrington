@@ -1,5 +1,14 @@
-import { type LucideIcon, ChevronRight, Shield, Sparkles } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import {
+  type LucideIcon,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  History,
+  MoreHorizontal,
+  Shield,
+  Sparkles,
+} from "lucide-react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
   SidebarMenuButton,
@@ -19,6 +28,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
 
@@ -33,14 +48,22 @@ export function NavAdmin({
 }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     enabled: assistantEnabled,
     drawerOpen: assistantOpen,
+    bubbleVisible,
+    setBubbleVisible,
     toggleDrawer: toggleAssistantDrawer,
   } = useAdminChat();
 
   const toggleAssistant = () => {
     toggleAssistantDrawer();
+    if (isMobile) setOpenMobile(false);
+  };
+
+  const openHistory = () => {
+    navigate("/admin/tools/chat-history");
     if (isMobile) setOpenMobile(false);
   };
 
@@ -116,13 +139,13 @@ export function NavAdmin({
                 );
               })}
               {assistantEnabled && (
-                <SidebarMenuSubItem>
+                <SidebarMenuSubItem className="group/assistant relative">
                   <SidebarMenuSubButton asChild>
                     <button
                       type="button"
                       onClick={toggleAssistant}
                       className={cn(
-                        "w-full transition-colors duration-150",
+                        "w-full pr-8 transition-colors duration-150",
                         assistantOpen && "text-destructive bg-destructive/10",
                       )}
                     >
@@ -130,6 +153,38 @@ export function NavAdmin({
                       <span>Assistant</span>
                     </button>
                   </SidebarMenuSubButton>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Assistant options"
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn(
+                          "absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors",
+                          "opacity-0 group-hover/assistant:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100",
+                          "hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        )}
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent side="right" align="start">
+                      <DropdownMenuItem
+                        onClick={() => setBubbleVisible(!bubbleVisible)}
+                      >
+                        {bubbleVisible ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                        {bubbleVisible ? "Hide bubble" : "Show bubble"}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={openHistory}>
+                        <History className="size-4" />
+                        History
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </SidebarMenuSubItem>
               )}
             </SidebarMenuSub>

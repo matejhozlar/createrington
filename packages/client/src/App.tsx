@@ -251,6 +251,14 @@ const PromptDetail = lazyNamed(
   () => import("./features/admin/tools/prompts/PromptDetail"),
   "PromptDetail",
 );
+const AdminChatHistory = lazyNamed(
+  () => import("./features/admin/tools/chat-history/AdminChatHistory"),
+  "AdminChatHistory",
+);
+const ChatHistoryDetail = lazyNamed(
+  () => import("./features/admin/tools/chat-history/ChatHistoryDetail"),
+  "ChatHistoryDetail",
+);
 const OwnerAdmins = lazyNamed(
   () => import("./features/admin/owner/OwnerAdmins"),
   "OwnerAdmins",
@@ -503,6 +511,14 @@ function AppContent() {
                       <Route
                         path="tools/prompts/:id"
                         element={<PromptDetail />}
+                      />
+                      <Route
+                        path="tools/chat-history"
+                        element={<AdminChatHistory />}
+                      />
+                      <Route
+                        path="tools/chat-history/:sessionId"
+                        element={<ChatHistoryDetail />}
                       />
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />

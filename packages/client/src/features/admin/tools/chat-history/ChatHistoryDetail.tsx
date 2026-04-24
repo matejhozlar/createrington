@@ -1,0 +1,139 @@
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Loading } from "@/components/loading-spinner";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
+import { fetchChatMessages } from "@/components/admin-chat/api";
+import { MessageRow } from "@/components/admin-chat/MessageRow";
+import type { ChatMessage } from "@/components/admin-chat/types";
+
+export function ChatHistoryDetail() {
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const navigate = useNavigate();
+  const numericId = sessionId ? parseInt(sessionId, 10) : NaN;
+
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!Number.isFinite(numericId)) {
+      setError("Invalid session id");
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchChatMessages(numericId);
+      setMessages(data.messages);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load transcript",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [numericId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <div className="flex flex-1 flex-col gap-4">
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools/chat-history">
+                Chat History
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>
+                Session #{Number.isFinite(numericId) ? numericId : "—"}
+              </BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </header>
+
+      <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/admin/tools/chat-history")}
+              aria-label="Back to history"
+            >
+              <ArrowLeft className="size-4" />
+            </Button>
+            <h1 className="text-2xl font-semibold">
+              Session #{Number.isFinite(numericId) ? numericId : "—"}
+            </h1>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loading mode="inline" size="medium" />
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
+            <p className="text-destructive">{error}</p>
+            <Button
+              variant="outline"
+              onClick={() => void load()}
+              className="mt-2"
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
+            <p className="text-muted-foreground">
+              No messages in this session.
+            </p>
+          </div>
+        ) : (
+          <div className="flex flex-col rounded-lg border border-border bg-card px-3 py-3">
+            {messages.map((msg, i) => {
+              const prev = messages[i - 1];
+              const next = messages[i + 1];
+              const isGroupStart = !prev || prev.role !== msg.role;
+              const showAvatar = !next || next.role !== msg.role;
+              return (
+                <MessageRow
+                  key={msg.id}
+                  message={msg}
+                  navigate={navigate}
+                  showAvatar={showAvatar}
+                  isGroupStart={isGroupStart}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
