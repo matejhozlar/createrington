@@ -1,19 +1,7 @@
 import appConfig from "@/config";
 import { Q } from "@/db";
-import axios, { AxiosError } from "axios";
-
-/** Extract safe error details from Axios errors without leaking secrets */
-function safeAxiosError(error: unknown): object {
-  if (error instanceof AxiosError) {
-    return {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      code: error.code,
-      message: error.message,
-    };
-  }
-  return { message: error instanceof Error ? error.message : String(error) };
-}
+import { safeAxiosError } from "@/utils/axios-error";
+import axios from "axios";
 
 /**
  * Discord OAuth token response
@@ -189,9 +177,7 @@ export class DiscordOAuthService {
         },
       );
 
-      logger.info(
-        `Fetched Discord user: ${response.data.username} (${response.data.id})`,
-      );
+      logger.info(`Fetched Discord user ${response.data.id}`);
       return response.data;
     } catch (error) {
       logger.error("Failed to fetch Discord user:", safeAxiosError(error));
@@ -261,9 +247,7 @@ export class DiscordOAuthService {
       minecraftUsername: player.minecraftUsername,
     };
 
-    logger.info(
-      `Authenticated ${player.minecraftUsername} (${discordUser.username}) as ${role}`,
-    );
+    logger.info(`Authenticated ${discordUser.id} as ${role}`);
 
     return authenticatedUser;
   }

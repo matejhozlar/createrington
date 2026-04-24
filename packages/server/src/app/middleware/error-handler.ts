@@ -131,8 +131,10 @@ export function formatZodError(error: ZodError<unknown>): {
   return { message, fieldErrors };
 }
 
+// Substring (not anchored) so camelCase / prefixed / header variants like
+// accessToken, client_secret, and X-Admin-Chat-Secret are also redacted.
 const SENSITIVE_KEYS =
-  /^(password|secret|token|api_?key|authorization|cookie)$/i;
+  /(password|secret|token|api_?key|authorization|cookie|jwt)/i;
 
 function redactSensitive(obj: unknown): unknown {
   if (!obj || typeof obj !== "object") return obj;

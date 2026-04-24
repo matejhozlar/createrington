@@ -9,6 +9,7 @@ import {
   InternalServerError,
 } from "@/app/middleware";
 import { env, envMode } from "@/config/env/env.config";
+import { safeAxiosError } from "@/utils/axios-error";
 
 /**
  * Admin chat proxy routes. Forwards to claude-automation's chat endpoints
@@ -291,7 +292,7 @@ router.get(
     // If the upstream drops (restart, network blip) mid-stream, close our
     // side cleanly instead of leaving Express in an undefined state.
     stream.on("error", (err) => {
-      console.error("[admin-chat] upstream stream error:", err);
+      logger.error("[admin-chat] upstream stream error:", safeAxiosError(err));
       res.end();
     });
     stream.pipe(res);
