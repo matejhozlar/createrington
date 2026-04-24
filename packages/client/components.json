@@ -17,8 +17,5 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
-  },
-  "registries": {
-    "@lucide-animated": "https://lucide-animated.com/r/{name}.json"
   }
 }
