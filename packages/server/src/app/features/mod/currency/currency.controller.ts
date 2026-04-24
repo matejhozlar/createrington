@@ -1,14 +1,14 @@
-import { BadRequestError, respondSuccess } from "@/app/middleware";
-import config from "@/config";
-import { Q, R } from "@/db";
+import {
+  BadRequestError,
+  getAuthedPlayer,
+  respondSuccess,
+} from "@/app/middleware";
+import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
 import { formatDuration } from "@/utils/format";
 import type { Request, Response } from "express";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = config.app.auth.accessToken.secret;
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -31,47 +31,12 @@ function formatMoney(amount: number): string {
  */
 export class CurrencyController {
   /**
-   * POST /api/currency/login
-   * Body: { uuid: string, name?: string }
-   *
-   * Creates a short-lived JWT for subsequent currency requests.
-   * Only requires server IP verification (no existing JWT needed).
-   *
-   * `name` is optional. When omitted (e.g. from CRNet's generic login
-   * strategy) it is resolved from the player record; if the player is
-   * unknown, the UUID is used as a display fallback.
-   */
-  static async login(req: Request, res: Response): Promise<void> {
-    const { uuid, name: bodyName } = req.body;
-
-    if (!uuid) {
-      throw new BadRequestError("uuid is required");
-    }
-
-    let name: string | undefined = bodyName;
-    if (!name) {
-      const player = await Q.player.find({ minecraftUuid: uuid });
-      name = player?.minecraftUsername ?? uuid;
-    }
-
-    const token = jwt.sign({ uuid, name }, JWT_SECRET, {
-      algorithm: "HS256",
-      expiresIn: "10m",
-    });
-
-    respondSuccess(res, {
-      message: `Issued mod JWT for ${name}`,
-      data: { token },
-    });
-  }
-
-  /**
    * GET /api/currency/balance
    *
    * Returns the player's current balance.
    */
   static async getBalance(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
 
     const balance = await R.balanceRepo.getAmount(uuid);
 
@@ -84,12 +49,14 @@ export class CurrencyController {
 
   /**
    * POST /api/currency/pay
-   * Body: { toUuid: string, amount: number, fromUuid?: string }
+   * Body: { toUuid: string, amount: number }
    *
-   * Transfers currency between two players.
+   * Transfers currency from the authenticated player to `toUuid`. The sender
+   * is always the JWT subject — any `fromUuid` in the body is ignored so a
+   * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid, amount, fromUuid } = req.body;
+    const { toUuid, amount } = req.body;
 
     if (!toUuid || amount == null) {
       throw new BadRequestError("toUuid and amount are required");
@@ -99,7 +66,7 @@ export class CurrencyController {
       throw new BadRequestError("amount must be a positive number");
     }
 
-    const senderUuid = fromUuid || req.modAuth!.uuid;
+    const { uuid: senderUuid } = getAuthedPlayer(req);
 
     try {
       const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
@@ -135,7 +102,7 @@ export class CurrencyController {
    * Adds currency to the authenticated player's balance.
    */
   static async deposit(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount, reason } = req.body;
 
     if (amount == null) {
@@ -181,7 +148,7 @@ export class CurrencyController {
    * Total withdrawn = denomination * count.
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { denomination, count } = req.body;
 
     if (denomination == null || count == null) {
@@ -248,7 +215,7 @@ export class CurrencyController {
    * Claims the daily reward for the authenticated player.
    */
   static async claimDaily(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
 
     const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
@@ -277,7 +244,7 @@ export class CurrencyController {
    * Returns paginated transaction history for the authenticated player.
    */
   static async getHistory(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const perPage = Math.min(
       20,
@@ -311,7 +278,7 @@ export class CurrencyController {
    * Starts a new lottery round with the given buy-in amount.
    */
   static async startLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount } = req.body;
 
     if (amount == null) {
@@ -341,7 +308,7 @@ export class CurrencyController {
    * Joins an active lottery round with the given buy-in amount.
    */
   static async joinLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount } = req.body;
 
     if (amount == null) {

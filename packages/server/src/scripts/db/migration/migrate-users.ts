@@ -1,4 +1,4 @@
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -11,7 +11,7 @@ if (!process.env.SRC_PGHOST) {
   process.exit(0);
 }
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * CONFIG
@@ -44,29 +44,31 @@ async function copyCsvFromSource(sqlSelect: string): Promise<string> {
   const tmpName = `migrate-copy-${crypto.randomBytes(8).toString("hex")}.sql`;
   const tmpFile = path.join(os.tmpdir(), tmpName);
 
-  // 1) trim
-  // 2) remove ALL trailing semicolons
-  // 3) collapse whitespace/newlines to a single space (so \copy sees a single statement cleanly)
-  const select = sqlSelect
-    .trim()
-    .replace(/;+/g, "") // remove any ; anywhere (safe for SELECT-only strings)
-    .replace(/\s+/g, " "); // collapse whitespace/newlines
+  const select = sqlSelect.trim().replace(/;+$/, "").replace(/\s+/g, " ");
 
-  // CSV defaults: QUOTE is ", ESCAPE is " in Postgres CSV format
   const copySql = `\\copy (${select}) TO STDOUT WITH (FORMAT csv, HEADER true)\n`;
 
   await fs.writeFile(tmpFile, copySql, "utf8");
 
-  // Debug: if it fails again, you can open this file and see exactly what's being run
-  // console.log("Temp SQL:", tmpFile);
-  // console.log(copySql);
-
-  const cmd =
-    `psql -h ${SOURCE.host} -p ${SOURCE.port} -U ${SOURCE.user} -d ${SOURCE.database} ` +
-    `-v ON_ERROR_STOP=1 -f "${tmpFile}"`;
+  // execFile (argv array, no shell) so operator-supplied SRC_* env values
+  // can't inject shell commands into the psql invocation.
+  const args = [
+    "-h",
+    SOURCE.host,
+    "-p",
+    String(SOURCE.port),
+    "-U",
+    SOURCE.user,
+    "-d",
+    SOURCE.database,
+    "-v",
+    "ON_ERROR_STOP=1",
+    "-f",
+    tmpFile,
+  ];
 
   try {
-    const { stdout } = await execAsync(cmd, {
+    const { stdout } = await execFileAsync("psql", args, {
       env: { ...process.env, PGPASSWORD: SOURCE.password },
       maxBuffer: 1024 * 1024 * 512,
     });

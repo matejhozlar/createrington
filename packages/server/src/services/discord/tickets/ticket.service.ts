@@ -520,13 +520,27 @@ export class TicketService {
       throw new Error("No transcript found for this ticket");
     }
 
+    // transcriptPath comes from ticket.metadata (JSONB) which is only written
+    // by generateTranscript today, but the column has no schema — if any
+    // future path writes user input into metadata.transcriptPath, this
+    // fs.readFile becomes an arbitrary-file-read primitive. Pin it to the
+    // transcripts dir.
+    const resolvedPath = path.resolve(transcriptPath);
+    const resolvedDir = path.resolve(this.transcriptDir);
+    if (
+      resolvedPath !== resolvedDir &&
+      !resolvedPath.startsWith(resolvedDir + path.sep)
+    ) {
+      throw new Error("Transcript path outside transcripts directory");
+    }
+
     try {
-      await fs.access(transcriptPath);
+      await fs.access(resolvedPath);
     } catch {
       throw new Error("Transcript file not found");
     }
 
-    const transcriptBuffer = await fs.readFile(transcriptPath);
+    const transcriptBuffer = await fs.readFile(resolvedPath);
     const attachment = new AttachmentBuilder(transcriptBuffer, {
       name: `ticket-${ticket.ticketNumber}.html`,
     });

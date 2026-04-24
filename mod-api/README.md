@@ -65,7 +65,7 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `LoginRequest` | `String uuid`, `String name` |
 | `LoginResponse` | `String token` |
 | `BalanceResponse` | `double balance` |
-| `PayRequest` | `String toUuid`, `double amount`, `@Nullable String fromUuid` |
+| `PayRequest` | `String toUuid`, `double amount` |
 | `PayResponse` | `boolean success`, `double newSenderBalance` |
 | `DepositRequest` | `double amount`, `@Nullable String reason` |
 | `DepositResponse` | `boolean success`, `double newBalance` |

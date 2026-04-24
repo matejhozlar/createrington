@@ -52,13 +52,23 @@ export const waitlistsRouter = router({
         );
       }
 
+      // Returned for both duplicate email and duplicate discord name — distinct
+      // responses would let an anonymous caller enumerate registrations.
+      const alreadyRegistered = {
+        entry: null,
+        status: "already_registered" as const,
+        message:
+          "Thanks! You're already registered. We'll email you when a spot opens up.",
+      };
+
       if (email) {
         const [emailExists] = await waitlist.entry.findAll(
           { email },
           { limit: 1 },
         );
         if (emailExists) {
-          throw trpcError.conflict("This email is already on the waitlist");
+          logger.info(`Waitlist duplicate email attempt`);
+          return alreadyRegistered;
         }
       }
 
@@ -68,9 +78,8 @@ export const waitlistsRouter = router({
           { limit: 1 },
         );
         if (discordExists) {
-          throw trpcError.conflict(
-            "This Discord username is already on the waitlist",
-          );
+          logger.info(`Waitlist duplicate discord name attempt`);
+          return alreadyRegistered;
         }
       }
 

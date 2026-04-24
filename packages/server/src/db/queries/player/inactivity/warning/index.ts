@@ -56,7 +56,8 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   /**
    * Find players inactive for the given number of days who don't already
    * have an active (unresolved, unremoved) warning.
-   * Also excludes players created within the inactivity window.
+   * Also excludes players created within the inactivity window and any
+   * registered admins — admins are never swept by inactivity.
    */
   async findInactivePlayers(inactiveDays: number): Promise<InactivePlayer[]> {
     const query = `
@@ -73,6 +74,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
           WHERE w.player_minecraft_uuid = p.minecraft_uuid
             AND w.resolved_at IS NULL
             AND w.removed_at IS NULL
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM admin a WHERE a.discord_id = p.discord_id
         )
       ORDER BY p.last_seen ASC`;
 
@@ -133,6 +137,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
 
   /**
    * Find active warnings whose grace period has expired.
+   * Admins are excluded defensively — even if a pre-existing warning
+   * row predates the admin exclusion in `findInactivePlayers`, it will
+   * never be acted on by the removal phase.
    */
   async findExpiredWarnings(graceDays: number): Promise<ActiveWarning[]> {
     const query = `
@@ -149,6 +156,9 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
       WHERE w.resolved_at IS NULL
         AND w.removed_at IS NULL
         AND w.warned_at < NOW() - ($1 || ' days')::interval
+        AND NOT EXISTS (
+          SELECT 1 FROM admin a WHERE a.discord_id = p.discord_id
+        )
       ORDER BY w.warned_at ASC`;
 
     const result = await this.db.query<{
@@ -203,6 +213,19 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   async markRemoved(id: number): Promise<void> {
     await this.db.query(
       `UPDATE player_inactivity_warning SET removed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [id],
+    );
+  }
+
+  /**
+   * Clear the removed flag. Used to roll back an in-flight removal if
+   * a later step fails — otherwise the warning becomes un-retryable by
+   * `findExpiredWarnings` and the leave-notification handler would
+   * suppress future voluntary departures for this player.
+   */
+  async clearRemoved(id: number): Promise<void> {
+    await this.db.query(
+      `UPDATE player_inactivity_warning SET removed_at = NULL, updated_at = NOW() WHERE id = $1`,
       [id],
     );
   }
@@ -277,26 +300,34 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
       countSearchClause = `AND p.minecraft_username ILIKE '%' || $${countParams.length} || '%'`;
     }
 
+    // Dedupe to one row per player (latest warning), so a player who
+    // was resolved and later re-warned doesn't appear twice. The inner
+    // DISTINCT ON must order by the partition key first, then warned_at
+    // DESC to pick the most recent row. The outer query re-sorts by
+    // warned_at DESC for pagination.
     const listQuery = `
-      SELECT
-        w.id,
-        w.player_minecraft_uuid,
-        w.warned_at,
-        w.warning_message_id,
-        w.resolved_at,
-        w.removed_at,
-        p.minecraft_username,
-        p.discord_id,
-        p.last_seen
-      FROM player_inactivity_warning w
-      LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
-      WHERE ${statusClause}
-        ${listSearchClause}
-      ORDER BY w.warned_at DESC
+      SELECT * FROM (
+        SELECT DISTINCT ON (w.player_minecraft_uuid)
+          w.id,
+          w.player_minecraft_uuid,
+          w.warned_at,
+          w.warning_message_id,
+          w.resolved_at,
+          w.removed_at,
+          p.minecraft_username,
+          p.discord_id,
+          p.last_seen
+        FROM player_inactivity_warning w
+        LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
+        WHERE ${statusClause}
+          ${listSearchClause}
+        ORDER BY w.player_minecraft_uuid, w.warned_at DESC
+      ) latest
+      ORDER BY latest.warned_at DESC
       LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}`;
 
     const countQuery = `
-      SELECT COUNT(*)::integer AS total
+      SELECT COUNT(DISTINCT w.player_minecraft_uuid)::integer AS total
       FROM player_inactivity_warning w
       LEFT JOIN player p ON p.minecraft_uuid = w.player_minecraft_uuid
       WHERE ${statusClause}

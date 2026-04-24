@@ -9,10 +9,18 @@ import type { JWTPayload } from "@/services/auth/jwt";
 import type { ValidatedData } from "@/app/middleware/validation.middleware";
 
 declare global {
-  /** JWT payload from Minecraft mod authentication */
+  /**
+   * JWT payload from Minecraft mod authentication.
+   *
+   * `uuid` and `name` are per-player claims: CRNet only emits them when the
+   * caller supplies a playerUuid, so server-level tokens (heartbeats, syncs)
+   * legitimately lack them. Routes that act on behalf of a specific player
+   * enforce `uuid` presence via `requireKnownPlayer`.
+   */
   interface ModJwtPayload {
-    uuid: string;
-    name: string;
+    uuid?: string;
+    name?: string;
+    aud: string;
     iat: number;
     exp: number;
   }

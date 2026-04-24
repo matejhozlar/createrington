@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import axios, { AxiosError } from "axios";
 import type { Readable } from "node:stream";
+import { z } from "zod";
 import {
   asyncHandler,
   authenticate,
@@ -9,6 +10,7 @@ import {
   InternalServerError,
 } from "@/app/middleware";
 import { env, envMode } from "@/config/env/env.config";
+import { safeAxiosError } from "@/utils/axios-error";
 
 /**
  * Admin chat proxy routes. Forwards to claude-automation's chat endpoints
@@ -29,6 +31,28 @@ const ENVIRONMENT = envMode.isDevDeployment ? "dev" : "prod";
 const UPSTREAM_TIMEOUT_MS = 30000;
 
 const claudeClient = axios.create({ timeout: UPSTREAM_TIMEOUT_MS });
+
+const pageContextValueSchema = z.union([
+  z.string().max(2000),
+  z.number(),
+  z.boolean(),
+  z.null(),
+]);
+const pageContextSchema = z
+  .record(z.string().max(100), pageContextValueSchema)
+  .refine((val) => Object.keys(val).length <= 50, {
+    message: "pageContext may contain at most 50 keys",
+  });
+
+const startBodySchema = z.object({
+  pageContext: pageContextSchema.optional(),
+});
+
+const sendBodySchema = z.object({
+  sessionId: z.number().int(),
+  message: z.string().min(1).max(10_000),
+  pageContext: pageContextSchema.optional(),
+});
 
 function claudeHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
@@ -128,6 +152,31 @@ router.get(
 );
 
 router.get(
+  "/sessions",
+  asyncHandler(authenticate),
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req: Request, res: Response) => {
+    const base = requireUpstream(res);
+    if (!base) return;
+    const { limit, cursor } = req.query;
+    try {
+      const r = await claudeClient.get(`${base}/api/chat/sessions`, {
+        params: {
+          username: adminUsername(req),
+          environment: ENVIRONMENT,
+          ...(limit !== undefined && { limit }),
+          ...(cursor !== undefined && { cursor }),
+        },
+        headers: claudeHeaders(),
+      });
+      res.json(r.data);
+    } catch (err) {
+      forwardUpstreamError(err, res);
+    }
+  }),
+);
+
+router.get(
   "/messages",
   asyncHandler(authenticate),
   asyncHandler(requireAdmin),
@@ -161,9 +210,11 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const base = requireUpstream(res);
     if (!base) return;
-    const { pageContext } = (req.body ?? {}) as {
-      pageContext?: unknown;
-    };
+    const parsed = startBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      throw new BadRequestError("Invalid start payload");
+    }
+    const { pageContext } = parsed.data;
     try {
       const r = await claudeClient.post(
         `${base}/api/chat/start`,
@@ -189,14 +240,11 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     const base = requireUpstream(res);
     if (!base) return;
-    const { sessionId, message, pageContext } = (req.body ?? {}) as {
-      sessionId?: number;
-      message?: string;
-      pageContext?: unknown;
-    };
-    if (typeof sessionId !== "number" || typeof message !== "string") {
+    const parsed = sendBodySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
       throw new BadRequestError("sessionId and message are required");
     }
+    const { sessionId, message, pageContext } = parsed.data;
     try {
       const r = await claudeClient.post(
         `${base}/api/chat/send`,
@@ -291,7 +339,7 @@ router.get(
     // If the upstream drops (restart, network blip) mid-stream, close our
     // side cleanly instead of leaving Express in an undefined state.
     stream.on("error", (err) => {
-      console.error("[admin-chat] upstream stream error:", err);
+      logger.error("[admin-chat] upstream stream error:", safeAxiosError(err));
       res.end();
     });
     stream.pipe(res);

@@ -14,6 +14,8 @@ interface CompiledPattern {
 /** Delay before reposting the welcome message after channel activity */
 const REPOST_DELAY_MS = 5 * 60_000;
 
+const FAQ_MAX_MATCH_LENGTH = 4000;
+
 /**
  * Discord FAQ Auto-Reply Service
  *
@@ -196,8 +198,13 @@ export class FaqService {
    * @private
    */
   private matchPattern(content: string): CompiledPattern | null {
+    // Cap input so a pathological pattern can't burn unbounded CPU.
+    const haystack =
+      content.length > FAQ_MAX_MATCH_LENGTH
+        ? content.slice(0, FAQ_MAX_MATCH_LENGTH)
+        : content;
     for (const pattern of this.patterns) {
-      if (pattern.regex.test(content)) {
+      if (pattern.regex.test(haystack)) {
         return pattern;
       }
     }

@@ -1,10 +1,12 @@
 /**
  * tRPC initialization and procedure definitions.
  *
- * Exports three auth-level procedures used across all routers:
+ * Exports four auth-level procedures used across all routers:
  * - `publicProcedure` — no auth required
  * - `userProcedure` — requires valid JWT and verified account
  * - `adminProcedure` — requires valid JWT, verified account, and isAdmin flag
+ * - `ownerProcedure` — additionally requires JWT discordId to match
+ *   `config.app.auth.owner.discordId` (single-owner gate, env-rooted)
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
@@ -58,7 +60,20 @@ const isAdmin = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
+/** Rejects anyone whose JWT discordId doesn't match the configured owner. */
+const isOwner = middleware(async ({ ctx, next }) => {
+  if (ctx.user?.discordId !== config.app.auth.owner.discordId) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Owner access required",
+    });
+  }
+  return next({ ctx: { user: ctx.user } });
+});
+
 /** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
 export const userProcedure = t.procedure.use(isAuthenticated);
 /** Procedure that requires a valid JWT, a verified account, and the isAdmin flag. */
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
+/** Procedure gated on matching the configured owner Discord ID. */
+export const ownerProcedure = t.procedure.use(isAuthenticated).use(isOwner);

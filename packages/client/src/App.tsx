@@ -14,6 +14,7 @@ import { WebSocketProvider } from "./contexts/websocket";
 import { ServerDataProvider } from "./contexts/server-data";
 import { PlayerDataProvider } from "./contexts/player-data";
 import { ProtectedRoute } from "./components/protected-route";
+import { OwnerRoute } from "./components/owner-route";
 import { Home } from "./pages/Home/Home";
 import { NotFound } from "./pages/not-found";
 import { ErrorBoundary } from "./components/error-boundary";
@@ -250,6 +251,18 @@ const PromptDetail = lazyNamed(
   () => import("./features/admin/tools/prompts/PromptDetail"),
   "PromptDetail",
 );
+const AdminChatHistory = lazyNamed(
+  () => import("./features/admin/tools/chat-history/AdminChatHistory"),
+  "AdminChatHistory",
+);
+const ChatHistoryDetail = lazyNamed(
+  () => import("./features/admin/tools/chat-history/ChatHistoryDetail"),
+  "ChatHistoryDetail",
+);
+const OwnerAdmins = lazyNamed(
+  () => import("./features/admin/owner/OwnerAdmins"),
+  "OwnerAdmins",
+);
 
 // Admin chat widget — gated on isAdmin below so non-admins never download it.
 const AdminChat = lazyNamed(
@@ -280,6 +293,7 @@ function AppLayout() {
   // Footer is hidden on full-screen routes that manage their own layout
   const hideFooter =
     location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/owner") ||
     location.pathname.startsWith("/chat") ||
     location.pathname.startsWith("/blue-map");
 
@@ -498,12 +512,35 @@ function AppContent() {
                         path="tools/prompts/:id"
                         element={<PromptDetail />}
                       />
+                      <Route
+                        path="tools/chat-history"
+                        element={<AdminChatHistory />}
+                      />
+                      <Route
+                        path="tools/chat-history/:sessionId"
+                        element={<ChatHistoryDetail />}
+                      />
                       <Route path="changelog" element={<Changelog />} />
                       <Route path="logs" element={<AdminLogs />} />
                     </Routes>
                   </ErrorBoundary>
                 </AdminPlayerProvider>
               </ProtectedRoute>
+            }
+          />
+
+          {/* Owner-only Routes */}
+          <Route
+            path="/owner/*"
+            element={
+              <OwnerRoute>
+                <ErrorBoundary>
+                  <Routes>
+                    <Route path="admins" element={<OwnerAdmins />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ErrorBoundary>
+              </OwnerRoute>
             }
           />
 

@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { makeReturnToValidator } from "@/services/auth/sso/return-to";
 
 const validator = makeReturnToValidator([
-  "^https://[a-z0-9-]+\\.createrington\\.com(/.*)?$",
-  "^https://createrington\\.com(/.*)?$",
+  "https://sandbox.createrington.com",
+  "https://panel.createrington.com",
+  "https://createrington.com",
 ]);
 
 describe("validateReturnTo", () => {

@@ -20,7 +20,7 @@ import {
 import { formatRelativeDate, formatFullDate } from "@/features/admin/format";
 import type { DimensionFilter } from "../AdminForceloads";
 import { ChunkTable } from "./ChunkTable";
-import { PlayerLabel } from "./PlayerForceloadsTable";
+import { PlayerLabel } from "@/components/player-label";
 
 interface Party {
   id: number;
@@ -71,7 +71,7 @@ function PartyDetails({
                   <PlayerLabel
                     uuid={member.playerUuid}
                     name={displayName}
-                    resolved={resolved}
+                    linkable={resolved}
                     size={20}
                   />
                 </div>

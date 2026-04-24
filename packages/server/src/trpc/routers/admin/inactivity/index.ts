@@ -3,7 +3,10 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
 import config from "@/config";
-import { getService, Services } from "@/services";
+import { getService, getServiceSync, Services } from "@/services";
+import { Discord } from "@/discord/constants";
+import { EmbedPresets } from "@/discord/embeds";
+import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 
@@ -156,6 +159,30 @@ export const inactivityRouter = router({
         warnedAt: warning.warnedAt,
       });
 
+      try {
+        const embed = EmbedPresets.inactivity.adminRemoval({
+          players: [warning.minecraftUsername],
+          triggeredBy: {
+            discordId: ctx.user.discordId,
+            username: ctx.user.minecraftUsername,
+          },
+          removedAt: new Date(),
+        });
+
+        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
+        const messageService = DiscordMessageService.getInstance(mainBot);
+
+        await messageService.send({
+          channelId: Discord.Channels.administration.NOTIFICATIONS,
+          embeds: embed.build(),
+        });
+      } catch (error) {
+        logger.error(
+          "Failed to send inactivity manual-removal admin notification:",
+          error,
+        );
+      }
+
       await Q.admin.log.action.logAction({
         adminDiscordId: ctx.user.discordId,
         adminUsername: ctx.user.minecraftUsername,
@@ -185,7 +212,10 @@ export const inactivityRouter = router({
         throw trpcError.internal("Inactivity cleanup service is not available");
       }
 
-      await service.forceRunAndResetSchedule();
+      await service.forceRunAndResetSchedule({
+        discordId: ctx.user.discordId,
+        username: ctx.user.minecraftUsername,
+      });
 
       await Q.admin.log.action.logAction({
         adminDiscordId: ctx.user.discordId,
@@ -195,5 +225,40 @@ export const inactivityRouter = router({
       });
 
       return { message: "Cleanup cycle completed" };
+    }),
+
+  triggerResolveRemove: adminProcedure
+    .meta({
+      description:
+        "Run only the resolve + remove phases now (no new warning announcements)",
+    })
+    .mutation(async ({ ctx }) => {
+      if (!isManualActionsEnabled()) {
+        throw trpcError.forbidden(
+          "Processing overdue players is only available on the production deployment",
+        );
+      }
+
+      let service: InactivityCleanupService;
+      try {
+        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
+      } catch {
+        throw trpcError.internal("Inactivity cleanup service is not available");
+      }
+
+      await service.triggerResolveAndRemove({
+        discordId: ctx.user.discordId,
+        username: ctx.user.minecraftUsername,
+      });
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "inactivity_trigger_resolve_remove",
+        description:
+          "Force-ran inactivity resolve+remove phases (no new warnings)",
+      });
+
+      return { message: "Overdue warnings processed" };
     }),
 });

@@ -3,6 +3,7 @@ import { router, userProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { TRPCError } from "@trpc/server";
 import { getService, Services } from "@/services";
+import config from "@/config";
 
 /** User account router — profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
@@ -23,6 +24,7 @@ export const accountRouter = router({
         minecraftUuid: player.minecraftUuid,
         minecraftUsername: player.minecraftUsername,
         role: ctx.user.role,
+        isOwner: ctx.user.discordId === config.app.auth.owner.discordId,
         createdAt: player.createdAt.toISOString(),
       };
     }),

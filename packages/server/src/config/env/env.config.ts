@@ -113,14 +113,16 @@ const envSchema = z.object({
   // URI in the Discord developer portal. Used by /api/auth/sso/start +
   // /api/auth/sso/callback.
   SSO_CALLBACK_URL: z.string().default(""),
-  // Comma-separated list of regex patterns. After SSO callback, the user is
-  // redirected to ?return_to=... only if the URL matches one of these.
-  // Example: "^https://[a-z0-9-]+\\.createrington\\.com(/.*)?$"
-  SSO_RETURN_TO_WHITELIST: z.string().default(""),
   // Comma-separated list of additional CORS origins (e.g.
   // "https://sandbox.createrington.com") that are allowed to call the API
-  // with credentials. Required for cross-subdomain refresh-token rotation.
+  // with credentials. Doubles as the SSO return-to allowlist — the main
+  // website is included automatically via config.meta.links.website.
   SSO_CORS_ORIGINS: z.string().default(""),
+  // Discord ID of the sole owner — gates the owner-only admin management
+  // panel. Must be a Discord snowflake (17–20 digits).
+  OWNER_DISCORD_ID: z
+    .string()
+    .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
   // Minecraft Servers
   COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),

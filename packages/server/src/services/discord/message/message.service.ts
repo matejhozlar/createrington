@@ -132,13 +132,14 @@ export class DiscordMessageService {
         };
       }
 
+      // Default `{ parse: [] }` — arbitrary content cannot trigger @everyone / role / user pings unless the caller opts in.
       const messageOptions: MessageCreateOptions = {
         content: options.content,
         embeds: options.embeds ? [options.embeds] : undefined,
         components: options.components,
         files: options.files,
         flags: options.flags,
-        allowedMentions: options.allowedMentions,
+        allowedMentions: options.allowedMentions ?? { parse: [] },
       };
 
       const message = await channel.send(messageOptions);
@@ -219,6 +220,7 @@ export class DiscordMessageService {
         components:
           options.components === null ? [] : (options.components ?? undefined),
         files: options.files,
+        allowedMentions: { parse: [] },
       };
 
       const editedMessage = await message.edit(editOptions);
@@ -341,6 +343,7 @@ export class DiscordMessageService {
         embeds: options.embeds ? [options.embeds] : undefined,
         components: options.components,
         files: options.files,
+        allowedMentions: { parse: [] },
       });
 
       logger.info(

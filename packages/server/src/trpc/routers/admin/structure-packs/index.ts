@@ -12,6 +12,16 @@ import {
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation";
 
+// Basename-only — fileName is joined into `path.join(MODS_DIR, fileName)` and SFTP paths.
+const modFileName = z
+  .string()
+  .min(1)
+  .max(200)
+  .regex(
+    /^[A-Za-z0-9._-]+\.jar$/,
+    "fileName must be a basename (no path separators) ending in .jar",
+  );
+
 /** Resolves the structure pack rotation service from the DI container */
 async function getRotationService(): Promise<StructurePackRotationService> {
   return getService(Services.STRUCTURE_PACK_ROTATION);
@@ -130,7 +140,7 @@ export const adminStructurePacksRouter = router({
         packId: z.coerce.number().int().positive(),
         curseforgeModId: z.number().int().positive(),
         curseforgeFileId: z.number().int().positive(),
-        fileName: z.string().min(1),
+        fileName: modFileName,
         modName: z.string().min(1),
         modUrl: z.string().url().optional(),
         thumbnailUrl: z.string().url().optional(),
@@ -317,7 +327,7 @@ export const adminStructurePacksRouter = router({
               z.object({
                 curseforgeModId: z.number().int().positive(),
                 curseforgeFileId: z.number().int().positive(),
-                fileName: z.string().min(1),
+                fileName: modFileName,
                 modName: z.string().min(1),
                 modUrl: z.string().url().nullish(),
                 thumbnailUrl: z.string().url().nullish(),

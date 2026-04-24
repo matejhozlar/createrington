@@ -1,6 +1,7 @@
 import config from "@/config";
 import type { NextFunction, Request, Response } from "express";
 import { UnauthorizedError } from "./error-handler";
+import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 /**
  * Verify the X-Sync-Secret header matches the configured playtime sync secret.
@@ -21,7 +22,10 @@ export const verifySyncSecret = (
     return;
   }
 
-  if (secret !== config.sync.secret) {
+  if (
+    typeof secret !== "string" ||
+    !timingSafeEqualStrings(secret, config.sync.secret)
+  ) {
     logger.warn("Invalid sync secret received on internal presence endpoint");
     next(new UnauthorizedError("Invalid sync secret"));
     return;

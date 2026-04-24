@@ -1,3 +1,32 @@
+## v1.11.0 (2026-04-24)
+
+### @createrington/server (1.10.1 → 1.11.0)
+- Unify mod authentication on self-signed JWTs with audience claim — all mod-facing endpoints (`/api/currency`, `/api/trains`, `/api/presence`) now authenticate via a single `modJwt` middleware that verifies a self-signed JWT with an `aud: "createrington-mod"` claim, replacing the previous shared-secret and mixed-auth schemes; server-level tokens (no player UUID/name) are accepted for endpoints that don't require player context
+- Remove legacy currency and trains routes — the `/api/legacy/currency` and `/api/legacy/trains` endpoints (flat-response compatibility shims for pre-envelope mod clients) are deleted now that all mod clients have migrated to the current API
+- Add owner-only admin management panel — new `owner` tRPC router with procedures to list admins, view the admin audit log, promote users to admin, and demote existing admins; promotion and demotion are logged with an audit trail and optionally notify a Discord channel
+- Add admin-chat history page — new tRPC procedures and REST routes let admins browse, search, and view past assistant chat sessions with full message history and metadata
+- Add inactivity notification on removal — when the cleanup service removes a player for inactivity, an admin notification embed is now sent to the configured Discord channel summarising the removal
+- Add process-overdue action to the inactivity panel — admins can trigger processing of all overdue warnings in bulk from the inactivity management UI
+- Deduplicate inactivity panel rows and exclude admins from the sweep — the warning query now deduplicates by player and the cleanup service skips players with admin privileges
+- Add freeform highlights to the modpack changelog tool — the announcement builder now supports user-defined highlight blocks (title + description) that render above mod lists in the changelog embed
+- Cache player existence in `requireKnownPlayer` — the middleware now caches verified player IDs in memory, avoiding a DB query on every authenticated request for returning players
+- Harden mod API IP gate — the server-IP middleware now validates against a strict allowlist and rejects requests from unrecognised origins; the `fromUuid` shortcut route is removed
+- Security hardening batch — strict Bearer prefix parsing on Authorization headers, exact-origin allowlist for SSO return-to URLs (replacing regex), timing-safe comparison for shared secrets, admin-input sanitisation on embed/FAQ mutations, savepoint name escaping in transactions, and ticket transcript path traversal guard
+- Logging and error hygiene — suppress stack traces for expected 4xx errors, redact sensitive fields from request logs, and guard against unhandled promise rejections in Discord event handlers
+- Patch audit vulnerabilities via pnpm overrides for transitive dependencies
+- Reject nil-UUID fakeplayers in the playtime pipeline — the playtime service now validates incoming UUIDs and drops events from non-player entities (e.g. fake-player automation) before they reach the database
+
+### @createrington/client (0.2.11 → 0.2.12)
+- Add owner-only admin management panel — new sidebar section and pages for owners to view, promote, and demote admins with confirmation dialogs and an audit feed
+- Add admin-chat history page — browsable list of past assistant sessions with search, pagination, and a detail view showing the full conversation
+- Add copy button to admin-chat code blocks — fenced code blocks in assistant responses now have a one-click copy button
+- Add freeform highlights to the modpack changelog tool — the changelog builder UI now includes a highlights section where users can add titled description blocks that appear above the mod list
+- Fix owner demote dialog close button and admin chat hover interaction issues
+- Fix owner panel UI follow-ups — spacing, alignment, and responsive layout refinements
+
+### @createrington/shared (1.1.1 → 1.1.2)
+- Restrict embed URL fields to HTTP(S) schemes — all URL fields in the embed data schema now reject `javascript:`, `data:`, and `file:` URIs, accepting only `http://` and `https://` URLs
+
 ## v1.10.1 (2026-04-23)
 
 ### @createrington/server (1.10.0 → 1.10.1)

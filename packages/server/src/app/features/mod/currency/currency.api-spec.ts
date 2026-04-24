@@ -10,41 +10,6 @@ export default defineApiSpec({
   enveloped: true,
   endpoints: [
     {
-      method: "POST",
-      path: "/login",
-      name: "Login",
-      description:
-        "Creates a short-lived JWT (10 min) for subsequent currency requests. Only requires server IP verification.",
-      auth: "Server IP",
-      request: {
-        name: "LoginRequest",
-        fields: [
-          {
-            name: "uuid",
-            type: "string",
-            description: "Minecraft player UUID",
-          },
-          {
-            name: "name",
-            type: "string",
-            nullable: true,
-            description:
-              "Minecraft username; optional. Resolved from the player record when omitted.",
-          },
-        ],
-      },
-      response: {
-        name: "LoginResponse",
-        fields: [
-          {
-            name: "token",
-            type: "string",
-            description: "HS256 JWT, expires in 10 minutes",
-          },
-        ],
-      },
-    },
-    {
       method: "GET",
       path: "/balance",
       name: "Balance",
@@ -60,7 +25,8 @@ export default defineApiSpec({
       method: "POST",
       path: "/pay",
       name: "Pay",
-      description: "Transfers currency between two players.",
+      description:
+        "Transfers currency from the authenticated player to the recipient.",
       request: {
         name: "PayRequest",
         fields: [
@@ -73,12 +39,6 @@ export default defineApiSpec({
             name: "amount",
             type: "double",
             description: "Positive amount to transfer",
-          },
-          {
-            name: "fromUuid",
-            type: "string",
-            nullable: true,
-            description: "Sender UUID; defaults to authenticated player",
           },
         ],
       },
