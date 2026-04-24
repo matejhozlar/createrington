@@ -18,13 +18,25 @@ export interface WarningToRemove {
 /**
  * Runs the full removal sequence for a single inactivity warning:
  *
- * 1. Kicks the Discord guild member if they're still present
- * 2. Removes the player from all Minecraft server whitelists via RCON
- * 3. Deletes the player record (cascades to related tables)
- * 4. Marks the warning row as removed
+ * 1. Marks the warning row as removed (must happen first — see below)
+ * 2. Kicks the Discord guild member if they're still present
+ * 3. Removes the player from all Minecraft server whitelists via RCON
+ * 4. Deletes the player record (cascades to the warning row)
+ *
+ * Step 1 runs before step 2 so the `guildMemberRemove` event handler
+ * (`leave-notification.ts`) can reliably detect an inactivity-driven
+ * departure and skip posting the "member left" notification with a
+ * Yeet-from-database button. If we kicked first, the event handler
+ * races with step 4 and may observe the player still present with no
+ * `removed_at` set, producing a stale notification whose Yeet button
+ * fails once the player record is deleted.
+ *
+ * We cannot simply reorder the player delete before the kick because
+ * the `player_inactivity_warning.player_minecraft_uuid` FK cascades,
+ * which would delete the warning row we're trying to update.
  *
  * Discord kick and RCON failures are logged but do not abort the rest
- * of the sequence — the DB delete and `markRemoved` update always run.
+ * of the sequence — the DB delete always runs.
  *
  * @param warning - The warning to process
  * @param reason - Reason string passed to the Discord kick
@@ -33,6 +45,8 @@ export async function removeInactiveWarning(
   warning: WarningToRemove,
   reason = "Inactivity: 60+ days without logging in",
 ): Promise<void> {
+  await Q.player.inactivity.warning.markRemoved(warning.id);
+
   try {
     const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
     const guild = mainBot.guilds.cache.first();
@@ -69,8 +83,6 @@ export async function removeInactiveWarning(
   await Q.player.delete({
     minecraftUuid: warning.playerMinecraftUuid,
   });
-
-  await Q.player.inactivity.warning.markRemoved(warning.id);
 
   logger.info(
     `Removed inactive player ${warning.minecraftUsername} (warned ${warning.warnedAt.toISOString()})`,
