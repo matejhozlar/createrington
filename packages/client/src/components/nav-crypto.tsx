@@ -147,16 +147,15 @@ export function NavCrypto() {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-      <SidebarMenuItem
-        onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-        onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
-      >
+      <SidebarMenuItem>
         <Tooltip>
           <TooltipTrigger asChild>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
                 isActive={isCryptoActive}
+                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
+                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
                 className={cn(
                   "cursor-pointer",
                   isCryptoActive && "text-primary! bg-primary/5!",

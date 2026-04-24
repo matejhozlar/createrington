@@ -156,15 +156,14 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-      <SidebarMenuItem
-        onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-        onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
-      >
+      <SidebarMenuItem>
         <Tooltip>
           <TooltipTrigger asChild>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
+                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
+                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
                 className={cn(
                   "text-destructive hover:text-destructive hover:bg-destructive/10",
                   isAdminActive && "bg-destructive/20 font-medium",

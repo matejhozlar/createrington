@@ -16,6 +16,11 @@ interface ServerIconProps extends HTMLMotionProps<"div"> {
   isAnimated?: boolean;
 }
 
+const TOP_CLOSED = "M2 2 L22 2 L22 6 L22 10 L2 10 Z";
+const TOP_OPEN = "M2 2 L22 2 L14 6 L22 10 L2 10 Z";
+const BOTTOM_CLOSED = "M2 14 L22 14 L22 18 L22 22 L2 22 Z";
+const BOTTOM_OPEN = "M2 14 L22 14 L14 18 L22 22 L2 22 Z";
+
 const ServerIcon = forwardRef<ServerIconHandle, ServerIconProps>(
   (
     {
@@ -59,25 +64,27 @@ const ServerIcon = forwardRef<ServerIconHandle, ServerIconProps>(
       [controls, onMouseLeave],
     );
 
-    const topLedVariants: Variants = {
-      normal: { opacity: 1 },
+    const topRackVariants: Variants = {
+      normal: { d: TOP_CLOSED },
       animate: {
-        opacity: [1, 0.15, 1, 0.15, 1],
+        d: [TOP_CLOSED, TOP_OPEN, TOP_CLOSED],
         transition: {
-          duration: 0.9 * duration,
+          duration: 0.55 * duration,
           ease: "easeInOut",
+          times: [0, 0.5, 1],
         },
       },
     };
 
-    const bottomLedVariants: Variants = {
-      normal: { opacity: 1 },
+    const bottomRackVariants: Variants = {
+      normal: { d: BOTTOM_CLOSED },
       animate: {
-        opacity: [1, 0.15, 1, 0.15, 1],
+        d: [BOTTOM_CLOSED, BOTTOM_OPEN, BOTTOM_CLOSED],
         transition: {
-          duration: 0.9 * duration,
+          duration: 0.55 * duration,
           ease: "easeInOut",
-          delay: 0.15,
+          times: [0, 0.5, 1],
+          delay: 0.12,
         },
       },
     };
@@ -102,26 +109,18 @@ const ServerIcon = forwardRef<ServerIconHandle, ServerIconProps>(
           animate={controls}
           initial="normal"
         >
-          <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
-          <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
-          <motion.line
-            x1="6"
-            x2="6.01"
-            y1="6"
-            y2="6"
-            variants={topLedVariants}
+          <motion.path
+            variants={topRackVariants}
             initial="normal"
             animate={controls}
           />
-          <motion.line
-            x1="6"
-            x2="6.01"
-            y1="18"
-            y2="18"
-            variants={bottomLedVariants}
+          <motion.path
+            variants={bottomRackVariants}
             initial="normal"
             animate={controls}
           />
+          <line x1="6" x2="6.01" y1="6" y2="6" />
+          <line x1="6" x2="6.01" y1="18" y2="18" />
         </motion.svg>
       </motion.div>
     );

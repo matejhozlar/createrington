@@ -120,15 +120,14 @@ export function NavOwner({ items }: { items: OwnerNavItem[] }) {
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} asChild>
-      <SidebarMenuItem
-        onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-        onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
-      >
+      <SidebarMenuItem>
         <Tooltip>
           <TooltipTrigger asChild>
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
+                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
+                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
                 className={cn(
                   "text-amber-500 hover:text-amber-500 hover:bg-amber-500/10",
                   isOwnerActive && "bg-amber-500/20 font-medium",
