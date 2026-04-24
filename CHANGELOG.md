@@ -1,3 +1,8 @@
+## v1.11.1 (2026-04-24)
+
+### @createrington/client (0.2.12 → 0.2.13)
+- Swap team members on the team page — replace Stratos65 and imahomen with diablothe2nd and Tetsuoken, updating player UUIDs, skin viewer animations, and credits
+
 ## v1.11.0 (2026-04-24)
 
 ### @createrington/server (1.10.1 → 1.11.0)

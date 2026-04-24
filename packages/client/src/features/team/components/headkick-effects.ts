@@ -298,7 +298,7 @@ export class HeadKickAnimation extends PlayerAnimation {
 }
 
 // Kick animation (Cailin05)
-// Cailin turns, walks toward imahomen's fallen head, kicks it,
+// Cailin turns, walks toward Tetsuoken's fallen head, kicks it,
 // then retreats back to her original position.
 
 export class KickAnimation extends PlayerAnimation {
@@ -322,7 +322,7 @@ export class KickAnimation extends PlayerAnimation {
     const elapsed = this.progress - this.phaseStart;
 
     switch (this.phase) {
-      //  Turn to face left (toward imahomen)
+      //  Turn to face left (toward Tetsuoken)
       case "turn": {
         const t = Math.min(elapsed / TURN_DURATION, 1);
         const e = easeInOutCubic(t);
@@ -343,7 +343,7 @@ export class KickAnimation extends PlayerAnimation {
         break;
       }
 
-      // ── Walk toward imahomen (canvas slides left) ────────
+      // ── Walk toward Tetsuoken (canvas slides left) ────────
       case "walk": {
         const t = Math.min(elapsed / WALK_DURATION, 1);
 

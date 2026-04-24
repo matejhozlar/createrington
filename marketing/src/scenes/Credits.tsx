@@ -21,8 +21,6 @@ const CREDIT_SECTIONS = [
     label: "The Team",
     members: [
       { uuid: "32ff995f-cf92-417b-b745-891738346120", name: "Tetsuoken" },
-      { uuid: "25f73ab5-39e3-4bf7-bd52-9ad7407fdb3e", name: "Stratos65" },
-      { uuid: "69bc13fe-1972-480e-8075-c88340d7b7da", name: "imahomen" },
       { uuid: "aee71815-6420-444c-a245-9047c41f4a39", name: "Cailin05" },
     ],
   },
