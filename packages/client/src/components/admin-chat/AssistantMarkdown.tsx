@@ -1,10 +1,62 @@
+import { useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import { Check, Copy } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface AssistantMarkdownProps {
   text: string;
   navigate: (to: string) => void;
+}
+
+function CodeBlock({ children }: { children?: React.ReactNode }) {
+  const preRef = useRef<HTMLPreElement>(null);
+  const [copied, setCopied] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = async () => {
+    const source = preRef.current?.innerText ?? "";
+    if (!source) return;
+    try {
+      await navigator.clipboard.writeText(source);
+      setCopied(true);
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+      resetTimer.current = setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard API can fail if the tab isn't focused or permissions are
+      // revoked. The assistant message stays readable — no user-facing
+      // recovery needed beyond leaving the button in its default state.
+    }
+  };
+
+  return (
+    <div className="group/code relative">
+      <pre
+        ref={preRef}
+        className="my-1 overflow-x-auto whitespace-pre rounded-md bg-background p-2 pr-9 font-mono text-xs"
+      >
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy code"}
+        className={cn(
+          "absolute right-1.5 top-1.5 flex size-6 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground transition-all",
+          "opacity-0 group-hover/code:opacity-100 focus-visible:opacity-100",
+          "hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          copied && "opacity-100 text-emerald-500 hover:text-emerald-500",
+        )}
+      >
+        {copied ? (
+          <Check className="size-3.5" />
+        ) : (
+          <Copy className="size-3.5" />
+        )}
+      </button>
+    </div>
+  );
 }
 
 export function AssistantMarkdown({
@@ -62,11 +114,7 @@ export function AssistantMarkdown({
             ) : (
               <code className={className}>{children}</code>
             ),
-          pre: ({ children }) => (
-            <pre className="my-1 overflow-x-auto whitespace-pre rounded-md bg-background p-2 font-mono text-xs">
-              {children}
-            </pre>
-          ),
+          pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
           table: ({ children }) => (
             <div className="my-1.5 overflow-x-auto">
               <table className="w-full border-collapse text-xs">
