@@ -1,14 +1,16 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import {
-  BadgeCheck,
-  ChevronsUpDown,
-  FileText,
-  Heart,
-  Loader2,
-  LogOut,
-  Settings,
-} from "lucide-react";
+  type AnimatedIconHandle,
+  BadgeCheckIcon,
+  ChevronsUpDownIcon,
+  FileTextIcon,
+  HeartIcon,
+  LogoutIcon,
+  SettingsIcon,
+} from "@createrington/icons";
+import { useRef } from "react";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +74,12 @@ function TriggerSummary({
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const { logout, loading } = useAuth();
+  const chevronRef = useRef<AnimatedIconHandle>(null);
+  const settingsRef = useRef<AnimatedIconHandle>(null);
+  const adminPanelRef = useRef<AnimatedIconHandle>(null);
+  const changelogRef = useRef<AnimatedIconHandle>(null);
+  const donateRef = useRef<AnimatedIconHandle>(null);
+  const logoutRef = useRef<AnimatedIconHandle>(null);
 
   const handleLogout = () => {
     logout();
@@ -96,6 +104,8 @@ export function NavUser({ user }: { user: User }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
+              onMouseEnter={() => chevronRef.current?.startAnimation()}
+              onMouseLeave={() => chevronRef.current?.stopAnimation()}
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <TriggerSummary
@@ -105,7 +115,11 @@ export function NavUser({ user }: { user: User }) {
                 minecraftUsername={user.minecraftUsername}
                 username={user.username}
               />
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDownIcon
+                ref={chevronRef}
+                size={16}
+                className="ml-auto block shrink-0"
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
@@ -142,9 +156,17 @@ export function NavUser({ user }: { user: User }) {
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
               Account
             </DropdownMenuLabel>
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem
+              asChild
+              onMouseEnter={() => settingsRef.current?.startAnimation()}
+              onMouseLeave={() => settingsRef.current?.stopAnimation()}
+            >
               <NavLink to="/settings" className="cursor-pointer">
-                <Settings />
+                <SettingsIcon
+                  ref={settingsRef}
+                  size={16}
+                  className="block shrink-0"
+                />
                 Settings
               </NavLink>
             </DropdownMenuItem>
@@ -155,15 +177,31 @@ export function NavUser({ user }: { user: User }) {
                 <DropdownMenuLabel className="text-xs font-normal text-destructive/80">
                   Admin
                 </DropdownMenuLabel>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem
+                  asChild
+                  onMouseEnter={() => adminPanelRef.current?.startAnimation()}
+                  onMouseLeave={() => adminPanelRef.current?.stopAnimation()}
+                >
                   <NavLink to="/admin/dashboard" className="cursor-pointer">
-                    <BadgeCheck className="text-destructive/80" />
+                    <BadgeCheckIcon
+                      ref={adminPanelRef}
+                      size={16}
+                      className="block shrink-0 text-destructive/80"
+                    />
                     Admin Panel
                   </NavLink>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem
+                  asChild
+                  onMouseEnter={() => changelogRef.current?.startAnimation()}
+                  onMouseLeave={() => changelogRef.current?.stopAnimation()}
+                >
                   <NavLink to="/admin/changelog" className="cursor-pointer">
-                    <FileText className="text-destructive/80" />
+                    <FileTextIcon
+                      ref={changelogRef}
+                      size={16}
+                      className="block shrink-0 text-destructive/80"
+                    />
                     Changelog
                   </NavLink>
                 </DropdownMenuItem>
@@ -172,9 +210,17 @@ export function NavUser({ user }: { user: User }) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem
+              asChild
+              onMouseEnter={() => donateRef.current?.startAnimation()}
+              onMouseLeave={() => donateRef.current?.stopAnimation()}
+            >
               <NavLink to="/donate" className="cursor-pointer">
-                <Heart className="text-rose-400" />
+                <HeartIcon
+                  ref={donateRef}
+                  size={16}
+                  className="block shrink-0 text-rose-400"
+                />
                 Donate
               </NavLink>
             </DropdownMenuItem>
@@ -185,9 +231,19 @@ export function NavUser({ user }: { user: User }) {
               variant="destructive"
               onClick={handleLogout}
               disabled={loading}
+              onMouseEnter={() => logoutRef.current?.startAnimation()}
+              onMouseLeave={() => logoutRef.current?.stopAnimation()}
               className="cursor-pointer"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <LogOut />}
+              {loading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <LogoutIcon
+                  ref={logoutRef}
+                  size={16}
+                  className="block shrink-0"
+                />
+              )}
               Log out
             </DropdownMenuItem>
 
