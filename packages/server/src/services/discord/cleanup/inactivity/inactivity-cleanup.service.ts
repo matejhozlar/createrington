@@ -6,6 +6,15 @@ import { DiscordMessageService } from "@/services/discord/message/message.servic
 import { removeInactiveWarning } from "./remove-warning";
 
 /**
+ * Who triggered a cleanup run. `null` means the scheduled tick or the
+ * startup sweep — the admin-notification embed renders it as "Automated".
+ */
+export type InactivityTriggerContext = {
+  discordId: string;
+  username: string | null;
+} | null;
+
+/**
  * Inactivity Cleanup Service
  *
  * Periodically checks for players who haven't logged in for 60+ days and
@@ -64,11 +73,13 @@ export class InactivityCleanupService {
    * Order matters: resolve first so players who just returned aren't
    * accidentally included in the removal phase.
    */
-  private async runCycle(): Promise<void> {
+  private async runCycle(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     try {
       await this.resolveReturned();
       await this.warnInactive();
-      await this.removeExpired();
+      await this.removeExpired(triggeredBy);
     } catch (error) {
       logger.error("Error during inactivity cleanup cycle:", error);
       throw error;
@@ -163,8 +174,13 @@ export class InactivityCleanupService {
   /**
    * Remove players whose grace period has expired without them returning.
    * Kicks from Discord, removes from whitelist, deletes player record.
+   * Posts both a public #announcements embed and an admin-facing embed
+   * to #admin-notifications that names the triggering admin (or
+   * "Automated" for the scheduled tick / startup sweep).
    */
-  private async removeExpired(): Promise<void> {
+  private async removeExpired(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     const expiredWarnings =
       await Q.player.inactivity.warning.findExpiredWarnings(this.GRACE_DAYS);
 
@@ -201,14 +217,15 @@ export class InactivityCleanupService {
     }
 
     if (removedUsernames.length > 0) {
+      const removedAt = new Date();
+      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
+      const messageService = DiscordMessageService.getInstance(mainBot);
+
       try {
         const embed = EmbedPresets.inactivity.removed({
           players: removedUsernames,
-          removedAt: new Date(),
+          removedAt,
         });
-
-        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-        const messageService = DiscordMessageService.getInstance(mainBot);
 
         await messageService.send({
           channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
@@ -221,6 +238,24 @@ export class InactivityCleanupService {
       } catch (error) {
         logger.error("Failed to send inactivity removal announcement:", error);
       }
+
+      try {
+        const adminEmbed = EmbedPresets.inactivity.adminRemoval({
+          players: removedUsernames,
+          triggeredBy,
+          removedAt,
+        });
+
+        await messageService.send({
+          channelId: Discord.Channels.administration.NOTIFICATIONS,
+          embeds: adminEmbed.build(),
+        });
+      } catch (error) {
+        logger.error(
+          "Failed to send inactivity removal admin notification:",
+          error,
+        );
+      }
     }
   }
 
@@ -231,24 +266,30 @@ export class InactivityCleanupService {
    * admin panel when admins want to process overdue players without
    * triggering new warning announcements in #announcements.
    */
-  async resolveAndRemoveOnly(): Promise<void> {
+  async resolveAndRemoveOnly(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     try {
       await this.resolveReturned();
-      await this.removeExpired();
+      await this.removeExpired(triggeredBy);
     } catch (error) {
       logger.error("Error during resolve/remove cycle:", error);
       throw error;
     }
   }
 
-  async triggerManualCleanup(): Promise<void> {
+  async triggerManualCleanup(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     logger.info("Manual inactivity cleanup triggered");
-    await this.runCycle();
+    await this.runCycle(triggeredBy);
   }
 
-  async triggerResolveAndRemove(): Promise<void> {
+  async triggerResolveAndRemove(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     logger.info("Manual inactivity resolve+remove triggered (no new warnings)");
-    await this.resolveAndRemoveOnly();
+    await this.resolveAndRemoveOnly(triggeredBy);
   }
 
   /**
@@ -258,7 +299,9 @@ export class InactivityCleanupService {
    *
    * Used by the owner-only /force-inactivity-cleanup command.
    */
-  async forceRunAndResetSchedule(): Promise<void> {
+  async forceRunAndResetSchedule(
+    triggeredBy: InactivityTriggerContext = null,
+  ): Promise<void> {
     logger.info(
       "Forced inactivity cleanup triggered — resetting recurring schedule",
     );
@@ -269,7 +312,7 @@ export class InactivityCleanupService {
     }
 
     try {
-      await this.runCycle();
+      await this.runCycle(triggeredBy);
     } finally {
       this.intervalId = setInterval(() => {
         this.runCycle().catch((error) => {

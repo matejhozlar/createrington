@@ -37,7 +37,10 @@ export async function execute(
       return;
     }
 
-    await service.forceRunAndResetSchedule();
+    await service.forceRunAndResetSchedule({
+      discordId: interaction.user.id,
+      username: interaction.user.username,
+    });
 
     const embed = EmbedPresets.success(
       "Inactivity Cleanup Triggered",
