@@ -24,6 +24,9 @@ import { container, Services, getServiceSync } from "@/services";
 export function createApp(): Express {
   const app = express();
   if (config.envMode.isProd) {
+    // One hop: the front proxy (Cloudflare -> Caddy/nginx) must replace any
+    // client-supplied X-Forwarded-For before forwarding, otherwise req.ip
+    // and rate-limit keys can be spoofed.
     app.set("trust proxy", 1);
   }
 

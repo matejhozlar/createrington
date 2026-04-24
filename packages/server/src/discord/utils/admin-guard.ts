@@ -82,10 +82,10 @@ export async function requireOwner(
 ): Promise<boolean> {
   const member = resolveGuildMember(interaction);
 
-  if (!member || !(await isAdmin(member))) {
+  if (!member || !RoleManager.has(member, Discord.Roles.OWNER)) {
     const embed = EmbedPresets.error(
       "Permission denied",
-      "This command requires administrator privileges",
+      "This command is owner-only",
     );
     await interaction.reply({
       embeds: [embed.build()],
@@ -94,7 +94,7 @@ export async function requireOwner(
     return false;
   }
 
-  return RoleManager.has(member, Discord.Roles.OWNER);
+  return true;
 }
 
 /**
