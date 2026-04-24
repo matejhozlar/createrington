@@ -15,6 +15,7 @@ vi.mock("@/config", () => ({
   },
 }));
 
+import jwt from "jsonwebtoken";
 import { JWTService } from "@/services/auth/jwt/jwt.service";
 import { AuthRole } from "@createrington/shared/auth";
 import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
@@ -152,10 +153,10 @@ describe("JWTService", () => {
   });
 });
 
+const TEST_SECRET = "test-secret-please-do-not-use-in-prod";
+
 // Helper: sign a token with a different secret (without going through the service)
 function signWithSecret(user: AuthenticatedUser, secret: string): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const jwt = require("jsonwebtoken");
   return jwt.sign(
     {
       discordId: user.discordId,
@@ -170,11 +171,7 @@ function signWithSecret(user: AuthenticatedUser, secret: string): string {
   );
 }
 
-const TEST_SECRET = "test-secret-please-do-not-use-in-prod";
-
 function signModToken(payload: { uuid: string; name: string }): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const jwt = require("jsonwebtoken");
   return jwt.sign(payload, TEST_SECRET, {
     algorithm: "HS256",
     audience: "createrington.mod",
@@ -183,8 +180,6 @@ function signModToken(payload: { uuid: string; name: string }): string {
 }
 
 function signAsWeb(payload: Record<string, unknown>): string {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const jwt = require("jsonwebtoken");
   return jwt.sign(payload, TEST_SECRET, {
     algorithm: "HS256",
     audience: "createrington.web",

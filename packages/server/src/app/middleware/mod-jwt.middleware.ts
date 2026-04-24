@@ -20,10 +20,10 @@ function assertModJwtPayload(value: unknown): ModJwtPayload {
     throw new UnauthorizedError("Invalid token");
   }
   const p = value as Record<string, unknown>;
+  // aud is enforced by jwt.verify above; no need to re-check here.
   if (
     typeof p.uuid !== "string" ||
     typeof p.name !== "string" ||
-    typeof p.aud !== "string" ||
     typeof p.iat !== "number" ||
     typeof p.exp !== "number"
   ) {
