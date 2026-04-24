@@ -60,10 +60,12 @@ export function AdminChatHistory() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
   const loadFirstPage = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setLoadMoreError(null);
     try {
       const page = await fetchChatSessions({ limit: 25 });
       setSessions(page.sessions);
@@ -78,12 +80,16 @@ export function AdminChatHistory() {
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
+    setLoadMoreError(null);
     try {
       const page = await fetchChatSessions({ limit: 25, cursor: nextCursor });
       setSessions((prev) => [...prev, ...page.sessions]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load more");
+      // Inline error — don't clobber the whole list on a pagination failure.
+      setLoadMoreError(
+        err instanceof Error ? err.message : "Failed to load more",
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -216,7 +222,7 @@ export function AdminChatHistory() {
             </div>
 
             {nextCursor !== null && (
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-2">
                 <Button
                   variant="outline"
                   onClick={() => void loadMore()}
@@ -224,6 +230,9 @@ export function AdminChatHistory() {
                 >
                   {loadingMore ? "Loading…" : "Load more"}
                 </Button>
+                {loadMoreError && (
+                  <p className="text-sm text-destructive">{loadMoreError}</p>
+                )}
               </div>
             )}
           </>
