@@ -86,6 +86,37 @@ export const verifyModJWT = (
 };
 
 /**
+ * In-process TTL cache of "player exists" to avoid re-querying on every
+ * mod currency request. TTL matches the mod token lifetime so stale
+ * positives are bounded: a player deleted mid-window may be admitted
+ * for up to TTL, but downstream controllers still touch the player row
+ * and fail there — this middleware is a fail-fast gate, not the sole
+ * authorization check. Positives only; caching negatives would re-
+ * introduce the just-registered-player rejection that killed /login.
+ */
+const PLAYER_EXISTS_CACHE_TTL_MS = 60_000;
+const playerExistsCache = new Map<string, number>();
+
+function isPlayerCached(uuid: string): boolean {
+  const expiresAt = playerExistsCache.get(uuid);
+  if (expiresAt === undefined) return false;
+  if (Date.now() >= expiresAt) {
+    playerExistsCache.delete(uuid);
+    return false;
+  }
+  return true;
+}
+
+function rememberPlayer(uuid: string): void {
+  playerExistsCache.set(uuid, Date.now() + PLAYER_EXISTS_CACHE_TTL_MS);
+}
+
+/** Test-only: drop all cache entries. The `__` prefix signals non-production. */
+export function __resetPlayerExistsCacheForTests(): void {
+  playerExistsCache.clear();
+}
+
+/**
  * Per-request proof-of-possession: reject mod requests whose JWT UUID
  * doesn't resolve to a registered player. Runs after `verifyModJWT`,
  * which populates `req.modAuth`. Replaces the login-endpoint check that
@@ -97,10 +128,15 @@ export const requireKnownPlayer: RequestHandler = asyncHandler(
     if (!uuid) {
       throw new UnauthorizedError("Mod authentication required");
     }
+    if (isPlayerCached(uuid)) {
+      next();
+      return;
+    }
     const player = await Q.player.find({ minecraftUuid: uuid });
     if (!player) {
       throw new UnauthorizedError("Unknown player");
     }
+    rememberPlayer(uuid);
     next();
   },
 );

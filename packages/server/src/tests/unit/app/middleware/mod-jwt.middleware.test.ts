@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import jwt from "jsonwebtoken";
 
 vi.mock("@/config", () => ({
@@ -13,10 +13,16 @@ vi.mock("@/config", () => ({
 
 // Module load of mod-jwt.middleware pulls in @/db for requireKnownPlayer.
 // The db boundary eagerly pings Postgres on import — mock it away so the
-// test never needs a live database.
-vi.mock("@/db", () => ({ Q: { player: { find: vi.fn() } } }));
+// test never needs a live database. vi.hoisted so the mock fn is shared
+// between the factory and the test bodies below.
+const { findMock } = vi.hoisted(() => ({ findMock: vi.fn() }));
+vi.mock("@/db", () => ({ Q: { player: { find: findMock } } }));
 
-import { verifyModJWT } from "@/app/middleware/mod-jwt.middleware";
+import {
+  __resetPlayerExistsCacheForTests,
+  requireKnownPlayer,
+  verifyModJWT,
+} from "@/app/middleware/mod-jwt.middleware";
 import type { Request, Response, NextFunction } from "express";
 
 const TEST_SECRET = "test-secret-please-do-not-use-in-prod";
@@ -150,5 +156,112 @@ describe("verifyModJWT", () => {
 
     expect(errors).toHaveLength(1);
     expect((errors[0] as Error).message).toMatch(/authentication required/i);
+  });
+});
+
+describe("requireKnownPlayer", () => {
+  beforeEach(() => {
+    findMock.mockReset();
+    __resetPlayerExistsCacheForTests();
+  });
+
+  const reqWithUuid = (uuid: string | undefined): Request =>
+    ({
+      modAuth: uuid ? { uuid, name: "n", aud: "createrington.mod" } : {},
+    }) as unknown as Request;
+
+  it("queries the DB on a cold miss and admits a known player", async () => {
+    findMock.mockResolvedValueOnce({ minecraftUuid: "u1" });
+    const req = reqWithUuid("u1");
+    const { next, errors, called } = collectNext();
+
+    await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+      req,
+      {} as Response,
+      next,
+    );
+
+    expect(findMock).toHaveBeenCalledTimes(1);
+    expect(errors).toHaveLength(0);
+    expect(called()).toBe(true);
+  });
+
+  it("serves the second request for the same UUID from cache", async () => {
+    findMock.mockResolvedValueOnce({ minecraftUuid: "u1" });
+
+    const run = async () => {
+      const { next, errors } = collectNext();
+      await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+        reqWithUuid("u1"),
+        {} as Response,
+        next,
+      );
+      return errors;
+    };
+
+    expect(await run()).toHaveLength(0);
+    expect(await run()).toHaveLength(0);
+
+    expect(findMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not cache unknown players — second miss still hits the DB", async () => {
+    findMock.mockResolvedValueOnce(null);
+    findMock.mockResolvedValueOnce(null);
+
+    const run = async () => {
+      const { next, errors } = collectNext();
+      await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+        reqWithUuid("u-missing"),
+        {} as Response,
+        next,
+      );
+      return errors;
+    };
+
+    expect(await run()).toHaveLength(1);
+    expect(await run()).toHaveLength(1);
+
+    expect(findMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("re-queries after the cache TTL expires", async () => {
+    vi.useFakeTimers();
+    try {
+      findMock.mockResolvedValue({ minecraftUuid: "u1" });
+
+      const run = async () => {
+        const { next, errors } = collectNext();
+        await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+          reqWithUuid("u1"),
+          {} as Response,
+          next,
+        );
+        return errors;
+      };
+
+      await run();
+      expect(findMock).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(60_001);
+
+      await run();
+      expect(findMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("rejects when req.modAuth.uuid is missing", async () => {
+    const { next, errors } = collectNext();
+
+    await (requireKnownPlayer as (...a: unknown[]) => Promise<void>)(
+      reqWithUuid(undefined),
+      {} as Response,
+      next,
+    );
+
+    expect(findMock).not.toHaveBeenCalled();
+    expect(errors).toHaveLength(1);
   });
 });
