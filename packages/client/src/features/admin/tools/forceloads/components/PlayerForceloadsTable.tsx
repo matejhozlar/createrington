@@ -1,9 +1,8 @@
 import { Fragment, useState } from "react";
-import { Link } from "react-router-dom";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
-import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { PlayerLabel } from "@/components/player-label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -145,7 +144,7 @@ export function PlayerForceloadsTable({
                         <PlayerLabel
                           uuid={player.playerUuid}
                           name={displayName}
-                          resolved={resolved}
+                          linkable={resolved}
                         />
                       </TableCell>
                       <TableCell>{player.totalChunks}</TableCell>
@@ -182,39 +181,3 @@ export function PlayerForceloadsTable({
     </Card>
   );
 }
-
-function PlayerLabel({
-  uuid,
-  name,
-  resolved,
-  size = 24,
-}: {
-  uuid: string;
-  name: string;
-  resolved: boolean;
-  size?: number;
-}) {
-  if (!resolved) {
-    return (
-      <div className="flex items-center gap-2">
-        <MinecraftAvatar username={name} uuid={uuid} size={size} />
-        <span className="font-medium">{name}</span>
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      to={`/admin/players/${uuid}`}
-      onClick={(e) => e.stopPropagation()}
-      className="group flex items-center gap-2 rounded"
-    >
-      <MinecraftAvatar username={name} uuid={uuid} size={size} />
-      <span className="font-medium transition-colors group-hover:text-primary">
-        {name}
-      </span>
-    </Link>
-  );
-}
-
-export { PlayerLabel };
