@@ -112,6 +112,31 @@ describe("JWTService", () => {
       const otherToken = signWithSecret(baseUser, "different-secret");
       expect(() => service.verify(otherToken)).toThrow("Invalid token");
     });
+
+    it("rejects a mod-signed token even though the secret matches", () => {
+      const modToken = signModToken({
+        uuid: baseUser.minecraftUuid,
+        name: baseUser.minecraftUsername,
+      });
+      expect(() => service.verify(modToken)).toThrow("Invalid token");
+    });
+
+    it("rejects a web-audience token with a malformed payload", () => {
+      const bogus = signAsWeb({ discordId: "x" });
+      expect(() => service.verify(bogus)).toThrow("Invalid token payload");
+    });
+
+    it("rejects a web-audience token with wrong field types", () => {
+      const bogus = signAsWeb({
+        discordId: "x",
+        username: "y",
+        role: "user",
+        isAdmin: "yes",
+        minecraftUuid: "u",
+        minecraftUsername: "n",
+      });
+      expect(() => service.verify(bogus)).toThrow("Invalid token payload");
+    });
   });
 
   describe("decode", () => {
@@ -143,4 +168,26 @@ function signWithSecret(user: AuthenticatedUser, secret: string): string {
     secret,
     { algorithm: "HS256", expiresIn: "15m" },
   );
+}
+
+const TEST_SECRET = "test-secret-please-do-not-use-in-prod";
+
+function signModToken(payload: { uuid: string; name: string }): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const jwt = require("jsonwebtoken");
+  return jwt.sign(payload, TEST_SECRET, {
+    algorithm: "HS256",
+    audience: "createrington.mod",
+    expiresIn: "60s",
+  });
+}
+
+function signAsWeb(payload: Record<string, unknown>): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const jwt = require("jsonwebtoken");
+  return jwt.sign(payload, TEST_SECRET, {
+    algorithm: "HS256",
+    audience: "createrington.web",
+    expiresIn: "15m",
+  });
 }

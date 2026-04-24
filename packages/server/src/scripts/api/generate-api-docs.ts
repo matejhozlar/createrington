@@ -311,7 +311,7 @@ function parseControllerJsDoc(text: string): ControllerDoc {
   for (const line of lines) {
     const trimmed = line.trim();
 
-    // Skip route identifier line (e.g., "POST /api/currency/login")
+    // Skip route identifier line (e.g., "GET /api/auth/me")
     if (/^(GET|POST|PUT|PATCH|DELETE)\s+\//.test(trimmed)) continue;
 
     // Body annotation: "Body: { ... }" or "@body {{ ... }}"
@@ -623,7 +623,7 @@ function generateFullMarkdown(entries: DocEntry[]): string {
     "| **Bearer JWT** | User access token from Discord OAuth. Sent as `Authorization: Bearer {token}` |",
   );
   lines.push(
-    "| **Mod JWT** | Short-lived token (10 min) issued by `POST /api/currency/login`. Same Bearer header |",
+    '| **Mod JWT** | Self-signed short-lived token (HS256, `aud: "createrington.mod"`) minted by the mod via CRNet. Sent as `Authorization: Bearer {token}` |',
   );
   lines.push(
     "| **Server IP** | Request must originate from a whitelisted Minecraft server IP |",

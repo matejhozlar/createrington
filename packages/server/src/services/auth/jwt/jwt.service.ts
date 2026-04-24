@@ -1,7 +1,22 @@
 import config from "@/config";
 import type { AuthenticatedUser } from "@/services/discord/oauth/oauth.service";
 import jwt, { type SignOptions } from "jsonwebtoken";
-import type { JWTPayload } from "@createrington/shared/auth";
+import { AuthRole, type JWTPayload } from "@createrington/shared/auth";
+
+/**
+ * Audience claim for web session tokens. Mod-signed tokens carry
+ * `createrington.mod` instead, so a mod token can never satisfy a web
+ * auth check even though both use the same HS256 secret.
+ */
+export const JWT_AUDIENCE_WEB = "createrington.web";
+
+/** Thrown when a token verifies cryptographically but the payload shape is wrong. */
+export class InvalidJwtPayloadError extends Error {
+  constructor(message = "Invalid token payload") {
+    super(message);
+    this.name = "InvalidJwtPayloadError";
+  }
+}
 
 /**
  * JWT access token service
@@ -50,6 +65,7 @@ export class JWTService {
 
     const token = jwt.sign(payload, this.secret, {
       algorithm: "HS256",
+      audience: JWT_AUDIENCE_WEB,
       expiresIn: this.expiresIn as SignOptions["expiresIn"],
     });
 
@@ -78,27 +94,38 @@ export class JWTService {
 
     return jwt.sign(tokenPayload, this.secret, {
       algorithm: "HS256",
+      audience: JWT_AUDIENCE_WEB,
       expiresIn: this.expiresIn as SignOptions["expiresIn"],
     });
   }
 
   /**
-   * Verifies and decodes a JWT token
+   * Verifies and decodes a JWT token.
    *
-   * @throws Error if token is invalid or expired
+   * Enforces the `createrington.web` audience so mod-signed tokens
+   * (same HS256 secret, different `aud`) are rejected at the library
+   * layer. Also validates the payload shape — `jwt.verify` only checks
+   * signature/exp, so a token with a well-formed header but garbage
+   * body would otherwise slip through the `as JWTPayload` cast.
+   *
+   * @throws Error if token is invalid, expired, or the payload shape is wrong
    */
   verify(token: string): JWTPayload {
     try {
       const decoded = jwt.verify(token, this.secret, {
         algorithms: ["HS256"],
-      }) as JWTPayload;
-      return decoded;
+        audience: JWT_AUDIENCE_WEB,
+      });
+      return assertWebJwtPayload(decoded);
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         throw new Error("Token expired");
       }
       if (error instanceof jwt.JsonWebTokenError) {
         throw new Error("Invalid token");
+      }
+      if (error instanceof InvalidJwtPayloadError) {
+        throw error;
       }
       throw new Error("Token verification failed");
     }
@@ -117,3 +144,25 @@ export class JWTService {
 }
 
 export const jwtService = JWTService.getInstance();
+
+const AUTH_ROLES = Object.values(AuthRole) as string[];
+
+function assertWebJwtPayload(value: unknown): JWTPayload {
+  if (!value || typeof value !== "object") {
+    throw new InvalidJwtPayloadError();
+  }
+  const p = value as Record<string, unknown>;
+  if (
+    typeof p.discordId !== "string" ||
+    typeof p.username !== "string" ||
+    typeof p.minecraftUuid !== "string" ||
+    typeof p.minecraftUsername !== "string" ||
+    typeof p.isAdmin !== "boolean" ||
+    typeof p.role !== "string" ||
+    !AUTH_ROLES.includes(p.role) ||
+    (p.avatar !== undefined && typeof p.avatar !== "string")
+  ) {
+    throw new InvalidJwtPayloadError();
+  }
+  return p as unknown as JWTPayload;
+}

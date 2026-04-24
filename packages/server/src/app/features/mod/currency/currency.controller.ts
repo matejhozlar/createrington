@@ -1,14 +1,10 @@
 import { BadRequestError, respondSuccess } from "@/app/middleware";
-import config from "@/config";
-import { Q, R } from "@/db";
+import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { lotteryService } from "@/services/lottery";
 import { rewardService } from "@/services/reward/reward.service";
 import { formatDuration } from "@/utils/format";
 import type { Request, Response } from "express";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = config.app.auth.accessToken.secret;
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -30,41 +26,6 @@ function formatMoney(amount: number): string {
  * All responses use the standard envelope: { success, message, playerMessage?, data? }
  */
 export class CurrencyController {
-  /**
-   * POST /api/currency/login
-   * Body: { uuid: string, name?: string }
-   *
-   * Creates a short-lived JWT for subsequent currency requests.
-   * Only requires server IP verification (no existing JWT needed).
-   *
-   * `name` is optional. When omitted (e.g. from CRNet's generic login
-   * strategy) it is resolved from the player record; if the player is
-   * unknown, the UUID is used as a display fallback.
-   */
-  static async login(req: Request, res: Response): Promise<void> {
-    const { uuid, name: bodyName } = req.body;
-
-    if (!uuid) {
-      throw new BadRequestError("uuid is required");
-    }
-
-    let name: string | undefined = bodyName;
-    if (!name) {
-      const player = await Q.player.find({ minecraftUuid: uuid });
-      name = player?.minecraftUsername ?? uuid;
-    }
-
-    const token = jwt.sign({ uuid, name }, JWT_SECRET, {
-      algorithm: "HS256",
-      expiresIn: "10m",
-    });
-
-    respondSuccess(res, {
-      message: `Issued mod JWT for ${name}`,
-      data: { token },
-    });
-  }
-
   /**
    * GET /api/currency/balance
    *
