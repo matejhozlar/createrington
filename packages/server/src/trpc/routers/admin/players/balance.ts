@@ -92,7 +92,8 @@ export const balanceRouter = router({
       z.object({
         playerUuids: z
           .array(z.string().min(1))
-          .min(1, "At least one player UUID is required"),
+          .min(1, "At least one player UUID is required")
+          .max(1000, "At most 1000 players per bulk adjust"),
         amount: z.number().int(),
         reason: z.string().min(1, "Reason is required"),
       }),

@@ -9,6 +9,7 @@ import { UnauthorizedError } from "@/app/middleware";
 import { getService, Services } from "@/services";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
+import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 const router = Router();
 
@@ -31,7 +32,12 @@ function requirePuppeteerSecret(
   next: () => void,
 ) {
   const secret = req.headers["x-render-secret"];
-  if (!secret || secret !== config.puppeteer.secret) {
+  const expected = config.puppeteer.secret;
+  if (
+    typeof secret !== "string" ||
+    !expected ||
+    !timingSafeEqualStrings(secret, expected)
+  ) {
     throw new UnauthorizedError("Invalid render secret");
   }
   next();

@@ -4,26 +4,47 @@ import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds/colors";
 import type { Request, Response } from "express";
+import { z } from "zod";
 
-interface TrainCrashPassenger {
-  uuid: string;
-  name?: string;
-  isDriver: boolean;
-}
+const uuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    "Invalid UUID",
+  );
+const playerNameSchema = z.string().min(1).max(32);
 
-interface TrainCrashPayload {
-  trainId: string;
-  trainName: string;
-  speed: number;
-  carriageCount: number;
-  position: { x: number; y: number; z: number } | null;
-  dimension: string;
-  timestamp: number;
-  owner?: string;
-  driverUuid?: string;
-  passengers?: TrainCrashPassenger[];
-  backwardsDriver?: { uuid: string; name?: string };
-}
+const trainCrashSchema = z.object({
+  trainId: z.string().min(1).max(100),
+  trainName: z.string().min(1).max(100),
+  speed: z.number().finite().optional(),
+  carriageCount: z.number().int().nonnegative().optional(),
+  position: z
+    .object({
+      x: z.number().finite(),
+      y: z.number().finite(),
+      z: z.number().finite(),
+    })
+    .nullable()
+    .optional(),
+  dimension: z.string().max(100).optional(),
+  timestamp: z.number().int().nonnegative().optional(),
+  owner: uuidSchema.optional(),
+  driverUuid: uuidSchema.optional(),
+  passengers: z
+    .array(
+      z.object({
+        uuid: uuidSchema,
+        name: playerNameSchema.optional(),
+        isDriver: z.boolean(),
+      }),
+    )
+    .max(64)
+    .optional(),
+  backwardsDriver: z
+    .object({ uuid: uuidSchema, name: playerNameSchema.optional() })
+    .optional(),
+});
 
 /**
  * Trains Controller
@@ -41,6 +62,10 @@ export class TrainsController {
    * a notification embed to the Cogs & Steam notifications channel.
    */
   static async reportCrash(req: Request, res: Response): Promise<void> {
+    const parsed = trainCrashSchema.safeParse(req.body);
+    if (!parsed.success) {
+      throw new BadRequestError("Invalid train crash payload");
+    }
     const {
       trainId,
       trainName,
@@ -53,11 +78,7 @@ export class TrainsController {
       driverUuid,
       passengers,
       backwardsDriver,
-    } = req.body as TrainCrashPayload;
-
-    if (!trainId || !trainName) {
-      throw new BadRequestError("trainId and trainName are required");
-    }
+    } = parsed.data;
 
     // Collect all UUIDs and resolve to usernames in a single query
     const allUuids = new Set<string>();
