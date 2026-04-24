@@ -4,6 +4,7 @@ import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import config from "@/config";
+import { extractBearerToken } from "@/utils/bearer-token";
 
 /**
  * Resolve the access token from either the `Authorization: Bearer <token>`
@@ -20,10 +21,7 @@ import config from "@/config";
  * equivalent to the pre-SSO behavior.
  */
 function extractAccessToken(req: Request): string | undefined {
-  const authHeader = req.headers.authorization;
-  const headerToken = authHeader?.startsWith("Bearer ")
-    ? authHeader.substring(7)
-    : authHeader;
+  const headerToken = extractBearerToken(req);
   if (headerToken) return headerToken;
   if (!accessCookieService.isEnabled()) return undefined;
   return accessCookieService.extractFromRequest(req);

@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import { jwtService } from "@/services/auth/jwt";
 import type { JWTPayload } from "@createrington/shared/auth";
+import { extractBearerToken } from "@/utils/bearer-token";
 
 /** Per-request context injected into every tRPC procedure. */
 export interface Context {
@@ -9,19 +10,17 @@ export interface Context {
 
 /**
  * Creates the tRPC context from an Express request.
- * Extracts and verifies the JWT from the Authorization header; invalid or
- * missing tokens result in `user: null` (unauthenticated).
  *
- * @param opts - Express request/response options provided by the tRPC adapter
- * @returns Resolved context with the authenticated user payload, or null if unauthenticated
+ * Accepts only `Authorization: Bearer <jwt>` — the `crt_access` cookie path
+ * used by the Express `authenticate` middleware is intentionally NOT honored
+ * here. tRPC is hit cross-origin by other apps (panel server-to-server),
+ * so adding cookie auth would need a matching CSRF guard (see
+ * `requireTrustedOrigin` in auth.middleware) before it's safe.
  */
 export async function createContext({
   req,
 }: CreateExpressContextOptions): Promise<Context> {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.substring(7)
-    : authHeader;
+  const token = extractBearerToken(req);
 
   let user: JWTPayload | null = null;
 
