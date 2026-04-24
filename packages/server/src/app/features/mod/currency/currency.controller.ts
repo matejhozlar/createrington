@@ -1,4 +1,8 @@
-import { BadRequestError, respondSuccess } from "@/app/middleware";
+import {
+  BadRequestError,
+  getAuthedPlayer,
+  respondSuccess,
+} from "@/app/middleware";
 import { R } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import { lotteryService } from "@/services/lottery";
@@ -32,7 +36,7 @@ export class CurrencyController {
    * Returns the player's current balance.
    */
   static async getBalance(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
 
     const balance = await R.balanceRepo.getAmount(uuid);
 
@@ -62,7 +66,7 @@ export class CurrencyController {
       throw new BadRequestError("amount must be a positive number");
     }
 
-    const senderUuid = req.modAuth!.uuid;
+    const { uuid: senderUuid } = getAuthedPlayer(req);
 
     try {
       const result = await R.balanceRepo.transfer(senderUuid, toUuid, amount);
@@ -98,7 +102,7 @@ export class CurrencyController {
    * Adds currency to the authenticated player's balance.
    */
   static async deposit(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount, reason } = req.body;
 
     if (amount == null) {
@@ -144,7 +148,7 @@ export class CurrencyController {
    * Total withdrawn = denomination * count.
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { denomination, count } = req.body;
 
     if (denomination == null || count == null) {
@@ -211,7 +215,7 @@ export class CurrencyController {
    * Claims the daily reward for the authenticated player.
    */
   static async claimDaily(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
 
     const result = await rewardService.daily.claim({ minecraftUuid: uuid });
 
@@ -240,7 +244,7 @@ export class CurrencyController {
    * Returns paginated transaction history for the authenticated player.
    */
   static async getHistory(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const perPage = Math.min(
       20,
@@ -274,7 +278,7 @@ export class CurrencyController {
    * Starts a new lottery round with the given buy-in amount.
    */
   static async startLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount } = req.body;
 
     if (amount == null) {
@@ -304,7 +308,7 @@ export class CurrencyController {
    * Joins an active lottery round with the given buy-in amount.
    */
   static async joinLottery(req: Request, res: Response): Promise<void> {
-    const { uuid, name } = req.modAuth!;
+    const { uuid, name } = getAuthedPlayer(req);
     const { amount } = req.body;
 
     if (amount == null) {

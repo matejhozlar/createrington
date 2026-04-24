@@ -21,9 +21,13 @@ function assertModJwtPayload(value: unknown): ModJwtPayload {
   }
   const p = value as Record<string, unknown>;
   // aud is enforced by jwt.verify above; no need to re-check here.
+  // uuid/name are per-player claims — emitted by CRNet only when the caller
+  // supplies a playerUuid, so server-level tokens (heartbeats, syncs) lack
+  // them legitimately. Validate the type only when the claim is present;
+  // routes that need a specific player enforce presence via requireKnownPlayer.
   if (
-    typeof p.uuid !== "string" ||
-    typeof p.name !== "string" ||
+    (p.uuid !== undefined && typeof p.uuid !== "string") ||
+    (p.name !== undefined && typeof p.name !== "string") ||
     typeof p.iat !== "number" ||
     typeof p.exp !== "number"
   ) {
@@ -100,3 +104,21 @@ export const requireKnownPlayer: RequestHandler = asyncHandler(
     next();
   },
 );
+
+/**
+ * Extracts the authenticated player identity for controllers that run behind
+ * `requireKnownPlayer`. `uuid` is guaranteed by that middleware; `name` falls
+ * back to the uuid if the token didn't carry a display name (CRNet omits the
+ * claim when its name resolver returns null — unlikely in practice because
+ * requireKnownPlayer only admits known players, but kept safe).
+ *
+ * Throws if `req.modAuth.uuid` is missing, which would indicate middleware
+ * misordering rather than a real auth failure.
+ */
+export function getAuthedPlayer(req: Request): { uuid: string; name: string } {
+  const uuid = req.modAuth?.uuid;
+  if (!uuid) {
+    throw new UnauthorizedError("Mod authentication required");
+  }
+  return { uuid, name: req.modAuth?.name ?? uuid };
+}
