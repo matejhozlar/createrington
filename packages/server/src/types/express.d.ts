@@ -13,6 +13,7 @@ declare global {
   interface ModJwtPayload {
     uuid: string;
     name: string;
+    aud: string;
     iat: number;
     exp: number;
   }
