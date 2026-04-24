@@ -118,6 +118,11 @@ const envSchema = z.object({
   // with credentials. Doubles as the SSO return-to allowlist — the main
   // website is included automatically via config.meta.links.website.
   SSO_CORS_ORIGINS: z.string().default(""),
+  // Discord ID of the sole owner — gates the owner-only admin management
+  // panel. Must be a Discord snowflake (17–20 digits).
+  OWNER_DISCORD_ID: z
+    .string()
+    .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
   // Minecraft Servers
   COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),

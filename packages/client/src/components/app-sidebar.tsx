@@ -14,6 +14,7 @@ import {
   Wrench,
   Server,
   Shield,
+  UserCog,
   UserPlus,
   Users,
   X,
@@ -38,7 +39,9 @@ import { ServerStatus } from "./server-status";
 import { usePlayerData } from "@/contexts/player-data";
 import { NavUser } from "./nav-user";
 import { NavAdmin } from "./nav-admin";
+import { NavOwner } from "./nav-owner";
 import { NavCrypto } from "./nav-crypto";
+import { trpc } from "@/lib/trpc";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
@@ -47,7 +50,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { stats: playerStats } = usePlayerData();
 
+  const accountQuery = trpc.user.account.me.useQuery(undefined, {
+    enabled: !!user?.isAdmin,
+  });
+  const isOwner = accountQuery.data?.isOwner ?? false;
+
   const data = {
+    ownerNav: [
+      {
+        title: "Admins",
+        url: "/owner/admins",
+        icon: UserCog,
+      },
+    ],
     adminNav: [
       {
         title: "Dashboard",
@@ -165,7 +180,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain
           items={filteredNavMain}
           prepend={
-            user?.isAdmin ? <NavAdmin items={data.adminNav} /> : undefined
+            user?.isAdmin ? (
+              <>
+                {isOwner && <NavOwner items={data.ownerNav} />}
+                <NavAdmin items={data.adminNav} />
+              </>
+            ) : undefined
           }
           insertions={
             user ? [{ afterIndex: 0, element: <NavCrypto /> }] : undefined

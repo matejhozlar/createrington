@@ -95,6 +95,9 @@ const config = {
       allowedServerIps: {
         local: env.LOCAL_SERVER_IP_ADDRESS,
       },
+      owner: {
+        discordId: env.OWNER_DISCORD_ID,
+      },
     },
   },
 
