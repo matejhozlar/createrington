@@ -8,10 +8,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -92,10 +91,10 @@ export function PromoteDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <div>
-            <Label>Player</Label>
+          <Field>
+            <FieldLabel>Player</FieldLabel>
             {selected ? (
-              <div className="mt-1 flex items-center justify-between rounded-md border bg-muted/50 p-2">
+              <div className="flex items-center justify-between rounded-md border bg-muted/50 p-2">
                 <div className="flex items-center gap-2">
                   <MinecraftAvatar
                     username={selected.minecraftUsername}
@@ -120,7 +119,7 @@ export function PromoteDialog({
                 </Button>
               </div>
             ) : (
-              <div className="relative mt-1">
+              <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   value={query}
@@ -173,10 +172,10 @@ export function PromoteDialog({
                 )}
               </div>
             )}
-          </div>
+          </Field>
 
-          <div>
-            <Label htmlFor="promote-reason">Reason (optional)</Label>
+          <Field>
+            <FieldLabel htmlFor="promote-reason">Reason (optional)</FieldLabel>
             <textarea
               id="promote-reason"
               value={reason}
@@ -184,11 +183,9 @@ export function PromoteDialog({
               placeholder="e.g. Trusted moderator, handles Discord tickets"
               maxLength={500}
               rows={3}
-              className={cn(
-                "mt-1 flex w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-              )}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
-          </div>
+          </Field>
         </div>
 
         <DialogFooter>
