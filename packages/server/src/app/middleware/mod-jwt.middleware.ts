@@ -1,5 +1,6 @@
 import config from "@/config";
 import { UnauthorizedError } from "./error-handler";
+import { extractBearerToken } from "@/utils/bearer-token";
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 
@@ -22,10 +23,7 @@ export const verifyModJWT = (
   next: NextFunction,
 ): void => {
   try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ")
-      ? authHeader.substring(7)
-      : authHeader;
+    const token = extractBearerToken(req);
 
     if (!token) {
       throw new UnauthorizedError("Mod authentication required");
