@@ -5,7 +5,7 @@ import {
   History,
   MoreHorizontal,
 } from "lucide-react";
-import { ShieldUserIcon } from "@/components/icons/shield-user-icon";
+import { ShieldIcon } from "@/components/icons/shield-icon";
 import { SparklesIcon } from "@/components/icons/sparkles-icon";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
@@ -170,7 +170,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                   isAdminActive && "bg-destructive/20 font-medium",
                 )}
               >
-                <ShieldUserIcon
+                <ShieldIcon
                   ref={triggerIconRef}
                   size={24}
                   className={cn(

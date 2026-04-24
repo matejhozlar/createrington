@@ -60,21 +60,27 @@ const CoinsIcon = forwardRef<CoinsIconHandle, CoinsIconProps>(
     );
 
     const frontCoinVariants: Variants = {
-      normal: { rotate: 0, y: 0 },
+      normal: { y: 0, rotate: 0 },
       animate: {
-        rotate: [0, -12, 8, 0],
-        y: [0, -1, 0],
-        transition: { duration: 0.7 * duration, ease: "easeInOut" },
+        y: [0, -3, 0, -1, 0],
+        rotate: [0, -6, 4, -2, 0],
+        transition: {
+          duration: 0.55 * duration,
+          ease: "easeOut",
+        },
       },
     };
 
     const backCoinVariants: Variants = {
-      normal: { rotate: 0, y: 0, opacity: 1 },
+      normal: { y: 0, rotate: 0 },
       animate: {
-        rotate: [0, 10, -6, 0],
-        y: [0, -1.5, 0],
-        opacity: [1, 0.9, 1],
-        transition: { duration: 0.7 * duration, ease: "easeInOut", delay: 0.1 },
+        y: [0, -3, 0, -1, 0],
+        rotate: [0, 6, -4, 2, 0],
+        transition: {
+          duration: 0.55 * duration,
+          ease: "easeOut",
+          delay: 0.1,
+        },
       },
     };
 
@@ -97,6 +103,7 @@ const CoinsIcon = forwardRef<CoinsIconHandle, CoinsIconProps>(
           strokeLinejoin="round"
           animate={controls}
           initial="normal"
+          style={{ overflow: "visible" }}
         >
           <motion.g
             variants={frontCoinVariants}

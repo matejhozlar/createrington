@@ -67,7 +67,7 @@ const MessageCircleIcon = forwardRef<
       animate: {
         scale: [1, 1.05, 0.95, 1],
         rotate: [0, -2, 2, 0],
-        transition: { duration: 1.1 * duration, ease: "easeInOut", repeat: 0 },
+        transition: { duration: 0.5 * duration, ease: "easeInOut", repeat: 0 },
       },
     };
 
@@ -76,7 +76,7 @@ const MessageCircleIcon = forwardRef<
       animate: {
         pathLength: [0, 1],
         opacity: [0.6, 1],
-        transition: { duration: 1.2 * duration, ease: "easeInOut", repeat: 0 },
+        transition: { duration: 0.6 * duration, ease: "easeInOut", repeat: 0 },
       },
     };
 

@@ -2,13 +2,13 @@
 
 import * as React from "react";
 import { X } from "lucide-react";
-import { HouseIcon } from "@/components/icons/house-icon";
+import { HomeIcon } from "@/components/icons/home-icon";
 import { BoxIcon } from "@/components/icons/box-icon";
 import { MessageCircleIcon } from "@/components/icons/message-circle-icon";
 import { UsersIcon } from "@/components/icons/users-icon";
 import { MapPinnedIcon } from "@/components/icons/map-pinned-icon";
 import { UserPlusIcon } from "@/components/icons/user-plus-icon";
-import { ShieldUserIcon } from "@/components/icons/shield-user-icon";
+import { ShieldIcon } from "@/components/icons/shield-icon";
 import { InfoIcon } from "@/components/icons/info-icon";
 import { BookOpenIcon } from "@/components/icons/book-open-icon";
 import { UserCogIcon } from "@/components/icons/user-cog-icon";
@@ -108,7 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {
         title: "Home",
         url: "/",
-        icon: HouseIcon,
+        icon: HomeIcon,
       },
       {
         title: "Packs",
@@ -139,7 +139,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {
         title: "Team",
         url: "/team",
-        icon: ShieldUserIcon,
+        icon: ShieldIcon,
       },
       {
         title: "Rules",
