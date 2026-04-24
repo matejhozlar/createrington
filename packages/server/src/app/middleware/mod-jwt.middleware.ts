@@ -51,7 +51,7 @@ export const verifyModJWT = (
     if (error instanceof UnauthorizedError) {
       next(error);
     } else if (error instanceof jwt.JsonWebTokenError) {
-      logger.error("JWT verification failed:", error.message);
+      logger.warn("JWT verification failed:", error.message);
       next(new UnauthorizedError("Invalid token"));
     } else if (error instanceof jwt.TokenExpiredError) {
       next(new UnauthorizedError("Token has expired"));

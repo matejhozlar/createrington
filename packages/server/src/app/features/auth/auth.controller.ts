@@ -88,9 +88,7 @@ export class AuthController {
       const user = await discordOAuth.authenticate(code);
 
       if (user.role === AuthRole.UNVERIFIED) {
-        logger.warn(
-          `Unverified user ${user.username} (${user.discordId}) attempted to login`,
-        );
+        logger.warn(`Unverified user ${user.discordId} attempted to login`);
         throw new UnauthorizedError(
           "You are not registered. Please contact an administrator.",
         );
@@ -114,9 +112,7 @@ export class AuthController {
       // continue to use the Bearer header from the JSON response below.
       accessCookieService.setCookie(res, accessToken);
 
-      logger.info(
-        `User ${user.username} (${user.discordId}) logged in successfully`,
-      );
+      logger.info(`User ${user.discordId} logged in successfully`);
 
       res.json({
         success: true,
@@ -263,9 +259,7 @@ export class AuthController {
     refreshTokenService.clearCookie(res);
     accessCookieService.clearCookie(res);
 
-    logger.info(
-      `User ${req.user.username} (${req.user.discordId}) logged out of all sessions`,
-    );
+    logger.info(`User ${req.user.discordId} logged out of all sessions`);
 
     res.json({
       success: true,
@@ -370,9 +364,7 @@ export class AuthController {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
       if (user.role === AuthRole.UNVERIFIED) {
-        logger.warn(
-          `Unverified user ${user.username} (${user.discordId}) attempted SSO login`,
-        );
+        logger.warn(`Unverified user ${user.discordId} attempted SSO login`);
         safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
         return;
       }
@@ -389,9 +381,7 @@ export class AuthController {
       refreshTokenService.setCookie(res, rawRefreshToken);
       accessCookieService.setCookie(res, accessToken);
 
-      logger.info(
-        `User ${user.username} (${user.discordId}) completed SSO to ${entry.returnTo}`,
-      );
+      logger.info(`User ${user.discordId} completed SSO to ${entry.returnTo}`);
 
       safeSsoRedirect(res, entry.returnTo);
     } catch (error) {
