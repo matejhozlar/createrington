@@ -2,21 +2,23 @@
 
 import * as React from "react";
 import { X } from "lucide-react";
-import { HomeIcon } from "@/components/icons/home-icon";
-import { BoxIcon } from "@/components/icons/box-icon";
-import { MessageCircleIcon } from "@/components/icons/message-circle-icon";
-import { UsersIcon } from "@/components/icons/users-icon";
-import { MapPinnedIcon } from "@/components/icons/map-pinned-icon";
-import { UserPlusIcon } from "@/components/icons/user-plus-icon";
-import { ShieldIcon } from "@/components/icons/shield-icon";
-import { InfoIcon } from "@/components/icons/info-icon";
-import { BookOpenIcon } from "@/components/icons/book-open-icon";
-import { UserCogIcon } from "@/components/icons/user-cog-icon";
-import { DashboardIcon } from "@/components/icons/dashboard-icon";
-import { ServerIcon } from "@/components/icons/server-icon";
-import { WrenchIcon } from "@/components/icons/wrench-icon";
-import { HeartIcon } from "@/components/icons/heart-icon";
-import { ClipboardIcon } from "@/components/icons/clipboard-icon";
+import {
+  BookOpenIcon,
+  BoxIcon,
+  ClipboardIcon,
+  DashboardIcon,
+  HeartIcon,
+  HomeIcon,
+  InfoIcon,
+  MapPinnedIcon,
+  MessageCircleIcon,
+  ServerIcon,
+  ShieldIcon,
+  UserCogIcon,
+  UserPlusIcon,
+  UsersIcon,
+  WrenchIcon,
+} from "@createrington/icons";
 
 import { NavMain } from "@/components/nav-main";
 import { NavDiscordLogin } from "@/components/nav-discord-login";

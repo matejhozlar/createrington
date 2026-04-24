@@ -5,8 +5,7 @@ import {
   History,
   MoreHorizontal,
 } from "lucide-react";
-import { ShieldIcon } from "@/components/icons/shield-icon";
-import { SparklesIcon } from "@/components/icons/sparkles-icon";
+import { ShieldIcon, SparklesIcon } from "@createrington/icons";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useRef, useState } from "react";
 import {
@@ -35,10 +34,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
-import type {
-  AnimatedIcon,
-  AnimatedIconHandle,
-} from "@/components/icons/types";
+import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type AdminNavItem = {
   title: string;

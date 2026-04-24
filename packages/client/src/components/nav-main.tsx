@@ -15,10 +15,7 @@ import { NavLink } from "react-router-dom";
 import { Badge, IconBadge } from "./ui/badge";
 import { cn } from "@/lib/utils";
 import React, { useRef } from "react";
-import type {
-  AnimatedIcon,
-  AnimatedIconHandle,
-} from "@/components/icons/types";
+import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type NavMainItem = {
   title: string;

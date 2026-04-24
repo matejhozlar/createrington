@@ -1,9 +1,11 @@
 import { ChevronRight } from "lucide-react";
-import { CoinsIcon } from "@/components/icons/coins-icon";
-import { TrendingUpIcon } from "@/components/icons/trending-up-icon";
-import { WalletIcon } from "@/components/icons/wallet-icon";
-import { HistoryIcon } from "@/components/icons/history-icon";
-import { TrophyIcon } from "@/components/icons/trophy-icon";
+import {
+  CoinsIcon,
+  HistoryIcon,
+  TrendingUpIcon,
+  TrophyIcon,
+  WalletIcon,
+} from "@createrington/icons";
 import { NavLink, useLocation } from "react-router-dom";
 import { useRef, useState } from "react";
 import {
@@ -25,10 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type {
-  AnimatedIcon,
-  AnimatedIconHandle,
-} from "@/components/icons/types";
+import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type CryptoNavItem = {
   title: string;

@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { StarIcon } from "@/components/icons/star-icon";
+import { StarIcon } from "@createrington/icons";
 import { NavLink, useLocation } from "react-router-dom";
 import { useRef, useState } from "react";
 import {
@@ -21,10 +21,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type {
-  AnimatedIcon,
-  AnimatedIconHandle,
-} from "@/components/icons/types";
+import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type OwnerNavItem = {
   title: string;
