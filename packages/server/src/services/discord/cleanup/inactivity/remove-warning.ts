@@ -80,9 +80,28 @@ export async function removeInactiveWarning(
     );
   }
 
-  await Q.player.delete({
-    minecraftUuid: warning.playerMinecraftUuid,
-  });
+  try {
+    await Q.player.delete({
+      minecraftUuid: warning.playerMinecraftUuid,
+    });
+  } catch (error) {
+    // Rollback the markRemoved set above so the warning stays retryable
+    // by findExpiredWarnings and the leave-notification handler doesn't
+    // indefinitely suppress voluntary departures for this player.
+    logger.error(
+      `Failed to delete player ${warning.minecraftUsername} — rolling back removed_at on warning ${warning.id}`,
+      error,
+    );
+    try {
+      await Q.player.inactivity.warning.clearRemoved(warning.id);
+    } catch (rollbackError) {
+      logger.error(
+        `Failed to roll back removed_at on warning ${warning.id} — row is now in an inconsistent state`,
+        rollbackError,
+      );
+    }
+    throw error;
+  }
 
   logger.info(
     `Removed inactive player ${warning.minecraftUsername} (warned ${warning.warnedAt.toISOString()})`,

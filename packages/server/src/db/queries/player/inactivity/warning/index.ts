@@ -218,6 +218,19 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
   }
 
   /**
+   * Clear the removed flag. Used to roll back an in-flight removal if
+   * a later step fails — otherwise the warning becomes un-retryable by
+   * `findExpiredWarnings` and the leave-notification handler would
+   * suppress future voluntary departures for this player.
+   */
+  async clearRemoved(id: number): Promise<void> {
+    await this.db.query(
+      `UPDATE player_inactivity_warning SET removed_at = NULL, updated_at = NOW() WHERE id = $1`,
+      [id],
+    );
+  }
+
+  /**
    * List warnings filtered by status, optionally searching by current
    * Minecraft username. Uses LEFT JOIN on player so "removed" rows still
    * return even after the player record has been deleted.
