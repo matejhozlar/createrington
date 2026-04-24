@@ -119,7 +119,6 @@ export function MessageRow({
             isStreaming &&
               "after:ml-0.5 after:inline-block after:h-3.5 after:w-0.5 after:animate-pulse after:bg-current after:align-middle",
           )}
-          title={formatTime(message.createdAt)}
         >
           {isUser ? (
             content

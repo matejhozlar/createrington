@@ -1,14 +1,13 @@
 import { useState } from "react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Check, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -74,24 +73,26 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
     </div>
   );
 
+  const handleClose = () => {
+    setReason("");
+    onClose();
+  };
+
   return (
-    <AlertDialog
+    <Dialog
       open={!!admin}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setReason("");
-          onClose();
-        }
+        if (!isOpen) handleClose();
       }}
     >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Demote {displayName}</AlertDialogTitle>
-          <AlertDialogDescription>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Demote {displayName}</DialogTitle>
+          <DialogDescription>
             This is a scorched-earth revoke — all admin state across every
             system is removed.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="rounded-lg border bg-muted/50 p-4">
           {previewQuery.isLoading ? (
@@ -131,26 +132,19 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
           />
         </Field>
 
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setReason("")}>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              // AlertDialogAction closes the dialog synchronously on click,
-              // which would hide any error toast + force the owner to
-              // re-open on failure. Suppress that; onSuccess closes the
-              // dialog itself on the happy path.
-              e.preventDefault();
-              void handleDemote();
-            }}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => void handleDemote()}
             disabled={demoteMutation.isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {demoteMutation.isPending ? "Demoting…" : "Demote"}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
