@@ -72,8 +72,8 @@ importers:
   packages/client:
     dependencies:
       '@createrington/icons':
-        specifier: 0.2.0
-        version: 0.2.0(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: 0.3.4
+        version: 0.3.4(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.72.1(react@19.2.4))
@@ -509,8 +509,8 @@ packages:
     resolution: {integrity: sha512-Ir+AOibqzrIsL6ajt3Rz3LskB7OiMVHqltZmspbW/TJuTVuyOMirVqAkjfY6JISiLHgyNqicAC8AyHHGzNd/dA==}
     engines: {node: '>=0.1.90'}
 
-  '@createrington/icons@0.2.0':
-    resolution: {integrity: sha512-c+1uLyUwCJQpYWph1AhD5jkQeHSqS4dL6wE023OtXcYFueqYjAEvlK6NtEif26H1oKGQn1UfTTKTI1oDgYOJCg==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Ficons/-/0.2.0/icons-0.2.0.tgz}
+  '@createrington/icons@0.3.4':
+    resolution: {integrity: sha512-P5vPerd5l4Hp5pbXkdXGgn+6TluPANowa5PEShYCkHpdbbiB0zivxPzHjnkMrUF3C5N48qRmkRRIfWYcaGWi9g==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Ficons/-/0.3.4/icons-0.3.4.tgz}
     peerDependencies:
       motion: '>=11'
       react: '>=18'
@@ -5966,7 +5966,7 @@ snapshots:
 
   '@colors/colors@1.6.0': {}
 
-  '@createrington/icons@0.2.0(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@createrington/icons@0.3.4(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       clsx: 2.1.1
       motion: 12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

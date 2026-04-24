@@ -1,13 +1,15 @@
 import { ChevronRight } from "lucide-react";
 import {
+  type AnimatedIcon,
   CoinsIcon,
   HistoryIcon,
   TrendingUpIcon,
   TrophyIcon,
   WalletIcon,
+  useAnimatedHover,
 } from "@createrington/icons";
 import { NavLink, useLocation } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   SidebarMenuButton,
   SidebarMenuItem,
@@ -27,7 +29,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type CryptoNavItem = {
   title: string;
@@ -70,14 +71,11 @@ function CryptoSubRow({
   item: CryptoNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
-    <SidebarMenuSubItem
-      onMouseEnter={() => iconRef.current?.startAnimation()}
-      onMouseLeave={() => iconRef.current?.stopAnimation()}
-    >
+    <SidebarMenuSubItem {...hoverHandlers}>
       <SidebarMenuSubButton asChild>
         <NavLink
           to={item.url}
@@ -87,7 +85,7 @@ function CryptoSubRow({
           )}
         >
           <Icon
-            ref={iconRef}
+            ref={hoverRef}
             size={16}
             className="block shrink-0 transition-colors"
           />
@@ -105,7 +103,7 @@ function CryptoSubCollapsed({
   item: CryptoNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
@@ -113,8 +111,7 @@ function CryptoSubCollapsed({
       <TooltipTrigger asChild>
         <NavLink
           to={item.url}
-          onMouseEnter={() => iconRef.current?.startAnimation()}
-          onMouseLeave={() => iconRef.current?.stopAnimation()}
+          {...hoverHandlers}
           className={cn(
             "flex size-8 items-center justify-center rounded-md transition-colors cursor-pointer",
             "hover:bg-primary/10",
@@ -122,7 +119,7 @@ function CryptoSubCollapsed({
           )}
         >
           <Icon
-            ref={iconRef}
+            ref={hoverRef}
             size={16}
             className="block shrink-0 transition-colors"
           />
@@ -138,7 +135,7 @@ function CryptoSubCollapsed({
 export function NavCrypto() {
   const { state } = useSidebar();
   const location = useLocation();
-  const triggerIconRef = useRef<AnimatedIconHandle>(null);
+  const [triggerRef, triggerHandlers] = useAnimatedHover();
 
   const isCryptoActive = location.pathname.startsWith("/crypto");
 
@@ -153,15 +150,14 @@ export function NavCrypto() {
               <SidebarMenuButton
                 size="lg"
                 isActive={isCryptoActive}
-                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
+                {...triggerHandlers}
                 className={cn(
                   "cursor-pointer",
                   isCryptoActive && "text-primary! bg-primary/5!",
                 )}
               >
                 <CoinsIcon
-                  ref={triggerIconRef}
+                  ref={triggerRef}
                   size={24}
                   className={cn(
                     "block shrink-0 transition-colors",

@@ -1,7 +1,11 @@
 import { ChevronRight } from "lucide-react";
-import { StarIcon } from "@createrington/icons";
+import {
+  type AnimatedIcon,
+  StarIcon,
+  useAnimatedHover,
+} from "@createrington/icons";
 import { NavLink, useLocation } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   SidebarMenuButton,
   SidebarMenuItem,
@@ -21,7 +25,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type OwnerNavItem = {
   title: string;
@@ -36,14 +39,11 @@ function OwnerSubRow({
   item: OwnerNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [iconRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
-    <SidebarMenuSubItem
-      onMouseEnter={() => iconRef.current?.startAnimation()}
-      onMouseLeave={() => iconRef.current?.stopAnimation()}
-    >
+    <SidebarMenuSubItem {...hoverHandlers}>
       <SidebarMenuSubButton asChild>
         <NavLink
           to={item.url}
@@ -73,7 +73,7 @@ function OwnerSubCollapsed({
   item: OwnerNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [iconRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
@@ -81,8 +81,7 @@ function OwnerSubCollapsed({
       <TooltipTrigger asChild>
         <NavLink
           to={item.url}
-          onMouseEnter={() => iconRef.current?.startAnimation()}
-          onMouseLeave={() => iconRef.current?.stopAnimation()}
+          {...hoverHandlers}
           className={cn(
             "flex size-8 items-center justify-center rounded-md transition-colors",
             "text-amber-500 hover:bg-amber-500/10",
@@ -108,7 +107,7 @@ function OwnerSubCollapsed({
 export function NavOwner({ items }: { items: OwnerNavItem[] }) {
   const { state } = useSidebar();
   const location = useLocation();
-  const triggerIconRef = useRef<AnimatedIconHandle>(null);
+  const [triggerIconRef, triggerHandlers] = useAnimatedHover();
 
   const isOwnerActive = items.some((item) =>
     location.pathname.startsWith(item.url),
@@ -123,8 +122,7 @@ export function NavOwner({ items }: { items: OwnerNavItem[] }) {
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
+                {...triggerHandlers}
                 className={cn(
                   "text-amber-500 hover:text-amber-500 hover:bg-amber-500/10",
                   isOwnerActive && "bg-amber-500/20 font-medium",

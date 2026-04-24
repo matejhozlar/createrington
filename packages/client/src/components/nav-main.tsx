@@ -14,8 +14,8 @@ import {
 import { NavLink } from "react-router-dom";
 import { Badge, IconBadge } from "./ui/badge";
 import { cn } from "@/lib/utils";
-import React, { useRef } from "react";
-import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
+import React from "react";
+import { type AnimatedIcon, useAnimatedHover } from "@createrington/icons";
 
 type NavMainItem = {
   title: string;
@@ -26,14 +26,11 @@ type NavMainItem = {
 
 function NavMainRow({ item }: { item: NavMainItem }) {
   const { state } = useSidebar();
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
-    <SidebarMenuItem
-      onMouseEnter={() => iconRef.current?.startAnimation()}
-      onMouseLeave={() => iconRef.current?.stopAnimation()}
-    >
+    <SidebarMenuItem {...hoverHandlers}>
       <Tooltip>
         <TooltipTrigger asChild>
           <NavLink
@@ -49,7 +46,7 @@ function NavMainRow({ item }: { item: NavMainItem }) {
                 {Icon && (
                   <div className="relative">
                     <Icon
-                      ref={iconRef}
+                      ref={hoverRef}
                       size={24}
                       className={cn(
                         "block shrink-0 transition-colors",

@@ -5,9 +5,14 @@ import {
   History,
   MoreHorizontal,
 } from "lucide-react";
-import { ShieldIcon, SparklesIcon } from "@createrington/icons";
+import {
+  type AnimatedIcon,
+  ShieldIcon,
+  SparklesIcon,
+  useAnimatedHover,
+} from "@createrington/icons";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   SidebarMenuButton,
   SidebarMenuItem,
@@ -34,7 +39,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
-import type { AnimatedIcon, AnimatedIconHandle } from "@createrington/icons";
 
 type AdminNavItem = {
   title: string;
@@ -49,14 +53,11 @@ function AdminSubRow({
   item: AdminNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
-    <SidebarMenuSubItem
-      onMouseEnter={() => iconRef.current?.startAnimation()}
-      onMouseLeave={() => iconRef.current?.stopAnimation()}
-    >
+    <SidebarMenuSubItem {...hoverHandlers}>
       <SidebarMenuSubButton asChild>
         <NavLink
           to={item.url}
@@ -67,7 +68,7 @@ function AdminSubRow({
         >
           {Icon && (
             <Icon
-              ref={iconRef}
+              ref={hoverRef}
               size={16}
               className="block shrink-0 transition-colors"
             />
@@ -86,7 +87,7 @@ function AdminSubCollapsed({
   item: AdminNavItem;
   isActive: boolean;
 }) {
-  const iconRef = useRef<AnimatedIconHandle>(null);
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
   const Icon = item.icon;
 
   return (
@@ -94,8 +95,7 @@ function AdminSubCollapsed({
       <TooltipTrigger asChild>
         <NavLink
           to={item.url}
-          onMouseEnter={() => iconRef.current?.startAnimation()}
-          onMouseLeave={() => iconRef.current?.stopAnimation()}
+          {...hoverHandlers}
           className={cn(
             "flex size-8 items-center justify-center rounded-md transition-colors",
             "text-destructive hover:bg-destructive/10",
@@ -104,7 +104,7 @@ function AdminSubCollapsed({
         >
           {Icon && (
             <Icon
-              ref={iconRef}
+              ref={hoverRef}
               size={16}
               className="block shrink-0 transition-colors"
             />
@@ -130,9 +130,10 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
     toggleDrawer: toggleAssistantDrawer,
   } = useAdminChat();
 
-  const triggerIconRef = useRef<AnimatedIconHandle>(null);
-  const assistantIconRef = useRef<AnimatedIconHandle>(null);
-  const assistantCollapsedRef = useRef<AnimatedIconHandle>(null);
+  const [triggerRef, triggerHandlers] = useAnimatedHover();
+  const [assistantRef, assistantHandlers] = useAnimatedHover();
+  const [assistantCollapsedRef, assistantCollapsedHandlers] =
+    useAnimatedHover();
 
   const toggleAssistant = () => {
     toggleAssistantDrawer();
@@ -158,15 +159,14 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                onMouseEnter={() => triggerIconRef.current?.startAnimation()}
-                onMouseLeave={() => triggerIconRef.current?.stopAnimation()}
+                {...triggerHandlers}
                 className={cn(
                   "text-destructive hover:text-destructive hover:bg-destructive/10",
                   isAdminActive && "bg-destructive/20 font-medium",
                 )}
               >
                 <ShieldIcon
-                  ref={triggerIconRef}
+                  ref={triggerRef}
                   size={24}
                   className={cn(
                     "block shrink-0 transition-colors text-destructive",
@@ -209,10 +209,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
               {assistantEnabled && (
                 <SidebarMenuSubItem
                   className="group/assistant relative"
-                  onMouseEnter={() =>
-                    assistantIconRef.current?.startAnimation()
-                  }
-                  onMouseLeave={() => assistantIconRef.current?.stopAnimation()}
+                  {...assistantHandlers}
                 >
                   <SidebarMenuSubButton asChild>
                     <button
@@ -224,7 +221,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                       )}
                     >
                       <SparklesIcon
-                        ref={assistantIconRef}
+                        ref={assistantRef}
                         size={16}
                         className="block shrink-0 transition-colors"
                       />
@@ -283,12 +280,7 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
                     <button
                       type="button"
                       onClick={toggleAssistant}
-                      onMouseEnter={() =>
-                        assistantCollapsedRef.current?.startAnimation()
-                      }
-                      onMouseLeave={() =>
-                        assistantCollapsedRef.current?.stopAnimation()
-                      }
+                      {...assistantCollapsedHandlers}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md transition-colors",
                         "text-destructive hover:bg-destructive/10",

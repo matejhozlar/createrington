@@ -5,9 +5,9 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { MenuIcon } from "lucide-react";
 import {
-  type AnimatedIconHandle,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
+  useAnimatedHover,
 } from "@createrington/icons";
 import { useLocation } from "react-router-dom";
 
@@ -275,10 +275,11 @@ function SidebarTrigger({
   ...props
 }: React.ComponentProps<typeof Button>) {
   const { state, toggleSidebar } = useSidebar();
-  const closeIconRef = React.useRef<AnimatedIconHandle>(null);
-  const openIconRef = React.useRef<AnimatedIconHandle>(null);
+  const [closeHoverRef, closeHoverHandlers] = useAnimatedHover();
+  const [openHoverRef, openHoverHandlers] = useAnimatedHover();
 
-  const activeRef = state === "expanded" ? closeIconRef : openIconRef;
+  const activeHandlers =
+    state === "expanded" ? closeHoverHandlers : openHoverHandlers;
 
   return (
     <Button
@@ -287,8 +288,7 @@ function SidebarTrigger({
       variant="ghost"
       size="icon"
       className={cn("size-8", className)}
-      onMouseEnter={() => activeRef.current?.startAnimation()}
-      onMouseLeave={() => activeRef.current?.stopAnimation()}
+      {...activeHandlers}
       onClick={(event) => {
         onClick?.(event);
         toggleSidebar();
@@ -297,13 +297,13 @@ function SidebarTrigger({
     >
       {state === "expanded" ? (
         <PanelLeftCloseIcon
-          ref={closeIconRef}
+          ref={closeHoverRef}
           size={16}
           className="hidden md:block"
         />
       ) : (
         <PanelLeftOpenIcon
-          ref={openIconRef}
+          ref={openHoverRef}
           size={16}
           className="hidden md:block"
         />
