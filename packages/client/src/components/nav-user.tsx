@@ -1,14 +1,15 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import {
-  BadgeCheck,
-  ChevronsUpDown,
-  FileText,
-  Heart,
-  Loader2,
-  LogOut,
-  Settings,
-} from "lucide-react";
+  BadgeCheckIcon,
+  ChevronsUpDownIcon,
+  FileTextIcon,
+  HeartIcon,
+  LogoutIcon,
+  SettingsIcon,
+  useAnimatedHover,
+} from "@createrington/icons";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -72,6 +73,12 @@ function TriggerSummary({
 export function NavUser({ user }: { user: User }) {
   const { isMobile } = useSidebar();
   const { logout, loading } = useAuth();
+  const [chevronRef, chevronHandlers] = useAnimatedHover();
+  const [settingsRef, settingsHandlers] = useAnimatedHover();
+  const [adminPanelRef, adminPanelHandlers] = useAnimatedHover();
+  const [changelogRef, changelogHandlers] = useAnimatedHover();
+  const [donateRef, donateHandlers] = useAnimatedHover();
+  const [logoutHoverRef, logoutHoverHandlers] = useAnimatedHover();
 
   const handleLogout = () => {
     logout();
@@ -96,6 +103,7 @@ export function NavUser({ user }: { user: User }) {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
+              {...chevronHandlers}
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <TriggerSummary
@@ -105,7 +113,11 @@ export function NavUser({ user }: { user: User }) {
                 minecraftUsername={user.minecraftUsername}
                 username={user.username}
               />
-              <ChevronsUpDown className="ml-auto size-4" />
+              <ChevronsUpDownIcon
+                ref={chevronRef}
+                size={16}
+                className="ml-auto block shrink-0"
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
@@ -142,9 +154,13 @@ export function NavUser({ user }: { user: User }) {
             <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
               Account
             </DropdownMenuLabel>
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild {...settingsHandlers}>
               <NavLink to="/settings" className="cursor-pointer">
-                <Settings />
+                <SettingsIcon
+                  ref={settingsRef}
+                  size={16}
+                  className="block shrink-0"
+                />
                 Settings
               </NavLink>
             </DropdownMenuItem>
@@ -155,15 +171,23 @@ export function NavUser({ user }: { user: User }) {
                 <DropdownMenuLabel className="text-xs font-normal text-destructive/80">
                   Admin
                 </DropdownMenuLabel>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild {...adminPanelHandlers}>
                   <NavLink to="/admin/dashboard" className="cursor-pointer">
-                    <BadgeCheck className="text-destructive/80" />
+                    <BadgeCheckIcon
+                      ref={adminPanelRef}
+                      size={16}
+                      className="block shrink-0 text-destructive/80"
+                    />
                     Admin Panel
                   </NavLink>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild {...changelogHandlers}>
                   <NavLink to="/admin/changelog" className="cursor-pointer">
-                    <FileText className="text-destructive/80" />
+                    <FileTextIcon
+                      ref={changelogRef}
+                      size={16}
+                      className="block shrink-0 text-destructive/80"
+                    />
                     Changelog
                   </NavLink>
                 </DropdownMenuItem>
@@ -172,9 +196,13 @@ export function NavUser({ user }: { user: User }) {
 
             <DropdownMenuSeparator />
 
-            <DropdownMenuItem asChild>
+            <DropdownMenuItem asChild {...donateHandlers}>
               <NavLink to="/donate" className="cursor-pointer">
-                <Heart className="text-rose-400" />
+                <HeartIcon
+                  ref={donateRef}
+                  size={16}
+                  className="block shrink-0 text-rose-400"
+                />
                 Donate
               </NavLink>
             </DropdownMenuItem>
@@ -185,9 +213,18 @@ export function NavUser({ user }: { user: User }) {
               variant="destructive"
               onClick={handleLogout}
               disabled={loading}
+              {...logoutHoverHandlers}
               className="cursor-pointer"
             >
-              {loading ? <Loader2 className="animate-spin" /> : <LogOut />}
+              {loading ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <LogoutIcon
+                  ref={logoutHoverRef}
+                  size={16}
+                  className="block shrink-0"
+                />
+              )}
               Log out
             </DropdownMenuItem>
 
