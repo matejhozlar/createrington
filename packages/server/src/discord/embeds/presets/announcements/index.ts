@@ -70,6 +70,12 @@ export const AnnouncementEmbedPresets = {
       )
       .color(EmbedColors.Info);
 
+    if (data.highlights && data.highlights.length > 0) {
+      for (const h of data.highlights) {
+        embed.field(h.title, h.description);
+      }
+    }
+
     if (data.added.length > 0) {
       embed.field("🆕 New Mods", formatModList(data.added));
     }
@@ -78,12 +84,6 @@ export const AnnouncementEmbedPresets = {
     }
     if (data.updated.length > 0) {
       embed.field("⬆️ Updated Mods", formatModList(data.updated));
-    }
-
-    if (data.highlights && data.highlights.length > 0) {
-      for (const h of data.highlights) {
-        embed.field(h.title, h.description);
-      }
     }
 
     embed

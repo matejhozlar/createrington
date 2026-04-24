@@ -133,6 +133,15 @@ export function ModpackChangelog() {
             </p>
 
             <div className="mt-3 space-y-3">
+              {completeHighlights.map((h, i) => (
+                <div key={i}>
+                  <p className="text-xs font-semibold text-white">{h.title}</p>
+                  <p className="whitespace-pre-wrap text-xs text-gray-300">
+                    {h.description}
+                  </p>
+                </div>
+              ))}
+
               {added.length > 0 && (
                 <PreviewField title="🆕 New Mods" mods={added} />
               )}
@@ -142,15 +151,6 @@ export function ModpackChangelog() {
               {updated.length > 0 && (
                 <PreviewField title="⬆️ Updated Mods" mods={updated} />
               )}
-
-              {completeHighlights.map((h, i) => (
-                <div key={i}>
-                  <p className="text-xs font-semibold text-white">{h.title}</p>
-                  <p className="whitespace-pre-wrap text-xs text-gray-300">
-                    {h.description}
-                  </p>
-                </div>
-              ))}
 
               <div>
                 <p className="text-xs font-semibold text-white">📢 Reminder</p>
