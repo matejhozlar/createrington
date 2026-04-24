@@ -45,15 +45,15 @@ export const TEAM_MEMBERS: TeamMember[] = [
     hoverAnimation: "hulk",
   },
   {
-    username: "Stratos65",
-    uuid: "25f73ab5-39e3-4bf7-bd52-9ad7407fdb3e",
+    username: "diablothe2nd",
+    uuid: "8cca5cab-b782-452b-a8b9-8bb4ae0f6d0f",
     role: "Admin",
     tier: "admin",
     hoverAnimation: "nuke",
   },
   {
-    username: "imahomen",
-    uuid: "69bc13fe-1972-480e-8075-c88340d7b7da",
+    username: "Tetsuoken",
+    uuid: "32ff995f-cf92-417b-b745-891738346120",
     role: "Admin",
     tier: "admin",
     hoverAnimation: "headkick",
@@ -72,8 +72,8 @@ export const PODIUM_ORDER = [
   TEAM_MEMBERS[1], // Agent772 — Dev & Admin
   TEAM_MEMBERS[0], // saunhardy — Owner (center-left)
   TEAM_MEMBERS[2], // The_BigShot — Dev & Admin
-  TEAM_MEMBERS[3], // Stratos65 — Admin
-  TEAM_MEMBERS[4], // imahomen — Admin
+  TEAM_MEMBERS[3], // diablothe2nd — Admin
+  TEAM_MEMBERS[4], // Tetsuoken — Admin
   TEAM_MEMBERS[5], // Cailin05 — Admin
 ];
 
