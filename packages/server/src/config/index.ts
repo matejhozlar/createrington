@@ -87,10 +87,6 @@ const config = {
         // Defensive `??` because in VALIDATION_MODE=generation (used by tests
         // and codegen) env vars bypass zod and arrive as raw process.env values
         // — undefined when unset.
-        returnToWhitelist: (env.SSO_RETURN_TO_WHITELIST ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
         corsOrigins: (env.SSO_CORS_ORIGINS ?? "")
           .split(",")
           .map((s) => s.trim())
