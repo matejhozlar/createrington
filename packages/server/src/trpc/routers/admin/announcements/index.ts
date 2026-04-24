@@ -16,11 +16,20 @@ const changelogModSchema = z.object({
   version: z.string().optional(),
 });
 
+// Discord caps embed field names at 256 and values at 1024. Enforce the
+// same limits server-side so oversized input fails with a usable tRPC
+// error instead of a 400 from Discord on send.
+const changelogHighlightSchema = z.object({
+  title: z.string().min(1).max(256),
+  description: z.string().min(1).max(1024),
+});
+
 const sendChangelogInput = z.object({
   version: z.string().min(1).max(20),
   added: z.array(changelogModSchema),
   removed: z.array(changelogModSchema),
   updated: z.array(changelogModSchema),
+  highlights: z.array(changelogHighlightSchema).optional(),
 });
 
 const sendMaintenanceInput = z.object({
@@ -60,11 +69,16 @@ export const announcementsRouter = router({
     })
     .input(sendChangelogInput)
     .mutation(async ({ input, ctx }) => {
-      const { version, added, removed, updated } = input;
+      const { version, added, removed, updated, highlights } = input;
 
-      if (added.length === 0 && removed.length === 0 && updated.length === 0) {
+      if (
+        added.length === 0 &&
+        removed.length === 0 &&
+        updated.length === 0 &&
+        (!highlights || highlights.length === 0)
+      ) {
         throw trpcError.badRequest(
-          "Changelog must have at least one mod in added, removed, or updated.",
+          "Changelog must have at least one mod change or highlight.",
         );
       }
 
@@ -73,6 +87,7 @@ export const announcementsRouter = router({
         added,
         removed,
         updated,
+        highlights,
       });
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -99,7 +114,7 @@ export const announcementsRouter = router({
         adminDiscordId: ctx.user.discordId,
         adminUsername: ctx.user.minecraftUsername,
         actionType: "announcement_changelog",
-        description: `Sent modpack changelog v${input.version} (${input.added.length} added, ${input.removed.length} removed, ${input.updated.length} updated)`,
+        description: `Sent modpack changelog v${input.version} (${input.added.length} added, ${input.removed.length} removed, ${input.updated.length} updated, ${input.highlights?.length ?? 0} highlights)`,
         metadata: { version: input.version },
       });
 

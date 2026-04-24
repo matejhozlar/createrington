@@ -5,6 +5,10 @@ import { Send } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { ModSection } from "./components/ModSection";
+import {
+  HighlightSection,
+  type Highlight,
+} from "./components/HighlightSection";
 
 interface Mod {
   name: string;
@@ -19,6 +23,7 @@ export function ModpackChangelog() {
   const [added, setAdded] = useState<Mod[]>([]);
   const [removed, setRemoved] = useState<Mod[]>([]);
   const [updated, setUpdated] = useState<Mod[]>([]);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
 
   const sendMutation = trpc.admin.announcements.sendChangelog.useMutation({
     onSuccess: () => {
@@ -27,19 +32,36 @@ export function ModpackChangelog() {
       setAdded([]);
       setRemoved([]);
       setUpdated([]);
+      setHighlights([]);
     },
     onError: (err: { message: string }) => {
       toast.error(err.message);
     },
   });
 
+  // Only fully-filled highlights count toward sending — blank rows are
+  // admin work-in-progress and would be rejected by the server schema anyway.
+  const completeHighlights = highlights.filter(
+    (h) => h.title.trim().length > 0 && h.description.trim().length > 0,
+  );
+
   const canSend =
     version.trim().length > 0 &&
-    (added.length > 0 || removed.length > 0 || updated.length > 0);
+    (added.length > 0 ||
+      removed.length > 0 ||
+      updated.length > 0 ||
+      completeHighlights.length > 0);
 
   function handleSend() {
     if (!canSend) return;
-    sendMutation.mutate({ version: version.trim(), added, removed, updated });
+    sendMutation.mutate({
+      version: version.trim(),
+      added,
+      removed,
+      updated,
+      highlights:
+        completeHighlights.length > 0 ? completeHighlights : undefined,
+    });
   }
 
   return (
@@ -84,6 +106,8 @@ export function ModpackChangelog() {
           showVersionPicker
         />
 
+        <HighlightSection highlights={highlights} onChange={setHighlights} />
+
         <Button
           onClick={handleSend}
           disabled={!canSend || sendMutation.isPending}
@@ -118,6 +142,15 @@ export function ModpackChangelog() {
               {updated.length > 0 && (
                 <PreviewField title="⬆️ Updated Mods" mods={updated} />
               )}
+
+              {completeHighlights.map((h, i) => (
+                <div key={i}>
+                  <p className="text-xs font-semibold text-white">{h.title}</p>
+                  <p className="whitespace-pre-wrap text-xs text-gray-300">
+                    {h.description}
+                  </p>
+                </div>
+              ))}
 
               <div>
                 <p className="text-xs font-semibold text-white">📢 Reminder</p>

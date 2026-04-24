@@ -7,11 +7,17 @@ export interface ChangelogMod {
   version?: string;
 }
 
+export interface ChangelogHighlight {
+  title: string;
+  description: string;
+}
+
 export interface ChangelogData {
   version: string;
   added: ChangelogMod[];
   removed: ChangelogMod[];
   updated: ChangelogMod[];
+  highlights?: ChangelogHighlight[];
 }
 
 export type MaintenanceType = "maintenance" | "modpack_update";
@@ -72,6 +78,12 @@ export const AnnouncementEmbedPresets = {
     }
     if (data.updated.length > 0) {
       embed.field("⬆️ Updated Mods", formatModList(data.updated));
+    }
+
+    if (data.highlights && data.highlights.length > 0) {
+      for (const h of data.highlights) {
+        embed.field(h.title, h.description);
+      }
     }
 
     embed
