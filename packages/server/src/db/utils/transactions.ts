@@ -95,6 +95,18 @@ export async function transaction<T>(
   }
 }
 
+// Savepoint names must be SQL identifiers and can't be $N-parameterized, so
+// interpolation is unavoidable. Guard against anything that isn't a bare
+// identifier so a future caller taking `name` from external input can't
+// smuggle SQL through these helpers.
+const SAVEPOINT_NAME_RE = /^[A-Za-z_][A-Za-z0-9_]{0,62}$/;
+
+function assertSavepointName(name: string): void {
+  if (!SAVEPOINT_NAME_RE.test(name)) {
+    throw new Error(`Invalid savepoint name: ${JSON.stringify(name)}`);
+  }
+}
+
 /**
  * Creates a savepoint within an existing transaction
  * Useful for partial rollbacks without aborting the entire transaction
@@ -106,6 +118,7 @@ export async function savepoint(
   client: PoolClient,
   name: string,
 ): Promise<void> {
+  assertSavepointName(name);
   await client.query(`SAVEPOINT ${name}`);
   logger.debug(`Savepoint created: ${name}`);
 }
@@ -120,6 +133,7 @@ export async function rollbackToSavepoint(
   client: PoolClient,
   name: string,
 ): Promise<void> {
+  assertSavepointName(name);
   await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
   logger.debug(`Rolled back to savepoint: ${name}`);
 }
@@ -134,6 +148,7 @@ export async function releaseSavepoint(
   client: PoolClient,
   name: string,
 ): Promise<void> {
+  assertSavepointName(name);
   await client.query(`RELEASE SAVEPOINT ${name}`);
   logger.debug(`Savepoint released: ${name}`);
 }
