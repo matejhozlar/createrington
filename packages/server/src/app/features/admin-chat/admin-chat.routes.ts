@@ -152,6 +152,31 @@ router.get(
 );
 
 router.get(
+  "/sessions",
+  asyncHandler(authenticate),
+  asyncHandler(requireAdmin),
+  asyncHandler(async (req: Request, res: Response) => {
+    const base = requireUpstream(res);
+    if (!base) return;
+    const { limit, cursor } = req.query;
+    try {
+      const r = await claudeClient.get(`${base}/api/chat/sessions`, {
+        params: {
+          username: adminUsername(req),
+          environment: ENVIRONMENT,
+          ...(limit !== undefined && { limit }),
+          ...(cursor !== undefined && { cursor }),
+        },
+        headers: claudeHeaders(),
+      });
+      res.json(r.data);
+    } catch (err) {
+      forwardUpstreamError(err, res);
+    }
+  }),
+);
+
+router.get(
   "/messages",
   asyncHandler(authenticate),
   asyncHandler(requireAdmin),

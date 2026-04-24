@@ -4,6 +4,21 @@ import type { ChatMessage } from "./types";
 
 export const API_BASE = "/api/claude-chat";
 
+export interface ChatHistorySession {
+  id: number;
+  status: string;
+  title: string;
+  createdAt: string;
+  completedAt: string | null;
+  lastActivityAt: string | null;
+  messageCount: number;
+}
+
+export interface ChatHistoryPage {
+  sessions: ChatHistorySession[];
+  nextCursor: number | null;
+}
+
 /**
  * Fetch through the app backend proxy, which injects the admin-chat shared
  * secret and forwards to claude-automation. The JWT auth header is required
@@ -20,6 +35,31 @@ export async function claudeFetch(
     headers.set("Content-Type", "application/json");
   }
   return fetch(`${API_BASE}${path}`, { ...init, headers });
+}
+
+export async function fetchChatSessions(params: {
+  limit?: number;
+  cursor?: number;
+}): Promise<ChatHistoryPage> {
+  const search = new URLSearchParams();
+  if (params.limit !== undefined) search.set("limit", String(params.limit));
+  if (params.cursor !== undefined) search.set("cursor", String(params.cursor));
+  const qs = search.toString();
+  const r = await claudeFetch(`/sessions${qs ? `?${qs}` : ""}`);
+  if (!r.ok) throw new Error(`Failed to load chat sessions (${r.status})`);
+  return (await r.json()) as ChatHistoryPage;
+}
+
+export async function fetchChatMessages(sessionId: number): Promise<{
+  messages: ChatMessage[];
+  sessionActive: boolean;
+}> {
+  const r = await claudeFetch(`/messages?sessionId=${sessionId}`);
+  if (!r.ok) throw new Error(`Failed to load transcript (${r.status})`);
+  return (await r.json()) as {
+    messages: ChatMessage[];
+    sessionActive: boolean;
+  };
 }
 
 interface StreamHandlers {
