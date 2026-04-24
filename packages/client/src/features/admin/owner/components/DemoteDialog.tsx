@@ -9,9 +9,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from "@/components/ui/label";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Check, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 
@@ -119,8 +118,8 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
           )}
         </div>
 
-        <div>
-          <Label htmlFor="demote-reason">Reason (optional)</Label>
+        <Field>
+          <FieldLabel htmlFor="demote-reason">Reason (optional)</FieldLabel>
           <textarea
             id="demote-reason"
             value={reason}
@@ -128,11 +127,9 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
             placeholder="e.g. Stepped down, inactive, trust concerns"
             maxLength={500}
             rows={3}
-            className={cn(
-              "mt-1 flex w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            )}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
-        </div>
+        </Field>
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => setReason("")}>
