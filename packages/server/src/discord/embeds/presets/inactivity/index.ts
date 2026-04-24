@@ -41,6 +41,46 @@ export const InactivityEmbedPresets = {
   },
 
   /**
+   * Admin-facing embed posted to #admin-notifications after an inactivity
+   * removal run. Mirrors the public `removed` embed's player list but
+   * additionally names who triggered the run (admin mention or
+   * "Automated" for the scheduled cycle / startup sweep).
+   */
+  adminRemoval(data: {
+    players: string[];
+    triggeredBy: { discordId: string; username: string | null } | null;
+    removedAt: Date;
+  }) {
+    const removedUnix = Math.floor(data.removedAt.getTime() / 1000);
+
+    const triggeredByLine = data.triggeredBy
+      ? `<@${data.triggeredBy.discordId}>${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
+      : "Automated";
+
+    const playerLines = data.players
+      .map((username) => `- \`${username}\``)
+      .join("\n");
+
+    const description = [
+      `**${data.players.length}** inactive player${data.players.length === 1 ? "" : "s"} removed at <t:${removedUnix}:F>.`,
+      `**Triggered by:** ${triggeredByLine}`,
+      "",
+      playerLines,
+    ].join("\n");
+
+    const truncatedDescription =
+      description.length > 4096
+        ? `${description.slice(0, 4050)}\n\n...and ${data.players.length} players total`
+        : description;
+
+    return createEmbed()
+      .title("Inactivity Removal")
+      .description(truncatedDescription)
+      .color(EmbedColors.Moderation)
+      .timestamp();
+  },
+
+  /**
    * Announcement embed when inactive players are removed after their grace period expired.
    */
   removed(data: { players: string[]; removedAt: Date }) {

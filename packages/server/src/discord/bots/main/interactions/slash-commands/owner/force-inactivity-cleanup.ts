@@ -1,3 +1,4 @@
+import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
@@ -37,7 +38,12 @@ export async function execute(
       return;
     }
 
-    await service.forceRunAndResetSchedule();
+    const player = await Q.player.find({ discordId: interaction.user.id });
+
+    await service.forceRunAndResetSchedule({
+      discordId: interaction.user.id,
+      username: player?.minecraftUsername ?? null,
+    });
 
     const embed = EmbedPresets.success(
       "Inactivity Cleanup Triggered",
