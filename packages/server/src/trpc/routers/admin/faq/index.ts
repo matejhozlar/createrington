@@ -8,9 +8,27 @@ import { FaqService } from "@/services/discord/faq";
 
 const matchModeSchema = z.enum(["keywords", "regex"]).default("keywords");
 
-/** Validates a FAQ match pattern based on its mode (keywords or regex). */
+const MAX_PATTERN_LENGTH = 200;
+// Catastrophic-backtracking shapes: `(a+)+`, `(.*)*`, `(a|a)+`, etc. FAQ
+// patterns run against every #questions message, so reject these shapes.
+const NESTED_QUANTIFIER = /\([^()]*[+*][^()]*\)[+*?{]/;
+const QUANTIFIED_ALTERNATION = /\([^()]*\|[^()]*\)[+*]/;
+
 function validatePattern(matchMode: string, pattern: string): void {
+  if (pattern.length > MAX_PATTERN_LENGTH) {
+    throw trpcError.badRequest(
+      `Pattern must be at most ${MAX_PATTERN_LENGTH} characters`,
+    );
+  }
   if (matchMode === "regex") {
+    if (
+      NESTED_QUANTIFIER.test(pattern) ||
+      QUANTIFIED_ALTERNATION.test(pattern)
+    ) {
+      throw trpcError.badRequest(
+        "Pattern contains nested quantifiers that risk catastrophic backtracking",
+      );
+    }
     try {
       new RegExp(pattern, "i");
     } catch {
