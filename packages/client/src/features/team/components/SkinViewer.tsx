@@ -174,7 +174,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       };
     }, [uuid, width, height, index, total]);
 
-    // Cailin05 listens for kick requests from imahomen's headkick animation
+    // Cailin05 listens for kick requests from Tetsuoken's headkick animation
     useEffect(() => {
       if (username !== "Cailin05") return;
 
@@ -223,9 +223,9 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       };
     }, [username, index, total]);
 
-    // Non-Stratos members listen for nuke events
+    // Non-nuke-initiator members listen for nuke events
     useEffect(() => {
-      if (username === "Stratos65") return;
+      if (username === "diablothe2nd") return;
 
       const handleDetonate = () => {
         // Skip if any custom animation is active on this member
