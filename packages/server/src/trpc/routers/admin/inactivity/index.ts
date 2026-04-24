@@ -196,4 +196,36 @@ export const inactivityRouter = router({
 
       return { message: "Cleanup cycle completed" };
     }),
+
+  triggerResolveRemove: adminProcedure
+    .meta({
+      description:
+        "Run only the resolve + remove phases now (no new warning announcements)",
+    })
+    .mutation(async ({ ctx }) => {
+      if (!isManualActionsEnabled()) {
+        throw trpcError.forbidden(
+          "Processing overdue players is only available on the production deployment",
+        );
+      }
+
+      let service: InactivityCleanupService;
+      try {
+        service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
+      } catch {
+        throw trpcError.internal("Inactivity cleanup service is not available");
+      }
+
+      await service.triggerResolveAndRemove();
+
+      await Q.admin.log.action.logAction({
+        adminDiscordId: ctx.user.discordId,
+        adminUsername: ctx.user.minecraftUsername,
+        actionType: "inactivity_trigger_resolve_remove",
+        description:
+          "Force-ran inactivity resolve+remove phases (no new warnings)",
+      });
+
+      return { message: "Overdue warnings processed" };
+    }),
 });
