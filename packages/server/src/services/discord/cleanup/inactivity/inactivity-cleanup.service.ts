@@ -174,9 +174,6 @@ export class InactivityCleanupService {
   /**
    * Remove players whose grace period has expired without them returning.
    * Kicks from Discord, removes from whitelist, deletes player record.
-   * Posts both a public #announcements embed and an admin-facing embed
-   * to #admin-notifications that names the triggering admin (or
-   * "Automated" for the scheduled tick / startup sweep).
    */
   private async removeExpired(
     triggeredBy: InactivityTriggerContext = null,
@@ -218,43 +215,57 @@ export class InactivityCleanupService {
 
     if (removedUsernames.length > 0) {
       const removedAt = new Date();
-      const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
-      const messageService = DiscordMessageService.getInstance(mainBot);
 
+      let messageService: DiscordMessageService | null = null;
       try {
-        const embed = EmbedPresets.inactivity.removed({
-          players: removedUsernames,
-          removedAt,
-        });
-
-        await messageService.send({
-          channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
-          embeds: embed.build(),
-        });
-
-        logger.info(
-          `Sent inactivity removal announcement for ${removedUsernames.length} player(s)`,
-        );
-      } catch (error) {
-        logger.error("Failed to send inactivity removal announcement:", error);
-      }
-
-      try {
-        const adminEmbed = EmbedPresets.inactivity.adminRemoval({
-          players: removedUsernames,
-          triggeredBy,
-          removedAt,
-        });
-
-        await messageService.send({
-          channelId: Discord.Channels.administration.NOTIFICATIONS,
-          embeds: adminEmbed.build(),
-        });
+        const mainBot = getServiceSync(Services.DISCORD_MAIN_BOT);
+        messageService = DiscordMessageService.getInstance(mainBot);
       } catch (error) {
         logger.error(
-          "Failed to send inactivity removal admin notification:",
+          "Discord message service unavailable — skipping inactivity removal notifications:",
           error,
         );
+      }
+
+      if (messageService) {
+        try {
+          const embed = EmbedPresets.inactivity.removed({
+            players: removedUsernames,
+            removedAt,
+          });
+
+          await messageService.send({
+            channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
+            embeds: embed.build(),
+          });
+
+          logger.info(
+            `Sent inactivity removal announcement for ${removedUsernames.length} player(s)`,
+          );
+        } catch (error) {
+          logger.error(
+            "Failed to send inactivity removal announcement:",
+            error,
+          );
+        }
+
+        try {
+          const adminEmbed = EmbedPresets.inactivity.adminRemoval({
+            players: removedUsernames,
+            triggeredBy,
+            removedAt,
+          });
+
+          await messageService.send({
+            channelId: Discord.Channels.administration.NOTIFICATIONS,
+            embeds: adminEmbed.build(),
+          });
+        } catch (error) {
+          logger.error(
+            "Failed to send inactivity removal admin notification:",
+            error,
+          );
+        }
       }
     }
   }

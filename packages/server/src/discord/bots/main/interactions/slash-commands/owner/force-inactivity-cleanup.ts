@@ -1,3 +1,4 @@
+import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
 import { getService, Services } from "@/services";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
@@ -37,9 +38,11 @@ export async function execute(
       return;
     }
 
+    const player = await Q.player.find({ discordId: interaction.user.id });
+
     await service.forceRunAndResetSchedule({
       discordId: interaction.user.id,
-      username: interaction.user.username,
+      username: player?.minecraftUsername ?? null,
     });
 
     const embed = EmbedPresets.success(
