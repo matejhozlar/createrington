@@ -139,7 +139,14 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            onClick={handleDemote}
+            onClick={(e) => {
+              // AlertDialogAction closes the dialog synchronously on click,
+              // which would hide any error toast + force the owner to
+              // re-open on failure. Suppress that; onSuccess closes the
+              // dialog itself on the happy path.
+              e.preventDefault();
+              void handleDemote();
+            }}
             disabled={demoteMutation.isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >

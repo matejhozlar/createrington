@@ -50,8 +50,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const { stats: playerStats } = usePlayerData();
 
+  // Fire for any authenticated user so the owner can recover their own
+  // panel even if they're momentarily not in the admin table (SQL reset,
+  // bootstrap, etc.).
   const accountQuery = trpc.user.account.me.useQuery(undefined, {
-    enabled: !!user?.isAdmin,
+    enabled: !!user,
   });
   const isOwner = accountQuery.data?.isOwner ?? false;
 
@@ -180,10 +183,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavMain
           items={filteredNavMain}
           prepend={
-            user?.isAdmin ? (
+            isOwner || user?.isAdmin ? (
               <>
                 {isOwner && <NavOwner items={data.ownerNav} />}
-                <NavAdmin items={data.adminNav} />
+                {user?.isAdmin && <NavAdmin items={data.adminNav} />}
               </>
             ) : undefined
           }
