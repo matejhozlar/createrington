@@ -1,3 +1,14 @@
+## v1.12.0 (2026-04-26)
+
+### @createrington/server (1.11.0 → 1.12.0)
+- Add Nomads to the Discord server selection panel — users can now pick the "Nomads" test server (Create: Aeronautics proving phase) from the server selection menu, which assigns the new Nomads role
+- Register Nomads Discord entities — new role, channels (feedback-bugs, chat, start-here, minecraft-chat), and category added to the Discord configuration
+
+### @createrington/client (0.2.13 → 0.2.14)
+- Animated sidebar icons on hover — all sidebar navigation icons now use stroke-draw and motion-based animations from `@createrington/icons` that play on hover, replacing the static Lucide icons
+- Add `useAnimatedHover` hook integration across all nav components (main, admin, crypto, owner, user menu) for consistent hover-triggered icon animation
+- Add sidebar trigger animation and polish collapsed-sidebar icon hover states
+
 ## v1.11.1 (2026-04-24)
 
 ### @createrington/client (0.2.12 → 0.2.13)

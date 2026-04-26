@@ -1,13 +1,16 @@
 import {
-  type LucideIcon,
   ChevronRight,
   Eye,
   EyeOff,
   History,
   MoreHorizontal,
-  Shield,
-  Sparkles,
 } from "lucide-react";
+import {
+  type AnimatedIcon,
+  ShieldIcon,
+  SparklesIcon,
+  useAnimatedHover,
+} from "@createrington/icons";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import {
@@ -37,15 +40,85 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
 
-export function NavAdmin({
-  items,
+type AdminNavItem = {
+  title: string;
+  url: string;
+  icon?: AnimatedIcon;
+};
+
+function AdminSubRow({
+  item,
+  isActive,
 }: {
-  items: {
-    title: string;
-    url: string;
-    icon?: LucideIcon;
-  }[];
+  item: AdminNavItem;
+  isActive: boolean;
 }) {
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
+  const Icon = item.icon;
+
+  return (
+    <SidebarMenuSubItem {...hoverHandlers}>
+      <SidebarMenuSubButton asChild>
+        <NavLink
+          to={item.url}
+          className={cn(
+            "transition-colors duration-150",
+            isActive && "text-destructive bg-destructive/10",
+          )}
+        >
+          {Icon && (
+            <Icon
+              ref={hoverRef}
+              size={16}
+              className="block shrink-0 transition-colors"
+            />
+          )}
+          <span>{item.title}</span>
+        </NavLink>
+      </SidebarMenuSubButton>
+    </SidebarMenuSubItem>
+  );
+}
+
+function AdminSubCollapsed({
+  item,
+  isActive,
+}: {
+  item: AdminNavItem;
+  isActive: boolean;
+}) {
+  const [hoverRef, hoverHandlers] = useAnimatedHover();
+  const Icon = item.icon;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <NavLink
+          to={item.url}
+          {...hoverHandlers}
+          className={cn(
+            "flex size-8 items-center justify-center rounded-md transition-colors",
+            "text-destructive hover:bg-destructive/10",
+            isActive && "bg-destructive/20 font-medium",
+          )}
+        >
+          {Icon && (
+            <Icon
+              ref={hoverRef}
+              size={16}
+              className="block shrink-0 transition-colors"
+            />
+          )}
+        </NavLink>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <p className="text-destructive font-semibold">{item.title}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function NavAdmin({ items }: { items: AdminNavItem[] }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
@@ -56,6 +129,11 @@ export function NavAdmin({
     setBubbleVisible,
     toggleDrawer: toggleAssistantDrawer,
   } = useAdminChat();
+
+  const [triggerRef, triggerHandlers] = useAnimatedHover();
+  const [assistantRef, assistantHandlers] = useAnimatedHover();
+  const [assistantCollapsedRef, assistantCollapsedHandlers] =
+    useAnimatedHover();
 
   const toggleAssistant = () => {
     toggleAssistantDrawer();
@@ -81,14 +159,17 @@ export function NavAdmin({
             <CollapsibleTrigger asChild>
               <SidebarMenuButton
                 size="lg"
+                {...triggerHandlers}
                 className={cn(
                   "text-destructive hover:text-destructive hover:bg-destructive/10",
                   isAdminActive && "bg-destructive/20 font-medium",
                 )}
               >
-                <Shield
+                <ShieldIcon
+                  ref={triggerRef}
+                  size={24}
                   className={cn(
-                    "size-6! transition-all text-destructive",
+                    "block shrink-0 transition-colors text-destructive",
                     state === "collapsed" && "ml-3",
                   )}
                 />
@@ -118,28 +199,18 @@ export function NavAdmin({
         <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
           {state === "expanded" && (
             <SidebarMenuSub>
-              {items.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.url);
-                return (
-                  <SidebarMenuSubItem key={item.title}>
-                    <SidebarMenuSubButton asChild>
-                      <NavLink
-                        to={item.url}
-                        className={cn(
-                          "transition-colors duration-150",
-                          isActive && "text-destructive bg-destructive/10",
-                        )}
-                      >
-                        {Icon && <Icon className="size-4" />}
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuSubButton>
-                  </SidebarMenuSubItem>
-                );
-              })}
+              {items.map((item) => (
+                <AdminSubRow
+                  key={item.title}
+                  item={item}
+                  isActive={location.pathname.startsWith(item.url)}
+                />
+              ))}
               {assistantEnabled && (
-                <SidebarMenuSubItem className="group/assistant relative">
+                <SidebarMenuSubItem
+                  className="group/assistant relative"
+                  {...assistantHandlers}
+                >
                   <SidebarMenuSubButton asChild>
                     <button
                       type="button"
@@ -149,7 +220,11 @@ export function NavAdmin({
                         assistantOpen && "text-destructive bg-destructive/10",
                       )}
                     >
-                      <Sparkles className="size-4" />
+                      <SparklesIcon
+                        ref={assistantRef}
+                        size={16}
+                        className="block shrink-0 transition-colors"
+                      />
                       <span>Assistant</span>
                     </button>
                   </SidebarMenuSubButton>
@@ -192,44 +267,31 @@ export function NavAdmin({
 
           {state === "collapsed" && (
             <div className="flex flex-col gap-1 px-2 py-1">
-              {items.map((item) => {
-                const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.url);
-                return (
-                  <Tooltip key={item.title}>
-                    <TooltipTrigger asChild>
-                      <NavLink
-                        to={item.url}
-                        className={cn(
-                          "flex size-8 items-center justify-center rounded-md transition-colors",
-                          "text-destructive hover:bg-destructive/10",
-                          isActive && "bg-destructive/20 font-medium",
-                        )}
-                      >
-                        {Icon && <Icon className="size-4" />}
-                      </NavLink>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p className="text-destructive font-semibold">
-                        {item.title}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
+              {items.map((item) => (
+                <AdminSubCollapsed
+                  key={item.title}
+                  item={item}
+                  isActive={location.pathname.startsWith(item.url)}
+                />
+              ))}
               {assistantEnabled && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
                       type="button"
                       onClick={toggleAssistant}
+                      {...assistantCollapsedHandlers}
                       className={cn(
                         "flex size-8 items-center justify-center rounded-md transition-colors",
                         "text-destructive hover:bg-destructive/10",
                         assistantOpen && "bg-destructive/20 font-medium",
                       )}
                     >
-                      <Sparkles className="size-4" />
+                      <SparklesIcon
+                        ref={assistantCollapsedRef}
+                        size={16}
+                        className="block shrink-0 transition-colors"
+                      />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="right">

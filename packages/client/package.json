@@ -2,7 +2,7 @@
   "name": "@createrington/client",
   "proxy": "http://localhost:5001",
   "private": true,
-  "version": "0.2.13",
+  "version": "0.2.14",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@createrington/icons": "0.3.4",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -34,6 +35,7 @@
     "ky": "^1.14.3",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.563.0",
+    "motion": "^12.38.0",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

@@ -1,24 +1,24 @@
 "use client";
 
 import * as React from "react";
+import { X } from "lucide-react";
 import {
-  AlertCircle,
-  BookOpen,
-  FileText,
-  Heart,
-  Home,
-  LayoutDashboard,
-  Map,
-  MessageCircle,
-  Package,
-  Wrench,
-  Server,
-  Shield,
-  UserCog,
-  UserPlus,
-  Users,
-  X,
-} from "lucide-react";
+  BookOpenIcon,
+  BoxIcon,
+  ClipboardIcon,
+  DashboardIcon,
+  HeartIcon,
+  HomeIcon,
+  InfoIcon,
+  MapPinnedIcon,
+  MessageCircleIcon,
+  ServerIcon,
+  ShieldIcon,
+  UserCogIcon,
+  UserPlusIcon,
+  UsersIcon,
+  WrenchIcon,
+} from "@createrington/icons";
 
 import { NavMain } from "@/components/nav-main";
 import { NavDiscordLogin } from "@/components/nav-discord-login";
@@ -66,92 +66,92 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {
         title: "Admins",
         url: "/owner/admins",
-        icon: UserCog,
+        icon: UserCogIcon,
       },
     ],
     adminNav: [
       {
         title: "Dashboard",
         url: "/admin/dashboard",
-        icon: LayoutDashboard,
+        icon: DashboardIcon,
       },
       {
         title: "Players",
         url: "/admin/players",
-        icon: Users,
+        icon: UsersIcon,
       },
       {
         title: "Waitlist",
         url: "/admin/waitlist",
-        icon: UserPlus,
+        icon: UserPlusIcon,
       },
       {
         title: "Servers",
         url: "/admin/servers",
-        icon: Server,
+        icon: ServerIcon,
       },
       {
         title: "Tools",
         url: "/admin/tools",
-        icon: Wrench,
+        icon: WrenchIcon,
       },
       {
         title: "Donations",
         url: "/admin/donations",
-        icon: Heart,
+        icon: HeartIcon,
       },
       {
         title: "Logs",
         url: "/admin/logs",
-        icon: FileText,
+        icon: ClipboardIcon,
       },
     ],
     navMain: [
       {
         title: "Home",
         url: "/",
-        icon: Home,
+        icon: HomeIcon,
       },
       {
         title: "Packs",
         url: "/structure-packs",
-        icon: Package,
+        icon: BoxIcon,
       },
       {
         title: "Chat",
         url: "/chat/1",
-        icon: MessageCircle,
+        icon: MessageCircleIcon,
       },
       {
         title: "Players",
         url: "/online-players",
-        icon: Users,
+        icon: UsersIcon,
         badge: playerStats.total > 0 ? playerStats.total : undefined,
       },
       {
         title: "Map",
         url: "/blue-map",
-        icon: Map,
+        icon: MapPinnedIcon,
       },
       {
         title: "Apply",
         url: "/apply-to-join",
-        icon: UserPlus,
+        icon: UserPlusIcon,
       },
       {
         title: "Team",
         url: "/team",
-        icon: Shield,
+        icon: ShieldIcon,
       },
       {
         title: "Rules",
         url: "/rules",
-        icon: AlertCircle,
+        icon: InfoIcon,
       },
       {
         title: "Guides",
         url: "/guides",
-        icon: BookOpen,
+        icon: BookOpenIcon,
       },
     ],
   };
