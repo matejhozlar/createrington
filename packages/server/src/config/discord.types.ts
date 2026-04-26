@@ -29,6 +29,7 @@ interface MemberRolesConfig {
   readonly adventurer: string;
   readonly newcomer: string;
   readonly tester: string;
+  readonly nomads: string;
   readonly cogsAndSteam: string;
   readonly supporter: string;
   readonly verified: string;
@@ -84,6 +85,13 @@ interface ChannelConfig {
     readonly allMembers: string;
   };
 
+  readonly nomads: {
+    readonly feedbackBugs: string;
+    readonly chat: string;
+    readonly startHere: string;
+    readonly minecraftChat: string;
+  };
+
   readonly dev: {
     readonly features: string;
     readonly chat: string;
@@ -101,6 +109,7 @@ interface ChannelConfig {
 interface CategoriesConfig {
   readonly crypto: string;
   readonly createringtonOfficial: string;
+  readonly nomads: string;
   readonly administration: string;
   readonly verification: string;
   readonly dev: string;
