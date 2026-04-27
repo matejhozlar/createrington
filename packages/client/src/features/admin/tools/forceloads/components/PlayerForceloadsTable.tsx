@@ -28,6 +28,7 @@ interface Player {
   minecraftUsername: string | null;
   totalChunks: number;
   activeChunks: number;
+  chunksByDimension: Record<string, { total: number; active: number }>;
 }
 
 function ChunkDetails({
@@ -70,11 +71,22 @@ export function PlayerForceloadsTable({
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const needle = search.trim().toLowerCase();
-  const filtered = needle
-    ? players.filter((p) =>
-        (p.minecraftUsername ?? p.playerUuid).toLowerCase().includes(needle),
-      )
-    : players;
+  const filtered = players.filter((p) => {
+    if (
+      needle &&
+      !(p.minecraftUsername ?? p.playerUuid).toLowerCase().includes(needle)
+    ) {
+      return false;
+    }
+    if (dimensionFilter === "all") {
+      if (activeOnly && p.activeChunks === 0) return false;
+      return true;
+    }
+    const dimStats = p.chunksByDimension[dimensionFilter];
+    if (!dimStats) return false;
+    if (activeOnly && dimStats.active === 0) return false;
+    return true;
+  });
 
   if (players.length === 0) {
     return (
@@ -115,7 +127,7 @@ export function PlayerForceloadsTable({
                   colSpan={5}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
-                  No players match "{search}"
+                  No players match the current filters
                 </TableCell>
               </TableRow>
             ) : (
