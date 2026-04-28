@@ -243,6 +243,10 @@ const AdminForceloads = lazyNamed(
   () => import("./features/admin/tools/forceloads/AdminForceloads"),
   "AdminForceloads",
 );
+const AdminAllies = lazyNamed(
+  () => import("./features/admin/tools/allies/AdminAllies"),
+  "AdminAllies",
+);
 const AdminPrompts = lazyNamed(
   () => import("./features/admin/tools/prompts/AdminPrompts"),
   "AdminPrompts",
@@ -507,6 +511,7 @@ function AppContent() {
                         path="tools/forceloads"
                         element={<AdminForceloads />}
                       />
+                      <Route path="tools/allies" element={<AdminAllies />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
                       <Route
                         path="tools/prompts/:id"

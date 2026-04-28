@@ -31,6 +31,7 @@ interface Party {
   syncedAt: string;
   totalChunks: number;
   activeChunks: number;
+  chunksByDimension: Record<string, { total: number; active: number }>;
 }
 
 function PartyDetails({
@@ -111,9 +112,19 @@ export function PartyForceloadsTable({
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const needle = search.trim().toLowerCase();
-  const filtered = needle
-    ? parties.filter((p) => p.partyName.toLowerCase().includes(needle))
-    : parties;
+  const filtered = parties.filter((p) => {
+    if (needle && !p.partyName.toLowerCase().includes(needle)) {
+      return false;
+    }
+    if (dimensionFilter === "all") {
+      if (activeOnly && p.activeChunks === 0) return false;
+      return true;
+    }
+    const dimStats = p.chunksByDimension[dimensionFilter];
+    if (!dimStats) return false;
+    if (activeOnly && dimStats.active === 0) return false;
+    return true;
+  });
 
   if (parties.length === 0) {
     return (
@@ -155,7 +166,7 @@ export function PartyForceloadsTable({
                   colSpan={6}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
-                  No parties match "{search}"
+                  No parties match the current filters
                 </TableCell>
               </TableRow>
             ) : (

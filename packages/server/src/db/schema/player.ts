@@ -328,16 +328,15 @@ export const playerPlaytimeHourly = pgTable(
 );
 
 // --- player_playtime_summary ---
+// player_minecraft_uuid intentionally has no FK to player. Summary rows
+// outlive player deletion so all-time aggregates (homepage total hours,
+// per-server totals) stay whole when a player is removed. Sessions still
+// upsert by UUID, so a rejoining player resumes their existing total.
 
 export const playerPlaytimeSummary = pgTable(
   "player_playtime_summary",
   {
-    playerMinecraftUuid: uuid("player_minecraft_uuid")
-      .notNull()
-      .references(() => player.minecraftUuid, {
-        onUpdate: "cascade",
-        onDelete: "cascade",
-      }),
+    playerMinecraftUuid: uuid("player_minecraft_uuid").notNull(),
     serverId: integer("server_id")
       .notNull()
       .references(() => server.id, {

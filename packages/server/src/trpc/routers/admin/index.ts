@@ -17,6 +17,7 @@ import { adminPromptsRouter } from "./prompts";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
+import { adminAlliesRouter } from "./allies";
 import { adminForceloadsRouter } from "./forceloads";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
@@ -48,6 +49,7 @@ export const adminRouter = router({
   donations: adminDonationsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
+  allies: adminAlliesRouter,
   forceloads: adminForceloadsRouter,
   inactivity: inactivityRouter,
   logs: logsRouter,

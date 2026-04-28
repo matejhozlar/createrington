@@ -1,3 +1,18 @@
+## v1.13.0 (2026-04-28)
+
+### @createrington/server (1.12.0 → 1.13.0)
+- Add ally sync system for opac-fakeplayer — new `/api/allies/sync` mod endpoint receives full-state snapshots of the fake-player party, allied real-player parties, and qualified/pending players; the server replaces ally state per server in a single transaction with four new tables (`server_ally_fake_party`, `server_ally_fake_party_member`, `server_ally_party`, `server_ally_qualified_player`)
+- Add admin tRPC procedures for ally data — `admin.allies.fakeParty`, `admin.allies.alliedParties`, `admin.allies.qualifiedPlayers`, and `admin.allies.playerStatus` let the admin panel read the synced ally state
+- Fix forceload dimension and active-only filters — the party and player forceload queries now aggregate chunks per dimension via a lateral join and return `chunksByDimension`, so the UI filters by dimension and active status actually filter the top-level table rows instead of only the expanded detail
+- Drop FK on `player_playtime_summary.player_minecraft_uuid` — playtime summary rows now outlive player deletion so all-time aggregates (homepage total hours, per-server totals) remain intact when a player is removed
+- Add stats-file playtime backfill script — new `import-playtime-from-stats` script reads Minecraft `stats/*.json` files and backfills `player_playtime_summary` rows for historical playtime data
+
+### @createrington/client (0.2.14 → 0.2.15)
+- Add admin allies page — new Tools → Allies page shows the synced fake-player party, allied parties with member badges, and qualified players split into active/pending sections
+- Add ally status section to player detail — the admin player overview tab now shows the player's ally qualification state (active, pending, or not qualified) with their allied party info
+- Fix forceload active-only and dimension filters on top-level tables — party and player tables now hide rows that have zero chunks matching the selected dimension or active-only toggle, instead of only filtering the expanded chunk list
+- Fix auto-focus on team member dialog — prevent Radix auto-focus from stealing focus when the dialog opens, avoiding scroll jumps on mobile
+
 ## v1.12.0 (2026-04-26)
 
 ### @createrington/server (1.11.0 → 1.12.0)

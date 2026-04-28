@@ -16,6 +16,7 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
       syncedAt: Date;
       totalChunks: number;
       activeChunks: number;
+      chunksByDimension: Record<string, { total: number; active: number }>;
     }>(
       `SELECT
         fp.id,
@@ -24,12 +25,29 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
         fp.member_count AS "memberCount",
         fp.opted_in AS "optedIn",
         fp.synced_at AS "syncedAt",
-        COUNT(fc.id)::int AS "totalChunks",
-        COUNT(fc.id) FILTER (WHERE fc.active)::int AS "activeChunks"
+        COALESCE(c.total_chunks, 0) AS "totalChunks",
+        COALESCE(c.active_chunks, 0) AS "activeChunks",
+        COALESCE(c.chunks_by_dimension, '{}'::jsonb) AS "chunksByDimension"
       FROM server_forceload_party fp
-      LEFT JOIN server_forceload_chunk fc ON fc.party_id = fp.id
+      LEFT JOIN LATERAL (
+        SELECT
+          SUM(dim_total)::int AS total_chunks,
+          SUM(dim_active)::int AS active_chunks,
+          JSONB_OBJECT_AGG(
+            dimension,
+            JSONB_BUILD_OBJECT('total', dim_total, 'active', dim_active)
+          ) AS chunks_by_dimension
+        FROM (
+          SELECT
+            dimension,
+            COUNT(*)::int AS dim_total,
+            COUNT(*) FILTER (WHERE active)::int AS dim_active
+          FROM server_forceload_chunk
+          WHERE party_id = fp.id
+          GROUP BY dimension
+        ) sub
+      ) c ON true
       WHERE fp.server_id = $1
-      GROUP BY fp.id, fp.party_id, fp.party_name, fp.member_count, fp.opted_in, fp.synced_at
       ORDER BY "totalChunks" DESC`,
       [serverId],
     );
