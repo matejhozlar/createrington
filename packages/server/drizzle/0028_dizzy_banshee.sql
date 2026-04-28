@@ -1,0 +1,1 @@
+ALTER TABLE "player_playtime_summary" DROP CONSTRAINT "player_playtime_summary_player_minecraft_uuid_player_minecraft_uuid_fk";
