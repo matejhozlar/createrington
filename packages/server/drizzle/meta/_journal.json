@@ -190,6 +190,13 @@
       "when": 1776766314203,
       "tag": "0026_broad_network",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1777367993486,
+      "tag": "0027_tiny_makkari",
+      "breakpoints": true
     }
   ]
 }

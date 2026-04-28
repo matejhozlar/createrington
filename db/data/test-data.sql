@@ -29,6 +29,10 @@ TRUNCATE TABLE server_forceload_chunk CASCADE;
 TRUNCATE TABLE server_forceload_member CASCADE;
 TRUNCATE TABLE server_forceload_player CASCADE;
 TRUNCATE TABLE server_forceload_party CASCADE;
+TRUNCATE TABLE server_ally_fake_party_member CASCADE;
+TRUNCATE TABLE server_ally_fake_party CASCADE;
+TRUNCATE TABLE server_ally_party CASCADE;
+TRUNCATE TABLE server_ally_qualified_player CASCADE;
 
 -- Reset sequences
 ALTER SEQUENCE server_id_seq RESTART WITH 1;
@@ -51,6 +55,10 @@ ALTER SEQUENCE server_forceload_player_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_forceload_party_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_forceload_member_id_seq RESTART WITH 1;
 ALTER SEQUENCE server_forceload_chunk_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_ally_fake_party_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_ally_fake_party_member_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_ally_party_id_seq RESTART WITH 1;
+ALTER SEQUENCE server_ally_qualified_player_id_seq RESTART WITH 1;
 
 -- ============================================================================
 -- SERVERS
@@ -1364,6 +1372,44 @@ INSERT INTO server_forceload_chunk (player_id, party_id, dimension, x, z, active
   (NULL, 1, 'minecraft:overworld',    1,    0, true),
   (NULL, 1, 'minecraft:the_nether',   0,    0, true),
   (NULL, 1, 'minecraft:the_end',     42,  -17, false);
+
+-- ============================================================================
+-- SERVER ALLIES (opac-fakeplayer)
+-- ============================================================================
+
+-- Fake-player party on Cogs SMP (server_id = 1). The fake party UUIDs are
+-- synthetic and intentionally not in the player table — fake players aren't
+-- real accounts.
+INSERT INTO server_ally_fake_party (server_id, party_id, owner_uuid, owner_name, synced_at) VALUES
+  (1,
+   'cccccccc-0000-4000-8000-000000000001'::uuid,
+   'cccccccc-0000-4000-8000-0000000000aa'::uuid,
+   'Createrington', NOW() - INTERVAL '5 minutes');
+
+-- Fake-player party members (bots, not real players)
+INSERT INTO server_ally_fake_party_member (fake_party_id, player_uuid) VALUES
+  (1, 'cccccccc-0000-4000-8000-0000000000aa'::uuid),
+  (1, 'cccccccc-0000-4000-8000-0000000000bb'::uuid),
+  (1, 'cccccccc-0000-4000-8000-0000000000cc'::uuid);
+
+-- Allied real-player parties. The party_id matches the Hermitcraft Friends
+-- party from server_forceload_party so the admin UI can JOIN to its member
+-- roster.
+INSERT INTO server_ally_party (server_id, party_id, allied_at, synced_at) VALUES
+  (1, 'aaaaaaaa-0000-4000-8000-000000000001'::uuid,
+      NOW() - INTERVAL '2 days', NOW() - INTERVAL '5 minutes');
+
+-- Qualified players. is_pending=false → currently in an allied party.
+-- is_pending=true → met the trigger but not in any allied party yet.
+INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, is_pending, synced_at) VALUES
+  -- Mumbo (member of allied Hermitcraft Friends party)
+  (1, '550e8400-e29b-41d4-a716-446655440009'::uuid, NOW() - INTERVAL '2 days',  false, NOW() - INTERVAL '5 minutes'),
+  -- Grian (member of allied Hermitcraft Friends party)
+  (1, '550e8400-e29b-41d4-a716-446655440010'::uuid, NOW() - INTERVAL '2 days',  false, NOW() - INTERVAL '5 minutes'),
+  -- Notch (qualified solo, no party)
+  (1, '550e8400-e29b-41d4-a716-446655440003'::uuid, NOW() - INTERVAL '1 day',   true,  NOW() - INTERVAL '5 minutes'),
+  -- Herobrine (qualified solo, no party)
+  (1, '550e8400-e29b-41d4-a716-446655440004'::uuid, NOW() - INTERVAL '6 hours', true,  NOW() - INTERVAL '5 minutes');
 
 -- Show some sample stats
 SELECT

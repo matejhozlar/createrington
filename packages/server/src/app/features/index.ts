@@ -5,6 +5,7 @@ import authRoutes from "./auth/auth.routes";
 import donationRoutes from "./donation/donation.routes";
 import skinRoutes from "./skin/skin.routes";
 import currencyRoutes from "./mod/currency/currency.routes";
+import alliesRoutes from "./mod/allies/allies.routes";
 import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
@@ -21,6 +22,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/donations`, donationRoutes);
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
+  app.use(`${API_PREFIX}/allies`, alliesRoutes);
   app.use(`${API_PREFIX}/forceloads`, forceloadsRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);

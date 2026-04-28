@@ -156,3 +156,98 @@ export const serverForceloadChunk = pgTable(
     index("idx_server_forceload_chunk_party").on(table.partyId),
   ],
 );
+
+// --- server_ally_fake_party ---
+// Snapshot of the opac-fakeplayer fake-player party for a server. One row per
+// server; replaced on each sync.
+
+export const serverAllyFakeParty = pgTable(
+  "server_ally_fake_party",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    partyId: uuid("party_id").notNull(),
+    ownerUuid: uuid("owner_uuid").notNull(),
+    ownerName: varchar("owner_name", { length: 255 }).notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_ally_fake_party_server").on(table.serverId),
+  ],
+);
+
+// --- server_ally_fake_party_member ---
+// Members of the fake-player party.
+
+export const serverAllyFakePartyMember = pgTable(
+  "server_ally_fake_party_member",
+  {
+    id: serial("id").primaryKey(),
+    fakePartyId: integer("fake_party_id")
+      .notNull()
+      .references(() => serverAllyFakeParty.id, { onDelete: "cascade" }),
+    playerUuid: uuid("player_uuid").notNull(),
+  },
+  (table) => [
+    index("idx_server_ally_fake_party_member_party").on(table.fakePartyId),
+    index("idx_server_ally_fake_party_member_player").on(table.playerUuid),
+  ],
+);
+
+// --- server_ally_party ---
+// Real-player parties currently allied with the fake-player party on a server.
+// One row per (server, party).
+
+export const serverAllyParty = pgTable(
+  "server_ally_party",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    partyId: uuid("party_id").notNull(),
+    alliedAt: timestamp("allied_at", { withTimezone: true }).notNull(),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_ally_party_unique").on(
+      table.serverId,
+      table.partyId,
+    ),
+    index("idx_server_ally_party_server").on(table.serverId),
+  ],
+);
+
+// --- server_ally_qualified_player ---
+// Players who have met the ally trigger requirements (advancement unlock or
+// playtime threshold). isPending is true when the player has qualified but is
+// not yet in any allied party.
+
+export const serverAllyQualifiedPlayer = pgTable(
+  "server_ally_qualified_player",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    playerUuid: uuid("player_uuid").notNull(),
+    qualifiedAt: timestamp("qualified_at", { withTimezone: true }).notNull(),
+    isPending: boolean("is_pending").notNull().default(false),
+    syncedAt: timestamp("synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_ally_qualified_player_unique").on(
+      table.serverId,
+      table.playerUuid,
+    ),
+    index("idx_server_ally_qualified_player_server").on(table.serverId),
+  ],
+);

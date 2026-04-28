@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Clock,
   Coins,
+  Handshake,
   MapPin,
   Megaphone,
   MessageCircleQuestion,
@@ -102,6 +103,13 @@ const TOOL_SECTIONS: ToolSection[] = [
           "View forceloaded chunks by player and party across servers.",
         icon: MapPin,
         href: "/admin/tools/forceloads",
+      },
+      {
+        title: "Allies",
+        description:
+          "View the fake-player party, allied parties, and qualified players.",
+        icon: Handshake,
+        href: "/admin/tools/allies",
       },
     ],
   },
