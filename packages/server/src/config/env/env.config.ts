@@ -43,156 +43,218 @@ const discordToken = (label = "Token") =>
     .min(1, `${label} is required`)
     .regex(/^[\w\-.]+$/, `${label} format is invalid`);
 
-const envSchema = z.object({
-  // Server
-  PORT: port("Server port").default(5001),
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+const envSchema = z
+  .object({
+    // Server
+    PORT: port("Server port").default(5001),
+    NODE_ENV: z
+      .enum(["development", "production", "test"])
+      .default("development"),
 
-  // Database
-  DB_USER: z.string().min(1, "Database user is required"),
-  DB_HOST: z.string().min(1, "Database host is required"),
-  DB_DATABASE: z.string().min(1, "Database name is required"),
-  DB_PASSWORD: z.string().min(1, "Database password is required"),
-  DB_PORT: port("Database port").default(5432),
+    // Database — required in every environment
+    DB_USER: z.string().min(1, "Database user is required"),
+    DB_HOST: z.string().min(1, "Database host is required"),
+    DB_DATABASE: z.string().min(1, "Database name is required"),
+    DB_PASSWORD: z.string().min(1, "Database password is required"),
+    DB_PORT: port("Database port").default(5432),
 
-  // SFTP
-  // Cogs & Steam
-  COGS_AND_STEAM_SFTP_HOST: z
-    .string()
-    .min(1, "Cogs and Steam SFTP host required"),
-  COGS_AND_STEAM_SFTP_PORT: port("Cogs and Steam SFTP port"),
-  COGS_AND_STEAM_SFTP_USER: z
-    .string()
-    .min(1, "Cogs and Steam SFTP user required"),
-  COGS_AND_STEAM_SFTP_PASS: z
-    .string()
-    .min(1, "Cogs and Steam SFTP password required"),
-  COGS_AND_STEAM_SFTP_STATS_PATH: z
-    .string()
-    .min(1, "Cogs and Steam SFTP stats path required"),
+    // SFTP — Cogs & Steam
+    // Production-only: SFTP is gated behind `!isDev && !isDevDeployment`
+    // (see services/mc-server/file-ops.ts), so dev never opens a connection.
+    // Required at runtime by the prod superRefine below.
+    COGS_AND_STEAM_SFTP_HOST: z.string().optional(),
+    COGS_AND_STEAM_SFTP_PORT: port("Cogs and Steam SFTP port").optional(),
+    COGS_AND_STEAM_SFTP_USER: z.string().optional(),
+    COGS_AND_STEAM_SFTP_PASS: z.string().optional(),
+    COGS_AND_STEAM_SFTP_STATS_PATH: z.string().optional(),
 
-  // Discord
-  DISCORD_GUILD_ID: discordId("Guild ID"),
-  DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
-  DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
-  DISCORD_MAIN_BOT_WEBHOOK_ID: discordId("Main bot webhook ID"),
-  DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
-  DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
-  DISCORD_OAUTH_CLIENT_ID: discordId("OAuth client ID"),
-  DISCORD_OAUTH_CLIENT_SECRET: z
-    .string()
-    .min(1, "OAuth client secret is required")
-    .min(32, "OAuth client secret must be at least 32 characters"),
-  DISCORD_OAUTH_REDIRECT_URI_DEV: z
-    .string()
-    .url("Development redirect URI must be a valid URL"),
-  DISCORD_OAUTH_REDIRECT_URI_PROD: z
-    .string()
-    .url("Production redirect URI must be a valid URL"),
+    // Discord — required in every environment
+    DISCORD_GUILD_ID: discordId("Guild ID"),
+    DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
+    DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
+    DISCORD_MAIN_BOT_WEBHOOK_ID: discordId("Main bot webhook ID"),
+    DISCORD_WEB_BOT_TOKEN: discordToken("Web bot token"),
+    DISCORD_WEB_BOT_ID: discordId("Web bot ID"),
+    DISCORD_OAUTH_CLIENT_ID: discordId("OAuth client ID"),
+    DISCORD_OAUTH_CLIENT_SECRET: z
+      .string()
+      .min(1, "OAuth client secret is required")
+      .min(32, "OAuth client secret must be at least 32 characters"),
+    DISCORD_OAUTH_REDIRECT_URI_DEV: z
+      .string()
+      .url("Development redirect URI must be a valid URL"),
+    // Production-only: only consumed when NODE_ENV === "production".
+    // Required at runtime by the prod superRefine below.
+    DISCORD_OAUTH_REDIRECT_URI_PROD: z
+      .string()
+      .url("Production redirect URI must be a valid URL")
+      .optional(),
 
-  // Auth
-  JWT_ACCESS_SECRET: z
-    .string()
-    .min(32, "JWT access secret must be at least 32 characters"),
-  JWT_ACCESS_EXPIRES_IN: z
-    .string()
-    .regex(
-      /^\d+[smhd]$/,
-      "JWT_ACCESS_EXPIRES_IN must be in format: number + unit (s/m/h/d). Examples: 60s, 15m, 24h, 7d",
-    )
-    .default("15m"),
-  REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).default(30),
-  REFRESH_COOKIE_NAME: z.string().default("crt_refresh"),
-  ACCESS_COOKIE_NAME: z.string().default("crt_access"),
-  // Empty string means host-only cookies (the existing behavior). Set to a
-  // parent domain like ".createrington.com" to enable cross-subdomain SSO.
-  COOKIE_DOMAIN: z.string().default(""),
-  // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
-  // URI in the Discord developer portal. Used by /api/auth/sso/start +
-  // /api/auth/sso/callback.
-  SSO_CALLBACK_URL: z.string().default(""),
-  // Comma-separated list of additional CORS origins (e.g.
-  // "https://sandbox.createrington.com") that are allowed to call the API
-  // with credentials. Doubles as the SSO return-to allowlist — the main
-  // website is included automatically via config.meta.links.website.
-  SSO_CORS_ORIGINS: z.string().default(""),
-  // Discord ID of the sole owner — gates the owner-only admin management
-  // panel. Must be a Discord snowflake (17–20 digits).
-  OWNER_DISCORD_ID: z
-    .string()
-    .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
+    // Auth
+    JWT_ACCESS_SECRET: z
+      .string()
+      .min(32, "JWT access secret must be at least 32 characters"),
+    JWT_ACCESS_EXPIRES_IN: z
+      .string()
+      .regex(
+        /^\d+[smhd]$/,
+        "JWT_ACCESS_EXPIRES_IN must be in format: number + unit (s/m/h/d). Examples: 60s, 15m, 24h, 7d",
+      )
+      .default("15m"),
+    REFRESH_TOKEN_EXPIRES_IN_DAYS: z.coerce.number().int().min(1).default(30),
+    REFRESH_COOKIE_NAME: z.string().default("crt_refresh"),
+    ACCESS_COOKIE_NAME: z.string().default("crt_access"),
+    // Empty string means host-only cookies (the existing behavior). Set to a
+    // parent domain like ".createrington.com" to enable cross-subdomain SSO.
+    COOKIE_DOMAIN: z.string().default(""),
+    // Server-driven SSO callback URL. Must be registered as an OAuth2 redirect
+    // URI in the Discord developer portal. Used by /api/auth/sso/start +
+    // /api/auth/sso/callback.
+    SSO_CALLBACK_URL: z.string().default(""),
+    // Comma-separated list of additional CORS origins (e.g.
+    // "https://sandbox.createrington.com") that are allowed to call the API
+    // with credentials. Doubles as the SSO return-to allowlist — the main
+    // website is included automatically via config.meta.links.website.
+    SSO_CORS_ORIGINS: z.string().default(""),
+    // Discord ID of the sole owner — gates the owner-only admin management
+    // panel. Must be a Discord snowflake (17–20 digits).
+    OWNER_DISCORD_ID: z
+      .string()
+      .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
-  // Minecraft Servers
-  COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP"),
-  COGS_AND_STEAM_SERVER_PORT: port("Cogs and Steam server port"),
-  LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP"),
-  PLAYER_LIMIT: z.coerce
-    .number()
-    .int()
-    .min(0)
-    .max(1000, "Player limit must be between 0 and 1000"),
+    // Minecraft Servers — defaults are local-dev safe; prod overrides via .env
+    COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP").default(
+      "0.0.0.0",
+    ),
+    COGS_AND_STEAM_SERVER_PORT: port("Cogs and Steam server port").default(
+      26980,
+    ),
+    LOCAL_SERVER_IP_ADDRESS: ipv4("Local server IP").default("127.0.0.1"),
+    PLAYER_LIMIT: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(1000, "Player limit must be between 0 and 1000")
+      .default(100),
 
-  // RCON
-  COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port"),
-  COGS_AND_STEAM_RCON_PASSWORD: z
-    .string()
-    .min(1, "RCON password is required")
-    .max(100, "RCON password is too long"),
-  // URLs
-  WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
-  ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
-  ASSETS_URL: z.string().url("Assets URL must be a valid URL"),
-  MAP_URL: z.string().url("Map URL must be a valid URL"),
+    // RCON
+    COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port").default(25583),
+    // Production-only: dev never opens an RCON connection (manager only stores
+    // config at boot — utils/rcon/manager.ts). Required at runtime by the prod
+    // superRefine below.
+    COGS_AND_STEAM_RCON_PASSWORD: z
+      .string()
+      .max(100, "RCON password is too long")
+      .optional(),
 
-  // Puppeteer (internal rendering)
-  PUPPETEER_SECRET: z
-    .string()
-    .min(32, "Puppeteer secret must be at least 32 characters"),
-  PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
-  PUPPETEER_BASE_URL: z.string().url().optional(),
+    // URLs
+    WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
+    ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
+    ASSETS_URL: z.string().url("Assets URL must be a valid URL"),
+    MAP_URL: z.string().url("Map URL must be a valid URL"),
 
-  // Playtime sync (cross-environment forwarding)
-  PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
-  PLAYTIME_SYNC_SECRET: z
-    .string()
-    .min(32, "Playtime sync secret must be at least 32 characters")
-    .optional(),
+    // Puppeteer (internal rendering)
+    // Production-only: render routes reject calls when the secret is empty
+    // (app/features/render/render.routes.ts). Required at runtime by the prod
+    // superRefine below.
+    PUPPETEER_SECRET: z
+      .string()
+      .min(32, "Puppeteer secret must be at least 32 characters")
+      .optional(),
+    PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
+    PUPPETEER_BASE_URL: z.string().url().optional(),
 
-  // Claude automation proxy — admin chat widget talks to claude-automation
-  // through the app backend so the shared secret never ships to clients.
-  CLAUDE_API_URL: z.string().url().optional(),
-  ADMIN_CHAT_SECRET: z.string().min(1).optional(),
+    // Playtime sync (cross-environment forwarding)
+    PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
+    PLAYTIME_SYNC_SECRET: z
+      .string()
+      .min(32, "Playtime sync secret must be at least 32 characters")
+      .optional(),
 
-  // CurseForge
-  CURSEFORGE_API_KEY: z.string().min(1).optional(),
+    // Claude automation proxy — admin chat widget talks to claude-automation
+    // through the app backend so the shared secret never ships to clients.
+    CLAUDE_API_URL: z.string().url().optional(),
+    ADMIN_CHAT_SECRET: z.string().min(1).optional(),
 
-  // AI (OpenAI) — optional; AI features are disabled when the key is not set
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
+    // CurseForge
+    CURSEFORGE_API_KEY: z.string().min(1).optional(),
 
-  // MC Server local path
-  // Optional local path for direct filesystem access (bypasses SFTP).
-  // Set to the Minecraft server data directory (e.g. /opt/infrastructure/mc-test/data).
-  // Used by maintenance service and structure pack rotation.
-  // When absent, these services fall back to SFTP (production-only).
-  MC_SERVER_LOCAL_PATH: z.string().min(1).optional(),
+    // AI (OpenAI) — optional; AI features are disabled when the key is not set
+    OPENAI_API_KEY: z.string().min(1).optional(),
+    OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
-  // Stripe (optional — donation features are disabled when not configured)
-  STRIPE_SECRET_KEY: z.string().min(1).optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // MC Server local path
+    // Optional local path for direct filesystem access (bypasses SFTP).
+    // Set to the Minecraft server data directory (e.g. /opt/infrastructure/mc-test/data).
+    // Used by maintenance service and structure pack rotation.
+    // When absent, these services fall back to SFTP (production-only).
+    MC_SERVER_LOCAL_PATH: z.string().min(1).optional(),
 
-  // Email — Resend transactional API
-  RESEND_API_KEY: z.string().min(1, "Resend API key is required"),
-  RESEND_FROM_EMAIL: z
-    .string()
-    .email("Must be valid email address")
-    .default("admin@createrington.com"),
+    // Stripe (optional — donation features are disabled when not configured)
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
-  // Storage — server-writable directory for transcripts and other runtime artifacts
-  STORAGE_PATH: z.string().min(1, "Storage path is required"),
-});
+    // Email — Resend transactional API
+    // Production-only: waitlist mailer is the only consumer; in dev the
+    // EmailService short-circuits when the key is absent. Required at runtime
+    // by the prod superRefine below.
+    RESEND_API_KEY: z.string().min(1).optional(),
+    RESEND_FROM_EMAIL: z
+      .string()
+      .email("Must be valid email address")
+      .default("admin@createrington.com"),
+
+    // Storage — server-writable directory for transcripts and other runtime artifacts
+    STORAGE_PATH: z.string().min(1).default("./storage"),
+  })
+  .superRefine((data, ctx) => {
+    // Re-require production-only vars when running a real production
+    // deployment. dev.createrington.com ships with NODE_ENV=production but
+    // hits the same dev-deployment guards as local dev (no SFTP, no RCON to
+    // a live game server, etc.), so the hostname check is required in
+    // addition to NODE_ENV.
+    if (data.NODE_ENV !== "production") return;
+
+    let isDevDeployment = false;
+    try {
+      const host = new URL(data.WEBSITE_URL).hostname;
+      isDevDeployment =
+        host === "127.0.0.1" || host === "localhost" || host.startsWith("dev.");
+    } catch {
+      // URL parse failure already produced a zod issue elsewhere; treat as
+      // non-dev so the prod check still runs.
+    }
+    if (isDevDeployment) return;
+
+    const required: Array<[keyof typeof data, string]> = [
+      ["COGS_AND_STEAM_SFTP_HOST", "Cogs and Steam SFTP host required"],
+      ["COGS_AND_STEAM_SFTP_PORT", "Cogs and Steam SFTP port required"],
+      ["COGS_AND_STEAM_SFTP_USER", "Cogs and Steam SFTP user required"],
+      ["COGS_AND_STEAM_SFTP_PASS", "Cogs and Steam SFTP password required"],
+      [
+        "COGS_AND_STEAM_SFTP_STATS_PATH",
+        "Cogs and Steam SFTP stats path required",
+      ],
+      ["COGS_AND_STEAM_RCON_PASSWORD", "RCON password is required"],
+      [
+        "DISCORD_OAUTH_REDIRECT_URI_PROD",
+        "Production OAuth redirect URI is required",
+      ],
+      ["PUPPETEER_SECRET", "Puppeteer secret is required"],
+      ["RESEND_API_KEY", "Resend API key is required"],
+    ];
+
+    for (const [key, message] of required) {
+      const value = data[key];
+      if (value === undefined || value === null || value === "") {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message,
+        });
+      }
+    }
+  });
 
 /**
  * Type representing validated environment configuration
