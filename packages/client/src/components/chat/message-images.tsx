@@ -83,10 +83,7 @@ export function MessageImageGrid({
 
   const [first, ...rest] = attachments;
   return (
-    <div
-      className="mt-2 grid max-w-sm grid-cols-2 grid-rows-2 gap-1.5"
-      style={{ height: "18rem" }}
-    >
+    <div className="mt-2 grid h-72 max-w-sm grid-cols-2 grid-rows-2 gap-1.5">
       <ImageTile
         url={first.url}
         alt={first.filename}

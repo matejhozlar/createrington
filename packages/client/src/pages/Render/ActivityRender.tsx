@@ -179,14 +179,7 @@ export function ActivityRender() {
       className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
     >
       {/* Background grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(oklch(1 0 0 / 0.03) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.03) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
+      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
       <div className="absolute -left-16 top-12 w-[320px] h-[320px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-emerald-500" />
       <div className="absolute -right-16 -bottom-8 w-[280px] h-[280px] rounded-full blur-[120px] opacity-10 pointer-events-none bg-chart-3" />
 
@@ -196,8 +189,7 @@ export function ActivityRender() {
         <img
           src="/assets/render/player-activity.webp"
           alt="Player Activity"
-          className="h-[44px]"
-          style={{ imageRendering: "pixelated" }}
+          className="h-[44px] [image-rendering:pixelated]"
         />
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>

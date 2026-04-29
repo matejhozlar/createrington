@@ -151,14 +151,7 @@ export function CompareRender() {
       className="relative w-[900px] h-[500px] overflow-hidden bg-background text-foreground flex flex-col"
     >
       {/* Background grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "linear-gradient(oklch(1 0 0 / 0.03) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / 0.03) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
+      <div className="absolute inset-0 pointer-events-none render-bg-grid" />
       {/* Background glows */}
       <div className="absolute -left-20 top-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-1" />
       <div className="absolute -right-20 bottom-8 w-[350px] h-[350px] rounded-full blur-[120px] opacity-20 pointer-events-none bg-chart-5" />
@@ -169,8 +162,7 @@ export function CompareRender() {
         <img
           src="/assets/render/player-comparison.webp"
           alt="Player Comparison"
-          className="h-[44px]"
-          style={{ imageRendering: "pixelated" }}
+          className="h-[44px] [image-rendering:pixelated]"
         />
         <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
       </div>
