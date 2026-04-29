@@ -151,6 +151,17 @@
 }
 
 /* ============================================================================
+   Render pages — shared background grid for OG-image renders
+   ============================================================================ */
+
+.render-bg-grid {
+  background-image:
+    linear-gradient(oklch(1 0 0 / 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(1 0 0 / 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ============================================================================
    Animations
    ============================================================================ */
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
-import { PageHeader } from "../../components/page-header";
-import { Separator } from "../../components/ui/separator";
+import { PageHeader } from "@/components/page-header";
+import { Separator } from "@/components/ui/separator";
 import { CONTACT_EMAIL, DISCORD_INVITE_URL } from "@/lib/external-urls";
 
 const sections = [
