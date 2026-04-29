@@ -193,6 +193,10 @@ const config = {
     oauth: {
       clientId: env.DISCORD_OAUTH_CLIENT_ID,
       clientSecret: env.DISCORD_OAUTH_CLIENT_SECRET,
+      // Real prod requires DISCORD_OAUTH_REDIRECT_URI_PROD via the env
+      // superRefine. The fallback to the dev URI exists for the dev
+      // deployment case (NODE_ENV=production on dev.createrington.com),
+      // which skips the superRefine and uses dev OAuth credentials.
       redirectUri:
         env.NODE_ENV === "production"
           ? (env.DISCORD_OAUTH_REDIRECT_URI_PROD ??

@@ -43,6 +43,23 @@ const discordToken = (label = "Token") =>
     .min(1, `${label} is required`)
     .regex(/^[\w\-.]+$/, `${label} format is invalid`);
 
+/**
+ * True when the configured WEBSITE_URL points at a local or dev deployment
+ * (localhost / 127.0.0.1 / dev.* subdomain). Shared by the prod superRefine
+ * (decides whether to re-require prod-only vars) and `checkIsDevDeployment`
+ * (drives `envMode.isDevDeployment`) so the two definitions cannot drift.
+ */
+function isDevHostname(websiteUrl: string): boolean {
+  try {
+    const host = new URL(websiteUrl).hostname;
+    return (
+      host === "127.0.0.1" || host === "localhost" || host.startsWith("dev.")
+    );
+  } catch {
+    return false;
+  }
+}
+
 const envSchema = z
   .object({
     // Server
@@ -214,18 +231,12 @@ const envSchema = z
     // a live game server, etc.), so the hostname check is required in
     // addition to NODE_ENV.
     if (data.NODE_ENV !== "production") return;
+    if (isDevHostname(data.WEBSITE_URL)) return;
 
-    let isDevDeployment = false;
-    try {
-      const host = new URL(data.WEBSITE_URL).hostname;
-      isDevDeployment =
-        host === "127.0.0.1" || host === "localhost" || host.startsWith("dev.");
-    } catch {
-      // URL parse failure already produced a zod issue elsewhere; treat as
-      // non-dev so the prod check still runs.
-    }
-    if (isDevDeployment) return;
-
+    // Empty-string detection works because zod parses an unset env var as ""
+    // for `.string().optional()` fields, and the coerced numeric fields
+    // (e.g. SFTP_PORT) reject NaN before this refinement runs — so by the
+    // time we get here, missing values surface as `undefined` or `""`.
     const required: Array<[keyof typeof data, string]> = [
       ["COGS_AND_STEAM_SFTP_HOST", "Cogs and Steam SFTP host required"],
       ["COGS_AND_STEAM_SFTP_PORT", "Cogs and Steam SFTP port required"],
@@ -324,15 +335,7 @@ export interface envModeConfig {
 }
 
 function checkIsDevDeployment(): boolean {
-  try {
-    const url = new URL(env.WEBSITE_URL);
-    const host = url.hostname;
-    return (
-      host === "127.0.0.1" || host === "localhost" || host.startsWith("dev.")
-    );
-  } catch {
-    return false;
-  }
+  return isDevHostname(env.WEBSITE_URL);
 }
 
 export const envMode: envModeConfig = {
