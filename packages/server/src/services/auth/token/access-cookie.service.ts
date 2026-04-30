@@ -22,7 +22,13 @@ class AccessCookieService {
   private constructor() {
     this.cookieName = config.app.auth.cookie.accessName;
     this.cookieDomain = config.app.auth.cookie.domain;
-    this.maxAgeMs = parseExpiresIn(config.app.auth.accessToken.expiresIn);
+    // Cookie lifetime tracks the refresh token, not the JWT. The cookie is a
+    // transport for the JWT — the server still rejects expired JWTs inside
+    // (which surfaces as a 401 and triggers the client refresh round-trip).
+    // Matching the JWT's 15m expiry would mean the browser deletes the
+    // cookie before the refresh request can carry it, locking SSO consumers
+    // out of /auth/me even though their refresh token is still valid.
+    this.maxAgeMs = config.app.auth.refreshToken.expiresInDays * 86_400_000;
   }
 
   static getInstance(): AccessCookieService {
@@ -38,9 +44,9 @@ class AccessCookieService {
   }
 
   /**
-   * Set the access token as an httpOnly cookie with the same expiry as the
-   * underlying JWT. No-op when COOKIE_DOMAIN is unset — the cookie is
-   * meaningless without a parent domain for cross-subdomain consumers.
+   * Set the access token as an httpOnly cookie. No-op when COOKIE_DOMAIN is
+   * unset — the cookie is meaningless without a parent domain for cross-
+   * subdomain consumers.
    *
    * Defensively clears any leftover host-only cookie of the same name before
    * setting the domain-scoped one. Without this the browser can hold both,
@@ -94,28 +100,6 @@ class AccessCookieService {
   extractFromRequest(req: Request): string | undefined {
     return req.cookies?.[this.cookieName];
   }
-}
-
-/**
- * Parse a JWT-style duration string (`15m`, `24h`, `7d`, `60s`) into
- * milliseconds. The same format is enforced by the env schema.
- */
-export function parseExpiresIn(value: string): number {
-  const match = /^(\d+)([smhd])$/.exec(value);
-  if (!match) {
-    throw new Error(
-      `Invalid access token expiry: "${value}" (expected number + s/m/h/d)`,
-    );
-  }
-  const amount = Number(match[1]);
-  const unit = match[2];
-  const multipliers: Record<string, number> = {
-    s: 1_000,
-    m: 60_000,
-    h: 3_600_000,
-    d: 86_400_000,
-  };
-  return amount * multipliers[unit];
 }
 
 export const accessCookieService = AccessCookieService.getInstance();

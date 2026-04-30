@@ -7,6 +7,7 @@ vi.mock("@/config", () => ({
     app: {
       auth: {
         accessToken: { expiresIn: "15m", secret: "test-secret-32-chars-min-x" },
+        refreshToken: { expiresInDays: 30 },
         cookie: {
           name: "crt_refresh",
           accessName: "crt_access",
@@ -17,35 +18,8 @@ vi.mock("@/config", () => ({
   },
 }));
 
-import {
-  accessCookieService,
-  parseExpiresIn,
-} from "@/services/auth/token/access-cookie.service";
+import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import type { Request, Response } from "express";
-
-describe("parseExpiresIn", () => {
-  it("converts seconds", () => {
-    expect(parseExpiresIn("60s")).toBe(60_000);
-  });
-
-  it("converts minutes", () => {
-    expect(parseExpiresIn("15m")).toBe(15 * 60_000);
-  });
-
-  it("converts hours", () => {
-    expect(parseExpiresIn("24h")).toBe(24 * 3_600_000);
-  });
-
-  it("converts days", () => {
-    expect(parseExpiresIn("7d")).toBe(7 * 86_400_000);
-  });
-
-  it("throws for malformed input", () => {
-    expect(() => parseExpiresIn("15")).toThrow();
-    expect(() => parseExpiresIn("forever")).toThrow();
-    expect(() => parseExpiresIn("15x")).toThrow();
-  });
-});
 
 describe("AccessCookieService", () => {
   let cookieCalls: Array<[string, string, Record<string, unknown>]>;
@@ -92,9 +66,12 @@ describe("AccessCookieService", () => {
       expect(cookieCalls[0][2].domain).toBe(".createrington.com");
     });
 
-    it("uses maxAge matching JWT_ACCESS_EXPIRES_IN (15m → 900_000ms)", () => {
+    it("uses maxAge matching the refresh token expiry, not the JWT expiry", () => {
+      // The cookie has to outlive the JWT — when the JWT expires the server
+      // returns 401 and the client refreshes, which requires the cookie to
+      // still be present in the browser.
       accessCookieService.setCookie(res, "x");
-      expect(cookieCalls[0][2].maxAge).toBe(15 * 60_000);
+      expect(cookieCalls[0][2].maxAge).toBe(30 * 86_400_000);
     });
   });
 
