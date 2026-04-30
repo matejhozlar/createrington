@@ -41,9 +41,13 @@ export function ChunkPartiesTable({
   const filtered = useMemo(
     () =>
       parties.filter((p) => {
-        if (filters.alliedOnly && !p.isAllied) return false;
+        if (filters.allied === "allied" && !p.isAllied) return false;
+        if (filters.allied === "notAllied" && p.isAllied) return false;
         if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
-        if (filters.optedInOnly && p.partyOptedIn !== true) return false;
+        if (filters.optedIn === "optedIn" && p.partyOptedIn !== true)
+          return false;
+        if (filters.optedIn === "optedOut" && p.partyOptedIn !== false)
+          return false;
         if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
         return true;
       }),
