@@ -1,9 +1,92 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerChunkBaseQueries } from "@/generated/db/server_chunk.queries";
 
+export interface ChunkUpsertRow {
+  playerUuid: string;
+  dimension: string;
+  x: number;
+  z: number;
+  partyId: string | null;
+  partyName: string | null;
+  partyOptedIn: boolean | null;
+  forceloadable: boolean;
+  active: boolean;
+}
+
+const CHUNK_SYNC_LOCK_NAMESPACE = 0xc40c5e10;
+
 export class ServerChunkQueries extends ServerChunkBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  // Serializes concurrent chunk syncs for the same server within a transaction.
+  // Released automatically on COMMIT/ROLLBACK.
+  async acquireSyncLock(serverId: number): Promise<void> {
+    await this.db.query(`SELECT pg_advisory_xact_lock($1, $2)`, [
+      CHUNK_SYNC_LOCK_NAMESPACE,
+      serverId,
+    ]);
+  }
+
+  // Batch-upserts every chunk in one statement via UNNEST.
+  // original_player_uuid is sticky: set on INSERT, never overwritten on UPDATE.
+  async upsertChunks(
+    serverId: number,
+    rows: ChunkUpsertRow[],
+    syncStart: Date,
+  ): Promise<void> {
+    if (rows.length === 0) return;
+
+    await this.db.query(
+      `INSERT INTO server_chunk (
+        server_id, dimension, x, z, player_uuid, original_player_uuid,
+        party_id, party_name, party_opted_in, forceloadable, active, last_synced_at
+      )
+      SELECT
+        $1,
+        d.dimension, d.x, d.z, d.player_uuid, d.player_uuid,
+        d.party_id, d.party_name, d.party_opted_in,
+        d.forceloadable, d.active, $2
+      FROM UNNEST(
+        $3::text[], $4::int[], $5::int[], $6::uuid[],
+        $7::uuid[], $8::text[], $9::boolean[],
+        $10::boolean[], $11::boolean[]
+      ) AS d(
+        dimension, x, z, player_uuid,
+        party_id, party_name, party_opted_in,
+        forceloadable, active
+      )
+      ON CONFLICT (server_id, dimension, x, z) DO UPDATE SET
+        player_uuid = EXCLUDED.player_uuid,
+        party_id = EXCLUDED.party_id,
+        party_name = EXCLUDED.party_name,
+        party_opted_in = EXCLUDED.party_opted_in,
+        forceloadable = EXCLUDED.forceloadable,
+        active = EXCLUDED.active,
+        last_synced_at = EXCLUDED.last_synced_at`,
+      [
+        serverId,
+        syncStart,
+        rows.map((r) => r.dimension),
+        rows.map((r) => r.x),
+        rows.map((r) => r.z),
+        rows.map((r) => r.playerUuid),
+        rows.map((r) => r.partyId),
+        rows.map((r) => r.partyName),
+        rows.map((r) => r.partyOptedIn),
+        rows.map((r) => r.forceloadable),
+        rows.map((r) => r.active),
+      ],
+    );
+  }
+
+  async sweepOrphans(serverId: number, syncStart: Date): Promise<number> {
+    const result = await this.db.query(
+      `DELETE FROM server_chunk WHERE server_id = $1 AND last_synced_at < $2`,
+      [serverId, syncStart],
+    );
+    return result.rowCount ?? 0;
   }
 
   async getKpis(serverId: number) {

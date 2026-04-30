@@ -56,6 +56,7 @@ export { ServerAllyFakePartyQueries } from "./server/ally/fake/party";
 export { ServerAllyFakePartyMemberQueries } from "./server/ally/fake/party/member";
 export { ServerAllyPartyQueries } from "./server/ally/party";
 export { ServerAllyQualifiedPlayerQueries } from "./server/ally/qualified/player";
+export { ServerChunkQueries } from "./server/chunk";
 export { ServerForceloadChunkQueries } from "./server/forceload/chunk";
 export { ServerForceloadMemberQueries } from "./server/forceload/member";
 export { ServerForceloadPartyQueries } from "./server/forceload/party";

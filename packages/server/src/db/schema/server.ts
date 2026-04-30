@@ -160,7 +160,8 @@ export const serverForceloadChunk = pgTable(
 // --- server_chunk ---
 // All claimed chunks per player, synced from opac-teams. Unique per chunk
 // coordinate within a server — ownership is just a column, so transfers
-// update in place. Orphan sweep by last_synced_at timestamp.
+// update player_uuid in place. original_player_uuid is sticky: set on first
+// insert, never overwritten. Orphan sweep by last_synced_at timestamp.
 
 export const serverChunk = pgTable(
   "server_chunk",
