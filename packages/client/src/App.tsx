@@ -239,13 +239,9 @@ const StatSearch = lazyNamed(
   () => import("./features/admin/tools/stat-search/StatSearch"),
   "StatSearch",
 );
-const AdminForceloads = lazyNamed(
-  () => import("./features/admin/tools/forceloads/AdminForceloads"),
-  "AdminForceloads",
-);
-const AdminAllies = lazyNamed(
-  () => import("./features/admin/tools/allies/AdminAllies"),
-  "AdminAllies",
+const AdminParties = lazyNamed(
+  () => import("./features/admin/tools/parties/AdminParties"),
+  "AdminParties",
 );
 const AdminPrompts = lazyNamed(
   () => import("./features/admin/tools/prompts/AdminPrompts"),
@@ -507,11 +503,7 @@ function AppContent() {
                         path="tools/stat-search"
                         element={<StatSearch />}
                       />
-                      <Route
-                        path="tools/forceloads"
-                        element={<AdminForceloads />}
-                      />
-                      <Route path="tools/allies" element={<AdminAllies />} />
+                      <Route path="tools/parties" element={<AdminParties />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
                       <Route
                         path="tools/prompts/:id"

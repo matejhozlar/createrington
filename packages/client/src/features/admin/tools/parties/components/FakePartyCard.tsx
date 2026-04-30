@@ -1,10 +1,10 @@
 import { Bot } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { formatRelativeDate } from "@/features/admin/format";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatRelativeDateSafe } from "@/features/admin/format";
 import type { RouterOutput } from "@/lib/trpc";
 
-type FakeParty = RouterOutput["admin"]["allies"]["fakeParty"];
+type FakeParty = RouterOutput["admin"]["parties"]["fakeParty"];
 
 export function FakePartyCard({ data }: { data: FakeParty | null }) {
   if (!data) {
@@ -32,7 +32,7 @@ export function FakePartyCard({ data }: { data: FakeParty | null }) {
           <Bot className="size-4 text-primary" />
           Fake-player party
           <Badge variant="secondary" className="ml-auto text-[10px]">
-            synced {formatRelativeDate(data.syncedAt.toString())}
+            synced {formatRelativeDateSafe(data.syncedAt)}
           </Badge>
         </CardTitle>
       </CardHeader>
