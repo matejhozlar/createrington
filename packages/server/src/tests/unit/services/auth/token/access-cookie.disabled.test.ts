@@ -8,6 +8,7 @@ vi.mock("@/config", () => ({
     app: {
       auth: {
         accessToken: { expiresIn: "15m", secret: "test-secret-32-chars-min-x" },
+        refreshToken: { expiresInDays: 30 },
         cookie: {
           name: "crt_refresh",
           accessName: "crt_access",
