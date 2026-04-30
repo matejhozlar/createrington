@@ -1,6 +1,5 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, User } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -23,7 +22,7 @@ import {
 } from "@/features/admin/format";
 import { trpc } from "@/lib/trpc";
 import type { RouterOutput } from "@/lib/trpc";
-import type { PartyFilters } from "../types";
+import type { DimensionFilter, PartyFilters } from "../types";
 import { ChunkDetailTable } from "./ChunkDetailTable";
 
 type SoloPlayer = RouterOutput["admin"]["parties"]["chunkSoloPlayers"][number];
@@ -167,7 +166,7 @@ function SoloPlayerChunks({
 }: {
   serverId: number;
   playerUuid: string;
-  dimensionFilter: string;
+  dimensionFilter: DimensionFilter;
   activeOnly: boolean;
 }) {
   const chunksQuery = trpc.admin.parties.chunkPlayerDetail.useQuery({
@@ -183,7 +182,7 @@ function SoloPlayerChunks({
         ) : chunksQuery.data ? (
           <ChunkDetailTable
             chunks={chunksQuery.data}
-            dimensionFilter={dimensionFilter as "all" | string}
+            dimensionFilter={dimensionFilter}
             activeOnly={activeOnly}
           />
         ) : null}
