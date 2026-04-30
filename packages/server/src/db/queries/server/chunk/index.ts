@@ -98,11 +98,13 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       partiesOptedIn: number;
     }>(
       `SELECT
-        (SELECT COUNT(*)::int FROM server_chunk WHERE server_id = $1) AS "totalChunks",
-        (SELECT COUNT(*)::int FROM server_chunk WHERE server_id = $1 AND forceloadable) AS "forceloadableChunks",
-        (SELECT COUNT(*)::int FROM server_chunk WHERE server_id = $1 AND active) AS "activeChunks",
-        (SELECT COUNT(DISTINCT party_id)::int FROM server_chunk WHERE server_id = $1 AND party_id IS NOT NULL) AS "totalParties",
-        (SELECT COUNT(DISTINCT party_id)::int FROM server_chunk WHERE server_id = $1 AND party_id IS NOT NULL AND party_opted_in = true) AS "partiesOptedIn"`,
+        COUNT(*)::int AS "totalChunks",
+        COUNT(*) FILTER (WHERE forceloadable)::int AS "forceloadableChunks",
+        COUNT(*) FILTER (WHERE active)::int AS "activeChunks",
+        COUNT(DISTINCT party_id)::int AS "totalParties",
+        COUNT(DISTINCT party_id) FILTER (WHERE party_opted_in = true)::int AS "partiesOptedIn"
+      FROM server_chunk
+      WHERE server_id = $1`,
       [serverId],
     );
     return result.rows[0];
@@ -125,9 +127,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         sc.party_id AS "partyId",
         sc.party_name AS "partyName",
         sc.party_opted_in AS "partyOptedIn",
-        (SELECT COUNT(DISTINCT sc2.player_uuid)::int
-          FROM server_chunk sc2
-          WHERE sc2.server_id = $1 AND sc2.party_id = sc.party_id) AS "memberCount",
+        COUNT(DISTINCT sc.player_uuid)::int AS "memberCount",
         COUNT(*)::int AS "totalChunks",
         COUNT(*) FILTER (WHERE sc.forceloadable)::int AS "forceloadableChunks",
         COUNT(*) FILTER (WHERE sc.active)::int AS "activeChunks",

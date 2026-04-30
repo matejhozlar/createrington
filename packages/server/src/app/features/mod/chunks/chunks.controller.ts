@@ -10,6 +10,8 @@ import {
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const MAX_CHUNKS_PER_SYNC = 50_000;
+
 function parseChunk(raw: unknown, index: number): ChunkPayload {
   if (!raw || typeof raw !== "object") {
     throw new BadRequestError(`chunks[${index}] must be an object`);
@@ -135,6 +137,11 @@ export class ChunksController {
     }
     if (!Array.isArray(body.chunks)) {
       throw new BadRequestError("chunks must be an array");
+    }
+    if (body.chunks.length > MAX_CHUNKS_PER_SYNC) {
+      throw new BadRequestError(
+        `chunks array exceeds maximum size of ${MAX_CHUNKS_PER_SYNC}`,
+      );
     }
 
     const serverId = resolveServerId(req);
