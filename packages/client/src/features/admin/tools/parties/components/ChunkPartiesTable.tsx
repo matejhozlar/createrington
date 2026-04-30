@@ -21,20 +21,20 @@ import {
 } from "@/features/admin/format";
 import type { RouterOutput } from "@/lib/trpc";
 import type { PartyFilters } from "../types";
-import { PartyExpandedRow } from "./PartyExpandedRow";
+import { ChunkPartyExpandedRow } from "./ChunkPartyExpandedRow";
 
-type Party = RouterOutput["admin"]["parties"]["list"][number];
+type ChunkParty = RouterOutput["admin"]["parties"]["chunkParties"][number];
 
-export function PartiesTable({
+export function ChunkPartiesTable({
   serverId,
   parties,
   filters,
 }: {
   serverId: number;
-  parties: Party[];
+  parties: ChunkParty[];
   filters: PartyFilters;
 }) {
-  const [expandedUuid, setExpandedUuid] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const needle = filters.search.trim().toLowerCase();
 
@@ -43,12 +43,8 @@ export function PartiesTable({
       parties.filter((p) => {
         if (filters.alliedOnly && !p.isAllied) return false;
         if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
-        if (filters.optedInOnly && !p.optedIn) return false;
+        if (filters.optedInOnly && p.partyOptedIn !== true) return false;
         if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
-        if (filters.dimension !== "all") {
-          const dim = p.chunksByDimension[filters.dimension];
-          if (!dim) return false;
-        }
         return true;
       }),
     [parties, filters, needle],
@@ -60,7 +56,7 @@ export function PartiesTable({
         <CardContent className="flex flex-col items-center justify-center gap-2 py-12">
           <Users className="size-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No parties on this server
+            No parties with claimed chunks
           </p>
         </CardContent>
       </Card>
@@ -82,7 +78,9 @@ export function PartiesTable({
               <TableHead className="w-8" />
               <TableHead>Party name</TableHead>
               <TableHead>Members</TableHead>
-              <TableHead>Chunks</TableHead>
+              <TableHead>Claimed</TableHead>
+              <TableHead>Forceloadable</TableHead>
+              <TableHead>Active</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last synced</TableHead>
             </TableRow>
@@ -91,7 +89,7 @@ export function PartiesTable({
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={8}
                   className="py-6 text-center text-sm text-muted-foreground"
                 >
                   No parties match the current filters
@@ -99,13 +97,13 @@ export function PartiesTable({
               </TableRow>
             ) : (
               filtered.map((party) => {
-                const isExpanded = expandedUuid === party.partyUuid;
+                const isExpanded = expandedId === party.partyId;
                 return (
-                  <Fragment key={party.partyUuid}>
+                  <Fragment key={party.partyId}>
                     <TableRow
                       className="cursor-pointer"
                       onClick={() =>
-                        setExpandedUuid(isExpanded ? null : party.partyUuid)
+                        setExpandedId(isExpanded ? null : party.partyId)
                       }
                     >
                       <TableCell>
@@ -119,19 +117,31 @@ export function PartiesTable({
                         <div className="flex flex-col">
                           <span className="font-medium">{party.partyName}</span>
                           <span className="font-mono text-[10px] text-muted-foreground">
-                            {party.partyUuid}
+                            {party.partyId}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>{party.memberCount}</TableCell>
+                      <TableCell className="font-medium">
+                        {party.totalChunks}
+                      </TableCell>
                       <TableCell>
-                        <span className="font-medium">
-                          {party.activeChunks}
-                        </span>
-                        <span className="text-muted-foreground">
-                          {" "}
-                          / {party.totalChunks}
-                        </span>
+                        {party.forceloadableChunks > 0 ? (
+                          <span className="font-medium">
+                            {party.forceloadableChunks}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {party.activeChunks > 0 ? (
+                          <span className="font-medium text-success">
+                            {party.activeChunks}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">0</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -148,40 +158,40 @@ export function PartiesTable({
                               variant="outline"
                               className="border-success bg-success/10 text-success"
                             >
-                              Active forceloads
+                              Active
                             </Badge>
                           )}
-                          {party.optedIn ? (
+                          {party.partyOptedIn === true ? (
                             <Badge variant="outline">Opted in</Badge>
-                          ) : (
+                          ) : party.partyOptedIn === false ? (
                             <Badge
                               variant="outline"
                               className="border-amber-500 bg-amber-500/10 text-amber-500"
                             >
                               Opted out
                             </Badge>
-                          )}
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span>
-                              {formatRelativeDateSafe(party.syncedAt)}
+                              {formatRelativeDateSafe(party.lastSyncedAt)}
                             </span>
                           </TooltipTrigger>
                           <TooltipContent>
-                            {formatFullDateSafe(party.syncedAt)}
+                            {formatFullDateSafe(party.lastSyncedAt)}
                           </TooltipContent>
                         </Tooltip>
                       </TableCell>
                     </TableRow>
                     {isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={6} className="bg-muted/30 p-4">
-                          <PartyExpandedRow
+                        <TableCell colSpan={8} className="bg-muted/30 p-4">
+                          <ChunkPartyExpandedRow
                             serverId={serverId}
-                            partyUuid={party.partyUuid}
+                            partyId={party.partyId}
                             dimensionFilter={filters.dimension}
                             activeOnly={filters.activeForceloadsOnly}
                           />

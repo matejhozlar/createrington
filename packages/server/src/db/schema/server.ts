@@ -157,6 +157,45 @@ export const serverForceloadChunk = pgTable(
   ],
 );
 
+// --- server_chunk ---
+// All claimed chunks per player, synced from opac-teams. Unique per chunk
+// coordinate within a server — ownership is just a column, so transfers
+// update player_uuid in place. original_player_uuid is sticky: set on first
+// insert, never overwritten. Orphan sweep by last_synced_at timestamp.
+
+export const serverChunk = pgTable(
+  "server_chunk",
+  {
+    id: serial("id").primaryKey(),
+    serverId: integer("server_id")
+      .notNull()
+      .references(() => server.id, { onDelete: "cascade" }),
+    dimension: varchar("dimension", { length: 255 }).notNull(),
+    x: integer("x").notNull(),
+    z: integer("z").notNull(),
+    playerUuid: uuid("player_uuid").notNull(),
+    originalPlayerUuid: uuid("original_player_uuid").notNull(),
+    partyId: uuid("party_id"),
+    partyName: varchar("party_name", { length: 255 }),
+    partyOptedIn: boolean("party_opted_in"),
+    forceloadable: boolean("forceloadable").notNull().default(false),
+    active: boolean("active").notNull().default(false),
+    lastSyncedAt: timestamp("last_synced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_server_chunk_unique").on(
+      table.serverId,
+      table.dimension,
+      table.x,
+      table.z,
+    ),
+    index("idx_server_chunk_player").on(table.playerUuid),
+    index("idx_server_chunk_party").on(table.partyId),
+  ],
+);
+
 // --- server_ally_fake_party ---
 // Snapshot of the opac-fakeplayer fake-player party for a server. One row per
 // server; replaced on each sync.

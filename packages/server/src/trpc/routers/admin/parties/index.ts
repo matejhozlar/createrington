@@ -111,6 +111,67 @@ export const adminPartiesRouter = router({
       return { qualification, partyAlliance };
     }),
 
+  chunkKpis: adminProcedure
+    .meta({ description: "Chunk-based KPIs for a server (from server_chunk)" })
+    .input(z.object({ serverId: z.number().int() }))
+    .query(async ({ input }) => {
+      return Q.server.chunk.getKpis(input.serverId);
+    }),
+
+  chunkParties: adminProcedure
+    .meta({
+      description:
+        "Party aggregates from server_chunk with ally status, for unified parties view",
+    })
+    .input(z.object({ serverId: z.number().int() }))
+    .query(async ({ input }) => {
+      return Q.server.chunk.getPartyAggregates(input.serverId);
+    }),
+
+  chunkPartyMembers: adminProcedure
+    .meta({
+      description: "Per-player chunk stats within a party (from server_chunk)",
+    })
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        partyId: z.string().uuid(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.server.chunk.getPlayerChunksByParty(
+        input.serverId,
+        input.partyId,
+      );
+    }),
+
+  chunkPlayerDetail: adminProcedure
+    .meta({
+      description: "Individual chunk rows for a player (from server_chunk)",
+    })
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        playerUuid: z.string().uuid(),
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.server.chunk.getChunksForPlayer(
+        input.serverId,
+        input.playerUuid,
+      );
+    }),
+
+  chunkSoloPlayers: adminProcedure
+    .meta({
+      description:
+        "Solo players (no party) with chunk aggregates (from server_chunk)",
+    })
+    .input(z.object({ serverId: z.number().int() }))
+    .query(async ({ input }) => {
+      return Q.server.chunk.getSoloPlayerAggregates(input.serverId);
+    }),
+
   resync: adminProcedure
     .meta({
       description:

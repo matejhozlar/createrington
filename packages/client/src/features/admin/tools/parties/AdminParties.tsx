@@ -18,11 +18,12 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { formatRelativeDateSafe } from "@/features/admin/format";
+import { ChunkPartiesTable } from "./components/ChunkPartiesTable";
+import { ChunkSoloPlayersSection } from "./components/ChunkSoloPlayersSection";
 import { FakePartyCard } from "./components/FakePartyCard";
 import { PartiesEmptyState } from "./components/PartiesEmptyState";
 import { PartiesFiltersBar } from "./components/PartiesFiltersBar";
 import { PartiesKpiCards } from "./components/PartiesKpiCards";
-import { PartiesTable } from "./components/PartiesTable";
 import { QualifiedPlayersSection } from "./components/QualifiedPlayersSection";
 import type { PartyFilters } from "./types";
 
@@ -44,7 +45,13 @@ export function AdminParties() {
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
 
   const kpisQuery = trpc.admin.parties.kpis.useQuery({ serverId: SERVER_ID });
-  const partiesQuery = trpc.admin.parties.list.useQuery({
+  const chunkKpisQuery = trpc.admin.parties.chunkKpis.useQuery({
+    serverId: SERVER_ID,
+  });
+  const chunkPartiesQuery = trpc.admin.parties.chunkParties.useQuery({
+    serverId: SERVER_ID,
+  });
+  const chunkSoloPlayersQuery = trpc.admin.parties.chunkSoloPlayers.useQuery({
     serverId: SERVER_ID,
   });
   const qualifiedQuery = trpc.admin.parties.qualifiedPlayers.useQuery({
@@ -57,14 +64,18 @@ export function AdminParties() {
 
   const isRefreshing =
     kpisQuery.isFetching ||
-    partiesQuery.isFetching ||
+    chunkKpisQuery.isFetching ||
+    chunkPartiesQuery.isFetching ||
+    chunkSoloPlayersQuery.isFetching ||
     qualifiedQuery.isFetching ||
     fakePartyQuery.isFetching ||
     resyncMutation.isPending;
 
   const refetchAll = () => {
     kpisQuery.refetch();
-    partiesQuery.refetch();
+    chunkKpisQuery.refetch();
+    chunkPartiesQuery.refetch();
+    chunkSoloPlayersQuery.refetch();
     qualifiedQuery.refetch();
     fakePartyQuery.refetch();
     setLastRefreshedAt(new Date());
@@ -86,12 +97,15 @@ export function AdminParties() {
 
   const loaded =
     !kpisQuery.isLoading &&
-    !partiesQuery.isLoading &&
+    !chunkKpisQuery.isLoading &&
+    !chunkPartiesQuery.isLoading &&
+    !chunkSoloPlayersQuery.isLoading &&
     !qualifiedQuery.isLoading &&
     !fakePartyQuery.isLoading;
 
   const hasAnyData =
-    (partiesQuery.data?.length ?? 0) > 0 ||
+    (chunkPartiesQuery.data?.length ?? 0) > 0 ||
+    (chunkSoloPlayersQuery.data?.length ?? 0) > 0 ||
     (qualifiedQuery.data?.length ?? 0) > 0 ||
     !!fakePartyQuery.data;
 
@@ -140,8 +154,8 @@ export function AdminParties() {
           <div className="flex flex-col gap-1">
             <h1 className="text-2xl font-semibold">Parties</h1>
             <p className="text-sm text-muted-foreground">
-              Forceload chunks, ally status, and members for every party on the
-              server.
+              Claimed chunks, forceload status, ally status, and members for
+              every party on the server.
             </p>
             {lastRefreshedAt && (
               <p className="text-xs text-muted-foreground">
@@ -151,10 +165,13 @@ export function AdminParties() {
           </div>
         </div>
 
-        {kpisQuery.isLoading ? (
+        {kpisQuery.isLoading || chunkKpisQuery.isLoading ? (
           <Loading size="medium" text="Loading KPIs..." />
-        ) : kpisQuery.data ? (
-          <PartiesKpiCards kpis={kpisQuery.data} />
+        ) : kpisQuery.data && chunkKpisQuery.data ? (
+          <PartiesKpiCards
+            kpis={kpisQuery.data}
+            chunkKpis={chunkKpisQuery.data}
+          />
         ) : null}
 
         {!loaded ? (
@@ -168,13 +185,22 @@ export function AdminParties() {
           <>
             <PartiesFiltersBar filters={filters} onChange={setFilters} />
 
-            {partiesQuery.data && (
-              <PartiesTable
+            {chunkPartiesQuery.data && (
+              <ChunkPartiesTable
                 serverId={SERVER_ID}
-                parties={partiesQuery.data}
+                parties={chunkPartiesQuery.data}
                 filters={filters}
               />
             )}
+
+            {chunkSoloPlayersQuery.data &&
+              chunkSoloPlayersQuery.data.length > 0 && (
+                <ChunkSoloPlayersSection
+                  serverId={SERVER_ID}
+                  players={chunkSoloPlayersQuery.data}
+                  filters={filters}
+                />
+              )}
 
             {qualifiedQuery.data && (
               <QualifiedPlayersSection players={qualifiedQuery.data} />

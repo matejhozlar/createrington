@@ -1,0 +1,1 @@
+DROP INDEX "idx_server_chunk_server";
