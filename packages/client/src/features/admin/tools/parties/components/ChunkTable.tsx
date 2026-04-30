@@ -28,7 +28,7 @@ import {
   formatDimension,
   regionFileName,
 } from "@/lib/minecraft";
-import type { DimensionFilter } from "../AdminForceloads";
+import type { DimensionFilter } from "../types";
 
 interface Chunk {
   id: number;

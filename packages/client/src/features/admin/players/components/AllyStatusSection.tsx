@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { CheckCircle2, Hourglass, MinusCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { trpc } from "@/lib/trpc";
-import { formatRelativeDate } from "@/features/admin/format";
+import { formatRelativeDateSafe } from "@/features/admin/format";
 
 const SERVER_ID = 1;
 
 export function AllyStatusSection({ playerUuid }: { playerUuid: string }) {
-  const statusQuery = trpc.admin.allies.playerStatus.useQuery({
+  const statusQuery = trpc.admin.parties.playerStatus.useQuery({
     serverId: SERVER_ID,
     playerUuid,
   });
@@ -63,8 +63,7 @@ export function AllyStatusSection({ playerUuid }: { playerUuid: string }) {
               </p>
               {qualification && (
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Qualified{" "}
-                  {formatRelativeDate(qualification.qualifiedAt.toString())}
+                  Qualified {formatRelativeDateSafe(qualification.qualifiedAt)}
                 </p>
               )}
             </div>
@@ -74,7 +73,7 @@ export function AllyStatusSection({ playerUuid }: { playerUuid: string }) {
 
         {partyAlliance && (
           <Link
-            to="/admin/tools/allies"
+            to="/admin/tools/parties"
             className="block rounded-lg border border-border p-4 transition hover:bg-accent"
           >
             <div className="flex items-baseline justify-between gap-3">
@@ -87,7 +86,7 @@ export function AllyStatusSection({ playerUuid }: { playerUuid: string }) {
                 </p>
               </div>
               <p className="text-xs text-muted-foreground">
-                Allied {formatRelativeDate(partyAlliance.alliedAt.toString())}
+                Allied {formatRelativeDateSafe(partyAlliance.alliedAt)}
               </p>
             </div>
           </Link>
