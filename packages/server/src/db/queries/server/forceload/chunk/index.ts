@@ -6,24 +6,6 @@ export class ServerForceloadChunkQueries extends ServerForceloadChunkBaseQueries
     super(db);
   }
 
-  async getChunksByOwner(ownerId: number, ownerType: "player" | "party") {
-    const column = ownerType === "player" ? "player_id" : "party_id";
-    const result = await this.db.query<{
-      id: number;
-      dimension: string;
-      x: number;
-      z: number;
-      active: boolean;
-    }>(
-      `SELECT id, dimension, x, z, active
-      FROM server_forceload_chunk
-      WHERE ${column} = $1
-      ORDER BY dimension, x, z`,
-      [ownerId],
-    );
-    return result.rows;
-  }
-
   async getChunksByPartyUuid(serverId: number, partyUuid: string) {
     const result = await this.db.query<{
       id: number;

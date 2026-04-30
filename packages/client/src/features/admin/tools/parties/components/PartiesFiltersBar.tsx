@@ -51,7 +51,7 @@ export function PartiesFiltersBar({
             <Input
               value={filters.search}
               onChange={(e) => set("search", e.target.value)}
-              placeholder="Search by party or member name..."
+              placeholder="Search by party name..."
               className="pl-9"
             />
           </div>

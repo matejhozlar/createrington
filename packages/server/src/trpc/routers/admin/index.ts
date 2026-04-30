@@ -20,7 +20,6 @@ import { adminStructurePacksRouter } from "./structure-packs";
 import { adminPartiesRouter } from "./parties";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
-/** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, structure packs, waitlists. */
 export const adminRouter = router({
   refetchDiscordEntities: adminProcedure
     .meta({
