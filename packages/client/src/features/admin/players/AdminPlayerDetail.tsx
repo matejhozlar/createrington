@@ -16,6 +16,7 @@ import { PlayerHeader } from "./components/PlayerHeader";
 import { PlayerStatsCards } from "./components/PlayerStatsCards";
 import { PlayerTabs } from "./components/PlayerTabs";
 import { OverviewTab } from "./components/tabs/OverviewTab";
+import { PartyTab } from "./components/tabs/PartyTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
 import { TicketsTab } from "./components/tabs/TicketsTab";
 import { StrikesTab } from "./components/tabs/StrikesTab";
@@ -34,6 +35,7 @@ import { trpc } from "@/lib/trpc";
 
 type TabType =
   | "overview"
+  | "party"
   | "sessions"
   | "stats"
   | "tickets"
@@ -164,6 +166,10 @@ export function AdminPlayerDetail() {
         <div className="mb-4 rounded-lg border border-border bg-card p-6">
           {activeTab === "overview" && (
             <OverviewTab player={player} getServerName={getServerName} />
+          )}
+
+          {activeTab === "party" && (
+            <PartyTab playerUuid={player.player.minecraftUuid} />
           )}
 
           {activeTab === "sessions" && id && (
