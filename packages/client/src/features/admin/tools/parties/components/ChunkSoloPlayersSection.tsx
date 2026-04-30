@@ -44,8 +44,8 @@ export function ChunkSoloPlayersSection({
     () =>
       players.filter((p) => {
         if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
-        if (filters.alliedOnly) return false;
-        if (filters.optedInOnly) return false;
+        if (filters.allied === "allied") return false;
+        if (filters.optedIn !== "all") return false;
         if (
           needle &&
           !(p.minecraftUsername ?? p.playerUuid).toLowerCase().includes(needle)

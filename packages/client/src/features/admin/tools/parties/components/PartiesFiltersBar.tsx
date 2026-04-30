@@ -12,7 +12,24 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DIMENSIONS } from "@/lib/minecraft";
-import type { DimensionFilter, PartyFilters } from "../types";
+import type {
+  AlliedFilter,
+  DimensionFilter,
+  OptedInFilter,
+  PartyFilters,
+} from "../types";
+
+const ALLIED_OPTIONS: { value: AlliedFilter; label: string }[] = [
+  { value: "all", label: "Allied: all" },
+  { value: "allied", label: "Allied" },
+  { value: "notAllied", label: "Not allied" },
+];
+
+const OPTED_IN_OPTIONS: { value: OptedInFilter; label: string }[] = [
+  { value: "all", label: "Opt-in: all" },
+  { value: "optedIn", label: "Opted in" },
+  { value: "optedOut", label: "Opted out" },
+];
 
 export function PartiesFiltersBar({
   filters,
@@ -27,9 +44,9 @@ export function PartiesFiltersBar({
   const activeCount =
     (filters.search.trim() ? 1 : 0) +
     (filters.dimension !== "all" ? 1 : 0) +
-    (filters.alliedOnly ? 1 : 0) +
+    (filters.allied !== "all" ? 1 : 0) +
     (filters.activeForceloadsOnly ? 1 : 0) +
-    (filters.optedInOnly ? 1 : 0);
+    (filters.optedIn !== "all" ? 1 : 0);
 
   return (
     <Card className="gap-2">
@@ -73,47 +90,53 @@ export function PartiesFiltersBar({
             </SelectContent>
           </Select>
 
-          <ToggleChip
-            id="parties-allied-only"
-            label="Allied only"
-            checked={filters.alliedOnly}
-            onChange={(v) => set("alliedOnly", v)}
-          />
-          <ToggleChip
-            id="parties-active-forceloads-only"
-            label="Active forceloads"
-            checked={filters.activeForceloadsOnly}
-            onChange={(v) => set("activeForceloadsOnly", v)}
-          />
-          <ToggleChip
-            id="parties-opted-in-only"
-            label="Opted in"
-            checked={filters.optedInOnly}
-            onChange={(v) => set("optedInOnly", v)}
-          />
+          <Select
+            value={filters.allied}
+            onValueChange={(v) => set("allied", v as AlliedFilter)}
+          >
+            <SelectTrigger className="min-w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {ALLIED_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.optedIn}
+            onValueChange={(v) => set("optedIn", v as OptedInFilter)}
+          >
+            <SelectTrigger className="min-w-[160px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {OPTED_IN_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3">
+            <Switch
+              id="parties-active-forceloads-only"
+              checked={filters.activeForceloadsOnly}
+              onCheckedChange={(v) => set("activeForceloadsOnly", v)}
+            />
+            <Label
+              htmlFor="parties-active-forceloads-only"
+              className="cursor-pointer text-sm font-medium"
+            >
+              Active forceloads
+            </Label>
+          </div>
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function ToggleChip({
-  id,
-  label,
-  checked,
-  onChange,
-}: {
-  id: string;
-  label: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3">
-      <Switch id={id} checked={checked} onCheckedChange={onChange} />
-      <Label htmlFor={id} className="cursor-pointer text-sm font-medium">
-        {label}
-      </Label>
-    </div>
   );
 }

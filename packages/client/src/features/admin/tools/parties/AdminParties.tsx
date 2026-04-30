@@ -34,9 +34,9 @@ const POST_RESYNC_REFETCH_MS = 2000;
 const DEFAULT_FILTERS: PartyFilters = {
   search: "",
   dimension: "all",
-  alliedOnly: false,
+  allied: "all",
   activeForceloadsOnly: false,
-  optedInOnly: false,
+  optedIn: "all",
 };
 
 export function AdminParties() {
