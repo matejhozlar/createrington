@@ -1,6 +1,7 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerChunkBaseQueries } from "@/generated/db/server_chunk.queries";
 import { escapeLike } from "@/db/utils";
+import { EXPIRED_CLAIM_UUID } from "@/db/schema/server";
 
 interface PageParams {
   limit: number;
@@ -208,8 +209,11 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     playerUuid: string,
     opts: ChunksForPlayerFilters & PageParams,
   ) {
-    const params: unknown[] = [serverId, playerUuid];
-    const where: string[] = ["sc.server_id = $1", "sc.player_uuid = $2"];
+    const params: unknown[] = [serverId, playerUuid, EXPIRED_CLAIM_UUID];
+    const where: string[] = [
+      "sc.server_id = $1",
+      "(sc.player_uuid = $2 OR (sc.player_uuid = $3 AND sc.original_player_uuid = $2))",
+    ];
 
     if (opts.dimension) {
       params.push(opts.dimension);
@@ -257,8 +261,11 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     playerUuid: string,
     filters: ChunksForPlayerFilters,
   ): Promise<number> {
-    const params: unknown[] = [serverId, playerUuid];
-    const where: string[] = ["sc.server_id = $1", "sc.player_uuid = $2"];
+    const params: unknown[] = [serverId, playerUuid, EXPIRED_CLAIM_UUID];
+    const where: string[] = [
+      "sc.server_id = $1",
+      "(sc.player_uuid = $2 OR (sc.player_uuid = $3 AND sc.original_player_uuid = $2))",
+    ];
 
     if (filters.dimension) {
       params.push(filters.dimension);
@@ -281,12 +288,12 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     serverId: number,
     opts: SoloPlayerFilters & PageParams,
   ) {
-    const params: unknown[] = [serverId];
+    const params: unknown[] = [serverId, EXPIRED_CLAIM_UUID];
     const searchClause = opts.search
       ? (() => {
           params.push(`%${escapeLike(opts.search!)}%`);
           const idx = params.length;
-          return `AND (p.minecraft_username ILIKE $${idx} OR sc.player_uuid::text ILIKE $${idx})`;
+          return `AND (p.minecraft_username ILIKE $${idx} OR r.effective_uuid::text ILIKE $${idx})`;
         })()
       : "";
 
@@ -296,7 +303,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     const offsetIdx = params.length;
 
     const havingClause = opts.activeOnly
-      ? "HAVING COUNT(*) FILTER (WHERE sc.active) > 0"
+      ? "HAVING COUNT(*) FILTER (WHERE r.active) > 0"
       : "";
 
     const result = await this.db.query<{
@@ -308,16 +315,26 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       lastSyncedAt: Date;
     }>(
       `SELECT
-        sc.player_uuid AS "playerUuid",
+        r.effective_uuid AS "playerUuid",
         p.minecraft_username AS "minecraftUsername",
         COUNT(*)::int AS "totalChunks",
-        COUNT(*) FILTER (WHERE sc.forceloadable)::int AS "forceloadableChunks",
-        COUNT(*) FILTER (WHERE sc.active)::int AS "activeChunks",
-        MAX(sc.last_synced_at) AS "lastSyncedAt"
-      FROM server_chunk sc
-      LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
-      WHERE sc.server_id = $1 AND sc.party_id IS NULL ${searchClause}
-      GROUP BY sc.player_uuid, p.minecraft_username
+        COUNT(*) FILTER (WHERE r.forceloadable)::int AS "forceloadableChunks",
+        COUNT(*) FILTER (WHERE r.active)::int AS "activeChunks",
+        MAX(r.last_synced_at) AS "lastSyncedAt"
+      FROM (
+        SELECT
+          CASE WHEN sc.player_uuid = $2 THEN sc.original_player_uuid ELSE sc.player_uuid END AS effective_uuid,
+          sc.forceloadable,
+          sc.active,
+          sc.last_synced_at
+        FROM server_chunk sc
+        WHERE sc.server_id = $1
+          AND sc.party_id IS NULL
+          AND NOT (sc.player_uuid = $2 AND sc.original_player_uuid = $2)
+      ) r
+      LEFT JOIN player p ON p.minecraft_uuid = r.effective_uuid
+      WHERE TRUE ${searchClause}
+      GROUP BY r.effective_uuid, p.minecraft_username
       ${havingClause}
       ORDER BY "totalChunks" DESC, p.minecraft_username ASC NULLS LAST
       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
@@ -330,33 +347,36 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     serverId: number,
     filters: SoloPlayerFilters,
   ): Promise<number> {
-    const params: unknown[] = [serverId];
+    const params: unknown[] = [serverId, EXPIRED_CLAIM_UUID];
     const searchClause = filters.search
       ? (() => {
           params.push(`%${escapeLike(filters.search!)}%`);
           const idx = params.length;
-          return `AND (p.minecraft_username ILIKE $${idx} OR sc.player_uuid::text ILIKE $${idx})`;
+          return `AND (p.minecraft_username ILIKE $${idx} OR r.effective_uuid::text ILIKE $${idx})`;
         })()
       : "";
 
-    // activeOnly forces us to aggregate per-player and count rows where the
-    // active-chunks aggregate is > 0; counting distinct player_uuid alone would
-    // ignore the filter.
-    const aggregateFilter = filters.activeOnly
-      ? `AND EXISTS (
-           SELECT 1 FROM server_chunk sc2
-           WHERE sc2.server_id = sc.server_id
-             AND sc2.player_uuid = sc.player_uuid
-             AND sc2.party_id IS NULL
-             AND sc2.active = true
-         )`
+    const havingClause = filters.activeOnly
+      ? "HAVING bool_or(r.active) = true"
       : "";
 
     const result = await this.db.query<{ count: number }>(
-      `SELECT COUNT(DISTINCT sc.player_uuid)::int AS count
-       FROM server_chunk sc
-       LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
-       WHERE sc.server_id = $1 AND sc.party_id IS NULL ${searchClause} ${aggregateFilter}`,
+      `SELECT COUNT(*)::int AS count FROM (
+         SELECT r.effective_uuid
+         FROM (
+           SELECT
+             CASE WHEN sc.player_uuid = $2 THEN sc.original_player_uuid ELSE sc.player_uuid END AS effective_uuid,
+             sc.active
+           FROM server_chunk sc
+           WHERE sc.server_id = $1
+             AND sc.party_id IS NULL
+             AND NOT (sc.player_uuid = $2 AND sc.original_player_uuid = $2)
+         ) r
+         LEFT JOIN player p ON p.minecraft_uuid = r.effective_uuid
+         WHERE TRUE ${searchClause}
+         GROUP BY r.effective_uuid
+         ${havingClause}
+       ) sub`,
       params,
     );
     return result.rows[0]?.count ?? 0;
