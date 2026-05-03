@@ -1,4 +1,4 @@
-import { Copy, MoreHorizontal } from "lucide-react";
+import { Copy, Map, MoreHorizontal } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,11 +24,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import {
+  chunkBluemapUrl,
   chunkTpCommand,
   formatDimension,
   regionFileName,
 } from "@/lib/minecraft";
-import type { DimensionFilter } from "../types";
 
 interface ChunkDetail {
   id: number;
@@ -39,35 +39,31 @@ interface ChunkDetail {
   active: boolean;
 }
 
+/**
+ * Presentational chunk table. Filtering + pagination are handled upstream
+ * (server-side, via tRPC inputs) so that page totals stay accurate.
+ */
 export function ChunkDetailTable({
   chunks,
-  dimensionFilter,
-  activeOnly,
+  hasActiveFilters = false,
 }: {
   chunks: ChunkDetail[];
-  dimensionFilter: DimensionFilter;
-  activeOnly: boolean;
+  /** When true, the empty state explains "no matches" instead of "no chunks". */
+  hasActiveFilters?: boolean;
 }) {
   const toast = useToastActions();
-
-  const filtered = chunks.filter((c) => {
-    if (dimensionFilter !== "all" && c.dimension !== dimensionFilter)
-      return false;
-    if (activeOnly && !c.active) return false;
-    return true;
-  });
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied`);
   };
 
-  if (filtered.length === 0) {
+  if (chunks.length === 0) {
     return (
       <p className="py-2 text-sm text-muted-foreground">
-        {chunks.length === 0
-          ? "No chunks found"
-          : "No chunks match the current filters"}
+        {hasActiveFilters
+          ? "No chunks match the current filters"
+          : "No chunks found"}
       </p>
     );
   }
@@ -85,7 +81,7 @@ export function ChunkDetailTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {filtered.map((chunk) => {
+        {chunks.map((chunk) => {
           const tp = chunkTpCommand(chunk.dimension, chunk.x, chunk.z);
           return (
             <TableRow key={chunk.id}>
@@ -149,6 +145,21 @@ export function ChunkDetailTable({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <a
+                          href={chunkBluemapUrl(
+                            chunk.dimension,
+                            chunk.x,
+                            chunk.z,
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Map className="mr-2 size-3.5" />
+                          Open in BlueMap
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuLabel>Copy</DropdownMenuLabel>
                       <DropdownMenuItem onClick={() => copy(tp, "/tp command")}>
                         /tp command

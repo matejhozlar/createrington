@@ -4,6 +4,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { minecraftRcon } from "@/utils/rcon";
 import { mcUuid } from "@/utils/zod-schemas";
+import { paginationInput, buildPagination } from "@/trpc/utils";
 
 export const adminPartiesRouter = router({
   kpis: adminProcedure
@@ -131,46 +132,100 @@ export const adminPartiesRouter = router({
 
   chunkPartyMembers: adminProcedure
     .meta({
-      description: "Per-player chunk stats within a party (from server_chunk)",
+      description:
+        "Paginated per-player chunk stats within a party (from server_chunk)",
     })
     .input(
       z.object({
         serverId: z.number().int(),
         partyId: mcUuid,
+        ...paginationInput({ defaultLimit: 25 }),
       }),
     )
     .query(async ({ input }) => {
-      return Q.server.chunk.getPlayerChunksByParty(
-        input.serverId,
-        input.partyId,
-      );
+      const offset = input.page * input.limit;
+      const [items, total] = await Promise.all([
+        Q.server.chunk.getPlayerChunksByParty(input.serverId, input.partyId, {
+          limit: input.limit,
+          offset,
+        }),
+        Q.server.chunk.countPlayersByParty(input.serverId, input.partyId),
+      ]);
+      return {
+        items,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
     }),
 
   chunkPlayerDetail: adminProcedure
     .meta({
-      description: "Individual chunk rows for a player (from server_chunk)",
+      description:
+        "Paginated chunk rows for a player (from server_chunk), with optional dimension and active-only filters",
     })
     .input(
       z.object({
         serverId: z.number().int(),
         playerUuid: mcUuid,
+        dimension: z.string().min(1).optional(),
+        activeOnly: z.boolean().optional(),
+        ...paginationInput({ defaultLimit: 50 }),
       }),
     )
     .query(async ({ input }) => {
-      return Q.server.chunk.getChunksForPlayer(
-        input.serverId,
-        input.playerUuid,
-      );
+      const offset = input.page * input.limit;
+      const filters = {
+        dimension: input.dimension ?? null,
+        activeOnly: input.activeOnly ?? false,
+      };
+      const [items, total] = await Promise.all([
+        Q.server.chunk.getChunksForPlayer(input.serverId, input.playerUuid, {
+          ...filters,
+          limit: input.limit,
+          offset,
+        }),
+        Q.server.chunk.countChunksForPlayer(
+          input.serverId,
+          input.playerUuid,
+          filters,
+        ),
+      ]);
+      return {
+        items,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
     }),
 
   chunkSoloPlayers: adminProcedure
     .meta({
       description:
-        "Solo players (no party) with chunk aggregates (from server_chunk)",
+        "Paginated solo players (no party) with chunk aggregates, with optional name/UUID search and active-only filter",
     })
-    .input(z.object({ serverId: z.number().int() }))
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        search: z.string().optional(),
+        activeOnly: z.boolean().optional(),
+        ...paginationInput({ defaultLimit: 50 }),
+      }),
+    )
     .query(async ({ input }) => {
-      return Q.server.chunk.getSoloPlayerAggregates(input.serverId);
+      const offset = input.page * input.limit;
+      const filters = {
+        search: input.search?.trim() || null,
+        activeOnly: input.activeOnly ?? false,
+      };
+      const [items, total] = await Promise.all([
+        Q.server.chunk.getSoloPlayerAggregates(input.serverId, {
+          ...filters,
+          limit: input.limit,
+          offset,
+        }),
+        Q.server.chunk.countSoloPlayers(input.serverId, filters),
+      ]);
+      return {
+        items,
+        pagination: buildPagination(input.page, input.limit, total),
+      };
     }),
 
   resync: adminProcedure
