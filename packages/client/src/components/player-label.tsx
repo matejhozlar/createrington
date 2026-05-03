@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
+import { cn } from "@/lib/utils";
+import { trpc } from "@/lib/trpc";
 
 interface PlayerLabelProps {
   uuid?: string | null;
@@ -17,6 +20,10 @@ interface PlayerLabelProps {
 /**
  * Player label with avatar + username that links to `/admin/players/:uuid`
  * when a UUID is available. Renders a non-interactive fallback otherwise.
+ *
+ * When the caller has no resolved username and falls back to passing the
+ * raw UUID as `name`, the label becomes a click-to-resolve button that
+ * looks the username up via Mojang on demand.
  */
 export function PlayerLabel({
   uuid,
@@ -26,6 +33,7 @@ export function PlayerLabel({
 }: PlayerLabelProps) {
   const displayName = name ?? uuid ?? "Unknown";
   const shouldLink = (linkable ?? !!uuid) && !!uuid;
+  const isUnresolvedUuid = !!uuid && !!name && name === uuid;
 
   if (!shouldLink) {
     return (
@@ -35,13 +43,17 @@ export function PlayerLabel({
           uuid={uuid ?? undefined}
           size={size}
         />
-        <span className="font-medium">
-          {name ?? (
-            <span className="italic text-muted-foreground">
-              No Minecraft link
-            </span>
-          )}
-        </span>
+        {isUnresolvedUuid ? (
+          <UnresolvedUuid uuid={uuid} />
+        ) : (
+          <span className="font-medium">
+            {name ?? (
+              <span className="italic text-muted-foreground">
+                No Minecraft link
+              </span>
+            )}
+          </span>
+        )}
       </div>
     );
   }
@@ -61,5 +73,43 @@ export function PlayerLabel({
         {displayName}
       </span>
     </Link>
+  );
+}
+
+function UnresolvedUuid({ uuid }: { uuid: string }) {
+  const [clicked, setClicked] = useState(false);
+  const query = trpc.public.players.resolveUsername.useQuery(
+    { uuid },
+    { enabled: clicked, staleTime: Infinity, retry: false },
+  );
+
+  if (query.data?.username) {
+    return <span className="font-medium">{query.data.username}</span>;
+  }
+
+  const lookedUpButEmpty = clicked && query.isSuccess && !query.data?.username;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        setClicked(true);
+      }}
+      disabled={query.isFetching || lookedUpButEmpty}
+      title={
+        lookedUpButEmpty
+          ? "No Mojang profile for this UUID"
+          : "Click to resolve username"
+      }
+      className={cn(
+        "font-mono text-xs font-medium transition-colors",
+        query.isFetching && "animate-pulse opacity-60",
+        !query.isFetching && !lookedUpButEmpty && "hover:text-amber-500",
+        lookedUpButEmpty && "text-muted-foreground",
+      )}
+    >
+      {uuid}
+    </button>
   );
 }
