@@ -76,7 +76,14 @@ export function ChunkPartiesTable({
           {filtered.length !== parties.length && ` of ${parties.length}`})
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-0">
+      {/*
+        overflow-x-clip on the shadcn table wrapper is load-bearing: the
+        default `overflow-x-auto` would establish a scroll container, and the
+        sticky <td>s on the expanded trigger row would anchor to that wrapper
+        (which never scrolls vertically) instead of the viewport. `clip` keeps
+        horizontal clipping without creating a scroll context.
+      */}
+      <CardContent className="px-0 [&_[data-slot=table-container]]:overflow-x-clip">
         <Table>
           <TableHeader>
             <TableRow>
