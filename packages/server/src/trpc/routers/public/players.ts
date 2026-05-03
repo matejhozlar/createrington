@@ -8,6 +8,8 @@ import {
   buildPagination,
   trpcError,
 } from "@/trpc/utils";
+import { getMojangUsername } from "@/utils/mojang-profile";
+import { mcUuid } from "@/utils/zod-schemas";
 import type { PlayerFilters } from "@createrington/shared/db";
 
 /** Public players router — lookup, list, and count players without auth. */
@@ -31,6 +33,21 @@ export const playersRouter = router({
       }
 
       return player;
+    }),
+
+  resolveUsername: publicProcedure
+    .meta({
+      description:
+        "Resolves a Minecraft UUID to a username. Checks the local player table first, then falls back to Mojang's session server. Returns { username: null } when the UUID has no Mojang profile (e.g. fake-player UUIDs).",
+    })
+    .input(z.object({ uuid: mcUuid }))
+    .query(async ({ input }) => {
+      const local = await Q.player.find({ minecraftUuid: input.uuid });
+      if (local?.minecraftUsername) {
+        return { username: local.minecraftUsername };
+      }
+      const username = await getMojangUsername(input.uuid);
+      return { username };
     }),
 
   list: publicProcedure
