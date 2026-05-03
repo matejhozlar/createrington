@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { getServerByIp } from "@/services/playtime/config";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 import {
   syncChunkState,
@@ -7,9 +8,6 @@ import {
   type PlayerChunkData,
   type PlayerChunkEntry,
 } from "./chunks.service";
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const MAX_CHUNKS_PER_SYNC = 50_000;
 
@@ -66,7 +64,7 @@ function parsePlayer(raw: unknown, index: number): PlayerChunkData {
   }
   const p = raw as Record<string, unknown>;
 
-  if (typeof p.playerUuid !== "string" || !UUID_REGEX.test(p.playerUuid)) {
+  if (typeof p.playerUuid !== "string" || !MC_UUID_REGEX.test(p.playerUuid)) {
     throw new BadRequestError(
       `players[${index}].playerUuid must be a valid UUID`,
     );
@@ -75,7 +73,7 @@ function parsePlayer(raw: unknown, index: number): PlayerChunkData {
   const partyId =
     p.partyId === null || p.partyId === undefined
       ? null
-      : typeof p.partyId === "string" && UUID_REGEX.test(p.partyId)
+      : typeof p.partyId === "string" && MC_UUID_REGEX.test(p.partyId)
         ? p.partyId
         : (() => {
             throw new BadRequestError(

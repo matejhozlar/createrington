@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { minecraftRcon } from "@/utils/rcon";
+import { mcUuid } from "@/utils/zod-schemas";
 
 export const adminPartiesRouter = router({
   kpis: adminProcedure
@@ -30,7 +31,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        partyUuid: z.string().uuid(),
+        partyUuid: mcUuid,
       }),
     )
     .query(async ({ input }) => {
@@ -45,7 +46,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        partyUuid: z.string().uuid(),
+        partyUuid: mcUuid,
       }),
     )
     .query(async ({ input }) => {
@@ -62,7 +63,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        playerUuid: z.string().uuid(),
+        playerUuid: mcUuid,
       }),
     )
     .query(async ({ input }) => {
@@ -94,7 +95,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        playerUuid: z.string().uuid(),
+        playerUuid: mcUuid,
       }),
     )
     .query(async ({ input }) => {
@@ -135,7 +136,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        partyId: z.string().uuid(),
+        partyId: mcUuid,
       }),
     )
     .query(async ({ input }) => {
@@ -152,7 +153,7 @@ export const adminPartiesRouter = router({
     .input(
       z.object({
         serverId: z.number().int(),
-        playerUuid: z.string().uuid(),
+        playerUuid: mcUuid,
       }),
     )
     .query(async ({ input }) => {
