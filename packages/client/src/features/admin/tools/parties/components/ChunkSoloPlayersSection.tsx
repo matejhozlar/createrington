@@ -1,6 +1,6 @@
 import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, User } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronDown, ChevronRight } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -26,7 +26,8 @@ import type { RouterOutput } from "@/lib/trpc";
 import type { DimensionFilter } from "../types";
 import { ChunkDetailTable } from "./ChunkDetailTable";
 
-type SoloPlayersData = RouterOutput["admin"]["parties"]["chunkSoloPlayers"];
+export type SoloPlayersData =
+  RouterOutput["admin"]["parties"]["chunkSoloPlayers"];
 type SoloPlayer = SoloPlayersData["items"][number];
 
 const CHUNKS_PER_PAGE = 50;
@@ -52,48 +53,41 @@ export function ChunkSoloPlayersSection({
   if (!data || data.pagination.total === 0) return null;
 
   return (
-    <Card className="gap-0">
-      <CardHeader className="border-b">
-        <CardTitle className="flex items-center gap-2">
-          <User className="size-4 text-muted-foreground" />
-          Solo players ({data.pagination.total})
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 px-0 pb-3">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-8" />
-              <TableHead>Player</TableHead>
-              <TableHead>Claimed</TableHead>
-              <TableHead>Forceloadable</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead>Last synced</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.items.map((player) => (
-              <SoloPlayerRow
-                key={player.playerUuid}
-                serverId={serverId}
-                player={player}
-                dimensionFilter={dimensionFilter}
-                activeOnly={activeOnly}
-              />
-            ))}
-          </TableBody>
-        </Table>
-        <Paginator
-          page={data.pagination.page}
-          limit={data.pagination.limit}
-          total={data.pagination.total}
-          totalPages={data.pagination.totalPages}
-          onPageChange={onPageChange}
-          itemLabel="player"
-          className="px-4"
-        />
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-3 px-0 pb-3">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-8" />
+            <TableHead>Player</TableHead>
+            <TableHead>Claimed</TableHead>
+            <TableHead>Forceloadable</TableHead>
+            <TableHead>Active</TableHead>
+            <TableHead>Ally status</TableHead>
+            <TableHead>Last synced</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.items.map((player) => (
+            <SoloPlayerRow
+              key={player.playerUuid}
+              serverId={serverId}
+              player={player}
+              dimensionFilter={dimensionFilter}
+              activeOnly={activeOnly}
+            />
+          ))}
+        </TableBody>
+      </Table>
+      <Paginator
+        page={data.pagination.page}
+        limit={data.pagination.limit}
+        total={data.pagination.total}
+        totalPages={data.pagination.totalPages}
+        onPageChange={onPageChange}
+        itemLabel="player"
+        className="px-4"
+      />
+    </div>
   );
 }
 
@@ -149,6 +143,25 @@ function SoloPlayerRow({
             <span className="text-muted-foreground">0</span>
           )}
         </TableCell>
+        <TableCell>
+          {player.allyStatus === "allied" ? (
+            <Badge
+              variant="outline"
+              className="border-blue-500 bg-blue-500/10 text-blue-400"
+            >
+              Allied
+            </Badge>
+          ) : player.allyStatus === "pending" ? (
+            <Badge
+              variant="outline"
+              className="border-amber-500 bg-amber-500/10 text-amber-500"
+            >
+              Pending
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground">&mdash;</span>
+          )}
+        </TableCell>
         <TableCell className="text-muted-foreground">
           <Tooltip>
             <TooltipTrigger asChild>
@@ -162,7 +175,7 @@ function SoloPlayerRow({
       </TableRow>
       {expanded && (
         <TableRow>
-          <TableCell colSpan={6} className="bg-muted/30 p-4">
+          <TableCell colSpan={7} className="bg-muted/30 p-4">
             <SoloPlayerChunks
               serverId={serverId}
               playerUuid={player.playerUuid}

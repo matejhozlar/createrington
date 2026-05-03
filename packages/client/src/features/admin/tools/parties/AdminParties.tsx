@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
@@ -18,13 +18,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { formatRelativeDateSafe } from "@/features/admin/format";
-import { ChunkPartiesTable } from "./components/ChunkPartiesTable";
-import { ChunkSoloPlayersSection } from "./components/ChunkSoloPlayersSection";
+import { ChunkTablesCard } from "./components/ChunkTablesCard";
 import { FakePartyCard } from "./components/FakePartyCard";
 import { PartiesEmptyState } from "./components/PartiesEmptyState";
 import { PartiesFiltersBar } from "./components/PartiesFiltersBar";
 import { PartiesKpiCards } from "./components/PartiesKpiCards";
-import { QualifiedPlayersSection } from "./components/QualifiedPlayersSection";
 import type { PartyFilters } from "./types";
 
 // TODO: restore server selector when multi-server support returns
@@ -75,9 +73,6 @@ export function AdminParties() {
     },
     { enabled: soloPlayersEnabled },
   );
-  const qualifiedQuery = trpc.admin.parties.qualifiedPlayers.useQuery({
-    serverId: SERVER_ID,
-  });
   const fakePartyQuery = trpc.admin.parties.fakeParty.useQuery({
     serverId: SERVER_ID,
   });
@@ -88,7 +83,6 @@ export function AdminParties() {
     chunkKpisQuery.isFetching ||
     chunkPartiesQuery.isFetching ||
     chunkSoloPlayersQuery.isFetching ||
-    qualifiedQuery.isFetching ||
     fakePartyQuery.isFetching ||
     resyncMutation.isPending;
 
@@ -97,7 +91,6 @@ export function AdminParties() {
     chunkKpisQuery.refetch();
     chunkPartiesQuery.refetch();
     chunkSoloPlayersQuery.refetch();
-    qualifiedQuery.refetch();
     fakePartyQuery.refetch();
     setLastRefreshedAt(new Date());
   };
@@ -120,14 +113,30 @@ export function AdminParties() {
     !kpisQuery.isLoading &&
     !chunkKpisQuery.isLoading &&
     !chunkPartiesQuery.isLoading &&
-    !qualifiedQuery.isLoading &&
     !fakePartyQuery.isLoading;
 
   const hasAnyData =
     (chunkPartiesQuery.data?.length ?? 0) > 0 ||
     (chunkKpisQuery.data?.totalChunks ?? 0) > 0 ||
-    (qualifiedQuery.data?.length ?? 0) > 0 ||
     !!fakePartyQuery.data;
+
+  // Filter parties client-side (moved here so the tab trigger can show counts)
+  const allParties = chunkPartiesQuery.data;
+  const filteredParties = useMemo(() => {
+    const needle = filters.search.trim().toLowerCase();
+    return (allParties ?? []).filter((p) => {
+      if (filters.allied === "allied" && !p.isAllied) return false;
+      if (filters.allied === "notAllied" && p.isAllied) return false;
+      if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
+      if (filters.optedIn === "optedIn" && p.partyOptedIn !== true)
+        return false;
+      if (filters.optedIn === "optedOut" && p.partyOptedIn !== false)
+        return false;
+      if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [allParties, filters]);
+  const totalParties = allParties?.length ?? 0;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -205,28 +214,16 @@ export function AdminParties() {
           <>
             <PartiesFiltersBar filters={filters} onChange={setFilters} />
 
-            {chunkPartiesQuery.data && (
-              <ChunkPartiesTable
-                serverId={SERVER_ID}
-                parties={chunkPartiesQuery.data}
-                filters={filters}
-              />
-            )}
-
-            {soloPlayersEnabled && (
-              <ChunkSoloPlayersSection
-                serverId={SERVER_ID}
-                data={chunkSoloPlayersQuery.data}
-                isLoading={chunkSoloPlayersQuery.isLoading}
-                onPageChange={setSoloPage}
-                dimensionFilter={filters.dimension}
-                activeOnly={filters.activeForceloadsOnly}
-              />
-            )}
-
-            {qualifiedQuery.data && (
-              <QualifiedPlayersSection players={qualifiedQuery.data} />
-            )}
+            <ChunkTablesCard
+              serverId={SERVER_ID}
+              filteredParties={filteredParties}
+              totalParties={totalParties}
+              filters={filters}
+              soloPlayersEnabled={soloPlayersEnabled}
+              soloData={chunkSoloPlayersQuery.data}
+              soloIsLoading={chunkSoloPlayersQuery.isLoading}
+              onSoloPageChange={setSoloPage}
+            />
 
             <FakePartyCard data={fakePartyQuery.data ?? null} />
           </>
