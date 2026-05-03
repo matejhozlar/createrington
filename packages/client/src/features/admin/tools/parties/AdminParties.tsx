@@ -121,23 +121,22 @@ export function AdminParties() {
     !!fakePartyQuery.data;
 
   // Filter parties client-side (moved here so the tab trigger can show counts)
-  const allParties = chunkPartiesQuery.data ?? [];
-  const needle = filters.search.trim().toLowerCase();
-  const filteredParties = useMemo(
-    () =>
-      allParties.filter((p) => {
-        if (filters.allied === "allied" && !p.isAllied) return false;
-        if (filters.allied === "notAllied" && p.isAllied) return false;
-        if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
-        if (filters.optedIn === "optedIn" && p.partyOptedIn !== true)
-          return false;
-        if (filters.optedIn === "optedOut" && p.partyOptedIn !== false)
-          return false;
-        if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
-        return true;
-      }),
-    [allParties, filters, needle],
-  );
+  const allParties = chunkPartiesQuery.data;
+  const filteredParties = useMemo(() => {
+    const needle = filters.search.trim().toLowerCase();
+    return (allParties ?? []).filter((p) => {
+      if (filters.allied === "allied" && !p.isAllied) return false;
+      if (filters.allied === "notAllied" && p.isAllied) return false;
+      if (filters.activeForceloadsOnly && p.activeChunks === 0) return false;
+      if (filters.optedIn === "optedIn" && p.partyOptedIn !== true)
+        return false;
+      if (filters.optedIn === "optedOut" && p.partyOptedIn !== false)
+        return false;
+      if (needle && !p.partyName.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [allParties, filters]);
+  const totalParties = allParties?.length ?? 0;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -218,7 +217,7 @@ export function AdminParties() {
             <ChunkTablesCard
               serverId={SERVER_ID}
               filteredParties={filteredParties}
-              totalParties={allParties.length}
+              totalParties={totalParties}
               filters={filters}
               soloPlayersEnabled={soloPlayersEnabled}
               soloData={chunkSoloPlayersQuery.data}

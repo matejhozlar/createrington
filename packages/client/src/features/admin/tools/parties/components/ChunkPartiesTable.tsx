@@ -2,7 +2,6 @@ import { Fragment, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -42,19 +41,17 @@ export function ChunkPartiesTable({
 
   if (totalParties === 0) {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center justify-center gap-2 py-12">
-          <Users className="size-10 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            No parties with claimed chunks
-          </p>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center gap-2 py-12">
+        <Users className="size-10 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">
+          No parties with claimed chunks
+        </p>
+      </div>
     );
   }
 
   return (
-    <div className="px-0 [&_[data-slot=table-container]]:overflow-x-clip">
+    <div className="px-0">
       <Table>
         <TableHeader>
           <TableRow>
