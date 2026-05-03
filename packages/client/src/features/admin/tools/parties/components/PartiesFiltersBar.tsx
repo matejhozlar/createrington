@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { DIMENSIONS } from "@/lib/minecraft";
+import { formatDimension } from "@/lib/minecraft";
 import type {
   AlliedFilter,
   DimensionFilter,
@@ -34,9 +34,11 @@ const OPTED_IN_OPTIONS: { value: OptedInFilter; label: string }[] = [
 export function PartiesFiltersBar({
   filters,
   onChange,
+  dimensions,
 }: {
   filters: PartyFilters;
   onChange: (next: PartyFilters) => void;
+  dimensions: string[];
 }) {
   const set = <K extends keyof PartyFilters>(key: K, value: PartyFilters[K]) =>
     onChange({ ...filters, [key]: value });
@@ -82,9 +84,9 @@ export function PartiesFiltersBar({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All dimensions</SelectItem>
-              {DIMENSIONS.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.label}
+              {dimensions.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {formatDimension(id)}
                 </SelectItem>
               ))}
             </SelectContent>

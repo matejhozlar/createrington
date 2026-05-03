@@ -110,6 +110,16 @@ export const adminPartiesRouter = router({
       return Q.server.chunk.getKpis(input.serverId);
     }),
 
+  chunkDimensions: adminProcedure
+    .meta({
+      description:
+        "Distinct dimension IDs present in server_chunk for the dimension filter",
+    })
+    .input(z.object({ serverId: z.number().int() }))
+    .query(async ({ input }) => {
+      return Q.server.chunk.getDistinctDimensions(input.serverId);
+    }),
+
   chunkParties: adminProcedure
     .meta({
       description:
