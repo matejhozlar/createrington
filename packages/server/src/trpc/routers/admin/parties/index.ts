@@ -74,16 +74,6 @@ export const adminPartiesRouter = router({
       );
     }),
 
-  qualifiedPlayers: adminProcedure
-    .meta({
-      description:
-        "Players who have met ally trigger requirements (active or pending)",
-    })
-    .input(z.object({ serverId: z.number().int() }))
-    .query(async ({ input }) => {
-      return Q.server.ally.qualified.player.getQualifiedPlayers(input.serverId);
-    }),
-
   fakeParty: adminProcedure
     .meta({ description: "Fake-player party snapshot for a server" })
     .input(z.object({ serverId: z.number().int() }))

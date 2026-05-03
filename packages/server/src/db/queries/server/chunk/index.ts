@@ -306,6 +306,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       forceloadableChunks: number;
       activeChunks: number;
       lastSyncedAt: Date;
+      allyStatus: "allied" | "pending" | null;
     }>(
       `SELECT
         sc.player_uuid AS "playerUuid",
@@ -313,11 +314,18 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         COUNT(*)::int AS "totalChunks",
         COUNT(*) FILTER (WHERE sc.forceloadable)::int AS "forceloadableChunks",
         COUNT(*) FILTER (WHERE sc.active)::int AS "activeChunks",
-        MAX(sc.last_synced_at) AS "lastSyncedAt"
+        MAX(sc.last_synced_at) AS "lastSyncedAt",
+        CASE
+          WHEN qp.is_pending = false THEN 'allied'
+          WHEN qp.is_pending = true  THEN 'pending'
+          ELSE NULL
+        END AS "allyStatus"
       FROM server_chunk sc
       LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
+      LEFT JOIN server_ally_qualified_player qp
+        ON qp.server_id = $1 AND qp.player_uuid = sc.player_uuid
       WHERE sc.server_id = $1 AND sc.party_id IS NULL ${searchClause}
-      GROUP BY sc.player_uuid, p.minecraft_username
+      GROUP BY sc.player_uuid, p.minecraft_username, qp.is_pending
       ${havingClause}
       ORDER BY "totalChunks" DESC, p.minecraft_username ASC NULLS LAST
       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
