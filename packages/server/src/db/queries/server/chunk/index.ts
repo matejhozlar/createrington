@@ -15,6 +15,7 @@ interface ChunksForPlayerFilters {
 
 interface SoloPlayerFilters {
   search?: string | null;
+  dimension?: string | null;
   activeOnly?: boolean;
 }
 
@@ -131,7 +132,13 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     return result.rows[0];
   }
 
-  async getPartyAggregates(serverId: number) {
+  async getPartyAggregates(serverId: number, dimension?: string | null) {
+    const params: unknown[] = [serverId];
+    let dimensionClause = "";
+    if (dimension) {
+      params.push(dimension);
+      dimensionClause = `AND sc.dimension = $${params.length}`;
+    }
     const result = await this.db.query<{
       partyId: string;
       partyName: string;
@@ -158,10 +165,10 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       FROM server_chunk sc
       LEFT JOIN server_ally_party ap
         ON ap.party_id = sc.party_id AND ap.server_id = sc.server_id
-      WHERE sc.server_id = $1 AND sc.party_id IS NOT NULL
+      WHERE sc.server_id = $1 AND sc.party_id IS NOT NULL ${dimensionClause}
       GROUP BY sc.party_id, sc.party_name, sc.party_opted_in, ap.party_id, ap.allied_at
       ORDER BY "totalChunks" DESC, sc.party_name ASC`,
-      [serverId],
+      params,
     );
     return result.rows;
   }
@@ -293,6 +300,11 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     opts: SoloPlayerFilters & PageParams,
   ) {
     const params: unknown[] = [serverId, EXPIRED_CLAIM_UUID];
+    let dimensionClause = "";
+    if (opts.dimension) {
+      params.push(opts.dimension);
+      dimensionClause = `AND sc.dimension = $${params.length}`;
+    }
     const searchClause = opts.search
       ? (() => {
           params.push(`%${escapeLike(opts.search!)}%`);
@@ -341,6 +353,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         WHERE sc.server_id = $1
           AND sc.party_id IS NULL
           AND NOT (sc.player_uuid = $2 AND sc.original_player_uuid = $2)
+          ${dimensionClause}
       ) r
       LEFT JOIN player p ON p.minecraft_uuid = r.effective_uuid
       LEFT JOIN server_ally_qualified_player qp
@@ -360,6 +373,11 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     filters: SoloPlayerFilters,
   ): Promise<number> {
     const params: unknown[] = [serverId, EXPIRED_CLAIM_UUID];
+    let dimensionClause = "";
+    if (filters.dimension) {
+      params.push(filters.dimension);
+      dimensionClause = `AND sc.dimension = $${params.length}`;
+    }
     const searchClause = filters.search
       ? (() => {
           params.push(`%${escapeLike(filters.search!)}%`);
@@ -383,6 +401,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
            WHERE sc.server_id = $1
              AND sc.party_id IS NULL
              AND NOT (sc.player_uuid = $2 AND sc.original_player_uuid = $2)
+             ${dimensionClause}
          ) r
          LEFT JOIN player p ON p.minecraft_uuid = r.effective_uuid
          WHERE TRUE ${searchClause}
