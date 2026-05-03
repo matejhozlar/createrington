@@ -13,7 +13,7 @@ export interface ChunkUpsertRow {
   active: boolean;
 }
 
-const CHUNK_SYNC_LOCK_NAMESPACE = 0xc40c5e10;
+const CHUNK_SYNC_LOCK_NAMESPACE = 0x440c5e10;
 
 export class ServerChunkQueries extends ServerChunkBaseQueries {
   constructor(db: Pool | PoolClient) {
