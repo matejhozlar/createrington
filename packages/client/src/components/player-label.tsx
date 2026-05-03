@@ -117,21 +117,18 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
         isError ? "Retry username lookup" : "Resolve UUID to username"
       }
       className={cn(
-        "group/resolve flex items-center gap-1.5 font-medium underline decoration-dotted underline-offset-4 transition-colors",
+        "group/resolve flex items-center gap-1.5 font-medium transition-colors",
         isLoading && "opacity-60",
-        isError &&
-          "text-destructive decoration-destructive/60 hover:text-destructive/80 hover:decoration-destructive",
-        !isLoading &&
-          !isError &&
-          "text-muted-foreground decoration-muted-foreground/40 hover:text-primary hover:decoration-primary",
+        isError && "text-destructive hover:text-destructive/80",
+        !isLoading && !isError && "text-muted-foreground hover:text-primary",
       )}
     >
+      <span>{uuid}</span>
       {isLoading ? (
         <Loader2 className="size-3.5 shrink-0 animate-spin" />
       ) : (
         <UserSearch className="size-3.5 shrink-0 opacity-70 transition-opacity group-hover/resolve:opacity-100" />
       )}
-      <span>{uuid}</span>
     </button>
   );
 }
