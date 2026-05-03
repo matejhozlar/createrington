@@ -393,4 +393,15 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     );
     return result.rows[0]?.count ?? 0;
   }
+
+  async getDistinctDimensions(serverId: number): Promise<string[]> {
+    const result = await this.db.query<{ dimension: string }>(
+      `SELECT DISTINCT dimension
+       FROM server_chunk
+       WHERE server_id = $1
+       ORDER BY dimension`,
+      [serverId],
+    );
+    return result.rows.map((r) => r.dimension);
+  }
 }

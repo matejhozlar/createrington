@@ -62,6 +62,9 @@ export function AdminParties() {
   const chunkPartiesQuery = trpc.admin.parties.chunkParties.useQuery({
     serverId: SERVER_ID,
   });
+  const chunkDimensionsQuery = trpc.admin.parties.chunkDimensions.useQuery({
+    serverId: SERVER_ID,
+  });
   const chunkSoloPlayersQuery = trpc.admin.parties.chunkSoloPlayers.useQuery(
     {
       serverId: SERVER_ID,
@@ -212,7 +215,11 @@ export function AdminParties() {
           />
         ) : (
           <>
-            <PartiesFiltersBar filters={filters} onChange={setFilters} />
+            <PartiesFiltersBar
+              filters={filters}
+              onChange={setFilters}
+              dimensions={chunkDimensionsQuery.data ?? []}
+            />
 
             <ChunkTablesCard
               serverId={SERVER_ID}

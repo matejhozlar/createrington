@@ -1,6 +1,4 @@
-import type { DIMENSIONS } from "@/lib/minecraft";
-
-export type DimensionFilter = "all" | (typeof DIMENSIONS)[number]["id"];
+export type DimensionFilter = "all" | string;
 
 export type AlliedFilter = "all" | "allied" | "notAllied";
 export type OptedInFilter = "all" | "optedIn" | "optedOut";
