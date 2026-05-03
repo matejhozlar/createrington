@@ -101,6 +101,8 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
       partiesWithActiveForceloads: number;
       qualifiedActive: number;
       qualifiedPending: number;
+      alliedPlayers: number;
+      notQualifiedPlayers: number;
     }>(
       `SELECT
         (SELECT COUNT(*)::int FROM server_forceload_party WHERE server_id = $1) AS "totalParties",
@@ -112,7 +114,27 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
         (SELECT COUNT(*)::int FROM server_ally_qualified_player
           WHERE server_id = $1 AND is_pending = false) AS "qualifiedActive",
         (SELECT COUNT(*)::int FROM server_ally_qualified_player
-          WHERE server_id = $1 AND is_pending = true) AS "qualifiedPending"`,
+          WHERE server_id = $1 AND is_pending = true) AS "qualifiedPending",
+        (SELECT COUNT(DISTINCT player_uuid)::int FROM (
+          SELECT m.player_uuid
+          FROM server_ally_fake_party fp
+          JOIN server_ally_fake_party_member m ON m.fake_party_id = fp.id
+          WHERE fp.server_id = $1
+          UNION
+          SELECT sc.player_uuid
+          FROM server_ally_party ap
+          JOIN server_chunk sc ON sc.party_id = ap.party_id AND sc.server_id = ap.server_id
+          WHERE ap.server_id = $1
+        ) sub) AS "alliedPlayers",
+        (SELECT COUNT(DISTINCT sc.player_uuid)::int
+          FROM server_chunk sc
+          WHERE sc.server_id = $1
+            AND sc.player_uuid != '00000000-0000-0000-0000-000000000001'
+            AND NOT EXISTS (
+              SELECT 1 FROM server_ally_qualified_player q
+              WHERE q.server_id = $1 AND q.player_uuid = sc.player_uuid
+            )
+        ) AS "notQualifiedPlayers"`,
       [serverId],
     );
     return result.rows[0];

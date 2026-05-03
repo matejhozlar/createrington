@@ -111,6 +111,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       totalChunks: number;
       forceloadableChunks: number;
       activeChunks: number;
+      activeChunksOptedIn: number;
       totalParties: number;
       partiesOptedIn: number;
     }>(
@@ -118,6 +119,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         COUNT(*)::int AS "totalChunks",
         COUNT(*) FILTER (WHERE forceloadable)::int AS "forceloadableChunks",
         COUNT(*) FILTER (WHERE active)::int AS "activeChunks",
+        COUNT(*) FILTER (WHERE active AND party_opted_in = true AND party_id IS NOT NULL)::int AS "activeChunksOptedIn",
         COUNT(DISTINCT party_id)::int AS "totalParties",
         COUNT(DISTINCT party_id) FILTER (WHERE party_opted_in = true)::int AS "partiesOptedIn"
       FROM server_chunk
