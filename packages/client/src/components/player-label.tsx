@@ -32,8 +32,8 @@ export function PlayerLabel({
   linkable,
 }: PlayerLabelProps) {
   const displayName = name ?? uuid ?? "Unknown";
-  const shouldLink = (linkable ?? !!uuid) && !!uuid;
   const isUnresolvedUuid = !!uuid && !!name && name === uuid;
+  const shouldLink = (linkable ?? !!uuid) && !!uuid && !isUnresolvedUuid;
 
   if (!shouldLink) {
     return (
@@ -80,7 +80,7 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
   const [clicked, setClicked] = useState(false);
   const query = trpc.public.players.resolveUsername.useQuery(
     { uuid },
-    { enabled: clicked, staleTime: Infinity, retry: false },
+    { enabled: clicked, staleTime: Infinity },
   );
 
   if (query.data?.username) {
@@ -94,18 +94,28 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        setClicked(true);
+        if (clicked && query.isError) {
+          query.refetch();
+        } else {
+          setClicked(true);
+        }
       }}
       disabled={query.isFetching || lookedUpButEmpty}
       title={
-        lookedUpButEmpty
-          ? "No Mojang profile for this UUID"
-          : "Click to resolve username"
+        query.isError
+          ? "Lookup failed — click to retry"
+          : lookedUpButEmpty
+            ? "No Mojang profile for this UUID"
+            : "Click to resolve username"
       }
       className={cn(
         "font-mono text-xs font-medium transition-colors",
         query.isFetching && "animate-pulse opacity-60",
-        !query.isFetching && !lookedUpButEmpty && "hover:text-amber-500",
+        query.isError && "text-destructive hover:text-destructive/80",
+        !query.isFetching &&
+          !query.isError &&
+          !lookedUpButEmpty &&
+          "hover:text-amber-500",
         lookedUpButEmpty && "text-muted-foreground",
       )}
     >
