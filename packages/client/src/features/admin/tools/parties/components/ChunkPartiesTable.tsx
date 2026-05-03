@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -105,7 +106,14 @@ export function ChunkPartiesTable({
                 return (
                   <Fragment key={party.partyId}>
                     <TableRow
-                      className="cursor-pointer"
+                      className={cn(
+                        "cursor-pointer",
+                        // When expanded, pin the trigger row to the viewport
+                        // top so the chevron stays reachable while scrolling
+                        // through long member/chunk lists.
+                        isExpanded &&
+                          "[&>td]:sticky [&>td]:top-0 [&>td]:z-10 [&>td]:bg-card [&>td]:shadow-[0_1px_0_var(--color-border)]",
+                      )}
                       onClick={() =>
                         setExpandedId(isExpanded ? null : party.partyId)
                       }
