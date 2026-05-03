@@ -33,6 +33,12 @@ export function createApp(): Express {
   // Stripe webhook requires raw body for signature verification — mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
+  // Chunk sync from opac-teams can be much larger than the default 1mb cap:
+  // a full sync of up to 50k claimed chunks across many players easily reaches
+  // a few megabytes. Mount before the global parser so this route gets the
+  // higher limit and the rest of the API stays at 1mb.
+  app.use("/api/chunks/sync", express.json({ limit: "8mb" }));
+
   app.use(
     helmet({
       contentSecurityPolicy: {

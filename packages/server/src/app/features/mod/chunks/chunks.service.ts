@@ -1,6 +1,27 @@
 import { db } from "@/db";
 
-export interface ChunkPayload {
+export interface PlayerChunkEntry {
+  dimension: string;
+  x: number;
+  z: number;
+  forceloadable: boolean;
+  active: boolean;
+}
+
+export interface PlayerChunkData {
+  playerUuid: string;
+  partyId: string | null;
+  partyName: string | null;
+  partyOptedIn: boolean | null;
+  chunks: PlayerChunkEntry[];
+}
+
+export interface ChunkSyncPayload {
+  serverId: number;
+  players: PlayerChunkData[];
+}
+
+interface FlattenedChunk {
   playerUuid: string;
   dimension: string;
   x: number;
@@ -12,9 +33,24 @@ export interface ChunkPayload {
   active: boolean;
 }
 
-export interface ChunkSyncPayload {
-  serverId: number;
-  chunks: ChunkPayload[];
+function flatten(players: PlayerChunkData[]): FlattenedChunk[] {
+  const out: FlattenedChunk[] = [];
+  for (const p of players) {
+    for (const c of p.chunks) {
+      out.push({
+        playerUuid: p.playerUuid,
+        dimension: c.dimension,
+        x: c.x,
+        z: c.z,
+        partyId: p.partyId,
+        partyName: p.partyName,
+        partyOptedIn: p.partyOptedIn,
+        forceloadable: c.forceloadable,
+        active: c.active,
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -26,14 +62,15 @@ export interface ChunkSyncPayload {
  * then DELETE rows whose last_synced_at predates this sync.
  */
 export async function syncChunkState(payload: ChunkSyncPayload): Promise<void> {
-  const { serverId, chunks } = payload;
+  const { serverId, players } = payload;
+  const rows = flatten(players);
 
   await db.inTransaction(async (tx) => {
     await tx.server.chunk.acquireSyncLock(serverId);
 
     const syncStart = new Date();
 
-    await tx.server.chunk.upsertChunks(serverId, chunks, syncStart);
+    await tx.server.chunk.upsertChunks(serverId, rows, syncStart);
     await tx.server.chunk.sweepOrphans(serverId, syncStart);
   });
 }

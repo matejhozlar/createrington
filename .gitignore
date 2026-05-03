@@ -28,9 +28,6 @@ pnpm-debug.log*
 .Trashes
 Thumbs.db
 
-# IDE
-.claude
-
 # Misc
 postgres_data/
 *.tgz
