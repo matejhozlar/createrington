@@ -47,7 +47,7 @@ export function AdminParties() {
 
   // Reset solo page on any filter change that affects the result set
   // (the "store information from previous render" pattern from React docs).
-  const soloFiltersKey = `${filters.search}|${filters.activeForceloadsOnly}|${soloPlayersEnabled}`;
+  const soloFiltersKey = `${filters.search}|${filters.dimension}|${filters.activeForceloadsOnly}|${soloPlayersEnabled}`;
   const [soloPage, setSoloPage] = useState(0);
   const [prevSoloFiltersKey, setPrevSoloFiltersKey] = useState(soloFiltersKey);
   if (prevSoloFiltersKey !== soloFiltersKey) {
@@ -59,8 +59,11 @@ export function AdminParties() {
   const chunkKpisQuery = trpc.admin.parties.chunkKpis.useQuery({
     serverId: SERVER_ID,
   });
+  const dimensionInput =
+    filters.dimension === "all" ? undefined : filters.dimension;
   const chunkPartiesQuery = trpc.admin.parties.chunkParties.useQuery({
     serverId: SERVER_ID,
+    dimension: dimensionInput,
   });
   const chunkDimensionsQuery = trpc.admin.parties.chunkDimensions.useQuery({
     serverId: SERVER_ID,
@@ -71,6 +74,7 @@ export function AdminParties() {
       page: soloPage,
       limit: SOLO_PLAYERS_PER_PAGE,
       search: filters.search.trim() || undefined,
+      dimension: dimensionInput,
       activeOnly: filters.activeForceloadsOnly || undefined,
     },
     { enabled: soloPlayersEnabled },

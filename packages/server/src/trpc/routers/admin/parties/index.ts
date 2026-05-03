@@ -125,9 +125,17 @@ export const adminPartiesRouter = router({
       description:
         "Party aggregates from server_chunk with ally status, for unified parties view",
     })
-    .input(z.object({ serverId: z.number().int() }))
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        dimension: z.string().min(1).optional(),
+      }),
+    )
     .query(async ({ input }) => {
-      return Q.server.chunk.getPartyAggregates(input.serverId);
+      return Q.server.chunk.getPartyAggregates(
+        input.serverId,
+        input.dimension ?? null,
+      );
     }),
 
   chunkPartyMembers: adminProcedure
@@ -198,12 +206,13 @@ export const adminPartiesRouter = router({
   chunkSoloPlayers: adminProcedure
     .meta({
       description:
-        "Paginated solo players (no party) with chunk aggregates, with optional name/UUID search and active-only filter",
+        "Paginated solo players (no party) with chunk aggregates, with optional name/UUID search, dimension, and active-only filter",
     })
     .input(
       z.object({
         serverId: z.number().int(),
         search: z.string().optional(),
+        dimension: z.string().min(1).optional(),
         activeOnly: z.boolean().optional(),
         ...paginationInput({ defaultLimit: 50 }),
       }),
@@ -212,6 +221,7 @@ export const adminPartiesRouter = router({
       const offset = input.page * input.limit;
       const filters = {
         search: input.search?.trim() || null,
+        dimension: input.dimension ?? null,
         activeOnly: input.activeOnly ?? false,
       };
       const [items, total] = await Promise.all([
