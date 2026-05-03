@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
+import { Paginator } from "@/components/paginator";
 import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
@@ -9,7 +10,9 @@ import type { DimensionFilter } from "../types";
 import { ChunkDetailTable } from "./ChunkDetailTable";
 
 type ChunkMember =
-  RouterOutput["admin"]["parties"]["chunkPartyMembers"][number];
+  RouterOutput["admin"]["parties"]["chunkPartyMembers"]["items"][number];
+
+const CHUNKS_PER_PAGE = 50;
 
 export function ChunkPlayerMemberRow({
   serverId,
@@ -24,12 +27,29 @@ export function ChunkPlayerMemberRow({
 }) {
   const [expanded, setExpanded] = useState(false);
 
+  // Reset to page 0 whenever filters change ("store info from previous render" pattern).
+  const filtersKey = `${dimensionFilter}|${activeOnly}`;
+  const [page, setPage] = useState(0);
+  const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
+  if (prevFiltersKey !== filtersKey) {
+    setPrevFiltersKey(filtersKey);
+    setPage(0);
+  }
+
   const chunksQuery = trpc.admin.parties.chunkPlayerDetail.useQuery(
-    { serverId, playerUuid: member.playerUuid },
+    {
+      serverId,
+      playerUuid: member.playerUuid,
+      page,
+      limit: CHUNKS_PER_PAGE,
+      dimension: dimensionFilter === "all" ? undefined : dimensionFilter,
+      activeOnly: activeOnly || undefined,
+    },
     { enabled: expanded },
   );
 
   const displayName = member.minecraftUsername ?? member.playerUuid;
+  const hasActiveFilters = dimensionFilter !== "all" || activeOnly;
 
   return (
     <div className="rounded-md border border-border bg-background">
@@ -75,15 +95,24 @@ export function ChunkPlayerMemberRow({
       </button>
 
       {expanded && (
-        <div className="border-t border-border p-3">
+        <div className="flex flex-col gap-3 border-t border-border p-3">
           {chunksQuery.isLoading ? (
             <Loading size="small" />
           ) : chunksQuery.data ? (
-            <ChunkDetailTable
-              chunks={chunksQuery.data}
-              dimensionFilter={dimensionFilter}
-              activeOnly={activeOnly}
-            />
+            <>
+              <ChunkDetailTable
+                chunks={chunksQuery.data.items}
+                hasActiveFilters={hasActiveFilters}
+              />
+              <Paginator
+                page={chunksQuery.data.pagination.page}
+                limit={chunksQuery.data.pagination.limit}
+                total={chunksQuery.data.pagination.total}
+                totalPages={chunksQuery.data.pagination.totalPages}
+                onPageChange={setPage}
+                itemLabel="chunk"
+              />
+            </>
           ) : null}
         </div>
       )}

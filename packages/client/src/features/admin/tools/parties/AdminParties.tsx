@@ -30,6 +30,7 @@ import type { PartyFilters } from "./types";
 // TODO: restore server selector when multi-server support returns
 const SERVER_ID = 1;
 const POST_RESYNC_REFETCH_MS = 2000;
+const SOLO_PLAYERS_PER_PAGE = 50;
 
 const DEFAULT_FILTERS: PartyFilters = {
   search: "",
@@ -43,6 +44,19 @@ export function AdminParties() {
   const toast = useToastActions();
   const [filters, setFilters] = useState<PartyFilters>(DEFAULT_FILTERS);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
+  // Solo players are only meaningful when party-scoped filters are inactive.
+  const soloPlayersEnabled =
+    filters.allied !== "allied" && filters.optedIn === "all";
+
+  // Reset solo page on any filter change that affects the result set
+  // (the "store information from previous render" pattern from React docs).
+  const soloFiltersKey = `${filters.search}|${filters.activeForceloadsOnly}|${soloPlayersEnabled}`;
+  const [soloPage, setSoloPage] = useState(0);
+  const [prevSoloFiltersKey, setPrevSoloFiltersKey] = useState(soloFiltersKey);
+  if (prevSoloFiltersKey !== soloFiltersKey) {
+    setPrevSoloFiltersKey(soloFiltersKey);
+    setSoloPage(0);
+  }
 
   const kpisQuery = trpc.admin.parties.kpis.useQuery({ serverId: SERVER_ID });
   const chunkKpisQuery = trpc.admin.parties.chunkKpis.useQuery({
@@ -51,9 +65,16 @@ export function AdminParties() {
   const chunkPartiesQuery = trpc.admin.parties.chunkParties.useQuery({
     serverId: SERVER_ID,
   });
-  const chunkSoloPlayersQuery = trpc.admin.parties.chunkSoloPlayers.useQuery({
-    serverId: SERVER_ID,
-  });
+  const chunkSoloPlayersQuery = trpc.admin.parties.chunkSoloPlayers.useQuery(
+    {
+      serverId: SERVER_ID,
+      page: soloPage,
+      limit: SOLO_PLAYERS_PER_PAGE,
+      search: filters.search.trim() || undefined,
+      activeOnly: filters.activeForceloadsOnly || undefined,
+    },
+    { enabled: soloPlayersEnabled },
+  );
   const qualifiedQuery = trpc.admin.parties.qualifiedPlayers.useQuery({
     serverId: SERVER_ID,
   });
@@ -99,13 +120,12 @@ export function AdminParties() {
     !kpisQuery.isLoading &&
     !chunkKpisQuery.isLoading &&
     !chunkPartiesQuery.isLoading &&
-    !chunkSoloPlayersQuery.isLoading &&
     !qualifiedQuery.isLoading &&
     !fakePartyQuery.isLoading;
 
   const hasAnyData =
     (chunkPartiesQuery.data?.length ?? 0) > 0 ||
-    (chunkSoloPlayersQuery.data?.length ?? 0) > 0 ||
+    (chunkKpisQuery.data?.totalChunks ?? 0) > 0 ||
     (qualifiedQuery.data?.length ?? 0) > 0 ||
     !!fakePartyQuery.data;
 
@@ -193,14 +213,16 @@ export function AdminParties() {
               />
             )}
 
-            {chunkSoloPlayersQuery.data &&
-              chunkSoloPlayersQuery.data.length > 0 && (
-                <ChunkSoloPlayersSection
-                  serverId={SERVER_ID}
-                  players={chunkSoloPlayersQuery.data}
-                  filters={filters}
-                />
-              )}
+            {soloPlayersEnabled && (
+              <ChunkSoloPlayersSection
+                serverId={SERVER_ID}
+                data={chunkSoloPlayersQuery.data}
+                isLoading={chunkSoloPlayersQuery.isLoading}
+                onPageChange={setSoloPage}
+                dimensionFilter={filters.dimension}
+                activeOnly={filters.activeForceloadsOnly}
+              />
+            )}
 
             {qualifiedQuery.data && (
               <QualifiedPlayersSection players={qualifiedQuery.data} />

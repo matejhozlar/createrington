@@ -1,5 +1,21 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerChunkBaseQueries } from "@/generated/db/server_chunk.queries";
+import { escapeLike } from "@/db/utils";
+
+interface PageParams {
+  limit: number;
+  offset: number;
+}
+
+interface ChunksForPlayerFilters {
+  dimension?: string | null;
+  activeOnly?: boolean;
+}
+
+interface SoloPlayerFilters {
+  search?: string | null;
+  activeOnly?: boolean;
+}
 
 export interface ChunkUpsertRow {
   playerUuid: string;
@@ -145,7 +161,11 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     return result.rows;
   }
 
-  async getPlayerChunksByParty(serverId: number, partyId: string) {
+  async getPlayerChunksByParty(
+    serverId: number,
+    partyId: string,
+    page: PageParams,
+  ) {
     const result = await this.db.query<{
       playerUuid: string;
       minecraftUsername: string | null;
@@ -163,13 +183,47 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
       WHERE sc.server_id = $1 AND sc.party_id = $2
       GROUP BY sc.player_uuid, p.minecraft_username
-      ORDER BY p.minecraft_username ASC NULLS LAST`,
-      [serverId, partyId],
+      ORDER BY p.minecraft_username ASC NULLS LAST
+      LIMIT $3 OFFSET $4`,
+      [serverId, partyId, page.limit, page.offset],
     );
     return result.rows;
   }
 
-  async getChunksForPlayer(serverId: number, playerUuid: string) {
+  async countPlayersByParty(
+    serverId: number,
+    partyId: string,
+  ): Promise<number> {
+    const result = await this.db.query<{ count: number }>(
+      `SELECT COUNT(DISTINCT sc.player_uuid)::int AS count
+       FROM server_chunk sc
+       WHERE sc.server_id = $1 AND sc.party_id = $2`,
+      [serverId, partyId],
+    );
+    return result.rows[0]?.count ?? 0;
+  }
+
+  async getChunksForPlayer(
+    serverId: number,
+    playerUuid: string,
+    opts: ChunksForPlayerFilters & PageParams,
+  ) {
+    const params: unknown[] = [serverId, playerUuid];
+    const where: string[] = ["sc.server_id = $1", "sc.player_uuid = $2"];
+
+    if (opts.dimension) {
+      params.push(opts.dimension);
+      where.push(`sc.dimension = $${params.length}`);
+    }
+    if (opts.activeOnly) {
+      where.push("sc.active = true");
+    }
+
+    params.push(opts.limit);
+    const limitIdx = params.length;
+    params.push(opts.offset);
+    const offsetIdx = params.length;
+
     const result = await this.db.query<{
       id: number;
       dimension: string;
@@ -190,14 +244,61 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         sc.party_id AS "partyId",
         sc.party_name AS "partyName"
       FROM server_chunk sc
-      WHERE sc.server_id = $1 AND sc.player_uuid = $2
-      ORDER BY sc.dimension, sc.x, sc.z`,
-      [serverId, playerUuid],
+      WHERE ${where.join(" AND ")}
+      ORDER BY sc.dimension, sc.x, sc.z
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
     );
     return result.rows;
   }
 
-  async getSoloPlayerAggregates(serverId: number) {
+  async countChunksForPlayer(
+    serverId: number,
+    playerUuid: string,
+    filters: ChunksForPlayerFilters,
+  ): Promise<number> {
+    const params: unknown[] = [serverId, playerUuid];
+    const where: string[] = ["sc.server_id = $1", "sc.player_uuid = $2"];
+
+    if (filters.dimension) {
+      params.push(filters.dimension);
+      where.push(`sc.dimension = $${params.length}`);
+    }
+    if (filters.activeOnly) {
+      where.push("sc.active = true");
+    }
+
+    const result = await this.db.query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count
+       FROM server_chunk sc
+       WHERE ${where.join(" AND ")}`,
+      params,
+    );
+    return result.rows[0]?.count ?? 0;
+  }
+
+  async getSoloPlayerAggregates(
+    serverId: number,
+    opts: SoloPlayerFilters & PageParams,
+  ) {
+    const params: unknown[] = [serverId];
+    const searchClause = opts.search
+      ? (() => {
+          params.push(`%${escapeLike(opts.search!)}%`);
+          const idx = params.length;
+          return `AND (p.minecraft_username ILIKE $${idx} OR sc.player_uuid::text ILIKE $${idx})`;
+        })()
+      : "";
+
+    params.push(opts.limit);
+    const limitIdx = params.length;
+    params.push(opts.offset);
+    const offsetIdx = params.length;
+
+    const havingClause = opts.activeOnly
+      ? "HAVING COUNT(*) FILTER (WHERE sc.active) > 0"
+      : "";
+
     const result = await this.db.query<{
       playerUuid: string;
       minecraftUsername: string | null;
@@ -215,11 +316,49 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         MAX(sc.last_synced_at) AS "lastSyncedAt"
       FROM server_chunk sc
       LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
-      WHERE sc.server_id = $1 AND sc.party_id IS NULL
+      WHERE sc.server_id = $1 AND sc.party_id IS NULL ${searchClause}
       GROUP BY sc.player_uuid, p.minecraft_username
-      ORDER BY "totalChunks" DESC, p.minecraft_username ASC NULLS LAST`,
-      [serverId],
+      ${havingClause}
+      ORDER BY "totalChunks" DESC, p.minecraft_username ASC NULLS LAST
+      LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
+      params,
     );
     return result.rows;
+  }
+
+  async countSoloPlayers(
+    serverId: number,
+    filters: SoloPlayerFilters,
+  ): Promise<number> {
+    const params: unknown[] = [serverId];
+    const searchClause = filters.search
+      ? (() => {
+          params.push(`%${escapeLike(filters.search!)}%`);
+          const idx = params.length;
+          return `AND (p.minecraft_username ILIKE $${idx} OR sc.player_uuid::text ILIKE $${idx})`;
+        })()
+      : "";
+
+    // activeOnly forces us to aggregate per-player and count rows where the
+    // active-chunks aggregate is > 0; counting distinct player_uuid alone would
+    // ignore the filter.
+    const aggregateFilter = filters.activeOnly
+      ? `AND EXISTS (
+           SELECT 1 FROM server_chunk sc2
+           WHERE sc2.server_id = sc.server_id
+             AND sc2.player_uuid = sc.player_uuid
+             AND sc2.party_id IS NULL
+             AND sc2.active = true
+         )`
+      : "";
+
+    const result = await this.db.query<{ count: number }>(
+      `SELECT COUNT(DISTINCT sc.player_uuid)::int AS count
+       FROM server_chunk sc
+       LEFT JOIN player p ON p.minecraft_uuid = sc.player_uuid
+       WHERE sc.server_id = $1 AND sc.party_id IS NULL ${searchClause} ${aggregateFilter}`,
+      params,
+    );
+    return result.rows[0]?.count ?? 0;
   }
 }
