@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Loader2, UserSearch } from "lucide-react";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
@@ -88,38 +89,49 @@ function UnresolvedUuid({ uuid }: { uuid: string }) {
   }
 
   const lookedUpButEmpty = clicked && query.isSuccess && !query.data?.username;
+  const isLoading = query.isFetching;
+  const isError = query.isError;
+
+  if (lookedUpButEmpty) {
+    return (
+      <span className="flex items-center gap-1.5 font-medium italic text-muted-foreground">
+        {uuid}
+        <span className="text-xs not-italic">(no Mojang profile)</span>
+      </span>
+    );
+  }
 
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        if (clicked && query.isError) {
+        if (clicked && isError) {
           query.refetch();
         } else {
           setClicked(true);
         }
       }}
-      disabled={query.isFetching || lookedUpButEmpty}
-      title={
-        query.isError
-          ? "Lookup failed — click to retry"
-          : lookedUpButEmpty
-            ? "No Mojang profile for this UUID"
-            : "Click to resolve username"
+      disabled={isLoading}
+      aria-label={
+        isError ? "Retry username lookup" : "Resolve UUID to username"
       }
       className={cn(
-        "font-mono text-xs font-medium transition-colors",
-        query.isFetching && "animate-pulse opacity-60",
-        query.isError && "text-destructive hover:text-destructive/80",
-        !query.isFetching &&
-          !query.isError &&
-          !lookedUpButEmpty &&
-          "hover:text-amber-500",
-        lookedUpButEmpty && "text-muted-foreground",
+        "group/resolve flex items-center gap-1.5 font-medium underline decoration-dotted underline-offset-4 transition-colors",
+        isLoading && "opacity-60",
+        isError &&
+          "text-destructive decoration-destructive/60 hover:text-destructive/80 hover:decoration-destructive",
+        !isLoading &&
+          !isError &&
+          "text-muted-foreground decoration-muted-foreground/40 hover:text-primary hover:decoration-primary",
       )}
     >
-      {uuid}
+      {isLoading ? (
+        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+      ) : (
+        <UserSearch className="size-3.5 shrink-0 opacity-70 transition-opacity group-hover/resolve:opacity-100" />
+      )}
+      <span>{uuid}</span>
     </button>
   );
 }
