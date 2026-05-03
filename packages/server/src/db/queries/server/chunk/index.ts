@@ -115,6 +115,8 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       totalParties: number;
       partiesOptedIn: number;
     }>(
+      // party_id IS NOT NULL guards against rows where party_opted_in is true
+      // but party_id is null (data inconsistency from a partial sync).
       `SELECT
         COUNT(*)::int AS "totalChunks",
         COUNT(*) FILTER (WHERE forceloadable)::int AS "forceloadableChunks",

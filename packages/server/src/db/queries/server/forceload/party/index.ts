@@ -95,6 +95,10 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
     return result.rows;
   }
 
+  // alliedPlayers and notQualifiedPlayers form a server-wide funnel for the
+  // "Allied with Fake Player" admin KPI: allied (today), pending (in review),
+  // not qualified (every other chunk owner). The pending and notQualified
+  // counts are outside alliedPlayers, not a subset of it.
   async getKpis(serverId: number) {
     const result = await this.db.query<{
       totalParties: number;

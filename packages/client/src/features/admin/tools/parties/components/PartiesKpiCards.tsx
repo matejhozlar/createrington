@@ -82,7 +82,7 @@ function getValue(
     case "alliedWithFake":
       return {
         main: kpis.alliedPlayers,
-        detail: `${kpis.qualifiedPending} pending · ${kpis.notQualifiedPlayers} not qualified yet`,
+        detail: `${kpis.qualifiedPending} pending · ${kpis.notQualifiedPlayers} not qualified (server-wide)`,
       };
     default:
       return { main: 0, detail: "" };
