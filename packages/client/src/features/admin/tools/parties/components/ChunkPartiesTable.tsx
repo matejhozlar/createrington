@@ -1,5 +1,6 @@
 import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -75,7 +76,14 @@ export function ChunkPartiesTable({
           {filtered.length !== parties.length && ` of ${parties.length}`})
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-0">
+      {/*
+        overflow-x-clip on the shadcn table wrapper is load-bearing: the
+        default `overflow-x-auto` would establish a scroll container, and the
+        sticky <td>s on the expanded trigger row would anchor to that wrapper
+        (which never scrolls vertically) instead of the viewport. `clip` keeps
+        horizontal clipping without creating a scroll context.
+      */}
+      <CardContent className="px-0 [&_[data-slot=table-container]]:overflow-x-clip">
         <Table>
           <TableHeader>
             <TableRow>
@@ -105,7 +113,14 @@ export function ChunkPartiesTable({
                 return (
                   <Fragment key={party.partyId}>
                     <TableRow
-                      className="cursor-pointer"
+                      className={cn(
+                        "cursor-pointer",
+                        // When expanded, pin the trigger row to the viewport
+                        // top so the chevron stays reachable while scrolling
+                        // through long member/chunk lists.
+                        isExpanded &&
+                          "[&>td]:sticky [&>td]:top-0 [&>td]:z-10 [&>td]:bg-card [&>td]:shadow-[0_1px_0_var(--color-border)]",
+                      )}
                       onClick={() =>
                         setExpandedId(isExpanded ? null : party.partyId)
                       }
