@@ -19,7 +19,6 @@ import {
 import { useToastActions } from "@/hooks/use-toast";
 import { formatRelativeDateSafe } from "@/features/admin/format";
 import { ChunkTablesCard } from "./components/ChunkTablesCard";
-import { FakePartyCard } from "./components/FakePartyCard";
 import { PartiesEmptyState } from "./components/PartiesEmptyState";
 import { PartiesFiltersBar } from "./components/PartiesFiltersBar";
 import { PartiesKpiCards } from "./components/PartiesKpiCards";
@@ -200,6 +199,7 @@ export function AdminParties() {
           <PartiesKpiCards
             kpis={kpisQuery.data}
             chunkKpis={chunkKpisQuery.data}
+            fakeParty={fakePartyQuery.data ?? null}
           />
         ) : null}
 
@@ -224,8 +224,6 @@ export function AdminParties() {
               soloIsLoading={chunkSoloPlayersQuery.isLoading}
               onSoloPageChange={setSoloPage}
             />
-
-            <FakePartyCard data={fakePartyQuery.data ?? null} />
           </>
         )}
       </div>
