@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerForceloadPartyBaseQueries } from "@/generated/db/server_forceload_party.queries";
+import { EXPIRED_CLAIM_UUID } from "@/db/schema/server";
 
 export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries {
   constructor(db: Pool | PoolClient) {
@@ -124,18 +125,18 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
           SELECT sc.player_uuid
           FROM server_ally_party ap
           JOIN server_chunk sc ON sc.party_id = ap.party_id AND sc.server_id = ap.server_id
-          WHERE ap.server_id = $1
+          WHERE ap.server_id = $1 AND sc.player_uuid != $2
         ) sub) AS "alliedPlayers",
         (SELECT COUNT(DISTINCT sc.player_uuid)::int
           FROM server_chunk sc
           WHERE sc.server_id = $1
-            AND sc.player_uuid != '00000000-0000-0000-0000-000000000001'
+            AND sc.player_uuid != $2
             AND NOT EXISTS (
               SELECT 1 FROM server_ally_qualified_player q
               WHERE q.server_id = $1 AND q.player_uuid = sc.player_uuid
             )
         ) AS "notQualifiedPlayers"`,
-      [serverId],
+      [serverId, EXPIRED_CLAIM_UUID],
     );
     return result.rows[0];
   }

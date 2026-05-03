@@ -99,7 +99,7 @@ export function PartiesKpiCards({
   fakeParty: FakeParty | null;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
       {CARDS.map(({ key, label, icon: Icon, iconBg, iconColor }) => {
         const { main, detail } = getValue(key, kpis, chunkKpis);
         return (
