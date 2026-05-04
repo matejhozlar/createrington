@@ -103,6 +103,42 @@ export const adminPartiesRouter = router({
       return { qualification, partyAlliance };
     }),
 
+  partyDetails: adminProcedure
+    .meta({
+      description:
+        "Aggregate chunk stats for a single party (chunks claimed, forceloads, active, opted-in)",
+    })
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        partyId: mcUuid,
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.server.chunk.getPartyDetailsByPartyId(
+        input.serverId,
+        input.partyId,
+      );
+    }),
+
+  alliedParties: adminProcedure
+    .meta({
+      description:
+        "List of all allied parties on a server, excluding the given party",
+    })
+    .input(
+      z.object({
+        serverId: z.number().int(),
+        partyId: mcUuid,
+      }),
+    )
+    .query(async ({ input }) => {
+      return Q.server.ally.party.getAlliedPartiesForParty(
+        input.serverId,
+        input.partyId,
+      );
+    }),
+
   chunkKpis: adminProcedure
     .meta({ description: "Chunk-based KPIs for a server (from server_chunk)" })
     .input(z.object({ serverId: z.number().int() }))
