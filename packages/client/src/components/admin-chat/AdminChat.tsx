@@ -86,8 +86,8 @@ export function AdminChat(): React.JSX.Element | null {
           starting={session.starting}
           sending={session.sending}
           awaitingReply={session.awaitingReply}
-          onStart={(prefillMessage, model) =>
-            void session.start(prefillMessage, model ?? selectedModel)
+          onStart={(prefillMessage) =>
+            void session.start(prefillMessage, selectedModel)
           }
           onSend={(message) => void session.send(message)}
           onEnd={() => void session.end()}
