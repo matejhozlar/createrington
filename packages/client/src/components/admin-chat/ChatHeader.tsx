@@ -1,17 +1,38 @@
 import { Maximize2, Minimize2, Plus, Square, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  ADMIN_CHAT_MODELS,
+  ADMIN_CHAT_MODEL_LABELS,
+  isAdminChatModel,
+  type AdminChatModel,
+} from "./types";
 
 interface ChatHeaderProps {
   breadcrumb: string;
   sessionActive: boolean;
   canStartNew: boolean;
   expanded: boolean;
+  /** Model the active (or last) session is pinned to. `null` for legacy sessions. */
+  activeModel: AdminChatModel | null;
+  /** Admin's saved model preference — used as the default for the next session. */
+  selectedModel: AdminChatModel;
+  onSelectModel: (model: AdminChatModel) => void;
+  hasHistory: boolean;
+  /** Confirm-and-start a new session with the chosen model (used when switching mid-history). */
+  onStartWithModel: (model: AdminChatModel) => void;
   onNewChat: () => void;
   onEndSession: () => void;
   onToggleExpand: () => void;
@@ -23,11 +44,40 @@ export function ChatHeader({
   sessionActive,
   canStartNew,
   expanded,
+  activeModel,
+  selectedModel,
+  onSelectModel,
+  hasHistory,
+  onStartWithModel,
   onNewChat,
   onEndSession,
   onToggleExpand,
   onClose,
 }: ChatHeaderProps): React.JSX.Element {
+  // While a session is active, the picker reflects the model it's pinned to
+  // (read-only badge). Otherwise it shows the admin's saved preference,
+  // which becomes the default for the next session.
+  const pickerValue: AdminChatModel =
+    sessionActive && activeModel ? activeModel : selectedModel;
+
+  const handleModelChange = (raw: string): void => {
+    if (!isAdminChatModel(raw) || raw === pickerValue) return;
+    // After a session ended (or nothing's been said yet), there's still
+    // visible transcript on screen if hasHistory. Confirm before discarding
+    // it for a fresh session on the new model.
+    if (hasHistory) {
+      const label = ADMIN_CHAT_MODEL_LABELS[raw];
+      const ok = window.confirm(
+        `Switch to ${label}? This will start a new chat — the current transcript stays in history but the panel will reset.`,
+      );
+      if (!ok) return;
+      onSelectModel(raw);
+      onStartWithModel(raw);
+      return;
+    }
+    onSelectModel(raw);
+  };
+
   return (
     <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-2.5">
       <div className="flex min-w-0 items-center gap-2">
@@ -69,7 +119,36 @@ export function ChatHeader({
           </span>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-0.5">
+      <div className="flex shrink-0 items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Select
+              value={pickerValue}
+              onValueChange={handleModelChange}
+              disabled={sessionActive}
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="Model"
+                className="h-7 gap-1 px-2 text-[0.7rem]"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="z-[10000]">
+                {ADMIN_CHAT_MODELS.map((m) => (
+                  <SelectItem key={m} value={m} className="text-xs">
+                    {ADMIN_CHAT_MODEL_LABELS[m]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </TooltipTrigger>
+          <TooltipContent className="z-[10000]">
+            {sessionActive
+              ? `Active model — locked for this session`
+              : `Model for next session`}
+          </TooltipContent>
+        </Tooltip>
         {canStartNew && (
           <Tooltip>
             <TooltipTrigger asChild>
