@@ -51,7 +51,7 @@ export function AdminChat(): React.JSX.Element | null {
       try {
         window.localStorage.setItem(key, next);
       } catch {
-        // localStorage can throw in private mode / quota — best-effort only.
+        // localStorage can throw in private mode / quota - best-effort only.
       }
     },
     [username],
