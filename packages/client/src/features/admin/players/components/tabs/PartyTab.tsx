@@ -73,7 +73,7 @@ function PartyBlind({
   serverId: number;
   partyId: string;
   partyName: string | null;
-  alliedAt: Date;
+  alliedAt: Date | string;
 }) {
   const [open, setOpen] = useState(false);
 
