@@ -62,6 +62,8 @@ export function PartyMemberRow({
           type="button"
           onClick={() => canExpand && setExpanded((v) => !v)}
           disabled={!canExpand}
+          aria-expanded={canExpand ? expanded : undefined}
+          aria-label="Expand player chunks"
           className="flex flex-1 items-center justify-end gap-1 rounded px-1 py-0.5 hover:bg-muted/50 disabled:cursor-default disabled:hover:bg-transparent"
         >
           {canExpand ? (

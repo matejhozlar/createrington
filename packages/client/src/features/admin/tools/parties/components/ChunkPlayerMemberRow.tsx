@@ -75,6 +75,8 @@ export function ChunkPlayerMemberRow({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-label="Expand player chunks"
           className="flex flex-1 items-center justify-end gap-1 rounded px-1 py-0.5 hover:bg-muted/50"
         >
           <Badge variant="outline" className="text-[10px]">
