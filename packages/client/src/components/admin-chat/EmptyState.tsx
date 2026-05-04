@@ -1,5 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ModelChip } from "./ModelChip";
+import type { AdminChatModel } from "./types";
 
 const QUICK_PROMPTS: string[] = [
   "Find a player by Minecraft username",
@@ -11,11 +13,15 @@ const QUICK_PROMPTS: string[] = [
 interface EmptyStateProps {
   starting: boolean;
   onStart: (prefillMessage?: string) => void;
+  selectedModel: AdminChatModel;
+  onSelectModel: (model: AdminChatModel) => void;
 }
 
 export function EmptyState({
   starting,
   onStart,
+  selectedModel,
+  onSelectModel,
 }: EmptyStateProps): React.JSX.Element {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-8 text-center">
@@ -35,15 +41,22 @@ export function EmptyState({
           Ask about players, database state, or report bugs.
         </p>
       </div>
-      <Button
-        size="sm"
-        onClick={() => onStart()}
-        disabled={starting}
-        className="min-w-32"
-      >
-        {starting && <Loader2 size={14} className="animate-spin" />}
-        Start chat
-      </Button>
+      <div className="flex flex-col items-center gap-2">
+        <Button
+          size="sm"
+          onClick={() => onStart()}
+          disabled={starting}
+          className="min-w-32"
+        >
+          {starting && <Loader2 size={14} className="animate-spin" />}
+          Start chat
+        </Button>
+        <ModelChip
+          value={selectedModel}
+          onChange={onSelectModel}
+          disabled={starting}
+        />
+      </div>
       <div className="flex w-full flex-col gap-1.5 pt-2">
         <span className="text-[0.625rem] font-semibold tracking-wider text-muted-foreground uppercase">
           Try asking
