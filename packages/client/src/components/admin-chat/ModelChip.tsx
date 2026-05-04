@@ -34,11 +34,6 @@ interface ModelChipProps {
   className?: string;
 }
 
-/**
- * Subtle pill that shows the current model and (when interactive) lets the
- * admin switch the preference. Used in the empty state, the session-ended
- * footer, and as a read-only indicator above the message input.
- */
 export function ModelChip({
   value,
   onChange,
@@ -48,20 +43,20 @@ export function ModelChip({
   className,
 }: ModelChipProps): React.JSX.Element {
   const label = ADMIN_CHAT_MODEL_LABELS[value];
-  const interactive = !readOnly && onChange !== undefined;
+  const isInteractive = !readOnly && onChange !== undefined;
 
   const triggerClass = cn(
     "h-6 gap-1 rounded-full border border-border/60 bg-muted/40 px-2 text-[0.6875rem] font-medium text-muted-foreground shadow-none transition-colors",
-    interactive && "hover:bg-muted hover:text-foreground",
-    !interactive && "cursor-default",
+    isInteractive && "hover:bg-muted hover:text-foreground",
+    !isInteractive && "cursor-default",
     className,
   );
 
-  if (!interactive) {
+  if (readOnly || onChange === undefined) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={triggerClass}>
+          <span className={cn(triggerClass, "inline-flex items-center")}>
             <Sparkles size={11} className="opacity-70" />
             {label}
           </span>
@@ -75,7 +70,7 @@ export function ModelChip({
 
   const handleChange = (raw: string): void => {
     if (!isAdminChatModel(raw) || raw === value) return;
-    onChange?.(raw);
+    onChange(raw);
   };
 
   return (
