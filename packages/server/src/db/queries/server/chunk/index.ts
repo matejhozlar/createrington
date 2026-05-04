@@ -442,6 +442,34 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     return result.rows[0]?.count ?? 0;
   }
 
+  async getPartyDetailsByPartyId(serverId: number, partyId: string) {
+    const result = await this.db.query<{
+      partyName: string;
+      partyOptedIn: boolean | null;
+      totalChunks: number;
+      forceloadableChunks: number;
+      activeChunks: number;
+      isAllied: boolean;
+      alliedAt: Date | null;
+    }>(
+      `SELECT
+        sc.party_name AS "partyName",
+        sc.party_opted_in AS "partyOptedIn",
+        COUNT(*)::int AS "totalChunks",
+        COUNT(*) FILTER (WHERE sc.forceloadable)::int AS "forceloadableChunks",
+        COUNT(*) FILTER (WHERE sc.active)::int AS "activeChunks",
+        ap.party_id IS NOT NULL AS "isAllied",
+        ap.allied_at AS "alliedAt"
+      FROM server_chunk sc
+      LEFT JOIN server_ally_party ap
+        ON ap.party_id = sc.party_id AND ap.server_id = sc.server_id
+      WHERE sc.server_id = $1 AND sc.party_id = $2
+      GROUP BY sc.party_name, sc.party_opted_in, ap.party_id, ap.allied_at`,
+      [serverId, partyId],
+    );
+    return result.rows[0] ?? null;
+  }
+
   async getDistinctDimensions(serverId: number): Promise<string[]> {
     const result = await this.db.query<{ dimension: string }>(
       `SELECT DISTINCT dimension

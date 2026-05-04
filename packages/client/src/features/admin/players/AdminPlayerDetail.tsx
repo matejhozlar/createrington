@@ -158,6 +158,7 @@ export function AdminPlayerDetail() {
 
         <PlayerStatsCards
           player={player}
+          playerUuid={player.player.minecraftUuid}
           onAdjustBalance={() => setShowBalanceModal(true)}
         />
 
