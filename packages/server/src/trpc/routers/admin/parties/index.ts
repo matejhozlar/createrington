@@ -124,7 +124,7 @@ export const adminPartiesRouter = router({
   alliedParties: adminProcedure
     .meta({
       description:
-        "List of all allied parties on a server, excluding the given party",
+        "Allied parties on a server, excluding the requesting party (for showing other allies)",
     })
     .input(
       z.object({

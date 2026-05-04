@@ -142,7 +142,11 @@ function PartyBlind({
                     </Badge>
                   )}
                 </>
-              ) : null}
+              ) : (
+                <Badge variant="outline" className="text-[10px]">
+                  No chunks
+                </Badge>
+              )}
             </div>
           </div>
         </button>
@@ -151,15 +155,12 @@ function PartyBlind({
         <div className="space-y-4 rounded-b-lg border-x border-b border-border bg-card p-4">
           <AlliesBlind serverId={serverId} partyId={partyId} />
 
-          <div>
-            <h4 className="mb-2 text-sm font-semibold">Members</h4>
-            <ChunkPartyExpandedRow
-              serverId={serverId}
-              partyId={partyId}
-              dimensionFilter="all"
-              activeOnly={false}
-            />
-          </div>
+          <ChunkPartyExpandedRow
+            serverId={serverId}
+            partyId={partyId}
+            dimensionFilter="all"
+            activeOnly={false}
+          />
 
           <div className="flex items-center justify-between border-t border-border pt-3">
             <p className="text-xs text-muted-foreground">
