@@ -1,5 +1,31 @@
 import type { ChatActionRecord } from "./actions";
 
+/**
+ * Models the admin can pin a chat session to. Must stay in sync with the
+ * server-side allowlists (claude-automation `chat.routes.ts` worker, app
+ * `admin-chat.routes.ts` proxy). Sonnet is the default for routine work
+ * (DB lookups, page-aware highlights); Opus is the opt-in for deeper code
+ * investigations.
+ */
+export const ADMIN_CHAT_MODELS = [
+  "claude-sonnet-4-6",
+  "claude-opus-4-7",
+] as const;
+export type AdminChatModel = (typeof ADMIN_CHAT_MODELS)[number];
+export const DEFAULT_ADMIN_CHAT_MODEL: AdminChatModel = "claude-sonnet-4-6";
+
+export const ADMIN_CHAT_MODEL_LABELS: Record<AdminChatModel, string> = {
+  "claude-sonnet-4-6": "Sonnet 4.6",
+  "claude-opus-4-7": "Opus 4.7",
+};
+
+export function isAdminChatModel(value: unknown): value is AdminChatModel {
+  return (
+    typeof value === "string" &&
+    (ADMIN_CHAT_MODELS as readonly string[]).includes(value)
+  );
+}
+
 export type ChatMessageKind = "text" | "ack" | "progress" | "streaming";
 
 export interface ChatMessage {

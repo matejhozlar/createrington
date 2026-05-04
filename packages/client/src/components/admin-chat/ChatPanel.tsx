@@ -6,17 +6,20 @@ import { ChatHeader } from "./ChatHeader";
 import { EmptyState } from "./EmptyState";
 import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
-import type { ChatMessage } from "./types";
+import type { AdminChatModel, ChatMessage } from "./types";
 
 interface ChatPanelProps {
   pathname: string;
   messages: ChatMessage[];
   sessionId: number | null;
   sessionActive: boolean;
+  activeModel: AdminChatModel | null;
+  selectedModel: AdminChatModel;
+  onSelectModel: (model: AdminChatModel) => void;
   starting: boolean;
   sending: boolean;
   awaitingReply: boolean;
-  onStart: (prefillMessage?: string) => void;
+  onStart: (prefillMessage?: string, model?: AdminChatModel) => void;
   onSend: (message: string) => void;
   onEnd: () => void;
   onClose: () => void;
@@ -28,6 +31,9 @@ export function ChatPanel({
   messages,
   sessionId,
   sessionActive,
+  activeModel,
+  selectedModel,
+  onSelectModel,
   starting,
   sending,
   awaitingReply,
@@ -62,6 +68,11 @@ export function ChatPanel({
         sessionActive={sessionActive}
         canStartNew={sessionId !== null && !sessionActive}
         expanded={expanded}
+        activeModel={activeModel}
+        selectedModel={selectedModel}
+        onSelectModel={onSelectModel}
+        hasHistory={messages.length > 0}
+        onStartWithModel={(model) => onStart(undefined, model)}
         onNewChat={() => onStart()}
         onEndSession={onEnd}
         onToggleExpand={() => setExpanded((v) => !v)}
