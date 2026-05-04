@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -38,7 +38,7 @@ type SoloPlayer = SoloPlayersData["items"][number];
 
 const CHUNKS_PER_PAGE = 50;
 
-type SoloSortKey =
+export type SoloSortKey =
   | "player"
   | "totalChunks"
   | "forceloadableChunks"
@@ -46,12 +46,7 @@ type SoloSortKey =
   | "allyStatus"
   | "lastSyncedAt";
 
-type SoloSortState = { key: SoloSortKey; dir: "asc" | "desc" } | null;
-
-const ALLY_STATUS_RANK: Record<string, number> = {
-  allied: 2,
-  pending: 1,
-};
+export type SoloSortState = { key: SoloSortKey; dir: "asc" | "desc" } | null;
 
 export function ChunkSoloPlayersSection({
   serverId,
@@ -60,6 +55,8 @@ export function ChunkSoloPlayersSection({
   onPageChange,
   dimensionFilter,
   activeOnly,
+  sort,
+  onSortChange,
 }: {
   serverId: number;
   data: SoloPlayersData | undefined;
@@ -67,17 +64,9 @@ export function ChunkSoloPlayersSection({
   onPageChange: (page: number) => void;
   dimensionFilter: DimensionFilter;
   activeOnly: boolean;
+  sort: SoloSortState;
+  onSortChange: (key: SoloSortKey) => void;
 }) {
-  const [sort, setSort] = useState<SoloSortState>(null);
-
-  const handleSort = useCallback((key: SoloSortKey) => {
-    setSort((prev) =>
-      prev?.key === key
-        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { key, dir: "asc" },
-    );
-  }, []);
-
   const renderSortIcon = useCallback(
     (key: SoloSortKey) => {
       if (sort?.key !== key) {
@@ -91,35 +80,6 @@ export function ChunkSoloPlayersSection({
     },
     [sort],
   );
-
-  const sortedItems = useMemo(() => {
-    const items = data?.items ?? [];
-    if (!sort) return items;
-    const dir = sort.dir === "asc" ? 1 : -1;
-    return [...items].sort((a, b) => {
-      switch (sort.key) {
-        case "player": {
-          const na = (a.minecraftUsername ?? a.playerUuid).toLowerCase();
-          const nb = (b.minecraftUsername ?? b.playerUuid).toLowerCase();
-          return dir * na.localeCompare(nb);
-        }
-        case "totalChunks":
-        case "forceloadableChunks":
-        case "activeChunks":
-          return dir * (a[sort.key] - b[sort.key]);
-        case "allyStatus": {
-          const ra = ALLY_STATUS_RANK[a.allyStatus ?? ""] ?? 0;
-          const rb = ALLY_STATUS_RANK[b.allyStatus ?? ""] ?? 0;
-          return dir * (ra - rb);
-        }
-        case "lastSyncedAt": {
-          const ta = a.lastSyncedAt ? new Date(a.lastSyncedAt).getTime() : 0;
-          const tb = b.lastSyncedAt ? new Date(b.lastSyncedAt).getTime() : 0;
-          return dir * (ta - tb);
-        }
-      }
-    });
-  }, [data?.items, sort]);
 
   if (isLoading) {
     return <Loading size="medium" text="Loading solo players..." />;
@@ -135,7 +95,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("player")}
+                onClick={() => onSortChange("player")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Player
@@ -145,7 +105,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("totalChunks")}
+                onClick={() => onSortChange("totalChunks")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Claimed
@@ -155,7 +115,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("forceloadableChunks")}
+                onClick={() => onSortChange("forceloadableChunks")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Forceloadable
@@ -165,7 +125,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("activeChunks")}
+                onClick={() => onSortChange("activeChunks")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Active
@@ -175,7 +135,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("allyStatus")}
+                onClick={() => onSortChange("allyStatus")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Ally status
@@ -185,7 +145,7 @@ export function ChunkSoloPlayersSection({
             <TableHead>
               <button
                 type="button"
-                onClick={() => handleSort("lastSyncedAt")}
+                onClick={() => onSortChange("lastSyncedAt")}
                 className="inline-flex items-center gap-1 text-sm font-medium"
               >
                 Last synced
@@ -195,7 +155,7 @@ export function ChunkSoloPlayersSection({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sortedItems.map((player) => (
+          {(data?.items ?? []).map((player) => (
             <SoloPlayerRow
               key={player.playerUuid}
               serverId={serverId}

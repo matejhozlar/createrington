@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
@@ -22,6 +22,10 @@ import { ChunkTablesCard } from "./components/ChunkTablesCard";
 import { PartiesEmptyState } from "./components/PartiesEmptyState";
 import { PartiesFiltersBar } from "./components/PartiesFiltersBar";
 import { PartiesKpiCards } from "./components/PartiesKpiCards";
+import type {
+  SoloSortKey,
+  SoloSortState,
+} from "./components/ChunkSoloPlayersSection";
 import type { PartyFilters } from "./types";
 
 // TODO: restore server selector when multi-server support returns
@@ -55,6 +59,17 @@ export function AdminParties() {
     setSoloPage(0);
   }
 
+  const [soloSort, setSoloSort] = useState<SoloSortState>(null);
+
+  const handleSoloSortChange = useCallback((key: SoloSortKey) => {
+    setSoloSort((prev) =>
+      prev?.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+    setSoloPage(0);
+  }, []);
+
   const kpisQuery = trpc.admin.parties.kpis.useQuery({ serverId: SERVER_ID });
   const chunkKpisQuery = trpc.admin.parties.chunkKpis.useQuery({
     serverId: SERVER_ID,
@@ -76,6 +91,8 @@ export function AdminParties() {
       search: filters.search.trim() || undefined,
       dimension: dimensionInput,
       activeOnly: filters.activeForceloadsOnly || undefined,
+      sortBy: soloSort?.key,
+      sortDir: soloSort?.dir,
     },
     { enabled: soloPlayersEnabled },
   );
@@ -234,6 +251,8 @@ export function AdminParties() {
               soloData={chunkSoloPlayersQuery.data}
               soloIsLoading={chunkSoloPlayersQuery.isLoading}
               onSoloPageChange={setSoloPage}
+              soloSort={soloSort}
+              onSoloSortChange={handleSoloSortChange}
             />
           </>
         )}
