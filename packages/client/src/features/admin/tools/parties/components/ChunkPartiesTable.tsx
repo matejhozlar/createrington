@@ -1,5 +1,12 @@
-import { Fragment, useState } from "react";
-import { ChevronDown, ChevronRight, Users } from "lucide-react";
+import { Fragment, useCallback, useMemo, useState } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronRight,
+  Users,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,6 +33,16 @@ import { ChunkPartyExpandedRow } from "./ChunkPartyExpandedRow";
 export type ChunkParty =
   RouterOutput["admin"]["parties"]["chunkParties"][number];
 
+type SortKey =
+  | "partyName"
+  | "memberCount"
+  | "totalChunks"
+  | "forceloadableChunks"
+  | "activeChunks"
+  | "lastSyncedAt";
+
+type SortState = { key: SortKey; dir: "asc" | "desc" } | null;
+
 export function ChunkPartiesTable({
   serverId,
   parties,
@@ -38,6 +55,55 @@ export function ChunkPartiesTable({
   filters: PartyFilters;
 }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sort, setSort] = useState<SortState>(null);
+
+  const handleSort = useCallback((key: SortKey) => {
+    setSort((prev) =>
+      prev?.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" },
+    );
+  }, []);
+
+  const renderSortIcon = useCallback(
+    (key: SortKey) => {
+      if (sort?.key !== key) {
+        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
+      }
+      return sort.dir === "asc" ? (
+        <ArrowUp className="ml-1 size-3.5" />
+      ) : (
+        <ArrowDown className="ml-1 size-3.5" />
+      );
+    },
+    [sort],
+  );
+
+  const sortedParties = useMemo(() => {
+    if (!sort) return parties;
+    const dir = sort.dir === "asc" ? 1 : -1;
+    return [...parties].sort((a, b) => {
+      switch (sort.key) {
+        case "partyName":
+          return (
+            dir *
+            a.partyName.localeCompare(b.partyName, undefined, {
+              sensitivity: "base",
+            })
+          );
+        case "memberCount":
+        case "totalChunks":
+        case "forceloadableChunks":
+        case "activeChunks":
+          return dir * (a[sort.key] - b[sort.key]);
+        case "lastSyncedAt": {
+          const ta = a.lastSyncedAt ? new Date(a.lastSyncedAt).getTime() : 0;
+          const tb = b.lastSyncedAt ? new Date(b.lastSyncedAt).getTime() : 0;
+          return dir * (ta - tb);
+        }
+      }
+    });
+  }, [parties, sort]);
 
   if (totalParties === 0) {
     return (
@@ -56,13 +122,67 @@ export function ChunkPartiesTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-8" />
-            <TableHead>Party name</TableHead>
-            <TableHead>Members</TableHead>
-            <TableHead>Claimed</TableHead>
-            <TableHead>Forceloadable</TableHead>
-            <TableHead>Active</TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("partyName")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Party name
+                {renderSortIcon("partyName")}
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("memberCount")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Members
+                {renderSortIcon("memberCount")}
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("totalChunks")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Claimed
+                {renderSortIcon("totalChunks")}
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("forceloadableChunks")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Forceloadable
+                {renderSortIcon("forceloadableChunks")}
+              </button>
+            </TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("activeChunks")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Active
+                {renderSortIcon("activeChunks")}
+              </button>
+            </TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Last synced</TableHead>
+            <TableHead>
+              <button
+                type="button"
+                onClick={() => handleSort("lastSyncedAt")}
+                className="inline-flex items-center gap-1 text-sm font-medium"
+              >
+                Last synced
+                {renderSortIcon("lastSyncedAt")}
+              </button>
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -76,7 +196,7 @@ export function ChunkPartiesTable({
               </TableCell>
             </TableRow>
           ) : (
-            parties.map((party) => {
+            sortedParties.map((party) => {
               const isExpanded = expandedId === party.partyId;
               return (
                 <Fragment key={party.partyId}>
