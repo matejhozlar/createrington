@@ -10,7 +10,11 @@ import {
 import { ChunkPartiesTable } from "./ChunkPartiesTable";
 import type { ChunkParty } from "./ChunkPartiesTable";
 import { ChunkSoloPlayersSection } from "./ChunkSoloPlayersSection";
-import type { SoloPlayersData } from "./ChunkSoloPlayersSection";
+import type {
+  SoloPlayersData,
+  SoloSortKey,
+  SoloSortState,
+} from "./ChunkSoloPlayersSection";
 import type { PartyFilters } from "../types";
 
 export function ChunkTablesCard({
@@ -22,6 +26,8 @@ export function ChunkTablesCard({
   soloData,
   soloIsLoading,
   onSoloPageChange,
+  soloSort,
+  onSoloSortChange,
 }: {
   serverId: number;
   filteredParties: ChunkParty[];
@@ -31,6 +37,8 @@ export function ChunkTablesCard({
   soloData: SoloPlayersData | undefined;
   soloIsLoading: boolean;
   onSoloPageChange: (page: number) => void;
+  soloSort: SoloSortState;
+  onSoloSortChange: (key: SoloSortKey) => void;
 }) {
   const [tab, setTab] = useState<string>("parties");
 
@@ -92,6 +100,8 @@ export function ChunkTablesCard({
             onPageChange={onSoloPageChange}
             dimensionFilter={filters.dimension}
             activeOnly={filters.activeForceloadsOnly}
+            sort={soloSort}
+            onSortChange={onSoloSortChange}
           />
         </TabsContent>
       </Tabs>

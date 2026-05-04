@@ -13,10 +13,20 @@ interface ChunksForPlayerFilters {
   activeOnly?: boolean;
 }
 
+export type SoloSortKey =
+  | "player"
+  | "totalChunks"
+  | "forceloadableChunks"
+  | "activeChunks"
+  | "allyStatus"
+  | "lastSyncedAt";
+
 interface SoloPlayerFilters {
   search?: string | null;
   dimension?: string | null;
   activeOnly?: boolean;
+  sortBy?: SoloSortKey;
+  sortDir?: "asc" | "desc";
 }
 
 export interface ChunkUpsertRow {
@@ -295,6 +305,25 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
     return result.rows[0]?.count ?? 0;
   }
 
+  private buildSoloSortClause(
+    sortBy?: SoloSortKey,
+    sortDir?: "asc" | "desc",
+  ): string {
+    const SOLO_SORT_SQL: Record<SoloSortKey, string> = {
+      player: "p.minecraft_username",
+      totalChunks: "COUNT(*)",
+      forceloadableChunks: "COUNT(*) FILTER (WHERE r.forceloadable)",
+      activeChunks: "COUNT(*) FILTER (WHERE r.active)",
+      allyStatus:
+        "CASE WHEN qp.is_pending = false THEN 2 WHEN qp.is_pending = true THEN 1 ELSE 0 END",
+      lastSyncedAt: "MAX(r.last_synced_at)",
+    };
+
+    const col = SOLO_SORT_SQL[sortBy ?? "totalChunks"];
+    const dir = sortDir === "asc" ? "ASC" : "DESC";
+    return `${col} ${dir} NULLS LAST, p.minecraft_username ASC NULLS LAST`;
+  }
+
   async getSoloPlayerAggregates(
     serverId: number,
     opts: SoloPlayerFilters & PageParams,
@@ -361,7 +390,7 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
       WHERE TRUE ${searchClause}
       GROUP BY r.effective_uuid, p.minecraft_username, qp.is_pending
       ${havingClause}
-      ORDER BY "totalChunks" DESC, p.minecraft_username ASC NULLS LAST
+      ORDER BY ${this.buildSoloSortClause(opts.sortBy, opts.sortDir)}
       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params,
     );

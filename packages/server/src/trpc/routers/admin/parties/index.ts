@@ -214,6 +214,17 @@ export const adminPartiesRouter = router({
         search: z.string().optional(),
         dimension: z.string().min(1).optional(),
         activeOnly: z.boolean().optional(),
+        sortBy: z
+          .enum([
+            "player",
+            "totalChunks",
+            "forceloadableChunks",
+            "activeChunks",
+            "allyStatus",
+            "lastSyncedAt",
+          ])
+          .optional(),
+        sortDir: z.enum(["asc", "desc"]).optional(),
         ...paginationInput({ defaultLimit: 50 }),
       }),
     )
@@ -223,6 +234,8 @@ export const adminPartiesRouter = router({
         search: input.search?.trim() || null,
         dimension: input.dimension ?? null,
         activeOnly: input.activeOnly ?? false,
+        sortBy: input.sortBy,
+        sortDir: input.sortDir,
       };
       const [items, total] = await Promise.all([
         Q.server.chunk.getSoloPlayerAggregates(input.serverId, {
