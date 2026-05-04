@@ -53,25 +53,32 @@ export function ChunkPlayerMemberRow({
 
   return (
     <div className="rounded-md border border-border bg-background">
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left"
-      >
-        {expanded ? (
-          <ChevronDown className="size-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="size-4 text-muted-foreground" />
-        )}
-        <div className="flex-1">
-          <PlayerLabel
-            uuid={member.playerUuid}
-            name={displayName}
-            linkable={Boolean(member.minecraftUsername)}
-            size={20}
-          />
-        </div>
-        <div className="flex gap-1">
+      <div className="flex w-full items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-label="Expand player chunks"
+        >
+          {expanded ? (
+            <ChevronDown className="size-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="size-4 text-muted-foreground" />
+          )}
+        </button>
+        <PlayerLabel
+          uuid={member.playerUuid}
+          name={displayName}
+          linkable={Boolean(member.minecraftUsername)}
+          size={20}
+        />
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-label="Expand player chunks"
+          className="flex flex-1 items-center justify-end gap-1 rounded px-1 py-0.5 hover:bg-muted/50"
+        >
           <Badge variant="outline" className="text-[10px]">
             {member.totalChunks} claimed
           </Badge>
@@ -91,8 +98,8 @@ export function ChunkPlayerMemberRow({
               {member.activeChunks} active
             </Badge>
           )}
-        </div>
-      </button>
+        </button>
+      </div>
 
       {expanded && (
         <div className="flex flex-col gap-3 border-t border-border p-3">

@@ -33,39 +33,50 @@ export function PartyMemberRow({
 
   return (
     <div className="rounded-md border border-border bg-background">
-      <button
-        type="button"
-        onClick={() => canExpand && setExpanded((v) => !v)}
-        disabled={!canExpand}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left disabled:cursor-default"
-      >
-        {canExpand ? (
-          expanded ? (
-            <ChevronDown className="size-4 text-muted-foreground" />
+      <div className="flex w-full items-center gap-2 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => canExpand && setExpanded((v) => !v)}
+          disabled={!canExpand}
+          aria-expanded={canExpand ? expanded : undefined}
+          aria-label="Expand player chunks"
+          className="disabled:cursor-default"
+        >
+          {canExpand ? (
+            expanded ? (
+              <ChevronDown className="size-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="size-4 text-muted-foreground" />
+            )
           ) : (
-            <ChevronRight className="size-4 text-muted-foreground" />
-          )
-        ) : (
-          <span className="size-4" />
-        )}
-        <div className="flex-1">
-          <PlayerLabel
-            uuid={member.playerUuid}
-            name={displayName}
-            linkable={Boolean(member.minecraftUsername)}
-            size={20}
-          />
-        </div>
-        {canExpand ? (
-          <Badge variant="outline" className="text-[10px]">
-            {member.activeChunks} / {member.totalChunks} chunks
-          </Badge>
-        ) : (
-          <span className="text-[10px] text-muted-foreground">
-            No solo chunks
-          </span>
-        )}
-      </button>
+            <span className="size-4" />
+          )}
+        </button>
+        <PlayerLabel
+          uuid={member.playerUuid}
+          name={displayName}
+          linkable={Boolean(member.minecraftUsername)}
+          size={20}
+        />
+        <button
+          type="button"
+          onClick={() => canExpand && setExpanded((v) => !v)}
+          disabled={!canExpand}
+          aria-expanded={canExpand ? expanded : undefined}
+          aria-label="Expand player chunks"
+          className="flex flex-1 items-center justify-end gap-1 rounded px-1 py-0.5 hover:bg-muted/50 disabled:cursor-default disabled:hover:bg-transparent"
+        >
+          {canExpand ? (
+            <Badge variant="outline" className="text-[10px]">
+              {member.activeChunks} / {member.totalChunks} chunks
+            </Badge>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">
+              No solo chunks
+            </span>
+          )}
+        </button>
+      </div>
 
       {expanded && canExpand && (
         <div className="border-t border-border p-3">
