@@ -88,7 +88,7 @@ function classifySearch(input: string): SearchFilters {
   const trimmed = input.trim();
   if (!trimmed) return {};
 
-  if (/^\d+$/.test(trimmed)) {
+  if (/^\d{17,20}$/.test(trimmed)) {
     return { discordId: trimmed };
   }
 
