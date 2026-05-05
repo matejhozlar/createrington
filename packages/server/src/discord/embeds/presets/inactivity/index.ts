@@ -76,7 +76,7 @@ export const InactivityEmbedPresets = {
     return createEmbed()
       .title("Inactivity Removal")
       .description(truncatedDescription)
-      .color(EmbedColors.Moderation)
+      .color(EmbedColors.Error)
       .timestamp();
   },
 
@@ -104,7 +104,7 @@ export const InactivityEmbedPresets = {
     return createEmbed()
       .title("Inactive Players Removed")
       .description(truncatedDescription)
-      .color(EmbedColors.Moderation)
+      .color(EmbedColors.Error)
       .timestamp();
   },
 };

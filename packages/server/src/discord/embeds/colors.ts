@@ -1,6 +1,6 @@
 import config from "@/config";
 
-const { GREEN, RED, ORANGE, BLUE, GRAY, DARK_RED, PURPLE, GOLD } =
+const { GREEN, RED, ORANGE, BLUE, GRAY, PURPLE, GOLD } =
   config.discord.embeds.colors;
 
 /** Semantic color palette for Discord embeds, mapped from config hex values */
@@ -11,7 +11,6 @@ export const EmbedColors = {
   Warning: ORANGE,
   Info: BLUE,
   Loading: GRAY,
-  Moderation: DARK_RED,
   System: PURPLE,
   Premium: GOLD,
 } as const;

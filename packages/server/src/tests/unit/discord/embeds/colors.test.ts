@@ -10,7 +10,6 @@ describe("EmbedColors", () => {
     expect(EmbedColors.Warning).toBe(config.discord.embeds.colors.ORANGE);
     expect(EmbedColors.Info).toBe(config.discord.embeds.colors.BLUE);
     expect(EmbedColors.Loading).toBe(config.discord.embeds.colors.GRAY);
-    expect(EmbedColors.Moderation).toBe(config.discord.embeds.colors.DARK_RED);
     expect(EmbedColors.System).toBe(config.discord.embeds.colors.PURPLE);
     expect(EmbedColors.Premium).toBe(config.discord.embeds.colors.GOLD);
   });
@@ -25,7 +24,6 @@ describe("EmbedColors", () => {
         "Error",
         "Info",
         "Loading",
-        "Moderation",
         "Neutral",
         "Premium",
         "Success",
