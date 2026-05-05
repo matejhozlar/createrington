@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import {
@@ -78,6 +78,31 @@ type SortField = "minecraftUsername" | "lastSeen" | "createdAt";
 
 type ViolationFilter = "all" | "strikes" | "bans" | "any";
 
+type SearchFilters = {
+  discordId?: string;
+  minecraftUuid?: string;
+  minecraftUsername?: string;
+};
+
+function classifySearch(input: string): SearchFilters {
+  const trimmed = input.trim();
+  if (!trimmed) return {};
+
+  if (/^\d{17,20}$/.test(trimmed)) {
+    return { discordId: trimmed };
+  }
+
+  const stripped = trimmed.replace(/-/g, "");
+  if (/^[0-9a-f]{32}$/i.test(stripped)) {
+    const lower = stripped.toLowerCase();
+    return {
+      minecraftUuid: `${lower.slice(0, 8)}-${lower.slice(8, 12)}-${lower.slice(12, 16)}-${lower.slice(16, 20)}-${lower.slice(20, 32)}`,
+    };
+  }
+
+  return { minecraftUsername: trimmed };
+}
+
 export function AdminPlayers() {
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
@@ -98,6 +123,10 @@ export function AdminPlayers() {
   const [orderDirection, setOrderDirection] = useState<"asc" | "desc">("desc");
 
   const debouncedSearch = useDebouncedValue(searchQuery, 1000);
+  const searchFilters = useMemo(
+    () => classifySearch(debouncedSearch),
+    [debouncedSearch],
+  );
 
   const statsQuery = trpc.admin.players.players.stats.useQuery();
 
@@ -106,7 +135,7 @@ export function AdminPlayers() {
     limit,
     orderBy,
     orderDirection,
-    minecraftUsername: debouncedSearch.trim() || undefined,
+    ...searchFilters,
     online: onlineFilter,
     hasStrikes: violationFilter === "strikes" ? true : undefined,
     hasBans: violationFilter === "bans" ? true : undefined,
@@ -343,7 +372,7 @@ export function AdminPlayers() {
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Search by username..."
+                  placeholder="Search by username, Discord ID, or UUID..."
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
