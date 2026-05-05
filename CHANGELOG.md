@@ -1,3 +1,16 @@
+## v1.15.0 (2026-05-05)
+
+### @createrington/server (1.14.1 → 1.15.0)
+- [add] Add `/ticket add` subcommand to grant a user or OPAC party access to a ticket channel, with autocomplete party search and batched permission overwrites
+- [fix] Fix stats import dropping orphan rows by joining on the player table during batchUpsert, so rows referencing non-existent players are silently excluded instead of violating the foreign key constraint
+- [refactor] Drop `EmbedColors.Moderation` and use `EmbedColors.Error` for inactivity removal embeds, removing the unused `DARK_RED` config import
+- [chore] Restrict deploy workflows to trigger only on PR merge events instead of all pushes
+
+### @createrington/client (0.2.16 → 0.2.17)
+- [refactor] Redesign admin changelog page with categorized sections, collapsible package entries, version diffs, and improved visual hierarchy
+- [fix] Center version link in the nav-user dropdown so it aligns with other menu items
+- [fix] Fix ModelChip layout shift by replacing the Select component with a Popover and adding disabled state styling
+
 ## v1.14.1 (2026-05-05)
 
 ### @createrington/server (1.14.0 → 1.14.1)
