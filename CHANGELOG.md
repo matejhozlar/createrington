@@ -1,3 +1,8 @@
+## v1.14.1 (2026-05-05)
+
+### @createrington/server (1.14.0 → 1.14.1)
+- Fix announcement embeds failing when a mod list exceeds Discord's 1024-character field limit by splitting long lists into multiple continuation fields
+
 ## v1.14.0 (2026-05-05)
 
 ### @createrington/server (1.13.0 → 1.14.0)

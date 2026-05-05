@@ -1,5 +1,7 @@
 import { EmbedColors } from "../../colors";
-import { createEmbed } from "../../embed-builder";
+import { createEmbed, type DiscordEmbedBuilder } from "../../embed-builder";
+
+const EMBED_FIELD_VALUE_MAX = 1024;
 
 export interface ChangelogMod {
   name: string;
@@ -54,6 +56,40 @@ function formatModList(mods: ChangelogMod[]): string {
     .join("\n");
 }
 
+// Discord caps embed field values at 1024 chars. Split a body into
+// line-aligned chunks so a long mod list spans multiple fields rather
+// than failing validation.
+function chunkFieldValue(body: string, max = EMBED_FIELD_VALUE_MAX): string[] {
+  const chunks: string[] = [];
+  let current = "";
+  for (const rawLine of body.split("\n")) {
+    const line =
+      rawLine.length > max ? rawLine.slice(0, max - 1) + "…" : rawLine;
+    if (current.length === 0) {
+      current = line;
+    } else if (current.length + 1 + line.length <= max) {
+      current += "\n" + line;
+    } else {
+      chunks.push(current);
+      current = line;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+function addModListFields(
+  embed: DiscordEmbedBuilder,
+  name: string,
+  mods: ChangelogMod[],
+): void {
+  if (mods.length === 0) return;
+  const chunks = chunkFieldValue(formatModList(mods));
+  chunks.forEach((chunk, i) => {
+    embed.field(i === 0 ? name : `${name} (cont.)`, chunk);
+  });
+}
+
 /** Formats a Date as a Discord timestamp tag (`<t:unix:style>`) */
 function formatDiscordTimestamp(date: Date, style: "f" | "R"): string {
   const timestamp = Math.floor(date.getTime() / 1000);
@@ -76,15 +112,9 @@ export const AnnouncementEmbedPresets = {
       }
     }
 
-    if (data.added.length > 0) {
-      embed.field("🆕 New Mods", formatModList(data.added));
-    }
-    if (data.removed.length > 0) {
-      embed.field("🗑️ Removed Mods", formatModList(data.removed));
-    }
-    if (data.updated.length > 0) {
-      embed.field("⬆️ Updated Mods", formatModList(data.updated));
-    }
+    addModListFields(embed, "🆕 New Mods", data.added);
+    addModListFields(embed, "🗑️ Removed Mods", data.removed);
+    addModListFields(embed, "⬆️ Updated Mods", data.updated);
 
     embed
       .field(
