@@ -1,10 +1,58 @@
 import type { Pool, PoolClient } from "pg";
 import { ServerForceloadPartyBaseQueries } from "@/generated/db/server_forceload_party.queries";
 import { EXPIRED_CLAIM_UUID } from "@/db/schema/server";
+import { escapeLike } from "@/db/utils";
 
 export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  async searchByName(serverId: number, query: string, limit = 25) {
+    const trimmed = query.trim();
+    const result = await this.db.query<{
+      partyUuid: string;
+      partyName: string;
+      memberCount: number;
+    }>(
+      `SELECT
+        fp.party_id AS "partyUuid",
+        fp.party_name AS "partyName",
+        fp.member_count AS "memberCount"
+      FROM server_forceload_party fp
+      WHERE fp.server_id = $1
+        AND ($2 = '' OR fp.party_name ILIKE $3)
+      ORDER BY fp.party_name ASC
+      LIMIT $4`,
+      [serverId, trimmed, `%${escapeLike(trimmed)}%`, limit],
+    );
+    return result.rows;
+  }
+
+  async getPartyMembers(
+    serverId: number,
+    partyUuid: string,
+  ): Promise<{
+    partyName: string | null;
+    memberUuids: string[];
+  } | null> {
+    const result = await this.db.query<{
+      partyName: string | null;
+      memberUuids: string[];
+    }>(
+      `SELECT
+        fp.party_name AS "partyName",
+        COALESCE(
+          ARRAY_AGG(fm.player_uuid) FILTER (WHERE fm.player_uuid IS NOT NULL),
+          ARRAY[]::uuid[]
+        ) AS "memberUuids"
+      FROM server_forceload_party fp
+      LEFT JOIN server_forceload_member fm ON fm.party_id = fp.id
+      WHERE fp.server_id = $1 AND fp.party_id = $2
+      GROUP BY fp.party_name`,
+      [serverId, partyUuid],
+    );
+    return result.rows[0] ?? null;
   }
 
   // OPAC may delete + recreate a party row across syncs, giving it a new

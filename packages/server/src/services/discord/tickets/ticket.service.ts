@@ -444,6 +444,48 @@ export class TicketService {
   }
 
   /**
+   * Grants a Discord user view + send permissions on a ticket channel.
+   * Returns `added: false` if the channel is not a text channel, or the
+   * member is not in the guild. Never throws on per-user resolution issues
+   * so callers can batch-add party members and skip silently.
+   */
+  async addParticipant(
+    channelId: string,
+    discordId: string,
+  ): Promise<{ added: boolean; reason?: "not-in-guild" | "channel-error" }> {
+    try {
+      const channel = await this.bot.channels.fetch(channelId);
+      if (!channel?.isTextBased()) {
+        return { added: false, reason: "channel-error" };
+      }
+
+      const guild = await this.bot.guilds.fetch(config.discord.guild.id);
+      const member = await guild.members.fetch(discordId).catch(() => null);
+      if (!member) {
+        return { added: false, reason: "not-in-guild" };
+      }
+
+      const textChannel = channel as TextChannel;
+      await textChannel.permissionOverwrites.edit(member, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true,
+        AttachFiles: true,
+        EmbedLinks: true,
+      });
+
+      logger.debug(`Added ${discordId} to ticket channel ${channelId}`);
+      return { added: true };
+    } catch (error) {
+      logger.error(
+        `Failed to add ${discordId} to ticket channel ${channelId}:`,
+        error,
+      );
+      return { added: false, reason: "channel-error" };
+    }
+  }
+
+  /**
    * Deletes a ticket and its associated Discord channel
    *
    * This action cannot be undone.
