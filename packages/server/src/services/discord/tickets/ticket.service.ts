@@ -444,6 +444,84 @@ export class TicketService {
   }
 
   /**
+   * Grants Discord users view + send permissions on a ticket channel.
+   * Resolves the channel and guild once and loops sequentially so
+   * permission-overwrite writes for the same channel queue cleanly under
+   * discord.js rate limiting. Never throws on per-user issues so callers
+   * can pass a batch and aggregate skips.
+   */
+  async addParticipants(
+    channelId: string,
+    discordIds: readonly string[],
+  ): Promise<
+    Map<string, { added: boolean; reason?: "not-in-guild" | "channel-error" }>
+  > {
+    const results = new Map<
+      string,
+      { added: boolean; reason?: "not-in-guild" | "channel-error" }
+    >();
+    if (discordIds.length === 0) return results;
+
+    let textChannel: TextChannel;
+    try {
+      const channel = await this.bot.channels.fetch(channelId);
+      if (channel?.type !== ChannelType.GuildText) {
+        for (const id of discordIds) {
+          results.set(id, { added: false, reason: "channel-error" });
+        }
+        return results;
+      }
+      textChannel = channel as TextChannel;
+    } catch (error) {
+      logger.error(`Failed to resolve ticket channel ${channelId}:`, error);
+      for (const id of discordIds) {
+        results.set(id, { added: false, reason: "channel-error" });
+      }
+      return results;
+    }
+
+    const guild = await this.bot.guilds.fetch(config.discord.guild.id);
+
+    for (const discordId of discordIds) {
+      try {
+        const member = await guild.members.fetch(discordId).catch(() => null);
+        if (!member) {
+          results.set(discordId, { added: false, reason: "not-in-guild" });
+          continue;
+        }
+
+        await textChannel.permissionOverwrites.edit(member, {
+          ViewChannel: true,
+          SendMessages: true,
+          ReadMessageHistory: true,
+          AttachFiles: true,
+          EmbedLinks: true,
+        });
+
+        logger.debug(`Added ${discordId} to ticket channel ${channelId}`);
+        results.set(discordId, { added: true });
+      } catch (error) {
+        logger.error(
+          `Failed to add ${discordId} to ticket channel ${channelId}:`,
+          error,
+        );
+        results.set(discordId, { added: false, reason: "channel-error" });
+      }
+    }
+
+    return results;
+  }
+
+  /** Single-user convenience wrapper around `addParticipants`. */
+  async addParticipant(
+    channelId: string,
+    discordId: string,
+  ): Promise<{ added: boolean; reason?: "not-in-guild" | "channel-error" }> {
+    const results = await this.addParticipants(channelId, [discordId]);
+    return results.get(discordId) ?? { added: false, reason: "channel-error" };
+  }
+
+  /**
    * Deletes a ticket and its associated Discord channel
    *
    * This action cannot be undone.

@@ -134,25 +134,23 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
   ): Promise<void> {
     if (entries.length === 0) return;
 
-    const values: unknown[] = [];
+    const values: unknown[] = [serverId];
     const rows: string[] = [];
 
-    for (let i = 0; i < entries.length; i++) {
-      const offset = i * 4;
+    for (const entry of entries) {
+      const uuidIdx = values.push(entry.minecraftUuid);
+      const statsIdx = values.push(JSON.stringify(entry.stats));
+      const versionIdx = values.push(entry.dataVersion);
       rows.push(
-        `($${offset + 1}::uuid, $${offset + 2}::integer, $${offset + 3}::jsonb, $${offset + 4}::integer)`,
-      );
-      values.push(
-        entries[i].minecraftUuid,
-        serverId,
-        JSON.stringify(entries[i].stats),
-        entries[i].dataVersion,
+        `($${uuidIdx}::uuid, $${statsIdx}::jsonb, $${versionIdx}::integer)`,
       );
     }
 
     const query = `
       INSERT INTO ${this.table} (minecraft_uuid, server_id, stats, data_version)
-      VALUES ${rows.join(", ")}
+      SELECT v.minecraft_uuid, $1::integer, v.stats, v.data_version
+      FROM (VALUES ${rows.join(", ")}) AS v(minecraft_uuid, stats, data_version)
+      JOIN player p ON p.minecraft_uuid = v.minecraft_uuid
       ON CONFLICT (minecraft_uuid, server_id) DO UPDATE SET
         stats = EXCLUDED.stats,
         data_version = EXCLUDED.data_version,

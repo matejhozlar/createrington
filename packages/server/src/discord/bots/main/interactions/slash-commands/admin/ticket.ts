@@ -1,6 +1,7 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { CooldownType } from "@/discord/utils/cooldown";
 import {
+  type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
@@ -10,6 +11,8 @@ import { TicketType } from "@/services/discord/tickets";
 import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 import { Q } from "@/db";
+
+const TICKET_PARTY_SERVER_ID = 1;
 
 /**
  * Slash command definition for the ticket command
@@ -31,43 +34,59 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("close")
       .setDescription("Close the ticket in the current channel"),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("add")
+      .setDescription("Grant a user or party access to the current ticket")
+      .addUserOption((opt) =>
+        opt
+          .setName("user")
+          .setDescription("Discord user to add")
+          .setRequired(false),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("party")
+          .setDescription("OPAC party to add (every linked member)")
+          .setRequired(false)
+          .setAutocomplete(true),
+      ),
   );
 
-/**
- * Cooldown configuration for the ticket command
- *
- * - duration: 5 seconds
- * - type: "user" - Each user has their own cooldown
- * - message: Custom message shown when user is on cooldown
- */
 export const cooldown = {
   duration: 5,
   type: CooldownType.USER,
   message: "Please wait before using the ticket command again!",
 };
 
-/**
- * Permission configuration for the ticket command
- * Requires administrator privileges to execute
- */
 export const permissions = {
   requireAdmin: true,
 };
 
-/**
- * Executes the ticket command to manually manage tickets
- *
- * Process:
- * 1. Validates that the command is used in a valid channel
- * 2. Routes to the appropriate subcommand handler
- * 3. For "open" subcommand:
- *      - Retrieves the specified user
- *      - Creates a new generat ticket via ticketService
- *      - Sends ephemeral confirmation with ticket channel mention
- *
- * @param interaction - The chat input command interaction
- * @returns Promise resolving when the command execution is completed
- */
+export async function autocomplete(
+  interaction: AutocompleteInteraction,
+): Promise<void> {
+  const focused = interaction.options.getFocused(true);
+  if (focused.name !== "party") {
+    await interaction.respond([]);
+    return;
+  }
+
+  const results = await Q.server.forceload.party.searchByName(
+    TICKET_PARTY_SERVER_ID,
+    focused.value ?? "",
+    25,
+  );
+
+  await interaction.respond(
+    results.map((p) => ({
+      name: `${p.partyName} (${p.memberCount} member${p.memberCount === 1 ? "" : "s"})`,
+      value: p.partyUuid,
+    })),
+  );
+}
+
 export async function execute(
   interaction: ChatInputCommandInteraction,
 ): Promise<void> {
@@ -145,6 +164,141 @@ export async function execute(
         "This ticket has been closed.",
       );
       await interaction.editReply({ embeds: [embed.build()] });
+    } else if (subcommand === "add") {
+      const ticket = await Q.ticket.find({
+        channelId: interaction.channelId,
+      });
+
+      if (!ticket) {
+        const embed = EmbedPresets.error(
+          "Not a Ticket",
+          "This command can only be used inside a ticket channel.",
+        );
+        await interaction.reply({
+          embeds: [embed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      const user = interaction.options.getUser("user", false);
+      const partyUuid = interaction.options.getString("party", false);
+
+      if (!user && !partyUuid) {
+        const embed = EmbedPresets.error(
+          "Nothing to Add",
+          "Provide a user, a party, or both.",
+        );
+        await interaction.reply({
+          embeds: [embed.build()],
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+      const added: string[] = [];
+      const skippedNotInGuild: string[] = [];
+      const skippedNotLinked: string[] = [];
+      const skippedChannelError: string[] = [];
+
+      if (user) {
+        const result = await ticketService.addParticipant(
+          interaction.channelId,
+          user.id,
+        );
+        if (result.added) {
+          added.push(Discord.Users.mention(user.id));
+        } else if (result.reason === "not-in-guild") {
+          skippedNotInGuild.push(Discord.Users.mention(user.id));
+        } else {
+          skippedChannelError.push(Discord.Users.mention(user.id));
+        }
+      }
+
+      let partyName: string | null = null;
+      if (partyUuid) {
+        const party = await Q.server.forceload.party.getPartyMembers(
+          TICKET_PARTY_SERVER_ID,
+          partyUuid,
+        );
+
+        if (!party) {
+          partyName = "(unknown party)";
+        } else {
+          partyName = party.partyName;
+          const players = await Q.player.findAll({
+            minecraftUuid: { $in: party.memberUuids },
+          });
+          const linkedByUuid = new Map(
+            players.filter((p) => p.discordId).map((p) => [p.minecraftUuid, p]),
+          );
+
+          for (const uuid of party.memberUuids) {
+            if (!linkedByUuid.has(uuid)) {
+              const fallback = players.find((p) => p.minecraftUuid === uuid);
+              skippedNotLinked.push(fallback?.minecraftUsername ?? uuid);
+            }
+          }
+
+          const linkedPlayers = [...linkedByUuid.values()];
+          const labelByDiscordId = new Map<string, string>(
+            linkedPlayers.map((p) => [
+              p.discordId,
+              p.minecraftUsername
+                ? `${Discord.Users.mention(p.discordId)} (${p.minecraftUsername})`
+                : Discord.Users.mention(p.discordId),
+            ]),
+          );
+
+          const results = await ticketService.addParticipants(
+            interaction.channelId,
+            linkedPlayers.map((p) => p.discordId),
+          );
+
+          for (const [discordId, result] of results) {
+            const label =
+              labelByDiscordId.get(discordId) ??
+              Discord.Users.mention(discordId);
+            if (result.added) {
+              added.push(label);
+            } else if (result.reason === "not-in-guild") {
+              skippedNotInGuild.push(label);
+            } else {
+              skippedChannelError.push(label);
+            }
+          }
+        }
+      }
+
+      const lines: string[] = [];
+      if (partyName) lines.push(`**Party:** ${partyName}`);
+      lines.push(
+        `**Added:** ${added.length > 0 ? added.join(", ") : "_none_"}`,
+      );
+      if (skippedNotLinked.length > 0) {
+        lines.push(
+          `**Skipped (no linked Discord):** ${skippedNotLinked.join(", ")}`,
+        );
+      }
+      if (skippedNotInGuild.length > 0) {
+        lines.push(
+          `**Skipped (not in guild):** ${skippedNotInGuild.join(", ")}`,
+        );
+      }
+      if (skippedChannelError.length > 0) {
+        lines.push(
+          `**Skipped (channel error):** ${skippedChannelError.join(", ")}`,
+        );
+      }
+
+      const embed =
+        added.length > 0
+          ? EmbedPresets.success("Added to Ticket", lines.join("\n"))
+          : EmbedPresets.info("Nothing Added", lines.join("\n"));
+
+      await interaction.editReply({ embeds: [embed.build()] });
     } else {
       const embed = EmbedPresets.error("Error", "Invalid subcommand.");
 
@@ -161,9 +315,13 @@ export async function execute(
       "Something went wrong while executing the command. Please try again.",
     );
 
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
+    if (interaction.deferred || interaction.replied) {
+      await interaction.editReply({ embeds: [embed.build()] });
+    } else {
+      await interaction.reply({
+        embeds: [embed.build()],
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   }
 }
