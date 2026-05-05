@@ -7,11 +7,13 @@ import {
   Ban,
   ArrowLeftRight,
   FileText,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type TabType =
   | "overview"
+  | "party"
   | "sessions"
   | "stats"
   | "tickets"
@@ -31,6 +33,7 @@ const TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   { id: "overview", label: "Overview", icon: Eye },
+  { id: "party", label: "Party", icon: Users },
   { id: "sessions", label: "Sessions", icon: Clock },
   { id: "stats", label: "Stats", icon: BarChart3 },
   { id: "tickets", label: "Tickets", icon: Ticket },

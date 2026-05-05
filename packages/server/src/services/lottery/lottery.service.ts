@@ -137,7 +137,7 @@ export class LotteryService {
       throw err;
     }
 
-    const message = `🎲 **Lottery Started**\nHost: **${username}**\nType \`/lottery join <amount>\` to participate!\nWinner will be announced in 2 minutes...`;
+    const message = `🎲 **Lottery Started**\nHost: **${username}**\nType \`/join <amount>\` to participate!\nWinner will be announced in 2 minutes...`;
     this.announceToDiscord(message);
 
     return {

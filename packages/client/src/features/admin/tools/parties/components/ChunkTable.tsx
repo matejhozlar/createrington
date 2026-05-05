@@ -1,4 +1,11 @@
-import { Copy, MoreHorizontal } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Copy,
+  MoreHorizontal,
+} from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +35,7 @@ import {
   formatDimension,
   regionFileName,
 } from "@/lib/minecraft";
-import type { DimensionFilter } from "../AdminForceloads";
+import type { DimensionFilter } from "../types";
 
 interface Chunk {
   id: number;
@@ -37,6 +44,9 @@ interface Chunk {
   z: number;
   active: boolean;
 }
+
+type SortField = "dimension" | "x" | "z" | "active";
+type SortDirection = "asc" | "desc";
 
 export function ChunkTable({
   chunks,
@@ -48,20 +58,69 @@ export function ChunkTable({
   activeOnly: boolean;
 }) {
   const toast = useToastActions();
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const filtered = chunks.filter((c) => {
-    if (dimensionFilter !== "all" && c.dimension !== dimensionFilter)
-      return false;
-    if (activeOnly && !c.active) return false;
-    return true;
-  });
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (sortField === field) {
+        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+      } else {
+        setSortField(field);
+        setSortDirection("asc");
+      }
+    },
+    [sortField],
+  );
+
+  const renderSortIcon = useCallback(
+    (field: SortField) => {
+      if (sortField !== field) {
+        return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
+      }
+      return sortDirection === "asc" ? (
+        <ArrowUp className="ml-1 size-3.5" />
+      ) : (
+        <ArrowDown className="ml-1 size-3.5" />
+      );
+    },
+    [sortField, sortDirection],
+  );
+
+  const filtered = useMemo(
+    () =>
+      chunks.filter((c) => {
+        if (dimensionFilter !== "all" && c.dimension !== dimensionFilter)
+          return false;
+        if (activeOnly && !c.active) return false;
+        return true;
+      }),
+    [chunks, dimensionFilter, activeOnly],
+  );
+
+  const sorted = useMemo(() => {
+    if (!sortField) return filtered;
+    const dir = sortDirection === "asc" ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sortField) {
+        case "dimension":
+          return a.dimension.localeCompare(b.dimension) * dir;
+        case "x":
+          return (a.x - b.x) * dir;
+        case "z":
+          return (a.z - b.z) * dir;
+        case "active":
+          return (Number(a.active) - Number(b.active)) * dir;
+      }
+    });
+  }, [filtered, sortField, sortDirection]);
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied`);
   };
 
-  if (filtered.length === 0) {
+  if (sorted.length === 0) {
     return (
       <p className="py-2 text-sm text-muted-foreground">
         {chunks.length === 0
@@ -75,15 +134,49 @@ export function ChunkTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Dimension</TableHead>
-          <TableHead>X</TableHead>
-          <TableHead>Z</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>
+            <button
+              type="button"
+              onClick={() => handleSort("dimension")}
+              className="inline-flex items-center gap-1 text-sm font-medium"
+            >
+              Dimension
+              {renderSortIcon("dimension")}
+            </button>
+          </TableHead>
+          <TableHead>
+            <button
+              type="button"
+              onClick={() => handleSort("x")}
+              className="inline-flex items-center gap-1 text-sm font-medium"
+            >
+              X{renderSortIcon("x")}
+            </button>
+          </TableHead>
+          <TableHead>
+            <button
+              type="button"
+              onClick={() => handleSort("z")}
+              className="inline-flex items-center gap-1 text-sm font-medium"
+            >
+              Z{renderSortIcon("z")}
+            </button>
+          </TableHead>
+          <TableHead>
+            <button
+              type="button"
+              onClick={() => handleSort("active")}
+              className="inline-flex items-center gap-1 text-sm font-medium"
+            >
+              Status
+              {renderSortIcon("active")}
+            </button>
+          </TableHead>
           <TableHead className="w-24 text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {filtered.map((chunk) => {
+        {sorted.map((chunk) => {
           const tp = chunkTpCommand(chunk.dimension, chunk.x, chunk.z);
           return (
             <TableRow key={chunk.id}>

@@ -138,15 +138,12 @@ export function PlayerListPanel({
       className={cn(
         "fixed inset-y-0 left-0 z-[20] flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground",
         "transition-transform duration-300 ease-out",
+        sidebarState === "collapsed"
+          ? "w-[var(--sidebar-width-icon)]"
+          : "w-[var(--sidebar-width)]",
         open ? "translate-x-0" : "-translate-x-full",
         !open && "pointer-events-none",
       )}
-      style={{
-        width:
-          sidebarState === "collapsed"
-            ? "var(--sidebar-width-icon)"
-            : "var(--sidebar-width)",
-      }}
     >
       {/* Header row */}
       <div

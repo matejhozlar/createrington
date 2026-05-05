@@ -44,8 +44,13 @@ const pageContextSchema = z
     message: "pageContext may contain at most 50 keys",
   });
 
+// Models the admin can pin a chat session to — must stay in sync with the
+// claude-automation allowlist in `chat.routes.ts`.
+const ADMIN_CHAT_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"] as const;
+
 const startBodySchema = z.object({
   pageContext: pageContextSchema.optional(),
+  model: z.enum(ADMIN_CHAT_MODELS).optional(),
 });
 
 const sendBodySchema = z.object({
@@ -214,7 +219,7 @@ router.post(
     if (!parsed.success) {
       throw new BadRequestError("Invalid start payload");
     }
-    const { pageContext } = parsed.data;
+    const { pageContext, model } = parsed.data;
     try {
       const r = await claudeClient.post(
         `${base}/api/chat/start`,
@@ -223,6 +228,7 @@ router.post(
           repo: REPO,
           environment: ENVIRONMENT,
           ...(pageContext !== undefined && { pageContext }),
+          ...(model !== undefined && { model }),
         },
         { headers: claudeHeaders() },
       );

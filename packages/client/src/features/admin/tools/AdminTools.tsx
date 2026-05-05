@@ -20,8 +20,6 @@ import {
   ChevronRight,
   Clock,
   Coins,
-  Handshake,
-  MapPin,
   Megaphone,
   MessageCircleQuestion,
   MessageSquare,
@@ -29,6 +27,7 @@ import {
   RefreshCw,
   Terminal,
   Timer,
+  Users,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -98,18 +97,11 @@ const TOOL_SECTIONS: ToolSection[] = [
         href: "/admin/tools/crypto",
       },
       {
-        title: "Forceloads",
+        title: "Parties",
         description:
-          "View forceloaded chunks by player and party across servers.",
-        icon: MapPin,
-        href: "/admin/tools/forceloads",
-      },
-      {
-        title: "Allies",
-        description:
-          "View the fake-player party, allied parties, and qualified players.",
-        icon: Handshake,
-        href: "/admin/tools/allies",
+          "Forceload chunks, ally status, members, and qualified players in one place.",
+        icon: Users,
+        href: "/admin/tools/parties",
       },
     ],
   },

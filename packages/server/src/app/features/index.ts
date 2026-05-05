@@ -10,6 +10,7 @@ import forceloadsRoutes from "./mod/forceloads/forceloads.routes";
 import presenceRoutes from "./mod/presence/presence.routes";
 import messageRoutes from "./user/message/message.routes";
 import renderRoutes from "./render/render.routes";
+import chunksRoutes from "./mod/chunks/chunks.routes";
 import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
@@ -23,6 +24,7 @@ export function registerRoutes(app: Express): void {
   app.use(`${API_PREFIX}/skin`, skinRoutes);
   app.use(`${API_PREFIX}/currency`, currencyRoutes);
   app.use(`${API_PREFIX}/allies`, alliesRoutes);
+  app.use(`${API_PREFIX}/chunks`, chunksRoutes);
   app.use(`${API_PREFIX}/forceloads`, forceloadsRoutes);
   app.use(`${API_PREFIX}/presence`, presenceRoutes);
   app.use(`${API_PREFIX}/messages`, messageRoutes);

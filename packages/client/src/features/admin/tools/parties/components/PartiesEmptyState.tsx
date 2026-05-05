@@ -1,8 +1,8 @@
-import { MapPin, RefreshCw } from "lucide-react";
+import { RefreshCw, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-export function ForceloadEmptyState({
+export function PartiesEmptyState({
   onResync,
   isResyncing,
 }: {
@@ -13,13 +13,13 @@ export function ForceloadEmptyState({
     <Card>
       <CardContent className="flex flex-col items-center justify-center gap-4 py-16">
         <div className="flex size-12 items-center justify-center rounded-full bg-muted">
-          <MapPin className="size-6 text-muted-foreground" />
+          <Users className="size-6 text-muted-foreground" />
         </div>
         <div className="flex flex-col items-center gap-1 text-center">
-          <p className="text-sm font-medium">No forceloads on this server</p>
+          <p className="text-sm font-medium">No party data on this server</p>
           <p className="text-xs text-muted-foreground">
-            No solo-player or party chunks are currently tracked. Dispatch a
-            sync to pull the latest state from the server.
+            No forceload or ally state has been synced yet. Dispatch a sync to
+            pull the latest state from the server.
           </p>
         </div>
         <Button

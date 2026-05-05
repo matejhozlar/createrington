@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
-import { AllyStatusSection } from "../AllyStatusSection";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -12,8 +11,6 @@ interface OverviewTabProps {
 export function OverviewTab({ player, getServerName }: OverviewTabProps) {
   return (
     <div className="space-y-6">
-      <AllyStatusSection playerUuid={player.player.minecraftUuid} />
-
       <div>
         <h3 className="text-lg font-semibold">Playtime by Server</h3>
         <div className="mt-4 space-y-2">

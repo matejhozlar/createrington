@@ -1,17 +1,21 @@
 import { Button } from "@/components/ui/button";
-import { Coins, Clock, AlertTriangle, Ticket } from "lucide-react";
+import { Coins, Clock, AlertTriangle, Ticket, Handshake } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RouterOutput } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
+const SERVER_ID = 1;
+
 interface PlayerStatsCardsProps {
   player: PlayerDetailed;
+  playerUuid: string;
   onAdjustBalance: () => void;
 }
 
 export function PlayerStatsCards({
   player,
+  playerUuid,
   onAdjustBalance,
 }: PlayerStatsCardsProps) {
   const balance = player.balance ? parseFloat(player.balance.balance) : 0;
@@ -20,6 +24,46 @@ export function PlayerStatsCards({
   const activeBans = player.bans.activeCount;
   const totalStrikes = player.strikes.totalCount;
   const totalBans = player.bans.totalCount;
+
+  const statusQuery = trpc.admin.parties.playerStatus.useQuery({
+    serverId: SERVER_ID,
+    playerUuid,
+  });
+
+  const { qualification, partyAlliance } = statusQuery.data ?? {};
+
+  const allyStatus: {
+    label: string;
+    detail: string;
+    color: "blue" | "amber" | "muted";
+  } = (() => {
+    if (qualification && !qualification.isPending && partyAlliance) {
+      return {
+        label: "Allied",
+        detail: partyAlliance.partyName ?? "Allied party",
+        color: "blue",
+      };
+    }
+    if (qualification?.isPending) {
+      return {
+        label: "Pending",
+        detail: "Qualified, awaiting party",
+        color: "amber",
+      };
+    }
+    if (!qualification && partyAlliance) {
+      return {
+        label: "Allied via Party",
+        detail: partyAlliance.partyName ?? "Allied party",
+        color: "blue",
+      };
+    }
+    return {
+      label: "Not Qualified",
+      detail: "Requirements not met",
+      color: "muted",
+    };
+  })();
 
   const totalOffenses = activeStrikes + activeBans;
   const allTimeOffenses = totalStrikes + totalBans;
@@ -31,7 +75,7 @@ export function PlayerStatsCards({
       : "green";
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
       {/* Balance */}
       <div className="rounded-lg border border-border bg-card p-6">
         <div className="flex items-center justify-between">
@@ -114,6 +158,36 @@ export function PlayerStatsCards({
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
           {player.tickets.open} open
+        </p>
+      </div>
+
+      {/* Ally Status */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Ally Status</p>
+            <p className="text-2xl font-semibold">{allyStatus.label}</p>
+          </div>
+          <div
+            className={cn(
+              "flex size-12 items-center justify-center rounded-full",
+              allyStatus.color === "blue" && "bg-blue-500/10",
+              allyStatus.color === "amber" && "bg-amber-500/10",
+              allyStatus.color === "muted" && "bg-muted",
+            )}
+          >
+            <Handshake
+              className={cn(
+                "size-6",
+                allyStatus.color === "blue" && "text-blue-400",
+                allyStatus.color === "amber" && "text-amber-500",
+                allyStatus.color === "muted" && "text-muted-foreground",
+              )}
+            />
+          </div>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {allyStatus.detail}
         </p>
       </div>
     </div>

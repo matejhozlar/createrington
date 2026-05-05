@@ -48,3 +48,38 @@ export function chunkTpCommand(
     chunkCenterToBlock(chunkZ),
   );
 }
+
+const BLUEMAP_ROUTE = "/blue-map";
+
+function dimensionToBluemapWorld(dimension: string): string {
+  if (dimension.includes("nether")) return "world_the_nether";
+  if (dimension.includes("end")) return "world_the_end";
+  return "world";
+}
+
+export function bluemapUrl(
+  dimension: string,
+  x: number,
+  y: number,
+  z: number,
+  options?: { distance?: number },
+): string {
+  const world = dimensionToBluemapWorld(dimension);
+  const distance = options?.distance ?? 1500;
+  return `${BLUEMAP_ROUTE}#${world}:${x}:${y}:${z}:${distance}:0:0:0:0:perspective`;
+}
+
+export function chunkBluemapUrl(
+  dimension: string,
+  chunkX: number,
+  chunkZ: number,
+  options?: { y?: number; distance?: number },
+): string {
+  return bluemapUrl(
+    dimension,
+    chunkCenterToBlock(chunkX),
+    options?.y ?? 100,
+    chunkCenterToBlock(chunkZ),
+    options,
+  );
+}

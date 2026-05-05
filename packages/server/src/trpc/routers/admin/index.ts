@@ -6,7 +6,6 @@ import { changelogRouter } from "./changelog";
 import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
-import { adminDonationsRouter } from "./donations";
 import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
 import { inactivityRouter } from "./inactivity";
@@ -17,11 +16,9 @@ import { adminPromptsRouter } from "./prompts";
 import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
-import { adminAlliesRouter } from "./allies";
-import { adminForceloadsRouter } from "./forceloads";
+import { adminPartiesRouter } from "./parties";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
-/** Admin-only router — announcements, auto-messages, crypto, dashboard, discord commands, donations, embeds, FAQ, logs, metrics, players, servers, structure packs, waitlists. */
 export const adminRouter = router({
   refetchDiscordEntities: adminProcedure
     .meta({
@@ -46,11 +43,9 @@ export const adminRouter = router({
   crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
-  donations: adminDonationsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
-  allies: adminAlliesRouter,
-  forceloads: adminForceloadsRouter,
+  parties: adminPartiesRouter,
   inactivity: inactivityRouter,
   logs: logsRouter,
   metrics: adminMetricsRouter,

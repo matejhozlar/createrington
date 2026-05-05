@@ -1,5 +1,6 @@
 import type { CachedMessage } from "@createrington/shared/socket";
 import { MessageSource } from "@createrington/shared/socket";
+import { bluemapUrl } from "@/lib/minecraft";
 import type { MessageGroup } from "./types";
 
 const XAERO_WAYPOINT_REGEX =
@@ -9,22 +10,17 @@ export function transformWaypoints(text: string): string {
   return text.replace(
     XAERO_WAYPOINT_REGEX,
     (_, name, x, y, z, dimensionId: string) => {
-      let world = "world";
-      let badge = "🌍";
+      const badge = dimensionId.includes("nether")
+        ? "🔴"
+        : dimensionId.includes("end")
+          ? "🟣"
+          : "🌍";
 
-      if (dimensionId.includes("nether")) {
-        world = "world_the_nether";
-        badge = "🔴";
-      } else if (dimensionId.includes("end")) {
-        world = "world_the_end";
-        badge = "🟣";
-      }
+      const safeX = x === "~" ? 0 : Number(x);
+      const safeY = y === "~" ? 64 : Number(y);
+      const safeZ = z === "~" ? 0 : Number(z);
 
-      const safeX = x === "~" ? "0" : x;
-      const safeY = y === "~" ? "64" : y;
-      const safeZ = z === "~" ? "0" : z;
-
-      const url = `/blue-map#${world}:${safeX}:${safeY}:${safeZ}:1500:0:0:0:0:perspective`;
+      const url = bluemapUrl(dimensionId, safeX, safeY, safeZ);
 
       return `${badge} [${name} (${safeX}, ${safeY}, ${safeZ})](${url})`;
     },

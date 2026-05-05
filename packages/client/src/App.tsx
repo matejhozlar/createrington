@@ -227,9 +227,9 @@ const AdminCrypto = lazyNamed(
   () => import("./features/admin/crypto/AdminCrypto"),
   "AdminCrypto",
 );
-const AdminDonations = lazyNamed(
-  () => import("./features/admin/donations/AdminDonations"),
-  "AdminDonations",
+const OwnerDonations = lazyNamed(
+  () => import("./features/admin/owner/OwnerDonations"),
+  "OwnerDonations",
 );
 const CommandDocs = lazyNamed(
   () => import("./features/admin/tools/command-docs/CommandDocs"),
@@ -239,13 +239,9 @@ const StatSearch = lazyNamed(
   () => import("./features/admin/tools/stat-search/StatSearch"),
   "StatSearch",
 );
-const AdminForceloads = lazyNamed(
-  () => import("./features/admin/tools/forceloads/AdminForceloads"),
-  "AdminForceloads",
-);
-const AdminAllies = lazyNamed(
-  () => import("./features/admin/tools/allies/AdminAllies"),
-  "AdminAllies",
+const AdminParties = lazyNamed(
+  () => import("./features/admin/tools/parties/AdminParties"),
+  "AdminParties",
 );
 const AdminPrompts = lazyNamed(
   () => import("./features/admin/tools/prompts/AdminPrompts"),
@@ -497,7 +493,6 @@ function AppContent() {
                         path="tools/announcements"
                         element={<Announcements />}
                       />
-                      <Route path="donations" element={<AdminDonations />} />
                       <Route path="tools/crypto" element={<AdminCrypto />} />
                       <Route
                         path="tools/command-docs"
@@ -507,11 +502,7 @@ function AppContent() {
                         path="tools/stat-search"
                         element={<StatSearch />}
                       />
-                      <Route
-                        path="tools/forceloads"
-                        element={<AdminForceloads />}
-                      />
-                      <Route path="tools/allies" element={<AdminAllies />} />
+                      <Route path="tools/parties" element={<AdminParties />} />
                       <Route path="tools/prompts" element={<AdminPrompts />} />
                       <Route
                         path="tools/prompts/:id"
@@ -542,6 +533,7 @@ function AppContent() {
                 <ErrorBoundary>
                   <Routes>
                     <Route path="admins" element={<OwnerAdmins />} />
+                    <Route path="donations" element={<OwnerDonations />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </ErrorBoundary>

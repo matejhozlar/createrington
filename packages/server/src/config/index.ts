@@ -193,9 +193,14 @@ const config = {
     oauth: {
       clientId: env.DISCORD_OAUTH_CLIENT_ID,
       clientSecret: env.DISCORD_OAUTH_CLIENT_SECRET,
+      // Real prod requires DISCORD_OAUTH_REDIRECT_URI_PROD via the env
+      // superRefine. The fallback to the dev URI exists for the dev
+      // deployment case (NODE_ENV=production on dev.createrington.com),
+      // which skips the superRefine and uses dev OAuth credentials.
       redirectUri:
         env.NODE_ENV === "production"
-          ? env.DISCORD_OAUTH_REDIRECT_URI_PROD
+          ? (env.DISCORD_OAUTH_REDIRECT_URI_PROD ??
+            env.DISCORD_OAUTH_REDIRECT_URI_DEV)
           : env.DISCORD_OAUTH_REDIRECT_URI_DEV,
     },
   },
@@ -209,14 +214,16 @@ const config = {
       rcon: {
         host: env.COGS_AND_STEAM_SERVER_IP,
         port: env.COGS_AND_STEAM_RCON_PORT,
-        password: env.COGS_AND_STEAM_RCON_PASSWORD,
+        password: env.COGS_AND_STEAM_RCON_PASSWORD ?? "",
       },
+      // SFTP is gated behind isSftpAllowed() (services/mc-server/file-ops.ts);
+      // empty defaults are fine because dev never opens the connection.
       sftp: {
-        host: env.COGS_AND_STEAM_SFTP_HOST,
-        port: env.COGS_AND_STEAM_SFTP_PORT,
-        username: env.COGS_AND_STEAM_SFTP_USER,
-        password: env.COGS_AND_STEAM_SFTP_PASS,
-        statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH,
+        host: env.COGS_AND_STEAM_SFTP_HOST ?? "",
+        port: env.COGS_AND_STEAM_SFTP_PORT ?? 22,
+        username: env.COGS_AND_STEAM_SFTP_USER ?? "",
+        password: env.COGS_AND_STEAM_SFTP_PASS ?? "",
+        statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH ?? "",
       },
     },
     playerLimit: env.PLAYER_LIMIT,
@@ -247,8 +254,11 @@ const config = {
   },
 
   email: {
-    apiKey: env.RESEND_API_KEY,
+    apiKey: env.RESEND_API_KEY ?? "",
     fromEmail: env.RESEND_FROM_EMAIL,
+    get enabled() {
+      return Boolean(this.apiKey);
+    },
   },
 
   storage: {
@@ -260,7 +270,9 @@ const config = {
   },
 
   puppeteer: {
-    secret: env.PUPPETEER_SECRET,
+    // Empty when not configured (dev). Render routes reject requests with an
+    // empty secret (app/features/render/render.routes.ts).
+    secret: env.PUPPETEER_SECRET ?? "",
     executablePath: env.PUPPETEER_EXECUTABLE_PATH,
     baseUrl: env.PUPPETEER_BASE_URL,
   },

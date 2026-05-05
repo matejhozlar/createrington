@@ -2,7 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { claudeFetch, runStream } from "./api";
 import type { ChatActionRecord } from "./actions";
-import type { ChatMessage, PageContext } from "./types";
+import {
+  isAdminChatModel,
+  type AdminChatModel,
+  type ChatMessage,
+  type PageContext,
+} from "./types";
 
 interface UseAdminChatSessionArgs {
   isAdmin: boolean;
@@ -12,11 +17,17 @@ interface UseAdminChatSessionArgs {
 interface UseAdminChatSessionResult {
   sessionId: number | null;
   sessionActive: boolean;
+  /**
+   * The model the active (or last) session is pinned to. `null` for legacy
+   * sessions created before the picker landed — those run on whatever the
+   * worker default is (Sonnet) but we don't surface that as an explicit value.
+   */
+  activeModel: AdminChatModel | null;
   messages: ChatMessage[];
   starting: boolean;
   sending: boolean;
   awaitingReply: boolean;
-  start: (prefillMessage?: string) => Promise<void>;
+  start: (prefillMessage?: string, model?: AdminChatModel) => Promise<void>;
   send: (message: string) => Promise<void>;
   end: () => Promise<void>;
 }
@@ -33,6 +44,7 @@ export function useAdminChatSession({
   const location = useLocation();
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
+  const [activeModel, setActiveModel] = useState<AdminChatModel | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
@@ -63,6 +75,8 @@ export function useAdminChatSession({
           active?: boolean;
           sessionId?: number | null;
           lastSessionId?: number | null;
+          model?: string | null;
+          lastSessionModel?: string | null;
         }) => {
           const nextId = data.active ? data.sessionId : data.lastSessionId;
           if (!nextId) return;
@@ -75,6 +89,12 @@ export function useAdminChatSession({
             return nextId;
           });
           setSessionActive(Boolean(data.active));
+          const reportedModel = data.active
+            ? data.model
+            : data.lastSessionModel;
+          setActiveModel(
+            isAdminChatModel(reportedModel) ? reportedModel : null,
+          );
         },
       )
       .catch(console.error);
@@ -197,21 +217,26 @@ export function useAdminChatSession({
   }, [sessionId, open, mergeMessages, attachAction]);
 
   const start = useCallback(
-    async (prefillMessage?: string): Promise<void> => {
+    async (prefillMessage?: string, model?: AdminChatModel): Promise<void> => {
       if (!isAdmin) return;
       setStarting(true);
       try {
         const res = await claudeFetch("/start", {
           method: "POST",
-          body: JSON.stringify({ pageContext: pageContext("admin-chat") }),
+          body: JSON.stringify({
+            pageContext: pageContext("admin-chat"),
+            ...(model && { model }),
+          }),
         });
         const data = (await res.json()) as {
           sessionId?: number;
           error?: string;
+          model?: string | null;
         };
         if (!data.sessionId) return;
         setSessionId(data.sessionId);
         setSessionActive(true);
+        setActiveModel(isAdminChatModel(data.model) ? data.model : null);
         setMessages([]);
         if (prefillMessage) {
           // Optimistic user bubble + fire-and-forget send. The new SSE
@@ -312,6 +337,7 @@ export function useAdminChatSession({
   return {
     sessionId,
     sessionActive,
+    activeModel,
     messages,
     starting,
     sending,

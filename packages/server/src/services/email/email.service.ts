@@ -26,7 +26,7 @@ import { EmailTemplateRegistry } from "./templates";
  */
 export class EmailService {
   private static instance: EmailService;
-  private resend: Resend;
+  private resend: Resend | null;
   private fromEmail: string;
   private fromName: string;
 
@@ -34,7 +34,7 @@ export class EmailService {
     this.fromEmail = config.email.fromEmail;
     this.fromName = config.meta.author.name;
 
-    this.resend = new Resend(config.email.apiKey);
+    this.resend = config.email.enabled ? new Resend(config.email.apiKey) : null;
   }
 
   public static getInstance(): EmailService {
@@ -92,6 +92,12 @@ export class EmailService {
   }
 
   async send(options: EmailOptions): Promise<EmailResult> {
+    if (!this.resend) {
+      logger.warn(
+        "Email send skipped: RESEND_API_KEY not configured (set it to enable transactional email)",
+      );
+      return { success: false, error: "Email service not configured" };
+    }
     try {
       const payload: CreateEmailOptions = {
         from: options.from
@@ -194,6 +200,10 @@ export class EmailService {
    * are usable before the application begins accepting traffic.
    */
   async verify(): Promise<boolean> {
+    if (!this.resend) {
+      logger.warn("Email verification skipped: RESEND_API_KEY not configured");
+      return false;
+    }
     try {
       const { error } = await this.resend.domains.list();
       if (error) {

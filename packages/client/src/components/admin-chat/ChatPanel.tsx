@@ -6,13 +6,17 @@ import { ChatHeader } from "./ChatHeader";
 import { EmptyState } from "./EmptyState";
 import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
-import type { ChatMessage } from "./types";
+import { ModelChip } from "./ModelChip";
+import type { AdminChatModel, ChatMessage } from "./types";
 
 interface ChatPanelProps {
   pathname: string;
   messages: ChatMessage[];
   sessionId: number | null;
   sessionActive: boolean;
+  activeModel: AdminChatModel | null;
+  selectedModel: AdminChatModel;
+  onSelectModel: (model: AdminChatModel) => void;
   starting: boolean;
   sending: boolean;
   awaitingReply: boolean;
@@ -28,6 +32,9 @@ export function ChatPanel({
   messages,
   sessionId,
   sessionActive,
+  activeModel,
+  selectedModel,
+  onSelectModel,
   starting,
   sending,
   awaitingReply,
@@ -69,7 +76,12 @@ export function ChatPanel({
       />
 
       {showEmpty ? (
-        <EmptyState starting={starting} onStart={onStart} />
+        <EmptyState
+          starting={starting}
+          onStart={onStart}
+          selectedModel={selectedModel}
+          onSelectModel={onSelectModel}
+        />
       ) : (
         <>
           <MessageList
@@ -78,17 +90,31 @@ export function ChatPanel({
             navigate={navigate}
           />
           {sessionActive ? (
-            <MessageInput
-              value={input}
-              onChange={setInput}
-              onSubmit={handleSend}
-              sending={sending}
-            />
+            <div className="flex flex-col">
+              {activeModel && (
+                <div className="flex justify-end border-t border-border/60 px-3 pt-2">
+                  <ModelChip value={activeModel} readOnly />
+                </div>
+              )}
+              <MessageInput
+                value={input}
+                onChange={setInput}
+                onSubmit={handleSend}
+                sending={sending}
+              />
+            </div>
           ) : (
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border px-3 py-2.5">
-              <span className="text-xs text-muted-foreground">
-                Session ended
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  Session ended
+                </span>
+                <ModelChip
+                  value={selectedModel}
+                  onChange={onSelectModel}
+                  disabled={starting}
+                />
+              </div>
               <Button size="sm" onClick={() => onStart()} disabled={starting}>
                 {starting && <Loader2 size={14} className="animate-spin" />}
                 Start new chat
