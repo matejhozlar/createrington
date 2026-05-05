@@ -68,6 +68,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/owner/admins",
         icon: UserCogIcon,
       },
+      {
+        title: "Donations",
+        url: "/owner/donations",
+        icon: HeartIcon,
+      },
     ],
     adminNav: [
       {
@@ -94,11 +99,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         title: "Tools",
         url: "/admin/tools",
         icon: WrenchIcon,
-      },
-      {
-        title: "Donations",
-        url: "/admin/donations",
-        icon: HeartIcon,
       },
       {
         title: "Logs",

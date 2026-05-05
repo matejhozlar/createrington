@@ -227,9 +227,9 @@ const AdminCrypto = lazyNamed(
   () => import("./features/admin/crypto/AdminCrypto"),
   "AdminCrypto",
 );
-const AdminDonations = lazyNamed(
-  () => import("./features/admin/donations/AdminDonations"),
-  "AdminDonations",
+const OwnerDonations = lazyNamed(
+  () => import("./features/admin/owner/OwnerDonations"),
+  "OwnerDonations",
 );
 const CommandDocs = lazyNamed(
   () => import("./features/admin/tools/command-docs/CommandDocs"),
@@ -493,7 +493,6 @@ function AppContent() {
                         path="tools/announcements"
                         element={<Announcements />}
                       />
-                      <Route path="donations" element={<AdminDonations />} />
                       <Route path="tools/crypto" element={<AdminCrypto />} />
                       <Route
                         path="tools/command-docs"
@@ -534,6 +533,7 @@ function AppContent() {
                 <ErrorBoundary>
                   <Routes>
                     <Route path="admins" element={<OwnerAdmins />} />
+                    <Route path="donations" element={<OwnerDonations />} />
                     <Route path="*" element={<NotFound />} />
                   </Routes>
                 </ErrorBoundary>
