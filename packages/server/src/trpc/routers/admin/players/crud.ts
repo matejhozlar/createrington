@@ -48,7 +48,11 @@ export const playersRouter = router({
     .query(async ({ input }) => {
       const filters: PlayerFilters = {};
 
-      if (input.discordId) filters.discordId = input.discordId;
+      if (input.discordId) {
+        filters.discordId = {
+          $ilike: `%${escapeLike(input.discordId)}%`,
+        };
+      }
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
         filters.minecraftUsername = {
