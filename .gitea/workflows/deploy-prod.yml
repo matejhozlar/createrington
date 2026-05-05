@@ -1,11 +1,13 @@
 name: Deploy Prod
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches: [main]
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
     runs-on: hetzner
     steps:
       - uses: actions/checkout@v4
@@ -15,11 +17,11 @@ jobs:
       - name: Detect scope of change
         id: scope
         run: |
-          BEFORE='${{ github.event.before }}'
+          BEFORE='${{ github.event.pull_request.base.sha }}'
           AFTER='${{ github.sha }}'
           if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
             echo "client_only=false" >> "$GITHUB_OUTPUT"
-            echo "No base SHA (first push or forced update) - running full deploy."
+            echo "No base SHA - running full deploy."
             exit 0
           fi
           if ! CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null); then
