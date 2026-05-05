@@ -1,13 +1,13 @@
 import { z } from "zod";
-import { router, adminProcedure } from "@/trpc/trpc";
+import { router, ownerProcedure } from "@/trpc/trpc";
 import { donationRepo } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import { paginationInput } from "@/trpc/utils";
 
-/** Admin donations router — paginated list and aggregate stats. */
-export const adminDonationsRouter = router({
-  stats: adminProcedure
+/** Owner donations router: paginated list and aggregate stats. */
+export const ownerDonationsRouter = router({
+  stats: ownerProcedure
     .meta({
       description:
         "Get aggregate donation statistics: total raised, unique donor count, and total donation count",
@@ -16,7 +16,7 @@ export const adminDonationsRouter = router({
       return donationRepo.getStats();
     }),
 
-  subscriptionStats: adminProcedure
+  subscriptionStats: ownerProcedure
     .meta({
       description:
         "Get active subscription count, cancelling count, and monthly recurring revenue",
@@ -29,7 +29,7 @@ export const adminDonationsRouter = router({
       return donationService.getSubscriptionStats();
     }),
 
-  list: adminProcedure
+  list: ownerProcedure
     .meta({
       description:
         "List all donations with optional status filter, pagination, and newest-first ordering",

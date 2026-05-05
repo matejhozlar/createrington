@@ -55,7 +55,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Loading } from "@/components/loading-spinner";
 
-type Donation = RouterOutput["admin"]["donations"]["list"]["donations"][number];
+type Donation = RouterOutput["owner"]["donations"]["list"]["donations"][number];
 type DonationStatus = "pending" | "completed" | "refunded" | "cancelled";
 type DonationType = "one_time" | "monthly";
 
@@ -86,7 +86,7 @@ function formatDate(iso: string) {
   });
 }
 
-export function AdminDonations() {
+export function OwnerDonations() {
   const [page, setPage] = useState(0);
   const [discordIdInput, setDiscordIdInput] = useState("");
   const [statusFilter, setStatusFilter] = useState<DonationStatus | "all">(
@@ -95,9 +95,9 @@ export function AdminDonations() {
   const [typeFilter, setTypeFilter] = useState<DonationType | "all">("all");
   const debouncedDiscordId = useDebouncedValue(discordIdInput, 1000);
 
-  const statsQuery = trpc.admin.donations.stats.useQuery();
-  const subStatsQuery = trpc.admin.donations.subscriptionStats.useQuery();
-  const listQuery = trpc.admin.donations.list.useQuery({
+  const statsQuery = trpc.owner.donations.stats.useQuery();
+  const subStatsQuery = trpc.owner.donations.subscriptionStats.useQuery();
+  const listQuery = trpc.owner.donations.list.useQuery({
     page,
     limit: 20,
     discordId: debouncedDiscordId || undefined,
@@ -161,7 +161,11 @@ export function AdminDonations() {
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Owner</BreadcrumbPage>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>

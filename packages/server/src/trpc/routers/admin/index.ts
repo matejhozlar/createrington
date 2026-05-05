@@ -6,7 +6,6 @@ import { changelogRouter } from "./changelog";
 import { adminCryptoRouter } from "./crypto";
 import { dashboardRouter } from "./dashboard";
 import { discordCommandsRouter } from "./discord-commands";
-import { adminDonationsRouter } from "./donations";
 import { embedsRouter } from "./embeds";
 import { faqRouter } from "./faq";
 import { inactivityRouter } from "./inactivity";
@@ -44,7 +43,6 @@ export const adminRouter = router({
   crypto: adminCryptoRouter,
   dashboard: dashboardRouter,
   discordCommands: discordCommandsRouter,
-  donations: adminDonationsRouter,
   embeds: embedsRouter,
   faq: faqRouter,
   parties: adminPartiesRouter,
