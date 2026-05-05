@@ -12,6 +12,39 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Detect scope of change
+        id: scope
+        run: |
+          BEFORE='${{ github.event.before }}'
+          AFTER='${{ github.sha }}'
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "client_only=false" >> "$GITHUB_OUTPUT"
+            echo "No base SHA (first push or forced update) - running full deploy."
+            exit 0
+          fi
+          if ! CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null); then
+            echo "client_only=false" >> "$GITHUB_OUTPUT"
+            echo "Could not diff $BEFORE..$AFTER - running full deploy."
+            exit 0
+          fi
+          if [ -z "$CHANGED" ]; then
+            echo "client_only=false" >> "$GITHUB_OUTPUT"
+            echo "Empty diff - running full deploy."
+            exit 0
+          fi
+          NON_CLIENT=$(echo "$CHANGED" | grep -vE '^(packages/client/|marketing/)' || true)
+          if [ -z "$NON_CLIENT" ]; then
+            echo "client_only=true" >> "$GITHUB_OUTPUT"
+            echo "Client-only change detected - migrate + restart will be skipped."
+            echo "Changed paths:"
+            echo "$CHANGED"
+          else
+            echo "client_only=false" >> "$GITHUB_OUTPUT"
+            echo "Non-client paths touched - running full deploy."
+            echo "Server-side paths:"
+            echo "$NON_CLIENT"
+          fi
+
       - name: Install pnpm
         run: npm install -g pnpm
 
@@ -51,6 +84,7 @@ jobs:
           cp -r packages/server/node_modules /opt/createrington/packages/server/node_modules
 
       - name: Migrate database
+        if: steps.scope.outputs.client_only != 'true'
         run: |
           export DB_HOST=infra-postgres
           export DB_PORT=5432
@@ -65,4 +99,8 @@ jobs:
           rm -f /opt/createrington/.maintenance
           chown -R 1000:988 /opt/createrington
           chown -R 1000:988 /var/www/createrington
-          touch /opt/createrington/.restart-trigger
+          if [ '${{ steps.scope.outputs.client_only }}' = 'true' ]; then
+            echo "Client-only deploy - skipping restart trigger."
+          else
+            touch /opt/createrington/.restart-trigger
+          fi
