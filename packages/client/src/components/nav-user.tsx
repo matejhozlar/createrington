@@ -231,12 +231,14 @@ export function NavUser({ user }: { user: User }) {
             <DropdownMenuSeparator />
 
             {user.isAdmin ? (
-              <NavLink
-                to="/admin/changelog"
-                className="block py-1 text-center text-[0.625rem] text-muted-foreground transition-colors hover:text-foreground"
-              >
-                v{__APP_VERSION__}
-              </NavLink>
+              <DropdownMenuItem asChild>
+                <NavLink
+                  to="/admin/changelog"
+                  className="block py-1 text-center text-[0.625rem] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  v{__APP_VERSION__}
+                </NavLink>
+              </DropdownMenuItem>
             ) : (
               <div className="py-1 text-center text-[0.625rem] text-muted-foreground">
                 v{__APP_VERSION__}
