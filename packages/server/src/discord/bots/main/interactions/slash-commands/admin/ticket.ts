@@ -231,24 +231,36 @@ export async function execute(
           const players = await Q.player.findAll({
             minecraftUuid: { $in: party.memberUuids },
           });
-          const linked = new Map(
+          const linkedByUuid = new Map(
             players.filter((p) => p.discordId).map((p) => [p.minecraftUuid, p]),
           );
 
           for (const uuid of party.memberUuids) {
-            const player = linked.get(uuid);
-            if (!player) {
+            if (!linkedByUuid.has(uuid)) {
               const fallback = players.find((p) => p.minecraftUuid === uuid);
               skippedNotLinked.push(fallback?.minecraftUsername ?? uuid);
-              continue;
             }
-            const result = await ticketService.addParticipant(
-              interaction.channelId,
-              player.discordId,
-            );
-            const label = player.minecraftUsername
-              ? `${Discord.Users.mention(player.discordId)} (${player.minecraftUsername})`
-              : Discord.Users.mention(player.discordId);
+          }
+
+          const linkedPlayers = [...linkedByUuid.values()];
+          const labelByDiscordId = new Map<string, string>(
+            linkedPlayers.map((p) => [
+              p.discordId,
+              p.minecraftUsername
+                ? `${Discord.Users.mention(p.discordId)} (${p.minecraftUsername})`
+                : Discord.Users.mention(p.discordId),
+            ]),
+          );
+
+          const results = await ticketService.addParticipants(
+            interaction.channelId,
+            linkedPlayers.map((p) => p.discordId),
+          );
+
+          for (const [discordId, result] of results) {
+            const label =
+              labelByDiscordId.get(discordId) ??
+              Discord.Users.mention(discordId);
             if (result.added) {
               added.push(label);
             } else if (result.reason === "not-in-guild") {

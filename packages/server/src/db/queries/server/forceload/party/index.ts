@@ -49,7 +49,7 @@ export class ServerForceloadPartyQueries extends ServerForceloadPartyBaseQueries
       FROM server_forceload_party fp
       LEFT JOIN server_forceload_member fm ON fm.party_id = fp.id
       WHERE fp.server_id = $1 AND fp.party_id = $2
-      GROUP BY fp.party_name`,
+      GROUP BY fp.id, fp.party_name`,
       [serverId, partyUuid],
     );
     return result.rows[0] ?? null;
