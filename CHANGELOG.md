@@ -1,3 +1,32 @@
+## v1.14.0 (2026-05-05)
+
+### @createrington/server (1.13.0 → 1.14.0)
+- Add chunk sync endpoint and `server_chunk` table — new `/api/chunks/sync` mod endpoint receives full-state chunk snapshots (claimed, unclaimed, forceloaded) per dimension, storing them in a new `server_chunk` table with advisory-lock-guarded batched upserts
+- Add unified parties admin tRPC router — replaces the separate `admin.allies` and `admin.forceloads` routers with a single `admin.parties` router that exposes party lists, solo players, chunk data, KPI aggregates, and dimension filters with server-side pagination and sorting
+- Add player search by Discord ID and UUID — the admin players list endpoint now accepts Discord snowflakes (17-20 digits) and Minecraft UUIDs as search terms, routing them to the appropriate query
+- Add Mojang UUID resolution endpoint — new public `players.resolveUuid` tRPC procedure fetches a username from the Mojang API for unresolved UUIDs, with result caching
+- Fix SSO access cookie premature logout — the access cookie `maxAge` was being set in seconds instead of milliseconds, causing the cookie to expire almost immediately after issuance
+- Fix chunk sync advisory lock overflow — the lock namespace hash was exceeding PostgreSQL's int4 range, causing lock acquisition failures
+- Fix lottery start announcement — use `/join` command mention instead of plain text in the lottery start embed
+- Fix parties admin aggregates ignoring dimension filter — KPI card queries now filter by the selected dimension
+- Fix expired chunk attribution — chunks with expired claims are now attributed to their original owner in the admin parties view
+- Move donations router under owner scope — donations management routes relocated from admin to the owner-only namespace
+- Minimize required env vars in dev — non-critical service configs (email, Stripe, etc.) are now optional when running locally, with extracted `isDevHostname` helper for validation
+
+### @createrington/client (0.2.15 → 0.2.16)
+- Add unified parties admin page — replaces the separate Allies and Forceloads tools with a single Parties page featuring tabbed party/solo-player tables, chunk detail tables, KPI cards, dimension filter populated from live DB values, and multi-state allied/opted-in filter selects
+- Add party tab to player detail — collapsible blinds show the player's party membership, allied parties, and chunk claims with deep-linking from the parties admin page
+- Add sortable column headers — party tables, solo player tables, and chunk tables all support click-to-sort with visual indicators
+- Add split click areas on player blinds — left side navigates to player detail, right side expands/collapses the blind
+- Add sticky expanded row — when expanding a party row, it pins to the viewport so chunk details stay visible while scrolling
+- Add paginated chunk tables with server-side filtering — chunk parties section now supports pagination and search
+- Add admin chat model picker — admins can opt into Opus for deeper investigations via a model chip selector (moved from header to chat panel)
+- Add PlayerLabel UUID resolution — clicking an unresolved UUID in a PlayerLabel fetches the username from Mojang and updates inline
+- Add reusable Paginator component for consistent table pagination across admin pages
+- Fix player search to recognize Discord IDs (17-20 digit strings) and route them appropriately
+- Fix FE convention violations — file naming, component structure, and hook patterns aligned with project conventions
+- Deploy workflow updated to skip server restart and migration on client-only production pushes
+
 ## v1.13.0 (2026-04-28)
 
 ### @createrington/server (1.12.0 → 1.13.0)
