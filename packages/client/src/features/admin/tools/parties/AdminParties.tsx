@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
 import {
@@ -43,6 +44,20 @@ const DEFAULT_FILTERS: PartyFilters = {
 
 export function AdminParties() {
   const toast = useToastActions();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialExpandedPartyId = useRef(searchParams.get("partyId"));
+
+  useEffect(() => {
+    if (searchParams.has("partyId")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("partyId");
+      setSearchParams(next, { replace: true });
+    }
+    // Only run once on mount: the URL param is consumed into a ref so a
+    // subsequent param-clear doesn't re-trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [filters, setFilters] = useState<PartyFilters>(DEFAULT_FILTERS);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   // Solo players are only meaningful when party-scoped filters are inactive.
@@ -253,6 +268,7 @@ export function AdminParties() {
               onSoloPageChange={setSoloPage}
               soloSort={soloSort}
               onSoloSortChange={handleSoloSortChange}
+              initialExpandedPartyId={initialExpandedPartyId.current}
             />
           </>
         )}

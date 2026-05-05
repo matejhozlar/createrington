@@ -6,7 +6,7 @@ import {
   Map,
   MoreHorizontal,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,77 +47,51 @@ interface ChunkDetail {
   active: boolean;
 }
 
-type SortField = "dimension" | "x" | "z" | "forceloadable" | "active";
-type SortDirection = "asc" | "desc";
+export type ChunkSortField =
+  | "dimension"
+  | "x"
+  | "z"
+  | "forceloadable"
+  | "active";
+export type ChunkSortDirection = "asc" | "desc";
+export type ChunkSortState = {
+  field: ChunkSortField;
+  direction: ChunkSortDirection;
+} | null;
 
-/**
- * Presentational chunk table. Filtering + pagination are handled upstream
- * (server-side, via tRPC inputs) so that page totals stay accurate. Sorting
- * is applied client-side to the current page's items only.
- */
 export function ChunkDetailTable({
   chunks,
   hasActiveFilters = false,
+  sort,
+  onSortChange,
 }: {
   chunks: ChunkDetail[];
-  /** When true, the empty state explains "no matches" instead of "no chunks". */
   hasActiveFilters?: boolean;
+  sort: ChunkSortState;
+  onSortChange: (field: ChunkSortField) => void;
 }) {
   const toast = useToastActions();
-  const [sortField, setSortField] = useState<SortField | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-
-  const handleSort = useCallback(
-    (field: SortField) => {
-      if (sortField === field) {
-        setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-      } else {
-        setSortField(field);
-        setSortDirection("asc");
-      }
-    },
-    [sortField],
-  );
 
   const renderSortIcon = useCallback(
-    (field: SortField) => {
-      if (sortField !== field) {
+    (field: ChunkSortField) => {
+      if (sort?.field !== field) {
         return <ArrowUpDown className="ml-1 size-3.5 opacity-50" />;
       }
-      return sortDirection === "asc" ? (
+      return sort.direction === "asc" ? (
         <ArrowUp className="ml-1 size-3.5" />
       ) : (
         <ArrowDown className="ml-1 size-3.5" />
       );
     },
-    [sortField, sortDirection],
+    [sort],
   );
-
-  const sorted = useMemo(() => {
-    if (!sortField) return chunks;
-    const dir = sortDirection === "asc" ? 1 : -1;
-    return [...chunks].sort((a, b) => {
-      switch (sortField) {
-        case "dimension":
-          return a.dimension.localeCompare(b.dimension) * dir;
-        case "x":
-          return (a.x - b.x) * dir;
-        case "z":
-          return (a.z - b.z) * dir;
-        case "forceloadable":
-          return (Number(a.forceloadable) - Number(b.forceloadable)) * dir;
-        case "active":
-          return (Number(a.active) - Number(b.active)) * dir;
-      }
-    });
-  }, [chunks, sortField, sortDirection]);
 
   const copy = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied`);
   };
 
-  if (sorted.length === 0) {
+  if (chunks.length === 0) {
     return (
       <p className="py-2 text-sm text-muted-foreground">
         {hasActiveFilters
@@ -134,7 +108,7 @@ export function ChunkDetailTable({
           <TableHead>
             <button
               type="button"
-              onClick={() => handleSort("dimension")}
+              onClick={() => onSortChange("dimension")}
               className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Dimension
@@ -144,7 +118,7 @@ export function ChunkDetailTable({
           <TableHead>
             <button
               type="button"
-              onClick={() => handleSort("x")}
+              onClick={() => onSortChange("x")}
               className="inline-flex items-center gap-1 text-sm font-medium"
             >
               X{renderSortIcon("x")}
@@ -153,7 +127,7 @@ export function ChunkDetailTable({
           <TableHead>
             <button
               type="button"
-              onClick={() => handleSort("z")}
+              onClick={() => onSortChange("z")}
               className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Z{renderSortIcon("z")}
@@ -162,7 +136,7 @@ export function ChunkDetailTable({
           <TableHead>
             <button
               type="button"
-              onClick={() => handleSort("forceloadable")}
+              onClick={() => onSortChange("forceloadable")}
               className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Forceloadable
@@ -172,7 +146,7 @@ export function ChunkDetailTable({
           <TableHead>
             <button
               type="button"
-              onClick={() => handleSort("active")}
+              onClick={() => onSortChange("active")}
               className="inline-flex items-center gap-1 text-sm font-medium"
             >
               Status
@@ -183,7 +157,7 @@ export function ChunkDetailTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {sorted.map((chunk) => {
+        {chunks.map((chunk) => {
           const tp = chunkTpCommand(chunk.dimension, chunk.x, chunk.z);
           return (
             <TableRow key={chunk.id}>

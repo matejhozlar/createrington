@@ -30,7 +30,11 @@ import {
 import { trpc } from "@/lib/trpc";
 import type { RouterOutput } from "@/lib/trpc";
 import type { DimensionFilter } from "../types";
-import { ChunkDetailTable } from "./ChunkDetailTable";
+import {
+  ChunkDetailTable,
+  type ChunkSortField,
+  type ChunkSortState,
+} from "./ChunkDetailTable";
 
 export type SoloPlayersData =
   RouterOutput["admin"]["parties"]["chunkSoloPlayers"];
@@ -295,6 +299,16 @@ function SoloPlayerChunks({
     setPrevFiltersKey(filtersKey);
     setPage(0);
   }
+  const [sort, setSort] = useState<ChunkSortState>(null);
+
+  const handleSortChange = useCallback((field: ChunkSortField) => {
+    setSort((prev) =>
+      prev?.field === field
+        ? { field, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { field, direction: "asc" },
+    );
+    setPage(0);
+  }, []);
 
   const chunksQuery = trpc.admin.parties.chunkPlayerDetail.useQuery({
     serverId,
@@ -303,6 +317,8 @@ function SoloPlayerChunks({
     limit: CHUNKS_PER_PAGE,
     dimension: dimensionFilter === "all" ? undefined : dimensionFilter,
     activeOnly: activeOnly || undefined,
+    sortBy: sort?.field,
+    sortDir: sort?.direction,
   });
 
   if (chunksQuery.isLoading) return <Loading size="small" />;
@@ -315,6 +331,8 @@ function SoloPlayerChunks({
       <ChunkDetailTable
         chunks={chunksQuery.data.items}
         hasActiveFilters={hasActiveFilters}
+        sort={sort}
+        onSortChange={handleSortChange}
       />
       <Paginator
         page={chunksQuery.data.pagination.page}

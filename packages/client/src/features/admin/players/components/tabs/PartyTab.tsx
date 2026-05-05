@@ -167,7 +167,7 @@ function PartyBlind({
               Allied {formatRelativeDateSafe(alliedAt)}
             </p>
             <Link
-              to="/admin/tools/parties"
+              to={`/admin/tools/parties?partyId=${encodeURIComponent(partyId)}`}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
             >
               View in Parties admin
@@ -232,7 +232,7 @@ function AlliesBlind({
             allies.map((ally) => (
               <Link
                 key={ally.partyId}
-                to="/admin/tools/parties"
+                to={`/admin/tools/parties?partyId=${encodeURIComponent(ally.partyId)}`}
                 className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2 transition hover:bg-muted/50"
               >
                 <div className="flex items-center gap-2">

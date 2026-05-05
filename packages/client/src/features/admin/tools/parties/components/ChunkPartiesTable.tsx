@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useMemo, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -48,14 +55,32 @@ export function ChunkPartiesTable({
   parties,
   totalParties,
   filters,
+  initialExpandedPartyId,
 }: {
   serverId: number;
   parties: ChunkParty[];
   totalParties: number;
   filters: PartyFilters;
+  initialExpandedPartyId?: string | null;
 }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(
+    initialExpandedPartyId ?? null,
+  );
   const [sort, setSort] = useState<SortState>(null);
+  const scrollTargetId = initialExpandedPartyId ?? null;
+  const hasScrolledRef = useRef(false);
+  const scrollRowRef = useRef<HTMLTableRowElement | null>(null);
+
+  useEffect(() => {
+    if (hasScrolledRef.current) return;
+    if (!scrollTargetId) return;
+    if (!parties.some((p) => p.partyId === scrollTargetId)) return;
+    scrollRowRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+    hasScrolledRef.current = true;
+  }, [parties, scrollTargetId]);
 
   const handleSort = useCallback((key: SortKey) => {
     setSort((prev) =>
@@ -198,9 +223,11 @@ export function ChunkPartiesTable({
           ) : (
             sortedParties.map((party) => {
               const isExpanded = expandedId === party.partyId;
+              const isScrollTarget = scrollTargetId === party.partyId;
               return (
                 <Fragment key={party.partyId}>
                   <TableRow
+                    ref={isScrollTarget ? scrollRowRef : undefined}
                     className={cn(
                       "cursor-pointer",
                       isExpanded &&

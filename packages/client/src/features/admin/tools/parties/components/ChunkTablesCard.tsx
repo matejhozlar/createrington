@@ -28,6 +28,7 @@ export function ChunkTablesCard({
   onSoloPageChange,
   soloSort,
   onSoloSortChange,
+  initialExpandedPartyId,
 }: {
   serverId: number;
   filteredParties: ChunkParty[];
@@ -39,6 +40,7 @@ export function ChunkTablesCard({
   onSoloPageChange: (page: number) => void;
   soloSort: SoloSortState;
   onSoloSortChange: (key: SoloSortKey) => void;
+  initialExpandedPartyId?: string | null;
 }) {
   const [tab, setTab] = useState<string>("parties");
 
@@ -89,6 +91,7 @@ export function ChunkTablesCard({
             parties={filteredParties}
             totalParties={totalParties}
             filters={filters}
+            initialExpandedPartyId={initialExpandedPartyId}
           />
         </TabsContent>
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
@@ -7,7 +7,11 @@ import { PlayerLabel } from "@/components/player-label";
 import { Badge } from "@/components/ui/badge";
 import type { RouterOutput } from "@/lib/trpc";
 import type { DimensionFilter } from "../types";
-import { ChunkDetailTable } from "./ChunkDetailTable";
+import {
+  ChunkDetailTable,
+  type ChunkSortField,
+  type ChunkSortState,
+} from "./ChunkDetailTable";
 
 type ChunkMember =
   RouterOutput["admin"]["parties"]["chunkPartyMembers"]["items"][number];
@@ -26,15 +30,25 @@ export function ChunkPlayerMemberRow({
   activeOnly: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [sort, setSort] = useState<ChunkSortState>(null);
+  const [page, setPage] = useState(0);
 
   // Reset to page 0 whenever filters change ("store info from previous render" pattern).
   const filtersKey = `${dimensionFilter}|${activeOnly}`;
-  const [page, setPage] = useState(0);
   const [prevFiltersKey, setPrevFiltersKey] = useState(filtersKey);
   if (prevFiltersKey !== filtersKey) {
     setPrevFiltersKey(filtersKey);
     setPage(0);
   }
+
+  const handleSortChange = useCallback((field: ChunkSortField) => {
+    setSort((prev) =>
+      prev?.field === field
+        ? { field, direction: prev.direction === "asc" ? "desc" : "asc" }
+        : { field, direction: "asc" },
+    );
+    setPage(0);
+  }, []);
 
   const chunksQuery = trpc.admin.parties.chunkPlayerDetail.useQuery(
     {
@@ -44,6 +58,8 @@ export function ChunkPlayerMemberRow({
       limit: CHUNKS_PER_PAGE,
       dimension: dimensionFilter === "all" ? undefined : dimensionFilter,
       activeOnly: activeOnly || undefined,
+      sortBy: sort?.field,
+      sortDir: sort?.direction,
     },
     { enabled: expanded },
   );
@@ -110,6 +126,8 @@ export function ChunkPlayerMemberRow({
               <ChunkDetailTable
                 chunks={chunksQuery.data.items}
                 hasActiveFilters={hasActiveFilters}
+                sort={sort}
+                onSortChange={handleSortChange}
               />
               <Paginator
                 page={chunksQuery.data.pagination.page}

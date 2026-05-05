@@ -8,9 +8,13 @@ interface PageParams {
   offset: number;
 }
 
+export type ChunkSortKey = "dimension" | "x" | "z" | "forceloadable" | "active";
+
 interface ChunksForPlayerFilters {
   dimension?: string | null;
   activeOnly?: boolean;
+  sortBy?: ChunkSortKey;
+  sortDir?: "asc" | "desc";
 }
 
 export type SoloSortKey =
@@ -270,11 +274,30 @@ export class ServerChunkQueries extends ServerChunkBaseQueries {
         sc.party_name AS "partyName"
       FROM server_chunk sc
       WHERE ${where.join(" AND ")}
-      ORDER BY sc.dimension, sc.x, sc.z
+      ORDER BY ${this.buildChunkSortClause(opts.sortBy, opts.sortDir)}
       LIMIT $${limitIdx} OFFSET $${offsetIdx}`,
       params,
     );
     return result.rows;
+  }
+
+  private buildChunkSortClause(
+    sortBy?: ChunkSortKey,
+    sortDir?: "asc" | "desc",
+  ): string {
+    const CHUNK_SORT_SQL: Record<ChunkSortKey, string> = {
+      dimension: "sc.dimension",
+      x: "sc.x",
+      z: "sc.z",
+      forceloadable: "sc.forceloadable",
+      active: "sc.active",
+    };
+    if (!sortBy) {
+      return "sc.dimension ASC, sc.x ASC, sc.z ASC";
+    }
+    const col = CHUNK_SORT_SQL[sortBy];
+    const dir = sortDir === "desc" ? "DESC" : "ASC";
+    return `${col} ${dir}, sc.dimension ASC, sc.x ASC, sc.z ASC`;
   }
 
   async countChunksForPlayer(
