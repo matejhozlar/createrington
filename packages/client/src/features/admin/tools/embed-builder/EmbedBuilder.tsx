@@ -177,14 +177,7 @@ export function EmbedBuilder() {
     return () => window.removeEventListener(INSERT_EMBED_EVENT, handler);
   }, [setEmbedData, toast]);
 
-  const externalData: EmbedData = {
-    ...builder.data,
-    fields: builder.data.fields.map((f) => ({
-      name: f.name,
-      value: f.value,
-      inline: f.inline,
-    })),
-  };
+  const externalData = builder.externalData;
 
   return (
     <div className="flex h-svh min-h-0 flex-col">

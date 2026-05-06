@@ -163,10 +163,12 @@ export function useEmbedBuilder() {
     pendingDraft?.activePreset ? JSON.stringify(pendingDraft.data) : "",
   );
 
+  const externalData = useMemo(() => toExternalData(data), [data]);
+
   const isDirty = useMemo(() => {
     if (!activePreset) return false;
-    return JSON.stringify(toExternalData(data)) !== lastSavedSnapshot;
-  }, [data, activePreset, lastSavedSnapshot]);
+    return JSON.stringify(externalData) !== lastSavedSnapshot;
+  }, [externalData, activePreset, lastSavedSnapshot]);
 
   const hasContent = !!(
     data.content ||
@@ -348,7 +350,10 @@ export function useEmbedBuilder() {
   );
 
   const handleSave = useCallback(
-    async (opts?: { name?: string; categoryId?: number | null }) => {
+    async (opts?: {
+      name?: string;
+      categoryId?: number | null;
+    }): Promise<boolean> => {
       const embedData = toExternalData(data);
 
       if (activePreset) {
@@ -374,10 +379,12 @@ export function useEmbedBuilder() {
           toast.success(
             `Preset "${updates.name ?? activePreset.name}" updated`,
           );
+          return true;
         } catch (err) {
           toast.error(
             err instanceof Error ? err.message : "Failed to update preset",
           );
+          return false;
         }
       } else {
         const name = (opts?.name ?? presetName).trim();
@@ -385,7 +392,7 @@ export function useEmbedBuilder() {
           opts?.categoryId !== undefined ? opts.categoryId : selectedCategoryId;
         if (!name) {
           toast.error("Enter a preset name to save");
-          return;
+          return false;
         }
         try {
           const created = await createPreset.mutateAsync({
@@ -405,10 +412,12 @@ export function useEmbedBuilder() {
           setPresetName(created.name);
           setSelectedCategoryId(created.categoryId ?? null);
           toast.success(`Preset "${name}" created`);
+          return true;
         } catch (err) {
           toast.error(
             err instanceof Error ? err.message : "Failed to save preset",
           );
+          return false;
         }
       }
     },
@@ -640,6 +649,7 @@ export function useEmbedBuilder() {
   return {
     // State
     data,
+    externalData,
     setEmbedData,
     bot,
     setBot,

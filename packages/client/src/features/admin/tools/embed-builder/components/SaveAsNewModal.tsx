@@ -115,8 +115,12 @@ function SaveAsNewForm({ builder, onClose }: SaveAsNewFormProps) {
       categoryId = Number(categoryValue);
     }
 
-    await handleSave({ name: trimmedName, categoryId });
-    onClose();
+    try {
+      const ok = await handleSave({ name: trimmedName, categoryId });
+      if (ok) onClose();
+    } catch {
+      toast.error("Failed to save preset");
+    }
   }
 
   return (

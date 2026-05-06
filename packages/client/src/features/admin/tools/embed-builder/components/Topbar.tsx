@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { EmbedData } from "@createrington/shared/api/embed";
+import { embedDataSchema } from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
@@ -27,7 +27,7 @@ export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
     hasContent,
     isPending,
     handleSave,
-    data,
+    externalData,
     setEmbedData,
   } = builder;
   const toast = useToastActions();
@@ -35,70 +35,37 @@ export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
   const [saveOpen, setSaveOpen] = useState(false);
 
   function handleCopyJson() {
-    const exportData: EmbedData = {
-      ...data,
-      fields: data.fields.map((f) => ({
-        name: f.name,
-        value: f.value,
-        inline: f.inline,
-      })),
-    };
-    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
+    navigator.clipboard.writeText(JSON.stringify(externalData, null, 2));
     toast.success("Embed JSON copied to clipboard");
   }
 
   async function handleImportJson() {
+    let text: string;
     try {
-      const text = await navigator.clipboard.readText();
-      const parsed = JSON.parse(text) as EmbedData;
-      if (!parsed || typeof parsed !== "object") {
-        toast.error("Clipboard does not contain valid JSON");
-        return;
-      }
-      setEmbedData({
-        content: parsed.content ?? undefined,
-        title: parsed.title ?? undefined,
-        description: parsed.description ?? undefined,
-        color: parsed.color ?? undefined,
-        url: parsed.url ?? undefined,
-        footer: parsed.footer ?? undefined,
-        author: parsed.author ?? undefined,
-        authorUrl: parsed.authorUrl ?? undefined,
-        authorIconUrl: parsed.authorIconUrl ?? undefined,
-        thumbnailUrl: parsed.thumbnailUrl ?? undefined,
-        imageUrl: parsed.imageUrl ?? undefined,
-        timestamp: parsed.timestamp ?? false,
-        fields: Array.isArray(parsed.fields)
-          ? parsed.fields.map((f) => ({
-              name: f.name ?? "",
-              value: f.value ?? "",
-              inline: f.inline ?? false,
-            }))
-          : [],
-        buttons: Array.isArray(parsed.buttons)
-          ? parsed.buttons.map((b) => ({
-              label: b.label ?? "",
-              url: b.url ?? "",
-              emoji: b.emoji ?? undefined,
-            }))
-          : [],
-        actionButtons: Array.isArray(parsed.actionButtons)
-          ? parsed.actionButtons.map((b) => ({
-              label: b.label ?? "",
-              action: "create_thread" as const,
-              channelId: b.channelId ?? "",
-              threadName: b.threadName ?? "",
-              threadMessage: b.threadMessage ?? "",
-              emoji: b.emoji ?? undefined,
-            }))
-          : [],
-      });
-      toast.success("Embed imported from clipboard");
+      text = await navigator.clipboard.readText();
     } catch {
-      toast.error(
-        "Failed to import — make sure you have valid embed JSON in your clipboard",
-      );
+      toast.error("Couldn't read your clipboard");
+      return;
     }
+
+    let raw: unknown;
+    try {
+      raw = JSON.parse(text);
+    } catch {
+      toast.error("Clipboard doesn't contain valid JSON");
+      return;
+    }
+
+    const result = embedDataSchema.safeParse(raw);
+    if (!result.success) {
+      toast.error(
+        "Clipboard isn't a valid embed — make sure you copied an embed exported from this tool",
+      );
+      return;
+    }
+
+    setEmbedData(result.data);
+    toast.success("Embed imported from clipboard");
   }
 
   const saveDisabled = activePreset
