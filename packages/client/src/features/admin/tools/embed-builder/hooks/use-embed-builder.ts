@@ -132,31 +132,35 @@ function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
 export function useEmbedBuilder() {
   const toast = useToastActions();
 
-  // State initialized from draft if available.
-  const draft = useRef(loadDraft());
+  // Load any persisted draft once on mount and seed each piece of state
+  // from it. Stored as state (not a ref) so the useState initializers
+  // below can read it without triggering the "no ref reads during render"
+  // rule. Never updated after mount — a ref further down handles the
+  // one-shot "draft restored" toast.
+  const [pendingDraft] = useState(loadDraft);
   const [data, setData] = useState<EmbedDataInternal>(() =>
-    draft.current
-      ? normalizeLoadedEmbed(draft.current.data)
+    pendingDraft
+      ? normalizeLoadedEmbed(pendingDraft.data)
       : { ...DEFAULT_EMBED },
   );
-  const [bot, setBot] = useState<EmbedBot>(() => draft.current?.bot ?? "main");
+  const [bot, setBot] = useState<EmbedBot>(() => pendingDraft?.bot ?? "main");
   const [channelId, setChannelId] = useState(
-    () => draft.current?.channelId ?? "",
+    () => pendingDraft?.channelId ?? "",
   );
   const [activePreset, setActivePreset] = useState<ActivePreset | null>(
-    () => draft.current?.activePreset ?? null,
+    () => pendingDraft?.activePreset ?? null,
   );
   const [presetName, setPresetName] = useState(
-    () => draft.current?.presetName ?? "",
+    () => pendingDraft?.presetName ?? "",
   );
   const [search, setSearch] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    () => draft.current?.selectedCategoryId ?? null,
+    () => pendingDraft?.selectedCategoryId ?? null,
   );
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
-    draft.current?.activePreset ? JSON.stringify(draft.current.data) : "",
+    pendingDraft?.activePreset ? JSON.stringify(pendingDraft.data) : "",
   );
 
   const isDirty = useMemo(() => {
@@ -171,13 +175,13 @@ export function useEmbedBuilder() {
     data.fields.length > 0
   );
 
+  const draftToastedRef = useRef(false);
   useEffect(() => {
-    if (draft.current) {
+    if (pendingDraft && !draftToastedRef.current) {
+      draftToastedRef.current = true;
       toast.info("Draft restored from your last session");
-      draft.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pendingDraft, toast]);
 
   // Auto-save draft to localStorage (debounced).
   useEffect(() => {

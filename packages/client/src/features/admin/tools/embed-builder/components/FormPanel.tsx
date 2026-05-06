@@ -84,13 +84,15 @@ export function FormPanel({
   setFocused,
 }: FormPanelProps) {
   const [tab, setTab] = useState<TabId>("content");
+  const [prevFocused, setPrevFocused] = useState(focused);
 
-  useEffect(() => {
-    if (!focused) return;
-    const next = tabForFocus(focused);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (next) setTab(next);
-  }, [focused]);
+  if (focused !== prevFocused) {
+    setPrevFocused(focused);
+    if (focused) {
+      const next = tabForFocus(focused);
+      if (next) setTab(next);
+    }
+  }
 
   function set(updates: Partial<EmbedData>) {
     onChange({ ...data, ...updates } as EmbedData);

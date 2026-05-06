@@ -111,6 +111,38 @@ export function EmbedBuilder() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [focused, setFocused] = useState<FocusTarget | null>(null);
 
+  // Click handlers for the preview's "+ add field" and "+ add button"
+  // affordances. We handle them here (not via a focus-driven useEffect)
+  // so each click is an explicit, non-batched mutation tied to the user
+  // action.
+  const handleEdit = (target: FocusTarget) => {
+    if (target === "fields:add") {
+      if (builder.data.fields.length >= 25) return;
+      const newIndex = builder.data.fields.length;
+      builder.setEmbedData((prev) => ({
+        ...prev,
+        fields: [...prev.fields, { name: "", value: "", inline: false }],
+      }));
+      setFocused(`field:${newIndex}` as FocusTarget);
+      return;
+    }
+    if (target === "buttons:add") {
+      const total =
+        (builder.data.buttons?.length ?? 0) +
+        (builder.data.actionButtons?.length ?? 0);
+      if (total >= 5) return;
+      const newIndex = builder.data.buttons?.length ?? 0;
+      builder.setEmbedData((prev) => ({
+        ...prev,
+        buttons: [...(prev.buttons ?? []), { label: "New button", url: "" }],
+      }));
+      setFocused(`button:link:${newIndex}` as FocusTarget);
+      return;
+    }
+    setFocused(target);
+  };
+
+  const setEmbedData = builder.setEmbedData;
   useEffect(() => {
     const pending = (() => {
       try {
@@ -122,7 +154,7 @@ export function EmbedBuilder() {
     if (pending) {
       try {
         const parsed = JSON.parse(pending) as Partial<EmbedData>;
-        applyPartialEmbed(builder.setEmbedData, parsed);
+        applyPartialEmbed(setEmbedData, parsed);
         toast.success("Embed inserted from Createrington Assistant");
       } catch {
         toast.error("Assistant sent an invalid embed payload");
@@ -138,44 +170,12 @@ export function EmbedBuilder() {
     const handler = (e: Event): void => {
       const detail = (e as CustomEvent<Partial<EmbedData>>).detail;
       if (!detail) return;
-      applyPartialEmbed(builder.setEmbedData, detail);
+      applyPartialEmbed(setEmbedData, detail);
       toast.success("Embed inserted from Createrington Assistant");
     };
     window.addEventListener(INSERT_EMBED_EVENT, handler);
     return () => window.removeEventListener(INSERT_EMBED_EVENT, handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Auto-create blank items when the user clicks +field/+button in the preview.
-  useEffect(() => {
-    if (!focused) return;
-    if (focused === "fields:add" && builder.data.fields.length < 25) {
-      const next = [
-        ...builder.data.fields.map((f) => ({
-          name: f.name,
-          value: f.value,
-          inline: f.inline,
-        })),
-        { name: "", value: "", inline: false },
-      ];
-      builder.setEmbedData((prev) => ({ ...prev, fields: next }));
-      setFocused(`field:${next.length - 1}` as FocusTarget);
-    }
-    if (focused === "buttons:add") {
-      const total =
-        (builder.data.buttons?.length ?? 0) +
-        (builder.data.actionButtons?.length ?? 0);
-      if (total >= 5) return;
-      builder.setEmbedData((prev) => ({
-        ...prev,
-        buttons: [...(prev.buttons ?? []), { label: "New button", url: "" }],
-      }));
-      setFocused(
-        `button:link:${builder.data.buttons?.length ?? 0}` as FocusTarget,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focused]);
+  }, [setEmbedData, toast]);
 
   const externalData: EmbedData = {
     ...builder.data,
@@ -228,7 +228,7 @@ export function EmbedBuilder() {
                 Click anything to edit
               </span>
             </div>
-            <EmbedPreview data={externalData} editable onEdit={setFocused} />
+            <EmbedPreview data={externalData} editable onEdit={handleEdit} />
             {builder.activePreset && (
               <div className="mt-2">
                 <LinkedMessages builder={builder} />
