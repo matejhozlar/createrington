@@ -1,5 +1,6 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { adminAiRouter } from "./ai";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
 import { changelogRouter } from "./changelog";
@@ -37,6 +38,7 @@ export const adminRouter = router({
 
       return result;
     }),
+  ai: adminAiRouter,
   autoMessages: autoMessagesRouter,
   announcements: announcementsRouter,
   changelog: changelogRouter,

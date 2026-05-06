@@ -1,25 +1,21 @@
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  AtSign,
-  ArrowLeft,
-  Clock,
-  Hash,
-  Plus,
-  Search,
-  Shield,
-} from "lucide-react";
+import { AtSign, Clock, Hash, Plus, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 
 function formatName(key: string): string {
   return key
@@ -28,7 +24,7 @@ function formatName(key: string): string {
     .trim();
 }
 
-type Page = "main" | "mentions" | "timestamp";
+type Tab = "mentions" | "timestamp";
 
 const TIMESTAMP_FORMATS = [
   { label: "Short Time", format: "t", example: "4:20 PM" },
@@ -51,12 +47,20 @@ function toLocalDatetimeString(date: Date): string {
 
 interface InsertMenuProps {
   onInsert: (text: string) => void;
+  triggerClassName?: string;
+  iconClassName?: string;
+  tooltipSide?: "top" | "right" | "bottom" | "left";
 }
 
-export function InsertMenu({ onInsert }: InsertMenuProps) {
+export function InsertMenu({
+  onInsert,
+  triggerClassName,
+  iconClassName,
+  tooltipSide = "top",
+}: InsertMenuProps) {
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
-  const [page, setPage] = useState<Page>("main");
+  const [tab, setTab] = useState<Tab>("mentions");
   const [mentionSearch, setMentionSearch] = useState("");
   const [timestampDate, setTimestampDate] = useState(
     toLocalDatetimeString(new Date()),
@@ -103,118 +107,110 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
     insert(`<t:${unix}:${format}>`);
   }
 
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-    if (nextOpen) {
+  function handleOpenChange(next: boolean) {
+    setOpen(next);
+    if (next) {
       setTooltipOpen(false);
-    }
-    if (!nextOpen) {
-      setPage("main");
+      setTab("mentions");
       setMentionSearch("");
       setTimestampDate(toLocalDatetimeString(new Date()));
     }
   }
 
-  const menuItemClass =
-    "flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-accent";
-
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <Tooltip open={tooltipOpen}>
         <TooltipTrigger
           asChild
           onMouseEnter={() => setTooltipOpen(true)}
           onMouseLeave={() => setTooltipOpen(false)}
         >
-          <PopoverTrigger asChild>
+          <DialogTrigger asChild>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="size-5 p-0 text-muted-foreground hover:text-foreground"
+              className={cn(
+                "size-5 p-0 text-muted-foreground hover:text-foreground",
+                triggerClassName,
+              )}
               aria-label="Insert"
             >
-              <Plus className="size-3.5" />
+              <Plus className={cn("size-3.5", iconClassName)} />
             </Button>
-          </PopoverTrigger>
+          </DialogTrigger>
         </TooltipTrigger>
-        <TooltipContent side="top">Insert</TooltipContent>
+        <TooltipContent side={tooltipSide}>Insert</TooltipContent>
       </Tooltip>
 
-      <PopoverContent align="start" className="w-56 p-1" sideOffset={4}>
-        {page === "main" && (
-          <div className="flex flex-col">
-            <button
-              type="button"
-              className={menuItemClass}
-              onClick={() => setPage("mentions")}
-            >
-              <AtSign className="size-3.5 text-muted-foreground" />
-              Mention
-            </button>
-            <button
-              type="button"
-              className={menuItemClass}
-              onClick={() => setPage("timestamp")}
-            >
-              <Clock className="size-3.5 text-muted-foreground" />
-              Timestamp
-            </button>
-          </div>
-        )}
+      <DialogContent className="max-w-md gap-0 p-0">
+        <DialogHeader className="border-b border-border px-5 py-4">
+          <DialogTitle className="text-base">Insert</DialogTitle>
+          <DialogDescription>
+            Drop a channel, role, or timestamp at the cursor.
+          </DialogDescription>
+        </DialogHeader>
 
-        {page === "mentions" && (
-          <div className="flex flex-col">
-            <button
-              type="button"
-              className="mb-1 flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => {
-                setPage("main");
-                setMentionSearch("");
-              }}
-            >
-              <ArrowLeft className="size-3" />
-              Back
-            </button>
+        <div className="flex items-center gap-1 border-b border-border px-3 pt-2">
+          <TabButton
+            active={tab === "mentions"}
+            onClick={() => {
+              setMentionSearch("");
+              setTab("mentions");
+            }}
+          >
+            <AtSign className="size-3.5" />
+            Mentions
+          </TabButton>
+          <TabButton
+            active={tab === "timestamp"}
+            onClick={() => setTab("timestamp")}
+          >
+            <Clock className="size-3.5" />
+            Timestamp
+          </TabButton>
+        </div>
 
-            <div className="flex items-center gap-1.5 border-b border-border px-2 pb-1.5">
-              <Search className="size-3 shrink-0 text-muted-foreground" />
+        {tab === "mentions" && (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+              <Search className="size-4 shrink-0 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search..."
+                placeholder="Search channels and roles…"
                 value={mentionSearch}
                 onChange={(e) => setMentionSearch(e.target.value)}
-                className="h-7 w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+                className="h-7 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 autoFocus
               />
             </div>
 
-            <div className="max-h-60 overflow-y-auto">
+            <div className="max-h-[420px] overflow-y-auto px-2 py-2">
               {!hasMentionResults && (
-                <div className="px-2 py-3 text-center text-xs text-muted-foreground">
-                  No results
+                <div className="px-2 py-8 text-center text-sm text-muted-foreground">
+                  No matches
                 </div>
               )}
 
               {filteredChannelGroups.length > 0 && (
                 <>
-                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-xs font-medium">
+                  <SectionLabel>
                     <Hash className="size-3" />
                     Channels
-                  </div>
+                  </SectionLabel>
                   {filteredChannelGroups.map((group) => (
-                    <div key={group.category}>
-                      <div className="px-2 pt-1.5 pb-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <div key={group.category} className="mb-1">
+                      <div className="px-2 pt-2 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                         {formatName(group.category)}
                       </div>
                       {group.channels.map((ch) => (
                         <button
                           key={ch.id}
                           type="button"
-                          className={menuItemClass}
+                          className={rowClass}
                           onClick={() => insert(`<#${ch.id}>`)}
                         >
-                          <Hash className="size-3 text-muted-foreground" />
+                          <Hash className="size-3.5 text-muted-foreground" />
                           {formatName(ch.name)}
                         </button>
                       ))}
@@ -224,23 +220,23 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
               )}
 
               {filteredChannelGroups.length > 0 && filteredRoles.length > 0 && (
-                <div className="my-1 border-t border-border" />
+                <div className="my-2 border-t border-border" />
               )}
 
               {filteredRoles.length > 0 && (
                 <>
-                  <div className="flex items-center gap-1.5 px-2 pt-2 pb-1 text-xs font-medium">
+                  <SectionLabel>
                     <Shield className="size-3" />
                     Roles
-                  </div>
+                  </SectionLabel>
                   {filteredRoles.map((role) => (
                     <button
                       key={role.id}
                       type="button"
-                      className={menuItemClass}
+                      className={rowClass}
                       onClick={() => insert(`<@&${role.id}>`)}
                     >
-                      <AtSign className="size-3 text-muted-foreground" />
+                      <AtSign className="size-3.5 text-muted-foreground" />
                       {formatName(role.name)}
                     </button>
                   ))}
@@ -250,43 +246,32 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
           </div>
         )}
 
-        {page === "timestamp" && (
+        {tab === "timestamp" && (
           <div className="flex flex-col">
-            <button
-              type="button"
-              className="mb-1 flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => setPage("main")}
-            >
-              <ArrowLeft className="size-3" />
-              Back
-            </button>
-
-            <div className="border-b border-border px-2 pb-2">
-              <label className="mb-1 block text-[10px] uppercase tracking-wider text-muted-foreground">
-                Date & Time
+            <div className="border-b border-border px-5 py-4">
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Date and time
               </label>
               <input
                 type="datetime-local"
                 value={timestampDate}
                 onChange={(e) => setTimestampDate(e.target.value)}
                 style={{ colorScheme: "dark" }}
-                className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-xs text-foreground outline-none focus:border-ring [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert"
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:border-ring focus:ring-[3px] focus:ring-ring/50 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:brightness-0 [&::-webkit-calendar-picker-indicator]:invert"
               />
             </div>
 
-            <div className="py-1">
-              <div className="px-2 pt-1 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                Format
-              </div>
+            <div className="max-h-[360px] overflow-y-auto p-2">
+              <SectionLabel>Format</SectionLabel>
               {TIMESTAMP_FORMATS.map(({ label, format, example }) => (
                 <button
                   key={format}
                   type="button"
-                  className="flex w-full cursor-pointer items-start flex-col gap-0.5 rounded-md px-2 py-1.5 text-left hover:bg-accent"
+                  className="flex w-full flex-col items-start gap-0.5 rounded-md px-3 py-2 text-left hover:bg-accent"
                   onClick={() => insertTimestamp(format)}
                 >
-                  <span className="text-left text-xs">{label}</span>
-                  <span className="text-left text-[10px] text-muted-foreground">
+                  <span className="text-sm font-medium">{label}</span>
+                  <span className="text-xs text-muted-foreground">
                     {example}
                   </span>
                 </button>
@@ -294,7 +279,46 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
             </div>
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const rowClass =
+  "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm hover:bg-accent";
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2 pt-1 pb-1.5 text-xs font-medium text-foreground">
+      {children}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "relative inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium transition-colors",
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+      {active && (
+        <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary" />
+      )}
+    </button>
   );
 }
