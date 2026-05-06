@@ -656,12 +656,14 @@ export const embedsRouter = router({
             .all();
           const nextSort = maxSort.length > 0 ? maxSort[0].sortOrder + 1 : 0;
 
-          await Q.discord.embed.preset.category.create({
-            name: input.name,
-            sortOrder: nextSort,
-          });
+          const created = await Q.discord.embed.preset.category.createAndReturn(
+            {
+              name: input.name,
+              sortOrder: nextSort,
+            },
+          );
 
-          return { message: "Category created" };
+          return { id: created.id, name: created.name };
         }),
 
       update: adminProcedure

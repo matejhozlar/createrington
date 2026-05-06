@@ -343,72 +343,82 @@ export function useEmbedBuilder() {
     ],
   );
 
-  const handleSave = useCallback(async () => {
-    const embedData = toExternalData(data);
+  const handleSave = useCallback(
+    async (opts?: { name?: string; categoryId?: number | null }) => {
+      const embedData = toExternalData(data);
 
-    if (activePreset) {
-      try {
-        const updates: { id: number; name?: string; data?: EmbedData } = {
-          id: activePreset.id,
-          data: embedData,
-        };
-        if (presetName.trim() && presetName.trim() !== activePreset.name) {
-          updates.name = presetName.trim();
+      if (activePreset) {
+        try {
+          const updates: { id: number; name?: string; data?: EmbedData } = {
+            id: activePreset.id,
+            data: embedData,
+          };
+          if (presetName.trim() && presetName.trim() !== activePreset.name) {
+            updates.name = presetName.trim();
+          }
+          await updatePreset.mutateAsync(updates);
+          setLastSavedSnapshot(JSON.stringify(embedData));
+          clearDraft();
+          if (updates.name) {
+            setActivePreset({
+              ...activePreset,
+              name: updates.name,
+              categoryId: activePreset.categoryId,
+            });
+          }
+          utils.admin.embeds.presets.list.invalidate();
+          toast.success(
+            `Preset "${updates.name ?? activePreset.name}" updated`,
+          );
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to update preset",
+          );
         }
-        await updatePreset.mutateAsync(updates);
-        setLastSavedSnapshot(JSON.stringify(embedData));
-        clearDraft();
-        if (updates.name) {
-          setActivePreset({
-            ...activePreset,
-            name: updates.name,
-            categoryId: activePreset.categoryId,
+      } else {
+        const name = (opts?.name ?? presetName).trim();
+        const categoryId =
+          opts?.categoryId !== undefined ? opts.categoryId : selectedCategoryId;
+        if (!name) {
+          toast.error("Enter a preset name to save");
+          return;
+        }
+        try {
+          const created = await createPreset.mutateAsync({
+            name,
+            data: embedData,
+            categoryId,
           });
+          setLastSavedSnapshot(JSON.stringify(embedData));
+          clearDraft();
+          utils.admin.embeds.presets.list.invalidate();
+          utils.admin.embeds.presets.categories.list.invalidate();
+          setActivePreset({
+            id: created.id,
+            name: created.name,
+            categoryId: created.categoryId ?? null,
+          });
+          setPresetName(created.name);
+          setSelectedCategoryId(created.categoryId ?? null);
+          toast.success(`Preset "${name}" created`);
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to save preset",
+          );
         }
-        utils.admin.embeds.presets.list.invalidate();
-        toast.success(`Preset "${updates.name ?? activePreset.name}" updated`);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to update preset",
-        );
       }
-    } else {
-      if (!presetName.trim()) {
-        toast.error("Enter a preset name to save");
-        return;
-      }
-      try {
-        const created = await createPreset.mutateAsync({
-          name: presetName.trim(),
-          data: embedData,
-          categoryId: selectedCategoryId,
-        });
-        setLastSavedSnapshot(JSON.stringify(embedData));
-        clearDraft();
-        utils.admin.embeds.presets.list.invalidate();
-        utils.admin.embeds.presets.categories.list.invalidate();
-        setActivePreset({
-          id: created.id,
-          name: created.name,
-          categoryId: created.categoryId ?? null,
-        });
-        toast.success(`Preset "${presetName.trim()}" created`);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to save preset",
-        );
-      }
-    }
-  }, [
-    data,
-    activePreset,
-    presetName,
-    selectedCategoryId,
-    updatePreset,
-    createPreset,
-    utils,
-    toast,
-  ]);
+    },
+    [
+      data,
+      activePreset,
+      presetName,
+      selectedCategoryId,
+      updatePreset,
+      createPreset,
+      utils,
+      toast,
+    ],
+  );
 
   const handleLoadPreset = useCallback(
     (preset: {
@@ -558,13 +568,15 @@ export function useEmbedBuilder() {
   const handleCreateCategory = useCallback(
     async (name: string) => {
       try {
-        await createCategoryMutation.mutateAsync({ name });
+        const created = await createCategoryMutation.mutateAsync({ name });
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Category "${name}" created`);
+        return created;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to create category",
         );
+        return null;
       }
     },
     [createCategoryMutation, utils, toast],

@@ -1,13 +1,4 @@
-import { useState, useEffect } from "react";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -16,26 +7,20 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { PanelLeft } from "lucide-react";
-import { useEmbedBuilder } from "./hooks/use-embed-builder";
-import { PresetSidebar } from "./components/PresetSidebar";
-import { EditorPanel } from "./components/EditorPanel";
+import { useToastActions } from "@/hooks/use-toast";
 import {
   INSERT_EMBED_EVENT,
   PENDING_EMBED_KEY,
 } from "@/components/admin-chat/actions";
-import { useToastActions } from "@/hooks/use-toast";
 import type { EmbedData } from "@createrington/shared/api/embed";
+import { useEmbedBuilder } from "./hooks/use-embed-builder";
+import { PresetSidebar } from "./components/PresetSidebar";
+import { Topbar } from "./components/Topbar";
+import { FormPanel } from "./components/FormPanel";
+import { EmbedPreview } from "./components/EmbedPreview";
+import { LinkedMessages } from "./components/LinkedMessages";
+import type { FocusTarget } from "./focus";
 
-/**
- * Normalize a partial embed coming from Claude (or any external source)
- * into the shape the builder stores internally. Discord's public embed
- * shape uses nested objects — `footer: {text}`, `author: {name, url,
- * icon_url}`, `image: {url}`, `thumbnail: {url}` — while the builder
- * keeps each field as a flat scalar. Without this normalization a nested
- * payload lands in React state as an object and crashes the editor with
- * "Objects are not valid as a React child" (error #31).
- */
 function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
   if (!raw || typeof raw !== "object") return {};
   const r = raw as Record<string, unknown>;
@@ -87,7 +72,6 @@ function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
   if ("authorIconUrl" in r && typeof r.authorIconUrl === "string")
     out.authorIconUrl = r.authorIconUrl;
 
-  // Discord uses `image: {url}` / `thumbnail: {url}`; builder stores flat.
   const imageUrl = urlish(r.image) ?? r.imageUrl;
   if (typeof imageUrl === "string") out.imageUrl = imageUrl;
   const thumbnailUrl = urlish(r.thumbnail) ?? r.thumbnailUrl;
@@ -106,12 +90,6 @@ function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
   return out;
 }
 
-/**
- * Merge a partial embed into the current form state. Anything not specified
- * is left untouched so Claude can drop just a title+description without
- * wiping the admin's in-progress draft. Normalizes nested Discord shapes
- * first so object-shaped fields don't end up as React children.
- */
 function applyPartialEmbed(
   setEmbedData: (updater: (prev: EmbedData) => EmbedData) => void,
   partial: unknown,
@@ -129,13 +107,10 @@ function applyPartialEmbed(
 export function EmbedBuilder() {
   const builder = useEmbedBuilder();
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const toast = useToastActions();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [focused, setFocused] = useState<FocusTarget | null>(null);
 
-  // Accept embeds dispatched from the admin-chat widget: either via a
-  // pending sessionStorage entry (navigated here after clicking Apply
-  // while on another page) or via INSERT_EMBED_EVENT (clicked Apply
-  // while already here).
   useEffect(() => {
     const pending = (() => {
       try {
@@ -168,47 +143,58 @@ export function EmbedBuilder() {
     };
     window.addEventListener(INSERT_EMBED_EVENT, handler);
     return () => window.removeEventListener(INSERT_EMBED_EVENT, handler);
-    // builder.setEmbedData is a stable useCallback, toast is stable from the hook.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden shrink-0"
-          onClick={() => setSidebarOpen(true)}
-        >
-          <PanelLeft className="size-5" />
-        </Button>
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Embed Builder</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+  // Auto-create blank items when the user clicks +field/+button in the preview.
+  useEffect(() => {
+    if (!focused) return;
+    if (focused === "fields:add" && builder.data.fields.length < 25) {
+      const next = [
+        ...builder.data.fields.map((f) => ({
+          name: f.name,
+          value: f.value,
+          inline: f.inline,
+        })),
+        { name: "", value: "", inline: false },
+      ];
+      builder.setEmbedData((prev) => ({ ...prev, fields: next }));
+      setFocused(`field:${next.length - 1}` as FocusTarget);
+    }
+    if (focused === "buttons:add") {
+      const total =
+        (builder.data.buttons?.length ?? 0) +
+        (builder.data.actionButtons?.length ?? 0);
+      if (total >= 5) return;
+      builder.setEmbedData((prev) => ({
+        ...prev,
+        buttons: [...(prev.buttons ?? []), { label: "New button", url: "" }],
+      }));
+      setFocused(
+        `button:link:${builder.data.buttons?.length ?? 0}` as FocusTarget,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focused]);
 
-      {/* Sidebar + Editor layout */}
-      <div className="flex h-[calc(100svh-4rem)] overflow-hidden">
-        {/* Desktop sidebar */}
+  const externalData: EmbedData = {
+    ...builder.data,
+    fields: builder.data.fields.map((f) => ({
+      name: f.name,
+      value: f.value,
+      inline: f.inline,
+    })),
+  };
+
+  return (
+    <div className="flex h-svh min-h-0 flex-col">
+      <Topbar builder={builder} onMobileSidebar={() => setSidebarOpen(true)} />
+
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="hidden md:flex">
           <PresetSidebar builder={builder} />
         </div>
 
-        {/* Mobile sidebar (Sheet) */}
         {isMobile && (
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
             <SheetContent
@@ -224,6 +210,7 @@ export function EmbedBuilder() {
               </SheetHeader>
               <PresetSidebar
                 builder={builder}
+                forceExpanded
                 className="w-full border-r-0"
                 onNavigate={() => setSidebarOpen(false)}
               />
@@ -231,7 +218,33 @@ export function EmbedBuilder() {
           </Sheet>
         )}
 
-        <EditorPanel builder={builder} />
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background p-4 md:p-6 lg:flex-row lg:overflow-hidden lg:p-0">
+          <section className="flex flex-1 flex-col gap-3 lg:overflow-y-auto lg:p-6">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Preview
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Click anything to edit
+              </span>
+            </div>
+            <EmbedPreview data={externalData} editable onEdit={setFocused} />
+            {builder.activePreset && (
+              <div className="mt-2">
+                <LinkedMessages builder={builder} />
+              </div>
+            )}
+          </section>
+
+          <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[380px] lg:border-l lg:border-t-0">
+            <FormPanel
+              data={externalData}
+              onChange={builder.setEmbedData}
+              focused={focused}
+              setFocused={setFocused}
+            />
+          </aside>
+        </main>
       </div>
     </div>
   );
