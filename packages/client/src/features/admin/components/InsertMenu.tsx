@@ -47,9 +47,17 @@ function toLocalDatetimeString(date: Date): string {
 
 interface InsertMenuProps {
   onInsert: (text: string) => void;
+  triggerClassName?: string;
+  iconClassName?: string;
+  tooltipSide?: "top" | "right" | "bottom" | "left";
 }
 
-export function InsertMenu({ onInsert }: InsertMenuProps) {
+export function InsertMenu({
+  onInsert,
+  triggerClassName,
+  iconClassName,
+  tooltipSide = "top",
+}: InsertMenuProps) {
   const [open, setOpen] = useState(false);
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("mentions");
@@ -122,14 +130,17 @@ export function InsertMenu({ onInsert }: InsertMenuProps) {
               type="button"
               variant="ghost"
               size="sm"
-              className="size-5 p-0 text-muted-foreground hover:text-foreground"
+              className={cn(
+                "size-5 p-0 text-muted-foreground hover:text-foreground",
+                triggerClassName,
+              )}
               aria-label="Insert"
             >
-              <Plus className="size-3.5" />
+              <Plus className={cn("size-3.5", iconClassName)} />
             </Button>
           </DialogTrigger>
         </TooltipTrigger>
-        <TooltipContent side="top">Insert</TooltipContent>
+        <TooltipContent side={tooltipSide}>Insert</TooltipContent>
       </Tooltip>
 
       <DialogContent className="max-w-md gap-0 p-0">

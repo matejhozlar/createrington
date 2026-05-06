@@ -7,6 +7,23 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -23,11 +40,13 @@ import type {
   EmbedLinkButton,
 } from "@createrington/shared/api/embed";
 import {
+  AIButton,
   ColorPicker,
   Field,
   TextField,
   type InsertableInputHandle,
 } from "./form-primitives";
+import { InsertMenu } from "@/features/admin/components/InsertMenu";
 import type { FocusTarget } from "../focus";
 
 const TAB_DEFS = [
@@ -193,7 +212,7 @@ function ContentTab({ data, set, focused, setFocused }: TabProps) {
         max={2000}
         multiline
         rows={2}
-        placeholder="Plain text sent above the embed (optional)"
+        placeholder="Optional text above the embed"
         mentions
         ai
         inputRef={contentRef}
@@ -225,7 +244,7 @@ function ContentTab({ data, set, focused, setFocused }: TabProps) {
         max={4096}
         multiline
         rows={5}
-        placeholder="Markdown supported · {user} <#channel> <@&role>"
+        placeholder="Supports markdown and mentions"
         mentions
         ai
         inputRef={descRef}
@@ -332,7 +351,7 @@ function MediaTab({ data, set }: TabProps) {
         <Input
           value={data.imageUrl ?? ""}
           onChange={(e) => set({ imageUrl: e.target.value || undefined })}
-          placeholder="Paste image URL — https://..."
+          placeholder="https://..."
           className="mt-2 h-9 text-[13px]"
         />
       </Field>
@@ -370,7 +389,7 @@ function MediaTab({ data, set }: TabProps) {
         <Input
           value={data.thumbnailUrl ?? ""}
           onChange={(e) => set({ thumbnailUrl: e.target.value || undefined })}
-          placeholder="Paste thumbnail URL — https://..."
+          placeholder="https://..."
           className="mt-2 h-9 text-[13px]"
         />
       </Field>
@@ -380,6 +399,7 @@ function MediaTab({ data, set }: TabProps) {
 
 function FieldsTab({ data, set, focused, setFocused }: TabProps) {
   const fields = data.fields;
+  const sensors = useDragSensors();
 
   function update(i: number, updates: Partial<EmbedField>) {
     set({
@@ -409,6 +429,16 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
     next.splice(i + 1, 0, { ...fields[i] });
     set({ fields: next });
   }
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = Number(String(active.id).slice(2));
+    const to = Number(String(over.id).slice(2));
+    if (Number.isNaN(from) || Number.isNaN(to)) return;
+    set({ fields: arrayMove(fields, from, to) });
+  }
+
+  const ids = fields.map((_, i) => `f-${i}`);
 
   return (
     <>
@@ -442,26 +472,45 @@ function FieldsTab({ data, set, focused, setFocused }: TabProps) {
         />
       )}
 
-      <div className="space-y-2">
-        {fields.map((f, i) => (
-          <FieldRow
-            key={i}
-            field={f}
-            index={i}
-            count={fields.length}
-            focused={focused === `field:${i}`}
-            onChange={(u) => update(i, u)}
-            onRemove={() => remove(i)}
-            onMove={(d) => move(i, d)}
-            onDuplicate={() => duplicate(i)}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {fields.map((f, i) => (
+              <FieldRow
+                key={ids[i]}
+                id={ids[i]}
+                field={f}
+                index={i}
+                count={fields.length}
+                focused={focused === `field:${i}`}
+                onChange={(u) => update(i, u)}
+                onRemove={() => remove(i)}
+                onMove={(d) => move(i, d)}
+                onDuplicate={() => duplicate(i)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
     </>
   );
 }
 
+function useDragSensors() {
+  return useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+}
+
 function FieldRow({
+  id,
   field,
   index,
   count,
@@ -471,6 +520,7 @@ function FieldRow({
   onMove,
   onDuplicate,
 }: {
+  id: string;
   field: EmbedField;
   index: number;
   count: number;
@@ -481,23 +531,55 @@ function FieldRow({
   onDuplicate: () => void;
 }) {
   const nameRef = useRef<HTMLInputElement | null>(null);
+  const valueRef = useRef<HTMLTextAreaElement | null>(null);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   useEffect(() => {
     if (focused) nameRef.current?.focus();
   }, [focused]);
 
+  function insertIntoValue(text: string) {
+    const el = valueRef.current;
+    const pos = el?.selectionStart ?? field.value.length;
+    const next = field.value.slice(0, pos) + text + field.value.slice(pos);
+    onChange({ value: next });
+    requestAnimationFrame(() => {
+      if (el) {
+        const after = pos + text.length;
+        el.selectionStart = el.selectionEnd = after;
+        el.focus();
+      }
+    });
+  }
+
   return (
     <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
       className={cn(
         "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow",
         "hover:border-[var(--border-strong)] hover:shadow-sm",
-        focused && "ring-2 ring-primary/40",
+        isDragging && "z-10 shadow-lg",
       )}
     >
       <button
+        ref={setActivatorNodeRef}
         type="button"
-        title="Drag to reorder (use arrows for now)"
+        title="Drag to reorder"
         aria-label="Drag handle"
-        className="mt-1 flex size-6 shrink-0 items-center justify-center text-muted-foreground"
+        {...attributes}
+        {...listeners}
+        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing"
       >
         <GripVertical className="size-4" />
       </button>
@@ -530,9 +612,10 @@ function FieldRow({
           </label>
         </div>
         <textarea
+          ref={valueRef}
           value={field.value}
-          placeholder="Value — supports markdown & mentions"
-          rows={2}
+          placeholder="Supports markdown and mentions"
+          rows={6}
           maxLength={1024}
           onChange={(e) => onChange({ value: e.target.value })}
           className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -559,6 +642,16 @@ function FieldRow({
         <RowIconButton title="Delete" onClick={onRemove} destructive>
           <Trash2 className="size-3.5" />
         </RowIconButton>
+        <InsertMenu
+          onInsert={insertIntoValue}
+          triggerClassName="size-7 text-muted-foreground hover:bg-accent hover:text-foreground"
+          tooltipSide="left"
+        />
+        <AIButton
+          iconOnly
+          value={field.value}
+          onApply={(next) => onChange({ value: next })}
+        />
       </div>
     </div>
   );
@@ -572,6 +665,7 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
   const links = data.buttons ?? [];
   const actions = data.actionButtons ?? [];
   const total = links.length + actions.length;
+  const sensors = useDragSensors();
 
   function setLink(i: number, updates: Partial<EmbedLinkButton>) {
     set({
@@ -642,10 +736,24 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
     }
   }
 
-  const items: ButtonItem[] = [
-    ...links.map((b, i) => ({ kind: "link" as const, btn: b, idx: i })),
-    ...actions.map((b, i) => ({ kind: "action" as const, btn: b, idx: i })),
-  ];
+  function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const a = String(active.id);
+    const o = String(over.id);
+    if (a.startsWith("bl-") && o.startsWith("bl-")) {
+      const from = Number(a.slice(3));
+      const to = Number(o.slice(3));
+      set({ buttons: arrayMove(links, from, to) });
+    } else if (a.startsWith("ba-") && o.startsWith("ba-")) {
+      const from = Number(a.slice(3));
+      const to = Number(o.slice(3));
+      set({ actionButtons: arrayMove(actions, from, to) });
+    }
+  }
+
+  const linkIds = links.map((_, i) => `bl-${i}`);
+  const actionIds = actions.map((_, i) => `ba-${i}`);
 
   return (
     <>
@@ -701,34 +809,58 @@ function ButtonsTab({ data, set, focused, setFocused }: TabProps) {
         />
       )}
 
-      <div className="space-y-2">
-        {items.map((item) => {
-          const focusKey: FocusTarget =
-            item.kind === "link"
-              ? (`button:link:${item.idx}` as FocusTarget)
-              : (`button:action:${item.idx}` as FocusTarget);
-          return (
-            <ButtonRow
-              key={`${item.kind}-${item.idx}`}
-              item={item}
-              focused={focused === focusKey}
-              onChangeLink={(u) => setLink(item.idx, u)}
-              onChangeAction={(u) => setAction(item.idx, u)}
-              onRemove={() =>
-                item.kind === "link"
-                  ? removeLink(item.idx)
-                  : removeAction(item.idx)
-              }
-              onMigrate={(target) => migrate(item, target)}
-            />
-          );
-        })}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
+      >
+        <div className="space-y-2">
+          <SortableContext
+            items={linkIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {links.map((b, i) => (
+              <ButtonRow
+                key={linkIds[i]}
+                id={linkIds[i]}
+                item={{ kind: "link", btn: b, idx: i }}
+                focused={focused === `button:link:${i}`}
+                onChangeLink={(u) => setLink(i, u)}
+                onChangeAction={() => undefined}
+                onRemove={() => removeLink(i)}
+                onMigrate={(target) =>
+                  migrate({ kind: "link", btn: b, idx: i }, target)
+                }
+              />
+            ))}
+          </SortableContext>
+          <SortableContext
+            items={actionIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {actions.map((b, i) => (
+              <ButtonRow
+                key={actionIds[i]}
+                id={actionIds[i]}
+                item={{ kind: "action", btn: b, idx: i }}
+                focused={focused === `button:action:${i}`}
+                onChangeLink={() => undefined}
+                onChangeAction={(u) => setAction(i, u)}
+                onRemove={() => removeAction(i)}
+                onMigrate={(target) =>
+                  migrate({ kind: "action", btn: b, idx: i }, target)
+                }
+              />
+            ))}
+          </SortableContext>
+        </div>
+      </DndContext>
     </>
   );
 }
 
 function ButtonRow({
+  id,
   item,
   focused,
   onChangeLink,
@@ -736,6 +868,7 @@ function ButtonRow({
   onRemove,
   onMigrate,
 }: {
+  id: string;
   item: ButtonItem;
   focused: boolean;
   onChangeLink: (updates: Partial<EmbedLinkButton>) => void;
@@ -744,23 +877,40 @@ function ButtonRow({
   onMigrate: (target: "link" | "action") => void;
 }) {
   const labelRef = useRef<HTMLInputElement | null>(null);
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
   useEffect(() => {
     if (focused) labelRef.current?.focus();
   }, [focused]);
 
   return (
     <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
       className={cn(
         "flex gap-1 rounded-md border border-border bg-card p-2 transition-shadow",
         "hover:border-[var(--border-strong)] hover:shadow-sm",
-        focused && "ring-2 ring-primary/40",
+        isDragging && "z-10 shadow-lg",
       )}
     >
       <button
+        ref={setActivatorNodeRef}
         type="button"
-        title="Drag to reorder (use buttons for now)"
+        title="Drag to reorder"
         aria-label="Drag handle"
-        className="mt-1 flex size-6 shrink-0 items-center justify-center text-muted-foreground"
+        {...attributes}
+        {...listeners}
+        className="mt-1 flex size-6 shrink-0 cursor-grab items-center justify-center text-muted-foreground touch-none active:cursor-grabbing"
       >
         <GripVertical className="size-4" />
       </button>
@@ -810,20 +960,20 @@ function ButtonRow({
           <div className="space-y-1.5">
             <Input
               value={item.btn.channelId}
-              placeholder="Channel ID — paste from Discord"
+              placeholder="Channel ID"
               onChange={(e) => onChangeAction({ channelId: e.target.value })}
               className="h-8 text-[13px]"
             />
             <Input
               value={item.btn.threadName}
-              placeholder="Thread name — {username}'s ticket"
+              placeholder="{username}'s ticket"
               maxLength={100}
               onChange={(e) => onChangeAction({ threadName: e.target.value })}
               className="h-8 text-[13px]"
             />
             <textarea
               value={item.btn.threadMessage}
-              placeholder="Welcome message — supports {user}, {date}"
+              placeholder="Welcome message"
               rows={2}
               maxLength={2000}
               onChange={(e) =>

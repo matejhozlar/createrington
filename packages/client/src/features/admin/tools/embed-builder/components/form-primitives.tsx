@@ -15,6 +15,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -116,24 +121,42 @@ const AI_ACTIONS = [
 interface AIButtonProps {
   value: string;
   onApply: (next: string) => void;
+  iconOnly?: boolean;
 }
 
-export function AIButton({ value }: AIButtonProps) {
+export function AIButton({ value, iconOnly }: AIButtonProps) {
   const [open, setOpen] = useState(false);
   const toast = useToastActions();
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          title="AI assist"
-          className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          <Sparkles className="size-3" />
-          AI
-        </button>
-      </PopoverTrigger>
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="AI assist"
+                className="flex size-7 items-center justify-center rounded-md text-primary transition-colors hover:bg-primary/10"
+              >
+                <Sparkles className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="left">AI assist</TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            title="AI assist"
+            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <Sparkles className="size-3" />
+            AI
+          </button>
+        </PopoverTrigger>
+      )}
       <PopoverContent
         align="end"
         side="bottom"
