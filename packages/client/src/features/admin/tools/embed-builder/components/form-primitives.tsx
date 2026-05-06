@@ -114,9 +114,11 @@ const AI_ACTIONS = [
   { id: "rewrite", label: "Rewrite", hint: "Cleaner wording" },
   { id: "shorten", label: "Shorten", hint: "Cut filler" },
   { id: "punchier", label: "Make punchier", hint: "More energy" },
-  { id: "expand", label: "Expand", hint: "Add detail" },
-  { id: "translate-es", label: "Translate to Spanish", hint: "es-ES" },
+  { id: "grammar", label: "Fix grammar", hint: "Spelling & punctuation" },
+  { id: "translate-en", label: "Translate to English", hint: "Any language" },
 ] as const;
+
+type AIActionId = (typeof AI_ACTIONS)[number]["id"];
 
 interface AIButtonProps {
   value: string;
@@ -124,9 +126,30 @@ interface AIButtonProps {
   iconOnly?: boolean;
 }
 
-export function AIButton({ value, iconOnly }: AIButtonProps) {
+export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
   const [open, setOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<AIActionId | null>(null);
   const toast = useToastActions();
+  const assistMutation = trpc.admin.ai.assist.useMutation();
+
+  async function runAction(action: AIActionId) {
+    if (!value.trim()) return;
+    setPendingAction(action);
+    try {
+      const result = await assistMutation.mutateAsync({
+        action,
+        text: value,
+      });
+      onApply(result.text);
+      setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "AI assist failed");
+    } finally {
+      setPendingAction(null);
+    }
+  }
+
+  const isLoading = assistMutation.isPending;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -166,21 +189,23 @@ export function AIButton({ value, iconOnly }: AIButtonProps) {
         <div className="border-b border-border px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           AI assist
         </div>
-        {AI_ACTIONS.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            disabled={!value}
-            onClick={() => {
-              setOpen(false);
-              toast.info("AI assist isn't wired up yet — coming soon.");
-            }}
-            className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span className="font-medium text-foreground">{a.label}</span>
-            <span className="text-[11px] text-muted-foreground">{a.hint}</span>
-          </button>
-        ))}
+        {AI_ACTIONS.map((a) => {
+          const isThisLoading = pendingAction === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              disabled={!value || isLoading}
+              onClick={() => runAction(a.id)}
+              className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span className="font-medium text-foreground">{a.label}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {isThisLoading ? "Working…" : a.hint}
+              </span>
+            </button>
+          );
+        })}
         {!value && (
           <div className="px-2 py-1.5 text-[11px] text-muted-foreground">
             Type something first.
