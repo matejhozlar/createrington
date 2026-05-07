@@ -1,3 +1,17 @@
+## v1.16.0 (2026-05-06)
+
+### @createrington/server (1.15.0 → 1.16.0)
+- [add] Add AI text assist endpoint for the embed builder - new `admin.ai.assist` tRPC mutation lets admins run editing actions (rewrite, shorten, punchier, grammar fix, translate to English) on embed copy via the OpenAI chat completion service, with per-action system prompts and temperature tuning
+- [fix] Fix embed category create returning only a success message - the `createCategory` mutation now uses `createAndReturn` and responds with the new category's `id` and `name`, so the client can update its state without refetching
+
+### @createrington/client (0.2.17 → 0.2.18)
+- [refactor] Redesign embed builder with a new two-panel layout - replaces the previous multi-component editor (EmbedForm, EditorPanel, EditorToolbar, ButtonEditor, ColorPicker, EmbedFieldEditor) with a unified FormPanel, Topbar, and reusable form-primitives system; the preset sidebar is reworked with a cleaner category/preset hierarchy and a "Save as new" modal
+- [add] Add drag-and-drop field reordering in the embed builder via @dnd-kit, with sortable grip handles and keyboard sensor support
+- [add] Add AI assist button to text fields in the embed builder - each textarea exposes a sparkle button that calls the server AI assist endpoint to rewrite, shorten, fix grammar, make punchier, or translate the field content
+- [add] Add click-to-focus from embed preview to form fields - clicking a section in the live preview scrolls and highlights the corresponding form input
+- [refactor] Refactor InsertMenu from a Popover to a Dialog with tabbed mentions/timestamp sections, removing the multi-page navigation pattern
+- [refactor] Refactor embed builder hook to fix React rules-of-hooks violations - replace mutable ref draft reads during render with a `useState` initializer, and memoize external data conversion to avoid redundant serialization in the dirty check
+
 ## v1.15.0 (2026-05-05)
 
 ### @createrington/server (1.14.1 → 1.15.0)

@@ -132,37 +132,43 @@ function normalizeLoadedEmbed(loaded: EmbedData): EmbedDataInternal {
 export function useEmbedBuilder() {
   const toast = useToastActions();
 
-  // State initialized from draft if available.
-  const draft = useRef(loadDraft());
+  // Load any persisted draft once on mount and seed each piece of state
+  // from it. Stored as state (not a ref) so the useState initializers
+  // below can read it without triggering the "no ref reads during render"
+  // rule. Never updated after mount — a ref further down handles the
+  // one-shot "draft restored" toast.
+  const [pendingDraft] = useState(loadDraft);
   const [data, setData] = useState<EmbedDataInternal>(() =>
-    draft.current
-      ? normalizeLoadedEmbed(draft.current.data)
+    pendingDraft
+      ? normalizeLoadedEmbed(pendingDraft.data)
       : { ...DEFAULT_EMBED },
   );
-  const [bot, setBot] = useState<EmbedBot>(() => draft.current?.bot ?? "main");
+  const [bot, setBot] = useState<EmbedBot>(() => pendingDraft?.bot ?? "main");
   const [channelId, setChannelId] = useState(
-    () => draft.current?.channelId ?? "",
+    () => pendingDraft?.channelId ?? "",
   );
   const [activePreset, setActivePreset] = useState<ActivePreset | null>(
-    () => draft.current?.activePreset ?? null,
+    () => pendingDraft?.activePreset ?? null,
   );
   const [presetName, setPresetName] = useState(
-    () => draft.current?.presetName ?? "",
+    () => pendingDraft?.presetName ?? "",
   );
   const [search, setSearch] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
-    () => draft.current?.selectedCategoryId ?? null,
+    () => pendingDraft?.selectedCategoryId ?? null,
   );
 
   const debouncedSearch = useDebouncedValue(search, 300);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
-    draft.current?.activePreset ? JSON.stringify(draft.current.data) : "",
+    pendingDraft?.activePreset ? JSON.stringify(pendingDraft.data) : "",
   );
+
+  const externalData = useMemo(() => toExternalData(data), [data]);
 
   const isDirty = useMemo(() => {
     if (!activePreset) return false;
-    return JSON.stringify(toExternalData(data)) !== lastSavedSnapshot;
-  }, [data, activePreset, lastSavedSnapshot]);
+    return JSON.stringify(externalData) !== lastSavedSnapshot;
+  }, [externalData, activePreset, lastSavedSnapshot]);
 
   const hasContent = !!(
     data.content ||
@@ -171,13 +177,13 @@ export function useEmbedBuilder() {
     data.fields.length > 0
   );
 
+  const draftToastedRef = useRef(false);
   useEffect(() => {
-    if (draft.current) {
+    if (pendingDraft && !draftToastedRef.current) {
+      draftToastedRef.current = true;
       toast.info("Draft restored from your last session");
-      draft.current = null;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [pendingDraft, toast]);
 
   // Auto-save draft to localStorage (debounced).
   useEffect(() => {
@@ -343,72 +349,89 @@ export function useEmbedBuilder() {
     ],
   );
 
-  const handleSave = useCallback(async () => {
-    const embedData = toExternalData(data);
+  const handleSave = useCallback(
+    async (opts?: {
+      name?: string;
+      categoryId?: number | null;
+    }): Promise<boolean> => {
+      const embedData = toExternalData(data);
 
-    if (activePreset) {
-      try {
-        const updates: { id: number; name?: string; data?: EmbedData } = {
-          id: activePreset.id,
-          data: embedData,
-        };
-        if (presetName.trim() && presetName.trim() !== activePreset.name) {
-          updates.name = presetName.trim();
+      if (activePreset) {
+        try {
+          const updates: { id: number; name?: string; data?: EmbedData } = {
+            id: activePreset.id,
+            data: embedData,
+          };
+          if (presetName.trim() && presetName.trim() !== activePreset.name) {
+            updates.name = presetName.trim();
+          }
+          await updatePreset.mutateAsync(updates);
+          setLastSavedSnapshot(JSON.stringify(embedData));
+          clearDraft();
+          if (updates.name) {
+            setActivePreset({
+              ...activePreset,
+              name: updates.name,
+              categoryId: activePreset.categoryId,
+            });
+          }
+          utils.admin.embeds.presets.list.invalidate();
+          toast.success(
+            `Preset "${updates.name ?? activePreset.name}" updated`,
+          );
+          return true;
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to update preset",
+          );
+          return false;
         }
-        await updatePreset.mutateAsync(updates);
-        setLastSavedSnapshot(JSON.stringify(embedData));
-        clearDraft();
-        if (updates.name) {
-          setActivePreset({
-            ...activePreset,
-            name: updates.name,
-            categoryId: activePreset.categoryId,
+      } else {
+        const name = (opts?.name ?? presetName).trim();
+        const categoryId =
+          opts?.categoryId !== undefined ? opts.categoryId : selectedCategoryId;
+        if (!name) {
+          toast.error("Enter a preset name to save");
+          return false;
+        }
+        try {
+          const created = await createPreset.mutateAsync({
+            name,
+            data: embedData,
+            categoryId,
           });
+          setLastSavedSnapshot(JSON.stringify(embedData));
+          clearDraft();
+          utils.admin.embeds.presets.list.invalidate();
+          utils.admin.embeds.presets.categories.list.invalidate();
+          setActivePreset({
+            id: created.id,
+            name: created.name,
+            categoryId: created.categoryId ?? null,
+          });
+          setPresetName(created.name);
+          setSelectedCategoryId(created.categoryId ?? null);
+          toast.success(`Preset "${name}" created`);
+          return true;
+        } catch (err) {
+          toast.error(
+            err instanceof Error ? err.message : "Failed to save preset",
+          );
+          return false;
         }
-        utils.admin.embeds.presets.list.invalidate();
-        toast.success(`Preset "${updates.name ?? activePreset.name}" updated`);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to update preset",
-        );
       }
-    } else {
-      if (!presetName.trim()) {
-        toast.error("Enter a preset name to save");
-        return;
-      }
-      try {
-        const created = await createPreset.mutateAsync({
-          name: presetName.trim(),
-          data: embedData,
-          categoryId: selectedCategoryId,
-        });
-        setLastSavedSnapshot(JSON.stringify(embedData));
-        clearDraft();
-        utils.admin.embeds.presets.list.invalidate();
-        utils.admin.embeds.presets.categories.list.invalidate();
-        setActivePreset({
-          id: created.id,
-          name: created.name,
-          categoryId: created.categoryId ?? null,
-        });
-        toast.success(`Preset "${presetName.trim()}" created`);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to save preset",
-        );
-      }
-    }
-  }, [
-    data,
-    activePreset,
-    presetName,
-    selectedCategoryId,
-    updatePreset,
-    createPreset,
-    utils,
-    toast,
-  ]);
+    },
+    [
+      data,
+      activePreset,
+      presetName,
+      selectedCategoryId,
+      updatePreset,
+      createPreset,
+      utils,
+      toast,
+    ],
+  );
 
   const handleLoadPreset = useCallback(
     (preset: {
@@ -558,13 +581,15 @@ export function useEmbedBuilder() {
   const handleCreateCategory = useCallback(
     async (name: string) => {
       try {
-        await createCategoryMutation.mutateAsync({ name });
+        const created = await createCategoryMutation.mutateAsync({ name });
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Category "${name}" created`);
+        return created;
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Failed to create category",
         );
+        return null;
       }
     },
     [createCategoryMutation, utils, toast],
@@ -624,6 +649,7 @@ export function useEmbedBuilder() {
   return {
     // State
     data,
+    externalData,
     setEmbedData,
     bot,
     setBot,

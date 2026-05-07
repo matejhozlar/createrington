@@ -1,4 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +39,11 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
   } = builder;
 
   const links = linksQuery.data?.links ?? [];
+
+  const [unlinkTarget, setUnlinkTarget] = useState<{
+    id: number;
+    channelName: string | null;
+  } | null>(null);
 
   if (links.length === 0) return null;
 
@@ -81,7 +97,12 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
                       variant="ghost"
                       size="sm"
                       className="size-6 cursor-pointer p-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleUnlink(link.id)}
+                      onClick={() =>
+                        setUnlinkTarget({
+                          id: link.id,
+                          channelName: channelName ?? null,
+                        })
+                      }
                     >
                       <Unlink className="size-3" />
                     </Button>
@@ -95,6 +116,45 @@ export function LinkedMessages({ builder }: LinkedMessagesProps) {
           );
         })}
       </div>
+
+      <AlertDialog
+        open={!!unlinkTarget}
+        onOpenChange={(open) => {
+          if (!open) setUnlinkTarget(null);
+        }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlink this message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The message in Discord will stay where it is, but it won't be
+              updated when you save changes to this preset.
+              {unlinkTarget?.channelName ? (
+                <>
+                  {" "}
+                  Currently linked in{" "}
+                  <span className="font-medium text-foreground">
+                    #{formatChannelName(unlinkTarget.channelName)}
+                  </span>
+                  .
+                </>
+              ) : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (unlinkTarget) handleUnlink(unlinkTarget.id);
+                setUnlinkTarget(null);
+              }}
+            >
+              Unlink
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
