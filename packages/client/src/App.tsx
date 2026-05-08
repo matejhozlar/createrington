@@ -194,6 +194,10 @@ const InactivityManagement = lazyNamed(
   () => import("./features/admin/tools/inactivity/InactivityManagement"),
   "InactivityManagement",
 );
+const EconomySimulator = lazyNamed(
+  () => import("./features/admin/tools/economy-simulator/EconomySimulator"),
+  "EconomySimulator",
+);
 const EmbedBuilder = lazyNamed(
   () => import("./features/admin/tools/embed-builder/EmbedBuilder"),
   "EmbedBuilder",
@@ -480,6 +484,10 @@ function AppContent() {
                       <Route
                         path="tools/inactivity"
                         element={<InactivityManagement />}
+                      />
+                      <Route
+                        path="tools/economy-simulator"
+                        element={<EconomySimulator />}
                       />
                       <Route
                         path="tools/embed-builder"
