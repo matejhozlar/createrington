@@ -236,7 +236,9 @@ export function ResultsTable({ result, threshold }: Props) {
                         "text-right font-mono",
                         row.percentChange < 0
                           ? "text-destructive"
-                          : "text-muted-foreground",
+                          : row.percentChange > 0
+                            ? "text-emerald-500"
+                            : "text-muted-foreground",
                       )}
                     >
                       {formatPercent(row.percentChange)}

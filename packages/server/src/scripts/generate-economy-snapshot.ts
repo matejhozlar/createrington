@@ -99,7 +99,7 @@ async function main(): Promise<void> {
   console.log(`Loaded ${summaries.length} playtime summary rows`);
 
   const dailyRows = await Q.player.playtime.daily
-    .where({ playDate: { $gt: new Date(cutoff) } })
+    .where({ playDate: { $gte: new Date(cutoff) } })
     .all();
   const postCutoffByUuid = new Map<string, number>();
   for (const d of dailyRows) {

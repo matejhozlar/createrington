@@ -22,7 +22,7 @@ const SIGNIFICANT_THRESHOLD = 50_000;
 export function EconomySimulator() {
   const [params, setParams] = useState<SimulatorParams>(DEFAULT_PARAMS);
 
-  const result = useMemo(() => runSimulation(snapshot, params), [params]);
+  const result = useMemo(() => runSimulation(snapshot, params), [snapshot, params]);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
