@@ -1,3 +1,5 @@
+import { ActivityType } from "discord.js";
+
 import { container, Services } from "./container";
 import { createApp } from "@/app";
 import http from "node:http";
@@ -20,7 +22,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
-import { RotatingStatusService } from "./discord/status";
+import { buildMainBotStatuses, RotatingStatusService } from "./discord/status";
 import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
@@ -112,6 +114,19 @@ export function registerServices(): void {
     });
 
     await setupWebBotHandlers(webBot);
+
+    if (!config.envMode.isDev) {
+      webBot.user?.setPresence({
+        activities: [
+          {
+            type: ActivityType.Custom,
+            name: "custom",
+            state: "createrington.com",
+          },
+        ],
+        status: "online",
+      });
+    }
 
     return webBot;
   });
@@ -255,12 +270,22 @@ export function registerServices(): void {
   container.register(
     Services.ROTATING_STATUS_SERVICE,
     async (c) => {
-      const webBot = await c.get(Services.DISCORD_WEB_BOT);
-      const service = new RotatingStatusService(webBot);
+      const mainBot = await c.get(Services.DISCORD_MAIN_BOT);
+      const cryptoMarket = await c.get(Services.CRYPTO_MARKET_SERVICE);
+      const service = new RotatingStatusService(
+        mainBot,
+        buildMainBotStatuses({ cryptoMarket }),
+      );
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DISCORD_WEB_BOT] },
+    {
+      dependencies: [
+        Services.DISCORD_MAIN_BOT,
+        Services.CRYPTO_MARKET_SERVICE,
+        Services.DATABASE,
+      ],
+    },
   );
 
   container.register(
