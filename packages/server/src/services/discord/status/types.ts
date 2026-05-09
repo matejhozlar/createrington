@@ -1,118 +1,85 @@
+import config from "@/config";
+import { R } from "@/db";
+import { formatPlaytime } from "@/utils/format";
+import type { CryptoMarketService } from "@/services/crypto";
+
 /**
  * Status category types for organizing different kinds of statuses
  */
 export enum StatusCategory {
-  /** General information about the service */
-  INFO = "info",
-  /** System health and monitoring statuses */
-  MONITORING = "monitoring",
-  /** Database and data-related statuses */
-  DATA = "data",
-  /** Network and connectivity statuses */
-  NETWORK = "network",
-  /** Performance metrics */
-  PERFORMANCE = "performance",
+  MARKET = "market",
+  PLAYTIME = "playtime",
 }
 
 /**
  * Status configuration with optional dynamic data
  */
 export interface StatusConfig {
-  /** Status text to display */
+  /** Fallback text shown when the dynamic resolver throws or returns null */
   text: string;
-  /** Category organization */
   category: StatusCategory;
-  /** Optional function to generate dynamic status */
-  dynamic?: () => Promise<string> | string;
+  dynamic?: () => Promise<string | null> | string | null;
 }
 
 /**
- * Rotating statuses for the web bot
- * Organized by category for better maintenance
+ * Discord caps custom-status state at 128 characters. We truncate well below
+ * that to leave room for any future suffix and avoid silent server-side trims.
  */
-export const statusConfigs: StatusConfig[] = [
-  {
-    text: "🌐 createrington.com",
-    category: StatusCategory.INFO,
-  },
-  {
-    text: "⚙️ Web Services v6.0",
-    category: StatusCategory.INFO,
-  },
-  {
-    text: "📦 Modpack v0.1.9",
-    category: StatusCategory.INFO,
-  },
+export const MAX_STATUS_LENGTH = 120;
 
-  {
-    text: "📊 Dashboard: Online",
-    category: StatusCategory.MONITORING,
-  },
-  {
-    text: "📡 WebSocket: Active",
-    category: StatusCategory.MONITORING,
-  },
-  {
-    text: "🔍 System Monitor: OK",
-    category: StatusCategory.MONITORING,
-  },
-  {
-    text: "⚠️ Status: Operational",
-    category: StatusCategory.MONITORING,
-  },
-  {
-    text: "🛰️ Uptime Monitor: Active",
-    category: StatusCategory.MONITORING,
-  },
+export interface MainBotStatusDeps {
+  cryptoMarket: CryptoMarketService;
+}
 
-  {
-    text: "🔗 Database: Synced",
-    category: StatusCategory.DATA,
-  },
-  {
-    text: "📂 Logs: Indexed",
-    category: StatusCategory.DATA,
-  },
-  {
-    text: "🧬 Cache: Updated",
-    category: StatusCategory.DATA,
-  },
-  {
-    text: "🗂️ Query Pool: Ready",
-    category: StatusCategory.DATA,
-  },
+/**
+ * Live-data statuses for the main bot, rotated on a fixed interval
+ */
+export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
+  const { cryptoMarket } = deps;
 
-  {
-    text: "🌐 API Gateway: Online",
-    category: StatusCategory.NETWORK,
-  },
-  {
-    text: "🔒 TLS: Secured",
-    category: StatusCategory.NETWORK,
-  },
-  {
-    text: "📡 SocketIO: Connected",
-    category: StatusCategory.NETWORK,
-  },
-  {
-    text: "🔌 Endpoints: Available",
-    category: StatusCategory.NETWORK,
-  },
+  return [
+    {
+      text: "Markets steady",
+      category: StatusCategory.MARKET,
+      dynamic: async () => {
+        const { topGainer } = await cryptoMarket.getTopMovers();
+        if (!topGainer) return null;
+        return `Top gainer: $${topGainer.symbol} ${formatChange(topGainer.change24h)}`;
+      },
+    },
+    {
+      text: "Markets steady",
+      category: StatusCategory.MARKET,
+      dynamic: async () => {
+        const { topLoser } = await cryptoMarket.getTopMovers();
+        if (!topLoser) return null;
+        return `Top loser: $${topLoser.symbol} ${formatChange(topLoser.change24h)}`;
+      },
+    },
+    {
+      text: "No grinders today, yet",
+      category: StatusCategory.PLAYTIME,
+      dynamic: async () => {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
-  {
-    text: "⏱️ Response: <50ms",
-    category: StatusCategory.PERFORMANCE,
-  },
-  {
-    text: "📈 Performance: Optimal",
-    category: StatusCategory.PERFORMANCE,
-  },
-  {
-    text: "📉 Zero Downtime",
-    category: StatusCategory.PERFORMANCE,
-  },
-  {
-    text: "🚀 Load: Balanced",
-    category: StatusCategory.PERFORMANCE,
-  },
-];
+        const top = await R.playtimeRepo.getTopPlayersByDateRange(
+          config.servers.cogs.id,
+          startOfDay,
+          endOfDay,
+          1,
+        );
+        const winner = top[0];
+        if (!winner || winner.totalSeconds <= 0) return null;
+        return `Today's grinder: ${winner.minecraftUsername} (${formatPlaytime(winner.totalSeconds)})`;
+      },
+    },
+  ];
+}
+
+function formatChange(change: number): string {
+  const sign = change >= 0 ? "+" : "";
+  return `${sign}${change.toFixed(1)}%`;
+}
