@@ -1,3 +1,11 @@
+## v1.17.0 (2026-05-09)
+
+### @createrington/server (1.16.1 → 1.17.0)
+- [refactor] Rework discord bot presences - the rotating status service now runs on the main bot instead of the web bot, with live-data statuses (top crypto gainer/loser from the market service, today's top grinder from playtime data) replacing the previous pool of hardcoded static strings; statuses are injected via constructor for reusability and each status defines a static fallback text used when the dynamic resolver fails
+- [add] Add status length clamping at 120 characters to prevent exceeding Discord's 128-character custom-status cap, truncating with an ellipsis when a dynamic resolver returns oversized text
+- [refactor] Set web bot to a static "createrington.com" presence in production, removing it from the rotating status pool
+- [remove] Remove unused StatusCategory enum, addStatus, filterCategory, resetStatuses, and getStats methods from the rotating status service
+
 ## v1.16.1 (2026-05-09)
 
 ### @createrington/server (1.16.0 → 1.16.1)
