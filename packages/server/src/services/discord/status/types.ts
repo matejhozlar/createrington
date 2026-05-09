@@ -3,21 +3,9 @@ import { R } from "@/db";
 import { formatPlaytime } from "@/utils/format";
 import type { CryptoMarketService } from "@/services/crypto";
 
-/**
- * Status category types for organizing different kinds of statuses
- */
-export enum StatusCategory {
-  MARKET = "market",
-  PLAYTIME = "playtime",
-}
-
-/**
- * Status configuration with optional dynamic data
- */
 export interface StatusConfig {
   /** Fallback text shown when the dynamic resolver throws or returns null */
   text: string;
-  category: StatusCategory;
   dynamic?: () => Promise<string | null> | string | null;
 }
 
@@ -40,7 +28,6 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
   return [
     {
       text: "Markets steady",
-      category: StatusCategory.MARKET,
       dynamic: async () => {
         const { topGainer } = await cryptoMarket.getTopMovers();
         if (!topGainer) return null;
@@ -49,7 +36,6 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
     },
     {
       text: "Markets steady",
-      category: StatusCategory.MARKET,
       dynamic: async () => {
         const { topLoser } = await cryptoMarket.getTopMovers();
         if (!topLoser) return null;
@@ -58,7 +44,6 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
     },
     {
       text: "No grinders today, yet",
-      category: StatusCategory.PLAYTIME,
       dynamic: async () => {
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
