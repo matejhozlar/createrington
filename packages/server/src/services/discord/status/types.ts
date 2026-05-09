@@ -44,7 +44,7 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
       dynamic: async () => {
         const { topGainer } = await cryptoMarket.getTopMovers();
         if (!topGainer) return null;
-        return `Top gainer: $${topGainer.symbol} ${formatChange(topGainer.change24h)}`;
+        return `$${topGainer.symbol} ${formatChange(topGainer.change24h)}`;
       },
     },
     {
@@ -53,7 +53,7 @@ export function buildMainBotStatuses(deps: MainBotStatusDeps): StatusConfig[] {
       dynamic: async () => {
         const { topLoser } = await cryptoMarket.getTopMovers();
         if (!topLoser) return null;
-        return `Top loser: $${topLoser.symbol} ${formatChange(topLoser.change24h)}`;
+        return `$${topLoser.symbol} ${formatChange(topLoser.change24h)}`;
       },
     },
     {
