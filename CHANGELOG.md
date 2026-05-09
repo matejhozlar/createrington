@@ -1,3 +1,8 @@
+## v1.16.1 (2026-05-09)
+
+### @createrington/server (1.16.0 → 1.16.1)
+- [chore] Bump axios from v1.15.0 to v1.15.2 and add pnpm dependency overrides for postcss and ip-address to resolve audit vulnerabilities
+
 ## v1.16.0 (2026-05-06)
 
 ### @createrington/server (1.15.0 → 1.16.0)

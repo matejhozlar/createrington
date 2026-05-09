@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.16.0",
+  "version": "1.16.1",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -84,7 +84,7 @@
     "@createrington/logger": "^0.1.2",
     "@createrington/shared": "workspace:*",
     "@trpc/server": "^11.1.0",
-    "axios": "^1.15.0",
+    "axios": "^1.15.2",
     "canvas": "^3.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
