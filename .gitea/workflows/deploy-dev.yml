@@ -30,17 +30,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Login to Infisical
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(pnpm exec infisical login \
+            --method=universal-auth \
+            --client-id="$INFISICAL_CLIENT_ID" \
+            --client-secret="$INFISICAL_CLIENT_SECRET" \
+            --plain --silent)
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
       - name: Generate types, command docs, and deploy commands
         run: |
-          set -a
-          source /opt/createrington-dev/.env
-          set +a
-          export DB_HOST=infra-postgres
-          export DB_PORT=5432
-          pnpm generate:ci
-          pnpm generate-command-docs:json
-          pnpm generate-api-docs
-          pnpm deploy-commands
+          pnpm exec infisical run --env=staging --command "pnpm generate:ci && pnpm generate-command-docs:json && pnpm generate-api-docs && pnpm deploy-commands"
 
       - name: Check for mod API changes
         id: spec-check
@@ -123,29 +127,24 @@ jobs:
       - name: Migrate database
         if: ${{ github.event.inputs.reset_db != 'true' }}
         run: |
-          export DB_HOST=infra-postgres
-          export DB_PORT=5432
-          export DB_USER=$(grep '^DB_USER=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export PGPASSWORD=$DB_PASSWORD
-          pnpm db:migrate
+          pnpm exec infisical run --env=staging --command 'PGPASSWORD="$DB_PASSWORD" pnpm db:migrate'
 
       - name: Reset database
         if: ${{ github.event.inputs.reset_db == 'true' }}
         run: |
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
-          export DB_HOST=infra-postgres
-          export DB_PORT=5432
-          export DB_USER=$(grep '^DB_USER=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington-dev/.env | cut -d'=' -f2-)
-          export PGPASSWORD=$DB_PASSWORD
+          pnpm exec infisical run --env=staging --command '
+            export PGPASSWORD="$DB_PASSWORD"
+            psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
+            psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
+            pnpm db:migrate
+            psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_DATABASE" -f db/data/test-data.sql
+          '
 
-          psql -h $DB_HOST -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
-          psql -h $DB_HOST -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
-          pnpm db:migrate
-          psql -h $DB_HOST -U "$DB_USER" -d "$DB_DATABASE" -f db/data/test-data.sql
+      - name: Sync runtime .env from Infisical
+        run: |
+          pnpm exec infisical export --env=staging --format=dotenv > /opt/createrington-dev/.env
+          chmod 600 /opt/createrington-dev/.env
 
       - name: Fix permissions and trigger restart
         run: |
