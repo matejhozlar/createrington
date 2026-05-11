@@ -112,7 +112,7 @@ export async function refresh24hAverages(): Promise<void> {
 /**
  * Determines which volatility tier a price falls into.
  *
- * Tiers are checked in ascending order — the first threshold that the price
+ * Tiers are checked in ascending order: the first threshold that the price
  * falls below determines the tier; prices above all thresholds land in MEGA.
  *
  * @private
@@ -253,7 +253,7 @@ export function tickStablecoinPrice(
 
   const eventEffects = resolveEffects(token.id);
 
-  // Flat amount model (not percentage-based) — linear growth like old system
+  // Flat amount model (not percentage-based): linear growth like old system
   let priceChange: number;
   if (activePlayerCount > 0) {
     priceChange =

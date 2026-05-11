@@ -10,7 +10,7 @@ import type { DonationType } from "@createrington/shared/db";
  * Donation Service
  *
  * Manages Stripe checkout session creation and post-payment processing.
- * Role assignment is best-effort — a missing or unconfigured supporter role
+ * Role assignment is best-effort: a missing or unconfigured supporter role
  * logs a warning but never blocks the donation from completing.
  */
 export class DonationService {
@@ -214,7 +214,7 @@ export class DonationService {
   }
 
   /**
-   * Handles checkout.session.completed — creates the donation record
+   * Handles checkout.session.completed: creates the donation record
    * and grants the supporter role if possible.
    */
   async handleSessionCompleted(
@@ -242,14 +242,14 @@ export class DonationService {
     });
 
     logger.info(
-      `Donation completed: ${session.id} — €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
+      `Donation completed: ${session.id}, €${(donation.amountCents / 100).toFixed(2)} from discord ${discordId}`,
     );
 
     await this.grantSupporterRole(discordId);
   }
 
   /**
-   * Handles customer.subscription.updated — logs cancel_at_period_end changes.
+   * Handles customer.subscription.updated: logs cancel_at_period_end changes.
    */
   async handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
@@ -262,7 +262,7 @@ export class DonationService {
   }
 
   /**
-   * Handles customer.subscription.deleted — currently a no-op but logged
+   * Handles customer.subscription.deleted: currently a no-op but logged
    * so the admin can track churn. Role removal is intentionally skipped
    * as a "thank you for your support" gesture.
    */
@@ -280,7 +280,7 @@ export class DonationService {
    */
   private async grantSupporterRole(discordId: string): Promise<void> {
     if (!DiscordRoles.SUPPORTER) {
-      logger.warn("No 'SUPPORTER' role configured — skipping role assignment");
+      logger.warn("No 'SUPPORTER' role configured, skipping role assignment");
       return;
     }
 
@@ -289,14 +289,14 @@ export class DonationService {
         config.discord.guild.id,
       );
       if (!guild) {
-        logger.warn("Guild not in cache — cannot assign supporter role");
+        logger.warn("Guild not in cache, cannot assign supporter role");
         return;
       }
 
       const member = await guild.members.fetch(discordId).catch(() => null);
       if (!member) {
         logger.warn(
-          `Member ${discordId} not in guild — cannot assign supporter role`,
+          `Member ${discordId} not in guild, cannot assign supporter role`,
         );
         return;
       }

@@ -5,7 +5,7 @@ import type { PlayerPromptResponse } from "@createrington/shared/db/player_promp
 /**
  * Response joined with the responder's player row (when linked). The
  * extra `minecraftUsername` is null when the Discord user hasn't linked
- * a Minecraft account — the response is still attributed via discord_id.
+ * a Minecraft account; the response is still attributed via discord_id.
  */
 export interface PlayerPromptResponseWithPlayer extends PlayerPromptResponse {
   minecraftUsername: string | null;
@@ -14,7 +14,7 @@ export interface PlayerPromptResponseWithPlayer extends PlayerPromptResponse {
 /**
  * Custom queries for player_prompt_response table.
  *
- * The upsert is the hot path — every modal submission runs through it
+ * The upsert is the hot path: every modal submission runs through it
  * and must honour the (prompt_id, discord_id) unique index so editing an
  * answer replaces it in-place rather than creating a second row.
  */
@@ -25,7 +25,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
 
   /**
    * Insert or update a response, keyed on (prompt_id, discord_id).
-   * minecraftUuid is resolved by the service before this call — pass
+   * minecraftUuid is resolved by the service before this call; pass
    * null when the responder hasn't linked a Minecraft account.
    */
   async upsert(data: {
@@ -67,7 +67,7 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
   ): Promise<PlayerPromptResponseWithPlayer[]> {
     // Order by whichever of submitted_at / updated_at is newer so a
     // player editing their response resurfaces them at the top of the
-    // admin review list — otherwise edits stay pinned at the original
+    // admin review list, otherwise edits stay pinned at the original
     // submission time and get buried.
     const query = `
       SELECT r.*, p.minecraft_username

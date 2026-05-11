@@ -217,7 +217,7 @@ export class PlaytimeManagerService {
           );
 
           if (service.getServerState() === ServerState.ONLINE) {
-            // Server is online — perform recovery sync, then close DB sessions
+            // Server is online: perform recovery sync, then close DB sessions
             // for players that aren't actually online
             try {
               await service.performRecoverySync();
@@ -256,11 +256,11 @@ export class PlaytimeManagerService {
               );
             }
           } else {
-            // Server is offline — close all active DB sessions
+            // Server is offline: close all active DB sessions
             const count = await playtimeRepo.endAllActiveSessions(serverId);
             if (count > 0) {
               logger.warn(
-                `Startup: Server ${serverId} offline — closed ${count} orphaned DB session(s)`,
+                `Startup: Server ${serverId} offline, closed ${count} orphaned DB session(s)`,
               );
             }
           }

@@ -12,7 +12,7 @@ vi.mock("@/config", () => ({
 }));
 
 // Module load of mod-jwt.middleware pulls in @/db for requireKnownPlayer.
-// The db boundary eagerly pings Postgres on import — mock it away so the
+// The db boundary eagerly pings Postgres on import: mock it away so the
 // test never needs a live database. vi.hoisted so the mock fn is shared
 // between the factory and the test bodies below.
 const { findMock } = vi.hoisted(() => ({ findMock: vi.fn() }));
@@ -66,7 +66,7 @@ describe("verifyModJWT", () => {
 
   it("accepts a server-level token without uuid/name claims", () => {
     // Regression guard for #619: PresenceAPI's heartbeat and Forceloads'
-    // sync issue server-level tokens that carry only {iat, exp, aud} —
+    // sync issue server-level tokens that carry only {iat, exp, aud}:
     // tightening assertModJwtPayload to require uuid/name broke both.
     const token = jwt.sign({}, TEST_SECRET, {
       algorithm: "HS256",
@@ -86,7 +86,7 @@ describe("verifyModJWT", () => {
   });
 
   it("rejects a mod-audience token whose uuid claim is the wrong type", () => {
-    // Partial shape is still a shape failure — a token with uuid set to
+    // Partial shape is still a shape failure: a token with uuid set to
     // something non-string must not be admitted just because the claim
     // exists on the payload.
     const token = jwt.sign({ uuid: 42 }, TEST_SECRET, {
@@ -205,7 +205,7 @@ describe("requireKnownPlayer", () => {
     expect(findMock).toHaveBeenCalledTimes(1);
   });
 
-  it("does not cache unknown players — second miss still hits the DB", async () => {
+  it("does not cache unknown players, second miss still hits the DB", async () => {
     findMock.mockResolvedValueOnce(null);
     findMock.mockResolvedValueOnce(null);
 

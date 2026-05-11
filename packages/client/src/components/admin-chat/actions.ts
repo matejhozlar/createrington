@@ -1,5 +1,5 @@
 /**
- * Admin-chat action envelopes — a narrow, pre-approved set of things Claude
+ * Admin-chat action envelopes: a narrow, pre-approved set of things Claude
  * can ask the admin to do from inside a chat reply. Every action renders as
  * a preview card with an explicit Apply button, so Claude never takes an
  * action unilaterally; the admin confirms.
@@ -45,7 +45,7 @@ export type AdminChatAction =
   | NavigateAction;
 
 /**
- * Server-persisted action record — matches the ChatAction Prisma row shape
+ * Server-persisted action record: matches the ChatAction Prisma row shape
  * that arrives over SSE (`action` events) and on history load (nested under
  * each `ChatMessage`). The `payload` carries the envelope that the widget
  * would previously have parsed out of a fenced code block.
@@ -78,7 +78,7 @@ export function parseActionsFromMessage(raw: string): {
   const actions: AdminChatAction[] = [];
   // Accept the documented ```action fence AND common fallbacks Claude
   // reaches for when drafting JSON (```json, bare ```). Only promote to
-  // an action if the JSON body actually matches our action shape — other
+  // an action if the JSON body actually matches our action shape; other
   // JSON blocks render as-is so Claude can still illustrate, say, a DB
   // query payload without it getting swallowed.
   const fenceRe = /```(action|json)?\s*\n([\s\S]*?)```/g;
@@ -93,9 +93,9 @@ export function parseActionsFromMessage(raw: string): {
           return "";
         }
       } catch {
-        // fall through — render the original fence so the admin can see it
+        // fall through: render the original fence so the admin can see it
       }
-      // Not an action — leave the original code block untouched.
+      // Not an action: leave the original code block untouched.
       if (wasActionFence) return "```action\n" + body + "```";
       return match;
     },

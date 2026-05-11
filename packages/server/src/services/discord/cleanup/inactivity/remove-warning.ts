@@ -18,7 +18,7 @@ export interface WarningToRemove {
 /**
  * Runs the full removal sequence for a single inactivity warning:
  *
- * 1. Marks the warning row as removed (must happen first — see below)
+ * 1. Marks the warning row as removed (must happen first, see below)
  * 2. Kicks the Discord guild member if they're still present
  * 3. Removes the player from all Minecraft server whitelists via RCON
  * 4. Deletes the player record (cascades to the warning row)
@@ -36,7 +36,7 @@ export interface WarningToRemove {
  * which would delete the warning row we're trying to update.
  *
  * Discord kick and RCON failures are logged but do not abort the rest
- * of the sequence — the DB delete always runs.
+ * of the sequence: the DB delete always runs.
  *
  * @param warning - The warning to process
  * @param reason - Reason string passed to the Discord kick
@@ -89,14 +89,14 @@ export async function removeInactiveWarning(
     // by findExpiredWarnings and the leave-notification handler doesn't
     // indefinitely suppress voluntary departures for this player.
     logger.error(
-      `Failed to delete player ${warning.minecraftUsername} — rolling back removed_at on warning ${warning.id}`,
+      `Failed to delete player ${warning.minecraftUsername}, rolling back removed_at on warning ${warning.id}`,
       error,
     );
     try {
       await Q.player.inactivity.warning.clearRemoved(warning.id);
     } catch (rollbackError) {
       logger.error(
-        `Failed to roll back removed_at on warning ${warning.id} — row is now in an inconsistent state`,
+        `Failed to roll back removed_at on warning ${warning.id}, row is now in an inconsistent state`,
         rollbackError,
       );
     }

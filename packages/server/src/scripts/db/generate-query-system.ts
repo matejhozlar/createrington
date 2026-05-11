@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
  * building hierarchical structures, and generating comprehensive TypeScript
  * types and query classes across multiple packages in a monorepo structure.
  *
- * Each run performs a clean generation — output directories are wiped and
+ * Each run performs a clean generation: output directories are wiped and
  * fully regenerated from the current database schema.
  */
 
@@ -225,7 +225,7 @@ function generateTableFiles(
 
     // Copy to actual directory, but only if the existing file is also a
     // generated namespace file (or doesn't exist). Never overwrite user-
-    // scaffolded query files — when a table is temporarily deleted, its
+    // scaffolded query files: when a table is temporarily deleted, its
     // node becomes namespace-only and would otherwise destroy the scaffold.
     const actualNamespaceFile = path.join(actualDir, "index.ts");
     if (canOverwriteWithNamespace(actualNamespaceFile)) {
@@ -247,7 +247,7 @@ function generateTableFiles(
 }
 
 /**
- * Main generation function — performs a clean generation from the current database schema
+ * Main generation function: performs a clean generation from the current database schema
  *
  * Wipes output directories (`shared/src/db/` and `server/src/generated/db/`), then
  * introspects the database and regenerates all TypeScript types and query classes.

@@ -4,20 +4,20 @@ import type { ReactNode } from "react";
  * Parses Discord-flavored markdown into React elements.
  *
  * Supported syntax (same subset Discord renders in embeds):
- *   ```lang\ncode\n```   — code block
- *   `code`               — inline code
- *   > line               — blockquote
- *   [text](url)          — link
- *   ***bold italic***    — bold + italic
- *   **bold**             — bold
- *   __underline__        — underline
- *   *italic* / _italic_  — italic
- *   ~~strikethrough~~    — strikethrough
- *   ||spoiler||          — spoiler (revealed text)
- *   # / ## / ### heading — heading (Discord supports up to h3 in embeds)
- *   - item / * item     — unordered list
- *   1. item              — ordered list
- *     - sub item         — nested list (indent 2+ spaces)
+ *   ```lang\ncode\n```   - code block
+ *   `code`               - inline code
+ *   > line               - blockquote
+ *   [text](url)          - link
+ *   ***bold italic***    - bold + italic
+ *   **bold**             - bold
+ *   __underline__        - underline
+ *   *italic* / _italic_  - italic
+ *   ~~strikethrough~~    - strikethrough
+ *   ||spoiler||          - spoiler (revealed text)
+ *   # / ## / ### heading - heading (Discord supports up to h3 in embeds)
+ *   - item / * item     - unordered list
+ *   1. item              - ordered list
+ *     - sub item         - nested list (indent 2+ spaces)
  */
 
 export interface MentionResolver {
@@ -43,7 +43,7 @@ const INLINE_RULES: Array<{
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => InlineToken;
 }> = [
-  // Order matters — more specific patterns first
+  // Order matters: more specific patterns first
   // Discord timestamps: <t:UNIX:FORMAT> or <t:UNIX>
   {
     pattern: /^<t:(\d+)(?::([tTdDfFR]))?>/,

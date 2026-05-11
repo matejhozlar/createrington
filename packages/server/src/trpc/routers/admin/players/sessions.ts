@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 
-/** Admin sessions router — paginated session history for a player. */
+/** Admin sessions router: paginated session history for a player. */
 export const sessionsRouter = router({
   list: adminProcedure
     .meta({

@@ -33,7 +33,7 @@ function cleanChannelName(name: string, categoryKey: string): string {
  * Fetches all Discord roles, channels, and categories from the live guild
  * using the already-running main bot, then updates the in-memory config.
  *
- * No server restart required — admin tools that read from config.discord.guild
+ * No server restart required: admin tools that read from config.discord.guild
  * will immediately see the new data.
  *
  * @returns Summary of what was fetched

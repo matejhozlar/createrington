@@ -45,7 +45,7 @@ function validatePattern(matchMode: string, pattern: string): void {
   }
 }
 
-/** Admin FAQ router — CRUD for FAQ entries and welcome message management. */
+/** Admin FAQ router: CRUD for FAQ entries and welcome message management. */
 export const faqRouter = router({
   list: adminProcedure
     .meta({ description: "List FAQ entries with filtering and pagination" })

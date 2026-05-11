@@ -143,7 +143,7 @@ export function getRelativePath(from: string, to: string): string {
 /**
  * Deletes a directory and all its contents, then recreates it empty
  *
- * Used for clean regeneration — ensures no stale files from previous
+ * Used for clean regeneration: ensures no stale files from previous
  * generation runs remain in the output directory.
  *
  * @param dirPath - Absolute path to the directory to clean

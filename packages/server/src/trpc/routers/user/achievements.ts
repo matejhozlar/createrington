@@ -3,7 +3,7 @@ import { router, userProcedure } from "@/trpc/trpc";
 import { getService, Services } from "@/services";
 import { trpcError } from "@/trpc/utils";
 
-/** User achievements router — progress tracking, single/bulk reward claims. */
+/** User achievements router: progress tracking, single/bulk reward claims. */
 export const achievementsRouter = router({
   getProgress: userProcedure
     .meta({

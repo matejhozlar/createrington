@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { parsePlayerId, paginationInput, buildPagination } from "@/trpc/utils";
 import { Q } from "@/db";
 
-/** Admin transactions router — paginated balance transaction history for a player. */
+/** Admin transactions router: paginated balance transaction history for a player. */
 export const transactionsRouter = router({
   list: adminProcedure
     .meta({ description: "Get paginated balance transactions for a player" })

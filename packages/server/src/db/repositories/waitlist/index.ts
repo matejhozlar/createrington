@@ -233,8 +233,8 @@ export class WaitlistRepository {
 
   /**
    * Creates an auto-accepted waitlist entry for a user who is already a guild
-   * member when they run /register — i.e. they joined via the public Discord
-   * invite rather than the waitlist flow. Marks the entry as already verified
+   * member when they run /register (i.e. they joined via the public Discord
+   * invite rather than the waitlist flow). Marks the entry as already verified
    * and linked to Discord, and posts the progress embed to the admin channel.
    *
    * Caller must have already confirmed capacity.
@@ -363,8 +363,8 @@ export class WaitlistRepository {
    * `inviteCode` is set, applying the per-status TTL that matches how the
    * invite was issued:
    *
-   * - `auto_accepted` — invite is 1 hour, so delete after submission + 1 hour
-   * - `accepted` — invite is 7 days, so delete after acceptance + 7 days
+   * - `auto_accepted`: invite is 1 hour, so delete after submission + 1 hour
+   * - `accepted`: invite is 7 days, so delete after acceptance + 7 days
    *
    * @returns The number of entries deleted
    */

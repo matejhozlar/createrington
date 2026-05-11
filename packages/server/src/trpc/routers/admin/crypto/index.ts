@@ -16,7 +16,7 @@ function serializeToken<
   };
 }
 
-/** Admin crypto router — token management, event triggers, treasury, and market stats. */
+/** Admin crypto router: token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
   availableMemecoins: adminProcedure
     .meta({
@@ -132,7 +132,7 @@ export const adminCryptoRouter = router({
   delistToken: adminProcedure
     .meta({
       description:
-        "Delist a token — auto-sells all holdings at current price and marks as delisted",
+        "Delist a token: auto-sells all holdings at current price and marks as delisted",
     })
     .input(z.object({ id: z.number().int().positive() }))
     .mutation(async ({ input, ctx }) => {

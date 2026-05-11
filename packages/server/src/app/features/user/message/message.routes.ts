@@ -7,7 +7,7 @@ const router = Router();
 
 // Multer configuration
 //
-// - memoryStorage: files land in req.file.buffer — no disk writes.  We pass
+// - memoryStorage: files land in req.file.buffer, no disk writes.  We pass
 //   the buffer straight into an AttachmentBuilder so there's nothing to clean up.
 // - limits.fileSize: 10 MB hard cap enforced by multer before the body is fully
 //   received, so oversized uploads are rejected early without buffering the
@@ -42,9 +42,9 @@ const upload = multer({
  * Content-Type: multipart/form-data
  *
  * Fields:
- * - serverId (string, required) — target Minecraft server ID
- * - content  (string, optional) — text body of the message
- * - image    (file,  optional) — image attachment (png/jpeg/gif/webp, ≤ 10 MB)
+ * - serverId (string, required): target Minecraft server ID
+ * - content  (string, optional): text body of the message
+ * - image    (file,  optional): image attachment (png/jpeg/gif/webp, ≤ 10 MB)
  *
  * At least one of `content` or `image` must be provided.
  *

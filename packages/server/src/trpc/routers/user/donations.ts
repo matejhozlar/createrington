@@ -8,7 +8,7 @@ import config from "@/config";
 const MIN_AMOUNT_CENTS = 100;
 const MAX_AMOUNT_CENTS = 100_000;
 
-/** User donations router — create Stripe checkout session and view donation history. */
+/** User donations router: create Stripe checkout session and view donation history. */
 export const userDonationsRouter = router({
   createCheckout: userProcedure
     .meta({

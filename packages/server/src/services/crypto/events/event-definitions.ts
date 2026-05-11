@@ -35,7 +35,7 @@ export interface EventDefinition {
   targetCategories?: ("memecoin" | "stable" | "blue_chip" | "seasonal")[];
   /** Probability per hourly roll (0 to 1) */
   probability: number;
-  /** Duration range in milliseconds [min, max] — null for instant events */
+  /** Duration range in milliseconds [min, max], null for instant events */
   durationMs: [number, number] | null;
   /** Effects applied to the price engine during the event */
   effects: EventEffect;
@@ -63,11 +63,11 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Market sentiment is overwhelmingly positive! Memecoin volatility increased with upward bias.",
     scope: "market",
-    probability: 0.01, // rare — positive events should be uncommon
+    probability: 0.01, // rare: positive events should be uncommon
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-4)
     effects: {
       volatilityMultiplier: 1.2,
-      directionBias: 0.003, // was 0.015 — (1.003)^120 ≈ +43% over 1hr, not 500%
+      directionBias: 0.003, // was 0.015, (1.003)^120 ≈ +43% over 1hr, not 500%
     },
     severity: "info",
   },
@@ -82,7 +82,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours
     effects: {
       volatilityMultiplier: 1.2,
-      directionBias: -0.003, // was -0.015 — symmetric with bull_run
+      directionBias: -0.003, // was -0.015, symmetric with bull_run
     },
     severity: "warning",
   },
@@ -116,7 +116,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
       // Phase 2 (second half): downward bias
       // Handled specially in the event engine
       volatilityMultiplier: 1.15,
-      directionBias: 0.005, // was 0.03 — (1.005)^120 ≈ 82% swing per phase
+      directionBias: 0.005, // was 0.03, (1.005)^120 ≈ 82% swing per phase
     },
     severity: "warning",
   },
@@ -140,7 +140,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     description:
       "Server activity is booming! Stablecoin inflation rate boosted.",
     scope: "market",
-    probability: 0.005, // rare — stablecoin should grow slowly
+    probability: 0.005, // rare: stablecoin should grow slowly
     durationMs: [1 * 60 * 60 * 1000, 2 * 60 * 60 * 1000], // 1-2 hours (was 1-3)
     effects: {
       stablecoinInflationMultiplier: 2.0, // reduced from 3.0
@@ -158,7 +158,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     probability: 0.01,
     durationMs: null, // instant
     effects: {
-      instantSupplyChange: -0.15, // was -0.3 — halved
+      instantSupplyChange: -0.15, // was -0.3, halved
     },
     severity: "warning",
   },
@@ -168,10 +168,10 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     name: "Tax Holiday",
     description: "Trading fees halved for a limited time!",
     scope: "market",
-    probability: 0.002, // very rare — fees are an important money sink
+    probability: 0.002, // very rare: fees are an important money sink
     durationMs: [30 * 60 * 1000, 1 * 60 * 60 * 1000], // 30min-1h (was 1-2h)
     effects: {
-      feeMultiplier: 0.5, // was 0 (free) — now just 50% off
+      feeMultiplier: 0.5, // was 0 (free), now just 50% off
     },
     severity: "info",
   },
@@ -186,7 +186,7 @@ export const EVENT_DEFINITIONS: Record<MarketEventType, EventDefinition> = {
     probability: 0.025, // slightly more common
     durationMs: null, // instant
     effects: {
-      instantPriceChange: -0.1, // was -0.15 — slightly milder
+      instantPriceChange: -0.1, // was -0.15, slightly milder
     },
     severity: "warning",
   },

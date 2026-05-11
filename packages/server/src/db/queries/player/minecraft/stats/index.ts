@@ -74,7 +74,7 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
     values.push(limit);
     const limitParam = `$${values.length}`;
 
-    // Build dynamic SELECT columns — one per category
+    // Build dynamic SELECT columns: one per category
     const selectCols = catParams
       .map(
         (p, i) =>

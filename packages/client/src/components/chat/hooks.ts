@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 /**
  * Returns a `now` timestamp (ms) that updates every `intervalMs`.
  * The value is captured inside setInterval (an effect), so no impure call
- * happens during render — it's just reading state.
+ * happens during render: it's just reading state.
  */
 export function useRelativeTick(intervalMs = 60_000) {
   const [now, setNow] = useState(() => Date.now());

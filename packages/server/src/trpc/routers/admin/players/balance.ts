@@ -4,7 +4,7 @@ import { playerService } from "@/services/player";
 import { balanceRepo } from "@/db";
 import { parsePlayerId, trpcError } from "@/trpc/utils";
 
-/** Admin balance router — view balance info, adjust individual or bulk balances. */
+/** Admin balance router: view balance info, adjust individual or bulk balances. */
 export const balanceRouter = router({
   get: adminProcedure
     .meta({

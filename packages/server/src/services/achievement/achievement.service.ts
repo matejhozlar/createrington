@@ -33,7 +33,7 @@ interface CryptoData {
  * - Exposes progress queries for client display
  * - Handles reward claiming and credits player balance on claim
  *
- * NOTE: Crypto achievements are treated as global — they are awarded and checked
+ * NOTE: Crypto achievements are treated as global: they are awarded and checked
  * across every server the player has playtime on
  */
 export class AchievementService {
@@ -45,7 +45,7 @@ export class AchievementService {
     );
   }
 
-  /** No-op shutdown — service has no timers or connections to clean up */
+  /** No-op shutdown: service has no timers or connections to clean up */
   async shutdown(): Promise<void> {}
 
   /**
@@ -149,7 +149,7 @@ export class AchievementService {
             description: `${group.name} ${toRoman(tierDef.tier)}`,
           });
         } else {
-          // Tiers are ordered — if this threshold isn't met, higher ones won't be either
+          // Tiers are ordered: if this threshold isn't met, higher ones won't be either
           break;
         }
       }
@@ -187,7 +187,7 @@ export class AchievementService {
     const allNew: string[] = [];
     for (const serverId of serverIds) {
       const newAchievements = await this.evaluatePlayer(playerUuid, serverId);
-      // Deduplicate — same achievement name may be awarded on multiple servers
+      // Deduplicate: same achievement name may be awarded on multiple servers
       for (const name of newAchievements) {
         if (!allNew.includes(name)) allNew.push(name);
       }
@@ -293,7 +293,7 @@ export class AchievementService {
       );
       if (survivorResult) crashSurvivorCount++;
 
-      // Bag Holder — they're holding a worthless token
+      // Bag Holder: they're holding a worthless token
       const bagResult = await this.awardCryptoEvent(
         holding.playerMinecraftUuid,
         "crypto_bag_holder",
@@ -316,7 +316,7 @@ export class AchievementService {
     const serverIds = await this.getPlayerServerIds(playerUuid);
     if (serverIds.length === 0) return false;
 
-    // Check on the first server — crypto achievements are global
+    // Check on the first server: crypto achievements are global
     const completed = await Q.player.achievement.getCompletedForPlayer(
       playerUuid,
       serverIds[0],
@@ -499,7 +499,7 @@ export class AchievementService {
   /**
    * Load crypto market data for a player in parallel (trade count, holdings, portfolio value).
    *
-   * All three queries are best-effort — any failure falls back to a safe zero/empty value
+   * All three queries are best-effort: any failure falls back to a safe zero/empty value
    * so a crypto data outage does not block the broader achievement evaluation.
    *
    * @private
@@ -567,7 +567,7 @@ export class AchievementService {
   /**
    * Resolve the current numeric value for an achievement criteria source.
    *
-   * Returns 0 for `crypto_event` criteria — those achievements are awarded
+   * Returns 0 for `crypto_event` criteria: those achievements are awarded
    * directly via `awardCryptoEvent` and never pass through threshold evaluation.
    *
    * @private

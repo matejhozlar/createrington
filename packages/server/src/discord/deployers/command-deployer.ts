@@ -57,7 +57,7 @@ function shouldDeployCommand(commandName: string): boolean {
 function collectCommandFiles(dir: string): string[] {
   if (!fs.existsSync(dir)) return [];
 
-  // Always scan .ts files — this script runs via tsx even in CI
+  // Always scan .ts files: this script runs via tsx even in CI
   const ext = ".ts";
   const files: string[] = [];
 

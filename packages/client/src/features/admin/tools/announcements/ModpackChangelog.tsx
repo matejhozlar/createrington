@@ -39,7 +39,7 @@ export function ModpackChangelog() {
     },
   });
 
-  // Only fully-filled highlights count toward sending — blank rows are
+  // Only fully-filled highlights count toward sending: blank rows are
   // admin work-in-progress and would be rejected by the server schema anyway.
   const completeHighlights = highlights.filter(
     (h) => h.title.trim().length > 0 && h.description.trim().length > 0,

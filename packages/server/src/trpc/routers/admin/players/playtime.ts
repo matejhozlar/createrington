@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
 import { parsePlayerId } from "@/trpc/utils";
 
-/** Admin playtime router — per-player playtime statistics across all servers. */
+/** Admin playtime router: per-player playtime statistics across all servers. */
 export const playtimeRouter = router({
   get: adminProcedure
     .meta({

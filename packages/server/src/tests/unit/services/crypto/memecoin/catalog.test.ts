@@ -25,7 +25,7 @@ describe("MEMECOIN_CATALOG", () => {
   });
 
   it("symbols are uppercase letters/digits and 2–10 chars long", () => {
-    // Stock-ticker style — keep this loose, but reject lowercase or bad chars
+    // Stock-ticker style: keep this loose, but reject lowercase or bad chars
     for (const m of MEMECOIN_CATALOG) {
       expect(m.symbol).toMatch(/^[A-Z0-9]{2,10}$/);
     }

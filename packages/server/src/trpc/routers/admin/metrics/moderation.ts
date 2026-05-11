@@ -3,7 +3,7 @@ import { metricsService } from "@/services/metrics";
 import { z } from "zod";
 import { dateRangeInput } from "./schemas";
 
-/** Admin moderation metrics — bans, strikes, tickets, moderator leaderboard */
+/** Admin moderation metrics: bans, strikes, tickets, moderator leaderboard */
 export const moderationMetricsRouter = router({
   getBansByPeriod: adminProcedure
     .meta({ description: "Get ban counts grouped by time period" })

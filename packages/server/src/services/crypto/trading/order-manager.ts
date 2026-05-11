@@ -68,7 +68,7 @@ export async function placeOrder(
   }
   if (token.ipoEndsAt && token.ipoEndsAt > new Date()) {
     throw new Error(
-      `${token.symbol} is in its IPO phase — limit/stop orders are not available until trading opens`,
+      `${token.symbol} is in its IPO phase: limit/stop orders are not available until trading opens`,
     );
   }
   if (amount <= 0n) {
@@ -122,11 +122,11 @@ export async function placeOrder(
     );
 
     if (amount > token.availableSupply) {
-      // Refund and throw — not enough supply
+      // Refund and throw: not enough supply
       await R.balanceRepo.add(
         { minecraftUuid: playerUuid },
         totalReserve,
-        `Crypto order: refund — insufficient supply for ${token.symbol}`,
+        `Crypto order: refund, insufficient supply for ${token.symbol}`,
         BalanceTransactionType.CRYPTO_BUY,
         { refund: true },
       );
@@ -135,7 +135,7 @@ export async function placeOrder(
       );
     }
   } else {
-    // limit_sell, stop_loss, take_profit — reserve tokens
+    // limit_sell, stop_loss, take_profit: reserve tokens
     reservedTokens = amount;
 
     const holding = await Q.crypto.holding

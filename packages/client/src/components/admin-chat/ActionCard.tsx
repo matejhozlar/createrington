@@ -35,7 +35,7 @@ function applyHighlight(action: HighlightAction): boolean {
  * Apply an insert_embed action. If the user is already on the embed
  * builder, dispatches INSERT_EMBED_EVENT so it can apply immediately.
  * Otherwise stashes the embed in sessionStorage under PENDING_EMBED_KEY
- * and navigates there — the builder picks it up on mount.
+ * and navigates there: the builder picks it up on mount.
  */
 function applyInsertEmbed(
   action: InsertEmbedAction,
@@ -54,7 +54,7 @@ function applyInsertEmbed(
   try {
     sessionStorage.setItem(PENDING_EMBED_KEY, serialized);
   } catch {
-    // Best-effort — if storage is unavailable, navigation alone still lets
+    // Best-effort: if storage is unavailable, navigation alone still lets
     // the admin reapply from chat history.
   }
   navigate("/admin/tools/embed-builder");

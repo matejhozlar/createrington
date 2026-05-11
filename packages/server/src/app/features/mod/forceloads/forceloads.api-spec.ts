@@ -1,7 +1,7 @@
 import { defineApiSpec, type ObjectFieldType } from "@/scripts/api/spec-types";
 
 // Chunk record is shared between player and party payloads. Inlining avoids a
-// cross-record reference in the spec system — the generator dedupes by name
+// cross-record reference in the spec system: the generator dedupes by name
 // so only a single ChunkData.java is emitted.
 const CHUNK_DATA: ObjectFieldType = {
   type: "object",

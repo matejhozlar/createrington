@@ -21,7 +21,7 @@ function assertModJwtPayload(value: unknown): ModJwtPayload {
   }
   const p = value as Record<string, unknown>;
   // aud is enforced by jwt.verify above; no need to re-check here.
-  // uuid/name are per-player claims — emitted by CRNet only when the caller
+  // uuid/name are per-player claims, emitted by CRNet only when the caller
   // supplies a playerUuid, so server-level tokens (heartbeats, syncs) lack
   // them legitimately. Validate the type only when the claim is present;
   // routes that need a specific player enforce presence via requireKnownPlayer.
@@ -90,7 +90,7 @@ export const verifyModJWT = (
  * mod currency request. TTL matches the mod token lifetime so stale
  * positives are bounded: a player deleted mid-window may be admitted
  * for up to TTL, but downstream controllers still touch the player row
- * and fail there — this middleware is a fail-fast gate, not the sole
+ * and fail there: this middleware is a fail-fast gate, not the sole
  * authorization check. Positives only; caching negatives would re-
  * introduce the just-registered-player rejection that killed /login.
  */
@@ -145,7 +145,7 @@ export const requireKnownPlayer: RequestHandler = asyncHandler(
  * Extracts the authenticated player identity for controllers that run behind
  * `requireKnownPlayer`. `uuid` is guaranteed by that middleware; `name` falls
  * back to the uuid if the token didn't carry a display name (CRNet omits the
- * claim when its name resolver returns null — unlikely in practice because
+ * claim when its name resolver returns null, unlikely in practice because
  * requireKnownPlayer only admits known players, but kept safe).
  *
  * Throws if `req.modAuth.uuid` is missing, which would indicate middleware

@@ -10,7 +10,7 @@ import config from "@/config";
  *
  * The allowlist is built from `config.meta.links.website` +
  * `SSO_CORS_ORIGINS`, parsed as URL origins. Matching is exact-origin (host
- * + port + scheme) — no regex, so it can't be misconfigured via a forgotten
+ * + port + scheme): no regex, so it can't be misconfigured via a forgotten
  * anchor or unescaped dot.
  */
 

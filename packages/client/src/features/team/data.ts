@@ -69,12 +69,12 @@ export const TEAM_MEMBERS: TeamMember[] = [
 
 /** Podium order: Dev&Admin, Owner, Dev&Admin, Admin, Admin, Admin */
 export const PODIUM_ORDER = [
-  TEAM_MEMBERS[1], // Agent772 — Dev & Admin
-  TEAM_MEMBERS[0], // saunhardy — Owner (center-left)
-  TEAM_MEMBERS[2], // The_BigShot — Dev & Admin
-  TEAM_MEMBERS[3], // diablothe2nd — Admin
-  TEAM_MEMBERS[4], // Tetsuoken — Admin
-  TEAM_MEMBERS[5], // Cailin05 — Admin
+  TEAM_MEMBERS[1], // Agent772: Dev & Admin
+  TEAM_MEMBERS[0], // saunhardy: Owner (center-left)
+  TEAM_MEMBERS[2], // The_BigShot: Dev & Admin
+  TEAM_MEMBERS[3], // diablothe2nd: Admin
+  TEAM_MEMBERS[4], // Tetsuoken: Admin
+  TEAM_MEMBERS[5], // Cailin05: Admin
 ];
 
 export const TIER_CONFIG = {

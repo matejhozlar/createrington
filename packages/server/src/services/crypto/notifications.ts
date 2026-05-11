@@ -458,7 +458,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
  *
  * Looks up each player's Discord ID from their Minecraft UUID, then sends
  * a DM with an embed showing the alert details. Failures are logged but
- * do not throw — a single failed DM does not block the rest.
+ * do not throw: a single failed DM does not block the rest.
  *
  * @param alerts - Array of triggered alerts to notify
  */

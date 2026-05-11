@@ -10,7 +10,7 @@
  * - Persists the generated article text and structured sidebar data back to the event record
  *
  * NOTE: Article generation is always fire-and-forget. Errors are logged but never
- * propagate — the market event is already recorded before generation is attempted.
+ * propagate: the market event is already recorded before generation is attempted.
  */
 
 import { Q } from "@/db";
@@ -20,7 +20,7 @@ import { Services } from "@/services/container";
 import { getLeaderboard } from "../analytics/leaderboard";
 import type { CryptoMarketService } from "../crypto-market.service";
 
-// Serial queue — only one article generates at a time to avoid parallel
+// Serial queue: only one article generates at a time to avoid parallel
 // OpenAI calls and redundant DB snapshots when events burst
 
 type QueuedArticle = {
@@ -97,24 +97,24 @@ interface ArticleData {
   priceHistory: ArticlePriceCandle[];
 }
 
-const SYSTEM_PROMPT = `You are a seasoned financial journalist writing for the Createrington Exchange — a fictional cryptocurrency market on a Minecraft server powered by the Create mod.
+const SYSTEM_PROMPT = `You are a seasoned financial journalist writing for the Createrington Exchange, a fictional cryptocurrency market on a Minecraft server powered by the Create mod.
 
-Your articles read like real Bloomberg or WSJ coverage, but with a fun Minecraft twist. Players trade memecoins, speculate on volatile tokens, and react to market events — all within a blocky economy of redstone, contraptions, and cobblestone fortunes.
+Your articles read like real Bloomberg or WSJ coverage, but with a fun Minecraft twist. Players trade memecoins, speculate on volatile tokens, and react to market events, all within a blocky economy of redstone, contraptions, and cobblestone fortunes.
 
 Style guide:
-- Write 4-7 paragraphs of varying length (1-4 sentences each) — avoid uniform paragraph sizes
+- Write 4-7 paragraphs of varying length (1-4 sentences each), avoid uniform paragraph sizes
 - Lead with the most impactful fact, a player's notable trade, or a surprising market statistic
-- When REAL PLAYER TRADES data is provided, use those actual player names as traders in the article — they are real exchange participants, not fictional characters. Dedicate at least one paragraph to their trading activity
+- When REAL PLAYER TRADES data is provided, use those actual player names as traders in the article: they are real exchange participants, not fictional characters. Dedicate at least one paragraph to their trading activity
 - When TOP HOLDERS data is provided, mention the largest positions and who controls them
-- Also include fictional analyst commentary with Minecraft-themed names (e.g. "RedstoneRick", "CopperCog", "PistonPete") — but keep the balance: real player data should dominate when available
+- Also include fictional analyst commentary with Minecraft-themed names (e.g. "RedstoneRick", "CopperCog", "PistonPete"), but keep the balance: real player data should dominate when available
 - Vary article structure: sometimes lead with a player's bold trade, sometimes with market stats, sometimes with historical context from recent events
 - Reference recent events for narrative continuity when previous event data is provided
-- Include specific numbers from the data provided (prices, percentages, volumes) — never invent figures
+- Include specific numbers from the data provided (prices, percentages, volumes), never invent figures
 - Reference Minecraft/Create mod context naturally (redstone circuits, mechanical crafters, server builds, andesite alloy, etc.)
 - Vary tone by severity: "info" events are optimistic/neutral, "warning" events are cautious, "critical" events are urgent
-- Do not use markdown formatting — plain text with paragraph breaks only
-- Do not include a headline or title — it is provided separately
-- Only reference tokens from the provided token list — never invent token names or symbols`;
+- Do not use markdown formatting: plain text with paragraph breaks only
+- Do not include a headline or title: it is provided separately
+- Only reference tokens from the provided token list: never invent token names or symbols`;
 
 type PlayerNameMap = Map<string, string>;
 
@@ -239,7 +239,7 @@ async function buildRecentTradesSection(
     const amount = tx.amount < 0n ? -tx.amount : tx.amount;
     const ago = relativeTimeAgo(tx.createdAt);
     lines.push(
-      `- ${name} ${tx.type} ${amount.toLocaleString()} tokens @ $${Number(tx.priceAtExecution).toFixed(4)} (total: $${Number(tx.totalCost).toFixed(2)}) — ${ago}`,
+      `- ${name} ${tx.type} ${amount.toLocaleString()} tokens @ $${Number(tx.priceAtExecution).toFixed(4)} (total: $${Number(tx.totalCost).toFixed(2)}) - ${ago}`,
     );
     trades.push({
       name,
@@ -352,7 +352,7 @@ async function buildPreviousEventsSection(
   const lines = [``, `=== RECENT EVENTS (for narrative continuity) ===`];
   for (const e of previous) {
     const ago = relativeTimeAgo(e.createdAt);
-    lines.push(`- "${e.title}" — ${ago}`);
+    lines.push(`- "${e.title}" - ${ago}`);
   }
 
   return lines.join("\n");

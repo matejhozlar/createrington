@@ -17,7 +17,7 @@ const ALLOWED_IPS = {
  * nginx, which unconditionally overwrites `X-Real-IP` with `$remote_addr`.
  * Combined with `real_ip_header CF-Connecting-IP` + the Cloudflare subnet
  * allowlist in nginx, `$remote_addr` has already been rewritten to the true
- * originating client IP before it reaches this header — so `X-Real-IP` on
+ * originating client IP before it reaches this header, so `X-Real-IP` on
  * a loopback request is safe to trust.
  *
  * We deliberately ignore `X-Forwarded-For`: nginx uses

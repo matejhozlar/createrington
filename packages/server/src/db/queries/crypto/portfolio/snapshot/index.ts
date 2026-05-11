@@ -10,7 +10,7 @@ import { CryptoPortfolioSnapshotBaseQueries } from "@/generated/db/crypto_portfo
  * - Indexed by player and recorded_at descending for efficient history queries
  *
  * NOTE: Inherits all generated CRUD operations from CryptoPortfolioSnapshotBaseQueries.
- * Add custom query methods directly to this class — this file is never overwritten by codegen.
+ * Add custom query methods directly to this class; this file is never overwritten by codegen.
  */
 export class CryptoPortfolioSnapshotQueries extends CryptoPortfolioSnapshotBaseQueries {
   constructor(db: Pool | PoolClient) {

@@ -7,7 +7,7 @@ import { waitlistRepo } from "@/db";
  * user) so removing them keeps the waitlist table clean.
  *
  * Runs daily; orphan rows may linger up to 24 hours past their invite TTL but
- * they're harmless — the Discord-side invites are already dead.
+ * they're harmless: the Discord-side invites are already dead.
  */
 export class WaitlistCleanupService {
   private intervalId?: NodeJS.Timeout;

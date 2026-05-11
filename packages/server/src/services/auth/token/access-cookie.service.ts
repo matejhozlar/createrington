@@ -9,7 +9,7 @@ import type { Request, Response } from "express";
  * cross-subdomain consumers (e.g. the sandbox panel) without forcing them to
  * implement their own token storage.
  *
- * Coexists with the existing Bearer-header pattern — both transports verify
+ * Coexists with the existing Bearer-header pattern: both transports verify
  * the same JWT, so existing first-party clients are unaffected.
  */
 class AccessCookieService {
@@ -23,7 +23,7 @@ class AccessCookieService {
     this.cookieName = config.app.auth.cookie.accessName;
     this.cookieDomain = config.app.auth.cookie.domain;
     // Cookie lifetime tracks the refresh token, not the JWT. The cookie is a
-    // transport for the JWT — the server still rejects expired JWTs inside
+    // transport for the JWT, the server still rejects expired JWTs inside
     // (which surfaces as a 401 and triggers the client refresh round-trip).
     // Matching the JWT's 15m expiry would mean the browser deletes the
     // cookie before the refresh request can carry it, locking SSO consumers
@@ -38,14 +38,14 @@ class AccessCookieService {
     return AccessCookieService.instance;
   }
 
-  /** True when COOKIE_DOMAIN is configured — the cookie is only useful to cross-subdomain consumers */
+  /** True when COOKIE_DOMAIN is configured: the cookie is only useful to cross-subdomain consumers */
   isEnabled(): boolean {
     return !!this.cookieDomain;
   }
 
   /**
    * Set the access token as an httpOnly cookie. No-op when COOKIE_DOMAIN is
-   * unset — the cookie is meaningless without a parent domain for cross-
+   * unset: the cookie is meaningless without a parent domain for cross-
    * subdomain consumers.
    *
    * Defensively clears any leftover host-only cookie of the same name before
@@ -77,7 +77,7 @@ class AccessCookieService {
    * No-op when COOKIE_DOMAIN is unset (no cookie was ever set).
    *
    * Also clears any legacy host-only variant for the same reason as in
-   * `setCookie` — true logout means both shapes go away.
+   * `setCookie`: true logout means both shapes go away.
    */
   clearCookie(res: Response): void {
     if (!this.cookieDomain) return;

@@ -1,5 +1,5 @@
 /**
- * Shared tRPC utilities — error factories, player ID parsing, and pagination helpers.
+ * Shared tRPC utilities: error factories, player ID parsing, and pagination helpers.
  */
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";

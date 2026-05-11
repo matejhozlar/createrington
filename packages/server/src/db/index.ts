@@ -39,9 +39,6 @@ try {
   process.exit(1);
 }
 
-// export const poolMonitor = new PoolMonitor(pool);
-// poolMonitor.start();
-
 /**
  * Primary database interface with transaction support
  *
@@ -75,10 +72,6 @@ export const {
 
 export { createQueries };
 
-/**
- * Export all actual query classes from the auto-generated barrel
- * This allows: import { PlayerQueries, AdminQueries } from "@/db"
- */
 export * from "./queries";
 
 export const waitlistRepo = new repositories.WaitlistRepository();

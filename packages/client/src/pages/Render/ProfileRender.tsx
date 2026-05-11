@@ -83,7 +83,7 @@ export function ProfileRender() {
       .catch(() => setFetchError("Failed to load profile data"));
   }, [hasMissingParams, secret, player]);
 
-  // Load skin image once data arrives — try starlightskins, fall back to mc-heads
+  // Load skin image once data arrives: try starlightskins, fall back to mc-heads
   useEffect(() => {
     if (!data) return;
 

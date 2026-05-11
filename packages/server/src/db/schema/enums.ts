@@ -46,7 +46,7 @@ export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [
 // Direction of an executed trade
 export const cryptoTradeTypeEnum = pgEnum("crypto_trade_type", ["buy", "sell"]);
 
-// What caused a trade to execute — market order, a pending order type, or automatic delisting
+// What caused a trade to execute: market order, a pending order type, or automatic delisting
 export const cryptoTradeTriggerEnum = pgEnum("crypto_trade_trigger", [
   "market",
   "limit",

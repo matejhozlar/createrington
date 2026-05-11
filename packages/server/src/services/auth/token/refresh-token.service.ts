@@ -12,7 +12,7 @@ import type { Request, Response } from "express";
  * - Sets and clears the httpOnly refresh token cookie on Express responses
  * - Extracts the token from incoming request cookies for rotation/logout flows
  *
- * NOTE: Tokens are always stored as SHA-256 hashes — only the raw token is
+ * NOTE: Tokens are always stored as SHA-256 hashes: only the raw token is
  * sent to the client once; subsequent lookups hash the cookie value before querying
  */
 class RefreshTokenService {

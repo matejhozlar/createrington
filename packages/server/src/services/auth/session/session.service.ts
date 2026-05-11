@@ -26,7 +26,7 @@ interface RotateResult {
  * - Revokes individual sessions on logout and all sessions on logout-all
  * - Periodically purges expired sessions from the database
  *
- * NOTE: Instantiated as a singleton — the cleanup interval starts automatically
+ * NOTE: Instantiated as a singleton: the cleanup interval starts automatically
  * on first access and runs every hour for the lifetime of the process
  */
 class SessionService {
@@ -68,7 +68,7 @@ class SessionService {
       discordUsername: params.username,
       discordAvatar: params.avatar ?? null,
       tokenHash,
-      familyId: null, // new family — DB default gen_random_uuid()
+      familyId: null, // new family: DB default gen_random_uuid()
       ipAddress: params.ip ?? null,
       userAgent: params.userAgent ?? null,
       expiresAt,
@@ -127,7 +127,7 @@ class SessionService {
       return null;
     }
 
-    // Valid — rotate: revoke old, create new in same family
+    // Valid: rotate (revoke old, create new in same family)
     await auth.session.revokeById(session.id);
 
     const newRawToken = refreshTokenService.generate();

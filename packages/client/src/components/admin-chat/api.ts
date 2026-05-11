@@ -123,7 +123,7 @@ export async function runStream(
           handlers.onSessionEnded();
         }
       } catch {
-        // Ignore malformed frame — next one will probably be fine.
+        // Ignore malformed frame: next one will probably be fine.
       }
     }
   }

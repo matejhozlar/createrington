@@ -14,7 +14,7 @@ interface MessageListProps {
 
 /**
  * Scrollable message list with auto-scroll on new content. If the admin
- * has scrolled up to read history, new messages don't yank them down —
+ * has scrolled up to read history, new messages don't yank them down;
  * instead a "jump to latest" pill appears.
  */
 export function MessageList({

@@ -259,7 +259,7 @@ export class LotteryService {
       const { participants, totalPot } = this.activeLottery;
 
       if (participants.length < 2) {
-        // Solo entrant — refund
+        // Solo entrant: refund
         const solo = participants[0];
         await R.balanceRepo.add(
           solo.minecraftUuid,

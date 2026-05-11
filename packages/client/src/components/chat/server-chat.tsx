@@ -62,7 +62,7 @@ export function ServerChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Single tick instance for the whole chat — re-renders timestamps every 60s
+  // Single tick instance for the whole chat: re-renders timestamps every 60s
   // without each MessageRow running its own independent interval
   const tick = useRelativeTick();
 
@@ -279,7 +279,7 @@ export function ServerChat() {
 
   return (
     <div className="flex h-[calc(100dvh-var(--mobile-nav-height))] flex-col bg-card/50 select-none">
-      {/* Player-list slide-over — only rendered on desktop (md+) */}
+      {/* Player-list slide-over: only rendered on desktop (md+) */}
       {!isMobile && serverId && (
         <PlayerListPanel
           open={playerListOpen}
@@ -414,7 +414,7 @@ export function ServerChat() {
           )}
         </div>
 
-        {/* Scroll-to-bottom — single consolidated button */}
+        {/* Scroll-to-bottom: single consolidated button */}
         {showScrollButton && (
           <div className="pointer-events-none absolute bottom-4 left-1/2 -translate-x-1/2">
             <button

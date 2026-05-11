@@ -158,7 +158,7 @@ function renderOptionRow(opt: CommandOption): string {
   const type = formatOptionType(opt);
   const choices = formatChoices(opt.choices);
   const desc = choices
-    ? `${opt.description} — Choices: ${choices}`
+    ? `${opt.description} - Choices: ${choices}`
     : opt.description;
   return `| \`${opt.name}\` | ${type} | ${required} | ${desc} |`;
 }
@@ -202,7 +202,7 @@ function renderSubcommands(options: CommandOption[]): string {
 
   for (const opt of options) {
     if (opt.type === 2) {
-      // Subcommand group — render its nested subcommands with group prefix
+      // Subcommand group: render its nested subcommands with group prefix
       lines.push(`#### \`${opt.name}\` (group)`);
       lines.push("");
       lines.push(opt.description);
@@ -346,7 +346,7 @@ async function main(): Promise<void> {
     for (const [category, cmds] of grouped) {
       const heading = category.charAt(0).toUpperCase() + category.slice(1);
       lines.push(
-        `- **${heading}** — ${cmds.map((c) => `[/${c.name}](#${c.name})`).join(", ")}`,
+        `- **${heading}**: ${cmds.map((c) => `[/${c.name}](#${c.name})`).join(", ")}`,
       );
     }
     lines.push("");

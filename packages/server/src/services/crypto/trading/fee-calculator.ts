@@ -32,7 +32,7 @@ export function getBaseFeeRate(category: CryptoTokenCategory): number {
  */
 export function getVolumeDiscount(lifetimeTradeCount: number): number {
   let discount = 0;
-  // Tiers are ordered ascending — each match overwrites, leaving the highest qualifying discount
+  // Tiers are ordered ascending: each match overwrites, leaving the highest qualifying discount
   for (const tier of CRYPTO_CONFIG.VOLUME_DISCOUNTS) {
     if (lifetimeTradeCount >= tier.minTrades) {
       discount = tier.discount;

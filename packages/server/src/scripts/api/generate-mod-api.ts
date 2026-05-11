@@ -39,7 +39,7 @@ const OUTPUT_BASE = path.join(
 const BASE_PACKAGE = "com.saunhardy.createrington.api";
 
 // ---------------------------------------------------------------------------
-// Spec registry — import all mod specs
+// Spec registry: import all mod specs
 // ---------------------------------------------------------------------------
 
 const MOD_SPECS: ApiModuleSpec[] = [

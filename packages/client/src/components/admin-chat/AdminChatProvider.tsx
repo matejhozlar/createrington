@@ -14,7 +14,7 @@ import {
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
 // Inlined here (rather than imported from ./api) so this provider stays
-// outside the lazy admin-chat chunk — the rest of admin-chat is still split.
+// outside the lazy admin-chat chunk: the rest of admin-chat is still split.
 const ENABLED_ENDPOINT = "/api/claude-chat/enabled";
 
 async function fetchEnabled(): Promise<boolean> {
@@ -50,7 +50,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
   );
   const [drawerOpen, setDrawerOpen] = useState<boolean>(false);
 
-  // Server kill-switch — only fetched for admins. Non-admins keep the
+  // Server kill-switch: only fetched for admins. Non-admins keep the
   // initial `false`, so no setState is needed in the early-return branch.
   useEffect(() => {
     if (!isAdmin) return;
@@ -69,7 +69,7 @@ export function AdminChatProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(BUBBLE_KEY, bubbleVisible ? "1" : "0");
     } catch {
-      // Non-fatal — state still works within this tab.
+      // Non-fatal: state still works within this tab.
     }
   }, [bubbleVisible]);
 

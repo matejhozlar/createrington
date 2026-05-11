@@ -242,7 +242,7 @@ export function errorHandler(
 }
 
 /**
- * 404 Not Found error handler for undefined routes — should be registered after all other routes
+ * 404 Not Found error handler for undefined routes, should be registered after all other routes
  *
  * @param req - Express request
  * @param res - Express response

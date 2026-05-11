@@ -133,7 +133,7 @@ function SubcommandRow({
 
 /**
  * Renders commands for a specific group name.
- * Used as guide step content — each group becomes its own step.
+ * Used as guide step content: each group becomes its own step.
  */
 export function DiscordCommandsGroup({ group }: { group: string }) {
   const { data, isLoading, isError } =

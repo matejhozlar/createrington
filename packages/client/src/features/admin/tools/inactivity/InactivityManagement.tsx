@@ -114,7 +114,7 @@ export function InactivityManagement() {
   const triggerResolveRemove =
     trpc.admin.inactivity.triggerResolveRemove.useMutation();
 
-  // Destructure refetch so the callbacks below have stable deps — the
+  // Destructure refetch so the callbacks below have stable deps: the
   // full query object is a new reference on every render.
   const { refetch: refetchList } = listQuery;
   const { refetch: refetchStats } = statsQuery;

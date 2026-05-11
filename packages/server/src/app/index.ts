@@ -18,7 +18,6 @@ import cors from "cors";
 import helmet from "helmet";
 import { Status } from "discord.js";
 import { container, Services, getServiceSync } from "@/services";
-// import { poolMonitor } from "@/db";
 
 /** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
@@ -30,7 +29,7 @@ export function createApp(): Express {
     app.set("trust proxy", 1);
   }
 
-  // Stripe webhook requires raw body for signature verification — mount before express.json()
+  // Stripe webhook requires raw body for signature verification, mount before express.json()
   app.use("/api/donations/webhook", express.raw({ type: "application/json" }));
 
   // Chunk sync from opac-teams can be much larger than the default 1mb cap:
@@ -81,17 +80,6 @@ export function createApp(): Express {
         : ready.length === entries.length
           ? "healthy"
           : "starting";
-
-    // Database component
-    // const dbStats = poolMonitor.getStats();
-    // const database = {
-    //   available: true,
-    //   totalCount: dbStats.totalCount,
-    //   idleCount: dbStats.idleCount,
-    //   waitingCount: dbStats.waitingCount,
-    //   maxSize: dbStats.maxSize,
-    //   utilization: dbStats.utilization,
-    // };
 
     const discordBots: Record<string, unknown> = {};
     for (const [key, serviceKey] of [
@@ -154,7 +142,6 @@ export function createApp(): Express {
         entries.map(([name, state]) => [name, state]),
       ),
       components: {
-        // database,
         discord: discordBots,
         websocket,
         playtime,
@@ -166,13 +153,13 @@ export function createApp(): Express {
 
   // Dedicated mount for the consumer-panel router. External consumer apps
   // (the admin panel) type their tRPC client against `PanelRouter` from
-  // `@createrington/api-types`, which is a standalone router type — its
+  // `@createrington/api-types`, which is a standalone router type: its
   // procedures resolve relative to its own root. Mounting panelRouter at
   // its own URL lets consumers use the natural procedure paths
   // (`presence.onlineByServer` etc) without knowing they're nested under
   // `consumers.panel.*` inside the main appRouter.
   //
-  // MUST be registered BEFORE the generic `/trpc` mount — Express matches
+  // MUST be registered BEFORE the generic `/trpc` mount: Express matches
   // handlers in order, so the more specific path has to come first to
   // avoid being swallowed by the appRouter mount.
   app.use(
@@ -194,7 +181,7 @@ export function createApp(): Express {
     }),
   );
 
-  // Mount tRPC adapter — logs internal errors at error level, client errors at warn
+  // Mount tRPC adapter: logs internal errors at error level, client errors at warn
   app.use(
     "/trpc",
     createExpressMiddleware({
@@ -227,7 +214,7 @@ export function createApp(): Express {
   const indexHtml = path.join(clientDir, "index.html");
 
   if (fs.existsSync(indexHtml)) {
-    // Hashed assets are immutable — cache forever
+    // Hashed assets are immutable, cache forever
     app.use(
       "/assets",
       express.static(path.join(clientDir, "assets"), {
@@ -236,7 +223,7 @@ export function createApp(): Express {
       }),
     );
 
-    // Everything else (favicon, etc.) — short cache
+    // Everything else (favicon, etc.): short cache
     app.use(express.static(clientDir, { maxAge: "1h" }));
 
     // SPA catch-all: serve index.html with no-cache so the browser

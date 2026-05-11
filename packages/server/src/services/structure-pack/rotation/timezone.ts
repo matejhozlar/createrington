@@ -55,7 +55,7 @@ export function dateInTimezone(
   );
 
   // The difference between our guess and what the timezone produced tells us
-  // the UTC offset — apply it to get the correct UTC instant.
+  // the UTC offset: apply it to get the correct UTC instant.
   const offsetMs = guess.getTime() - wallDate.getTime();
   return new Date(guess.getTime() + offsetMs);
 }

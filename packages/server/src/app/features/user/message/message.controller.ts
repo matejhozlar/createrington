@@ -41,7 +41,7 @@ function resolveChannelForServer(serverId: number): string | null {
  * - Delegates delivery to WEB_MESSAGE_SERVICE
  *
  * NOTE: The web bot's own messageCreate listener picks up the sent message and
- * inserts it into MessageCacheService — there is no need to update the cache
+ * inserts it into MessageCacheService, there is no need to update the cache
  * manually here. The WebSocket broadcast is a side-effect of that pipeline.
  */
 export class MessageController {

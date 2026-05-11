@@ -104,7 +104,7 @@ export class JWTService {
    *
    * Enforces the `createrington.web` audience so mod-signed tokens
    * (same HS256 secret, different `aud`) are rejected at the library
-   * layer. Also validates the payload shape — `jwt.verify` only checks
+   * layer. Also validates the payload shape: `jwt.verify` only checks
    * signature/exp, so a token with a well-formed header but garbage
    * body would otherwise slip through the `as JWTPayload` cast.
    *

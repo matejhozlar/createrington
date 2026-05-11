@@ -87,7 +87,7 @@ export const ownerAdminsRouter = router({
   previewDemote: ownerProcedure
     .meta({
       description:
-        "Preview the effects of demoting a user without applying them. Fetches Discord role state live — only runs when a demote is actually being considered.",
+        "Preview the effects of demoting a user without applying them. Fetches Discord role state live, only runs when a demote is actually being considered.",
     })
     .input(z.object({ discordId: discordIdSchema }))
     .query(async ({ input }) => {
@@ -124,7 +124,7 @@ export const ownerAdminsRouter = router({
   promote: ownerProcedure
     .meta({
       description:
-        "Promote a user to admin: writes DB entry + adds Discord ADMIN role. Does NOT op on Minecraft servers — the owner does that manually per trust.",
+        "Promote a user to admin: writes DB entry + adds Discord ADMIN role. Does NOT op on Minecraft servers, the owner does that manually per trust.",
     })
     .input(
       z.object({
@@ -209,7 +209,7 @@ export const ownerAdminsRouter = router({
       const dbEntry = await Q.admin.find({ discordId: input.discordId });
 
       // Security-critical steps first: DB + session revoke. External
-      // systems (Discord, RCON) follow and are best-effort — partial
+      // systems (Discord, RCON) follow and are best-effort: partial
       // failures are logged but don't abort.
       if (dbEntry) {
         await Q.admin.delete({ discordId: input.discordId });

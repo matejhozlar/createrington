@@ -49,7 +49,7 @@ describe("BucketManager", () => {
         "/b",
         headers({ "x-ratelimit-remaining": "1" }),
       );
-      // Same bucket-1 — second update wins
+      // Same bucket-1, second update wins
       expect(manager.getBucket("/a")?.remaining).toBe(1);
       expect(manager.getBucket("/b")?.remaining).toBe(1);
       expect(manager.getAllBuckets()).toHaveLength(1);
