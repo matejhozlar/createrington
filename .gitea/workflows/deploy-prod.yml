@@ -9,6 +9,9 @@ jobs:
   deploy:
     if: github.event.pull_request.merged == true
     runs-on: hetzner
+    env:
+      INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
+      INFISICAL_PROJECT_ID: a1cc35ab-a36c-49c3-985f-9ffaef91dfb7
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,18 +56,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Login to Infisical
+        env:
+          INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
+          INFISICAL_CLIENT_SECRET: ${{ secrets.INFISICAL_CLIENT_SECRET }}
+        run: |
+          TOKEN=$(pnpm exec infisical login \
+            --method=universal-auth \
+            --client-id="$INFISICAL_CLIENT_ID" \
+            --client-secret="$INFISICAL_CLIENT_SECRET" \
+            --plain --silent)
+          echo "INFISICAL_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
       - name: Scrape Discord entities, generate types, command docs, and deploy commands
         run: |
-          set -a
-          source /opt/createrington/.env
-          set +a
-          export DB_HOST=infra-postgres
-          export DB_PORT=5432
-          pnpm scrape-discord
-          pnpm generate:ci
-          pnpm generate-command-docs:json
-          pnpm generate-api-docs
-          pnpm deploy-commands
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=production --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
+            pnpm scrape-discord
+            pnpm generate:ci
+            pnpm generate-command-docs:json
+            pnpm generate-api-docs
+            pnpm deploy-commands
+          '
 
       - name: Build
         run: VITE_API_URL=https://createrington.com VITE_BLUEMAP_URL=https://createrington.com/bluemap pnpm build
@@ -88,13 +102,17 @@ jobs:
       - name: Migrate database
         if: steps.scope.outputs.client_only != 'true'
         run: |
-          export DB_HOST=infra-postgres
-          export DB_PORT=5432
-          export DB_USER=$(grep '^DB_USER=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_PASSWORD=$(grep '^DB_PASSWORD=' /opt/createrington/.env | cut -d'=' -f2-)
-          export DB_DATABASE=$(grep '^DB_DATABASE=' /opt/createrington/.env | cut -d'=' -f2-)
-          export PGPASSWORD=$DB_PASSWORD
-          pnpm db:migrate
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=production --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
+            export PGPASSWORD="$DB_PASSWORD"
+            pnpm db:migrate
+          '
+
+      - name: Sync runtime .env from Infisical
+        run: |
+          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=production --format=dotenv > /opt/createrington/.env
+          chmod 600 /opt/createrington/.env
 
       - name: Fix permissions and trigger restart
         run: |
