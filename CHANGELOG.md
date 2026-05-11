@@ -1,3 +1,8 @@
+## v1.17.2 (2026-05-11)
+
+### @createrington/server (1.17.1 → 1.17.2)
+- [fix] Fix Infisical environment slug in production deploy workflow - the `--env` flag was set to `production` instead of `prod`, causing secret fetching, database migration, and runtime .env export steps to target a non-existent Infisical environment
+
 ## v1.17.1 (2026-05-11)
 
 ### @createrington/server (1.17.0 → 1.17.1)
