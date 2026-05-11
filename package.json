@@ -73,6 +73,7 @@
     "generate-command-docs:md": "pnpm --filter @createrington/server util:generate-command-docs:md",
     "generate-api-docs": "pnpm --filter @createrington/server util:generate-api-docs",
     "generate-mod-api": "pnpm --filter @createrington/server util:generate-mod-api",
+    "generate-economy-snapshot": "pnpm --filter @createrington/server util:generate-economy-snapshot",
     "scrape-discord": "pnpm --filter @createrington/server util:scrape-discord",
     "sync-nicknames": "pnpm --filter @createrington/server util:sync-nicknames",
     "db:generate": "pnpm --filter @createrington/server db:generate",
