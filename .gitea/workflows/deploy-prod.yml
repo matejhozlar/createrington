@@ -70,7 +70,7 @@ jobs:
 
       - name: Scrape Discord entities, generate types, command docs, and deploy commands
         run: |
-          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=production --command '
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=prod --command '
             export DB_HOST="$DEPLOY_DB_HOST"
             export DB_PORT="$DEPLOY_DB_PORT"
             pnpm scrape-discord
@@ -102,7 +102,7 @@ jobs:
       - name: Migrate database
         if: steps.scope.outputs.client_only != 'true'
         run: |
-          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=production --command '
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=prod --command '
             export DB_HOST="$DEPLOY_DB_HOST"
             export DB_PORT="$DEPLOY_DB_PORT"
             export PGPASSWORD="$DB_PASSWORD"
@@ -111,7 +111,7 @@ jobs:
 
       - name: Sync runtime .env from Infisical
         run: |
-          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=production --format=dotenv > /opt/createrington/.env
+          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=prod --format=dotenv > /opt/createrington/.env
           chmod 600 /opt/createrington/.env
 
       - name: Fix permissions and trigger restart
