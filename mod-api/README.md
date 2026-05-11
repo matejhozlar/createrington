@@ -1,6 +1,6 @@
 # createrington-api
 
-Typed Java records and endpoint constants for the Createrington mod-facing REST API. Bundled into [CRNet](https://gitea.matejhoz.com/Createrington/crnet) via `jarJar` — mods get the types automatically through their existing CRNet dependency.
+Typed Java records and endpoint constants for the Createrington mod-facing REST API. Bundled into [CRNet](https://gitea.matejhoz.com/Createrington/crnet) via `jarJar` - mods get the types automatically through their existing CRNet dependency.
 
 ## For mod developers
 
@@ -34,13 +34,13 @@ PayRequest req = new PayRequest(targetUuid, 100.0, null);
 client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerUuid)
       .thenAccept(response -> {
           PayResponse data = response.getData();
-          // data.success(), data.newSenderBalance() — IDE autocomplete, compile-time safe
+          // data.success(), data.newSenderBalance() - IDE autocomplete, compile-time safe
       });
 ```
 
 ### Available classes
 
-**Endpoint constants** — `com.saunhardy.createrington.api.Endpoints`
+**Endpoint constants** - `com.saunhardy.createrington.api.Endpoints`
 
 | Constant | Path |
 |----------|------|
@@ -58,7 +58,7 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `PRESENCE_HEARTBEAT` | `/api/presence/heartbeat` |
 | `TRAINS_CRASH` | `/api/trains/crash` |
 
-**Currency** — `com.saunhardy.createrington.api.currency.*`
+**Currency** - `com.saunhardy.createrington.api.currency.*`
 
 | Record | Fields |
 |--------|--------|
@@ -80,7 +80,7 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `LotteryJoinRequest` | `double amount` |
 | `LotteryJoinResponse` | `boolean success`, `String message`, `double entryAmount`, `double totalPot`, `int participantCount` |
 
-**Presence** — `com.saunhardy.createrington.api.presence.*`
+**Presence** - `com.saunhardy.createrington.api.presence.*`
 
 | Record | Fields |
 |--------|--------|
@@ -93,7 +93,7 @@ client.post(Endpoints.CURRENCY_PAY, gson.toJson(req), PayResponse.class, playerU
 | `HeartbeatPlayer` | `String uuid`, `String username` |
 | `Position` | `double x`, `double y`, `double z` |
 
-**Trains** — `com.saunhardy.createrington.api.trains.*`
+**Trains** - `com.saunhardy.createrington.api.trains.*`
 
 | Record | Fields |
 |--------|--------|
@@ -116,22 +116,22 @@ packages/server/src/app/features/mod/
   trains/trains.api-spec.ts        → trains/*.java
 ```
 
-The generator script (`packages/server/src/scripts/api/generate-mod-api.ts`) reads these specs and writes Java records to `mod-api/src/` (gitignored — regenerated on every deploy).
+The generator script (`packages/server/src/scripts/api/generate-mod-api.ts`) reads these specs and writes Java records to `mod-api/src/` (gitignored - regenerated on every deploy).
 
 ### Updating the API
 
 1. Modify the endpoint in the server controller
 2. Update the corresponding `.api-spec.ts` file
 3. Bump the version in `mod-api/gradle.properties`
-4. Merge to `dev` — CI generates the Java files, builds the jar, and publishes `createrington-api` to the Maven repo
-5. Merge to `main` — deploys the new API to production. No publish step; the artifact was already published when merging to `dev`.
+4. Merge to `dev` - CI generates the Java files, builds the jar, and publishes `createrington-api` to the Maven repo
+5. Merge to `main` - deploys the new API to production. No publish step; the artifact was already published when merging to `dev`.
 
 ### Artifacts
 
 | Branch | Artifact ID | Published when |
 |--------|-------------|----------------|
 | `dev` | `createrington-api` | Spec files changed in the push to `dev` |
-| `main` | — | Deploys the already-published version to prod |
+| `main` | - | Deploys the already-published version to prod |
 
 Published to `https://github.com/matejhozlar/maven` via CI. A version is only ever published once, from the first branch (always `dev`) that bumps it.
 
@@ -146,7 +146,7 @@ CI triggers a publish when **either** of these is true between the previous bran
 - Any `*.api-spec.ts` file changed, or
 - The `version=` line in `mod-api/gradle.properties` changed
 
-This compares `${{ github.event.before }}..HEAD`, so it captures **all changes in a merged PR**, not just the last commit. A duplicate version check prevents overwriting an already-published version — if you change specs without bumping the version, CI will fail with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
+This compares `${{ github.event.before }}..HEAD`, so it captures **all changes in a merged PR**, not just the last commit. A duplicate version check prevents overwriting an already-published version - if you change specs without bumping the version, CI will fail with a clear error. A pure version bump (no spec change) is a valid trigger, useful when the generator or build config changes and you want to republish under a fresh version.
 
 ### Local development
 
@@ -165,10 +165,10 @@ This is the full flow for making API changes and shipping them to mods.
 ### Phase 1: API changes (Createrington app)
 
 1. **Create a feature branch** off `dev` in this repo
-2. **Make the server changes** — modify the controller, service, routes, etc.
-3. **Update the spec file** — edit the corresponding `*.api-spec.ts` alongside the controller
+2. **Make the server changes** - modify the controller, service, routes, etc.
+3. **Update the spec file** - edit the corresponding `*.api-spec.ts` alongside the controller
 4. **Bump the version** in `mod-api/gradle.properties` (e.g. `1.0.0` → `1.1.0`)
-5. **PR to `dev`** — on merge, CI publishes `createrington-api:1.1.0` and deploys it to `dev.createrington.com`
+5. **PR to `dev`** - on merge, CI publishes `createrington-api:1.1.0` and deploys it to `dev.createrington.com`
 
 ### Phase 2: Update CRNet (CRNet repo)
 
@@ -186,21 +186,21 @@ This is the full flow for making API changes and shipping them to mods.
        }
    }
    ```
-8. **Build and test** — `./gradlew build` to verify the new types resolve
+8. **Build and test** - `./gradlew build` to verify the new types resolve
 
 ### Phase 3: Update the mod (e.g. PresenceAPI)
 
 9. **Create a feature branch** in the mod repo
-10. **Use the new types** — replace manual Gson with the typed records, use `Endpoints` constants
+10. **Use the new types** - replace manual Gson with the typed records, use `Endpoints` constants
 11. **Test against the dev server** (`dev.createrington.com`) to verify everything works end-to-end
 
 ### Phase 4: Ship to production
 
 Once satisfied with the dev cycle:
 
-12. **Createrington app** — PR from `dev` to `main`. On merge, CI deploys the server to `createrington.com`. No new artifact is published — `createrington-api:1.1.0` was already published in Phase 1.
-13. **CRNet** — already on `createrington-api:1.1.0` from Phase 2, so nothing to change here unless you want to bump CRNet itself. Publish CRNet if needed.
-14. **Mod** — update CRNet version in the mod's `build.gradle` if it changed, build, and publish the mod.
+12. **Createrington app** - PR from `dev` to `main`. On merge, CI deploys the server to `createrington.com`. No new artifact is published - `createrington-api:1.1.0` was already published in Phase 1.
+13. **CRNet** - already on `createrington-api:1.1.0` from Phase 2, so nothing to change here unless you want to bump CRNet itself. Publish CRNet if needed.
+14. **Mod** - update CRNet version in the mod's `build.gradle` if it changed, build, and publish the mod.
 
 > Only pin prod-bound mod releases to a `createrington-api` version once that version is live on `createrington.com` (Phase 4 step 12 complete). Before that, the artifact exists in Maven but prod still serves the previous version.
 

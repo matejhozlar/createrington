@@ -3,7 +3,7 @@
 Typed tRPC router contracts exposed by the Createrington backend for
 first-party consumer projects (admin panel, bots, future tools).
 
-This package ships a single bundled `.d.ts` file — no runtime code, no
+This package ships a single bundled `.d.ts` file - no runtime code, no
 cross-package imports. All transitive types (context, metadata, auth
 payloads) are inlined.
 
@@ -21,7 +21,7 @@ Then:
 pnpm add @createrington/api-types
 ```
 
-No auth token required — the registry is anonymously readable for anyone on VPN.
+No auth token required - the registry is anonymously readable for anyone on VPN.
 
 ## Usage
 
@@ -57,17 +57,17 @@ consumer.
 
 ## Authentication
 
-Every procedure on a consumer router reuses the backend's `adminProcedure`
-— the caller must forward a valid Createrington admin JWT as
+Every procedure on a consumer router reuses the backend's `adminProcedure`;
+the caller must forward a valid Createrington admin JWT as
 `Authorization: Bearer <token>`. The caller is expected to enforce any
 additional authorization rules (e.g. per-server RBAC) before calling.
 
 ## Versioning
 
-- **Minor bumps** — new procedures, new optional fields. Safe to upgrade.
-- **Major bumps** — removed procedures, changed shapes, tightened inputs.
+- **Minor bumps** - new procedures, new optional fields. Safe to upgrade.
+- **Major bumps** - removed procedures, changed shapes, tightened inputs.
   Review carefully.
-- **Patch bumps** — non-behavioural changes.
+- **Patch bumps** - non-behavioural changes.
 
 Versions are published automatically when the main Createrington app
 deploys to production. The CHANGELOG at the repository root is the source
@@ -75,6 +75,6 @@ of truth for what changed in each version.
 
 ## License
 
-UNLICENSED — see the repository root `LICENSE`. This package is intended
+UNLICENSED - see the repository root `LICENSE`. This package is intended
 for use only by first-party Createrington projects authorised by the
 copyright holder.
