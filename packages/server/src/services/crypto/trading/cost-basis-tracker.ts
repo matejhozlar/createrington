@@ -71,10 +71,10 @@ export async function consumeCostBasis(
     remaining -= consumed;
 
     if (consumed === lot.amountRemaining) {
-      // Lot fully consumed — delete it
+      // Lot fully consumed: delete it
       await crypto.cost.basis.delete({ id: lot.id });
     } else {
-      // Partially consumed — update remaining
+      // Partially consumed: update remaining
       await crypto.cost.basis.update(
         { id: lot.id },
         { amountRemaining: lot.amountRemaining - consumed },

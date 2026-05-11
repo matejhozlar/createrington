@@ -71,7 +71,7 @@ export function WebSocketProvider({
   const connectRef = useRef<(() => void) | null>(null);
   const disconnectRef = useRef<(() => void) | null>(null);
 
-  // Event management — defined early to avoid hoisting issues.
+  // Event management: defined early to avoid hoisting issues.
   const emitToListeners = useCallback((event: string, data: unknown) => {
     const listeners = eventListenersRef.current.get(event);
     if (listeners) {

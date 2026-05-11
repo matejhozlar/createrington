@@ -52,7 +52,7 @@ export class CurrencyController {
    * Body: { toUuid: string, amount: number }
    *
    * Transfers currency from the authenticated player to `toUuid`. The sender
-   * is always the JWT subject — any `fromUuid` in the body is ignored so a
+   * is always the JWT subject, any `fromUuid` in the body is ignored so a
    * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {

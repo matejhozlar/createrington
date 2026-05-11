@@ -76,7 +76,7 @@ interface TypedEventEmitter<T> {
  * - Emits events for service readiness and cross-service wiring
  *
  * NOTE: The singleton `container` instance exported from this module is the
- * authoritative registry — all services must be registered through it before
+ * authoritative registry: all services must be registered through it before
  * `initializeAll()` is called during server startup
  */
 export class ServiceContainer extends (EventEmitter as new () => TypedEventEmitter<ContainerEvents> &

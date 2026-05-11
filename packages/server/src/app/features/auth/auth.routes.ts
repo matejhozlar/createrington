@@ -22,7 +22,7 @@ router.post(
   ...route("public", AuthController.handleDiscordCallback),
 );
 // SSO routes are only registered when SSO_CALLBACK_URL is configured.
-// Without it, the server-driven flow can't function — leaving the routes
+// Without it, the server-driven flow can't function: leaving the routes
 // unregistered surfaces "feature off" as a 404 instead of a runtime 400,
 // and keeps dev deployments quiet (no env vars set ⇒ no SSO surface).
 if (config.app.auth.sso.callbackUrl) {

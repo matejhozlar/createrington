@@ -264,7 +264,7 @@ const OwnerAdmins = lazyNamed(
   "OwnerAdmins",
 );
 
-// Admin chat widget — gated on isAdmin below so non-admins never download it.
+// Admin chat widget: gated on isAdmin below so non-admins never download it.
 const AdminChat = lazyNamed(
   () => import("./components/admin-chat"),
   "AdminChat",
@@ -281,7 +281,7 @@ function ScrollToTop() {
   return null;
 }
 
-/** Shared shell rendered for all standard routes — sidebar, inset content area, and conditional footer. */
+/** Shared shell rendered for all standard routes: sidebar, inset content area, and conditional footer. */
 function AppLayout() {
   const { loading } = useAuth();
   const location = useLocation();
@@ -307,7 +307,7 @@ function AppLayout() {
         </div>
         <div className="flex flex-1 flex-col gap-4">
           {/* Inner Suspense so lazy-loading a layout-child route only swaps
-              the content area — the sidebar and mobile top bar stay
+              the content area, the sidebar and mobile top bar stay
               mounted instead of flashing a full-screen loader. */}
           <Suspense
             fallback={
@@ -345,7 +345,7 @@ function AppContent() {
   return (
     <Suspense fallback={<LoadingScreen text="Loading..." />}>
       <Routes>
-        {/* Standalone full-screen route (no sidebar/footer) — temporary */}
+        {/* Standalone full-screen route (no sidebar/footer), temporary */}
         <Route path="/ad" element={<Advertisement />} />
 
         {/* Puppeteer render routes (no layout, screenshot targets) */}

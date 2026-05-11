@@ -3,7 +3,7 @@ import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
 
-/** Public waitlists router — check server capacity mode and register for waitlist. */
+/** Public waitlists router: check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
     .meta({
@@ -52,7 +52,7 @@ export const waitlistsRouter = router({
         );
       }
 
-      // Returned for both duplicate email and duplicate discord name — distinct
+      // Returned for both duplicate email and duplicate discord name: distinct
       // responses would let an anonymous caller enumerate registrations.
       const alreadyRegistered = {
         entry: null,

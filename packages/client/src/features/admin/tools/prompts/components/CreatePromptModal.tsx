@@ -23,7 +23,7 @@ import { trpc } from "@/lib/trpc";
 
 // Format a camelCase config key ("serverAnnouncements") into the label
 // we show in a picker ("Server Announcements"). Same transform the
-// embed-builder pickers use — mirrored here to avoid cross-feature
+// embed-builder pickers use, mirrored here to avoid cross-feature
 // imports from a modal primitive.
 function formatName(key: string): string {
   return key
@@ -49,7 +49,7 @@ const DURATION_PRESETS: Record<string, number> = {
   "7d": 7 * 24 * 60 * 60 * 1000,
 };
 
-// Sentinel select values — Radix Select can't hold an empty string,
+// Sentinel select values: Radix Select can't hold an empty string,
 // so we use reserved tokens for "don't ping anyone" and "fall back to
 // the server default (announcements)" and translate them at submit.
 const NO_ROLE = "__none__";
@@ -59,7 +59,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
   const toast = useToastActions();
   const createMutation = trpc.admin.prompts.create.useMutation();
 
-  // Reuse the embed-builder endpoints — they already walk config.discord
+  // Reuse the embed-builder endpoints: they already walk config.discord
   // and expose channels grouped by category plus a flat role list.
   const channelsQuery = trpc.admin.embeds.channels.useQuery();
   const rolesQuery = trpc.admin.embeds.roles.useQuery();

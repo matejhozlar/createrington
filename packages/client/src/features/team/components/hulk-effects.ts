@@ -37,13 +37,13 @@ export class HulkAnimation extends PlayerAnimation {
         const t = Math.min(elapsed / ANGER_DURATION, 1);
         const e = easeInOutCubic(t);
 
-        // Lean back hard — torso tilts backward
+        // Lean back hard, torso tilts backward
         player.skin.body.rotation.x = -0.25 * e;
 
         // Head tilts back (angry look-up / roar)
         player.skin.head.rotation.x = -0.4 * e;
 
-        // Arms go to wide A-position — stiff, angled out
+        // Arms go to wide A-position, stiff, angled out
         player.skin.leftArm.rotation.x = -0.15 * e;
         player.skin.leftArm.rotation.z = 0.5 * e;
         player.skin.rightArm.rotation.x = -0.15 * e;
@@ -62,7 +62,7 @@ export class HulkAnimation extends PlayerAnimation {
         // Sink down slightly as body tenses
         player.position.y = -1 * e;
 
-        // Early tremor that builds — body starts fighting the transformation
+        // Early tremor that builds, body starts fighting the transformation
         if (t > 0.4) {
           const tremor = (t - 0.4) / 0.6; // 0→1 over last 60%
           const shakeAmt = tremor * 0.15;
@@ -80,7 +80,7 @@ export class HulkAnimation extends PlayerAnimation {
       case "transform": {
         const t = Math.min(elapsed / TRANSFORM_DURATION, 1);
 
-        // Swap skin partway through — the transformation "hits"
+        // Swap skin partway through, the transformation "hits"
         if (!this.skinSwapped && t > 0.35) {
           this.skinSwapped = true;
           this.viewer.loadSkin(hulkSkinUrl);
@@ -101,7 +101,7 @@ export class HulkAnimation extends PlayerAnimation {
         player.skin.rightLeg.rotation.x = 0.1;
         player.skin.rightLeg.rotation.z = -0.12;
 
-        // Crouch lower as power builds — coiling before the explosion
+        // Crouch lower as power builds, coiling before the explosion
         player.position.y = -1 - t * 1;
 
         // Violent shake that intensifies dramatically
@@ -138,7 +138,7 @@ export class HulkAnimation extends PlayerAnimation {
           }
         }
 
-        // Scale canvas from 1x to 3x — slow start, explosive finish
+        // Scale canvas from 1x to 3x, slow start, explosive finish
         const scaleProgress = easeOutCubic(t);
         const scale = 1 + 2 * scaleProgress;
         this.viewer.canvas.style.transform = `scale(${scale})`;
@@ -147,7 +147,7 @@ export class HulkAnimation extends PlayerAnimation {
         const riseT = easeOutCubic(Math.min(t * 2, 1));
         player.position.y = -2 + 2 * riseT;
 
-        // Pose opens up — arms go wider, body straightens to power stance
+        // Pose opens up, arms go wider, body straightens to power stance
         const poseT = easeInOutCubic(Math.min(t * 1.5, 1));
         player.skin.body.rotation.x = -0.25 + 0.1 * poseT;
         player.skin.head.rotation.x = -0.4 + 0.15 * poseT;
@@ -177,7 +177,7 @@ export class HulkAnimation extends PlayerAnimation {
       }
 
       case "idle": {
-        // Breathing cycle — slow oscillation
+        // Breathing cycle, slow oscillation
         const breathe = Math.sin(this.progress * 2.5);
 
         // Body sways with breathing

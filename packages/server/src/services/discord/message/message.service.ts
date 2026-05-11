@@ -132,7 +132,7 @@ export class DiscordMessageService {
         };
       }
 
-      // Default `{ parse: [] }` — arbitrary content cannot trigger @everyone / role / user pings unless the caller opts in.
+      // Default `{ parse: [] }`: arbitrary content cannot trigger @everyone / role / user pings unless the caller opts in.
       const messageOptions: MessageCreateOptions = {
         content: options.content,
         embeds: options.embeds ? [options.embeds] : undefined,

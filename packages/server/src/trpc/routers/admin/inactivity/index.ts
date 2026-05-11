@@ -22,13 +22,13 @@ const warningStatusSchema = z.enum([
 
 /**
  * True when the inactivity cleanup service is registered and safe to
- * mutate against — i.e. we're running on the real production deployment.
+ * mutate against, i.e. we're running on the real production deployment.
  */
 function isManualActionsEnabled(): boolean {
   return config.envMode.isProd && !config.envMode.isDevDeployment;
 }
 
-/** Admin inactivity router — list, stats, and manual resolve/remove/trigger. */
+/** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */
 export const inactivityRouter = router({
   capabilities: adminProcedure
     .meta({

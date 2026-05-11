@@ -11,7 +11,7 @@ import type { ChatMessage } from "./types";
 interface MessageRowProps {
   message: ChatMessage;
   navigate: (to: string) => void;
-  /** True when this message is the last in a same-author run — the avatar
+  /** True when this message is the last in a same-author run: the avatar
    * only renders on this one to tighten grouped bubbles. */
   showAvatar: boolean;
   /** True when the previous message had a different author. Adds extra
@@ -44,7 +44,7 @@ export function MessageRow({
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
 
-  // Legacy fence-parsed actions — kept as a transitional fallback for
+  // Legacy fence-parsed actions: kept as a transitional fallback for
   // messages written before MCP migration. Don't run the parser on
   // half-streaming content; wait until the stream settles so the fence
   // isn't truncated.
@@ -67,7 +67,7 @@ export function MessageRow({
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard may be unavailable (insecure context) — silent no-op
+      // clipboard may be unavailable (insecure context): silent no-op
     }
   };
 

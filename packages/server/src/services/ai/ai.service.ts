@@ -24,7 +24,7 @@ export interface AiCompletionOptions {
  * - Supports conversation context via prior message history
  * - Exposes the raw OpenAI client for advanced use cases
  *
- * NOTE: Constructed directly with an API key — not registered in the
+ * NOTE: Constructed directly with an API key, not registered in the
  * service container. Consumers are responsible for instantiation.
  */
 export class AiService {

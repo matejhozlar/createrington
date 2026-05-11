@@ -66,7 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const data = await response.json();
 
       if (data.success && data.data?.accessToken) {
-        // Access token lives in memory only — refresh token stays in an httpOnly cookie.
+        // Access token lives in memory only: refresh token stays in an httpOnly cookie.
         setAccessToken(data.data.accessToken);
         setUser(data.data.user);
 
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           minecraftUsername: result.user.minecraftUsername,
         } as User);
       } else {
-        // No valid refresh cookie — user is logged out
+        // No valid refresh cookie: user is logged out
         setAccessToken(null);
         setUser(null);
       }

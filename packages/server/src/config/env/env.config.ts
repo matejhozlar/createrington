@@ -68,14 +68,14 @@ const envSchema = z
       .enum(["development", "production", "test"])
       .default("development"),
 
-    // Database — required in every environment
+    // Database: required in every environment
     DB_USER: z.string().min(1, "Database user is required"),
     DB_HOST: z.string().min(1, "Database host is required"),
     DB_DATABASE: z.string().min(1, "Database name is required"),
     DB_PASSWORD: z.string().min(1, "Database password is required"),
     DB_PORT: port("Database port").default(5432),
 
-    // SFTP — Cogs & Steam
+    // SFTP: Cogs & Steam
     // Production-only: SFTP is gated behind `!isDev && !isDevDeployment`
     // (see services/mc-server/file-ops.ts), so dev never opens a connection.
     // Required at runtime by the prod superRefine below.
@@ -85,7 +85,7 @@ const envSchema = z
     COGS_AND_STEAM_SFTP_PASS: z.string().optional(),
     COGS_AND_STEAM_SFTP_STATS_PATH: z.string().optional(),
 
-    // Discord — required in every environment
+    // Discord: required in every environment
     DISCORD_GUILD_ID: discordId("Guild ID"),
     DISCORD_MAIN_BOT_TOKEN: discordToken("Main bot token"),
     DISCORD_MAIN_BOT_ID: discordId("Main bot ID"),
@@ -130,16 +130,16 @@ const envSchema = z
     SSO_CALLBACK_URL: z.string().default(""),
     // Comma-separated list of additional CORS origins (e.g.
     // "https://sandbox.createrington.com") that are allowed to call the API
-    // with credentials. Doubles as the SSO return-to allowlist — the main
+    // with credentials. Doubles as the SSO return-to allowlist: the main
     // website is included automatically via config.meta.links.website.
     SSO_CORS_ORIGINS: z.string().default(""),
-    // Discord ID of the sole owner — gates the owner-only admin management
+    // Discord ID of the sole owner; gates the owner-only admin management
     // panel. Must be a Discord snowflake (17–20 digits).
     OWNER_DISCORD_ID: z
       .string()
       .regex(/^\d{17,20}$/, "OWNER_DISCORD_ID must be a Discord snowflake"),
 
-    // Minecraft Servers — defaults are local-dev safe; prod overrides via .env
+    // Minecraft Servers: defaults are local-dev safe; prod overrides via .env
     COGS_AND_STEAM_SERVER_IP: ipv4("Cogs and Steam server IP").default(
       "0.0.0.0",
     ),
@@ -157,7 +157,7 @@ const envSchema = z
     // RCON
     COGS_AND_STEAM_RCON_PORT: port("Cogs and Steam RCON port").default(25583),
     // Production-only: dev never opens an RCON connection (manager only stores
-    // config at boot — utils/rcon/manager.ts). Required at runtime by the prod
+    // config at boot, utils/rcon/manager.ts). Required at runtime by the prod
     // superRefine below.
     COGS_AND_STEAM_RCON_PASSWORD: z
       .string()
@@ -188,7 +188,7 @@ const envSchema = z
       .min(32, "Playtime sync secret must be at least 32 characters")
       .optional(),
 
-    // Claude automation proxy — admin chat widget talks to claude-automation
+    // Claude automation proxy: admin chat widget talks to claude-automation
     // through the app backend so the shared secret never ships to clients.
     CLAUDE_API_URL: z.string().url().optional(),
     ADMIN_CHAT_SECRET: z.string().min(1).optional(),
@@ -196,7 +196,7 @@ const envSchema = z
     // CurseForge
     CURSEFORGE_API_KEY: z.string().min(1).optional(),
 
-    // AI (OpenAI) — optional; AI features are disabled when the key is not set
+    // AI (OpenAI): optional; AI features are disabled when the key is not set
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_DEFAULT_MODEL: z.string().default("gpt-4o-mini"),
 
@@ -207,11 +207,11 @@ const envSchema = z
     // When absent, these services fall back to SFTP (production-only).
     MC_SERVER_LOCAL_PATH: z.string().min(1).optional(),
 
-    // Stripe (optional — donation features are disabled when not configured)
+    // Stripe (optional; donation features are disabled when not configured)
     STRIPE_SECRET_KEY: z.string().min(1).optional(),
     STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 
-    // Email — Resend transactional API
+    // Email: Resend transactional API
     // Production-only: waitlist mailer is the only consumer; in dev the
     // EmailService short-circuits when the key is absent. Required at runtime
     // by the prod superRefine below.
@@ -221,7 +221,7 @@ const envSchema = z
       .email("Must be valid email address")
       .default("admin@createrington.com"),
 
-    // Storage — server-writable directory for transcripts and other runtime artifacts
+    // Storage: server-writable directory for transcripts and other runtime artifacts
     STORAGE_PATH: z.string().min(1).default("./storage"),
   })
   .superRefine((data, ctx) => {
@@ -235,7 +235,7 @@ const envSchema = z
 
     // Empty-string detection works because zod parses an unset env var as ""
     // for `.string().optional()` fields, and the coerced numeric fields
-    // (e.g. SFTP_PORT) reject NaN before this refinement runs — so by the
+    // (e.g. SFTP_PORT) reject NaN before this refinement runs, so by the
     // time we get here, missing values surface as `undefined` or `""`.
     const required: Array<[keyof typeof data, string]> = [
       ["COGS_AND_STEAM_SFTP_HOST", "Cogs and Steam SFTP host required"],

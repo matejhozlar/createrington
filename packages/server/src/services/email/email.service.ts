@@ -65,7 +65,7 @@ export class EmailService {
   //
   // Resend's `path` field is remote-only (http/https). For attachments that
   // reference a local filesystem path, we read the file and pass `content`
-  // instead — keeps the template API (filesystem paths) unchanged.
+  // instead. Keeps the template API (filesystem paths) unchanged.
   private async toResendAttachments(
     attachments?: EmailAttachment[],
   ): Promise<CreateEmailOptions["attachments"]> {
@@ -193,7 +193,7 @@ export class EmailService {
   }
 
   /**
-   * Lightweight health check — lists domains via the Resend API.
+   * Lightweight health check: lists domains via the Resend API.
    *
    * Resend is HTTPS-only, so there's no SMTP-style connection to verify;
    * this just exercises the API key at a low cost to confirm credentials
@@ -219,5 +219,5 @@ export class EmailService {
   }
 }
 
-/** Pre-initialized singleton instance — use this instead of constructing EmailService directly */
+/** Pre-initialized singleton instance: use this instead of constructing EmailService directly */
 export const email = EmailService.getInstance();

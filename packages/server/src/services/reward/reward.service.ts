@@ -54,7 +54,7 @@ export class RewardService {
   }
 
   /**
-   * Daily reward accessor — provides `checkEligibility`, `claim`, and `getNextClaimTime`.
+   * Daily reward accessor: provides `checkEligibility`, `claim`, and `getNextClaimTime`.
    *
    * @returns The DailyReward instance
    * @throws Error if daily rewards are not enabled

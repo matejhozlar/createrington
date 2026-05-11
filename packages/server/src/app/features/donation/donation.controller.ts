@@ -8,7 +8,7 @@ import { Services } from "@/services/container";
  *
  * Handles inbound Stripe webhook events.
  * The raw request body must be preserved as a Buffer so Stripe can verify
- * the signature — do NOT use express.json() middleware on this route.
+ * the signature, do NOT use express.json() middleware on this route.
  */
 export class DonationController {
   /**

@@ -25,7 +25,7 @@ interface QueueResult {
 }
 
 interface DiscordApiQueueOptions {
-  /** Delay in ms between each API call (default: 1200ms — safe for most Discord endpoints) */
+  /** Delay in ms between each API call (default: 1200ms, safe for most Discord endpoints) */
   delayMs?: number;
 }
 
@@ -66,7 +66,7 @@ export class DiscordApiQueue {
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         results.push({ label: task.label, success: false, error });
-        console.log(`  ${progress} ✗ ${task.label} — ${error}`);
+        console.log(`  ${progress} ✗ ${task.label}: ${error}`);
       }
 
       // Delay between calls (skip after the last one)

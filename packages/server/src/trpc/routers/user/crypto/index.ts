@@ -76,7 +76,7 @@ export const cryptoRouter = router({
           BigInt(input.amount),
         );
 
-        // Swallow achievement errors — a failed evaluation must not roll back a completed trade
+        // Swallow achievement errors: a failed evaluation must not roll back a completed trade
         const newAchievements = await evaluateTradeAchievements(
           ctx.user.minecraftUuid,
           token,
@@ -128,7 +128,7 @@ export const cryptoRouter = router({
           BigInt(input.amount),
         );
 
-        // Swallow achievement errors — a failed evaluation must not roll back a completed trade
+        // Swallow achievement errors: a failed evaluation must not roll back a completed trade
         const newAchievements = await evaluateTradeAchievements(
           ctx.user.minecraftUuid,
           token,

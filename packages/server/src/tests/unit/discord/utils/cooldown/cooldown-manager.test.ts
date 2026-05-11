@@ -169,7 +169,7 @@ describe("CooldownManager", () => {
       const userCfg = { duration: 60, type: CooldownType.USER };
       manager.set("ping", userCfg, ctxA);
       manager.set("daily", userCfg, ctxA);
-      manager.set("ping", userCfg, ctxB); // different user — should remain
+      manager.set("ping", userCfg, ctxB); // different user, should remain
 
       const count = manager.resetUser("user-A");
 

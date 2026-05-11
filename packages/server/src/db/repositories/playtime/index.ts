@@ -32,7 +32,7 @@ import type {
  * - Coordinates multiple query classes
  *
  * NOTE: This repository listens to PlaytimeService events to drive all
- * session tracking — connect it via connectToService() during bootstrap
+ * session tracking. Connect it via connectToService() during bootstrap.
  */
 export class PlaytimeRepository {
   constructor() {}
@@ -110,7 +110,7 @@ export class PlaytimeRepository {
             await waitlistRepo.markJoinedMinecraft(player.discordId);
           }
         } catch {
-          // No waitlist entry for this player — skip
+          // No waitlist entry for this player; skip
         }
       }
 
@@ -140,7 +140,7 @@ export class PlaytimeRepository {
   async endSession(event: SessionEndEvent): Promise<void> {
     try {
       if (event.sessionId === 0) {
-        // Orphaned session — find then close all active DB sessions
+        // Orphaned session: find then close all active DB sessions
         const activeSessions = await Q.player.session.findAll({
           playerMinecraftUuid: event.uuid,
           serverId: event.serverId,

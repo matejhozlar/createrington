@@ -15,7 +15,7 @@ import { extractBearerToken } from "@/utils/bearer-token";
  * scripts) can override the ambient browser cookie.
  *
  * The cookie fallback is skipped entirely when the cookie service is
- * disabled (no COOKIE_DOMAIN configured) — without that the server never
+ * disabled (no COOKIE_DOMAIN configured): without that the server never
  * sets a crt_access cookie, so accepting an attacker-supplied one would
  * just waste a JWT verify call. This keeps the disabled path strictly
  * equivalent to the pre-SSO behavior.
@@ -189,7 +189,7 @@ function safeOrigin(raw: string | undefined): string | undefined {
   }
 }
 
-// Config is immutable at runtime — cache after first call.
+// Config is immutable at runtime, cache after first call.
 let cachedAllowedAuthOrigins: string[] | undefined;
 function allowedAuthOrigins(): string[] {
   if (cachedAllowedAuthOrigins) return cachedAllowedAuthOrigins;
@@ -203,7 +203,7 @@ function allowedAuthOrigins(): string[] {
  * CSRF guard for cookie-authenticated auth endpoints (refresh, logout).
  *
  * The refresh cookie is scoped to `.createrington.com`, so any subdomain
- * shares it. SameSite=Lax only blocks *cross-site* POSTs — same-site
+ * shares it. SameSite=Lax only blocks *cross-site* POSTs, same-site
  * subdomains can still fetch cross-origin-with-credentials. This middleware
  * rejects any request whose Origin (or Referer) isn't in the CORS allowlist.
  */
@@ -218,14 +218,14 @@ export const requireTrustedOrigin = (
 
   if (!origin) {
     logger.warn(
-      `[origin] rejected ${req.method} ${req.path} — no Origin/Referer`,
+      `[origin] rejected ${req.method} ${req.path}: no Origin/Referer`,
     );
     throw new ForbiddenError("Missing origin");
   }
 
   if (!allowedAuthOrigins().includes(origin)) {
     logger.warn(
-      `[origin] rejected ${req.method} ${req.path} — untrusted origin ${origin}`,
+      `[origin] rejected ${req.method} ${req.path}: untrusted origin ${origin}`,
     );
     throw new ForbiddenError("Untrusted origin");
   }

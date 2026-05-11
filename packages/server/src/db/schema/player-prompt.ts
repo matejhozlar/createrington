@@ -24,7 +24,7 @@ export const playerPrompt = pgTable(
     id: serial("id").primaryKey(),
     question: text("question").notNull(),
     description: text("description"),
-    // Discord id of the admin who created the prompt. No FK — admins are
+    // Discord id of the admin who created the prompt. No FK: admins are
     // identified by discord_id, not stored as a first-class entity here.
     createdBy: text("created_by").notNull(),
     channelId: text("channel_id").notNull(),
@@ -52,7 +52,7 @@ export const playerPrompt = pgTable(
 // Player Prompt Response
 //
 // One row per (prompt, Discord user). Editable until the parent prompt
-// closes — the service upserts on the unique index. minecraftUuid is
+// closes: the service upserts on the unique index. minecraftUuid is
 // resolved opportunistically at submission time via Q.player.find so
 // admins can see the linked Minecraft account when it exists; null means
 // the responder hasn't linked their Discord to a Minecraft account yet.

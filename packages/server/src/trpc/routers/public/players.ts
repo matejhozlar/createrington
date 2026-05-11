@@ -12,7 +12,7 @@ import { getMojangUsername } from "@/utils/mojang-profile";
 import { mcUuid } from "@/utils/zod-schemas";
 import type { PlayerFilters } from "@createrington/shared/db";
 
-/** Public players router — lookup, list, and count players without auth. */
+/** Public players router: lookup, list, and count players without auth. */
 export const playersRouter = router({
   get: publicProcedure
     .meta({

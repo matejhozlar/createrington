@@ -38,7 +38,7 @@ const sendMaintenanceInput = z.object({
   estimatedMinutes: z.number().int().min(1).max(10080),
 });
 
-/** Admin announcements router — modpack changelogs and maintenance announcements. */
+/** Admin announcements router: modpack changelogs and maintenance announcements. */
 export const announcementsRouter = router({
   searchMods: adminProcedure
     .meta({

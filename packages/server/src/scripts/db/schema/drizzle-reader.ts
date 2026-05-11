@@ -189,7 +189,7 @@ function mapColumn(
   // Determine hasDefault:
   // - Drizzle sets hasDefault for serial, identity, defaults, and generated columns
   // - SQL parser treats generated stored columns (GENERATED ALWAYS AS ... STORED)
-  //   as hasDefault: false — we match that behavior
+  //   as hasDefault: false; we match that behavior
   const isGeneratedStored =
     col.generated != null && col.generated.type === "stored";
   const hasDefault = isGeneratedStored ? false : col.hasDefault;

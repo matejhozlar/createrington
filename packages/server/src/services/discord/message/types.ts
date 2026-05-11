@@ -25,7 +25,7 @@ export interface SendMessageOptions {
   flags?: MessageCreateOptions["flags"];
   /**
    * Optional allowed-mentions guard. Useful when the message content
-   * embeds a role mention built from unvalidated input — passing
+   * embeds a role mention built from unvalidated input. Passing
    * `{ parse: [], roles: [...] }` prevents Discord from resolving any
    * mentions outside the explicit allowlist (e.g. `@everyone`).
    */

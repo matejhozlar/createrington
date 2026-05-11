@@ -25,7 +25,7 @@ import type { JWTPayload } from "@createrington/shared/auth";
 const MAX_CONNECTIONS_PER_IP = 20;
 const EVENTS_PER_SOCKET_PER_MIN = 60;
 
-// Mirrors the HTTP gate in server-ip.middleware — nginx terminates on
+// Mirrors the HTTP gate in server-ip.middleware: nginx terminates on
 // loopback and sets X-Real-IP to the real client. Without this the per-IP
 // cap would see every proxied socket as 127.0.0.1 and cap the server at 20.
 function getSocketClientIp(socket: Socket): string {
@@ -86,12 +86,12 @@ export class WebSocketService {
       const current = this.connectionsByIp.get(ip) ?? 0;
       if (current >= MAX_CONNECTIONS_PER_IP) {
         logger.warn(
-          `[ws] rejecting connection from ${ip} — ${current} concurrent sockets already open`,
+          `[ws] rejecting connection from ${ip}: ${current} concurrent sockets already open`,
         );
         return next(new Error("Too many connections"));
       }
 
-      // Optional auth — unauthenticated sockets are allowed (public data),
+      // Optional auth: unauthenticated sockets are allowed (public data),
       // but when the client passes a Bearer-style token via handshake.auth,
       // verify it so future per-user rooms can read socket.data.user.
       const token =
@@ -102,7 +102,7 @@ export class WebSocketService {
         try {
           socket.data.user = jwtService.verify(token) satisfies JWTPayload;
         } catch {
-          // Invalid/expired token — treat as unauthenticated, don't reject.
+          // Invalid/expired token: treat as unauthenticated, don't reject.
         }
       }
 
@@ -746,7 +746,7 @@ export class WebSocketService {
   /**
    * Emits a full player sync for a server to all subscribed clients
    *
-   * Useful for recovery or debugging — sends the complete current player list
+   * Useful for recovery or debugging: sends the complete current player list
    * rather than incremental join/leave events.
    *
    * @param serverId - Server ID to sync players for

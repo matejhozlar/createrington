@@ -27,7 +27,7 @@ function lerp(a: number, b: number, w: number): number {
 }
 
 /**
- * Synchronized disco point dance — all members move in unison.
+ * Synchronized disco point dance: all members move in unison.
  *
  * Right arm sweeps from across the left hip up to upper-right sky.
  * Hips thrust side-to-side, knees bounce. Left arm stays relaxed.

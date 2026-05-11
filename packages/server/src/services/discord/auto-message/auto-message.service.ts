@@ -193,7 +193,7 @@ export class AutoMessageService {
    *
    * Each follow-up's delay is additive along the chain: follow-up #1 fires at
    * t=delay₁, follow-up #2 at t=delay₁+delay₂, and so on. Scheduling uses
-   * in-memory `setTimeout` — if the server restarts mid-chain, pending
+   * in-memory `setTimeout`: if the server restarts mid-chain, pending
    * follow-ups are dropped (acceptable for the short delays this feature
    * targets).
    *
@@ -270,7 +270,7 @@ export class AutoMessageService {
    * Resolves template variables in message content.
    *
    * Supported variables:
-   * - `{memberCount}` — total registered player count
+   * - `{memberCount}`: total registered player count
    */
   private async resolveTemplateVariables(content: string): Promise<string> {
     if (!content.includes("{")) return content;

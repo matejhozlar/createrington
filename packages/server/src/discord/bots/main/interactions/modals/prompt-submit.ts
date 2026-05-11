@@ -6,7 +6,7 @@ import { getServiceSync, Services } from "@/services";
  *
  * customId shape: `prompt:submit:<promptId>`. The interaction-handler
  * registry matches wildcard-ending strings via `startsWith`, so we declare
- * the shared prefix here — the numeric id is parsed at execute time.
+ * the shared prefix here; the numeric id is parsed at execute time.
  */
 export const customId = "prompt:submit:*";
 

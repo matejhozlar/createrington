@@ -6,14 +6,14 @@ import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 
 const MAX_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const MIN_DURATION_MS = 60 * 1000; // 1 minute — guards against accidental zero-duration prompts
+const MIN_DURATION_MS = 60 * 1000; // 1 minute, guards against accidental zero-duration prompts
 
 const createInput = z.object({
   question: z.string().min(1).max(256),
   description: z.string().max(2000).optional(),
   durationMs: z.number().int().min(MIN_DURATION_MS).max(MAX_DURATION_MS),
   rolePingId: z.string().regex(/^\d+$/).optional(),
-  // Optional — defaults to the announcements channel. Admins can target
+  // Optional, defaults to the announcements channel. Admins can target
   // any configured channel via the client picker.
   channelId: z.string().regex(/^\d+$/).optional(),
 });
@@ -23,7 +23,7 @@ const createInput = z.object({
  *
  * Owns the admin-facing surface for creating, listing, and inspecting
  * player prompts. The actual Discord post + timer scheduling lives in
- * PlayerPromptService — this router is only a thin validation layer.
+ * PlayerPromptService, this router is only a thin validation layer.
  */
 export const adminPromptsRouter = router({
   list: adminProcedure

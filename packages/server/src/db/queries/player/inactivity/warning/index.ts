@@ -57,7 +57,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
    * Find players inactive for the given number of days who don't already
    * have an active (unresolved, unremoved) warning.
    * Also excludes players created within the inactivity window and any
-   * registered admins — admins are never swept by inactivity.
+   * registered admins (admins are never swept by inactivity).
    */
   async findInactivePlayers(inactiveDays: number): Promise<InactivePlayer[]> {
     const query = `
@@ -137,7 +137,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
 
   /**
    * Find active warnings whose grace period has expired.
-   * Admins are excluded defensively — even if a pre-existing warning
+   * Admins are excluded defensively: even if a pre-existing warning
    * row predates the admin exclusion in `findInactivePlayers`, it will
    * never be acted on by the removal phase.
    */
@@ -219,7 +219,7 @@ export class PlayerInactivityWarningQueries extends PlayerInactivityWarningBaseQ
 
   /**
    * Clear the removed flag. Used to roll back an in-flight removal if
-   * a later step fails — otherwise the warning becomes un-retryable by
+   * a later step fails, otherwise the warning becomes un-retryable by
    * `findExpiredWarnings` and the leave-notification handler would
    * suppress future voluntary departures for this player.
    */

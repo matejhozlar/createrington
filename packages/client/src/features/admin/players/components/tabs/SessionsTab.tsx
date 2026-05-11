@@ -217,7 +217,7 @@ export function SessionsTab({ playerId, getServerName }: SessionsTabProps) {
                 of {total} sessions
               </p>
 
-              {/* No <Pagination /> wrapper — it centers by default */}
+              {/* No <Pagination /> wrapper, it centers by default */}
               <PaginationContent className="ml-auto flex-nowrap justify-end">
                 <PaginationItem>
                   <PaginationPrevious

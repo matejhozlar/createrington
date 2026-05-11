@@ -3,7 +3,7 @@ import { metricsService } from "@/services/metrics";
 import { z } from "zod";
 import { dateRangeInput } from "./schemas";
 
-/** Admin economy metrics — overview, distribution, transactions, top balances */
+/** Admin economy metrics: overview, distribution, transactions, top balances */
 export const economyMetricsRouter = router({
   getOverview: adminProcedure
     .meta({

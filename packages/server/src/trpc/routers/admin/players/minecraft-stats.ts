@@ -3,7 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { parsePlayerId, trpcError } from "@/trpc/utils";
 
-/** Admin minecraft stats router — fetch per-server JSONB stats for a player, and search stats across all players. */
+/** Admin minecraft stats router: fetch per-server JSONB stats for a player, and search stats across all players. */
 export const minecraftStatsRouter = router({
   list: adminProcedure
     .meta({

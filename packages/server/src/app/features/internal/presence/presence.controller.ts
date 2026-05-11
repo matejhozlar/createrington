@@ -131,7 +131,7 @@ export class InternalPresenceController {
    * Processes a forwarded heartbeat from the dev server.
    *
    * Receives the full online player list from the dev test server and
-   * reconciles sessions on the production test server entry — ending
+   * reconciles sessions on the production test server entry, ending
    * stale sessions and starting missing ones.
    */
   static async handleSyncedHeartbeat(

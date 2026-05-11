@@ -4,7 +4,7 @@ import type { GuildMember, Role } from "discord.js";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 
 const GUILD_ID = "guild-1";
-// In Discord, the @everyone role's ID equals the guild ID — getAll/getRoles
+// In Discord, the @everyone role's ID equals the guild ID: getAll/getRoles
 // rely on that to exclude it from results.
 const EVERYONE_ROLE_ID = GUILD_ID;
 

@@ -202,7 +202,7 @@ export class RoleManagementService {
         }
       }
 
-      // Top playtime roles (competitive, rank-based — only one holder at a time)
+      // Top playtime roles (competitive, rank-based: only one holder at a time)
       const topPlaytimeRules = getTopPlaytimeRoleRules();
       for (const rule of topPlaytimeRules) {
         const result = await this.processTopPlaytimeRole(rule);
@@ -210,7 +210,7 @@ export class RoleManagementService {
         if (result.removed) totalRemovals++;
       }
 
-      // Top crypto networth roles (competitive, rank-based — only one holder at a time)
+      // Top crypto networth roles (competitive, rank-based: only one holder at a time)
       const topCryptoRules = getTopCryptoNetworthRoleRules();
       for (const rule of topCryptoRules) {
         const result = await this.processTopCryptoNetworthRole(rule);

@@ -12,7 +12,7 @@
  *     --server-id 1 \
  *     --output ./playtime-backfill.sql
  *
- * The emitted SQL uses ON CONFLICT DO NOTHING — existing summary rows are
+ * The emitted SQL uses ON CONFLICT DO NOTHING: existing summary rows are
  * never touched. Only UUIDs missing from player_playtime_summary get inserted.
  * This is safe to re-run.
  */

@@ -121,7 +121,7 @@ function buildButtons(
 // Read from config inside handlers (not module-level) to support runtime refetch
 const colors = config.discord.embeds.colors;
 
-/** Admin embeds router — send Discord embeds, manage embed presets (CRUD). */
+/** Admin embeds router: send Discord embeds, manage embed presets (CRUD). */
 export const embedsRouter = router({
   channels: adminProcedure
     .meta({ description: "Get all text channels grouped by category" })
@@ -221,7 +221,7 @@ export const embedsRouter = router({
         adminDiscordId: ctx.user.discordId,
         adminUsername: ctx.user.minecraftUsername,
         actionType: "embed_send",
-        description: `Sent embed to channel ${channelId}${data.title ? ` — "${data.title}"` : ""}`,
+        description: `Sent embed to channel ${channelId}${data.title ? `: "${data.title}"` : ""}`,
         metadata: {
           channelId,
           presetId: input.presetId,

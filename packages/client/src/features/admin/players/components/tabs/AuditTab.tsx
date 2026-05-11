@@ -230,7 +230,7 @@ export function AuditTab({ playerId }: AuditTabProps) {
                 of {total} actions
               </p>
 
-              {/* IMPORTANT: no <Pagination /> wrapper — it centers via mx-auto */}
+              {/* IMPORTANT: no <Pagination /> wrapper, it centers via mx-auto */}
               <PaginationContent className="ml-auto flex-nowrap justify-end">
                 <PaginationItem>
                   <PaginationPrevious

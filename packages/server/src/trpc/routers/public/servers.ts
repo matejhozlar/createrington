@@ -109,7 +109,7 @@ export function buildServerStatus(
   };
 }
 
-/** Public servers router — server list with status and individual server lookup. */
+/** Public servers router: server list with status and individual server lookup. */
 export const serversRouter = router({
   list: publicProcedure
     .meta({

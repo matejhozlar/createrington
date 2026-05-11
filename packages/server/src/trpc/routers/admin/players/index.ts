@@ -10,7 +10,7 @@ import { auditRouter } from "./audit";
 import { transactionsRouter } from "./transactions";
 import { minecraftStatsRouter } from "./minecraft-stats";
 
-/** Composite admin players router — CRUD, balance, strikes, bans, sessions, playtime, tickets, audit, transactions, minecraft stats. */
+/** Composite admin players router: CRUD, balance, strikes, bans, sessions, playtime, tickets, audit, transactions, minecraft stats. */
 export const adminPlayersRouter = router({
   players: playersRouter,
   balance: balanceRouter,

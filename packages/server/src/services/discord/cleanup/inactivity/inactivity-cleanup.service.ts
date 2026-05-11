@@ -7,7 +7,7 @@ import { removeInactiveWarning } from "./remove-warning";
 
 /**
  * Who triggered a cleanup run. `null` means the scheduled tick or the
- * startup sweep — the admin-notification embed renders it as "Automated".
+ * startup sweep. The admin-notification embed renders it as "Automated".
  */
 export type InactivityTriggerContext = {
   discordId: string;
@@ -108,7 +108,7 @@ export class InactivityCleanupService {
 
     if (resolvedCount > 0) {
       logger.info(
-        `Resolved ${resolvedCount} inactivity warning(s) — players returned`,
+        `Resolved ${resolvedCount} inactivity warning(s), players returned`,
       );
     }
   }
@@ -187,7 +187,7 @@ export class InactivityCleanupService {
     }
 
     logger.info(
-      `Found ${expiredWarnings.length} expired inactivity warning(s) — removing players`,
+      `Found ${expiredWarnings.length} expired inactivity warning(s), removing players`,
     );
 
     const removedUsernames: string[] = [];
@@ -198,7 +198,7 @@ export class InactivityCleanupService {
         if (warning.lastSeen > warning.warnedAt) {
           await Q.player.inactivity.warning.resolveWarning(warning.id);
           logger.info(
-            `Skipped removal of ${warning.minecraftUsername} — logged in since warning`,
+            `Skipped removal of ${warning.minecraftUsername}: logged in since warning`,
           );
           continue;
         }
@@ -222,7 +222,7 @@ export class InactivityCleanupService {
         messageService = DiscordMessageService.getInstance(mainBot);
       } catch (error) {
         logger.error(
-          "Discord message service unavailable — skipping inactivity removal notifications:",
+          "Discord message service unavailable, skipping inactivity removal notifications:",
           error,
         );
       }
@@ -314,7 +314,7 @@ export class InactivityCleanupService {
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
     logger.info(
-      "Forced inactivity cleanup triggered — resetting recurring schedule",
+      "Forced inactivity cleanup triggered, resetting recurring schedule",
     );
 
     if (this.intervalId) {
@@ -332,7 +332,7 @@ export class InactivityCleanupService {
       }, this.CHECK_INTERVAL);
 
       logger.info(
-        `Inactivity cleanup schedule reset — next run in ${this.CHECK_INTERVAL / 86400000}d`,
+        `Inactivity cleanup schedule reset, next run in ${this.CHECK_INTERVAL / 86400000}d`,
       );
     }
   }

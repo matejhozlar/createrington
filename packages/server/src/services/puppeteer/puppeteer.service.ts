@@ -4,9 +4,9 @@ import config from "@/config";
 export interface ScreenshotOptions {
   /** URL to navigate to */
   url: string;
-  /** CSS selector to wait for before capturing (optional — defaults to full page) */
+  /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
-  /** CSS selector of the element to screenshot (optional — defaults to full page) */
+  /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
   /** Extra delay in ms after selector is found, to let animations/charts settle */
   settleDelay?: number;
@@ -223,9 +223,7 @@ export class PuppeteerService {
     });
 
     browser.on("disconnected", () => {
-      logger.warn(
-        "Puppeteer browser disconnected — will re-launch on next use",
-      );
+      logger.warn("Puppeteer browser disconnected, will re-launch on next use");
       this.browser = null;
     });
 

@@ -37,15 +37,15 @@ type AnimState =
  * Rich idle animation for team page characters. Combines several
  * behaviours picked at random:
  *
- *  - **Glancing** — look in a random direction or toward a neighbor
- *  - **Sneezing** — full-body sneeze with arm covering face
- *  - **Nodding off** — head droops forward, snaps back startled
- *  - **Stretching** — arms overhead, body leans back
- *  - **Shifting weight** — sways to one side, one knee bends
- *  - **Scratching head** — arm goes up, small scratch motion
- *  - **Jumping jacks** — 5 full jumping jacks with arms and legs spreading
- *  - **Peeking** — leans forward curiously, scans, then startles back
- *  - **Tripping** — lurches forward, catches balance, looks around embarrassed
+ *  - **Glancing**: look in a random direction or toward a neighbor
+ *  - **Sneezing**: full-body sneeze with arm covering face
+ *  - **Nodding off**: head droops forward, snaps back startled
+ *  - **Stretching**: arms overhead, body leans back
+ *  - **Shifting weight**: sways to one side, one knee bends
+ *  - **Scratching head**: arm goes up, small scratch motion
+ *  - **Jumping jacks**: 5 full jumping jacks with arms and legs spreading
+ *  - **Peeking**: leans forward curiously, scans, then startles back
+ *  - **Tripping**: lurches forward, catches balance, looks around embarrassed
 
  *
  * Each instance runs on its own random schedule so multiple

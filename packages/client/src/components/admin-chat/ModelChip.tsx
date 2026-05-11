@@ -21,7 +21,7 @@ interface ModelChipProps {
   value: AdminChatModel;
   onChange?: (next: AdminChatModel) => void;
   /**
-   * Read-only mode renders the chip as a static badge — used for the
+   * Read-only mode renders the chip as a static badge: used for the
    * "currently answering with X" indicator while a session is active, where
    * the model is pinned for the lifetime of the session.
    */

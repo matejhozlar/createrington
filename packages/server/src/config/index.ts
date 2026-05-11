@@ -77,8 +77,8 @@ const config = {
       cookie: {
         name: env.REFRESH_COOKIE_NAME,
         accessName: env.ACCESS_COOKIE_NAME,
-        // Empty string means host-only (single-domain) cookies — the existing
-        // behavior. Set to a parent domain (e.g. ".createrington.com") to
+        // Empty string means host-only (single-domain) cookies (the existing
+        // behavior). Set to a parent domain (e.g. ".createrington.com") to
         // enable cross-subdomain SSO consumers.
         domain: env.COOKIE_DOMAIN || undefined,
       },
@@ -86,7 +86,7 @@ const config = {
         callbackUrl: env.SSO_CALLBACK_URL ?? "",
         // Defensive `??` because in VALIDATION_MODE=generation (used by tests
         // and codegen) env vars bypass zod and arrive as raw process.env values
-        // — undefined when unset.
+        // (undefined when unset).
         corsOrigins: (env.SSO_CORS_ORIGINS ?? "")
           .split(",")
           .map((s) => s.trim())

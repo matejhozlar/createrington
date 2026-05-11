@@ -133,6 +133,6 @@ export class AdminLogActionQueries extends AdminLogActionBaseQueries {
         ? `${data.tableName}.${data.fieldName} for ${data.targetPlayerName}`
         : data.actionType);
 
-    logger.info(`Admin action logged: ${data.adminUsername} — ${target}`);
+    logger.info(`Admin action logged: ${data.adminUsername}: ${target}`);
   }
 }

@@ -88,7 +88,7 @@ class ApiClient {
 
             // On 401: attempt silent refresh and retry original request.
             if (response.status === 401) {
-              // Don't retry the refresh endpoint itself — avoids infinite loops.
+              // Don't retry the refresh endpoint itself: avoids infinite loops.
               if (request.url.includes("/api/auth/refresh")) {
                 return response;
               }
@@ -228,7 +228,7 @@ class ApiClient {
       .json<T>();
   }
 
-  /** Get raw response — useful for downloads or blobs. */
+  /** Get raw response: useful for downloads or blobs. */
   async getRaw(
     endpoint: string,
     params?: Record<string, string | number | boolean>,

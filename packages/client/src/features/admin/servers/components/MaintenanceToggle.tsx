@@ -45,9 +45,9 @@ interface MaintenanceToggleProps {
  * Admin control for a server's maintenance mode.
  *
  * Renders one of three states based on current maintenance status:
- * - State A: Inactive — offers instant enable or scheduled enable via a dialog
- * - State B: Scheduled — shows countdown and a cancel confirmation
- * - State C: Active — shows active indicator and a disable confirmation
+ * - State A: Inactive, offers instant enable or scheduled enable via a dialog
+ * - State B: Scheduled, shows countdown and a cancel confirmation
+ * - State C: Active, shows active indicator and a disable confirmation
  *
  * @param serverId - ID of the server to manage
  * @param isMaintenance - Whether maintenance mode is currently active on the server

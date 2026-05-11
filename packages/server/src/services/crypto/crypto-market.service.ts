@@ -332,7 +332,7 @@ export class CryptoMarketService {
     const now = new Date();
 
     for (const token of memecoins) {
-      // Skip tokens currently in their IPO window — price is fixed
+      // Skip tokens currently in their IPO window: price is fixed
       if (token.ipoEndsAt && token.ipoEndsAt > now) continue;
 
       const update = tickMemecoinPrice(token);
@@ -630,7 +630,7 @@ export class CryptoMarketService {
         logger.error("Portfolio snapshot failed:", err);
       }
 
-      // Daily snapshot is the trigger for Diamond Hands — holdings must have
+      // Daily snapshot is the trigger for Diamond Hands: holdings must have
       // existed for 30+ days, so this check is only meaningful once per day
       try {
         const achievementSvc = await getService(Services.ACHIEVEMENT_SERVICE);

@@ -83,7 +83,7 @@ function saveDraft(state: DraftState): void {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify(state));
   } catch {
-    // Storage full or unavailable — silently ignore
+    // Storage full or unavailable, silently ignore
   }
 }
 
@@ -135,7 +135,7 @@ export function useEmbedBuilder() {
   // Load any persisted draft once on mount and seed each piece of state
   // from it. Stored as state (not a ref) so the useState initializers
   // below can read it without triggering the "no ref reads during render"
-  // rule. Never updated after mount — a ref further down handles the
+  // rule. Never updated after mount: a ref further down handles the
   // one-shot "draft restored" toast.
   const [pendingDraft] = useState(loadDraft);
   const [data, setData] = useState<EmbedDataInternal>(() =>

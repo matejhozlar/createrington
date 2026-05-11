@@ -44,18 +44,6 @@ const GUIDE_SECTIONS: { category: GuideCategory; title: string }[] = [
 export { GUIDE_SECTIONS };
 
 export const guides: Guide[] = [
-  // TODO: Fill in "Getting Started" guide with real server info
-  // {
-  //   slug: "getting-started",
-  //   title: "Getting Started",
-  //   description: "Your first steps on the server — key locations, basic mechanics, and helpful tips.",
-  //   icon: Compass,
-  //   category: "getting-started",
-  //   image: "/assets/hero/gondola-station.webp",
-  //   imageIcon: "/assets/features/player-heads.webp",
-  //   estimatedMinutes: 5,
-  //   steps: [...],
-  // },
   {
     slug: "install-modpack",
     title: "Install the Modpack",
