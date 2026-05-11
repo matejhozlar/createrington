@@ -13,9 +13,16 @@ import { ControlPanel } from "./components/ControlPanel";
 import { ResultsTable } from "./components/ResultsTable";
 import { DEFAULT_PARAMS, runSimulation } from "./compute";
 import type { SimulatorParams, Snapshot } from "./types";
-import snapshotData from "./snapshot.json";
+import snapshotExample from "./snapshot.example.json";
 
-const snapshot = snapshotData as Snapshot;
+const localSnapshotModules = import.meta.glob<{ default: Snapshot }>(
+  "./snapshot.local.json",
+  { eager: true },
+);
+const localSnapshot =
+  localSnapshotModules["./snapshot.local.json"]?.default ?? null;
+
+const snapshot = (localSnapshot ?? snapshotExample) as Snapshot;
 
 const SIGNIFICANT_THRESHOLD = 50_000;
 

@@ -5,7 +5,11 @@
  * Usage:
  *   pnpm tsx packages/server/src/scripts/generate-economy-snapshot.ts \
  *     [--cutoff 2026-03-17] \
- *     [--output packages/client/src/features/admin/tools/economy-simulator/snapshot.json]
+ *     [--output packages/client/src/features/admin/tools/economy-simulator/snapshot.local.json]
+ *
+ * Output defaults to snapshot.local.json, which is gitignored because it contains
+ * player PII (usernames + balances + crypto holdings). The page falls back to the
+ * committed snapshot.example.json stub when the local file is absent.
  */
 
 import "@/logger.global";
@@ -37,7 +41,7 @@ interface Args {
 }
 
 const DEFAULT_OUTPUT =
-  "packages/client/src/features/admin/tools/economy-simulator/snapshot.json";
+  "packages/client/src/features/admin/tools/economy-simulator/snapshot.local.json";
 
 function parseArgs(): Args {
   const args = process.argv.slice(2);
