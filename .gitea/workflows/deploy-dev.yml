@@ -21,6 +21,7 @@ jobs:
     runs-on: hetzner
     env:
       INFISICAL_API_URL: ${{ secrets.INFISICAL_API_URL }}
+      INFISICAL_PROJECT_ID: a1cc35ab-a36c-49c3-985f-9ffaef91dfb7
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,7 +47,7 @@ jobs:
 
       - name: Generate types, command docs, and deploy commands
         run: |
-          pnpm exec infisical run --env=staging --command "pnpm generate:ci && pnpm generate-command-docs:json && pnpm generate-api-docs && pnpm deploy-commands"
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command "pnpm generate:ci && pnpm generate-command-docs:json && pnpm generate-api-docs && pnpm deploy-commands"
 
       - name: Check for mod API changes
         id: spec-check
@@ -129,13 +130,13 @@ jobs:
       - name: Migrate database
         if: ${{ github.event.inputs.reset_db != 'true' }}
         run: |
-          pnpm exec infisical run --env=staging --command 'PGPASSWORD="$DB_PASSWORD" pnpm db:migrate'
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command 'PGPASSWORD="$DB_PASSWORD" pnpm db:migrate'
 
       - name: Reset database
         if: ${{ github.event.inputs.reset_db == 'true' }}
         run: |
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
-          pnpm exec infisical run --env=staging --command '
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
             export PGPASSWORD="$DB_PASSWORD"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
@@ -145,7 +146,7 @@ jobs:
 
       - name: Sync runtime .env from Infisical
         run: |
-          pnpm exec infisical export --env=staging --format=dotenv > /opt/createrington-dev/.env
+          pnpm exec infisical export --projectId="$INFISICAL_PROJECT_ID" --env=staging --format=dotenv > /opt/createrington-dev/.env
           chmod 600 /opt/createrington-dev/.env
 
       - name: Fix permissions and trigger restart
