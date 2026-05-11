@@ -1,3 +1,11 @@
+## v1.17.1 (2026-05-11)
+
+### @createrington/server (1.17.0 → 1.17.1)
+- [chore] Migrate CI deployment secrets from dotenv files to Infisical - both dev and prod workflows now authenticate via universal-auth, pull secrets at build/migrate time with `infisical run`, and sync the runtime `.env` from Infisical on each deploy instead of reading a static file on the host
+- [chore] Separate deploy-time database host from runtime database host - CI steps use `DEPLOY_DB_HOST`/`DEPLOY_DB_PORT` environment variables so the migration runner can reach the database from the CI network without hardcoding the internal Docker hostname
+- [chore] Add CI concurrency groups per PR to cancel superseded workflow runs, reducing wasted runner time on rapid pushes
+- [chore] Wire local dev server through Infisical - the `pnpm dev` script now runs via `infisical run --env=dev` so developers no longer need a local `.env` file for server secrets
+
 ## v1.17.0 (2026-05-09)
 
 ### @createrington/server (1.16.1 → 1.17.0)
