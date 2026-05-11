@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.17.0",
+  "version": "1.17.1",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -30,6 +30,7 @@
       "ip-address@<10.1.1": "^10.1.1"
     },
     "onlyBuiltDependencies": [
+      "@infisical/cli",
       "@parcel/watcher",
       "canvas",
       "cpu-features",
@@ -89,6 +90,7 @@
     "kill-ports": "bash scripts/kill-ports.sh"
   },
   "devDependencies": {
+    "@infisical/cli": "^0.43.84",
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.4.0",
