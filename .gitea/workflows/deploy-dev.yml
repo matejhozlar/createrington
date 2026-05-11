@@ -47,7 +47,14 @@ jobs:
 
       - name: Generate types, command docs, and deploy commands
         run: |
-          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command "pnpm generate:ci && pnpm generate-command-docs:json && pnpm generate-api-docs && pnpm deploy-commands"
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
+            pnpm generate:ci
+            pnpm generate-command-docs:json
+            pnpm generate-api-docs
+            pnpm deploy-commands
+          '
 
       - name: Check for mod API changes
         id: spec-check
@@ -130,13 +137,20 @@ jobs:
       - name: Migrate database
         if: ${{ github.event.inputs.reset_db != 'true' }}
         run: |
-          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command 'PGPASSWORD="$DB_PASSWORD" pnpm db:migrate'
+          pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
+            export PGPASSWORD="$DB_PASSWORD"
+            pnpm db:migrate
+          '
 
       - name: Reset database
         if: ${{ github.event.inputs.reset_db == 'true' }}
         run: |
           apt-get update && apt-get install -y postgresql-client > /dev/null 2>&1
           pnpm exec infisical run --projectId="$INFISICAL_PROJECT_ID" --env=staging --command '
+            export DB_HOST="$DEPLOY_DB_HOST"
+            export DB_PORT="$DEPLOY_DB_PORT"
             export PGPASSWORD="$DB_PASSWORD"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
