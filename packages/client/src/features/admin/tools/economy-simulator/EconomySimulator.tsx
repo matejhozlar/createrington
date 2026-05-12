@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { RotateCcw } from "lucide-react";
 import { ControlPanel } from "./components/ControlPanel";
+import { FormulaCard } from "./components/FormulaCard";
 import { ResultsTable } from "./components/ResultsTable";
 import { DEFAULT_PARAMS, runSimulation } from "./compute";
 import type { SimulatorParams, Snapshot } from "./types";
@@ -68,6 +69,8 @@ export function EconomySimulator() {
             in #739.
           </p>
         </div>
+
+        <FormulaCard />
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <ControlPanel params={params} onChange={setParams} />
