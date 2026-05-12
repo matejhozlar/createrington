@@ -24,8 +24,6 @@ const localSnapshot =
 
 const snapshot = (localSnapshot ?? snapshotExample) as Snapshot;
 
-const SIGNIFICANT_THRESHOLD = 50_000;
-
 export function EconomySimulator() {
   const [params, setParams] = useState<SimulatorParams>(DEFAULT_PARAMS);
 
@@ -73,7 +71,7 @@ export function EconomySimulator() {
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <ControlPanel params={params} onChange={setParams} />
-          <ResultsTable result={result} threshold={SIGNIFICANT_THRESHOLD} />
+          <ResultsTable result={result} />
         </div>
       </div>
     </div>
