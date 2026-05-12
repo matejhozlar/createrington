@@ -1,6 +1,16 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Paginator } from "@/components/paginator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -22,6 +32,9 @@ const formatPercent = (n: number): string =>
   `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`;
 
 const formatHours = (seconds: number): string => (seconds / 3600).toFixed(1);
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const DEFAULT_PAGE_SIZE = 50;
 
 type SortKey = keyof Pick<
   PlayerRow,
@@ -52,18 +65,30 @@ const STAT_ROWS: { key: keyof AggregateStats; label: string }[] = [
 
 type Props = {
   result: SimulationResult;
-  threshold: number;
 };
 
-export function ResultsTable({ result, threshold }: Props) {
+export function ResultsTable({ result }: Props) {
   const [sort, setSort] = useState<SortState>({
     key: "oldWorth",
     dir: "desc",
   });
+  const [minBalanceInput, setMinBalanceInput] = useState("");
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+
+  const minBalance = useMemo(() => {
+    const trimmed = minBalanceInput.trim();
+    if (trimmed === "") return null;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [minBalanceInput]);
 
   const filtered = useMemo(
-    () => result.rows.filter((r) => r.oldWorth > threshold),
-    [result.rows, threshold],
+    () =>
+      minBalance == null
+        ? result.rows
+        : result.rows.filter((r) => r.oldWorth >= minBalance),
+    [result.rows, minBalance],
   );
 
   const sorted = useMemo(() => {
@@ -82,12 +107,35 @@ export function ResultsTable({ result, threshold }: Props) {
     return copy;
   }, [filtered, sort]);
 
+  const total = sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+
+  const paged = useMemo(
+    () => sorted.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [sorted, safePage, pageSize],
+  );
+
   const toggleSort = (key: SortKey) => {
     setSort((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "desc" },
     );
+    setPage(0);
+  };
+
+  const onMinBalanceChange = (value: string) => {
+    setMinBalanceInput(value);
+    setPage(0);
+  };
+
+  const onPageSizeChange = (value: string) => {
+    const next = Number(value);
+    if (Number.isFinite(next)) {
+      setPageSize(next);
+      setPage(0);
+    }
   };
 
   return (
@@ -144,8 +192,28 @@ export function ResultsTable({ result, threshold }: Props) {
       </Card>
 
       <Card className="gap-0">
-        <CardHeader className="border-b gap-0">
-          <CardTitle>Players above {formatCurrency(threshold)}</CardTitle>
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle>Players ({total.toLocaleString()})</CardTitle>
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="economy-min-balance"
+                className="text-xs text-muted-foreground whitespace-nowrap"
+              >
+                Min balance
+              </Label>
+              <Input
+                id="economy-min-balance"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                placeholder="Optional"
+                value={minBalanceInput}
+                onChange={(e) => onMinBalanceChange(e.target.value)}
+                className="h-8 w-32"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="px-0">
           <Table>
@@ -201,17 +269,19 @@ export function ResultsTable({ result, threshold }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.length === 0 ? (
+              {paged.length === 0 ? (
                 <TableRow>
                   <TableCell
                     colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
-                    No players above threshold.
+                    {minBalance == null
+                      ? "No players."
+                      : "No players match the current filter."}
                   </TableCell>
                 </TableRow>
               ) : (
-                sorted.map((row) => (
+                paged.map((row) => (
                   <TableRow key={row.uuid}>
                     <TableCell className="font-medium">
                       {row.username}
@@ -248,6 +318,36 @@ export function ResultsTable({ result, threshold }: Props) {
               )}
             </TableBody>
           </Table>
+          <div className="flex flex-col gap-2 border-t px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="economy-page-size"
+                className="text-xs text-muted-foreground whitespace-nowrap"
+              >
+                Rows per page
+              </Label>
+              <Select value={String(pageSize)} onValueChange={onPageSizeChange}>
+                <SelectTrigger id="economy-page-size" className="h-8 w-[80px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Paginator
+              page={safePage}
+              limit={pageSize}
+              total={total}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              itemLabel="player"
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
