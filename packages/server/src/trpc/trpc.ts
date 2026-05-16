@@ -66,7 +66,9 @@ const isAdmin = middleware(async ({ ctx, next }) => {
  */
 const requireCryptoEnabled = middleware(async ({ next }) => {
   // Lazy import to avoid a top-level dep cycle (trpc <-> services).
-  const { getServiceSync, Services } = await import("@/services");
+  // The explicit /index.js is required: Node ESM does not resolve directory
+  // imports, and post-build only rewrites static import/from statements.
+  const { getServiceSync, Services } = await import("@/services/index.js");
   try {
     const settings = getServiceSync(Services.CRYPTO_SETTINGS_SERVICE);
     if (!settings.get("cryptoEnabled")) {

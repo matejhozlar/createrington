@@ -1,3 +1,8 @@
+## v1.18.1 (2026-05-16)
+
+### @createrington/server (1.18.0 → 1.18.1)
+- [fix] Fix crypto trade ESM directory-import crash: the `requireCryptoEnabled` middleware used a bare directory dynamic import (`@/services`) that Node ESM cannot resolve at runtime; changed to an explicit `@/services/index.js` path and extended the post-build script to rewrite dynamic `import()` string-literal paths the same way it already rewrites static `import ... from` statements
+
 ## v1.18.0 (2026-05-16)
 
 ### @createrington/server (1.17.3 → 1.18.0)
