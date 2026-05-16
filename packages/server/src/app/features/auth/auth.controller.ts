@@ -7,7 +7,7 @@ import { accessCookieService } from "@/services/auth/token/access-cookie.service
 import { sessionService } from "@/services/auth/session/session.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
 import config from "@/config";
-import { Q } from "@/db";
+import { Q, auth } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
 import crypto from "node:crypto";
 
@@ -229,6 +229,17 @@ export class AuthController {
   static async logout(req: Request, res: Response): Promise<void> {
     const rawToken = refreshTokenService.extractFromRequest(req);
 
+    // Resolve the user identity from the session row when possible, so the
+    // log entry is meaningful even though the client doesn't send a Bearer
+    // header to /logout (the access token may also be expired by then).
+    let identity = req.user?.username;
+    if (!identity && rawToken) {
+      const session = await auth.session.findByTokenHash(
+        refreshTokenService.hash(rawToken),
+      );
+      identity = session?.discord_username ?? session?.discord_id ?? undefined;
+    }
+
     if (rawToken) {
       await sessionService.revokeByToken(rawToken);
     }
@@ -236,7 +247,7 @@ export class AuthController {
     refreshTokenService.clearCookie(res);
     accessCookieService.clearCookie(res);
 
-    logger.info(`User ${req.user?.username || "Unknown"} logged out`);
+    logger.info(`User ${identity ?? "Unknown"} logged out`);
 
     res.json({
       success: true,
