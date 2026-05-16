@@ -75,11 +75,8 @@ function checkRateLimit(
   const key = `${playerUuid}:${tokenId}`;
   const lastTradeTime = cooldownMap.get(key);
 
-  if (
-    lastTradeTime &&
-    now - lastTradeTime < cryptoSetting("TRADE_COOLDOWN_PER_TOKEN_MS")
-  ) {
-    const cooldown = cryptoSetting("TRADE_COOLDOWN_PER_TOKEN_MS");
+  const cooldown = cryptoSetting("TRADE_COOLDOWN_PER_TOKEN_MS");
+  if (lastTradeTime && now - lastTradeTime < cooldown) {
     const remainingSeconds = Math.ceil(
       (cooldown - (now - lastTradeTime)) / 1000,
     );

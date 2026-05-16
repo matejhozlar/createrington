@@ -14,21 +14,14 @@ vi.mock("@/db", () => {
   const setting = {
     where: () => ({
       all: async () => Array.from(store.values()),
-      first: async () => undefined,
     }),
-    create: async (data: Partial<StoredRow> & { key?: string }) => {
-      store.set(data.key!, {
-        key: data.key!,
+    upsert: async (data: Partial<StoredRow> & { key: string }) => {
+      store.set(data.key, {
+        key: data.key,
         value: data.value,
         updatedAt: data.updatedAt ?? new Date(),
         updatedByDiscordId: data.updatedByDiscordId ?? null,
       });
-    },
-    update: async (id: { key: string }, patch: Partial<StoredRow>) => {
-      const existing = store.get(id.key);
-      if (existing) {
-        store.set(id.key, { ...existing, ...patch });
-      }
     },
     delete: async (id: { key: string }) => {
       store.delete(id.key);
@@ -160,6 +153,15 @@ describe("CryptoSettingsService", () => {
     expect(svc.get("cryptoEnabled")).toBe(true);
     await svc.set("cryptoEnabled", false, "admin-1");
     expect(svc.get("cryptoEnabled")).toBe(false);
+  });
+
+  it("rejects min > max across paired keys", async () => {
+    const svc = new CryptoSettingsService();
+    await svc.initialize();
+    await svc.set("MEMECOIN_INITIAL_PRICE_MAX", 50, null);
+    await expect(
+      svc.set("MEMECOIN_INITIAL_PRICE_MIN", 200, null),
+    ).rejects.toThrow(/cannot exceed/);
   });
 
   it("ignores unknown override rows on initialize", async () => {

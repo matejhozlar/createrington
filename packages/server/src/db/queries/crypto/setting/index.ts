@@ -12,14 +12,4 @@ export class CryptoSettingQueries extends CryptoSettingBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
   }
-
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<CryptoSetting[]> {
-  //   const result = await this.db.query<CryptoSetting>(
-  //     `SELECT * FROM crypto_setting WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
 }

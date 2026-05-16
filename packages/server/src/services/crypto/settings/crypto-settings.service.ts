@@ -14,15 +14,6 @@ export type SettingsChangeEvent = {
   reset: boolean;
 };
 
-/**
- * Runtime-tweakable overlay over `CRYPTO_CONFIG`.
- *
- * Loads any persisted overrides from `crypto_setting` on boot into an
- * in-memory map, falls back to the compiled default declared in the
- * registry for any key without a row. `setting:changed` is emitted on
- * every update/reset so listeners (e.g. CryptoMarketService) can restart
- * intervals when needed.
- */
 export class CryptoSettingsService extends EventEmitter {
   private overrides = new Map<SettingKey, unknown>();
 
@@ -99,23 +90,18 @@ export class CryptoSettingsService extends EventEmitter {
     const oldValue = this.get(key);
     const newValue = parsed.value as SettingValueOf<K>;
 
-    const existing = await Q.crypto.setting.where({ key }).first();
-    if (existing) {
-      await Q.crypto.setting.update(
-        { key },
-        {
-          value: this.wrap(newValue),
-          updatedAt: new Date(),
-          updatedByDiscordId,
-        },
-      );
-    } else {
-      await Q.crypto.setting.create({
+    const pairError = this.checkPairInvariant(key, newValue);
+    if (pairError) throw new Error(pairError);
+
+    await Q.crypto.setting.upsert(
+      {
         key,
         value: this.wrap(newValue),
+        updatedAt: new Date(),
         updatedByDiscordId,
-      });
-    }
+      },
+      "key",
+    );
 
     this.overrides.set(key, newValue);
     this.emit("setting:changed", {
@@ -169,6 +155,27 @@ export class CryptoSettingsService extends EventEmitter {
 
   private isKnownKey(key: string): key is SettingKey {
     return Object.prototype.hasOwnProperty.call(SETTINGS_REGISTRY, key);
+  }
+
+  // Pairwise invariants the per-key Zod validators can't express.
+  private checkPairInvariant<K extends SettingKey>(
+    key: K,
+    newValue: SettingValueOf<K>,
+  ): string | null {
+    const pairs: Array<[SettingKey, SettingKey]> = [
+      ["MEMECOIN_INITIAL_PRICE_MIN", "MEMECOIN_INITIAL_PRICE_MAX"],
+      ["MEMECOIN_TOTAL_SUPPLY_MIN", "MEMECOIN_TOTAL_SUPPLY_MAX"],
+      ["ORDER_DEFAULT_EXPIRY_HOURS", "ORDER_MAX_EXPIRY_HOURS"],
+    ];
+    for (const [minKey, maxKey] of pairs) {
+      if (key !== minKey && key !== maxKey) continue;
+      const min = (key === minKey ? newValue : this.get(minKey)) as number;
+      const max = (key === maxKey ? newValue : this.get(maxKey)) as number;
+      if (min > max) {
+        return `${minKey} (${min}) cannot exceed ${maxKey} (${max})`;
+      }
+    }
+    return null;
   }
 
   // jsonb columns are stored as `{ v: <value> }` so primitives (numbers, booleans)

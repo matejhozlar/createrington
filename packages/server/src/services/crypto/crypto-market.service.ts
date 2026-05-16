@@ -189,6 +189,7 @@ export class CryptoMarketService {
 
   /** @private Restarts the affected interval when an interval-bound setting changes. */
   private handleSettingChange = (event: SettingsChangeEvent): void => {
+    // cryptoEnabled deliberately omitted: the per-tick guard handles it without restart.
     const restartMap: Partial<Record<SettingKey, () => void>> = {
       MEMECOIN_TICK_INTERVAL_MS: () => {
         if (this.memecoinInterval) clearInterval(this.memecoinInterval);
