@@ -6,7 +6,7 @@ import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { getRecentEvents } from "@/services/crypto/events/news-feed";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
-import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { cryptoSetting } from "@/services/crypto";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 
@@ -25,6 +25,15 @@ import { Services } from "@/services/container";
  * - tokenDistribution: top-20 holder breakdown for a given token
  */
 export const cryptoRouter = router({
+  status: publicProcedure
+    .meta({
+      description:
+        "Returns whether the crypto market is currently enabled for trading",
+    })
+    .query(() => {
+      return { enabled: cryptoSetting("cryptoEnabled") };
+    }),
+
   list: publicProcedure
     .meta({ description: "List all active crypto tokens" })
     .input(
@@ -244,7 +253,8 @@ export const cryptoRouter = router({
         .where({ tokenId: ipoToken.id })
         .count();
       const maxPerPlayer = Math.floor(
-        Number(ipoToken.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+        Number(ipoToken.totalSupply) *
+          cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
       );
 
       return {

@@ -20,7 +20,7 @@ import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
 import { recordTradeVolume } from "../engine/price-engine";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
-import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import { recordWhaleEvent } from "../events/news-feed";
 import { sendWhaleAlertNotification } from "../notifications";
 import { triggerTradeAchievements } from "./achievement-triggers";
@@ -52,7 +52,8 @@ export function getCooldownExpiresAt(
   const lastTradeTime = cooldownMap.get(key);
   if (!lastTradeTime) return null;
 
-  const expiresAt = lastTradeTime + CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS;
+  const expiresAt =
+    lastTradeTime + cryptoSetting("TRADE_COOLDOWN_PER_TOKEN_MS");
   return expiresAt > Date.now() ? expiresAt : null;
 }
 
@@ -74,13 +75,10 @@ function checkRateLimit(
   const key = `${playerUuid}:${tokenId}`;
   const lastTradeTime = cooldownMap.get(key);
 
-  if (
-    lastTradeTime &&
-    now - lastTradeTime < CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS
-  ) {
+  const cooldown = cryptoSetting("TRADE_COOLDOWN_PER_TOKEN_MS");
+  if (lastTradeTime && now - lastTradeTime < cooldown) {
     const remainingSeconds = Math.ceil(
-      (CRYPTO_CONFIG.TRADE_COOLDOWN_PER_TOKEN_MS - (now - lastTradeTime)) /
-        1000,
+      (cooldown - (now - lastTradeTime)) / 1000,
     );
     throw new Error(
       `Trade cooldown: wait ${remainingSeconds}s before trading ${tokenSymbol} again`,
@@ -112,7 +110,7 @@ async function checkWhaleAlert(
   tradeType: "buy" | "sell",
 ): Promise<void> {
   const supplyRatio = Number(amount) / Number(token.totalSupply);
-  if (supplyRatio >= CRYPTO_CONFIG.WHALE_TRADE_THRESHOLD) {
+  if (supplyRatio >= cryptoSetting("WHALE_TRADE_THRESHOLD")) {
     const player = await Q.player.find({ minecraftUuid: playerUuid });
     const playerName = player?.minecraftUsername ?? "Unknown";
     const whaleEvent = await recordWhaleEvent(
@@ -264,7 +262,7 @@ export async function executeBuy(
       const maxAllocation = BigInt(
         Math.floor(
           Number(freshToken.totalSupply) *
-            CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+            cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
         ),
       );
 
@@ -568,7 +566,7 @@ async function updateTreasury(
   txOverride?: DatabaseQueries,
 ): Promise<void> {
   const burnAmount =
-    category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
+    category === "memecoin" ? feeAmount * cryptoSetting("FEES.BURN_RATIO") : 0;
   const collectedAmount = feeAmount - burnAmount;
 
   const crypto = txOverride ? txOverride.crypto : Q.crypto;

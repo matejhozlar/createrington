@@ -5,6 +5,7 @@ import { CryptoMarketQueries } from "@/db/queries/crypto/market";
 import { CryptoOrderQueries } from "@/db/queries/crypto/order";
 import { CryptoPortfolioQueries } from "@/db/queries/crypto/portfolio";
 import { CryptoPriceQueries } from "@/db/queries/crypto/price";
+import { CryptoSettingQueries } from "@/db/queries/crypto/setting";
 import { CryptoTokenQueries } from "@/db/queries/crypto/token";
 import { CryptoTransactionQueries } from "@/db/queries/crypto/transaction";
 import { CryptoTreasuryQueries } from "@/db/queries/crypto/treasury";
@@ -211,6 +212,28 @@ export class CryptoQueries {
       );
     }
     return this._price;
+  }
+
+  /** Private backing field for lazy-loaded crypto_setting queries */
+  private _setting?: CryptoSettingQueries;
+
+  /**
+   * Lazy-loaded singleton accessor for crypto_setting
+   *
+   * Returns a CryptoSettingQueries instance that shares this namespace's
+   * database connection. The instance is created once on first access and
+   * cached for all subsequent calls.
+   *
+   * @returns Singleton CryptoSettingQueries instance
+   */
+  get setting(): CryptoSettingQueries {
+    if (!this._setting) {
+      this._setting = this.getOrCreateChild<CryptoSettingQueries>(
+        "setting",
+        CryptoSettingQueries,
+      );
+    }
+    return this._setting;
   }
 
   /** Private backing field for lazy-loaded crypto_token queries */

@@ -5,6 +5,7 @@ import { getService, Services } from "@/services";
 import type { MarketEventType } from "@/services/crypto/events/event-definitions";
 import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
 import { trpcError } from "@/trpc/utils";
+import { adminCryptoSettingsRouter } from "./settings";
 
 function serializeToken<
   T extends { totalSupply: bigint; availableSupply: bigint },
@@ -18,6 +19,8 @@ function serializeToken<
 
 /** Admin crypto router: token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
+  settings: adminCryptoSettingsRouter,
+
   availableMemecoins: adminProcedure
     .meta({
       description: "List memecoin catalog entries not already in the DB",

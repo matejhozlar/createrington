@@ -31,7 +31,7 @@ import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
 import { PuppeteerService } from "./puppeteer";
-import { CryptoMarketService } from "./crypto";
+import { CryptoMarketService, CryptoSettingsService } from "./crypto";
 import { AiService } from "./ai";
 import { AutoMessageService } from "./discord/auto-message";
 import { lotteryService } from "./lottery";
@@ -368,13 +368,30 @@ export function registerServices(): void {
   );
 
   container.register(
-    Services.CRYPTO_MARKET_SERVICE,
+    Services.CRYPTO_SETTINGS_SERVICE,
     async () => {
-      const service = new CryptoMarketService();
+      const service = new CryptoSettingsService();
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DATABASE, Services.WEBSOCKET_SERVICE] },
+    { dependencies: [Services.DATABASE] },
+  );
+
+  container.register(
+    Services.CRYPTO_MARKET_SERVICE,
+    async (c) => {
+      const settings = await c.get(Services.CRYPTO_SETTINGS_SERVICE);
+      const service = new CryptoMarketService(settings);
+      await service.initialize();
+      return service;
+    },
+    {
+      dependencies: [
+        Services.DATABASE,
+        Services.WEBSOCKET_SERVICE,
+        Services.CRYPTO_SETTINGS_SERVICE,
+      ],
+    },
   );
 
   if (config.stripe.enabled) {

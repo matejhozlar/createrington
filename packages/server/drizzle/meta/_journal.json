@@ -218,6 +218,13 @@
       "when": 1777570050599,
       "tag": "0030_zippy_hellfire_club",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1778929047250,
+      "tag": "0031_chubby_jigsaw",
+      "breakpoints": true
     }
   ]
 }

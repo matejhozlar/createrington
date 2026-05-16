@@ -398,3 +398,16 @@ export const cryptoMarketEvent = pgTable(
     index("idx_crypto_market_event_recent").on(table.createdAt.desc()),
   ],
 );
+
+// --- crypto_setting ---
+// Sparse runtime overrides for keys defined in `services/crypto/crypto.config.ts`.
+// A missing row means: use the compiled default. Deleting a row resets the key.
+
+export const cryptoSetting = pgTable("crypto_setting", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedByDiscordId: text("updated_by_discord_id"),
+});

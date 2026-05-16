@@ -7,7 +7,7 @@
  */
 
 import { Q } from "@/db";
-import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import type { CryptoPriceAlert } from "@createrington/shared/db/crypto_price_alert.types";
 
 export interface TriggeredAlert {
@@ -51,10 +51,9 @@ export async function createAlert(
     .where({ playerMinecraftUuid: playerUuid, triggered: false })
     .count();
 
-  if (count >= CRYPTO_CONFIG.MAX_ACTIVE_ALERTS) {
-    throw new Error(
-      `Max ${CRYPTO_CONFIG.MAX_ACTIVE_ALERTS} active alerts allowed`,
-    );
+  const max = cryptoSetting("MAX_ACTIVE_ALERTS");
+  if (count >= max) {
+    throw new Error(`Max ${max} active alerts allowed`);
   }
 
   return Q.crypto.price.alert.createAndReturn({

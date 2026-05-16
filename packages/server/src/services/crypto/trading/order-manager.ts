@@ -6,7 +6,7 @@
 import { db, Q, R } from "@/db";
 import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
-import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
@@ -85,15 +85,14 @@ export async function placeOrder(
     })
     .count();
 
-  if (pendingCount >= CRYPTO_CONFIG.MAX_PENDING_ORDERS) {
-    throw new Error(
-      `Maximum ${CRYPTO_CONFIG.MAX_PENDING_ORDERS} pending orders allowed`,
-    );
+  const maxPending = cryptoSetting("MAX_PENDING_ORDERS");
+  if (pendingCount >= maxPending) {
+    throw new Error(`Maximum ${maxPending} pending orders allowed`);
   }
 
   const effectiveExpiry = Math.min(
-    expiryHours ?? CRYPTO_CONFIG.ORDER_DEFAULT_EXPIRY_HOURS,
-    CRYPTO_CONFIG.ORDER_MAX_EXPIRY_HOURS,
+    expiryHours ?? cryptoSetting("ORDER_DEFAULT_EXPIRY_HOURS"),
+    cryptoSetting("ORDER_MAX_EXPIRY_HOURS"),
   );
   const expiresAt = new Date(Date.now() + effectiveExpiry * 60 * 60 * 1000);
 
@@ -589,7 +588,7 @@ async function updateTreasury(
   txOverride?: DatabaseQueries,
 ): Promise<void> {
   const burnAmount =
-    category === "memecoin" ? feeAmount * CRYPTO_CONFIG.FEES.BURN_RATIO : 0;
+    category === "memecoin" ? feeAmount * cryptoSetting("FEES.BURN_RATIO") : 0;
   const collectedAmount = feeAmount - burnAmount;
 
   const crypto = txOverride ? txOverride.crypto : Q.crypto;

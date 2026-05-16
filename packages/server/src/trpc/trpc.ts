@@ -60,6 +60,28 @@ const isAdmin = middleware(async ({ ctx, next }) => {
   return next({ ctx: { user: ctx.user } });
 });
 
+/**
+ * Rejects requests when the crypto master toggle is off. Reads the in-memory
+ * value from the settings service so the check is free on the hot path.
+ */
+const requireCryptoEnabled = middleware(async ({ next }) => {
+  // Lazy import to avoid a top-level dep cycle (trpc <-> services).
+  const { getServiceSync, Services } = await import("@/services");
+  try {
+    const settings = getServiceSync(Services.CRYPTO_SETTINGS_SERVICE);
+    if (!settings.get("cryptoEnabled")) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Crypto market is currently disabled",
+      });
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    // Service not yet ready (boot or test harness): fall through.
+  }
+  return next();
+});
+
 /** Rejects anyone whose JWT discordId doesn't match the configured owner. */
 const isOwner = middleware(async ({ ctx, next }) => {
   if (ctx.user?.discordId !== config.app.auth.owner.discordId) {
@@ -77,3 +99,10 @@ export const userProcedure = t.procedure.use(isAuthenticated);
 export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
 /** Procedure gated on matching the configured owner Discord ID. */
 export const ownerProcedure = t.procedure.use(isAuthenticated).use(isOwner);
+
+/**
+ * User procedure that additionally fails when the crypto master toggle is off.
+ * Use for trade-side mutations (buy/sell/order placement) so reads still work
+ * while the market is paused.
+ */
+export const cryptoUserProcedure = userProcedure.use(requireCryptoEnabled);
