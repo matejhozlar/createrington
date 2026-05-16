@@ -36,7 +36,6 @@
     "util:generate-command-docs:md": "tsx src/scripts/discord/generate-command-docs.ts --md",
     "util:generate-api-docs": "tsx src/scripts/api/generate-api-docs.ts",
     "util:generate-mod-api": "tsx src/scripts/api/generate-mod-api.ts",
-    "util:generate-economy-snapshot": "tsx src/scripts/generate-economy-snapshot.ts",
     "util:scrape-discord": "tsx src/scripts/discord/scrape-entities.ts",
     "util:sync-nicknames": "tsx src/scripts/discord/sync-nicknames.ts",
     "util:db-migrate-users": "tsx src/scripts/db/migration/migrate-users.ts",

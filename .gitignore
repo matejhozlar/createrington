@@ -47,6 +47,3 @@ mod-api/build/
 mod-api/.gradle/
 docs/api-reference.md
 
-# Locally-generated economy simulator snapshot (contains player PII)
-packages/client/src/features/admin/tools/economy-simulator/snapshot.local.json
-
