@@ -57,7 +57,7 @@ describe("getBaseFeeRate", () => {
   });
 
   it("returns 0 for unknown categories", () => {
-    // @ts-expect-error — exercise the default branch
+    // @ts-expect-error: exercise the default branch
     expect(getBaseFeeRate("mystery")).toBe(0);
   });
 });

@@ -69,7 +69,7 @@ interface OAuthConfig {
  * - Refreshes and revokes Discord OAuth tokens as needed
  *
  * NOTE: Validates that all required OAuth environment variables are present
- * at construction time — misconfiguration throws immediately rather than at runtime
+ * at construction time: misconfiguration throws immediately rather than at runtime
  */
 export class DiscordOAuthService {
   private static instance: DiscordOAuthService;

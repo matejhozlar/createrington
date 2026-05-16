@@ -54,7 +54,7 @@ export const CRYPTO_CONFIG = {
   // Volatility Tiers (memecoin)
   // Tiers are matched by current price (≤ maxPrice); minChange/maxChange are fractional multipliers on the current price per tick
   // upwardBias: probability of going up (0.5 = neutral, >0.5 = upward drift, <0.5 = downward drift)
-  // Higher-priced tokens have progressively lower upward bias — natural price ceiling
+  // Higher-priced tokens have progressively lower upward bias: natural price ceiling
   VOLATILITY: {
     PENNY: {
       maxPrice: 0.1,
@@ -82,12 +82,12 @@ export const CRYPTO_CONFIG = {
   FEES: {
     STABLE: 0,
     BLUE_CHIP: 0.005, // 0.5%
-    MEMECOIN: 0.05, // 5% (doubled — matches old system)
+    MEMECOIN: 0.05, // 5% (doubled, matches old system)
     SEASONAL: 0.01, // 1%
     BURN_RATIO: 0.5, // 50% of memecoin fees burned
   },
 
-  // Volume Discounts (none — matches old system)
+  // Volume Discounts (none, matches old system)
   VOLUME_DISCOUNTS: [] as { minTrades: number; discount: number }[],
 
   // Trading Limits
@@ -103,7 +103,7 @@ export const CRYPTO_CONFIG = {
   PORTFOLIO_SNAPSHOT_HOUR: 4, // 04:00 daily
 
   // Market Events
-  EVENT_ROLL_INTERVAL_MS: 3 * 3_600_000, // check every 3 hours (was 1 hour — much less frequent)
+  EVENT_ROLL_INTERVAL_MS: 3 * 3_600_000, // check every 3 hours (was 1 hour, much less frequent)
   MAX_CONCURRENT_EVENTS: 1, // max 1 simultaneous active event (was 2)
 
   // IPO (Initial Public Offering)

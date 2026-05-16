@@ -43,7 +43,7 @@ export interface ChatMessage {
 
 /**
  * pageContext passed to the proxy on every start/send. Gives Claude enough
- * to say "you're already on /admin/players — click the Ban button on the
+ * to say "you're already on /admin/players, click the Ban button on the
  * row" instead of guessing where features live.
  */
 export interface PageContext {

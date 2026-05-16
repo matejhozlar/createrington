@@ -23,7 +23,7 @@ import { ButtonStyle, type ButtonBuilder } from "discord.js";
 import { ButtonPresets } from "@/discord/embeds/presets/buttons";
 
 // discord.js's ButtonBuilder.toJSON() returns APIButtonComponent which is a
-// discriminated union — the SKU variant has no `label`, so the union loses
+// discriminated union: the SKU variant has no `label`, so the union loses
 // the label field. Widen at the test boundary so we can read individual props.
 type ButtonData = {
   style?: ButtonStyle;

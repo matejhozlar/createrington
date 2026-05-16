@@ -31,7 +31,7 @@ interface CryptoDataProviderProps {
  * - Listens for market event broadcasts and reflects them in active-events / news-feed queries
  * - Unsubscribes from the WebSocket room on unmount
  *
- * NOTE: Must be rendered inside WebSocketProvider — throws if the context is missing
+ * NOTE: Must be rendered inside WebSocketProvider, throws if the context is missing
  */
 export function CryptoDataProvider({
   children,
@@ -113,7 +113,7 @@ export function CryptoDataProvider({
     return unsub;
   }, [isConnected, on, handlePriceBroadcast]);
 
-  // Order fill events — invalidate balance, orders, portfolio, and trade history
+  // Order fill events: invalidate balance, orders, portfolio, and trade history
   useEffect(() => {
     if (!isConnected || !user) return;
 
@@ -135,7 +135,7 @@ export function CryptoDataProvider({
     return unsub;
   }, [isConnected, on, user, toast, utils]);
 
-  // Market events — invalidate active events + news feed
+  // Market events: invalidate active events + news feed
   useEffect(() => {
     if (!isConnected) return;
 

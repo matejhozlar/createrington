@@ -54,7 +54,7 @@ export default defineApiSpec({
                     name: "partyMembers",
                     nullable: true,
                     description:
-                      "UUIDs of OTHER party members (the player's own UUID is excluded). Null if solo. Informational only — the server does not currently consume this field.",
+                      "UUIDs of OTHER party members (the player's own UUID is excluded). Null if solo. Informational only: the server does not currently consume this field.",
                     type: { type: "array", items: "string" },
                   },
                   {

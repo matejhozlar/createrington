@@ -26,7 +26,7 @@ function PlayerRow({
   uuid: string;
   username: string;
   sessionStart: Date | string;
-  /** Current timestamp snapshot from the parent's tick — pure state, no Date.now() here */
+  /** Current timestamp snapshot from the parent's tick: pure state, no Date.now() here */
   now: number;
   /** True when the sidebar is in icon-collapsed mode */
   isCollapsed: boolean;
@@ -50,7 +50,7 @@ function PlayerRow({
       )}
     >
       {/*
-       * Avatar — when collapsed we wrap it in the same Tooltip pattern that
+       * Avatar: when collapsed we wrap it in the same Tooltip pattern that
        * SidebarMenuButton uses: Tooltip > TooltipTrigger asChild > element,
        * with TooltipContent hidden={!isCollapsed} so it's mounted but suppressed
        * in expanded mode.  The TooltipProvider (delayDuration={0}) is already
@@ -71,7 +71,7 @@ function PlayerRow({
                 {initials}
               </div>
             )}
-            {/* Always-green online dot — every player in this list is, by definition, online */}
+            {/* Always-green online dot: every player in this list is, by definition, online */}
             <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full border-2 border-background bg-green-500" />
           </div>
         </TooltipTrigger>
@@ -80,7 +80,7 @@ function PlayerRow({
         </TooltipContent>
       </Tooltip>
 
-      {/* Info — hidden when collapsed */}
+      {/* Info: hidden when collapsed */}
       {!isCollapsed && (
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground">

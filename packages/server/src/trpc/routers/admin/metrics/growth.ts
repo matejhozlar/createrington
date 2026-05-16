@@ -2,7 +2,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { metricsService } from "@/services/metrics";
 import { dateRangeInput } from "./schemas";
 
-/** Admin growth metrics — registrations, waitlist funnel, Discord member trends */
+/** Admin growth metrics: registrations, waitlist funnel, Discord member trends */
 export const growthMetricsRouter = router({
   getOverview: adminProcedure
     .meta({ description: "Get growth overview with total player count" })

@@ -118,7 +118,7 @@ export function RemoveModDialog({
         </DialogHeader>
 
         <div className="max-h-80 space-y-2 overflow-y-auto">
-          {/* Target mod — always removed */}
+          {/* Target mod, always removed */}
           <div className="flex items-center gap-3 rounded-md border border-destructive/50 bg-destructive/5 p-3 text-sm">
             <Trash2 className="size-4 shrink-0 text-destructive" />
             <div className="min-w-0 flex-1">

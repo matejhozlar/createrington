@@ -140,7 +140,7 @@ function parseRouteFile(source: string, prefix: string): ParsedRoute[] {
 
     const method = (methodMatch?.[1] ?? inlineMatch?.[1])!.toUpperCase();
 
-    // Extract path — may be on the same line or the next
+    // Extract path: may be on the same line or the next
     let routePath: string;
     if (inlineMatch) {
       routePath = inlineMatch[2];
@@ -370,7 +370,7 @@ function authBadge(auth: string): string {
 function extractRouteDescription(comment: string): string {
   if (!comment) return "";
 
-  // Strip leading "METHOD /path — description" or "METHOD /path - description"
+  // Strip leading "METHOD /path - description" (either hyphen or em dash)
   // Require whitespace before the dash to avoid matching dashes in URL paths
   const stripped = comment
     .replace(/^(GET|POST|PUT|PATCH|DELETE)\s+\/\S*\s+[-—]\s*/i, "")
@@ -603,13 +603,13 @@ function generateFullMarkdown(entries: DocEntry[]): string {
       const count = entry.routes.length;
       const label = count === 1 ? "endpoint" : "endpoints";
       lines.push(
-        `- **[${entry.module.name}](#${entry.module.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} ${label}`,
+        `- **[${entry.module.name}](#${entry.module.name.toLowerCase().replace(/\s+/g, "-")})**: ${count} ${label}`,
       );
     } else {
       const count = entry.spec.endpoints.length;
       const label = count === 1 ? "endpoint" : "endpoints";
       lines.push(
-        `- **[${entry.spec.name}](#${entry.spec.name.toLowerCase().replace(/\s+/g, "-")})** — ${count} ${label}`,
+        `- **[${entry.spec.name}](#${entry.spec.name.toLowerCase().replace(/\s+/g, "-")})**: ${count} ${label}`,
       );
     }
   }

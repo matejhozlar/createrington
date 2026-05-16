@@ -56,7 +56,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const accountQuery = trpc.user.account.me.useQuery(undefined, {
     enabled: !!user,
   });
-  // Gate on `user` as well — React Query keeps the previous result in the
+  // Gate on `user` as well: React Query keeps the previous result in the
   // cache after the query is disabled on logout, which would otherwise
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);

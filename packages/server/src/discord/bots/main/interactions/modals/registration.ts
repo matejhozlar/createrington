@@ -5,7 +5,7 @@ import {
   REGISTER_MODAL_INPUT_ID,
 } from "@/discord/bots/main/registration/welcome-message";
 
-/** Modal submit handler — runs the shared registration flow and mutates the
+/** Modal submit handler: runs the shared registration flow and mutates the
  * original welcome message (the one with the "Register" button) in place. */
 export const customId = REGISTER_MODAL_ID;
 

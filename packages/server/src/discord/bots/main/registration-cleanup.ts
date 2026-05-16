@@ -28,13 +28,13 @@ export function scheduleChannelClose(
       const deleteEmbed = EmbedPresets.channelDeletion();
       await channel.send({ embeds: [deleteEmbed.build()] });
     } catch {
-      // Channel may already be gone — proceed to delete
+      // Channel may already be gone, proceed to delete
     }
 
     setTimeout(async () => {
       try {
         await channel.delete(reason);
-        logger.info(`Deleted registration channel ${channel.id} — ${reason}`);
+        logger.info(`Deleted registration channel ${channel.id}: ${reason}`);
       } catch (error) {
         logger.error(
           `Failed to delete registration channel ${channel.id}:`,
@@ -47,7 +47,7 @@ export function scheduleChannelClose(
 
 /**
  * Scans every channel in the VERIFICATION category and deletes any that
- * belong to a user who already has the VERIFIED role — meaning they
+ * belong to a user who already has the VERIFIED role, meaning they
  * completed registration but the channel was never closed (e.g. bot restart).
  *
  * Channel ownership is determined by the member-type permission overwrite
@@ -93,7 +93,7 @@ export async function sweepRegistrationChannels(bot: Client): Promise<void> {
         cleaned++;
       }
     } catch {
-      // Member may have left the server — clean up the orphaned channel
+      // Member may have left the server, clean up the orphaned channel
       scheduleChannelClose(
         channel as GuildTextBasedChannel,
         0,

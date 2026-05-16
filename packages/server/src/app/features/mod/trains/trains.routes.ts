@@ -11,7 +11,7 @@ const router = Router();
  * These endpoints are called by the Minecraft mod to report train events.
  */
 
-// POST /api/trains/crash — report a train crash
+// POST /api/trains/crash: report a train crash
 router.post(
   "/crash",
   ...customRoute([verifyServerIP, verifyModJWT], TrainsController.reportCrash),

@@ -532,7 +532,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
 
   /**
    * Loads player, role, and channel maps for mention resolution.
-   * Called once on init — roles/channels come from static config,
+   * Called once on init: roles/channels come from static config,
    * users come from the player table.
    */
   private async loadMentionMaps(): Promise<void> {

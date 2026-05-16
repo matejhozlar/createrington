@@ -1,3 +1,16 @@
+## v1.17.3 (2026-05-16)
+
+### @createrington/server (1.17.2 → 1.17.3)
+- [refactor] Strip em dashes from all non-UI code (comments, log messages, config annotations) and replace with colons, commas, or semicolons per the project style convention
+- [refactor] Remove dead commented-out code across the codebase: pool monitor export and startup call, database health-check component in `/health`, and stale import of pool monitor in the app setup
+
+### @createrington/client (0.2.18 → 0.2.19)
+- [refactor] Strip em dashes from all non-UI code (comments, JSDoc annotations) and replace with colons, commas, or semicolons per the project style convention
+- [refactor] Remove dead commented-out code: order mode selector block in the crypto trade panel and placeholder "Getting Started" guide entry
+
+### @createrington/shared (1.1.2 → 1.1.3)
+- [refactor] Strip em dashes from JSDoc comments in embed and message type schemas
+
 ## v1.17.2 (2026-05-11)
 
 ### @createrington/server (1.17.1 → 1.17.2)

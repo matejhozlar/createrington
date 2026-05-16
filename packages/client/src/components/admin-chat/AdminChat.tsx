@@ -59,7 +59,7 @@ export function AdminChat(): React.JSX.Element | null {
 
   // Track last-seen assistant message id. "Adjust during render" pattern:
   // whenever the drawer is open, reconcile `seen` with the latest id. The
-  // unread dot is derived purely — no effect needed.
+  // unread dot is derived purely, no effect needed.
   const latestAssistantId = session.messages
     .filter((m) => m.role === "assistant")
     .reduce((max, m) => (m.id > max ? m.id : max), 0);

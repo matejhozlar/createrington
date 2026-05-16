@@ -19,7 +19,7 @@ import {
 
 // Minecraft's placeholder UUID, emitted by fakeplayers / CommandBlocks and
 // sometimes returned in the server-list-ping sample for non-player entries.
-// Never belongs in session tracking — rejected at every ingress point below.
+// Never belongs in session tracking: rejected at every ingress point below.
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 export interface PlaytimeServiceEvents {

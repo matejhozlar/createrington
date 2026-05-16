@@ -164,7 +164,7 @@
 }
 
 /* ============================================================================
-   Render pages — shared background grid for OG-image renders
+   Render pages: shared background grid for OG-image renders
    ============================================================================ */
 
 .render-bg-grid {
@@ -329,7 +329,7 @@
   animation: maintenance-pulse 4s ease-in-out infinite;
 }
 
-/* Admin chat highlight action — applied to arbitrary DOM elements via
+/* Admin chat highlight action: applied to arbitrary DOM elements via
    document.querySelector, so the class must live globally rather than
    inside a component stylesheet. */
 @keyframes ac-highlight-pulse {
@@ -363,7 +363,7 @@
 }
 
 /* ============================================================================
-   Structure Packs hero — Parallel Worlds portal
+   Structure Packs hero: Parallel Worlds portal
    ============================================================================ */
 
 .nice-scroll::-webkit-scrollbar {

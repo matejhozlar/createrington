@@ -6,7 +6,7 @@ import type { MentionState, RepoSuggestion } from "./types";
  * Walk back from the cursor to find an active `@`-mention. Returns the
  * mention state or null. Triggers only when `@` sits at a word boundary
  * (start of input or after whitespace) and the query is plain
- * repo-name-ish text — a space or newline closes the menu.
+ * repo-name-ish text: a space or newline closes the menu.
  */
 export function detectMention(
   value: string,

@@ -50,7 +50,7 @@ export async function execute(
 
     // If this departure was triggered by the inactivity cleanup flow,
     // the warning row is marked removed before the kick fires. Skip the
-    // "member left" notification — the inactivity removal already sent
+    // "member left" notification: the inactivity removal already sent
     // its own announcement, and the player record is about to be deleted
     // which would break the Yeet-from-database button.
     const removedWarnings = await Q.player.inactivity.warning.count({
@@ -60,7 +60,7 @@ export async function execute(
 
     if (removedWarnings > 0) {
       logger.info(
-        `Skipping leave notification for ${member.user.tag} (${player.minecraftUsername}) — departure triggered by inactivity cleanup`,
+        `Skipping leave notification for ${member.user.tag} (${player.minecraftUsername}): departure triggered by inactivity cleanup`,
       );
       return;
     }

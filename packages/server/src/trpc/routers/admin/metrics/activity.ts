@@ -3,7 +3,7 @@ import { metricsService } from "@/services/metrics";
 import { z } from "zod";
 import { dateRangeWithMonthInput } from "./schemas";
 
-/** Admin activity metrics — active players, peak concurrent, sessions, retention */
+/** Admin activity metrics: active players, peak concurrent, sessions, retention */
 export const activityMetricsRouter = router({
   getActivePlayers: adminProcedure
     .meta({

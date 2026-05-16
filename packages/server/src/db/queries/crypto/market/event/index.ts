@@ -12,7 +12,7 @@ import { CryptoMarketEventBaseQueries } from "@/generated/db/crypto_market_event
  * - Arbitrary metadata payload for event-specific details
  *
  * NOTE: Inherits all generated CRUD operations from CryptoMarketEventBaseQueries.
- * Add custom query methods directly to this class — this file is never overwritten by codegen.
+ * Add custom query methods directly to this class; this file is never overwritten by codegen.
  */
 export class CryptoMarketEventQueries extends CryptoMarketEventBaseQueries {
   constructor(db: Pool | PoolClient) {

@@ -95,7 +95,7 @@ function checkRateLimit(
  *
  * A trade is considered a whale trade when its amount exceeds WHALE_TRADE_THRESHOLD
  * as a fraction of the token's total supply. Both the news feed and Discord
- * notifications are dispatched fire-and-forget — failures are only logged.
+ * notifications are dispatched fire-and-forget: failures are only logged.
  *
  * @private
  * @param playerUuid - Minecraft UUID of the trading player
@@ -416,7 +416,7 @@ export async function executeSell(
 ): Promise<TradeResult> {
   if (isInIpo(token)) {
     throw new Error(
-      `${token.symbol} is in its IPO phase — selling is not allowed until trading opens`,
+      `${token.symbol} is in its IPO phase: selling is not allowed until trading opens`,
     );
   }
 
@@ -494,7 +494,7 @@ export async function executeSell(
 
     const newAmount = holding.amount - amount;
     if (newAmount === 0n) {
-      // Holding fully liquidated — delete the row
+      // Holding fully liquidated: delete the row
       await tx.crypto.holding.delete({ id: holding.id });
     } else {
       // Reduce cost basis by the FIFO-consumed amount
@@ -573,7 +573,7 @@ async function updateTreasury(
 
   const crypto = txOverride ? txOverride.crypto : Q.crypto;
 
-  // Treasury is a singleton row — create it on first fee collection if absent
+  // Treasury is a singleton row: create it on first fee collection if absent
   const treasury = await crypto.treasury.where({}).first();
   if (treasury) {
     await crypto.treasury.update(

@@ -4,7 +4,7 @@ import { getService, Services } from "@/services";
 import { Q } from "@/db";
 import { trpcError } from "@/trpc/utils";
 
-/** Panel consumer presence router — current online player list scoped to one server. */
+/** Panel consumer presence router: current online player list scoped to one server. */
 export const panelPresenceRouter = router({
   onlineByServer: adminProcedure
     .meta({

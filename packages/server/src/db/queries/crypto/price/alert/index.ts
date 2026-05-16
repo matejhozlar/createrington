@@ -10,7 +10,7 @@ import { CryptoPriceAlertBaseQueries } from "@/generated/db/crypto_price_alert.q
  * - Scoped per player and token with a unique constraint preventing duplicates
  *
  * NOTE: Inherits all generated CRUD operations from CryptoPriceAlertBaseQueries.
- * Add custom query methods directly to this class — this file is never overwritten by codegen.
+ * Add custom query methods directly to this class; this file is never overwritten by codegen.
  */
 export class CryptoPriceAlertQueries extends CryptoPriceAlertBaseQueries {
   constructor(db: Pool | PoolClient) {

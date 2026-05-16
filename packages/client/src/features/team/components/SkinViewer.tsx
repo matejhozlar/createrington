@@ -352,7 +352,7 @@ export const SkinViewer = forwardRef<SkinViewerHandle, SkinViewerProps>(
       const viewer = viewerRef.current;
       if (!viewer || !hoverAnimation) return;
 
-      // Cancel dance if active — hover takes priority
+      // Cancel dance if active: hover takes priority
       if (danceTimerRef.current !== null) {
         clearTimeout(danceTimerRef.current);
         danceTimerRef.current = null;

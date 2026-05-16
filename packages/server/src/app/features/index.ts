@@ -37,7 +37,7 @@ export function registerRoutes(app: Express): void {
     logger.info("Internal sync routes registered");
   }
 
-  // Admin chat proxy — only active when the upstream URL is configured.
+  // Admin chat proxy, only active when the upstream URL is configured.
   // Routes gate on requireAdmin internally; the secret (if set) is injected
   // into outbound calls so it never touches the browser.
   if (env.CLAUDE_API_URL) {

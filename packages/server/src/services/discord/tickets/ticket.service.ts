@@ -599,7 +599,7 @@ export class TicketService {
     }
 
     // transcriptPath comes from ticket.metadata (JSONB) which is only written
-    // by generateTranscript today, but the column has no schema — if any
+    // by generateTranscript today, but the column has no schema. If any
     // future path writes user input into metadata.transcriptPath, this
     // fs.readFile becomes an arbitrary-file-read primitive. Pin it to the
     // transcripts dir.

@@ -92,7 +92,7 @@ export function PresetSidebar({
     try {
       localStorage.setItem(RAIL_COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch {
-      // Storage unavailable — silently ignore.
+      // Storage unavailable, silently ignore.
     }
   }, [collapsed, forceExpanded]);
 

@@ -12,7 +12,7 @@ import {
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 
-/** Admin servers router — server list with stats, detail view, activity, heatmap, and sessions. */
+/** Admin servers router: server list with stats, detail view, activity, heatmap, and sessions. */
 export const adminServersRouter = router({
   list: adminProcedure
     .meta({ description: "List all servers with aggregate stats" })
@@ -306,7 +306,7 @@ export const adminServersRouter = router({
         const ws = await getService(Services.WEBSOCKET_SERVICE);
         await ws.triggerServerStatusUpdate(input.serverId);
       } catch {
-        // Non-critical — UI will catch up on next poll
+        // Non-critical, UI will catch up on next poll
       }
 
       return { enabled: input.enabled };

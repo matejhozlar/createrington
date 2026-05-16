@@ -14,7 +14,7 @@ import { GrowthMetrics } from "./domains/growth.metrics";
  * - Moderation: bans, strikes, tickets, moderator leaderboard
  * - Growth: registrations, waitlist funnel, Discord member trends
  *
- * NOTE: Pure DB layer — no async initialization or service dependencies
+ * NOTE: Pure DB layer, no async initialization or service dependencies
  */
 export class MetricsService {
   private _playtime?: PlaytimeMetrics;

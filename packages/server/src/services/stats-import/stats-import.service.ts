@@ -68,7 +68,7 @@ export class StatsImportService {
       `Initializing StatsImportService for ${this.configs.length} server(s)...`,
     );
 
-    // Run initial import in the background — don't block server startup
+    // Run initial import in the background, don't block server startup
     Promise.allSettled(
       this.configs.map((cfg) => this.importServerStats(cfg.serverId)),
     ).catch((error) => logger.error("Initial stats import failed:", error));
@@ -208,7 +208,7 @@ export class StatsImportService {
       let skipped = 0;
 
       for (const file of jsonFiles) {
-        // Filename is <uuid>.json — extract UUID
+        // Filename is <uuid>.json: extract UUID
         const uuid = file.name.replace(".json", "");
         if (!knownUuids.has(uuid)) {
           skipped++;

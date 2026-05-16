@@ -52,7 +52,7 @@ function cacheSet(uuid: string, username: string | null): void {
  * if Mojang has no profile for the UUID (e.g. opac-fakeplayer's all-zero
  * sentinel, or any UUID never tied to a real account).
  *
- * Throws on network failure — callers should treat that as transient.
+ * Throws on network failure; callers should treat that as transient.
  */
 export async function getMojangUsername(uuid: string): Promise<string | null> {
   const cached = cacheGet(uuid);

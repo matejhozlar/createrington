@@ -2,10 +2,10 @@
  * tRPC initialization and procedure definitions.
  *
  * Exports four auth-level procedures used across all routers:
- * - `publicProcedure` — no auth required
- * - `userProcedure` — requires valid JWT and verified account
- * - `adminProcedure` — requires valid JWT, verified account, and isAdmin flag
- * - `ownerProcedure` — additionally requires JWT discordId to match
+ * - `publicProcedure`: no auth required
+ * - `userProcedure`: requires valid JWT and verified account
+ * - `adminProcedure`: requires valid JWT, verified account, and isAdmin flag
+ * - `ownerProcedure`: additionally requires JWT discordId to match
  *   `config.app.auth.owner.discordId` (single-owner gate, env-rooted)
  */
 import { initTRPC, TRPCError } from "@trpc/server";

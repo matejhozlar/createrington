@@ -5,7 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { getService, Services } from "@/services";
 import config from "@/config";
 
-/** User account router — profile info, session management, data export, and account deletion. */
+/** User account router: profile info, session management, data export, and account deletion. */
 export const accountRouter = router({
   me: userProcedure
     .meta({
@@ -192,7 +192,7 @@ export const accountRouter = router({
         },
       };
 
-      // BigInt values can't be JSON-serialized — convert them to strings
+      // BigInt values can't be JSON-serialized, convert them to strings
       return JSON.parse(
         JSON.stringify(data, (_key, value) =>
           typeof value === "bigint" ? value.toString() : value,
@@ -234,7 +234,7 @@ export const accountRouter = router({
         await Q.ticket.delete({ id: ticket.id });
       }
 
-      // Delete the player row — cascades to all related tables
+      // Delete the player row, cascades to all related tables
       await Q.player.delete({ discordId });
 
       // Kick from Discord after successful deletion

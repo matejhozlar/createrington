@@ -11,7 +11,7 @@ import {
 /**
  * Button handler for player-prompt "Respond" buttons.
  *
- * Pattern: `prompt:respond:<promptId>` — opens a modal prefilled with the
+ * Pattern: `prompt:respond:<promptId>`. Opens a modal prefilled with the
  * user's existing response (if any) so submitting overwrites rather than
  * creating a second row. The actual write happens in the modal handler at
  * interactions/modals/prompt-submit.ts; this file's only job is to validate

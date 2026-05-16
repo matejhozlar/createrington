@@ -28,7 +28,7 @@ interface CommandData {
   commands: RawCommand[];
 }
 
-/** Public Discord commands router — serves player-facing command docs. */
+/** Public Discord commands router: serves player-facing command docs. */
 export const discordCommandsRouter = router({
   list: publicProcedure
     .meta({

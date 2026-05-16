@@ -459,7 +459,7 @@ function DangerZone() {
   );
 }
 
-/** Account Settings page — combines account info, active sessions, and danger zone actions */
+/** Account Settings page: combines account info, active sessions, and danger zone actions */
 export function Settings() {
   return (
     <div className="flex flex-1 flex-col px-5 md:px-8 pt-5 pb-16">

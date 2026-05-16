@@ -86,7 +86,7 @@ export function AdminChatHistory() {
       setSessions((prev) => [...prev, ...page.sessions]);
       setNextCursor(page.nextCursor);
     } catch (err) {
-      // Inline error — don't clobber the whole list on a pagination failure.
+      // Inline error: don't clobber the whole list on a pagination failure.
       setLoadMoreError(
         err instanceof Error ? err.message : "Failed to load more",
       );

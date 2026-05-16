@@ -156,7 +156,7 @@ export const SERVER_AGE_ROLE_HIERARCHY: ServerAgeRoleRule[] = [
 /**
  * Top playtime role configuration (competitive, rank-based)
  *
- * Only one player holds this role at a time — the player with the most
+ * Only one player holds this role at a time: the player with the most
  * total playtime across all servers. Checked daily.
  */
 export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
@@ -172,7 +172,7 @@ export const TOP_PLAYTIME_ROLES: TopPlaytimeRoleRule[] = [
 /**
  * Top crypto networth role configuration (competitive, rank-based)
  *
- * Only one player holds this role at a time — the player with the highest
+ * Only one player holds this role at a time: the player with the highest
  * total crypto portfolio value. Checked daily.
  */
 export const TOP_CRYPTO_NETWORTH_ROLES: TopCryptoNetworthRoleRule[] = [

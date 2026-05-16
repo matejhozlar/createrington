@@ -19,7 +19,7 @@ const router = Router();
  *
  * Internal endpoints consumed by PuppeteerService to generate
  * server-rendered HTML snapshots (e.g. player comparison images).
- * Protected by a shared secret — not accessible to regular users.
+ * Protected by a shared secret, not accessible to regular users.
  */
 
 /**
@@ -47,7 +47,7 @@ function requirePuppeteerSecret(
  * GET /api/render/compare?secret=...&player1=...&player2=...
  *
  * Returns comparison data for two players identified by Discord ID.
- * Protected by puppeteer secret — not accessible to regular users.
+ * Protected by puppeteer secret, not accessible to regular users.
  */
 router.get(
   "/compare",
@@ -118,7 +118,7 @@ router.get(
  * GET /api/render/profile?secret=...&player=...
  *
  * Returns profile data for a single player identified by Discord ID.
- * Protected by puppeteer secret — not accessible to regular users.
+ * Protected by puppeteer secret, not accessible to regular users.
  */
 router.get(
   "/profile",
@@ -205,7 +205,7 @@ router.get(
  * GET /api/render/activity?secret=...&player=...
  *
  * Returns daily playtime data for the last 365 days, aggregated across servers.
- * Protected by puppeteer secret — not accessible to regular users.
+ * Protected by puppeteer secret, not accessible to regular users.
  */
 router.get(
   "/activity",
@@ -243,7 +243,7 @@ router.get(
     // Use all-time total from playtime summary (not just 365-day window)
     const totalSeconds = details.playtime.totalSeconds;
 
-    // Current streak — consecutive days ending today or yesterday
+    // Current streak: consecutive days ending today or yesterday
     let currentStreak = 0;
     const today = new Date();
     const check = new Date(today);
@@ -316,7 +316,7 @@ router.get(
  * GET /api/render/top?secret=...&category=...&item=...
  *
  * Returns top 3 players for a given Minecraft stat category + item.
- * Protected by puppeteer secret — not accessible to regular users.
+ * Protected by puppeteer secret, not accessible to regular users.
  */
 router.get(
   "/top",
@@ -396,7 +396,7 @@ router.get(
  * GET /api/render/crypto-chart?secret=...&symbol=...&interval=...
  *
  * Returns token data and OHLCV price history for the chart render page.
- * Protected by puppeteer secret — not accessible to regular users.
+ * Protected by puppeteer secret, not accessible to regular users.
  */
 router.get(
   "/crypto-chart",

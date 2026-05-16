@@ -19,7 +19,7 @@ import { isAdmin } from "@/discord/utils/admin-guard";
 import { TicketSystemIds } from "@/services/discord/tickets";
 import { getService, Services } from "@/services";
 
-// A ticket button's customId carries the ticket ID, so it is attacker-spoofable — every mutation must re-check ownership.
+// A ticket button's customId carries the ticket ID, so it is attacker-spoofable; every mutation must re-check ownership.
 async function authorizeTicketAction(
   interaction: ButtonInteraction,
   ticketId: number,

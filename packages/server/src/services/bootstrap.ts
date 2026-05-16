@@ -83,7 +83,7 @@ export function registerServices(): void {
       );
     });
   } else {
-    logger.warn("OpenAI API key not configured — AI service disabled");
+    logger.warn("OpenAI API key not configured, AI service disabled");
   }
 
   container.register(Services.DISCORD_MAIN_BOT, async () => {
@@ -387,7 +387,7 @@ export function registerServices(): void {
       { dependencies: [Services.DISCORD_MAIN_BOT] },
     );
   } else {
-    logger.warn("Stripe keys not configured — donation service disabled");
+    logger.warn("Stripe keys not configured, donation service disabled");
   }
 
   container.register(
@@ -545,7 +545,7 @@ export async function initializeServices(): Promise<void> {
     try {
       webMessageService = await container.get(Services.WEB_MESSAGE_SERVICE);
     } catch {
-      // OK — Discord may not be configured
+      // OK: Discord may not be configured
     }
     const rotationService = new StructurePackRotationService(
       structurePackService,

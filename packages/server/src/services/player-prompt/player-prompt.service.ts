@@ -47,7 +47,7 @@ export class PlayerPromptService {
       if (msUntil <= 0) {
         if (msUntil >= -MAX_MISSED_CLOSE_TOLERANCE_MS) {
           logger.warn(
-            `Prompt #${prompt.id} missed close by ${Math.round(-msUntil / 1000)}s — closing now`,
+            `Prompt #${prompt.id} missed close by ${Math.round(-msUntil / 1000)}s, closing now`,
           );
           await this.closePrompt(prompt.id).catch((err) =>
             logger.error(
@@ -57,7 +57,7 @@ export class PlayerPromptService {
           );
         } else {
           logger.warn(
-            `Prompt #${prompt.id} missed close by more than ${MAX_MISSED_CLOSE_TOLERANCE_MS / 1000 / 60 / 60}h — force-closing without editing message`,
+            `Prompt #${prompt.id} missed close by more than ${MAX_MISSED_CLOSE_TOLERANCE_MS / 1000 / 60 / 60}h, force-closing without editing message`,
           );
           await Q.player.prompt.update({ id: prompt.id }, { status: "closed" });
         }
@@ -102,7 +102,7 @@ export class PlayerPromptService {
 
     const post = await this.postAnnouncement(prompt);
     if (!post.success || !post.messageId) {
-      // Hard-fail — an active prompt without a Discord message is useless.
+      // Hard-fail: an active prompt without a Discord message is useless.
       await Q.player.prompt.delete({ id: prompt.id });
       throw new Error(
         `Failed to post prompt to Discord: ${post.error ?? "unknown"}`,
@@ -111,7 +111,7 @@ export class PlayerPromptService {
 
     // Persist the Discord message id. A transaction across the insert
     // and update wouldn't help here because the Discord post sits
-    // between them, so we retry the update instead — transient pool
+    // between them, so we retry the update instead. Transient pool
     // exhaustion is the realistic failure mode, and losing the
     // messageId means closePrompt can't edit the announcement later.
     try {
@@ -202,7 +202,7 @@ export class PlayerPromptService {
       content: mention,
       embeds: embed,
       components: [row],
-      // Defense in depth — even though the Zod validator already
+      // Defense in depth: even though the Zod validator already
       // restricts rolePingId to digits, this ensures Discord will
       // refuse to ping anything else (especially @everyone/@here)
       // if a future code path bypasses the validator.
@@ -214,7 +214,7 @@ export class PlayerPromptService {
   }
 
   /**
-   * One retry on transient DB failure — if the post-Discord update
+   * One retry on transient DB failure: if the post-Discord update
    * keeps failing past that, the caller logs and moves on with a
    * message-id-less row rather than losing the prompt entirely.
    */
@@ -300,7 +300,7 @@ export class PlayerPromptService {
   /**
    * Arms a closure timer for `msUntil` ms. If the duration exceeds
    * `MAX_TIMER_MS`, sets a shorter timer that re-arms itself with the
-   * remainder — guarantees Node never sees an overflowing delay
+   * remainder: guarantees Node never sees an overflowing delay
    * regardless of prompt length.
    */
   private armClosureTimer(promptId: number, msUntil: number): void {

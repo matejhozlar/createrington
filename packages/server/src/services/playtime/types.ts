@@ -27,12 +27,12 @@ export interface ActiveSession {
   username: string;
   serverId: number;
   sessionStart: Date;
-  /** Database session ID — set by the repository after persisting the session */
+  /** Database session ID: set by the repository after persisting the session */
   sessionId?: number;
   metadata?: SessionMetadata;
 }
 
-/** Event emitted when a player's session ends — carries duration and DB reference */
+/** Event emitted when a player's session ends: carries duration and DB reference */
 export interface SessionEndEvent {
   sessionId: number;
   uuid: string;

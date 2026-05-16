@@ -230,7 +230,7 @@ export async function runRegistration(params: {
     try {
       await member.setNickname(correctName, "Registration: sync to MC name");
     } catch (err) {
-      // Non-fatal — server owner nicknames can't be set by bots.
+      // Non-fatal: server owner nicknames can't be set by bots.
       logger.warn(
         `Could not set nickname for ${userTag}: ${err instanceof Error ? err.message : err}`,
       );

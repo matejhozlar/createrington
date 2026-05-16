@@ -5,7 +5,7 @@ import { panelPresenceRouter } from "./presence";
  * Panel consumer router.
  *
  * Exposed to the admin panel (separate project) over HTTP. Authentication
- * reuses `adminProcedure` — the panel forwards the user's JWT as
+ * reuses `adminProcedure`: the panel forwards the user's JWT as
  * `Authorization: Bearer <token>`. The panel enforces its own RBAC *before*
  * calling this router; the main app only verifies "valid admin user".
  *

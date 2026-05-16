@@ -12,7 +12,7 @@ import {
 import { paginationInput, buildPagination } from "@/trpc/utils";
 import type { StructurePackRotationService } from "@/services/structure-pack/rotation";
 
-// Basename-only — fileName is joined into `path.join(MODS_DIR, fileName)` and SFTP paths.
+// Basename-only: fileName is joined into `path.join(MODS_DIR, fileName)` and SFTP paths.
 const modFileName = z
   .string()
   .min(1)

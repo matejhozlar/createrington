@@ -19,7 +19,7 @@ interface UseAdminChatSessionResult {
   sessionActive: boolean;
   /**
    * The model the active (or last) session is pinned to. `null` for legacy
-   * sessions created before the picker landed — those run on whatever the
+   * sessions created before the picker landed: those run on whatever the
    * worker default is (Sonnet) but we don't surface that as an explicit value.
    */
   activeModel: AdminChatModel | null;
@@ -50,7 +50,7 @@ export function useAdminChatSession({
   const [sending, setSending] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
 
-  /** Snapshot of the admin's current page — sent with every start/send. */
+  /** Snapshot of the admin's current page, sent with every start/send. */
   const pageContext = useCallback(
     (type: PageContext["type"]): PageContext => ({
       type,
@@ -81,7 +81,7 @@ export function useAdminChatSession({
           const nextId = data.active ? data.sessionId : data.lastSessionId;
           if (!nextId) return;
           // Only tear down message state when the session ID is actually
-          // changing — reopening the drawer on the same session would
+          // changing: reopening the drawer on the same session would
           // otherwise flicker between empty → messages as the stream
           // refills.
           setSessionId((prev) => {
@@ -189,7 +189,7 @@ export function useAdminChatSession({
           setSessionActive(data.sessionActive);
         }
       } catch {
-        // Non-fatal — live stream will still surface new messages.
+        // Non-fatal: live stream will still surface new messages.
       }
 
       if (cancelled) return;
@@ -310,7 +310,7 @@ export function useAdminChatSession({
         });
       } catch (err) {
         console.error("[admin-chat] Failed to send message:", err);
-        // POST failed — drop the optimistic so the admin doesn't see a
+        // POST failed: drop the optimistic so the admin doesn't see a
         // ghost message that never actually reached the backend.
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
         setAwaitingReply(false);

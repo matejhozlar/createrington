@@ -77,7 +77,7 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
    * Get average session length in seconds
    *
    * Only considers sessions where seconds_played is recorded.
-   * Date filters are optional — omit both for all-time average.
+   * Date filters are optional; omit both for all-time average.
    *
    * @param start - Optional start of date range (inclusive)
    * @param end - Optional end of date range (exclusive)

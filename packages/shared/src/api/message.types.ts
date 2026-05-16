@@ -13,7 +13,7 @@ import { z } from "zod";
  * Body for POST /api/messages
  *
  * Sent as multipart/form-data. The `image` field is a file upload handled
- * by multer and is not represented here — only the form fields that land
+ * by multer and is not represented here, only the form fields that land
  * on req.body are typed.
  */
 export const SendMessageBodySchema = z.object({
@@ -36,7 +36,7 @@ export type SendMessageBody = z.infer<typeof SendMessageBodySchema>;
 /**
  * Payload returned on successful message send (201)
  *
- * The `messageId` is the Discord message ID — useful for the client to
+ * The `messageId` is the Discord message ID, useful for the client to
  * correlate with the eventual WebSocket broadcast once the bot's messageCreate
  * event fires and the message enters the cache.
  */

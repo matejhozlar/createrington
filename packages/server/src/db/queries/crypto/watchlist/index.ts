@@ -10,7 +10,7 @@ import { CryptoWatchlistBaseQueries } from "@/generated/db/crypto_watchlist.quer
  * - Records creation timestamp for ordering and display purposes
  *
  * NOTE: Inherits all generated CRUD operations from CryptoWatchlistBaseQueries.
- * Add custom query methods directly to this class — this file is never overwritten by codegen.
+ * Add custom query methods directly to this class; this file is never overwritten by codegen.
  */
 export class CryptoWatchlistQueries extends CryptoWatchlistBaseQueries {
   constructor(db: Pool | PoolClient) {

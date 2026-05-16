@@ -26,7 +26,7 @@ const REPO = "Createrington/app";
 // by the WEBSITE_URL (dev.* subdomain or localhost) via envMode.isDevDeployment.
 const ENVIRONMENT = envMode.isDevDeployment ? "dev" : "prod";
 
-// Upstream LLM calls can hang on network glitches — cap every outbound
+// Upstream LLM calls can hang on network glitches, cap every outbound
 // request so a stuck claude-automation can't pile up Express connections.
 const UPSTREAM_TIMEOUT_MS = 30000;
 
@@ -44,7 +44,7 @@ const pageContextSchema = z
     message: "pageContext may contain at most 50 keys",
   });
 
-// Models the admin can pin a chat session to — must stay in sync with the
+// Models the admin can pin a chat session to, must stay in sync with the
 // claude-automation allowlist in `chat.routes.ts`.
 const ADMIN_CHAT_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"] as const;
 
@@ -296,7 +296,7 @@ router.post(
 /**
  * SSE passthrough to claude-automation's /api/chat/stream. Axios streaming
  * responses are piped through so the widget sees events frame-by-frame.
- * The 30s UPSTREAM_TIMEOUT_MS on claudeClient does not apply here — the
+ * The 30s UPSTREAM_TIMEOUT_MS on claudeClient does not apply here: the
  * stream is long-lived, bounded by the upstream's 20s ping keeping it alive
  * plus the admin eventually closing the drawer.
  */
@@ -312,7 +312,7 @@ router.get(
       throw new BadRequestError("sessionId is required");
     }
 
-    // Hold off on sending SSE headers until the upstream connects — if
+    // Hold off on sending SSE headers until the upstream connects: if
     // the upstream rejects (404 session not found, 401 bad secret, etc.)
     // we want to surface the real status to the browser, not a 200 with
     // no body.

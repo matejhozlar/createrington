@@ -141,7 +141,7 @@ async function check10xReturn(
 ): Promise<string | null> {
   const sellPrice = Number(result.priceAtExecution);
 
-  // Check remaining cost basis lots — if sell price >= 10x any lot's entry price
+  // Check remaining cost basis lots: if sell price >= 10x any lot's entry price
   const lots = await Q.crypto.cost.basis
     .where({
       playerMinecraftUuid: playerUuid,

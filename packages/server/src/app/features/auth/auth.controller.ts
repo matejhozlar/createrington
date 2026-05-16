@@ -224,7 +224,7 @@ export class AuthController {
    * POST /api/auth/logout
    *
    * Revoke session via cookie + clear cookie.
-   * Public route — works even without a valid Bearer token.
+   * Public route, works even without a valid Bearer token.
    */
   static async logout(req: Request, res: Response): Promise<void> {
     const rawToken = refreshTokenService.extractFromRequest(req);
@@ -291,7 +291,7 @@ export class AuthController {
    * browser to Discord's authorization page with the SSO callback URI.
    *
    * Distinct from /api/auth/discord because the existing flow expects the
-   * client (main React app) to handle the redirect — that doesn't work
+   * client (main React app) to handle the redirect, that doesn't work
    * cross-origin, so this endpoint takes ownership of the entire round-trip.
    */
   static async ssoStart(req: Request, res: Response): Promise<void> {
@@ -398,7 +398,7 @@ export class AuthController {
  * `/page?foo=bar&sso_error=...` instead of `/page?foo=bar?sso_error=...`).
  *
  * The whitelist already guarantees the URL parses, so the `new URL()` call
- * is safe — but if it ever fails we fall back to the raw return_to to keep
+ * is safe, but if it ever fails we fall back to the raw return_to to keep
  * users out of an error loop.
  */
 function redirectWithError(returnTo: string, reason: string): string {

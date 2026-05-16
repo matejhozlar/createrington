@@ -257,7 +257,7 @@ export class StructurePackRotationService {
         }
       } else {
         logger.info(
-          "File ops not available — rotation recorded without file changes",
+          "File ops not available, rotation recorded without file changes",
         );
       }
 
@@ -504,7 +504,7 @@ export class StructurePackRotationService {
    * Clears the current rotation by deactivating the active pack and removing
    * its mod files from the server. Cycle boosts are also cleared.
    *
-   * This is a manual admin action — it does not record a rotation history entry
+   * This is a manual admin action: it does not record a rotation history entry
    * since there is no incoming pack.
    */
   async clearRotation(): Promise<void> {
@@ -523,7 +523,7 @@ export class StructurePackRotationService {
       }
     } else {
       logger.info(
-        "File ops not available — rotation cleared without file changes",
+        "File ops not available, rotation cleared without file changes",
       );
     }
 

@@ -15,13 +15,13 @@ export async function transitionEndedIpos(): Promise<void> {
   for (const token of allMemecoins) {
     if (!token.ipoEndsAt || token.ipoEndsAt > now) continue;
 
-    // IPO has ended — gather results before clearing
+    // IPO has ended: gather results before clearing
     const holdings = await Q.crypto.holding.where({ tokenId: token.id }).all();
 
     const totalSold = token.totalSupply - token.availableSupply;
     const participants = holdings.length;
 
-    // Clear IPO fields — token enters normal trading
+    // Clear IPO fields: token enters normal trading
     await Q.crypto.token.update({ id: token.id }, { ipoEndsAt: null });
 
     sendIpoResultNotification(

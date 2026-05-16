@@ -67,7 +67,7 @@ describe("AccessCookieService", () => {
     });
 
     it("uses maxAge matching the refresh token expiry, not the JWT expiry", () => {
-      // The cookie has to outlive the JWT — when the JWT expires the server
+      // The cookie has to outlive the JWT: when the JWT expires the server
       // returns 401 and the client refreshes, which requires the cookie to
       // still be present in the browser.
       accessCookieService.setCookie(res, "x");
