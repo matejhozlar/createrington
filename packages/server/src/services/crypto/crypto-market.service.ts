@@ -1,5 +1,10 @@
 import { Q } from "@/db";
 import { CRYPTO_CONFIG } from "./crypto.config";
+import type {
+  CryptoSettingsService,
+  SettingsChangeEvent,
+} from "./settings/crypto-settings.service";
+import type { SettingKey } from "./settings/registry";
 import {
   tickMemecoinPrice,
   tickStablecoinPrice,
@@ -104,6 +109,13 @@ export class CryptoMarketService {
 
   private readonly caches = new MarketCaches();
 
+  constructor(private readonly settings: CryptoSettingsService) {}
+
+  /** Master toggle short-circuit. `true` if the crypto subsystem is enabled. */
+  private get enabled(): boolean {
+    return this.settings.get("cryptoEnabled");
+  }
+
   /**
    * Initializes the crypto market service.
    *
@@ -170,8 +182,44 @@ export class CryptoMarketService {
     this.schedulePortfolioSnapshot();
     this.scheduleWeeklyReport();
 
+    this.settings.on("setting:changed", this.handleSettingChange);
+
     logger.info("CryptoMarketService initialized");
   }
+
+  /** @private Restarts the affected interval when an interval-bound setting changes. */
+  private handleSettingChange = (event: SettingsChangeEvent): void => {
+    // cryptoEnabled deliberately omitted: the per-tick guard handles it without restart.
+    const restartMap: Partial<Record<SettingKey, () => void>> = {
+      MEMECOIN_TICK_INTERVAL_MS: () => {
+        if (this.memecoinInterval) clearInterval(this.memecoinInterval);
+        this.startMemecoinTicker();
+      },
+      STABLECOIN_TICK_INTERVAL_MS: () => {
+        if (this.stablecoinInterval) clearInterval(this.stablecoinInterval);
+        this.startStablecoinTicker();
+      },
+      BLUECHIP_TICK_INTERVAL_MS: () => {
+        if (this.bluechipInterval) clearInterval(this.bluechipInterval);
+        this.startBluechipTicker();
+      },
+      EVENT_ROLL_INTERVAL_MS: () => {
+        if (this.eventRollInterval) clearInterval(this.eventRollInterval);
+        this.startEventRoller();
+      },
+      IPO_SPAWN_INTERVAL_MS: () => {
+        if (this.ipoSpawnInterval) clearInterval(this.ipoSpawnInterval);
+        this.startIpoSpawnScheduler();
+      },
+    };
+    const restart = restartMap[event.key];
+    if (restart) {
+      logger.info(
+        `Restarting interval for ${event.key} (${String(event.oldValue)} -> ${String(event.newValue)})`,
+      );
+      restart();
+    }
+  };
 
   /** Clears all ticker intervals and releases resources */
   async shutdown(): Promise<void> {
@@ -196,50 +244,58 @@ export class CryptoMarketService {
       clearTimeout(this.portfolioSnapshotTimeout);
     if (this.weeklyReportTimeout) clearTimeout(this.weeklyReportTimeout);
 
+    this.settings.off("setting:changed", this.handleSettingChange);
+
     logger.info("CryptoMarketService shutdown complete");
   }
 
   /** @private Starts the memecoin price ticker with an immediate first tick */
   private startMemecoinTicker(): void {
     this.memecoinInterval = setInterval(async () => {
+      if (!this.enabled) return;
       try {
         await this.tickMemecoins();
       } catch (err) {
         logger.error("Memecoin tick failed:", err);
       }
-    }, CRYPTO_CONFIG.MEMECOIN_TICK_INTERVAL_MS);
+    }, this.settings.get("MEMECOIN_TICK_INTERVAL_MS"));
 
-    this.tickMemecoins().catch((err) =>
-      logger.error("Initial memecoin tick failed:", err),
-    );
+    if (this.enabled) {
+      this.tickMemecoins().catch((err) =>
+        logger.error("Initial memecoin tick failed:", err),
+      );
+    }
   }
 
   /** @private Starts the stablecoin price ticker */
   private startStablecoinTicker(): void {
     this.stablecoinInterval = setInterval(async () => {
+      if (!this.enabled) return;
       try {
         await this.tickStablecoins();
       } catch (err) {
         logger.error("Stablecoin tick failed:", err);
       }
-    }, CRYPTO_CONFIG.STABLECOIN_TICK_INTERVAL_MS);
+    }, this.settings.get("STABLECOIN_TICK_INTERVAL_MS"));
   }
 
   /** @private Starts the blue-chip price ticker (hourly, metric-driven) */
   private startBluechipTicker(): void {
     this.bluechipInterval = setInterval(async () => {
+      if (!this.enabled) return;
       try {
         await this.tickBluechips();
       } catch (err) {
         logger.error("Blue-chip tick failed:", err);
       }
-    }, CRYPTO_CONFIG.BLUECHIP_TICK_INTERVAL_MS);
+    }, this.settings.get("BLUECHIP_TICK_INTERVAL_MS"));
   }
 
   /** @private Removes crashed tokens and their holdings/snapshots every 30 minutes */
   private startCleanupJob(): void {
     this.cleanupInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           const cleaned = await cleanupCrashedTokens();
           if (cleaned > 0) {
@@ -261,6 +317,7 @@ export class CryptoMarketService {
   private startMinuteAggregation(): void {
     this.minuteAggregationInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           await aggregateMinuteSnapshots();
           await this.caches.refreshPrices();
@@ -278,6 +335,7 @@ export class CryptoMarketService {
   private startHourlyAggregation(): void {
     this.hourlyAggregationInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           await aggregateHourlySnapshots();
         } catch (err) {
@@ -292,6 +350,7 @@ export class CryptoMarketService {
   private startDailyAggregation(): void {
     this.dailyAggregationInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           await aggregateDailySnapshots();
         } catch (err) {
@@ -306,6 +365,7 @@ export class CryptoMarketService {
   private startWeeklyAggregation(): void {
     this.weeklyAggregationInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           await aggregateWeeklySnapshots();
         } catch (err) {
@@ -562,6 +622,7 @@ export class CryptoMarketService {
   private startOrderExpiryJob(): void {
     this.orderExpiryInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           const expired = await expireOrders();
           if (expired > 0) {
@@ -712,9 +773,10 @@ export class CryptoMarketService {
     });
   }
 
-  /** @private Rolls for random market events every hour */
+  /** @private Rolls for random market events on the configured interval */
   private startEventRoller(): void {
     this.eventRollInterval = setInterval(async () => {
+      if (!this.enabled) return;
       try {
         const newEvents = await rollForEvents();
         for (const event of newEvents) {
@@ -726,7 +788,7 @@ export class CryptoMarketService {
       } catch (err) {
         logger.error("Event roll failed:", err);
       }
-    }, CRYPTO_CONFIG.EVENT_ROLL_INTERVAL_MS);
+    }, this.settings.get("EVENT_ROLL_INTERVAL_MS"));
   }
 
   /** @private Broadcasts a market event to WebSocket subscribers */
@@ -756,6 +818,7 @@ export class CryptoMarketService {
   private startSeasonalTokenCheck(): void {
     this.seasonalCheckInterval = setInterval(
       async () => {
+        if (!this.enabled) return;
         try {
           await processExpiredSeasonalTokens();
         } catch (err) {
@@ -779,6 +842,7 @@ export class CryptoMarketService {
   /** @private Checks for ended IPOs every 30 seconds and transitions them to normal trading */
   private startIpoTransitionCheck(): void {
     this.ipoCheckInterval = setInterval(async () => {
+      if (!this.enabled) return;
       try {
         await transitionEndedIpos();
       } catch (err) {
@@ -789,14 +853,16 @@ export class CryptoMarketService {
 
   /** @private Automatically spawns a new IPO memecoin on a recurring schedule */
   private startIpoSpawnScheduler(): void {
-    // Immediate check on startup so deploys don't indefinitely delay spawns
-    this.trySpawnIpo().catch((err) =>
-      logger.error("Initial IPO spawn check failed:", err),
-    );
+    if (this.enabled) {
+      this.trySpawnIpo().catch((err) =>
+        logger.error("Initial IPO spawn check failed:", err),
+      );
+    }
 
     this.ipoSpawnInterval = setInterval(async () => {
+      if (!this.enabled) return;
       await this.trySpawnIpo();
-    }, CRYPTO_CONFIG.IPO_SPAWN_INTERVAL_MS);
+    }, this.settings.get("IPO_SPAWN_INTERVAL_MS"));
   }
 
   /** @private Attempts to spawn an IPO memecoin if none is active */
@@ -982,10 +1048,9 @@ export class CryptoMarketService {
           delistedAt: { $exists: false },
         })
         .all();
-      if (activeMemecoins.length >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
-        throw new Error(
-          `Maximum active memecoins (${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}) reached`,
-        );
+      const maxActive = this.settings.get("MEMECOIN_MAX_ACTIVE");
+      if (activeMemecoins.length >= maxActive) {
+        throw new Error(`Maximum active memecoins (${maxActive}) reached`);
       }
     }
 

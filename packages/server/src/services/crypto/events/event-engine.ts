@@ -11,6 +11,7 @@
 
 import { Q } from "@/db";
 import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import {
   EVENT_DEFINITIONS,
   type MarketEventType,
@@ -110,7 +111,7 @@ export async function rollForEvents(): Promise<ActiveEvent[]> {
   pruneExpiredEvents();
 
   const newEvents: ActiveEvent[] = [];
-  const MAX_CONCURRENT_EVENTS = CRYPTO_CONFIG.MAX_CONCURRENT_EVENTS;
+  const MAX_CONCURRENT_EVENTS = cryptoSetting("MAX_CONCURRENT_EVENTS");
 
   if (activeEvents.length >= MAX_CONCURRENT_EVENTS) {
     return newEvents;

@@ -7,18 +7,19 @@
 import { CRYPTO_CONFIG } from "../crypto.config";
 import type { CryptoTokenCategory } from "@createrington/shared/db/database.types";
 import { getEventFeeMultiplier } from "../events/event-engine";
+import { cryptoSetting } from "../settings/accessor";
 
 /** Returns the base fee rate for a token category (0 for stablecoins, up to 2.5% for memecoins) */
 export function getBaseFeeRate(category: CryptoTokenCategory): number {
   switch (category) {
     case "stable":
-      return CRYPTO_CONFIG.FEES.STABLE;
+      return cryptoSetting("FEES.STABLE");
     case "blue_chip":
-      return CRYPTO_CONFIG.FEES.BLUE_CHIP;
+      return cryptoSetting("FEES.BLUE_CHIP");
     case "memecoin":
-      return CRYPTO_CONFIG.FEES.MEMECOIN;
+      return cryptoSetting("FEES.MEMECOIN");
     case "seasonal":
-      return CRYPTO_CONFIG.FEES.SEASONAL;
+      return cryptoSetting("FEES.SEASONAL");
     default:
       return 0;
   }
