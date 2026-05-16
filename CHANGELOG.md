@@ -1,3 +1,20 @@
+## v1.18.0 (2026-05-16)
+
+### @createrington/server (1.17.3 → 1.18.0)
+- [add] Add runtime-tweakable crypto settings system: new `CryptoSettingsService` backed by a `crypto_setting` table stores per-key overrides with Zod validation, pairwise invariant checks (min/max pairs), and a `setting:changed` event emitter; all crypto subsystems (tickers, trading, fees, generation, events, alerts, watchlist) now read config through a synchronous `cryptoSetting()` accessor that falls back to compiled defaults when no override exists
+- [add] Add admin crypto settings tRPC router (`admin.crypto.settings`): list, update, reset, and reset-all procedures let admins view and modify every runtime config key with audit logging; interval-bound settings automatically restart the affected ticker on change
+- [add] Add `cryptoUserProcedure` tRPC middleware: trade-side mutations (buy, sell, place order) are gated behind the crypto master toggle so reads still work while the market is paused
+- [add] Add public `crypto.status` endpoint returning the current master toggle state for client-side gating
+- [add] Add `mint-session` dev script for testing as any registered player: mints a real refresh-token session row and either copies a DevTools snippet or opens the browser at a dev-only auto-login URL (`/api/auth/dev-set-refresh`)
+- [fix] Fix logout logging "Unknown" instead of the actual username: the handler now falls back to the session row when no Bearer token is present on the request
+- [security] Reject backslash open-redirect bypass in `devSetRefresh`: the `return_to` parameter now rejects paths where the second character is a slash or backslash, preventing browsers from normalising `/\evil.com` into `//evil.com`
+
+### @createrington/client (0.2.19 → 0.2.20)
+- [add] Add crypto settings admin panel: new tabbed "Settings" section in the admin crypto page with grouped controls for every runtime-tweakable key, per-setting reset, bulk reset-all confirmation, and real-time optimistic updates
+- [add] Add `CryptoDisabledScreen` shown to non-admin users when the master toggle is off, with a polling query that re-enables the UI automatically once the market is turned back on
+- [fix] Fix dialog content disappearing during exit animation: new `useStickyValue` hook preserves the last non-null value so Radix dialogs keep their content rendered through the close transition; applied to `DemoteDialog`, `TeamMemberDialog`, `AdminStructurePacks` delete dialog, `RemoveModDialog`, `PresetSidebar`, and `PartiesFiltersBar`
+- [add] Add reusable `LabeledSwitch` component combining a Switch and Label in a bordered container
+
 ## v1.17.3 (2026-05-16)
 
 ### @createrington/server (1.17.2 → 1.17.3)
