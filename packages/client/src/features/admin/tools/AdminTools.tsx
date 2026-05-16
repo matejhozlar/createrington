@@ -17,7 +17,6 @@ import {
 import {
   BarChart3,
   Blocks,
-  Calculator,
   ChevronRight,
   Clock,
   Coins,
@@ -103,13 +102,6 @@ const TOOL_SECTIONS: ToolSection[] = [
           "Forceload chunks, ally status, members, and qualified players in one place.",
         icon: Users,
         href: "/admin/tools/parties",
-      },
-      {
-        title: "Economy Simulator",
-        description:
-          "Preview the cash + crypto normalization with adjustable parameters.",
-        icon: Calculator,
-        href: "/admin/tools/economy-simulator",
       },
     ],
   },
