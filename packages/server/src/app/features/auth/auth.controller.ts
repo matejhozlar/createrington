@@ -421,11 +421,11 @@ export class AuthController {
 
     const rawReturnTo =
       typeof req.query.return_to === "string" ? req.query.return_to : "/";
-    // Only allow same-origin paths to prevent open redirects. Reject anything
-    // that doesn't start with a single "/" (so "//evil.com" and absolute URLs
-    // are out).
+    // Reject anything that isn't a single-slash same-origin path. Browsers
+    // normalise `/\evil.com` to `//evil.com` so the second char check has
+    // to cover both slashes.
     const returnTo =
-      rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//")
+      rawReturnTo.startsWith("/") && !/^\/[\\/]/.test(rawReturnTo)
         ? rawReturnTo
         : "/";
 
