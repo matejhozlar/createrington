@@ -12,8 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { LabeledSwitch } from "@/components/labeled-switch";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +26,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { RotateCcw, Power, AlertTriangle } from "lucide-react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RotateCcw, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import type { inferRouterOutputs } from "@trpc/server";
@@ -187,46 +197,128 @@ function MasterToggleCard({
   pending: boolean;
 }) {
   const enabled = entry.currentValue === true;
+  const [pendingValue, setPendingValue] = useState<boolean | null>(null);
+  const stickyPending = useStickyValue(pendingValue);
+  const isTurningOff = stickyPending === false;
 
   return (
-    <Card
-      className={cn(
-        "border-2",
-        enabled ? "border-emerald-500/30" : "border-destructive/40",
-      )}
-    >
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Power
-            className={cn(
-              "size-5",
-              enabled ? "text-emerald-400" : "text-destructive",
-            )}
-          />
-          Crypto market {enabled ? "enabled" : "disabled"}
-        </CardTitle>
-        <CardDescription>{entry.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Switch
+    <>
+      <Card
+        className={cn(
+          "border-2",
+          enabled ? "border-primary/30" : "border-destructive/40",
+        )}
+      >
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Power
+              className={cn(
+                "size-5",
+                enabled ? "text-primary" : "text-destructive",
+              )}
+            />
+            Crypto market {enabled ? "enabled" : "disabled"}
+          </CardTitle>
+          <CardDescription>{entry.description}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LabeledSwitch
+            id="crypto-master-toggle"
             checked={enabled}
             disabled={pending}
-            onCheckedChange={(checked) => onSave(entry.key, checked)}
+            onCheckedChange={(checked) => setPendingValue(checked)}
+            label={
+              enabled
+                ? "Tickers running, trades allowed"
+                : "Tickers paused, trades blocked"
+            }
+            className="w-fit"
           />
-          <span className="text-sm">
-            {enabled
-              ? "Tickers running, trades allowed"
-              : "Tickers paused, trades blocked"}
-          </span>
-        </div>
-        {!enabled && (
-          <Badge variant="destructive" className="gap-1">
-            <AlertTriangle className="size-3" /> Disabled
-          </Badge>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={pendingValue !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingValue(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isTurningOff
+                ? "Disable the crypto market?"
+                : "Re-enable the crypto market?"}
+            </DialogTitle>
+            <DialogDescription>
+              {isTurningOff
+                ? "Pausing the market affects every player. Review the consequences before confirming."
+                : "The market resumes immediately on the next tick interval."}
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+            {isTurningOff ? (
+              <>
+                <li>
+                  All price tickers (memecoin, stablecoin, blue-chip) pause; no
+                  new candles or snapshots are recorded.
+                </li>
+                <li>
+                  Memecoin generation, IPO spawning, and random market events
+                  are skipped.
+                </li>
+                <li>
+                  Player trade mutations (buy, sell, place order) are blocked
+                  with a Forbidden response. Cancelling pending orders still
+                  works.
+                </li>
+                <li>
+                  Non-admin players visiting <code>/crypto</code> see a
+                  &ldquo;temporarily disabled&rdquo; screen instead of the
+                  market.
+                </li>
+                <li>
+                  Existing balances, holdings, and pending orders stay intact:
+                  nothing is wiped.
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  Restarts all tickers, generation, IPO spawning, and event
+                  rolls on their configured intervals.
+                </li>
+                <li>
+                  Re-opens trading. The first memecoin tick fires within one
+                  tick interval (default 30 seconds).
+                </li>
+                <li>
+                  Players regain access to the crypto pages on the next status
+                  refresh (within 30 seconds).
+                </li>
+              </>
+            )}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            The change is audit-logged.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant={isTurningOff ? "destructive" : "default"}
+              onClick={() => {
+                if (pendingValue !== null) onSave(entry.key, pendingValue);
+                setPendingValue(null);
+              }}
+            >
+              {isTurningOff ? "Disable market" : "Re-enable market"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -324,39 +416,49 @@ export function CryptoSettingsPanel() {
         );
       })}
 
-      <Card>
+      <Card className="border-destructive/30">
         <CardHeader>
-          <CardTitle className="text-sm">Reset all overrides</CardTitle>
-          <CardDescription>
-            Removes every override row so every setting falls back to its
-            compiled default.
-          </CardDescription>
+          <CardTitle className="text-base text-destructive">
+            Danger Zone
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm">
-                Reset all to defaults
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Reset all crypto settings?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This removes every override and restores the compiled
-                  defaults. The action is audit-logged.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => resetAllMutation.mutate({ confirm: true })}
-                >
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Reset all overrides</p>
+              <p className="text-xs text-muted-foreground">
+                Removes every override row so every setting falls back to its
+                compiled default. The action is audit-logged.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="shrink-0">
                   Reset all
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Reset all crypto settings?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes every override and restores the compiled
+                    defaults. The action is audit-logged.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => resetAllMutation.mutate({ confirm: true })}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Reset all
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </CardContent>
       </Card>
     </div>

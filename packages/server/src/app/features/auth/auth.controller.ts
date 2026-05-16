@@ -229,6 +229,16 @@ export class AuthController {
   static async logout(req: Request, res: Response): Promise<void> {
     const rawToken = refreshTokenService.extractFromRequest(req);
 
+    // Fall back to the session row when there's no Bearer token (the
+    // client never sends one to /logout).
+    let identity = req.user?.username;
+    if (!identity && rawToken) {
+      const session = await Q.auth.session.findByTokenHash(
+        refreshTokenService.hash(rawToken),
+      );
+      identity = session?.discord_username ?? session?.discord_id ?? undefined;
+    }
+
     if (rawToken) {
       await sessionService.revokeByToken(rawToken);
     }
@@ -236,7 +246,7 @@ export class AuthController {
     refreshTokenService.clearCookie(res);
     accessCookieService.clearCookie(res);
 
-    logger.info(`User ${req.user?.username || "Unknown"} logged out`);
+    logger.info(`User ${identity ?? "Unknown"} logged out`);
 
     res.json({
       success: true,
@@ -388,6 +398,39 @@ export class AuthController {
       logger.error("SSO callback failed:", error);
       safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }
+  }
+
+  /**
+   * GET /api/auth/dev-set-refresh
+   *
+   * Dev-only helper used by `pnpm mint-session --open`. Sets the supplied
+   * refresh token as the HttpOnly cookie (the way a real login would) and
+   * redirects to an internal path so the AuthProvider picks it up. Route is
+   * only mounted when NODE_ENV === "development" so this never ships to prod.
+   */
+  static async devSetRefresh(req: Request, res: Response): Promise<void> {
+    if (!config.envMode.isDev) {
+      throw new BadRequestError("Not available outside development");
+    }
+
+    const token =
+      typeof req.query.token === "string" ? req.query.token : undefined;
+    if (!token) {
+      throw new BadRequestError("Missing token");
+    }
+
+    const rawReturnTo =
+      typeof req.query.return_to === "string" ? req.query.return_to : "/";
+    // Reject anything that isn't a single-slash same-origin path. Browsers
+    // normalise `/\evil.com` to `//evil.com` so the second char check has
+    // to cover both slashes.
+    const returnTo =
+      rawReturnTo.startsWith("/") && !/^\/[\\/]/.test(rawReturnTo)
+        ? rawReturnTo
+        : "/";
+
+    refreshTokenService.setCookie(res, token);
+    res.redirect(returnTo);
   }
 }
 
