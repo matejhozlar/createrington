@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   Dialog,
   DialogContent,
@@ -37,15 +38,16 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
   );
   const demoteMutation = trpc.owner.admins.demote.useMutation();
 
-  if (!admin) return null;
+  const display = useStickyValue(admin);
+  if (!display) return null;
 
   const preview = previewQuery.data;
-  const displayName = admin.minecraftUsername ?? admin.discordId;
+  const displayName = display.minecraftUsername ?? display.discordId;
 
   const handleDemote = async () => {
     try {
       const result = await demoteMutation.mutateAsync({
-        discordId: admin.discordId,
+        discordId: display.discordId,
         reason: reason.trim() || undefined,
       });
       onSuccess(result);

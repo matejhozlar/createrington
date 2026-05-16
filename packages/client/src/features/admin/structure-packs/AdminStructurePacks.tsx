@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
 import { trpc } from "@/lib/trpc";
@@ -95,6 +96,7 @@ export function AdminStructurePacks() {
     id: number;
     name: string;
   } | null>(null);
+  const displayDeleteTarget = useStickyValue(deleteTarget);
 
   const filteredPacks = useMemo(() => {
     let result = packs;
@@ -464,7 +466,7 @@ export function AdminStructurePacks() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete &quot;{deleteTarget?.name}&quot;?
+              Delete &quot;{displayDeleteTarget?.name}&quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
               This will remove the pack from the rotation pool. Historical data

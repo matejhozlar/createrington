@@ -1,3 +1,4 @@
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   Dialog,
   DialogContent,
@@ -22,9 +23,10 @@ export function TeamMemberDialog({
   open,
   onOpenChange,
 }: TeamMemberDialogProps) {
-  if (!member) return null;
+  const display = useStickyValue(member);
+  if (!display) return null;
 
-  const config = TIER_CONFIG[member.tier];
+  const config = TIER_CONFIG[display.tier];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -35,27 +37,27 @@ export function TeamMemberDialog({
         <DialogHeader>
           <div className="flex items-center gap-4">
             <MinecraftAvatar
-              username={member.username}
-              uuid={member.uuid}
+              username={display.username}
+              uuid={display.uuid}
               size={64}
             />
 
             <div className="flex flex-col gap-1.5">
-              <DialogTitle>{member.username}</DialogTitle>
+              <DialogTitle>{display.username}</DialogTitle>
 
               <Badge
                 variant="outline"
                 className={cn("text-xs", config.badgeClass)}
               >
-                {member.role}
+                {display.role}
               </Badge>
             </div>
           </div>
         </DialogHeader>
 
-        {member.description && (
+        {display.description && (
           <DialogDescription className="text-sm text-muted-foreground">
-            {member.description}
+            {display.description}
           </DialogDescription>
         )}
       </DialogContent>

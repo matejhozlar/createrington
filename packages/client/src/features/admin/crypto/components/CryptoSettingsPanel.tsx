@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LabeledSwitch } from "@/components/labeled-switch";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { RotateCcw, Power } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -188,8 +198,8 @@ function MasterToggleCard({
 }) {
   const enabled = entry.currentValue === true;
   const [pendingValue, setPendingValue] = useState<boolean | null>(null);
-
-  const isTurningOff = pendingValue === false;
+  const stickyPending = useStickyValue(pendingValue);
+  const isTurningOff = stickyPending === false;
 
   return (
     <>
@@ -227,90 +237,87 @@ function MasterToggleCard({
         </CardContent>
       </Card>
 
-      <AlertDialog
+      <Dialog
         open={pendingValue !== null}
         onOpenChange={(open) => {
           if (!open) setPendingValue(null);
         }}
       >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
               {isTurningOff
                 ? "Disable the crypto market?"
                 : "Re-enable the crypto market?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                {isTurningOff ? (
-                  <>
-                    <p>While disabled:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>
-                        All price tickers (memecoin, stablecoin, blue-chip)
-                        pause; no new candles or snapshots are recorded.
-                      </li>
-                      <li>
-                        Memecoin generation, IPO spawning, and random market
-                        events are skipped.
-                      </li>
-                      <li>
-                        Player trade mutations (buy, sell, place order) are
-                        blocked with a Forbidden response. Cancelling pending
-                        orders still works.
-                      </li>
-                      <li>
-                        Non-admin players visiting <code>/crypto</code> see a
-                        &ldquo;temporarily disabled&rdquo; screen instead of the
-                        market.
-                      </li>
-                      <li>
-                        Existing balances, holdings, and pending orders stay
-                        intact: nothing is wiped.
-                      </li>
-                    </ul>
-                  </>
-                ) : (
-                  <>
-                    <p>Re-enabling immediately:</p>
-                    <ul className="list-disc pl-5 space-y-1">
-                      <li>
-                        Restarts all tickers, generation, IPO spawning, and
-                        event rolls on their configured intervals.
-                      </li>
-                      <li>
-                        Re-opens trading. The first memecoin tick fires within
-                        one tick interval (default 30 seconds).
-                      </li>
-                      <li>
-                        Players regain access to the crypto pages on the next
-                        status refresh (within 30 seconds).
-                      </li>
-                    </ul>
-                  </>
-                )}
-                <p className="pt-1">The change is audit-logged.</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
+            </DialogTitle>
+            <DialogDescription>
+              {isTurningOff
+                ? "Pausing the market affects every player. Review the consequences before confirming."
+                : "The market resumes immediately on the next tick interval."}
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+            {isTurningOff ? (
+              <>
+                <li>
+                  All price tickers (memecoin, stablecoin, blue-chip) pause; no
+                  new candles or snapshots are recorded.
+                </li>
+                <li>
+                  Memecoin generation, IPO spawning, and random market events
+                  are skipped.
+                </li>
+                <li>
+                  Player trade mutations (buy, sell, place order) are blocked
+                  with a Forbidden response. Cancelling pending orders still
+                  works.
+                </li>
+                <li>
+                  Non-admin players visiting <code>/crypto</code> see a
+                  &ldquo;temporarily disabled&rdquo; screen instead of the
+                  market.
+                </li>
+                <li>
+                  Existing balances, holdings, and pending orders stay intact:
+                  nothing is wiped.
+                </li>
+              </>
+            ) : (
+              <>
+                <li>
+                  Restarts all tickers, generation, IPO spawning, and event
+                  rolls on their configured intervals.
+                </li>
+                <li>
+                  Re-opens trading. The first memecoin tick fires within one
+                  tick interval (default 30 seconds).
+                </li>
+                <li>
+                  Players regain access to the crypto pages on the next status
+                  refresh (within 30 seconds).
+                </li>
+              </>
+            )}
+          </ul>
+          <p className="text-xs text-muted-foreground">
+            The change is audit-logged.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button
+              variant={isTurningOff ? "destructive" : "default"}
               onClick={() => {
                 if (pendingValue !== null) onSave(entry.key, pendingValue);
                 setPendingValue(null);
               }}
-              className={
-                isTurningOff
-                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  : undefined
-              }
             >
               {isTurningOff ? "Disable market" : "Re-enable market"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

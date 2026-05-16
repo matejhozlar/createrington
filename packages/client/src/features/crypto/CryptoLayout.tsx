@@ -10,8 +10,7 @@ export function CryptoLayout() {
     refetchInterval: 30_000,
   });
 
-  // Admins keep access while the market is paused so they can flip the
-  // toggle back from the admin panel without ever losing the route.
+  // Admins keep access so they can re-enable from the admin panel.
   const blocked = statusQuery.data?.enabled === false && !user?.isAdmin;
 
   return (
