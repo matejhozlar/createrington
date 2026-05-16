@@ -2,7 +2,6 @@ import { Filter, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -10,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { LabeledSwitch } from "@/components/labeled-switch";
 import { formatDimension } from "@/lib/minecraft";
 import type {
   AlliedFilter,
@@ -124,19 +123,12 @@ export function PartiesFiltersBar({
             </SelectContent>
           </Select>
 
-          <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3">
-            <Switch
-              id="parties-active-forceloads-only"
-              checked={filters.activeForceloadsOnly}
-              onCheckedChange={(v) => set("activeForceloadsOnly", v)}
-            />
-            <Label
-              htmlFor="parties-active-forceloads-only"
-              className="cursor-pointer text-sm font-medium"
-            >
-              Active forceloads
-            </Label>
-          </div>
+          <LabeledSwitch
+            id="parties-active-forceloads-only"
+            checked={filters.activeForceloadsOnly}
+            onCheckedChange={(v) => set("activeForceloadsOnly", v)}
+            label="Active forceloads"
+          />
         </div>
       </CardContent>
     </Card>
