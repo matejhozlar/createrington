@@ -100,6 +100,16 @@ function fixImports(dir: string): void {
         },
       );
 
+      // Dynamic imports whose argument is a quoted string literal.
+      // Template strings and non-literal arguments are intentionally left alone.
+      content = content.replace(
+        /\bimport\(\s*(['"])([^'"`]+)\1\s*\)/g,
+        (_match: string, quote: string, importPath: string): string => {
+          const fixedPath = processImport(importPath, fileDir, distDir);
+          return `import(${quote}${fixedPath}${quote})`;
+        },
+      );
+
       fs.writeFileSync(filePath, content, "utf-8");
     }
   }
