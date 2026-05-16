@@ -72,143 +72,143 @@
 ## v1.14.0 (2026-05-05)
 
 ### @createrington/server (1.13.0 → 1.14.0)
-- [add] Add chunk sync endpoint and `server_chunk` table — new `/api/chunks/sync` mod endpoint receives full-state chunk snapshots (claimed, unclaimed, forceloaded) per dimension, storing them in a new `server_chunk` table with advisory-lock-guarded batched upserts
-- [add] Add unified parties admin tRPC router — replaces the separate `admin.allies` and `admin.forceloads` routers with a single `admin.parties` router that exposes party lists, solo players, chunk data, KPI aggregates, and dimension filters with server-side pagination and sorting
-- [add] Add player search by Discord ID and UUID — the admin players list endpoint now accepts Discord snowflakes (17-20 digits) and Minecraft UUIDs as search terms, routing them to the appropriate query
-- [add] Add Mojang UUID resolution endpoint — new public `players.resolveUuid` tRPC procedure fetches a username from the Mojang API for unresolved UUIDs, with result caching
-- [fix] Fix SSO access cookie premature logout — the access cookie `maxAge` was being set in seconds instead of milliseconds, causing the cookie to expire almost immediately after issuance
-- [fix] Fix chunk sync advisory lock overflow — the lock namespace hash was exceeding PostgreSQL's int4 range, causing lock acquisition failures
-- [fix] Fix lottery start announcement — use `/join` command mention instead of plain text in the lottery start embed
-- [fix] Fix parties admin aggregates ignoring dimension filter — KPI card queries now filter by the selected dimension
-- [fix] Fix expired chunk attribution — chunks with expired claims are now attributed to their original owner in the admin parties view
-- [refactor] Move donations router under owner scope — donations management routes relocated from admin to the owner-only namespace
-- [refactor] Minimize required env vars in dev — non-critical service configs (email, Stripe, etc.) are now optional when running locally, with extracted `isDevHostname` helper for validation
+- [add] Add chunk sync endpoint and `server_chunk` table: new `/api/chunks/sync` mod endpoint receives full-state chunk snapshots (claimed, unclaimed, forceloaded) per dimension, storing them in a new `server_chunk` table with advisory-lock-guarded batched upserts
+- [add] Add unified parties admin tRPC router: replaces the separate `admin.allies` and `admin.forceloads` routers with a single `admin.parties` router that exposes party lists, solo players, chunk data, KPI aggregates, and dimension filters with server-side pagination and sorting
+- [add] Add player search by Discord ID and UUID: the admin players list endpoint now accepts Discord snowflakes (17-20 digits) and Minecraft UUIDs as search terms, routing them to the appropriate query
+- [add] Add Mojang UUID resolution endpoint: new public `players.resolveUuid` tRPC procedure fetches a username from the Mojang API for unresolved UUIDs, with result caching
+- [fix] Fix SSO access cookie premature logout: the access cookie `maxAge` was being set in seconds instead of milliseconds, causing the cookie to expire almost immediately after issuance
+- [fix] Fix chunk sync advisory lock overflow: the lock namespace hash was exceeding PostgreSQL's int4 range, causing lock acquisition failures
+- [fix] Fix lottery start announcement: use `/join` command mention instead of plain text in the lottery start embed
+- [fix] Fix parties admin aggregates ignoring dimension filter: KPI card queries now filter by the selected dimension
+- [fix] Fix expired chunk attribution: chunks with expired claims are now attributed to their original owner in the admin parties view
+- [refactor] Move donations router under owner scope: donations management routes relocated from admin to the owner-only namespace
+- [refactor] Minimize required env vars in dev: non-critical service configs (email, Stripe, etc.) are now optional when running locally, with extracted `isDevHostname` helper for validation
 
 ### @createrington/client (0.2.15 → 0.2.16)
-- [add] Add unified parties admin page — replaces the separate Allies and Forceloads tools with a single Parties page featuring tabbed party/solo-player tables, chunk detail tables, KPI cards, dimension filter populated from live DB values, and multi-state allied/opted-in filter selects
-- [add] Add party tab to player detail — collapsible blinds show the player's party membership, allied parties, and chunk claims with deep-linking from the parties admin page
-- [add] Add sortable column headers — party tables, solo player tables, and chunk tables all support click-to-sort with visual indicators
-- [add] Add split click areas on player blinds — left side navigates to player detail, right side expands/collapses the blind
-- [add] Add sticky expanded row — when expanding a party row, it pins to the viewport so chunk details stay visible while scrolling
-- [add] Add paginated chunk tables with server-side filtering — chunk parties section now supports pagination and search
-- [add] Add admin chat model picker — admins can opt into Opus for deeper investigations via a model chip selector (moved from header to chat panel)
-- [add] Add PlayerLabel UUID resolution — clicking an unresolved UUID in a PlayerLabel fetches the username from Mojang and updates inline
+- [add] Add unified parties admin page: replaces the separate Allies and Forceloads tools with a single Parties page featuring tabbed party/solo-player tables, chunk detail tables, KPI cards, dimension filter populated from live DB values, and multi-state allied/opted-in filter selects
+- [add] Add party tab to player detail: collapsible blinds show the player's party membership, allied parties, and chunk claims with deep-linking from the parties admin page
+- [add] Add sortable column headers: party tables, solo player tables, and chunk tables all support click-to-sort with visual indicators
+- [add] Add split click areas on player blinds: left side navigates to player detail, right side expands/collapses the blind
+- [add] Add sticky expanded row: when expanding a party row, it pins to the viewport so chunk details stay visible while scrolling
+- [add] Add paginated chunk tables with server-side filtering: chunk parties section now supports pagination and search
+- [add] Add admin chat model picker: admins can opt into Opus for deeper investigations via a model chip selector (moved from header to chat panel)
+- [add] Add PlayerLabel UUID resolution: clicking an unresolved UUID in a PlayerLabel fetches the username from Mojang and updates inline
 - [add] Add reusable Paginator component for consistent table pagination across admin pages
 - [fix] Fix player search to recognize Discord IDs (17-20 digit strings) and route them appropriately
-- [fix] Fix FE convention violations — file naming, component structure, and hook patterns aligned with project conventions
+- [fix] Fix FE convention violations: file naming, component structure, and hook patterns aligned with project conventions
 - [chore] Deploy workflow updated to skip server restart and migration on client-only production pushes
 
 ## v1.13.0 (2026-04-28)
 
 ### @createrington/server (1.12.0 → 1.13.0)
-- [add] Add ally sync system for opac-fakeplayer — new `/api/allies/sync` mod endpoint receives full-state snapshots of the fake-player party, allied real-player parties, and qualified/pending players; the server replaces ally state per server in a single transaction with four new tables (`server_ally_fake_party`, `server_ally_fake_party_member`, `server_ally_party`, `server_ally_qualified_player`)
-- [add] Add admin tRPC procedures for ally data — `admin.allies.fakeParty`, `admin.allies.alliedParties`, `admin.allies.qualifiedPlayers`, and `admin.allies.playerStatus` let the admin panel read the synced ally state
-- [fix] Fix forceload dimension and active-only filters — the party and player forceload queries now aggregate chunks per dimension via a lateral join and return `chunksByDimension`, so the UI filters by dimension and active status actually filter the top-level table rows instead of only the expanded detail
-- [remove] Drop FK on `player_playtime_summary.player_minecraft_uuid` — playtime summary rows now outlive player deletion so all-time aggregates (homepage total hours, per-server totals) remain intact when a player is removed
-- [add] Add stats-file playtime backfill script — new `import-playtime-from-stats` script reads Minecraft `stats/*.json` files and backfills `player_playtime_summary` rows for historical playtime data
+- [add] Add ally sync system for opac-fakeplayer: new `/api/allies/sync` mod endpoint receives full-state snapshots of the fake-player party, allied real-player parties, and qualified/pending players; the server replaces ally state per server in a single transaction with four new tables (`server_ally_fake_party`, `server_ally_fake_party_member`, `server_ally_party`, `server_ally_qualified_player`)
+- [add] Add admin tRPC procedures for ally data: `admin.allies.fakeParty`, `admin.allies.alliedParties`, `admin.allies.qualifiedPlayers`, and `admin.allies.playerStatus` let the admin panel read the synced ally state
+- [fix] Fix forceload dimension and active-only filters: the party and player forceload queries now aggregate chunks per dimension via a lateral join and return `chunksByDimension`, so the UI filters by dimension and active status actually filter the top-level table rows instead of only the expanded detail
+- [remove] Drop FK on `player_playtime_summary.player_minecraft_uuid`: playtime summary rows now outlive player deletion so all-time aggregates (homepage total hours, per-server totals) remain intact when a player is removed
+- [add] Add stats-file playtime backfill script: new `import-playtime-from-stats` script reads Minecraft `stats/*.json` files and backfills `player_playtime_summary` rows for historical playtime data
 
 ### @createrington/client (0.2.14 → 0.2.15)
-- [add] Add admin allies page — new Tools → Allies page shows the synced fake-player party, allied parties with member badges, and qualified players split into active/pending sections
-- [add] Add ally status section to player detail — the admin player overview tab now shows the player's ally qualification state (active, pending, or not qualified) with their allied party info
-- [fix] Fix forceload active-only and dimension filters on top-level tables — party and player tables now hide rows that have zero chunks matching the selected dimension or active-only toggle, instead of only filtering the expanded chunk list
-- [fix] Fix auto-focus on team member dialog — prevent Radix auto-focus from stealing focus when the dialog opens, avoiding scroll jumps on mobile
+- [add] Add admin allies page: new Tools → Allies page shows the synced fake-player party, allied parties with member badges, and qualified players split into active/pending sections
+- [add] Add ally status section to player detail: the admin player overview tab now shows the player's ally qualification state (active, pending, or not qualified) with their allied party info
+- [fix] Fix forceload active-only and dimension filters on top-level tables: party and player tables now hide rows that have zero chunks matching the selected dimension or active-only toggle, instead of only filtering the expanded chunk list
+- [fix] Fix auto-focus on team member dialog: prevent Radix auto-focus from stealing focus when the dialog opens, avoiding scroll jumps on mobile
 
 ## v1.12.0 (2026-04-26)
 
 ### @createrington/server (1.11.0 → 1.12.0)
-- [add] Add Nomads to the Discord server selection panel — users can now pick the "Nomads" test server (Create: Aeronautics proving phase) from the server selection menu, which assigns the new Nomads role
-- [add] Register Nomads Discord entities — new role, channels (feedback-bugs, chat, start-here, minecraft-chat), and category added to the Discord configuration
+- [add] Add Nomads to the Discord server selection panel: users can now pick the "Nomads" test server (Create: Aeronautics proving phase) from the server selection menu, which assigns the new Nomads role
+- [add] Register Nomads Discord entities: new role, channels (feedback-bugs, chat, start-here, minecraft-chat), and category added to the Discord configuration
 
 ### @createrington/client (0.2.13 → 0.2.14)
-- [add] Animated sidebar icons on hover — all sidebar navigation icons now use stroke-draw and motion-based animations from `@createrington/icons` that play on hover, replacing the static Lucide icons
+- [add] Animated sidebar icons on hover: all sidebar navigation icons now use stroke-draw and motion-based animations from `@createrington/icons` that play on hover, replacing the static Lucide icons
 - [add] Add `useAnimatedHover` hook integration across all nav components (main, admin, crypto, owner, user menu) for consistent hover-triggered icon animation
 - [add] Add sidebar trigger animation and polish collapsed-sidebar icon hover states
 
 ## v1.11.1 (2026-04-24)
 
 ### @createrington/client (0.2.12 → 0.2.13)
-- [chore] Swap team members on the team page — replace Stratos65 and imahomen with diablothe2nd and Tetsuoken, updating player UUIDs, skin viewer animations, and credits
+- [chore] Swap team members on the team page: replace Stratos65 and imahomen with diablothe2nd and Tetsuoken, updating player UUIDs, skin viewer animations, and credits
 
 ## v1.11.0 (2026-04-24)
 
 ### @createrington/server (1.10.1 → 1.11.0)
-- [refactor] Unify mod authentication on self-signed JWTs with audience claim — all mod-facing endpoints (`/api/currency`, `/api/trains`, `/api/presence`) now authenticate via a single `modJwt` middleware that verifies a self-signed JWT with an `aud: "createrington-mod"` claim, replacing the previous shared-secret and mixed-auth schemes; server-level tokens (no player UUID/name) are accepted for endpoints that don't require player context
-- [remove] Remove legacy currency and trains routes — the `/api/legacy/currency` and `/api/legacy/trains` endpoints (flat-response compatibility shims for pre-envelope mod clients) are deleted now that all mod clients have migrated to the current API
-- [add] Add owner-only admin management panel — new `owner` tRPC router with procedures to list admins, view the admin audit log, promote users to admin, and demote existing admins; promotion and demotion are logged with an audit trail and optionally notify a Discord channel
-- [add] Add admin-chat history page — new tRPC procedures and REST routes let admins browse, search, and view past assistant chat sessions with full message history and metadata
-- [add] Add inactivity notification on removal — when the cleanup service removes a player for inactivity, an admin notification embed is now sent to the configured Discord channel summarising the removal
-- [add] Add process-overdue action to the inactivity panel — admins can trigger processing of all overdue warnings in bulk from the inactivity management UI
-- [refactor] Deduplicate inactivity panel rows and exclude admins from the sweep — the warning query now deduplicates by player and the cleanup service skips players with admin privileges
-- [add] Add freeform highlights to the modpack changelog tool — the announcement builder now supports user-defined highlight blocks (title + description) that render above mod lists in the changelog embed
-- [refactor] Cache player existence in `requireKnownPlayer` — the middleware now caches verified player IDs in memory, avoiding a DB query on every authenticated request for returning players
-- [security] Harden mod API IP gate — the server-IP middleware now validates against a strict allowlist and rejects requests from unrecognised origins; the `fromUuid` shortcut route is removed
-- [security] Security hardening batch — strict Bearer prefix parsing on Authorization headers, exact-origin allowlist for SSO return-to URLs (replacing regex), timing-safe comparison for shared secrets, admin-input sanitisation on embed/FAQ mutations, savepoint name escaping in transactions, and ticket transcript path traversal guard
-- [refactor] Logging and error hygiene — suppress stack traces for expected 4xx errors, redact sensitive fields from request logs, and guard against unhandled promise rejections in Discord event handlers
+- [refactor] Unify mod authentication on self-signed JWTs with audience claim: all mod-facing endpoints (`/api/currency`, `/api/trains`, `/api/presence`) now authenticate via a single `modJwt` middleware that verifies a self-signed JWT with an `aud: "createrington-mod"` claim, replacing the previous shared-secret and mixed-auth schemes; server-level tokens (no player UUID/name) are accepted for endpoints that don't require player context
+- [remove] Remove legacy currency and trains routes: the `/api/legacy/currency` and `/api/legacy/trains` endpoints (flat-response compatibility shims for pre-envelope mod clients) are deleted now that all mod clients have migrated to the current API
+- [add] Add owner-only admin management panel: new `owner` tRPC router with procedures to list admins, view the admin audit log, promote users to admin, and demote existing admins; promotion and demotion are logged with an audit trail and optionally notify a Discord channel
+- [add] Add admin-chat history page: new tRPC procedures and REST routes let admins browse, search, and view past assistant chat sessions with full message history and metadata
+- [add] Add inactivity notification on removal: when the cleanup service removes a player for inactivity, an admin notification embed is now sent to the configured Discord channel summarising the removal
+- [add] Add process-overdue action to the inactivity panel: admins can trigger processing of all overdue warnings in bulk from the inactivity management UI
+- [refactor] Deduplicate inactivity panel rows and exclude admins from the sweep: the warning query now deduplicates by player and the cleanup service skips players with admin privileges
+- [add] Add freeform highlights to the modpack changelog tool: the announcement builder now supports user-defined highlight blocks (title + description) that render above mod lists in the changelog embed
+- [refactor] Cache player existence in `requireKnownPlayer`: the middleware now caches verified player IDs in memory, avoiding a DB query on every authenticated request for returning players
+- [security] Harden mod API IP gate: the server-IP middleware now validates against a strict allowlist and rejects requests from unrecognised origins; the `fromUuid` shortcut route is removed
+- [security] Security hardening batch: strict Bearer prefix parsing on Authorization headers, exact-origin allowlist for SSO return-to URLs (replacing regex), timing-safe comparison for shared secrets, admin-input sanitisation on embed/FAQ mutations, savepoint name escaping in transactions, and ticket transcript path traversal guard
+- [refactor] Logging and error hygiene: suppress stack traces for expected 4xx errors, redact sensitive fields from request logs, and guard against unhandled promise rejections in Discord event handlers
 - [security] Patch audit vulnerabilities via pnpm overrides for transitive dependencies
-- [security] Reject nil-UUID fakeplayers in the playtime pipeline — the playtime service now validates incoming UUIDs and drops events from non-player entities (e.g. fake-player automation) before they reach the database
+- [security] Reject nil-UUID fakeplayers in the playtime pipeline: the playtime service now validates incoming UUIDs and drops events from non-player entities (e.g. fake-player automation) before they reach the database
 
 ### @createrington/client (0.2.11 → 0.2.12)
-- [add] Add owner-only admin management panel — new sidebar section and pages for owners to view, promote, and demote admins with confirmation dialogs and an audit feed
-- [add] Add admin-chat history page — browsable list of past assistant sessions with search, pagination, and a detail view showing the full conversation
-- [add] Add copy button to admin-chat code blocks — fenced code blocks in assistant responses now have a one-click copy button
-- [add] Add freeform highlights to the modpack changelog tool — the changelog builder UI now includes a highlights section where users can add titled description blocks that appear above the mod list
+- [add] Add owner-only admin management panel: new sidebar section and pages for owners to view, promote, and demote admins with confirmation dialogs and an audit feed
+- [add] Add admin-chat history page: browsable list of past assistant sessions with search, pagination, and a detail view showing the full conversation
+- [add] Add copy button to admin-chat code blocks: fenced code blocks in assistant responses now have a one-click copy button
+- [add] Add freeform highlights to the modpack changelog tool: the changelog builder UI now includes a highlights section where users can add titled description blocks that appear above the mod list
 - [fix] Fix owner demote dialog close button and admin chat hover interaction issues
-- [fix] Fix owner panel UI follow-ups — spacing, alignment, and responsive layout refinements
+- [fix] Fix owner panel UI follow-ups: spacing, alignment, and responsive layout refinements
 
 ### @createrington/shared (1.1.1 → 1.1.2)
-- [security] Restrict embed URL fields to HTTP(S) schemes — all URL fields in the embed data schema now reject `javascript:`, `data:`, and `file:` URIs, accepting only `http://` and `https://` URLs
+- [security] Restrict embed URL fields to HTTP(S) schemes: all URL fields in the embed data schema now reject `javascript:`, `data:`, and `file:` URIs, accepting only `http://` and `https://` URLs
 
 ## v1.10.1 (2026-04-23)
 
 ### @createrington/server (1.10.0 → 1.10.1)
-- [refactor] Migrate transactional email from nodemailer to Resend — the email service now uses the Resend HTTP API instead of SMTP, simplifying config (single API key replaces host/port/user/pass), handling local file attachments by reading them into buffers, and mapping inline `cid` references to Resend's `contentId` field so existing templates work unchanged
-- [refactor] Replace the inline Winston logger with the shared `@createrington/logger` package — the 276-line `DailyFolderLogger` class is removed in favour of a `createLogger()` call from the extracted library, keeping the same daily-folder rotation and global `logger` registration behaviour
-- [refactor] Make the server-writable storage directory configurable via `STORAGE_PATH` env var — ticket transcript paths now resolve from `config.storage.path` instead of walking up from `import.meta.url`, and the env schema tolerates a missing value when validation is skipped (generate scripts, unit tests)
+- [refactor] Migrate transactional email from nodemailer to Resend: the email service now uses the Resend HTTP API instead of SMTP, simplifying config (single API key replaces host/port/user/pass), handling local file attachments by reading them into buffers, and mapping inline `cid` references to Resend's `contentId` field so existing templates work unchanged
+- [refactor] Replace the inline Winston logger with the shared `@createrington/logger` package: the 276-line `DailyFolderLogger` class is removed in favour of a `createLogger()` call from the extracted library, keeping the same daily-folder rotation and global `logger` registration behaviour
+- [refactor] Make the server-writable storage directory configurable via `STORAGE_PATH` env var: ticket transcript paths now resolve from `config.storage.path` instead of walking up from `import.meta.url`, and the env schema tolerates a missing value when validation is skipped (generate scripts, unit tests)
 
 ### @createrington/client (0.2.10 → 0.2.11)
-- [refactor] Make mod names in the active structure pack clickable — each mod with a URL now links directly to its CurseForge/Modrinth page, and the separate "Inspect" dialog button is removed in favour of inline links
-- [fix] Fix contact email across legal pages — privacy policy and terms of service now use the canonical `createrington.com` domain instead of the old `create-rington.com`
+- [refactor] Make mod names in the active structure pack clickable: each mod with a URL now links directly to its CurseForge/Modrinth page, and the separate "Inspect" dialog button is removed in favour of inline links
+- [fix] Fix contact email across legal pages: privacy policy and terms of service now use the canonical `createrington.com` domain instead of the old `create-rington.com`
 
 ### @createrington/api-types (0.1.0 → 0.1.1)
-- [chore] Switch package registry from public npm to the internal Gitea npm registry — `publishConfig.registry` now points to `gitea.matejhoz.com` and the README documents the `.npmrc` setup for consumers
+- [chore] Switch package registry from public npm to the internal Gitea npm registry: `publishConfig.registry` now points to `gitea.matejhoz.com` and the README documents the `.npmrc` setup for consumers
 
 ## v1.10.0 (2026-04-22)
 
 ### @createrington/server (1.9.1 → 1.10.0)
-- [add] Add auto-message follow-ups — each auto-message can now have up to 5 follow-up messages that fire sequentially after configurable delays; follow-ups are stored in a new `discord_auto_message_followup` table with cascade delete, and the service schedules them via in-memory timeouts with additive delays along the chain
-- [add] Admin CRUD for follow-ups — the `createMessage` and `updateMessage` tRPC mutations accept an inline `followups` array; updates replace all existing follow-ups in a transaction, and the `getConfig` query now returns follow-ups nested under each message
-- [refactor] Move structure pack read endpoints to the public router — `current`, `pool`, and `rotationInfo` queries no longer require authentication, enabling the packs page to load for logged-out visitors
+- [add] Add auto-message follow-ups: each auto-message can now have up to 5 follow-up messages that fire sequentially after configurable delays; follow-ups are stored in a new `discord_auto_message_followup` table with cascade delete, and the service schedules them via in-memory timeouts with additive delays along the chain
+- [add] Admin CRUD for follow-ups: the `createMessage` and `updateMessage` tRPC mutations accept an inline `followups` array; updates replace all existing follow-ups in a transaction, and the `getConfig` query now returns follow-ups nested under each message
+- [refactor] Move structure pack read endpoints to the public router: `current`, `pool`, and `rotationInfo` queries no longer require authentication, enabling the packs page to load for logged-out visitors
 
 ### @createrington/client (0.2.9 → 0.2.10)
-- [add] Add Parallel Worlds portal hero to `/packs` — animated Nether portal canvas rendered from a sprite sheet with idle shimmer, hover glow, and reduced-motion support; the hero section uses `svh` units for stable mobile viewport sizing and pauses the canvas when offscreen for performance
-- [add] Add portal zoom overlay for pack voting — clicking the portal triggers a cinematic zoom sequence that reveals voting cards inside the portal frame, with staged open/close transitions, brightness ramping, and subtle blur effects
-- [refactor] Redesign active pack panel with cinematic styling — the currently active pack is displayed with floating dust particles, a glow backdrop, and a call-to-action that opens the portal overlay when no pack is active
+- [add] Add Parallel Worlds portal hero to `/packs`: animated Nether portal canvas rendered from a sprite sheet with idle shimmer, hover glow, and reduced-motion support; the hero section uses `svh` units for stable mobile viewport sizing and pauses the canvas when offscreen for performance
+- [add] Add portal zoom overlay for pack voting: clicking the portal triggers a cinematic zoom sequence that reveals voting cards inside the portal frame, with staged open/close transitions, brightness ramping, and subtle blur effects
+- [refactor] Redesign active pack panel with cinematic styling: the currently active pack is displayed with floating dust particles, a glow backdrop, and a call-to-action that opens the portal overlay when no pack is active
 - [add] Add inline enable/disable and delete actions to the admin packs list, replacing the need to navigate into each pack to toggle state
-- [add] Add Assistant sidebar trigger — the admin chat widget can now be opened from a sidebar menu item instead of only the floating bubble
+- [add] Add Assistant sidebar trigger: the admin chat widget can now be opened from a sidebar menu item instead of only the floating bubble
 - [refactor] Open the structure packs page to logged-out visitors by switching data queries from the authenticated user router to the new public endpoints
-- [add] Add follow-up message editing UI to auto-messages — the message dialog now includes a follow-ups section where admins can add, reorder, and remove timed follow-up messages
-- [fix] Fix mobile chat viewport height — use `dvh` (dynamic viewport height) for the chat container so the input stays visible when the mobile keyboard opens
-- [refactor] Clean up sidebar collapsible chevrons — standardize rotation direction and transition timing across all collapsible nav sections
-- [fix] Fix stuck maintenance cancel dialog caused by stale WebSocket status — the dialog now resets correctly when the server status changes while it is open
+- [add] Add follow-up message editing UI to auto-messages: the message dialog now includes a follow-ups section where admins can add, reorder, and remove timed follow-up messages
+- [fix] Fix mobile chat viewport height: use `dvh` (dynamic viewport height) for the chat container so the input stays visible when the mobile keyboard opens
+- [refactor] Clean up sidebar collapsible chevrons: standardize rotation direction and transition timing across all collapsible nav sections
+- [fix] Fix stuck maintenance cancel dialog caused by stale WebSocket status: the dialog now resets correctly when the server status changes while it is open
 - [chore] Update site logo with an enhanced version and remove the unused webp variant
 
 ## v1.9.2 (2026-04-20)
 
 ### @createrington/client (0.2.8 → 0.2.9)
-- [refactor] Polish guides UI with smoother step transitions — replace opacity toggle with a new `AutoHeight` wrapper that animates content height changes via ResizeObserver, add a progress bar indicator for mobile, and only scroll when the content anchor is above the viewport
+- [refactor] Polish guides UI with smoother step transitions: replace opacity toggle with a new `AutoHeight` wrapper that animates content height changes via ResizeObserver, add a progress bar indicator for mobile, and only scroll when the content anchor is above the viewport
 - [refactor] Restyle guide cards with hover effects, gradient overlays, estimated reading time badges, and image zoom on hover
-- [refactor] Refine step sidebar and navigation — widen sidebar, add hover states to non-active steps, use a top border separator on the nav footer, and show a checkmark icon on the Finish button
+- [refactor] Refine step sidebar and navigation: widen sidebar, add hover states to non-active steps, use a top border separator on the nav footer, and show a checkmark icon on the Finish button
 - [add] Add new hero images (metro, space-station, royal-albert-hall) and update the site logo
 
 ### Other
-- [add] Add Remotion marketing video package (`marketing/`) — multi-scene promotional video with procedural animations, Minecraft build showcases, crypto terminal mockup, player card renders, stats counters, credits sequence, and optional soundtrack support
+- [add] Add Remotion marketing video package (`marketing/`): multi-scene promotional video with procedural animations, Minecraft build showcases, crypto terminal mockup, player card renders, stats counters, credits sequence, and optional soundtrack support
 - [chore] Remove the startup delay script and simplify the root `dev` command to run all services concurrently without artificial delays
 - [add] Add player render screenshots to the repository and update README with render examples
 
 ## v1.9.1 (2026-04-18)
 
 ### @createrington/server (1.9.0 → 1.9.1)
-- [security] Fix SSO open-redirect vulnerability — all `res.redirect` calls in the SSO callback now re-validate the target URL against the SSO whitelist before redirecting, adding defense-in-depth against CWE-601 (closes #532, #533, #534)
+- [security] Fix SSO open-redirect vulnerability: all `res.redirect` calls in the SSO callback now re-validate the target URL against the SSO whitelist before redirecting, adding defense-in-depth against CWE-601 (closes #532, #533, #534)
 - [chore] Remove redundant and AI-generated comments across services, routes, controllers, repositories, middleware, and utilities
 
 ### @createrington/client (0.2.7 → 0.2.8)
@@ -220,13 +220,13 @@
 ## v1.9.0 (2026-04-18)
 
 ### @createrington/server (1.8.1 → 1.9.0)
-- [add] Add consumer tRPC router system — new `consumers` namespace in the root router provides stable, versioned API contracts for external first-party apps (admin panel, bots)
-- [add] Add panel consumer router with `presence.onlineByServer` procedure — returns currently online players for a given server, consumed by the admin panel to render per-server player lists
+- [add] Add consumer tRPC router system: new `consumers` namespace in the root router provides stable, versioned API contracts for external first-party apps (admin panel, bots)
+- [add] Add panel consumer router with `presence.onlineByServer` procedure: returns currently online players for a given server, consumed by the admin panel to render per-server player lists
 - [add] Mount panel router at dedicated `/trpc/consumers/panel` endpoint so external consumers can use natural procedure paths without knowing the internal router nesting
 - [add] Export `PanelRouter` type via new `./trpc/panel` package export for use by `@createrington/api-types`
 
-### @createrington/api-types (new — 0.1.0)
-- [add] New workspace package published to public npm — ships a single bundled `.d.ts` with typed tRPC router contracts for first-party consumer projects
+### @createrington/api-types (new: 0.1.0)
+- [add] New workspace package published to public npm: ships a single bundled `.d.ts` with typed tRPC router contracts for first-party consumer projects
 - [add] Exports `PanelRouter` type for the admin panel to use with `@trpc/client`
 - [chore] CI auto-publishes to npm on deploy when the version is bumped, with idempotent skip-if-already-published guard
 
@@ -238,98 +238,98 @@
 - [refactor] Extract `QueryBuilder` class from `base.queries.ts` into its own `query-builder.ts` module for better separation of concerns; no behaviour change
 
 ### @createrington/client (0.2.6 → 0.2.7)
-- [refactor] Use dedicated bot logo (`createrington-bot.webp`) across all admin chat components — chat header, toggle button, empty state, message rows, and typing indicator now display the bot avatar instead of the generic site logo
+- [refactor] Use dedicated bot logo (`createrington-bot.webp`) across all admin chat components: chat header, toggle button, empty state, message rows, and typing indicator now display the bot avatar instead of the generic site logo
 - [refactor] Migrate all URLs, env files, CSP directives, Open Graph meta tags, and render watermarks from `create-rington.com` to `createrington.com`
-- [fix] Fix admin chat message spacing and avatar alignment — adjust group margins, add bottom padding to messages without meta, and align bot avatar with the bubble bottom
+- [fix] Fix admin chat message spacing and avatar alignment: adjust group margins, add bottom padding to messages without meta, and align bot avatar with the bubble bottom
 - [refactor] Float admin chat message meta (timestamp and copy button) on hover using opacity transition instead of the previous grid-row height animation, reducing layout shift
 - [refactor] Make mobile header sticky so the sidebar trigger and logo remain visible when scrolling
 
 ## v1.8.0 (2026-04-17)
 
 ### @createrington/shared (1.0.0 → 1.1.0)
-- [add] Add `content` field to `embedDataSchema` — plain message content (up to 2000 chars) is now a first-class field alongside embed title/description, enabling Discord messages that contain text without a rich embed
+- [add] Add `content` field to `embedDataSchema`: plain message content (up to 2000 chars) is now a first-class field alongside embed title/description, enabling Discord messages that contain text without a rich embed
 
 ### @createrington/server (1.7.2 → 1.8.0)
-- [add] Add plain text content support to embed builder — all send/edit/preview embed mutations now accept and forward a `content` field; validation accepts content-only messages (previously required at least a title, description, or field); edit operations explicitly null out content/embeds/components when absent so stale values are cleared on update
-- [refactor] Modularize structure pack rotation service — `rotation.ts` (~600 LOC) split into focused files: `scheduling.ts`, `weights.ts`, `mod-cache.ts`, `timezone.ts`, `constants.ts`, `types.ts`, and an `index.ts` orchestrator; no behaviour change
-- [refactor] Modularize crypto market service — `crypto-market.service.ts` (~550 LOC) split into `aggregation.ts`, `market-caches.ts`, `lifecycle/ipo.ts`, and `lifecycle/seasonal.ts`; no behaviour change
-- [refactor] Modularize RCON utility — monolithic `rcon/index.ts` (~1000 LOC) split into `connection.ts`, `manager.ts`, `enums.ts`, `errors.ts`, and `types.ts`; error classes are re-exported from the barrel so existing imports remain unchanged
+- [add] Add plain text content support to embed builder: all send/edit/preview embed mutations now accept and forward a `content` field; validation accepts content-only messages (previously required at least a title, description, or field); edit operations explicitly null out content/embeds/components when absent so stale values are cleared on update
+- [refactor] Modularize structure pack rotation service: `rotation.ts` (~600 LOC) split into focused files: `scheduling.ts`, `weights.ts`, `mod-cache.ts`, `timezone.ts`, `constants.ts`, `types.ts`, and an `index.ts` orchestrator; no behaviour change
+- [refactor] Modularize crypto market service: `crypto-market.service.ts` (~550 LOC) split into `aggregation.ts`, `market-caches.ts`, `lifecycle/ipo.ts`, and `lifecycle/seasonal.ts`; no behaviour change
+- [refactor] Modularize RCON utility: monolithic `rcon/index.ts` (~1000 LOC) split into `connection.ts`, `manager.ts`, `enums.ts`, `errors.ts`, and `types.ts`; error classes are re-exported from the barrel so existing imports remain unchanged
 
 ### @createrington/client (0.2.5 → 0.2.6)
-- [add] Add plain text content field to embed builder UI — new "Content" textarea appears above the embed form; the normalizer now propagates `insert_embed` content through to the embed data so it survives round-trips through the editor
-- [refactor] Modularize web chat component — monolithic `chat.tsx` (1777 lines) split into `server-chat.tsx`, `message-row.tsx`, `message-group.tsx`, `message-images.tsx`, `player-list-panel.tsx`, `chat-markdown.tsx`, `avatar.tsx`, `source-badge.tsx`, plus shared `hooks.ts`, `constants.ts`, `types.ts`, and `utils.ts`; no behaviour change
-- [refactor] Modularize StructurePackDetail admin page — monolithic page component (~970 lines) decomposed into `AddModDialog`, `EditPackDialog`, `ModsList`, `PackHeader`, and `RemoveModDialog` components with a shared `types.ts`; no behaviour change
-- [fix] Fix typing indicator spacing and animation — entrance animation and spacing for the typing indicator are corrected
-- [fix] Fix copy and timestamp visibility — copy button and timestamp are now shown on every chat message, not just on hover of grouped messages
+- [add] Add plain text content field to embed builder UI: new "Content" textarea appears above the embed form; the normalizer now propagates `insert_embed` content through to the embed data so it survives round-trips through the editor
+- [refactor] Modularize web chat component: monolithic `chat.tsx` (1777 lines) split into `server-chat.tsx`, `message-row.tsx`, `message-group.tsx`, `message-images.tsx`, `player-list-panel.tsx`, `chat-markdown.tsx`, `avatar.tsx`, `source-badge.tsx`, plus shared `hooks.ts`, `constants.ts`, `types.ts`, and `utils.ts`; no behaviour change
+- [refactor] Modularize StructurePackDetail admin page: monolithic page component (~970 lines) decomposed into `AddModDialog`, `EditPackDialog`, `ModsList`, `PackHeader`, and `RemoveModDialog` components with a shared `types.ts`; no behaviour change
+- [fix] Fix typing indicator spacing and animation: entrance animation and spacing for the typing indicator are corrected
+- [fix] Fix copy and timestamp visibility: copy button and timestamp are now shown on every chat message, not just on hover of grouped messages
 
 ## v1.7.2 (2026-04-16)
 
 ### @createrington/server (1.7.1 → 1.7.2)
-- [security] Tighten Content Security Policy to allow Cloudflare Insights — `helmet` CSP directives now explicitly permit `https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com` in `connect-src`, fixing blocked analytics requests without weakening the policy elsewhere
+- [security] Tighten Content Security Policy to allow Cloudflare Insights: `helmet` CSP directives now explicitly permit `https://static.cloudflareinsights.com` in `script-src` and `https://cloudflareinsights.com` in `connect-src`, fixing blocked analytics requests without weakening the policy elsewhere
 
 ### @createrington/client (0.2.4 → 0.2.5)
-- [fix] Fix admin chat markdown list rendering — unordered and ordered lists in AI assistant responses now render with visible bullets/numbers (`list-disc`/`list-decimal` + `list-outside`) instead of appearing as unstyled flat text
-- [fix] Fix admin chat "End session" button styling — the button now renders in destructive red with a matching hover state, making it visually distinct from neutral actions
-- [fix] Fix CSP compatibility with Zod v4 — Zod's JIT compiler is disabled at app entry (`z.config({ jitless: true })`) so the app no longer requires `unsafe-eval` in the Content Security Policy
-- [fix] Fix CSP meta tag in `index.html` — client-side CSP now mirrors the server helmet policy, permitting Cloudflare Insights scripts and connections
-- [fix] Fix React Hook Form devtools warnings on `ApplyToJoin` — `Select` and `Checkbox` inputs now receive the `name` prop from their field controller, eliminating uncontrolled-component console warnings
+- [fix] Fix admin chat markdown list rendering: unordered and ordered lists in AI assistant responses now render with visible bullets/numbers (`list-disc`/`list-decimal` + `list-outside`) instead of appearing as unstyled flat text
+- [fix] Fix admin chat "End session" button styling: the button now renders in destructive red with a matching hover state, making it visually distinct from neutral actions
+- [fix] Fix CSP compatibility with Zod v4: Zod's JIT compiler is disabled at app entry (`z.config({ jitless: true })`) so the app no longer requires `unsafe-eval` in the Content Security Policy
+- [fix] Fix CSP meta tag in `index.html`: client-side CSP now mirrors the server helmet policy, permitting Cloudflare Insights scripts and connections
+- [fix] Fix React Hook Form devtools warnings on `ApplyToJoin`: `Select` and `Checkbox` inputs now receive the `name` prop from their field controller, eliminating uncontrolled-component console warnings
 
 ## v1.7.1 (2026-04-16)
 
 ### @createrington/server (1.7.0 → 1.7.1)
-- [fix] Fix cookie collision when a browser holds both a legacy host-only cookie and the newer domain-scoped cookie under the same name — `AccessCookieService` and `RefreshTokenService` now defensively clear the host-only variant before setting or clearing the domain-scoped one; without this the browser could silently deliver the stale host-only value, causing JWT verification failures (access cookie) or false token-theft revocations (refresh cookie)
+- [fix] Fix cookie collision when a browser holds both a legacy host-only cookie and the newer domain-scoped cookie under the same name: `AccessCookieService` and `RefreshTokenService` now defensively clear the host-only variant before setting or clearing the domain-scoped one; without this the browser could silently deliver the stale host-only value, causing JWT verification failures (access cookie) or false token-theft revocations (refresh cookie)
 
 ## v1.7.0 (2026-04-16)
 
 ### @createrington/server (1.6.2 → 1.7.0)
-- [add] Add cross-subdomain SSO flow with access token cookie — new auth controller issues a short-lived `access_token` cookie on `/auth/sso/token` so the production app and dev subdomain can share a session without re-authenticating; the entire surface is gated on the presence of a `COOKIE_DOMAIN` env var and falls through to the existing JWT flow when absent
-- [add] Add player prompts system — admins can create Discord-modal-based prompts (questions, surveys, acknowledgements) and send them to players; responses are captured via a new Discord button/modal interaction flow, stored in the DB, and browsable in the admin UI with a dedicated Prompts management page including role/channel pickers and per-response detail views
-- [refactor] Split `db/schema.ts` into per-domain files — the monolithic 1 750-line schema file is broken out into `schema/player.ts`, `schema/discord.ts`, `schema/crypto.ts`, `schema/auth.ts`, etc.; no behaviour change, purely an organisational refactor
-- [chore] Add CI test job and bootstrap server unit test suite — Gitea Actions workflow runs `pnpm test:unit` on every push; 30+ unit test files cover format/id helpers, DB error classes, query helpers, embed builders, Discord utilities, crypto services, JWT, SSO, access-cookie service, and more
+- [add] Add cross-subdomain SSO flow with access token cookie: new auth controller issues a short-lived `access_token` cookie on `/auth/sso/token` so the production app and dev subdomain can share a session without re-authenticating; the entire surface is gated on the presence of a `COOKIE_DOMAIN` env var and falls through to the existing JWT flow when absent
+- [add] Add player prompts system: admins can create Discord-modal-based prompts (questions, surveys, acknowledgements) and send them to players; responses are captured via a new Discord button/modal interaction flow, stored in the DB, and browsable in the admin UI with a dedicated Prompts management page including role/channel pickers and per-response detail views
+- [refactor] Split `db/schema.ts` into per-domain files: the monolithic 1 750-line schema file is broken out into `schema/player.ts`, `schema/discord.ts`, `schema/crypto.ts`, `schema/auth.ts`, etc.; no behaviour change, purely an organisational refactor
+- [chore] Add CI test job and bootstrap server unit test suite: Gitea Actions workflow runs `pnpm test:unit` on every push; 30+ unit test files cover format/id helpers, DB error classes, query helpers, embed builders, Discord utilities, crypto services, JWT, SSO, access-cookie service, and more
 
 ### @createrington/client (0.2.3 → 0.2.4)
-- [add] Add Admin Prompts management pages — new `AdminPrompts` list page and `PromptDetail` page let admins create, view, and delete prompts; `CreatePromptModal` supports configuring question text, response type (modal/reaction), target role/channel, and scheduling; response rows show per-player answers inline
-- [refactor] Redesign admin chat UI and split into focused components — `AdminChat.tsx` is decomposed into `ChatPanel`, `MessageList`, `MessageRow`, `MessageInput`, `ChatHeader`, `ChatToggle`, `EmptyState`, `TypingIndicator`, `MentionMenu`, and `AssistantMarkdown`; message grouping for consecutive same-author messages reduces visual noise; tooltips, avatar display, and copy-focus behaviour are improved
-- [add] Add lazy route loading with per-feature error boundaries — all admin route components are now code-split via a `lazyWithBoundary` helper, reducing initial bundle size and containing render crashes to individual feature panels; `ApplyToJoin` is migrated to React Hook Form + Zod validation
-- [refactor] Polish nav-user dropdown — refined layout, spacing, and avatar presentation in the sidebar user menu
-- [refactor] Polish base Button component — add press scale animation, destructive-variant icon wiggle, and consistent cursor styling; remove redundant `cursor-pointer` from consuming components
-- [fix] Fix input dark color-scheme — base `Input` now explicitly sets `color-scheme: dark` so browser-native controls (date pickers, number spinners) respect the dark theme
-- [fix] Fix web chat accents — chat UI accent colors updated from blue to gold to match the site palette
-- [fix] Fix web chat entry flicker and loading chrome — prevent flash of unstyled content on initial chat load by showing the chrome skeleton while data is in flight
-- [fix] Fix player list cache invalidation after deletion — deleting a player now correctly busts the admin players list query so the removed entry disappears without a manual refresh
+- [add] Add Admin Prompts management pages: new `AdminPrompts` list page and `PromptDetail` page let admins create, view, and delete prompts; `CreatePromptModal` supports configuring question text, response type (modal/reaction), target role/channel, and scheduling; response rows show per-player answers inline
+- [refactor] Redesign admin chat UI and split into focused components: `AdminChat.tsx` is decomposed into `ChatPanel`, `MessageList`, `MessageRow`, `MessageInput`, `ChatHeader`, `ChatToggle`, `EmptyState`, `TypingIndicator`, `MentionMenu`, and `AssistantMarkdown`; message grouping for consecutive same-author messages reduces visual noise; tooltips, avatar display, and copy-focus behaviour are improved
+- [add] Add lazy route loading with per-feature error boundaries: all admin route components are now code-split via a `lazyWithBoundary` helper, reducing initial bundle size and containing render crashes to individual feature panels; `ApplyToJoin` is migrated to React Hook Form + Zod validation
+- [refactor] Polish nav-user dropdown: refined layout, spacing, and avatar presentation in the sidebar user menu
+- [refactor] Polish base Button component: add press scale animation, destructive-variant icon wiggle, and consistent cursor styling; remove redundant `cursor-pointer` from consuming components
+- [fix] Fix input dark color-scheme: base `Input` now explicitly sets `color-scheme: dark` so browser-native controls (date pickers, number spinners) respect the dark theme
+- [fix] Fix web chat accents: chat UI accent colors updated from blue to gold to match the site palette
+- [fix] Fix web chat entry flicker and loading chrome: prevent flash of unstyled content on initial chat load by showing the chrome skeleton while data is in flight
+- [fix] Fix player list cache invalidation after deletion: deleting a player now correctly busts the admin players list query so the removed entry disappears without a manual refresh
 
 ## v1.6.2 (2026-04-14)
 
 ### @createrington/server (1.6.1 → 1.6.2)
-- [add] Add legacy trains crash route (`POST /api/legacy/trains/crash`) for pre-mod-JWT mod clients — mirrors the secured `/api/trains/crash` endpoint but requires only server IP verification, allowing older mod builds to keep reporting train crashes without a code update; returns the same flat `{ success: true }` response the mod expects
+- [add] Add legacy trains crash route (`POST /api/legacy/trains/crash`) for pre-mod-JWT mod clients: mirrors the secured `/api/trains/crash` endpoint but requires only server IP verification, allowing older mod builds to keep reporting train crashes without a code update; returns the same flat `{ success: true }` response the mod expects
 
 ## v1.6.1 (2026-04-14)
 
 ### @createrington/server (1.6.0 → 1.6.1)
-- [add] Add legacy currency routes (`/api/legacy/currency`) mirroring all `/api/currency` endpoints but returning flat response payloads (no `ApiResponse` envelope) — allows pre-envelope mod clients to keep working by pointing at the legacy base URL via config, without needing a code update
+- [add] Add legacy currency routes (`/api/legacy/currency`) mirroring all `/api/currency` endpoints but returning flat response payloads (no `ApiResponse` envelope): allows pre-envelope mod clients to keep working by pointing at the legacy base URL via config, without needing a code update
 
 ## v1.6.0 (2026-04-14)
 
 ### @createrington/server (1.5.0 → 1.6.0)
-- [add] Add Createrington Assistant (admin chat) backend proxy — new `/api/admin-chat` routes forward admin requests to the claude-automation upstream over SSE, keeping the shared secret server-side and deriving identity from the authenticated JWT so browsers never see credentials
-- [add] Add forceloads sync endpoint (`POST /api/forceloads/sync`) for the opac-teams Minecraft mod — accepts a full-state payload of player and party chunk data (secured with mod JWT + server IP) and replaces the stored forceload state for the originating server; backed by new DB tables and query classes for forceload parties, members, and chunks
-- [refactor] Replace waitlist invitation tokens with per-applicant Discord invites — each accepted applicant now receives a unique, expiring Discord invite link (1 hour for auto-accepted, 7 days for manual invites) rather than a one-time token; the bot seeds an invite-use cache on startup and diffs guild invite counts on member-join to identify which invite was consumed and auto-trigger registration
-- [add] Add button + modal registration flow — new Discord interaction handlers allow applicants to self-register via a button in their invite DM, eliminating the need to run a slash command
-- [refactor] Standardise `/api/currency` endpoints on a shared response envelope — all currency mod endpoints now return `{ success, message, playerMessage?, data? }` via a new `respondSuccess` helper, providing a consistent shape for the Java client to parse
-- [add] Add mod JWT authentication to `POST /api/trains/crash` — the endpoint now requires a valid mod JWT token, bringing it in line with other secured mod endpoints
-- [refactor] Make `name` optional on `POST /api/currency/login` — the field is now a no-op (username is always taken from the JWT); making it optional prevents breaking existing mod clients that still send it
-- [add] Add forceloads tRPC admin router — new `admin.forceloads` procedures expose per-player and per-party chunk lists and stats for the admin dashboard
-- [add] Add waitlist cleanup service — a scheduled job purges orphaned waitlist entries (applicants who never joined after receiving an invite) and resets their status so the slot is freed
-- [chore] Replace Node.js `--watch` with a chokidar-based dev watcher (`scripts/dev-watch.mjs`) — eliminates spurious self-restarts on Windows caused by the native file watcher
-- [security] Fix regex metacharacter injection in CLI scripts — user-supplied strings passed to `RegExp` constructors are now escaped, preventing accidental pattern breakage
-- [security] Move render page secret from query parameter to request header — avoids the secret appearing in server logs or browser history
+- [add] Add Createrington Assistant (admin chat) backend proxy: new `/api/admin-chat` routes forward admin requests to the claude-automation upstream over SSE, keeping the shared secret server-side and deriving identity from the authenticated JWT so browsers never see credentials
+- [add] Add forceloads sync endpoint (`POST /api/forceloads/sync`) for the opac-teams Minecraft mod: accepts a full-state payload of player and party chunk data (secured with mod JWT + server IP) and replaces the stored forceload state for the originating server; backed by new DB tables and query classes for forceload parties, members, and chunks
+- [refactor] Replace waitlist invitation tokens with per-applicant Discord invites: each accepted applicant now receives a unique, expiring Discord invite link (1 hour for auto-accepted, 7 days for manual invites) rather than a one-time token; the bot seeds an invite-use cache on startup and diffs guild invite counts on member-join to identify which invite was consumed and auto-trigger registration
+- [add] Add button + modal registration flow: new Discord interaction handlers allow applicants to self-register via a button in their invite DM, eliminating the need to run a slash command
+- [refactor] Standardise `/api/currency` endpoints on a shared response envelope: all currency mod endpoints now return `{ success, message, playerMessage?, data? }` via a new `respondSuccess` helper, providing a consistent shape for the Java client to parse
+- [add] Add mod JWT authentication to `POST /api/trains/crash`: the endpoint now requires a valid mod JWT token, bringing it in line with other secured mod endpoints
+- [refactor] Make `name` optional on `POST /api/currency/login`: the field is now a no-op (username is always taken from the JWT); making it optional prevents breaking existing mod clients that still send it
+- [add] Add forceloads tRPC admin router: new `admin.forceloads` procedures expose per-player and per-party chunk lists and stats for the admin dashboard
+- [add] Add waitlist cleanup service: a scheduled job purges orphaned waitlist entries (applicants who never joined after receiving an invite) and resets their status so the slot is freed
+- [chore] Replace Node.js `--watch` with a chokidar-based dev watcher (`scripts/dev-watch.mjs`): eliminates spurious self-restarts on Windows caused by the native file watcher
+- [security] Fix regex metacharacter injection in CLI scripts: user-supplied strings passed to `RegExp` constructors are now escaped, preventing accidental pattern breakage
+- [security] Move render page secret from query parameter to request header: avoids the secret appearing in server logs or browser history
 - [refactor] Unify mod-api Maven artifact publishing under `createrington-api` and trigger publication on any version bump to `gradle.properties`
 
 ### @createrington/client (0.2.2 → 0.2.3)
-- [add] Add Forceloads admin tool — new admin page displays forceloaded chunks per player and per party, with sortable tables, stats cards, and an empty state; data is fetched from the new `admin.forceloads` tRPC procedures
-- [add] Add Createrington Assistant chat widget — floating chat bubble in the admin area that streams replies from the claude-automation backend via SSE, supports action envelopes (`highlight`, `insert_embed`) to interact with the embed builder, renders markdown replies, persists action cards across sessions, and offers `@-mention` autocomplete for Createrington repos
-- [add] Add footer with social links — site footer now includes Discord and CurseForge icon links
-- [security] Validate Stripe checkout URL hostname strictly — the client now rejects redirect URLs that don't match the expected Stripe hostname, preventing open-redirect abuse
+- [add] Add Forceloads admin tool: new admin page displays forceloaded chunks per player and per party, with sortable tables, stats cards, and an empty state; data is fetched from the new `admin.forceloads` tRPC procedures
+- [add] Add Createrington Assistant chat widget: floating chat bubble in the admin area that streams replies from the claude-automation backend via SSE, supports action envelopes (`highlight`, `insert_embed`) to interact with the embed builder, renders markdown replies, persists action cards across sessions, and offers `@-mention` autocomplete for Createrington repos
+- [add] Add footer with social links: site footer now includes Discord and CurseForge icon links
+- [security] Validate Stripe checkout URL hostname strictly: the client now rejects redirect URLs that don't match the expected Stripe hostname, preventing open-redirect abuse
 - [chore] Remove stale sidebar components and market entry that were no longer used
 
 ## v1.5.0 (2026-04-11)
@@ -355,48 +355,48 @@
 ## v1.4.0 (2026-04-10)
 
 ### @createrington/server (1.3.0 → 1.4.0)
-- [add] Add `admin.changelog.get` tRPC endpoint — reads `CHANGELOG.md` from the project root and returns its raw content to authenticated admin clients; logs a warning on read failure instead of crashing
+- [add] Add `admin.changelog.get` tRPC endpoint: reads `CHANGELOG.md` from the project root and returns its raw content to authenticated admin clients; logs a warning on read failure instead of crashing
 
 ### @createrington/client (0.2.0 → 0.2.1)
-- [add] Add Changelog page to admin area — collapsible timeline UI that parses and renders all release entries from the project CHANGELOG.md, with expandable version sections and a "Latest" badge on the most recent release
-- [add] Show app version badge in sidebar footer — admins see the current version number (injected from root `package.json` at build time via Vite `define`) as a clickable link to the Changelog page; hidden when the sidebar is collapsed
-- [add] Add Changelog shortcut to user dropdown — admins can navigate directly to the changelog from the nav-user dropdown alongside the existing Admin Panel link
-- [chore] Remove deprecated `baseUrl` from TypeScript config — aligns tsconfig with Vite 6 path-alias recommendations and eliminates compiler warnings
-- [chore] Copy `CHANGELOG.md` to dist during production build — ensures the server can locate and read the changelog file at the expected path in deployed environments
+- [add] Add Changelog page to admin area: collapsible timeline UI that parses and renders all release entries from the project CHANGELOG.md, with expandable version sections and a "Latest" badge on the most recent release
+- [add] Show app version badge in sidebar footer: admins see the current version number (injected from root `package.json` at build time via Vite `define`) as a clickable link to the Changelog page; hidden when the sidebar is collapsed
+- [add] Add Changelog shortcut to user dropdown: admins can navigate directly to the changelog from the nav-user dropdown alongside the existing Admin Panel link
+- [chore] Remove deprecated `baseUrl` from TypeScript config: aligns tsconfig with Vite 6 path-alias recommendations and eliminates compiler warnings
+- [chore] Copy `CHANGELOG.md` to dist during production build: ensures the server can locate and read the changelog file at the expected path in deployed environments
 
 ## v1.3.0 (2026-04-10)
 
 ### @createrington/server (1.2.0 → 1.3.0)
-- [add] Add crypto net worth Discord leaderboard — a new `CRYPTO_NETWORTH` leaderboard type displays players ranked by their total crypto portfolio value, posted to the leaderboards channel and refreshed on the same hourly schedule as the playtime leaderboard
-- [refactor] Make `serverId` optional in leaderboard config — non-server leaderboards (like crypto) don't require a Minecraft server ID; the config type now reflects this and call sites default to `0` when unset
-- [fix] Fix stale leaderboard message handling — when a Discord message has been deleted externally, editing it now returns a structured error instead of throwing; the service detects "not found" errors, deletes the stale DB record, and re-creates the message cleanly rather than crashing the refresh cycle
+- [add] Add crypto net worth Discord leaderboard: a new `CRYPTO_NETWORTH` leaderboard type displays players ranked by their total crypto portfolio value, posted to the leaderboards channel and refreshed on the same hourly schedule as the playtime leaderboard
+- [refactor] Make `serverId` optional in leaderboard config: non-server leaderboards (like crypto) don't require a Minecraft server ID; the config type now reflects this and call sites default to `0` when unset
+- [fix] Fix stale leaderboard message handling: when a Discord message has been deleted externally, editing it now returns a structured error instead of throwing; the service detects "not found" errors, deletes the stale DB record, and re-creates the message cleanly rather than crashing the refresh cycle
 
 ## v1.2.0 (2026-04-09)
 
 ### @createrington/server (1.1.1 → 1.2.0)
-- [add] Add admin inactivity management tRPC router — new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
-- [refactor] Extract shared `removeInactiveWarning` helper — consolidates the full removal sequence (Discord guild kick → RCON whitelist removal → player DB delete → warning marked removed) into a single reusable function used by both the scheduled cleanup and the new manual-remove endpoint
+- [add] Add admin inactivity management tRPC router: new `admin.inactivity` procedures expose paginated warning lists (filterable by status and username), summary stats, manual resolve/remove actions, and a force-trigger for the cleanup cycle
+- [refactor] Extract shared `removeInactiveWarning` helper: consolidates the full removal sequence (Discord guild kick → RCON whitelist removal → player DB delete → warning marked removed) into a single reusable function used by both the scheduled cleanup and the new manual-remove endpoint
 - [add] Add owner-only `/force-inactivity-cleanup` Discord slash command to trigger the cleanup cycle on demand without waiting for the next scheduled run
-- [fix] Enable inactivity cleanup service on real production only — the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.createrington.com, which runs with `NODE_ENV=production`) is excluded
-- [chore] Fix tsconfig `rootDir` and `baseUrl` deprecation errors — set explicit `rootDir: ".."`, remove deprecated `baseUrl`, and normalize `@/*` path alias to `./src/*`
+- [fix] Enable inactivity cleanup service on real production only: the guard now checks both `isProd` and `!isDevDeployment` so the dev deployment (dev.createrington.com, which runs with `NODE_ENV=production`) is excluded
+- [chore] Fix tsconfig `rootDir` and `baseUrl` deprecation errors: set explicit `rootDir: ".."`, remove deprecated `baseUrl`, and normalize `@/*` path alias to `./src/*`
 
 ### @createrington/client (0.1.2 → 0.2.0)
-- [add] Add Inactivity Management admin tool — full-page UI with status-tab navigation (active / expired / resolved / removed), paginated warning table, stats summary cards, and modal dialogs to manually resolve or remove individual warnings; destructive actions are gated to the production environment
-- [add] Add player-facing Structure Packs voting page — players can browse available packs, see which is currently active, boost packs with votes, and inspect the full mod list for each pack via an inline dialog
-- [add] Add pack mod list inspect dialog — pack cards in the admin and player views now include an "Inspect" button that opens a scrollable dialog listing all mods in the pack
-- [refactor] Rework admin tools page into a grouped compact list — tools are now organised under collapsible category headers with a compact row layout, replacing the previous icon-grid
-- [refactor] Overhaul chat new-message highlight animation — simplify to a single CSS `highlight-bg` keyframe animation per message group, removing the previous group-border-stitching logic (`prevHighlighted`/`nextHighlighted` props) that caused visual glitches
-- [fix] Fix number input spinner arrows — hide browser-default increment/decrement arrows on `<input type="number">` elements via global CSS
-- [fix] Fix chat highlight layout shift — prevent the highlight animation from causing content reflow by adjusting positioning and transition approach
+- [add] Add Inactivity Management admin tool: full-page UI with status-tab navigation (active / expired / resolved / removed), paginated warning table, stats summary cards, and modal dialogs to manually resolve or remove individual warnings; destructive actions are gated to the production environment
+- [add] Add player-facing Structure Packs voting page: players can browse available packs, see which is currently active, boost packs with votes, and inspect the full mod list for each pack via an inline dialog
+- [add] Add pack mod list inspect dialog: pack cards in the admin and player views now include an "Inspect" button that opens a scrollable dialog listing all mods in the pack
+- [refactor] Rework admin tools page into a grouped compact list: tools are now organised under collapsible category headers with a compact row layout, replacing the previous icon-grid
+- [refactor] Overhaul chat new-message highlight animation: simplify to a single CSS `highlight-bg` keyframe animation per message group, removing the previous group-border-stitching logic (`prevHighlighted`/`nextHighlighted` props) that caused visual glitches
+- [fix] Fix number input spinner arrows: hide browser-default increment/decrement arrows on `<input type="number">` elements via global CSS
+- [fix] Fix chat highlight layout shift: prevent the highlight animation from causing content reflow by adjusting positioning and transition approach
 
 ## v1.1.2 (2026-04-07)
 
 ### @createrington/server (1.1.0 → 1.1.1)
-- [refactor] Suppress notifications for FAQ auto-reply embeds — both inline replies in the questions channel and standalone FAQ welcome messages now use the `SuppressNotifications` flag so they no longer ping users
+- [refactor] Suppress notifications for FAQ auto-reply embeds: both inline replies in the questions channel and standalone FAQ welcome messages now use the `SuppressNotifications` flag so they no longer ping users
 - [add] Add `flags` support to the shared Discord message service so any caller can pass message flags (e.g. silent sends)
 
 ### @createrington/client (0.1.1 → 0.1.2)
-- [refactor] Rework new-message highlighting in server chat — highlights now apply at the message-group level with a bordered container that visually connects consecutive highlighted groups, replacing the old per-row left-bar indicator
+- [refactor] Rework new-message highlighting in server chat: highlights now apply at the message-group level with a bordered container that visually connects consecutive highlighted groups, replacing the old per-row left-bar indicator
 - [refactor] Use CSS `animationEnd` event to clean up highlights after the fade-out completes, removing the previous `setTimeout`-based cleanup that could leave stale highlights or clear them too early
 
 ### Tooling
@@ -407,26 +407,26 @@
 ## v1.1.1 (2026-04-05)
 
 ### @createrington/client (0.1.0 → 0.1.1)
-- [fix] Fix teleport command in admin player detail — remove the player username from the `/tp` command so it copies as `/tp x y z` instead of `/tp username x y z`, matching the expected in-game format
+- [fix] Fix teleport command in admin player detail: remove the player username from the `/tp` command so it copies as `/tp x y z` instead of `/tp username x y z`, matching the expected in-game format
 
 ## v1.1.0 (2026-04-05)
 
 ### @createrington/server (1.0.1 → 1.1.0)
-- [add] Add stat search tool with cross-category comparison — new `searchItems` and `compareItem` query methods let admins search for any Minecraft item key and compare counts across categories (e.g. picked up vs crafted) for all players, exposed via two new tRPC admin procedures
-- [add] Store player logout position (x/y/z coordinates and dimension) — when a player disconnects, their last position is persisted to the `player` table and used to display location info in the admin panel
+- [add] Add stat search tool with cross-category comparison: new `searchItems` and `compareItem` query methods let admins search for any Minecraft item key and compare counts across categories (e.g. picked up vs crafted) for all players, exposed via two new tRPC admin procedures
+- [add] Store player logout position (x/y/z coordinates and dimension): when a player disconnects, their last position is persisted to the `player` table and used to display location info in the admin panel
 - [fix] Validate mod position payload fields and preserve logout position during graceful server shutdown
 
 ### @createrington/client (0.0.1 → 0.1.0)
-- [add] Add Stat Search admin tool page — full-featured UI with item autocomplete, multi-category toggle, sortable comparison table, and suspicious-pattern highlighting (e.g. high pickup but zero crafted)
-- [add] Display player logout position in the admin player header — shows last known coordinates and dimension with a one-click `/tp` command copy button (only visible for offline players)
+- [add] Add Stat Search admin tool page: full-featured UI with item autocomplete, multi-category toggle, sortable comparison table, and suspicious-pattern highlighting (e.g. high pickup but zero crafted)
+- [add] Display player logout position in the admin player header: shows last known coordinates and dimension with a one-click `/tp` command copy button (only visible for offline players)
 - [add] Add Stat Search entry to the admin tools grid
 
 ## v1.0.1 (2026-04-04)
 
 ### @createrington/server (1.0.0 → 1.0.1)
-- [security] Tighten metadata validation across bans, strikes, and waitlist endpoints — replace permissive `z.any()` with a strict primitive union (`string | number | boolean | null`) to prevent arbitrary object injection
+- [security] Tighten metadata validation across bans, strikes, and waitlist endpoints: replace permissive `z.any()` with a strict primitive union (`string | number | boolean | null`) to prevent arbitrary object injection
 - [refactor] Return human-readable relative time (e.g. "2 hours 15 minutes") in daily reward cooldown error responses instead of raw error strings
-- [refactor] Balance memecoin price engine to prevent upward drift — tighten mean reversion thresholds, increase correction strength, and neutralize upward bias in low/micro price tiers
+- [refactor] Balance memecoin price engine to prevent upward drift: tighten mean reversion thresholds, increase correction strength, and neutralize upward bias in low/micro price tiers
 - [chore] Skip AI article generation on dev deployments to avoid unnecessary OpenAI API costs
 - [security] Bump nodemailer from v7 to v8 and add dependency overrides to resolve all pnpm audit vulnerabilities
 
