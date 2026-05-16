@@ -54,4 +54,12 @@ router.post("/logout-all", ...route("user", AuthController.logoutAll));
 // GET /api/auth/status - Check authentication status
 router.get("/status", ...route("user", AuthController.checkStatus));
 
+// GET /api/auth/dev-set-refresh - Dev-only auto-login helper for `pnpm mint-session --open`
+if (config.envMode.isDev) {
+  router.get(
+    "/dev-set-refresh",
+    ...route("public", AuthController.devSetRefresh),
+  );
+}
+
 export default router;

@@ -75,6 +75,7 @@
     "generate-mod-api": "pnpm --filter @createrington/server util:generate-mod-api",
     "scrape-discord": "pnpm --filter @createrington/server util:scrape-discord",
     "sync-nicknames": "pnpm --filter @createrington/server util:sync-nicknames",
+    "mint-session": "pnpm --filter @createrington/server util:mint-session",
     "db:generate": "pnpm --filter @createrington/server db:generate",
     "db:migrate": "pnpm --filter @createrington/server db:migrate",
     "setup": "pnpm install && pnpm --filter @createrington/server util:scrape-discord && pnpm db:up && pnpm generate",

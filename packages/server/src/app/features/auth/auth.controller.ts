@@ -389,6 +389,39 @@ export class AuthController {
       safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }
   }
+
+  /**
+   * GET /api/auth/dev-set-refresh
+   *
+   * Dev-only helper used by `pnpm mint-session --open`. Sets the supplied
+   * refresh token as the HttpOnly cookie (the way a real login would) and
+   * redirects to an internal path so the AuthProvider picks it up. Route is
+   * only mounted when NODE_ENV === "development" so this never ships to prod.
+   */
+  static async devSetRefresh(req: Request, res: Response): Promise<void> {
+    if (!config.envMode.isDev) {
+      throw new BadRequestError("Not available outside development");
+    }
+
+    const token =
+      typeof req.query.token === "string" ? req.query.token : undefined;
+    if (!token) {
+      throw new BadRequestError("Missing token");
+    }
+
+    const rawReturnTo =
+      typeof req.query.return_to === "string" ? req.query.return_to : "/";
+    // Only allow same-origin paths to prevent open redirects. Reject anything
+    // that doesn't start with a single "/" (so "//evil.com" and absolute URLs
+    // are out).
+    const returnTo =
+      rawReturnTo.startsWith("/") && !rawReturnTo.startsWith("//")
+        ? rawReturnTo
+        : "/";
+
+    refreshTokenService.setCookie(res, token);
+    res.redirect(returnTo);
+  }
 }
 
 /**
