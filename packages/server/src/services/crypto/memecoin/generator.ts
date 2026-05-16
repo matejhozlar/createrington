@@ -5,7 +5,7 @@
  */
 
 import { Q } from "@/db";
-import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import { MEMECOIN_CATALOG } from "./catalog";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 
@@ -56,14 +56,14 @@ async function pickRandomMemecoin() {
   const definition = available[randomInt(0, available.length - 1)];
 
   const price = randomBetween(
-    CRYPTO_CONFIG.MEMECOIN_INITIAL_PRICE_MIN,
-    CRYPTO_CONFIG.MEMECOIN_INITIAL_PRICE_MAX,
+    cryptoSetting("MEMECOIN_INITIAL_PRICE_MIN"),
+    cryptoSetting("MEMECOIN_INITIAL_PRICE_MAX"),
   );
 
   const totalSupply = BigInt(
     randomInt(
-      CRYPTO_CONFIG.MEMECOIN_TOTAL_SUPPLY_MIN,
-      CRYPTO_CONFIG.MEMECOIN_TOTAL_SUPPLY_MAX,
+      cryptoSetting("MEMECOIN_TOTAL_SUPPLY_MIN"),
+      cryptoSetting("MEMECOIN_TOTAL_SUPPLY_MAX"),
     ),
   );
 
@@ -77,9 +77,10 @@ async function pickRandomMemecoin() {
  */
 export async function generateMemecoin(): Promise<CryptoToken | null> {
   const activeCount = await getActiveMemecoinCount();
-  if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+  const maxActive = cryptoSetting("MEMECOIN_MAX_ACTIVE");
+  if (activeCount >= maxActive) {
     logger.info(
-      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping generation`,
+      `Memecoin limit reached (${activeCount}/${maxActive}), skipping generation`,
     );
     return null;
   }
@@ -113,9 +114,10 @@ export async function generateMemecoin(): Promise<CryptoToken | null> {
  */
 export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
   const activeCount = await getActiveMemecoinCount();
-  if (activeCount >= CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE) {
+  const maxActive = cryptoSetting("MEMECOIN_MAX_ACTIVE");
+  if (activeCount >= maxActive) {
     logger.info(
-      `Memecoin limit reached (${activeCount}/${CRYPTO_CONFIG.MEMECOIN_MAX_ACTIVE}), skipping IPO generation`,
+      `Memecoin limit reached (${activeCount}/${maxActive}), skipping IPO generation`,
     );
     return null;
   }
@@ -125,7 +127,7 @@ export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
 
   const { definition, price, totalSupply } = pick;
 
-  const ipoEndsAt = new Date(Date.now() + CRYPTO_CONFIG.IPO_DURATION_MS);
+  const ipoEndsAt = new Date(Date.now() + cryptoSetting("IPO_DURATION_MS"));
 
   const token = await Q.crypto.token.createAndReturn({
     name: definition.name,
@@ -153,7 +155,7 @@ export async function generateIpoMemecoin(): Promise<CryptoToken | null> {
  */
 export async function cleanupCrashedTokens(): Promise<number> {
   const cutoff = new Date(
-    Date.now() - CRYPTO_CONFIG.MEMECOIN_CRASH_CLEANUP_HOURS * 60 * 60 * 1000,
+    Date.now() - cryptoSetting("MEMECOIN_CRASH_CLEANUP_HOURS") * 60 * 60 * 1000,
   );
 
   const crashed = await Q.crypto.token

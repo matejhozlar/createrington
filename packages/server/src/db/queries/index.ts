@@ -18,6 +18,7 @@ export { CryptoOrderQueries } from "./crypto/order";
 export { CryptoPortfolioSnapshotQueries } from "./crypto/portfolio/snapshot";
 export { CryptoPriceAlertQueries } from "./crypto/price/alert";
 export { CryptoPriceSnapshotQueries } from "./crypto/price/snapshot";
+export { CryptoSettingQueries } from "./crypto/setting";
 export { CryptoTokenQueries } from "./crypto/token";
 export { CryptoTransactionQueries } from "./crypto/transaction";
 export { CryptoTreasuryQueries } from "./crypto/treasury";

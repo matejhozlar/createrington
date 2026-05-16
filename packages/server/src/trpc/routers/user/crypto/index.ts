@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, userProcedure } from "@/trpc/trpc";
+import { router, userProcedure, cryptoUserProcedure } from "@/trpc/trpc";
 import { trpcError, buildPagination } from "@/trpc/utils";
 import { Q } from "@/db";
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/services/crypto/alerts/alert-manager";
 import { getPortfolioHistory } from "@/services/crypto/analytics/portfolio-tracker";
 import { evaluateTradeAchievements } from "@/services/crypto/trading/achievement-triggers";
-import { CRYPTO_CONFIG } from "@/services/crypto/crypto.config";
+import { cryptoSetting } from "@/services/crypto";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
@@ -52,7 +52,7 @@ export const cryptoRouter = router({
       };
     }),
 
-  buy: userProcedure
+  buy: cryptoUserProcedure
     .meta({ description: "Market buy tokens" })
     .input(
       z.object({
@@ -104,7 +104,7 @@ export const cryptoRouter = router({
       }
     }),
 
-  sell: userProcedure
+  sell: cryptoUserProcedure
     .meta({ description: "Market sell tokens" })
     .input(
       z.object({
@@ -257,7 +257,7 @@ export const cryptoRouter = router({
       };
     }),
 
-  placeOrder: userProcedure
+  placeOrder: cryptoUserProcedure
     .meta({ description: "Place a limit, stop-loss, or take-profit order" })
     .input(
       z.object({
@@ -415,7 +415,8 @@ export const cryptoRouter = router({
 
       const maxAllocation = BigInt(
         Math.floor(
-          Number(token.totalSupply) * CRYPTO_CONFIG.IPO_MAX_ALLOCATION_PERCENT,
+          Number(token.totalSupply) *
+            cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
         ),
       );
 

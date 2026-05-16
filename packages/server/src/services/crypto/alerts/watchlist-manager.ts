@@ -7,7 +7,7 @@
  */
 
 import { Q } from "@/db";
-import { CRYPTO_CONFIG } from "../crypto.config";
+import { cryptoSetting } from "../settings/accessor";
 import type { CryptoWatchlist } from "@createrington/shared/db/crypto_watchlist.types";
 
 /** Returns all watchlist entries for a given player. */
@@ -43,10 +43,9 @@ export async function addToWatchlist(
     .where({ playerMinecraftUuid: playerUuid })
     .count();
 
-  if (count >= CRYPTO_CONFIG.MAX_WATCHLIST_SIZE) {
-    throw new Error(
-      `Watchlist is full (max ${CRYPTO_CONFIG.MAX_WATCHLIST_SIZE} tokens)`,
-    );
+  const max = cryptoSetting("MAX_WATCHLIST_SIZE");
+  if (count >= max) {
+    throw new Error(`Watchlist is full (max ${max} tokens)`);
   }
 
   return Q.crypto.watchlist.createAndReturn({

@@ -68,6 +68,8 @@ import {
   Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CryptoSettingsPanel } from "./components/CryptoSettingsPanel";
 
 const CATEGORY_OPTIONS = [
   { value: "memecoin", label: "Memecoin" },
@@ -662,279 +664,297 @@ export function AdminCrypto() {
       </header>
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
-        {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Active Tokens"
-            value={stats?.activeTokens ?? 0}
-            icon={Coins}
-          />
-          <StatCard
-            label="Total Market Cap"
-            value={`$${Number(stats?.totalMarketCap ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            icon={TrendingUp}
-          />
-          <StatCard
-            label="24h Volume"
-            value={`$${Number(stats?.dailyVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            icon={BarChart3}
-          />
-          <StatCard
-            label="24h Traders"
-            value={stats?.uniqueTraders24h ?? 0}
-            icon={Wallet}
-          />
-        </div>
-
-        {/* Treasury + Active Events row */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Treasury */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Wallet className="size-4 text-muted-foreground" />
-                Treasury
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Fees Collected
-                  </p>
-                  <p className="text-xl font-bold font-mono tabular-nums mt-0.5">
-                    $
-                    {Number(treasury?.totalCollected ?? 0).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 2 },
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Fees Burned
-                  </p>
-                  <p className="text-xl font-bold font-mono tabular-nums mt-0.5 flex items-center gap-1.5">
-                    <Flame className="size-4 text-orange-400" />$
-                    {Number(treasury?.totalBurned ?? 0).toLocaleString(
-                      undefined,
-                      { maximumFractionDigits: 2 },
-                    )}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Events */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Zap className="size-4 text-muted-foreground" />
-                Active Events
-                {activeEvents.length > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {activeEvents.length}
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activeEvents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No active events
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {activeEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between rounded-lg border px-3 py-2"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Zap className="size-3.5 text-amber-400" />
-                        <span className="text-sm font-medium">
-                          {event.type.replace(/_/g, " ")}
-                        </span>
-                        {event.tokenSymbol && (
-                          <Badge
-                            variant="outline"
-                            className="text-xs font-mono"
-                          >
-                            {event.tokenSymbol}
-                          </Badge>
-                        )}
-                      </div>
-                      {event.activeUntil && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="size-3" />
-                          {new Date(event.activeUntil).toLocaleTimeString()}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Token List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Coins className="size-4 text-muted-foreground" />
-              All Tokens
-              <Badge variant="secondary" className="text-xs">
-                {tokens.length}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Token</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Supply</TableHead>
-                    <TableHead className="text-right">24h</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {tokens.map((token) => {
-                    const held =
-                      Number(token.totalSupply) - Number(token.availableSupply);
-                    const heldPct =
-                      Number(token.totalSupply) > 0
-                        ? ((held / Number(token.totalSupply)) * 100).toFixed(1)
-                        : "0";
-                    const isActive = !token.isCrashed && !token.delistedAt;
-
-                    return (
-                      <TableRow
-                        key={token.id}
-                        className={cn(!isActive && "opacity-50")}
-                      >
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{token.name}</p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              {token.symbol}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              CATEGORY_COLORS[token.category],
-                            )}
-                          >
-                            {token.category.replace("_", " ")}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          $
-                          {Number(token.price).toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 6,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div>
-                            <p className="text-sm font-mono tabular-nums">
-                              {held.toLocaleString()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {heldPct}% held
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {token.change24h !== undefined &&
-                          token.change24h !== 0 ? (
-                            <span
-                              className={cn(
-                                "font-mono tabular-nums text-sm",
-                                token.change24h > 0
-                                  ? "text-emerald-400"
-                                  : "text-destructive",
-                              )}
-                            >
-                              {token.change24h > 0 ? "+" : ""}
-                              {token.change24h.toFixed(2)}%
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {token.isCrashed ? (
-                            <Badge variant="destructive" className="text-xs">
-                              Crashed
-                            </Badge>
-                          ) : token.delistedAt ? (
-                            <Badge variant="secondary" className="text-xs">
-                              Delisted
-                            </Badge>
-                          ) : token.ipoEndsAt &&
-                            new Date(token.ipoEndsAt) > new Date() ? (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-primary border-primary/30 bg-primary/10"
-                            >
-                              IPO
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
-                            >
-                              Active
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {isActive && (
-                            <DelistButton
-                              tokenId={token.id}
-                              tokenSymbol={token.symbol}
-                              onDelisted={onTokenDelisted}
-                            />
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+        <Tabs defaultValue="market" className="flex flex-col gap-4">
+          <TabsList>
+            <TabsTrigger value="market">Market</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          <TabsContent value="market" className="flex flex-col gap-4">
+            {/* Stats */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                label="Active Tokens"
+                value={stats?.activeTokens ?? 0}
+                icon={Coins}
+              />
+              <StatCard
+                label="Total Market Cap"
+                value={`$${Number(stats?.totalMarketCap ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                icon={TrendingUp}
+              />
+              <StatCard
+                label="24h Volume"
+                value={`$${Number(stats?.dailyVolume ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                icon={BarChart3}
+              />
+              <StatCard
+                label="24h Traders"
+                value={stats?.uniqueTraders24h ?? 0}
+                icon={Wallet}
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Extra stats row */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <StatCard
-            label="Total Trades"
-            value={(stats?.totalTrades ?? 0).toLocaleString()}
-            icon={BarChart3}
-          />
-          <StatCard
-            label="24h Trades"
-            value={stats?.dailyTrades ?? 0}
-            icon={TrendingUp}
-          />
-          <StatCard
-            label="Crashed Tokens"
-            value={stats?.crashedTokens ?? 0}
-            icon={Flame}
-          />
-        </div>
+            {/* Treasury + Active Events row */}
+            <div className="grid gap-4 lg:grid-cols-2">
+              {/* Treasury */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Wallet className="size-4 text-muted-foreground" />
+                    Treasury
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                        Fees Collected
+                      </p>
+                      <p className="text-xl font-bold font-mono tabular-nums mt-0.5">
+                        $
+                        {Number(treasury?.totalCollected ?? 0).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 2 },
+                        )}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                        Fees Burned
+                      </p>
+                      <p className="text-xl font-bold font-mono tabular-nums mt-0.5 flex items-center gap-1.5">
+                        <Flame className="size-4 text-orange-400" />$
+                        {Number(treasury?.totalBurned ?? 0).toLocaleString(
+                          undefined,
+                          { maximumFractionDigits: 2 },
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Active Events */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Zap className="size-4 text-muted-foreground" />
+                    Active Events
+                    {activeEvents.length > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {activeEvents.length}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {activeEvents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No active events
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {activeEvents.map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between rounded-lg border px-3 py-2"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Zap className="size-3.5 text-amber-400" />
+                            <span className="text-sm font-medium">
+                              {event.type.replace(/_/g, " ")}
+                            </span>
+                            {event.tokenSymbol && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs font-mono"
+                              >
+                                {event.tokenSymbol}
+                              </Badge>
+                            )}
+                          </div>
+                          {event.activeUntil && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock className="size-3" />
+                              {new Date(event.activeUntil).toLocaleTimeString()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Token List */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Coins className="size-4 text-muted-foreground" />
+                  All Tokens
+                  <Badge variant="secondary" className="text-xs">
+                    {tokens.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Token</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Supply</TableHead>
+                        <TableHead className="text-right">24h</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {tokens.map((token) => {
+                        const held =
+                          Number(token.totalSupply) -
+                          Number(token.availableSupply);
+                        const heldPct =
+                          Number(token.totalSupply) > 0
+                            ? (
+                                (held / Number(token.totalSupply)) *
+                                100
+                              ).toFixed(1)
+                            : "0";
+                        const isActive = !token.isCrashed && !token.delistedAt;
+
+                        return (
+                          <TableRow
+                            key={token.id}
+                            className={cn(!isActive && "opacity-50")}
+                          >
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">{token.name}</p>
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {token.symbol}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-xs",
+                                  CATEGORY_COLORS[token.category],
+                                )}
+                              >
+                                {token.category.replace("_", " ")}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono tabular-nums">
+                              $
+                              {Number(token.price).toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 6,
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div>
+                                <p className="text-sm font-mono tabular-nums">
+                                  {held.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {heldPct}% held
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {token.change24h !== undefined &&
+                              token.change24h !== 0 ? (
+                                <span
+                                  className={cn(
+                                    "font-mono tabular-nums text-sm",
+                                    token.change24h > 0
+                                      ? "text-emerald-400"
+                                      : "text-destructive",
+                                  )}
+                                >
+                                  {token.change24h > 0 ? "+" : ""}
+                                  {token.change24h.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {token.isCrashed ? (
+                                <Badge
+                                  variant="destructive"
+                                  className="text-xs"
+                                >
+                                  Crashed
+                                </Badge>
+                              ) : token.delistedAt ? (
+                                <Badge variant="secondary" className="text-xs">
+                                  Delisted
+                                </Badge>
+                              ) : token.ipoEndsAt &&
+                                new Date(token.ipoEndsAt) > new Date() ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs text-primary border-primary/30 bg-primary/10"
+                                >
+                                  IPO
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs text-emerald-400 border-emerald-500/20 bg-emerald-500/10"
+                                >
+                                  Active
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {isActive && (
+                                <DelistButton
+                                  tokenId={token.id}
+                                  tokenSymbol={token.symbol}
+                                  onDelisted={onTokenDelisted}
+                                />
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Extra stats row */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <StatCard
+                label="Total Trades"
+                value={(stats?.totalTrades ?? 0).toLocaleString()}
+                icon={BarChart3}
+              />
+              <StatCard
+                label="24h Trades"
+                value={stats?.dailyTrades ?? 0}
+                icon={TrendingUp}
+              />
+              <StatCard
+                label="Crashed Tokens"
+                value={stats?.crashedTokens ?? 0}
+                icon={Flame}
+              />
+            </div>
+          </TabsContent>
+          <TabsContent value="settings">
+            <CryptoSettingsPanel />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
