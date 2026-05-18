@@ -119,11 +119,11 @@ export class PuppeteerService {
       }
 
       if (waitForAssets) {
-        await page.evaluate(async () => {
+        const assetWait = page.evaluate(async () => {
           await document.fonts.ready;
           await Promise.all(
             Array.from(document.images).map((img) =>
-              img.complete && img.naturalWidth > 0
+              img.complete
                 ? null
                 : new Promise<void>((resolve) => {
                     img.addEventListener("load", () => resolve(), {
@@ -136,6 +136,10 @@ export class PuppeteerService {
             ),
           );
         });
+        const ceiling = new Promise<void>((resolve) =>
+          setTimeout(resolve, 10_000),
+        );
+        await Promise.race([assetWait, ceiling]);
       }
 
       if (settleDelay > 0) {
