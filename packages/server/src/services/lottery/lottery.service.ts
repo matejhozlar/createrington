@@ -118,17 +118,21 @@ export class LotteryService {
     };
 
     try {
-      await R.balanceRepo.deduct(
-        uuid,
-        amount,
-        "Lottery entry",
-        BalanceTransactionType.LOTTERY_ENTRY,
-      );
+      await db.inTransaction(async (tx) => {
+        await R.balanceRepo.deduct(
+          uuid,
+          amount,
+          "Lottery entry",
+          BalanceTransactionType.LOTTERY_ENTRY,
+          undefined,
+          tx,
+        );
 
-      await db.lottery.participant.create({
-        minecraftUuid: uuid,
-        minecraftUsername: username,
-        amount: BalanceUtils.toStorage(amount),
+        await tx.lottery.participant.create({
+          minecraftUuid: uuid,
+          minecraftUsername: username,
+          amount: BalanceUtils.toStorage(amount),
+        });
       });
     } catch (err) {
       // Rollback in-memory state if DB operations fail
@@ -191,17 +195,21 @@ export class LotteryService {
     this.activeLottery.totalPot += amount;
 
     try {
-      await R.balanceRepo.deduct(
-        uuid,
-        amount,
-        "Lottery entry",
-        BalanceTransactionType.LOTTERY_ENTRY,
-      );
+      await db.inTransaction(async (tx) => {
+        await R.balanceRepo.deduct(
+          uuid,
+          amount,
+          "Lottery entry",
+          BalanceTransactionType.LOTTERY_ENTRY,
+          undefined,
+          tx,
+        );
 
-      await db.lottery.participant.create({
-        minecraftUuid: uuid,
-        minecraftUsername: username,
-        amount: BalanceUtils.toStorage(amount),
+        await tx.lottery.participant.create({
+          minecraftUuid: uuid,
+          minecraftUsername: username,
+          amount: BalanceUtils.toStorage(amount),
+        });
       });
     } catch (err) {
       // Rollback in-memory state if DB operations fail
