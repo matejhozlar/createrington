@@ -9,6 +9,7 @@ import {
 import { AtSign, Hash } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { formatConfigKey as formatName } from "@/features/admin/format";
 
 type TriggerChar = "@" | "#";
 
@@ -16,6 +17,11 @@ interface ActiveTrigger {
   trigger: TriggerChar;
   query: string;
   start: number;
+}
+
+interface CursorState {
+  pos: number;
+  collapsed: boolean;
 }
 
 interface Suggestion {
@@ -26,13 +32,6 @@ interface Suggestion {
 }
 
 const MAX_RESULTS = 8;
-
-function formatName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
 
 function getActiveTrigger(
   value: string,
@@ -63,8 +62,23 @@ export function MentionAutocomplete({
   value,
   onChange,
 }: MentionAutocompleteProps) {
-  const [active, setActive] = useState<ActiveTrigger | null>(null);
+  const [cursor, setCursor] = useState<CursorState | null>(null);
+  const [dismissed, setDismissed] = useState<{
+    value: string;
+    start: number;
+  } | null>(null);
   const [highlight, setHighlight] = useState(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  const active = useMemo<ActiveTrigger | null>(() => {
+    if (!cursor || !cursor.collapsed) return null;
+    const t = getActiveTrigger(value, cursor.pos);
+    if (!t) return null;
+    if (dismissed && dismissed.value === value && dismissed.start === t.start) {
+      return null;
+    }
+    return t;
+  }, [value, cursor, dismissed]);
 
   const channelsQuery = trpc.admin.embeds.channels.useQuery(undefined, {
     enabled: active?.trigger === "#",
@@ -77,27 +91,25 @@ export function MentionAutocomplete({
     if (!active) return [];
     const q = active.query.toLowerCase();
     const match = (name: string) => !q || name.toLowerCase().includes(q);
+    const out: Suggestion[] = [];
 
     if (active.trigger === "#") {
-      const out: Suggestion[] = [];
       for (const group of channelsQuery.data ?? []) {
         for (const ch of group.channels) {
           const label = formatName(ch.name);
-          if (match(label)) {
-            out.push({
-              key: `ch:${ch.id}`,
-              label,
-              insert: `<#${ch.id}>`,
-              kind: "channel",
-            });
-            if (out.length >= MAX_RESULTS) return out;
-          }
+          if (!match(label)) continue;
+          out.push({
+            key: `ch:${ch.id}`,
+            label,
+            insert: `<#${ch.id}>`,
+            kind: "channel",
+          });
+          if (out.length >= MAX_RESULTS) return out;
         }
       }
       return out;
     }
 
-    const out: Suggestion[] = [];
     if (match("everyone")) {
       out.push({
         key: "everyone",
@@ -105,6 +117,7 @@ export function MentionAutocomplete({
         insert: "@everyone",
         kind: "special",
       });
+      if (out.length >= MAX_RESULTS) return out;
     }
     if (match("here")) {
       out.push({
@@ -113,57 +126,63 @@ export function MentionAutocomplete({
         insert: "@here",
         kind: "special",
       });
+      if (out.length >= MAX_RESULTS) return out;
     }
     for (const role of rolesQuery.data ?? []) {
       const label = formatName(role.name);
-      if (match(label)) {
-        out.push({
-          key: `role:${role.id}`,
-          label,
-          insert: `<@&${role.id}>`,
-          kind: "role",
-        });
-        if (out.length >= MAX_RESULTS) break;
-      }
+      if (!match(label)) continue;
+      out.push({
+        key: `role:${role.id}`,
+        label,
+        insert: `<@&${role.id}>`,
+        kind: "role",
+      });
+      if (out.length >= MAX_RESULTS) return out;
     }
-    return out.slice(0, MAX_RESULTS);
+    return out;
   }, [active, channelsQuery.data, rolesQuery.data]);
 
-  useEffect(() => {
+  const triggerKey = `${active?.trigger ?? ""}:${active?.query ?? ""}`;
+  const [prevTriggerKey, setPrevTriggerKey] = useState(triggerKey);
+  if (prevTriggerKey !== triggerKey) {
+    setPrevTriggerKey(triggerKey);
     setHighlight(0);
-  }, [active?.trigger, active?.query]);
+  }
+
+  useEffect(() => {
+    if (!active) return;
+    const el = listRef.current?.querySelector<HTMLElement>(
+      `[data-mention-idx="${highlight}"]`,
+    );
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlight, active, suggestions.length]);
 
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
 
-    const update = () => {
-      const start = el.selectionStart ?? value.length;
+    const sync = () => {
+      const start = el.selectionStart ?? 0;
       const end = el.selectionEnd ?? start;
-      if (start !== end) {
-        setActive(null);
-        return;
-      }
-      setActive(getActiveTrigger(value, start));
+      setCursor({ pos: start, collapsed: start === end });
     };
+    const onBlur = () => setCursor(null);
 
-    update();
-
-    const onBlur = () => setActive(null);
-
-    el.addEventListener("keyup", update);
-    el.addEventListener("click", update);
-    el.addEventListener("focus", update);
-    el.addEventListener("select", update);
+    el.addEventListener("input", sync);
+    el.addEventListener("keyup", sync);
+    el.addEventListener("click", sync);
+    el.addEventListener("focus", sync);
+    el.addEventListener("select", sync);
     el.addEventListener("blur", onBlur);
     return () => {
-      el.removeEventListener("keyup", update);
-      el.removeEventListener("click", update);
-      el.removeEventListener("focus", update);
-      el.removeEventListener("select", update);
+      el.removeEventListener("input", sync);
+      el.removeEventListener("keyup", sync);
+      el.removeEventListener("click", sync);
+      el.removeEventListener("focus", sync);
+      el.removeEventListener("select", sync);
       el.removeEventListener("blur", onBlur);
     };
-  }, [inputRef, value]);
+  }, [inputRef]);
 
   const apply = useCallback(
     (s: Suggestion) => {
@@ -173,12 +192,13 @@ export function MentionAutocomplete({
       const before = value.slice(0, active.start);
       const after = value.slice(cursorPos);
       const insertion = `${s.insert} `;
+      const newPos = before.length + insertion.length;
       onChange(`${before}${insertion}${after}`);
-      setActive(null);
+      setCursor({ pos: newPos, collapsed: true });
+      setDismissed(null);
       requestAnimationFrame(() => {
         const target = inputRef.current;
         if (!target) return;
-        const newPos = before.length + insertion.length;
         target.selectionStart = target.selectionEnd = newPos;
         target.focus();
       });
@@ -186,8 +206,10 @@ export function MentionAutocomplete({
     [active, value, onChange, inputRef],
   );
 
-  const stateRef = useRef({ suggestions, highlight, apply, active });
-  stateRef.current = { suggestions, highlight, apply, active };
+  const stateRef = useRef({ suggestions, highlight, apply, active, value });
+  useEffect(() => {
+    stateRef.current = { suggestions, highlight, apply, active, value };
+  });
 
   useEffect(() => {
     const el = inputRef.current;
@@ -220,7 +242,7 @@ export function MentionAutocomplete({
         case "Escape":
           e.preventDefault();
           e.stopPropagation();
-          setActive(null);
+          setDismissed({ value: s.value, start: s.active.start });
           break;
       }
     };
@@ -231,10 +253,11 @@ export function MentionAutocomplete({
 
   if (!active || suggestions.length === 0) return null;
 
-  const headerLabel = active.trigger === "#" ? "Channels" : "Roles";
+  const headerLabel = active.trigger === "#" ? "Channels" : "Mentions";
 
   return (
     <div
+      ref={listRef}
       role="listbox"
       className="absolute inset-x-0 top-full z-50 mt-1 max-h-64 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
     >
@@ -254,6 +277,7 @@ export function MentionAutocomplete({
             type="button"
             role="option"
             aria-selected={isActive}
+            data-mention-idx={i}
             onMouseDown={(e) => {
               e.preventDefault();
               apply(s);
