@@ -135,7 +135,15 @@ export abstract class BaseQueries<
    * @returns Database column name
    */
   protected getColumnName(key: string): string {
-    return this.COLUMN_MAP?.[key] ?? this.camelToSnake(key);
+    const name = this.COLUMN_MAP?.[key] ?? this.camelToSnake(key);
+    // Belt-and-braces validation alongside the Zod-enum filters at tRPC
+    // boundaries. camelToSnake passes spaces, quotes, semicolons through
+    // unchanged, so an attacker-controlled key would otherwise reach the
+    // WHERE/ORDER BY/SELECT interpolation in getColumnMapping & findAll.
+    if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid column name resolved for key "${key}"`);
+    }
+    return name;
   }
 
   /**
@@ -198,50 +206,49 @@ export abstract class BaseQueries<
   protected extractIdentifier(
     obj: Record<string, unknown>,
   ): NonNullable<TConfig["Identifier"]> {
-    // Get all keys with non-null/undefined values
     const availableKeys = Object.keys(obj).filter(
       (key) => obj[key] !== undefined && obj[key] !== null,
     );
 
-    // If object has only 1-2 keys, it's likely already an identifier
-    // Use it directly for performance
-    if (availableKeys.length <= 2) {
-      return obj as NonNullable<TConfig["Identifier"]>;
+    // Filter against VALID_IDENTIFIER_FIELDS when the subclass declared it.
+    // Without this, a caller spreading user input (Q.player.find(req.body))
+    // could introduce arbitrary keys that camelToSnake passes through to
+    // getColumnMapping and into the WHERE clause.
+    const validKeys = this.VALID_IDENTIFIER_FIELDS
+      ? availableKeys.filter((key) => this.VALID_IDENTIFIER_FIELDS!.has(key))
+      : availableKeys;
+
+    if (validKeys.length === 0) {
+      throw new Error(
+        `No valid identifier field found for ${this.table}. ` +
+          (this.VALID_IDENTIFIER_FIELDS
+            ? `Expected one of: ${Array.from(this.VALID_IDENTIFIER_FIELDS).join(", ")}`
+            : "Provide a non-null identifier field."),
+      );
     }
 
-    // Try each available key as a potential single-field identifier
-    // We test by checking if the column exists
-    for (const key of availableKeys) {
+    // 1-2 valid keys: treat as composite or single-field identifier
+    if (validKeys.length <= 2) {
+      const result: Record<string, unknown> = {};
+      for (const key of validKeys) result[key] = obj[key];
+      return result as NonNullable<TConfig["Identifier"]>;
+    }
+
+    // 3+ valid keys: pick the first one that resolves to a usable column
+    for (const key of validKeys) {
       try {
         const columnName = this.getColumnName(key);
-
-        // Check if this is a valid identifier field
-        if (
-          this.VALID_IDENTIFIER_FIELDS &&
-          !this.VALID_IDENTIFIER_FIELDS.has(key)
-        ) {
-          continue;
-        }
-
-        // If we got a valid column name, try using this as identifier
         if (columnName) {
           const testIdentifier = { [key]: obj[key] };
-
-          // Test if this creates a valid WHERE clause
-          // This validates it's actually an identifier field
           this.getColumnMapping(testIdentifier);
-
           return testIdentifier as NonNullable<TConfig["Identifier"]>;
         }
       } catch {
-        // This key didn't work, try next one
-        // Loop continues automatically - no 'continue' needed in catch
+        // try next
       }
     }
 
-    // If no single-key identifier worked, fallback to using object as-is
-    // This handles composite keys or when user explicitly passes minimal identifier
-    return obj as NonNullable<TConfig["Identifier"]>;
+    throw new Error(`No usable identifier field found for ${this.table}`);
   }
   /**
    * Maps an update object to an array of column-value pairs
@@ -1312,14 +1319,19 @@ export abstract class BaseQueries<
   }
 
   /**
-   * Executes a raw SQL query with type safety
-   * Use with caution - bypasses all abstraction layers
+   * Executes a raw SQL query with type safety. Protected so that arbitrary
+   * SQL cannot reach this method via the public Q.* surface; subclasses
+   * that genuinely need raw queries should expose a narrower method that
+   * accepts parameters rather than a SQL string.
    *
    * @param query - SQL query string
    * @param params - Query parameters
    * @returns Promise resolving to query results
    */
-  async raw(query: string, params?: unknown[]): Promise<TConfig["Entity"][]> {
+  protected async raw(
+    query: string,
+    params?: unknown[],
+  ): Promise<TConfig["Entity"][]> {
     try {
       const result = await this.db.query<TConfig["DbEntity"]>(query, params);
 
