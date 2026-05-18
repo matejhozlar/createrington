@@ -60,7 +60,6 @@ export async function execute(
         url: renderUrl.toString(),
         waitForSelector: "#activity-container",
         elementSelector: "#activity-container",
-        settleDelay: 1500,
         timeout: 15_000,
         viewportWidth: 900,
         viewportHeight: 500,
