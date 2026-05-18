@@ -63,11 +63,11 @@ export async function execute(
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
       const renderUrl = new URL("/render/profile", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("secret", config.puppeteer.secret);
       renderUrl.searchParams.set("player", targetUser.id);
 
       const result = await puppeteer.screenshot({
         url: renderUrl.toString(),
+        extraHeaders: { "x-render-secret": config.puppeteer.secret },
         waitForSelector: "#profile-container",
         elementSelector: "#profile-container",
         timeout: 15_000,

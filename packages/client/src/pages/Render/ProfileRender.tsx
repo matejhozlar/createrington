@@ -64,9 +64,8 @@ export function ProfileRender() {
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
   const [pose] = useState(randomPose);
 
-  const secret = params.get("secret");
   const player = params.get("player");
-  const hasMissingParams = !secret || !player;
+  const hasMissingParams = !player;
 
   useEffect(() => {
     if (hasMissingParams) return;
@@ -74,21 +73,20 @@ export function ProfileRender() {
     const url = new URL("/api/render/profile", window.location.origin);
     url.searchParams.set("player", player);
 
-    fetch(url.toString(), { headers: { "x-render-secret": secret } })
+    fetch(url.toString())
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<ProfileData>;
       })
       .then(setData)
       .catch(() => setFetchError("Failed to load profile data"));
-  }, [hasMissingParams, secret, player]);
+  }, [hasMissingParams, player]);
 
   // Load skin image once data arrives: try starlightskins, fall back to mc-heads
   useEffect(() => {
     if (!data) return;
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => setSkinSrc(img.src);
     img.onerror = () => setSkinSrc(mcHeadsBody(data.uuid));
     img.src = starlightSkinUrl(data.uuid, pose);
@@ -149,7 +147,6 @@ export function ProfileRender() {
               src={skinSrc}
               alt={data.username}
               className="relative h-[340px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
-              crossOrigin="anonymous"
             />
           </div>
         </div>
