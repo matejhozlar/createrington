@@ -1,15 +1,15 @@
 // TODO: Refactor to dynamically open the map for a configured server.
 // TODO: Add backend routes to provide the map link per server.
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MapPinOff } from "lucide-react";
 
 const BLUEMAP_URL = import.meta.env.VITE_BLUEMAP_URL as string;
 
 export function BlueMap() {
-  // Capture the hash once at mount so re-renders triggered by our own
+  // Compute iframe src once so re-renders triggered by our own
   // history.replaceState below don't reload the iframe and reset the view.
-  const initialHashRef = useRef(window.location.hash);
+  const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
     "loading",
@@ -66,7 +66,7 @@ export function BlueMap() {
       {status !== "unavailable" && (
         <iframe
           ref={iframeRef}
-          src={`${BLUEMAP_URL}${initialHashRef.current}`}
+          src={iframeSrc}
           title="BlueMap Viewer"
           className="h-full w-full flex-1 border-none"
           onLoad={handleLoad}
