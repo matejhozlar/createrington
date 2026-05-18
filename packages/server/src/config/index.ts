@@ -42,6 +42,14 @@ try {
   };
 }
 
+// Suffix per-deployment so prod and dev sharing a parent-domain cookie jar
+// (e.g. both scoped to `.createrington.com`) can't overwrite each other's
+// refresh cookies and trigger the family-detection theft-revoke storm.
+function deriveCookieName(base: string): string {
+  if (!env.COOKIE_DOMAIN) return base;
+  return `${base}_${envMode.isDevDeployment ? "dev" : "prod"}`;
+}
+
 const config = {
   envMode,
 
@@ -75,8 +83,8 @@ const config = {
         expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
       },
       cookie: {
-        name: env.REFRESH_COOKIE_NAME,
-        accessName: env.ACCESS_COOKIE_NAME,
+        name: deriveCookieName(env.REFRESH_COOKIE_NAME),
+        accessName: deriveCookieName(env.ACCESS_COOKIE_NAME),
         // Empty string means host-only (single-domain) cookies (the existing
         // behavior). Set to a parent domain (e.g. ".createrington.com") to
         // enable cross-subdomain SSO consumers.
