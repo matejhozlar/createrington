@@ -29,9 +29,9 @@ export const playersRouter = router({
     })
     .input(
       z.object({
-        discordId: z.string().optional(),
-        minecraftUuid: z.string().optional(),
-        minecraftUsername: z.string().optional(),
+        discordId: z.string().max(32).optional(),
+        minecraftUuid: z.string().max(36).optional(),
+        minecraftUsername: z.string().max(32).optional(),
         online: z.boolean().optional(),
         hasStrikes: z.boolean().optional(),
         hasBans: z.boolean().optional(),
@@ -196,8 +196,14 @@ export const playersRouter = router({
     .input(
       z.object({
         id: z.string().min(1),
-        minecraftUsername: z.string().optional(),
-        discordId: z.string().optional(),
+        minecraftUsername: z
+          .string()
+          .regex(/^[a-zA-Z0-9_]{3,16}$/, "Invalid Minecraft username")
+          .optional(),
+        discordId: z
+          .string()
+          .regex(/^\d{17,20}$/, "Invalid Discord snowflake")
+          .optional(),
         reason: z.string().min(1, "Reason is required"),
       }),
     )
