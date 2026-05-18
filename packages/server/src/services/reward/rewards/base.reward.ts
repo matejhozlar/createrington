@@ -4,7 +4,7 @@ import type {
   RewardConfig,
   RewardEligibilityResult,
 } from "../types";
-import { Q, db } from "@/db";
+import { Q } from "@/db";
 import type { DatabaseQueries } from "@/generated/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 
