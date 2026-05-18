@@ -130,17 +130,6 @@ export class JWTService {
       throw new Error("Token verification failed");
     }
   }
-
-  /**
-   * Decodes a token without verifying (for debugging only)
-   */
-  decode(token: string): JWTPayload | null {
-    try {
-      return jwt.decode(token) as JWTPayload;
-    } catch (_error) {
-      return null;
-    }
-  }
 }
 
 export const jwtService = JWTService.getInstance();

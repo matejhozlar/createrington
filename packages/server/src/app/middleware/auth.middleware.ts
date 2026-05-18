@@ -155,30 +155,6 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
   };
 };
 
-/**
- * Requires user to be the resource owner or an admin
- *
- * @param getUserId - Function to extract the user ID from the request
- */
-export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    const resourceUserId = getUserId(req);
-
-    if (req.user.discordId !== resourceUserId && !req.user.isAdmin) {
-      logger.warn(
-        `User ${req.user.minecraftUsername} attempted to access resource owned by ${resourceUserId}`,
-      );
-      throw new ForbiddenError("Access denied");
-    }
-
-    next();
-  };
-};
-
 // Parse an origin URL safely; returns only the `scheme://host[:port]` portion.
 function safeOrigin(raw: string | undefined): string | undefined {
   if (!raw) return undefined;

@@ -20,7 +20,7 @@ export const SendMessageBodySchema = z.object({
   /** Target Minecraft server ID */
   serverId: z.coerce.number().int().positive(),
   /** Text content of the message (optional if image is provided) */
-  content: z.string().optional(),
+  content: z.string().max(2000).optional(),
 });
 
 // ============================================================================
