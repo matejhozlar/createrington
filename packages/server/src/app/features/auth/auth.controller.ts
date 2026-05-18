@@ -5,12 +5,18 @@ import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { sessionService } from "@/services/auth/session/session.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
 import crypto from "node:crypto";
+
+function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
+  if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
+  return isAdmin ? AuthRole.ADMIN : AuthRole.USER;
+}
 
 /** In-memory store for OAuth state tokens (state → expiry timestamp) */
 const pendingStates = new Map<string, number>();
@@ -213,10 +219,13 @@ export class AuthController {
       throw new UnauthorizedError("Authentication required");
     }
 
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role = deriveRole(req.user.role, isAdmin);
+
     res.json({
       success: true,
       data: {
-        user: req.user,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }
@@ -284,11 +293,18 @@ export class AuthController {
    * Check authentication status
    */
   static async checkStatus(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role = deriveRole(req.user.role, isAdmin);
+
     res.json({
       success: true,
       data: {
-        authenticated: !!req.user,
-        user: req.user || null,
+        authenticated: true,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }
