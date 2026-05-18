@@ -1,3 +1,8 @@
+## v1.18.4 (2026-05-18)
+
+### @createrington/client (0.2.22 → 0.2.23)
+- [fix] Poll BlueMap iframe hash on a 400ms interval instead of relying solely on hashchange, since BlueMap uses history.replaceState which doesn't fire the event; the hashchange listener is kept as a no-cost fallback
+
 ## v1.18.3 (2026-05-18)
 
 ### @createrington/client (0.2.21 → 0.2.22)
