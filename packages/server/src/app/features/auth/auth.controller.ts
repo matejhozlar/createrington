@@ -5,6 +5,7 @@ import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { sessionService } from "@/services/auth/session/session.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
@@ -213,10 +214,21 @@ export class AuthController {
       throw new UnauthorizedError("Authentication required");
     }
 
+    // Overlay the canonical isAdmin from the DB (cached) so the client UI
+    // reflects demote/promote within ~30s instead of waiting for the next
+    // token refresh cycle.
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role =
+      req.user.role === AuthRole.UNVERIFIED
+        ? AuthRole.UNVERIFIED
+        : isAdmin
+          ? AuthRole.ADMIN
+          : AuthRole.USER;
+
     res.json({
       success: true,
       data: {
-        user: req.user,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }
@@ -284,11 +296,27 @@ export class AuthController {
    * Check authentication status
    */
   static async checkStatus(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      res.json({
+        success: true,
+        data: { authenticated: false, user: null },
+      });
+      return;
+    }
+
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role =
+      req.user.role === AuthRole.UNVERIFIED
+        ? AuthRole.UNVERIFIED
+        : isAdmin
+          ? AuthRole.ADMIN
+          : AuthRole.USER;
+
     res.json({
       success: true,
       data: {
-        authenticated: !!req.user,
-        user: req.user || null,
+        authenticated: true,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }

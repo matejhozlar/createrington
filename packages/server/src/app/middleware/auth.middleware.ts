@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ForbiddenError, UnauthorizedError } from "./error-handler";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import config from "@/config";
 import { extractBearerToken } from "@/utils/bearer-token";
@@ -87,23 +88,38 @@ export const optionalAuth = async (
  *
  * @throws ForbiddenError if user is not an admin
  */
-export const requireAdmin = (
+export const requireAdmin = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
-  if (!req.user) {
-    throw new UnauthorizedError("Authentication required");
-  }
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
 
-  if (!req.user.isAdmin) {
-    logger.warn(
-      `User ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access admin endpoint`,
-    );
-    throw new ForbiddenError("Admin access required");
-  }
+    if (!req.user.isAdmin) {
+      logger.warn(
+        `User ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access admin endpoint`,
+      );
+      throw new ForbiddenError("Admin access required");
+    }
 
-  next();
+    // JWT claim alone is stale up to the access-token lifetime (15m). Confirm
+    // against the DB (cached) so a demote takes effect within ~30s without
+    // waiting for the next token refresh.
+    const stillAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    if (!stillAdmin) {
+      logger.warn(
+        `User ${req.user.minecraftUsername} (${req.user.discordId}) carries stale admin JWT after demote`,
+      );
+      throw new ForbiddenError("Admin access required");
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**

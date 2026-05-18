@@ -11,6 +11,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import config from "@/config";
 
 /** Optional metadata attached to each procedure (used for auto-documentation). */
@@ -51,6 +52,17 @@ const isAuthenticated = middleware(async ({ ctx, next }) => {
 /** Rejects non-admin users. */
 const isAdmin = middleware(async ({ ctx, next }) => {
   if (!ctx.user?.isAdmin) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Admin access required",
+    });
+  }
+
+  // JWT claim alone is stale up to the access-token lifetime (15m). Confirm
+  // against the DB (cached) so a demote takes effect within ~30s without
+  // waiting for the next token refresh.
+  const stillAdmin = await adminStatusService.isAdmin(ctx.user.discordId);
+  if (!stillAdmin) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Admin access required",

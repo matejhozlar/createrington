@@ -5,6 +5,7 @@ import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { getService, Services } from "@/services";
 import { sessionService } from "@/services/auth/session/session.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { minecraftRcon } from "@/utils/rcon";
@@ -144,6 +145,7 @@ export const ownerAdminsRouter = router({
       const player = await Q.player.find({ discordId: input.discordId });
 
       await Q.admin.create({ discordId: input.discordId });
+      adminStatusService.invalidate(input.discordId);
 
       let discordRoleAdded = false;
       try {
@@ -215,6 +217,7 @@ export const ownerAdminsRouter = router({
         await Q.admin.delete({ discordId: input.discordId });
       }
 
+      adminStatusService.invalidate(input.discordId);
       await sessionService.revokeAllForUser(input.discordId);
 
       let discordRoleRemoved = false;
