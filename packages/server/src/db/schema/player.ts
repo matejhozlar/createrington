@@ -402,7 +402,7 @@ export const playerSession = pgTable(
     index("idx_player_session_player").on(table.playerMinecraftUuid),
     index("idx_player_session_server").on(table.serverId),
     index("idx_player_session_start").on(table.sessionStart),
-    index("idx_player_session_active")
+    uniqueIndex("idx_player_session_active")
       .on(table.playerMinecraftUuid, table.serverId)
       .where(sql`session_end IS NULL`),
     index("idx_player_session_date_range").on(

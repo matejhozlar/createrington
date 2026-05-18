@@ -34,6 +34,15 @@ import type {
  * NOTE: This repository listens to PlaytimeService events to drive all
  * session tracking. Connect it via connectToService() during bootstrap.
  */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "23505"
+  );
+}
+
 export class PlaytimeRepository {
   constructor() {}
 
@@ -68,27 +77,47 @@ export class PlaytimeRepository {
         return null;
       }
 
-      // Close any orphaned active sessions for this player on this server
-      const closedCount = await Q.player.session.updateAll(
-        { sessionEnd: event.sessionStart },
-        {
+      const closeOrphans = async (): Promise<void> => {
+        const closedCount = await Q.player.session.updateAll(
+          { sessionEnd: event.sessionStart },
+          {
+            playerMinecraftUuid: event.uuid,
+            serverId: event.serverId,
+            sessionEnd: null,
+          },
+        );
+
+        if (closedCount > 0) {
+          logger.warn(
+            `Closed ${closedCount} orphaned active session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
+          );
+        }
+      };
+
+      await closeOrphans();
+
+      // The unique partial index on (uuid, server_id) WHERE session_end IS NULL
+      // means a concurrent join from the same player can lose the close-then-
+      // insert race here. Retry once after closing orphans again.
+      let session;
+      try {
+        session = await Q.player.session.createAndReturn({
           playerMinecraftUuid: event.uuid,
           serverId: event.serverId,
-          sessionEnd: null,
-        },
-      );
-
-      if (closedCount > 0) {
-        logger.warn(
-          `Closed ${closedCount} orphaned active session(s) for ${event.username} (${event.uuid}) on server ${event.serverId}`,
-        );
+          sessionStart: event.sessionStart,
+        });
+      } catch (err) {
+        if (isUniqueViolation(err)) {
+          await closeOrphans();
+          session = await Q.player.session.createAndReturn({
+            playerMinecraftUuid: event.uuid,
+            serverId: event.serverId,
+            sessionStart: event.sessionStart,
+          });
+        } else {
+          throw err;
+        }
       }
-
-      const session = await Q.player.session.createAndReturn({
-        playerMinecraftUuid: event.uuid,
-        serverId: event.serverId,
-        sessionStart: event.sessionStart,
-      });
 
       // Sync player online status
       await Q.player.update(
