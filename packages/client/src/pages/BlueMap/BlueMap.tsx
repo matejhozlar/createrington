@@ -10,13 +10,18 @@ export function BlueMap() {
   // Computed once so our own replaceState below doesn't reload the iframe.
   const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const syncRef = useRef<{ child: Window; handler: () => void } | null>(null);
+  const syncRef = useRef<{
+    child: Window;
+    handler: () => void;
+    interval: ReturnType<typeof setInterval>;
+  } | null>(null);
   const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
     "loading",
   );
 
   const detachSync = () => {
     if (!syncRef.current) return;
+    clearInterval(syncRef.current.interval);
     try {
       syncRef.current.child.removeEventListener(
         "hashchange",
@@ -46,7 +51,11 @@ export function BlueMap() {
       };
       sync();
       child.addEventListener("hashchange", sync);
-      syncRef.current = { child, handler: sync };
+      // BlueMap updates its hash via history.replaceState, which doesn't fire
+      // hashchange; poll as the actual sync mechanism, keep the listener as
+      // a no-cost fallback for any future BlueMap that does fire it.
+      const interval = setInterval(sync, 400);
+      syncRef.current = { child, handler: sync, interval };
     } catch {
       // cross-origin BLUEMAP_URL (dev pointing at prod); sync degrades
     }
