@@ -5,11 +5,18 @@ import { jwtService } from "@/services/auth/jwt/jwt.service";
 import { refreshTokenService } from "@/services/auth/token/refresh-token.service";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { sessionService } from "@/services/auth/session/session.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
+import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
 import crypto from "node:crypto";
+
+function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
+  if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
+  return isAdmin ? AuthRole.ADMIN : AuthRole.USER;
+}
 
 /** In-memory store for OAuth state tokens (state → expiry timestamp) */
 const pendingStates = new Map<string, number>();
@@ -212,10 +219,13 @@ export class AuthController {
       throw new UnauthorizedError("Authentication required");
     }
 
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role = deriveRole(req.user.role, isAdmin);
+
     res.json({
       success: true,
       data: {
-        user: req.user,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }
@@ -283,11 +293,18 @@ export class AuthController {
    * Check authentication status
    */
   static async checkStatus(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    const role = deriveRole(req.user.role, isAdmin);
+
     res.json({
       success: true,
       data: {
-        authenticated: !!req.user,
-        user: req.user || null,
+        authenticated: true,
+        user: { ...req.user, isAdmin, role },
       },
     });
   }
@@ -415,22 +432,23 @@ export class AuthController {
 
     const token =
       typeof req.query.token === "string" ? req.query.token : undefined;
-    if (!token) {
-      throw new BadRequestError("Missing token");
+    const rawTs = typeof req.query.ts === "string" ? req.query.ts : undefined;
+    const sig = typeof req.query.sig === "string" ? req.query.sig : undefined;
+    if (!token || !rawTs || !sig) {
+      throw new BadRequestError("Missing token, ts, or sig");
+    }
+    const ts = Number(rawTs);
+    if (
+      !verifyDevLoginToken(token, ts, sig, config.app.auth.accessToken.secret)
+    ) {
+      throw new BadRequestError("Invalid or expired signature");
     }
 
     const rawReturnTo =
       typeof req.query.return_to === "string" ? req.query.return_to : "/";
-    // Reject anything that isn't a single-slash same-origin path. Browsers
-    // normalise `/\evil.com` to `//evil.com` so the second char check has
-    // to cover both slashes.
-    const returnTo =
-      rawReturnTo.startsWith("/") && !/^\/[\\/]/.test(rawReturnTo)
-        ? rawReturnTo
-        : "/";
 
     refreshTokenService.setCookie(res, token);
-    res.redirect(returnTo);
+    res.redirect(safeLocalPath(rawReturnTo));
   }
 }
 
@@ -469,4 +487,15 @@ function safeSsoRedirect(res: Response, url: string): void {
     throw new BadRequestError("Invalid return_to URL");
   }
   res.redirect(validated);
+}
+
+function safeLocalPath(candidate: string): string {
+  try {
+    const base = "http://localhost";
+    const url = new URL(candidate, base);
+    if (url.origin !== base) return "/";
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return "/";
+  }
 }

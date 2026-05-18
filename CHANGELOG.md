@@ -1,3 +1,34 @@
+## v1.18.2 (2026-05-18)
+
+### @createrington/server (1.18.1 → 1.18.2)
+- [security] Harden BaseQueries against arbitrary column injection: `extractIdentifier` now filters through `VALID_IDENTIFIER_FIELDS` before building WHERE clauses, `getColumnName` validates resolved names match `[a-z_][a-z0-9_]*`, and the `raw()` method is downgraded from public to protected
+- [security] Restrict `/api/render/*` to loopback callers: new `requireLoopback` middleware rejects any request with a non-loopback TCP peer or an `X-Forwarded-For` header, preventing PII exfiltration even if the Puppeteer secret leaks
+- [security] HMAC-sign the dev-set-refresh token to block CSRF pin attacks: the `/api/auth/dev-set-refresh` endpoint now requires a timestamped HMAC signature, replacing the unsigned bare-token URL
+- [security] Require trusted origin on `/api/auth/logout-all` to prevent cross-origin session revocation via CSRF
+- [security] Bound mod currency amounts and rate-limit mutations: all mod-side money inputs are validated against a 1-trillion cap with finite/positive checks, withdraw count capped at 1M, and deposit/withdraw/pay routes rate-limited at 30 req/min per player UUID
+- [security] Bound admin balance and crypto amount inputs: admin balance adjust capped at +/-1B, bulk adjust array limited to 100 players (down from 1000), and crypto buy/sell/order amounts capped at 1B
+- [security] Constrain admin player CRUD input shapes: search filters gain max-length constraints, player update validates Minecraft username format (`^[a-zA-Z0-9_]{3,16}$`) and Discord snowflake format (`^\d{17,20}$`)
+- [security] Rate-limit hot tRPC procedures: new in-memory per-key tRPC rate-limit middleware applied to `admin.ai.assist` (30/hr), `admin.embeds.send` (60/hr), and `public.waitlists.create` (5/hr per IP)
+- [fix] Re-check admin status against DB so demote takes effect within 30s: new `AdminStatusService` with 30s TTL-cached DB lookups replaces relying solely on the JWT `isAdmin` flag; both Express `requireAdmin` and tRPC `isAdmin` middleware now verify live admin status, and promote/demote actions invalidate the cache immediately
+- [fix] Lock `player_balance` row for update to prevent lost-update race: balance add, deduct, set, and transfer now acquire `SELECT ... FOR UPDATE` before the read-modify-write sequence; transfers lock both rows in UUID-sorted order to prevent deadlocks
+- [fix] Close daily reward TOCTOU with period-keyed unique index: new `claim_period_key` column and unique index on `(player, reward_type, claim_period_key)` prevents double claims from concurrent requests; the claim insert runs before crediting balance inside a single transaction, and a unique-violation retry returns a friendly "already claimed" response
+- [fix] Enforce single active session per (uuid, server) at DB level: the `idx_player_session_active` index upgraded from non-unique to a unique partial index; session creation retries once on unique violation after closing orphans
+- [fix] Add DB pool statement/query/idle-transaction timeouts: 30s statement and query timeouts prevent runaway queries from exhausting the connection pool, and a 60s idle-in-transaction timeout releases row locks from abandoned transactions
+- [fix] Wrap lottery start/join balance deduct in a shared transaction: deducting the entry fee and inserting the participant row now happen atomically, preventing phantom participants when the balance deduct succeeds but the insert fails
+- [fix] Suffix refresh/access cookie names with deployment env: cookie names now include a `_dev` or `_prod` suffix when `COOKIE_DOMAIN` is set, preventing cross-deployment cookie collisions that triggered token-theft revocation storms on shared parent domains
+- [fix] Tighten dev-set-refresh redirect sanitizer: replaced the manual regex guard with a URL-parsing `safeLocalPath` that strips the origin and falls back to `/`, closing remaining open-redirect variants
+- [fix] Reject web messages exceeding 2000 chars after sender prefix: server-side length check added alongside the shared Zod schema constraint
+- [fix] Guard Stripe webhook replay: donation processing now checks for an existing record by session ID before creating a duplicate, preventing double-credited donations on webhook retries
+- [refactor] Centralize Puppeteer base URL in config with a loopback default: five slash commands that duplicated the base-URL derivation now read from `config.puppeteer.baseUrl`; dev defaults to `localhost:3000`, prod defaults to `127.0.0.1:{PORT}`
+- [chore] Low-tier security audit cleanup: restrict CSP `ws:` directive to dev only, move BigInt type parser registration before pool initialization, simplify sync-secret middleware, and remove unused `JWTService.decode()` and `requireOwnerOrAdmin` middleware
+
+### @createrington/client (0.2.20 → 0.2.21)
+- [add] Add `@` and `#` autocomplete to embed builder text fields: typing `@` or `#` in any mention-enabled text field opens a dropdown with matching Discord roles or channels, navigable via keyboard (arrow keys, Tab/Enter to confirm, Escape to dismiss); powered by a new `MentionAutocomplete` component wired into the embed builder's `TextField` primitive
+- [fix] Block embed send when fields have empty name or value: all send, save, update, and update-link paths now validate for incomplete fields before submission and show an error toast naming the offending field numbers
+
+### @createrington/shared (1.1.3 → 1.1.4)
+- [fix] Add max-length constraint to web message content schema: `SendMessageBodySchema.content` now enforces a 2000-character limit at the Zod validation layer
+
 ## v1.18.1 (2026-05-16)
 
 ### @createrington/server (1.18.0 → 1.18.1)

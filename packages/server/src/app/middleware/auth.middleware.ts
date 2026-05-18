@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ForbiddenError, UnauthorizedError } from "./error-handler";
 import { jwtService } from "@/services/auth/jwt";
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
+import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import config from "@/config";
 import { extractBearerToken } from "@/utils/bearer-token";
@@ -87,23 +88,36 @@ export const optionalAuth = async (
  *
  * @throws ForbiddenError if user is not an admin
  */
-export const requireAdmin = (
+export const requireAdmin = async (
   req: Request,
   res: Response,
   next: NextFunction,
-): void => {
-  if (!req.user) {
-    throw new UnauthorizedError("Authentication required");
-  }
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
 
-  if (!req.user.isAdmin) {
-    logger.warn(
-      `User ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access admin endpoint`,
-    );
-    throw new ForbiddenError("Admin access required");
-  }
+    if (!req.user.isAdmin) {
+      logger.warn(
+        `User ${req.user.minecraftUsername} (${req.user.discordId}) attempted to access admin endpoint`,
+      );
+      throw new ForbiddenError("Admin access required");
+    }
 
-  next();
+    // JWT isAdmin can be stale up to the access-token lifetime; confirm against DB.
+    const stillAdmin = await adminStatusService.isAdmin(req.user.discordId);
+    if (!stillAdmin) {
+      logger.warn(
+        `User ${req.user.minecraftUsername} (${req.user.discordId}) carries stale admin JWT after demote`,
+      );
+      throw new ForbiddenError("Admin access required");
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 /**
@@ -149,30 +163,6 @@ export const requireRole = (...allowedRoles: AuthRole[]) => {
         } attempted to access endpoint requiring ${allowedRoles.join(" or ")}`,
       );
       throw new ForbiddenError(`Required role: ${allowedRoles.join(" or ")}`);
-    }
-
-    next();
-  };
-};
-
-/**
- * Requires user to be the resource owner or an admin
- *
- * @param getUserId - Function to extract the user ID from the request
- */
-export const requireOwnerOrAdmin = (getUserId: (req: Request) => string) => {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      throw new UnauthorizedError("Authentication required");
-    }
-
-    const resourceUserId = getUserId(req);
-
-    if (req.user.discordId !== resourceUserId && !req.user.isAdmin) {
-      logger.warn(
-        `User ${req.user.minecraftUsername} attempted to access resource owned by ${resourceUserId}`,
-      );
-      throw new ForbiddenError("Access denied");
     }
 
     next();

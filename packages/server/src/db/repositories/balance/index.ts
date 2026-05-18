@@ -49,6 +49,21 @@ export enum BalanceTransactionType {
 export class BalanceRepository {
   constructor() {}
 
+  // Acquires a row-level lock on a player_balance row so the surrounding
+  // read-modify-write sequence is serialized against concurrent mutators.
+  // Without this, two parallel add/deduct/transfer calls under READ COMMITTED
+  // can both read the same balance and one update is lost.
+  private async lockBalance(
+    tx: DatabaseQueries,
+    minecraftUuid: string,
+  ): Promise<void> {
+    const client = tx.getDb();
+    await client.query(
+      "SELECT 1 FROM player_balance WHERE minecraft_uuid = $1 FOR UPDATE",
+      [minecraftUuid],
+    );
+  }
+
   /**
    * Resolves various player identifier formats to a Minecraft UUID
    *
@@ -286,6 +301,7 @@ export class BalanceRepository {
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (txOverride ?? db).inTransaction(async (tx) => {
+      await this.lockBalance(tx, uuid);
       const current = await tx.player.balance.get({ minecraftUuid: uuid });
 
       if (BalanceUtils.wouldOverflow(current.balance, amount)) {
@@ -348,6 +364,7 @@ export class BalanceRepository {
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await (txOverride ?? db).inTransaction(async (tx) => {
+      await this.lockBalance(tx, uuid);
       const current = await tx.player.balance.get({ minecraftUuid: uuid });
 
       if (current.balance < amountBigInt) {
@@ -406,6 +423,7 @@ export class BalanceRepository {
     const amountBigInt = BalanceUtils.toStorage(amount);
 
     return await db.inTransaction(async (tx) => {
+      await this.lockBalance(tx, uuid);
       const current = await tx.player.balance.get({
         minecraftUuid: uuid,
       });
@@ -473,6 +491,12 @@ export class BalanceRepository {
     }
 
     return await db.inTransaction(async (tx) => {
+      // Lock both rows in lexicographic UUID order so two concurrent
+      // transfer(A->B) and transfer(B->A) calls can't deadlock.
+      const [firstLock, secondLock] = [senderUuid, recipientUuid].sort();
+      await this.lockBalance(tx, firstLock);
+      await this.lockBalance(tx, secondLock);
+
       const senderBalance = await tx.player.balance.get({
         minecraftUuid: senderUuid,
       });

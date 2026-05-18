@@ -20,6 +20,7 @@ import { execSync } from "node:child_process";
 import { Q } from "@/db";
 import { sessionService } from "@/services/auth/session/session.service";
 import config from "@/config";
+import { signDevLoginToken } from "@/services/auth/dev-login/hmac";
 
 function copyToClipboard(text: string): boolean {
   let cmd: string;
@@ -159,7 +160,11 @@ async function main(): Promise<void> {
   const cookieName = config.app.auth.cookie.name;
   const snippet = `document.cookie = ${JSON.stringify(`${cookieName}=${rawToken}; path=/api/auth; samesite=lax`)}; location.reload();`;
 
-  const autoLoginUrl = `${origin.replace(/\/$/, "")}/api/auth/dev-set-refresh?token=${encodeURIComponent(rawToken)}&return_to=${encodeURIComponent(returnTo)}`;
+  const { ts, sig } = signDevLoginToken(
+    rawToken,
+    config.app.auth.accessToken.secret,
+  );
+  const autoLoginUrl = `${origin.replace(/\/$/, "")}/api/auth/dev-set-refresh?token=${encodeURIComponent(rawToken)}&ts=${ts}&sig=${sig}&return_to=${encodeURIComponent(returnTo)}`;
 
   console.log("");
   console.log("=== Session minted ===");

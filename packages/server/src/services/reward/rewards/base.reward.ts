@@ -5,6 +5,7 @@ import type {
   RewardEligibilityResult,
 } from "../types";
 import { Q } from "@/db";
+import type { DatabaseQueries } from "@/generated/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 
 /**
@@ -154,11 +155,15 @@ export abstract class BaseReward {
   protected async recordClaim(
     playerUuid: string,
     amount: number,
+    claimPeriodKey: string,
     metadata?: Record<string, unknown>,
+    tx?: DatabaseQueries,
   ): Promise<void> {
-    await Q.reward.claim.create({
+    const queries = tx ?? Q;
+    await queries.reward.claim.create({
       playerMinecraftUuid: playerUuid,
       rewardType: this.config.type,
+      claimPeriodKey,
       amount: BalanceUtils.toStorage(amount),
       metadata: metadata || {},
     });

@@ -402,7 +402,7 @@ export const playerSession = pgTable(
     index("idx_player_session_player").on(table.playerMinecraftUuid),
     index("idx_player_session_server").on(table.serverId),
     index("idx_player_session_start").on(table.sessionStart),
-    index("idx_player_session_active")
+    uniqueIndex("idx_player_session_active")
       .on(table.playerMinecraftUuid, table.serverId)
       .where(sql`session_end IS NULL`),
     index("idx_player_session_date_range").on(
@@ -515,14 +515,19 @@ export const rewardClaim = pgTable(
     claimedAt: timestamp("claimed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Per-reward-period bucket key (e.g. "2026-05-18" for the daily reset
+    // bucket that contained the claim). Carried so the unique index below
+    // can enforce one claim per (player, reward, period) regardless of the
+    // exact claimed_at timestamp.
+    claimPeriodKey: varchar("claim_period_key", { length: 32 }).notNull(),
     amount: bigint("amount", { mode: "bigint" }).notNull(),
     metadata: jsonb("metadata").default({}),
   },
   (table) => [
-    uniqueIndex("reward_claim_player_type_claimed").on(
+    uniqueIndex("reward_claim_player_type_period").on(
       table.playerMinecraftUuid,
       table.rewardType,
-      table.claimedAt,
+      table.claimPeriodKey,
     ),
     index("idx_reward_claim_player").on(table.playerMinecraftUuid),
     index("idx_reward_claim_type").on(table.rewardType),

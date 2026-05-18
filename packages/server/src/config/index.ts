@@ -42,6 +42,14 @@ try {
   };
 }
 
+// Suffix per-deployment so prod and dev sharing a parent-domain cookie jar
+// (e.g. both scoped to `.createrington.com`) can't overwrite each other's
+// refresh cookies and trigger the family-detection theft-revoke storm.
+function deriveCookieName(base: string): string {
+  if (!env.COOKIE_DOMAIN) return base;
+  return `${base}_${envMode.isDevDeployment ? "dev" : "prod"}`;
+}
+
 const config = {
   envMode,
 
@@ -75,8 +83,8 @@ const config = {
         expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
       },
       cookie: {
-        name: env.REFRESH_COOKIE_NAME,
-        accessName: env.ACCESS_COOKIE_NAME,
+        name: deriveCookieName(env.REFRESH_COOKIE_NAME),
+        accessName: deriveCookieName(env.ACCESS_COOKIE_NAME),
         // Empty string means host-only (single-domain) cookies (the existing
         // behavior). Set to a parent domain (e.g. ".createrington.com") to
         // enable cross-subdomain SSO consumers.
@@ -118,6 +126,17 @@ const config = {
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
+      // Postgres aborts any single statement that exceeds 30s. Without this,
+      // a runaway query (or a heavy attacker-triggered $ilike scan) can hold
+      // a connection from the pool of 20 indefinitely and wedge the app.
+      statement_timeout: 30_000,
+      // Node-pg client-side mirror of statement_timeout, in case the server
+      // doesn't enforce it for some reason.
+      query_timeout: 30_000,
+      // Postgres kills any transaction left idle for over 60s, releasing
+      // its row locks. Protects against code paths that BEGIN but forget
+      // to COMMIT/ROLLBACK on an error.
+      idle_in_transaction_session_timeout: 60_000,
     },
     monitoring: {
       intervalMs: 60_000,
@@ -274,7 +293,16 @@ const config = {
     // empty secret (app/features/render/render.routes.ts).
     secret: env.PUPPETEER_SECRET ?? "",
     executablePath: env.PUPPETEER_EXECUTABLE_PATH,
-    baseUrl: env.PUPPETEER_BASE_URL,
+    // Default points the headless browser at loopback so the render
+    // endpoints can enforce loopback-only access. Dev uses the Vite host
+    // because Vite serves the client and proxies /api/* without XFF;
+    // prod uses Node directly (it serves the SPA via the catch-all in
+    // app/index.ts) so no public hostname or reverse proxy is involved.
+    baseUrl:
+      env.PUPPETEER_BASE_URL ??
+      (envMode.isDev
+        ? "http://localhost:3000"
+        : `http://127.0.0.1:${env.PORT}`),
   },
 
   stripe: {

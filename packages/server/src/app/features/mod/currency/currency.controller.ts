@@ -21,6 +21,25 @@ function formatMoney(amount: number): string {
   return moneyFormatter.format(amount);
 }
 
+// Upper bound for any single mod-side money input. Below Number.MAX_SAFE_INTEGER
+// (~9e15) and below BalanceUtils.MAX_BALANCE (~9.2e15) by enough margin that
+// downstream amount * 1000 storage conversion can't lose precision or overflow.
+const MAX_MOD_AMOUNT = 1_000_000_000_000;
+
+function parsePositiveMoney(value: unknown, name: string): number {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value <= 0 ||
+    value > MAX_MOD_AMOUNT
+  ) {
+    throw new BadRequestError(
+      `${name} must be a positive number no greater than ${MAX_MOD_AMOUNT}`,
+    );
+  }
+  return value;
+}
+
 /**
  * Currency Controller
  *
@@ -56,15 +75,13 @@ export class CurrencyController {
    * caller cannot transfer from an account they don't own.
    */
   static async pay(req: Request, res: Response): Promise<void> {
-    const { toUuid, amount } = req.body;
+    const { toUuid, amount: rawAmount } = req.body;
 
-    if (!toUuid || amount == null) {
+    if (!toUuid || rawAmount == null) {
       throw new BadRequestError("toUuid and amount are required");
     }
 
-    if (typeof amount !== "number" || amount <= 0) {
-      throw new BadRequestError("amount must be a positive number");
-    }
+    const amount = parsePositiveMoney(rawAmount, "amount");
 
     const { uuid: senderUuid } = getAuthedPlayer(req);
 
@@ -103,15 +120,13 @@ export class CurrencyController {
    */
   static async deposit(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { amount, reason } = req.body;
+    const { amount: rawAmount, reason } = req.body;
 
-    if (amount == null) {
+    if (rawAmount == null) {
       throw new BadRequestError("amount is required");
     }
 
-    if (typeof amount !== "number" || amount <= 0) {
-      throw new BadRequestError("amount must be a positive number");
-    }
+    const amount = parsePositiveMoney(rawAmount, "amount");
 
     try {
       const newBalance = await R.balanceRepo.add(
@@ -149,21 +164,32 @@ export class CurrencyController {
    */
   static async withdraw(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { denomination, count } = req.body;
+    const { denomination: rawDenomination, count: rawCount } = req.body;
 
-    if (denomination == null || count == null) {
+    if (rawDenomination == null || rawCount == null) {
       throw new BadRequestError("denomination and count are required");
     }
 
-    if (typeof denomination !== "number" || denomination <= 0) {
-      throw new BadRequestError("denomination must be a positive number");
-    }
+    const denomination = parsePositiveMoney(rawDenomination, "denomination");
 
-    if (typeof count !== "number" || count <= 0 || !Number.isInteger(count)) {
-      throw new BadRequestError("count must be a positive integer");
+    if (
+      typeof rawCount !== "number" ||
+      rawCount <= 0 ||
+      !Number.isInteger(rawCount) ||
+      rawCount > 1_000_000
+    ) {
+      throw new BadRequestError(
+        "count must be a positive integer no greater than 1000000",
+      );
     }
+    const count = rawCount;
 
     const totalAmount = count * denomination;
+    if (totalAmount > MAX_MOD_AMOUNT) {
+      throw new BadRequestError(
+        `total withdrawal ${totalAmount} exceeds ${MAX_MOD_AMOUNT}`,
+      );
+    }
 
     try {
       const newBalance = await R.balanceRepo.deduct(
@@ -279,15 +305,13 @@ export class CurrencyController {
    */
   static async startLottery(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { amount } = req.body;
+    const { amount: rawAmount } = req.body;
 
-    if (amount == null) {
+    if (rawAmount == null) {
       throw new BadRequestError("amount is required");
     }
 
-    if (typeof amount !== "number" || amount <= 0) {
-      throw new BadRequestError("amount must be a positive number");
-    }
+    const amount = parsePositiveMoney(rawAmount, "amount");
 
     const result = await lotteryService.start(uuid, name, amount);
 
@@ -309,15 +333,13 @@ export class CurrencyController {
    */
   static async joinLottery(req: Request, res: Response): Promise<void> {
     const { uuid, name } = getAuthedPlayer(req);
-    const { amount } = req.body;
+    const { amount: rawAmount } = req.body;
 
-    if (amount == null) {
+    if (rawAmount == null) {
       throw new BadRequestError("amount is required");
     }
 
-    if (typeof amount !== "number" || amount <= 0) {
-      throw new BadRequestError("amount must be a positive number");
-    }
+    const amount = parsePositiveMoney(rawAmount, "amount");
 
     const result = await lotteryService.join(uuid, name, amount);
 

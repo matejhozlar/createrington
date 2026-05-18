@@ -57,7 +57,7 @@ export const cryptoRouter = router({
     .input(
       z.object({
         symbol: z.string().min(1).max(10),
-        amount: z.number().int().positive(),
+        amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -109,7 +109,7 @@ export const cryptoRouter = router({
     .input(
       z.object({
         symbol: z.string().min(1).max(10),
-        amount: z.number().int().positive(),
+        amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -263,7 +263,7 @@ export const cryptoRouter = router({
       z.object({
         symbol: z.string().min(1).max(10),
         type: z.enum(["limit_buy", "limit_sell", "stop_loss", "take_profit"]),
-        amount: z.number().int().positive(),
+        amount: z.number().int().positive().max(1_000_000_000),
         targetPrice: z
           .string()
           .refine((v) => Number(v) > 0, "Price must be positive"),

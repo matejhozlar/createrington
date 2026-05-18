@@ -48,7 +48,7 @@ export function createApp(): Express {
             "'self'",
             "https://cloudflareinsights.com",
             "wss:",
-            "ws:",
+            ...(config.envMode.isProd ? [] : ["ws:"]),
           ],
         },
       },

@@ -49,7 +49,11 @@ router.post(
 router.get("/me", ...route("user", AuthController.getCurrentUser));
 
 // POST /api/auth/logout-all - Revoke all sessions for user
-router.post("/logout-all", ...route("user", AuthController.logoutAll));
+router.post(
+  "/logout-all",
+  requireTrustedOrigin,
+  ...route("user", AuthController.logoutAll),
+);
 
 // GET /api/auth/status - Check authentication status
 router.get("/status", ...route("user", AuthController.checkStatus));

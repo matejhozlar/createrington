@@ -17,6 +17,14 @@ import {
   embedBotSchema,
   type EmbedData,
 } from "@createrington/shared/api/embed";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
+
+const embedSendLimit = createRateLimit({
+  name: "admin.embeds.send",
+  limit: 60,
+  windowMs: 60 * 60 * 1000,
+  key: (ctx) => ctx.user!.discordId,
+});
 
 function getMessageService(bot: "main" | "web" = "main") {
   const serviceKey =
@@ -175,6 +183,7 @@ export const embedsRouter = router({
     }),
 
   send: adminProcedure
+    .use(embedSendLimit)
     .meta({ description: "Send an embed to a Discord channel" })
     .input(
       z.object({
