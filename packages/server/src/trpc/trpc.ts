@@ -58,9 +58,7 @@ const isAdmin = middleware(async ({ ctx, next }) => {
     });
   }
 
-  // JWT claim alone is stale up to the access-token lifetime (15m). Confirm
-  // against the DB (cached) so a demote takes effect within ~30s without
-  // waiting for the next token refresh.
+  // JWT isAdmin can be stale up to the access-token lifetime; confirm against DB.
   const stillAdmin = await adminStatusService.isAdmin(ctx.user.discordId);
   if (!stillAdmin) {
     throw new TRPCError({

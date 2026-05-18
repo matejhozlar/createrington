@@ -13,6 +13,11 @@ import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
 import crypto from "node:crypto";
 
+function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
+  if (currentRole === AuthRole.UNVERIFIED) return AuthRole.UNVERIFIED;
+  return isAdmin ? AuthRole.ADMIN : AuthRole.USER;
+}
+
 /** In-memory store for OAuth state tokens (state → expiry timestamp) */
 const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -214,16 +219,8 @@ export class AuthController {
       throw new UnauthorizedError("Authentication required");
     }
 
-    // Overlay the canonical isAdmin from the DB (cached) so the client UI
-    // reflects demote/promote within ~30s instead of waiting for the next
-    // token refresh cycle.
     const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
-    const role =
-      req.user.role === AuthRole.UNVERIFIED
-        ? AuthRole.UNVERIFIED
-        : isAdmin
-          ? AuthRole.ADMIN
-          : AuthRole.USER;
+    const role = deriveRole(req.user.role, isAdmin);
 
     res.json({
       success: true,
@@ -297,20 +294,11 @@ export class AuthController {
    */
   static async checkStatus(req: Request, res: Response): Promise<void> {
     if (!req.user) {
-      res.json({
-        success: true,
-        data: { authenticated: false, user: null },
-      });
-      return;
+      throw new UnauthorizedError("Authentication required");
     }
 
     const isAdmin = await adminStatusService.isAdmin(req.user.discordId);
-    const role =
-      req.user.role === AuthRole.UNVERIFIED
-        ? AuthRole.UNVERIFIED
-        : isAdmin
-          ? AuthRole.ADMIN
-          : AuthRole.USER;
+    const role = deriveRole(req.user.role, isAdmin);
 
     res.json({
       success: true,
