@@ -117,7 +117,6 @@ export async function execute(
         url: renderUrl.toString(),
         waitForSelector: "#top-container",
         elementSelector: "#top-container",
-        settleDelay: 2000,
         timeout: 15_000,
         viewportWidth: 900,
         viewportHeight: 500,

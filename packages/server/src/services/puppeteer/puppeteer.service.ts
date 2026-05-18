@@ -8,6 +8,11 @@ export interface ScreenshotOptions {
   waitForSelector?: string;
   /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
+  /**
+   * Wait for `document.fonts.ready` and all `<img>` elements to finish loading
+   * before capturing. Defaults to true.
+   */
+  waitForAssets?: boolean;
   /** Extra delay in ms after selector is found, to let animations/charts settle */
   settleDelay?: number;
   /** Navigation timeout in ms (default: 30000) */
@@ -88,6 +93,7 @@ export class PuppeteerService {
       url,
       waitForSelector,
       elementSelector,
+      waitForAssets = true,
       settleDelay = 0,
       timeout = 30_000,
       viewportWidth = 1280,
@@ -110,6 +116,26 @@ export class PuppeteerService {
 
       if (waitForSelector) {
         await page.waitForSelector(waitForSelector, { timeout });
+      }
+
+      if (waitForAssets) {
+        await page.evaluate(async () => {
+          await document.fonts.ready;
+          await Promise.all(
+            Array.from(document.images).map((img) =>
+              img.complete && img.naturalWidth > 0
+                ? null
+                : new Promise<void>((resolve) => {
+                    img.addEventListener("load", () => resolve(), {
+                      once: true,
+                    });
+                    img.addEventListener("error", () => resolve(), {
+                      once: true,
+                    });
+                  }),
+            ),
+          );
+        });
       }
 
       if (settleDelay > 0) {

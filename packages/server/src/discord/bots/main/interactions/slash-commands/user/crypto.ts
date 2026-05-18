@@ -553,7 +553,6 @@ async function handleChart(
       url: renderUrl.toString(),
       waitForSelector: "#chart-container",
       elementSelector: "#chart-container",
-      settleDelay: 2000,
       timeout: 15_000,
       viewportWidth: 800,
       viewportHeight: 420,
