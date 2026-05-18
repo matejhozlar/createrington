@@ -109,6 +109,34 @@ export const verifyServerIP = (
 };
 
 /**
+ * Reject any request whose TCP peer is not a loopback address. Used by
+ * in-process internal routes (e.g. /api/render/*) whose only legitimate
+ * caller runs in the same Node process, so off-host traffic should never
+ * reach them even if the shared secret leaks. Ignores forwarded-for
+ * headers on purpose.
+ */
+export const requireLoopback = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void => {
+  const peer = normalizeIp(req.socket.remoteAddress ?? "");
+  const isLoopback = peer === "127.0.0.1" || peer === "::1";
+  // Reject anything that traversed a reverse proxy: nginx always shows as
+  // 127.0.0.1 to Node, so the X-Forwarded-For header is the only signal
+  // that distinguishes a public hit from an in-process loopback caller.
+  const proxied = req.headers["x-forwarded-for"] !== undefined;
+  if (isLoopback && !proxied) {
+    next();
+    return;
+  }
+  logger.warn(
+    `Rejected non-loopback request to ${req.originalUrl} (peer=${peer}, proxied=${proxied})`,
+  );
+  next(new ForbiddenError("Loopback only"));
+};
+
+/**
  * Check whether an IP address is in the allowlist for the given environment
  *
  * @param ip - IP address to check

@@ -282,7 +282,16 @@ const config = {
     // empty secret (app/features/render/render.routes.ts).
     secret: env.PUPPETEER_SECRET ?? "",
     executablePath: env.PUPPETEER_EXECUTABLE_PATH,
-    baseUrl: env.PUPPETEER_BASE_URL,
+    // Default points the headless browser at loopback so the render
+    // endpoints can enforce loopback-only access. Dev uses the Vite host
+    // because Vite serves the client and proxies /api/* without XFF;
+    // prod uses Node directly (it serves the SPA via the catch-all in
+    // app/index.ts) so no public hostname or reverse proxy is involved.
+    baseUrl:
+      env.PUPPETEER_BASE_URL ??
+      (envMode.isDev
+        ? "http://localhost:3000"
+        : `http://127.0.0.1:${env.PORT}`),
   },
 
   stripe: {

@@ -6,12 +6,18 @@ import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { formatPlaytime } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
+import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
 
 const router = Router();
+
+// PuppeteerService runs in-process and connects via loopback. Reject any
+// off-host traffic at the router level so a leaked PUPPETEER_SECRET still
+// cannot exfiltrate per-player PII over the public interface.
+router.use(requireLoopback);
 
 /**
  * Render routes
