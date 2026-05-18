@@ -4,6 +4,8 @@ import config from "@/config";
 export interface ScreenshotOptions {
   /** URL to navigate to */
   url: string;
+  /** Extra HTTP headers attached to every request the page makes (including subresource fetches) */
+  extraHeaders?: Record<string, string>;
   /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
   /** CSS selector of the element to screenshot (optional, defaults to full page) */
@@ -91,6 +93,7 @@ export class PuppeteerService {
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
     const {
       url,
+      extraHeaders,
       waitForSelector,
       elementSelector,
       waitForAssets = true,
@@ -108,6 +111,10 @@ export class PuppeteerService {
     try {
       page = await browser.newPage();
       await page.setViewport({ width: viewportWidth, height: viewportHeight });
+
+      if (extraHeaders) {
+        await page.setExtraHTTPHeaders(extraHeaders);
+      }
 
       await page.goto(url, {
         waitUntil: "domcontentloaded",

@@ -73,7 +73,6 @@ function PodiumEntry({
           src={skinSrc}
           alt={player.username}
           className={`relative ${style.height} drop-shadow-[0_4px_20px_rgba(0,0,0,0.6)] [image-rendering:pixelated]`}
-          crossOrigin="anonymous"
         />
       </div>
       {/* Username + Value */}
@@ -96,10 +95,9 @@ export function TopRender() {
   const [skins, setSkins] = useState<string[] | null>(null);
   const [poses] = useState(() => [randomPose(), randomPose(), randomPose()]);
 
-  const secret = params.get("secret");
   const category = params.get("category");
   const item = params.get("item");
-  const hasMissingParams = !secret || !category || !item;
+  const hasMissingParams = !category || !item;
 
   useEffect(() => {
     if (hasMissingParams) return;
@@ -108,14 +106,14 @@ export function TopRender() {
     url.searchParams.set("category", category);
     url.searchParams.set("item", item);
 
-    fetch(url.toString(), { headers: { "x-render-secret": secret } })
+    fetch(url.toString())
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<TopData>;
       })
       .then(setData)
       .catch(() => setFetchError("Failed to load leaderboard data"));
-  }, [hasMissingParams, secret, category, item]);
+  }, [hasMissingParams, category, item]);
 
   useEffect(() => {
     if (!data) return;

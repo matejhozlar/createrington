@@ -82,12 +82,12 @@ export async function execute(
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
       const renderUrl = new URL("/render/compare", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("secret", config.puppeteer.secret);
       renderUrl.searchParams.set("player1", user1.id);
       renderUrl.searchParams.set("player2", user2.id);
 
       const result = await puppeteer.screenshot({
         url: renderUrl.toString(),
+        extraHeaders: { "x-render-secret": config.puppeteer.secret },
         waitForSelector: "#compare-container",
         elementSelector: "#compare-container",
         timeout: 15_000,

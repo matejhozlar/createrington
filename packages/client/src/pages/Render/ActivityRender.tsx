@@ -119,9 +119,8 @@ export function ActivityRender() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
-  const secret = params.get("secret");
   const player = params.get("player");
-  const hasMissingParams = !secret || !player;
+  const hasMissingParams = !player;
 
   useEffect(() => {
     if (hasMissingParams) return;
@@ -129,19 +128,18 @@ export function ActivityRender() {
     const url = new URL("/api/render/activity", window.location.origin);
     url.searchParams.set("player", player);
 
-    fetch(url.toString(), { headers: { "x-render-secret": secret } })
+    fetch(url.toString())
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<ActivityData>;
       })
       .then(setData)
       .catch(() => setFetchError("Failed to load activity data"));
-  }, [hasMissingParams, secret, player]);
+  }, [hasMissingParams, player]);
 
   useEffect(() => {
     if (!data) return;
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => setAvatarSrc(img.src);
     img.onerror = () => setAvatarSrc(mcHeadsAvatar(data.uuid));
     img.src = starlightBustUrl(data.uuid);
@@ -200,7 +198,6 @@ export function ActivityRender() {
           src={avatarSrc}
           alt={data.username}
           className="w-[100px] h-[100px] rounded-md drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
-          crossOrigin="anonymous"
         />
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-3">

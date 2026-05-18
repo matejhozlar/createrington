@@ -201,10 +201,9 @@ export function CryptoChartRender() {
   const [data, setData] = useState<ChartData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const secret = params.get("secret");
   const symbol = params.get("symbol");
   const interval = params.get("interval") ?? "minute";
-  const hasMissingParams = !secret || !symbol;
+  const hasMissingParams = !symbol;
 
   useEffect(() => {
     if (hasMissingParams) return;
@@ -213,14 +212,14 @@ export function CryptoChartRender() {
     url.searchParams.set("symbol", symbol);
     url.searchParams.set("interval", interval);
 
-    fetch(url.toString(), { headers: { "x-render-secret": secret } })
+    fetch(url.toString())
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<ChartData>;
       })
       .then(setData)
       .catch(() => setFetchError("Failed to load chart data"));
-  }, [hasMissingParams, secret, symbol, interval]);
+  }, [hasMissingParams, symbol, interval]);
 
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 
