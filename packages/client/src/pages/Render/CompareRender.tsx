@@ -81,10 +81,9 @@ export function CompareRender() {
   const [poseLeft] = useState(randomPose);
   const [poseRight] = useState(randomPose);
 
-  const secret = params.get("secret");
   const p1 = params.get("player1");
   const p2 = params.get("player2");
-  const hasMissingParams = !secret || !p1 || !p2;
+  const hasMissingParams = !p1 || !p2;
 
   useEffect(() => {
     if (hasMissingParams) return;
@@ -93,14 +92,14 @@ export function CompareRender() {
     url.searchParams.set("player1", p1);
     url.searchParams.set("player2", p2);
 
-    fetch(url.toString(), { headers: { "x-render-secret": secret } })
+    fetch(url.toString())
       .then((res) => {
         if (!res.ok) throw new Error("Bad response");
         return res.json() as Promise<CompareData>;
       })
       .then(setData)
       .catch(() => setFetchError("Failed to load comparison data"));
-  }, [hasMissingParams, secret, p1, p2]);
+  }, [hasMissingParams, p1, p2]);
 
   useEffect(() => {
     if (!data) return;
@@ -177,7 +176,6 @@ export function CompareRender() {
               src={skinLeft}
               alt={left.username}
               className="relative h-[280px] drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
-              crossOrigin="anonymous"
             />
           </div>
           <span className="mt-2 text-xl font-bold tracking-wide text-chart-1">
@@ -226,7 +224,6 @@ export function CompareRender() {
               src={skinRight}
               alt={right.username}
               className="relative h-[280px] -scale-x-100 drop-shadow-[0_4px_24px_rgba(0,0,0,0.6)] [image-rendering:pixelated]"
-              crossOrigin="anonymous"
             />
           </div>
           <span className="mt-2 text-xl font-bold tracking-wide text-chart-5">

@@ -4,10 +4,17 @@ import config from "@/config";
 export interface ScreenshotOptions {
   /** URL to navigate to */
   url: string;
+  /** Extra HTTP headers attached to every request the page makes (including subresource fetches) */
+  extraHeaders?: Record<string, string>;
   /** CSS selector to wait for before capturing (optional, defaults to full page) */
   waitForSelector?: string;
   /** CSS selector of the element to screenshot (optional, defaults to full page) */
   elementSelector?: string;
+  /**
+   * Wait for `document.fonts.ready` and all `<img>` elements to finish loading
+   * before capturing. Defaults to true.
+   */
+  waitForAssets?: boolean;
   /** Extra delay in ms after selector is found, to let animations/charts settle */
   settleDelay?: number;
   /** Navigation timeout in ms (default: 30000) */
@@ -86,8 +93,10 @@ export class PuppeteerService {
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
     const {
       url,
+      extraHeaders,
       waitForSelector,
       elementSelector,
+      waitForAssets = true,
       settleDelay = 0,
       timeout = 30_000,
       viewportWidth = 1280,
@@ -103,6 +112,10 @@ export class PuppeteerService {
       page = await browser.newPage();
       await page.setViewport({ width: viewportWidth, height: viewportHeight });
 
+      if (extraHeaders) {
+        await page.setExtraHTTPHeaders(extraHeaders);
+      }
+
       await page.goto(url, {
         waitUntil: "domcontentloaded",
         timeout,
@@ -110,6 +123,30 @@ export class PuppeteerService {
 
       if (waitForSelector) {
         await page.waitForSelector(waitForSelector, { timeout });
+      }
+
+      if (waitForAssets) {
+        const assetWait = page.evaluate(async () => {
+          await document.fonts.ready;
+          await Promise.all(
+            Array.from(document.images).map((img) =>
+              img.complete
+                ? null
+                : new Promise<void>((resolve) => {
+                    img.addEventListener("load", () => resolve(), {
+                      once: true,
+                    });
+                    img.addEventListener("error", () => resolve(), {
+                      once: true,
+                    });
+                  }),
+            ),
+          );
+        });
+        const ceiling = new Promise<void>((resolve) =>
+          setTimeout(resolve, 10_000),
+        );
+        await Promise.race([assetWait, ceiling]);
       }
 
       if (settleDelay > 0) {

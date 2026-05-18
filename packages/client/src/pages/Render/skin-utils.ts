@@ -31,7 +31,6 @@ export function starlightBustUrl(uuid: string): string {
 export function loadSkin(uuid: string, pose: string): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
     img.onload = () => resolve(img.src);
     img.onerror = () => resolve(mcHeadsBody(uuid));
     img.src = starlightSkinUrl(uuid, pose);

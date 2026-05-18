@@ -545,15 +545,15 @@ async function handleChart(
   try {
     const puppeteer = await getService(Services.PUPPETEER_SERVICE);
     const renderUrl = new URL("/render/crypto-chart", config.puppeteer.baseUrl);
-    renderUrl.searchParams.set("secret", config.puppeteer.secret);
     renderUrl.searchParams.set("symbol", symbol);
     renderUrl.searchParams.set("interval", interval);
 
     const result = await puppeteer.screenshot({
       url: renderUrl.toString(),
+      extraHeaders: { "x-render-secret": config.puppeteer.secret },
       waitForSelector: "#chart-container",
       elementSelector: "#chart-container",
-      settleDelay: 2000,
+      settleDelay: 1000,
       timeout: 15_000,
       viewportWidth: 800,
       viewportHeight: 420,

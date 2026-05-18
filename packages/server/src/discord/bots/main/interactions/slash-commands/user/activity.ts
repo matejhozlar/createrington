@@ -53,14 +53,13 @@ export async function execute(
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
       const renderUrl = new URL("/render/activity", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("secret", config.puppeteer.secret);
       renderUrl.searchParams.set("player", targetUser.id);
 
       const result = await puppeteer.screenshot({
         url: renderUrl.toString(),
+        extraHeaders: { "x-render-secret": config.puppeteer.secret },
         waitForSelector: "#activity-container",
         elementSelector: "#activity-container",
-        settleDelay: 1500,
         timeout: 15_000,
         viewportWidth: 900,
         viewportHeight: 500,

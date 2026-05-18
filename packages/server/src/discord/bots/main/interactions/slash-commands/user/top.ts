@@ -109,15 +109,14 @@ export async function execute(
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
       const renderUrl = new URL("/render/top", config.puppeteer.baseUrl);
-      renderUrl.searchParams.set("secret", config.puppeteer.secret);
       renderUrl.searchParams.set("category", category);
       renderUrl.searchParams.set("item", item);
 
       const result = await puppeteer.screenshot({
         url: renderUrl.toString(),
+        extraHeaders: { "x-render-secret": config.puppeteer.secret },
         waitForSelector: "#top-container",
         elementSelector: "#top-container",
-        settleDelay: 2000,
         timeout: 15_000,
         viewportWidth: 900,
         viewportHeight: 500,
