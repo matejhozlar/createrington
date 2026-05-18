@@ -6,6 +6,7 @@ import { refreshTokenService } from "@/services/auth/token/refresh-token.service
 import { accessCookieService } from "@/services/auth/token/access-cookie.service";
 import { sessionService } from "@/services/auth/session/session.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
+import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
 import type { JWTPayload } from "@createrington/shared/auth";
@@ -415,8 +416,16 @@ export class AuthController {
 
     const token =
       typeof req.query.token === "string" ? req.query.token : undefined;
-    if (!token) {
-      throw new BadRequestError("Missing token");
+    const rawTs = typeof req.query.ts === "string" ? req.query.ts : undefined;
+    const sig = typeof req.query.sig === "string" ? req.query.sig : undefined;
+    if (!token || !rawTs || !sig) {
+      throw new BadRequestError("Missing token, ts, or sig");
+    }
+    const ts = Number(rawTs);
+    if (
+      !verifyDevLoginToken(token, ts, sig, config.app.auth.accessToken.secret)
+    ) {
+      throw new BadRequestError("Invalid or expired signature");
     }
 
     const rawReturnTo =
