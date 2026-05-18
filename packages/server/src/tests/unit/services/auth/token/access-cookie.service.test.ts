@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock config so the singleton constructs deterministically.
+// Prod deployment scenario: COOKIE_DOMAIN is set and the deployment is prod,
+// so deriveCookieName returns the base name unchanged. The dev deployment
+// adds a `_dev` suffix instead, see access-cookie.dev-suffix.test.ts.
 vi.mock("@/config", () => ({
   default: {
-    envMode: { isProd: true },
+    envMode: { isProd: true, isDevDeployment: false },
     app: {
       auth: {
         accessToken: { expiresIn: "15m", secret: "test-secret-32-chars-min-x" },

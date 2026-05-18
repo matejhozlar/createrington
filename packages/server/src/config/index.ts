@@ -42,12 +42,14 @@ try {
   };
 }
 
-// Suffix per-deployment so prod and dev sharing a parent-domain cookie jar
-// (e.g. both scoped to `.createrington.com`) can't overwrite each other's
-// refresh cookies and trigger the family-detection theft-revoke storm.
+// Suffix only the dev deployment so prod and dev sharing a parent-domain
+// cookie jar (e.g. both scoped to `.createrington.com`) can't overwrite
+// each other's refresh cookies and trigger the family-detection
+// theft-revoke storm. Prod keeps the legacy unsuffixed name so external
+// SSO consumers that hardcode `crt_access` / `crt_refresh` keep working.
 function deriveCookieName(base: string): string {
   if (!env.COOKIE_DOMAIN) return base;
-  return `${base}_${envMode.isDevDeployment ? "dev" : "prod"}`;
+  return envMode.isDevDeployment ? `${base}_dev` : base;
 }
 
 const config = {
