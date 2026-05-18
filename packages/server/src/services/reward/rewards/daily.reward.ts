@@ -1,7 +1,7 @@
 import type { PlayerIdentifier } from "@/generated/db";
 import type { RewardClaimResult, RewardEligibilityResult } from "../types";
 import { BaseReward } from "./base.reward";
-import { balanceRepo } from "@/db";
+import { balanceRepo, db } from "@/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 
 /**
@@ -19,6 +19,15 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
  *      - Claim at 11 PM UTC -> can claim at midnight UTC (1 hour later)
  *      - Claim at 1 AM UTC -> can claim again tomorrow at midnight UTC (23 hours later)
  */
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code: unknown }).code === "23505"
+  );
+}
+
 export class DailyReward extends BaseReward {
   /**
    * Checks if a player is eligible to claim the daily reward
@@ -97,17 +106,28 @@ export class DailyReward extends BaseReward {
         };
       }
 
-      const newBalance = await balanceRepo.add(
-        playerUuid,
-        this.config.amount,
-        `Daily reward claimed`,
-        BalanceTransactionType.REWARD,
-        {
-          rewardType: this.config.type,
-        },
-      );
+      const claimPeriodKey = this.getCurrentPeriodKey(new Date());
 
-      await this.recordClaim(playerUuid, this.config.amount);
+      const newBalance = await db.inTransaction(async (tx) => {
+        // Insert first so the unique index settles a concurrent-claim race
+        // before any balance is credited.
+        await this.recordClaim(
+          playerUuid,
+          this.config.amount,
+          claimPeriodKey,
+          { rewardType: this.config.type },
+          tx,
+        );
+
+        return await balanceRepo.add(
+          playerUuid,
+          this.config.amount,
+          `Daily reward claimed`,
+          BalanceTransactionType.REWARD,
+          { rewardType: this.config.type },
+          tx,
+        );
+      });
 
       const nextClaimTime = this.getNextClaimTime(new Date());
 
@@ -122,12 +142,30 @@ export class DailyReward extends BaseReward {
         nextClaimTime,
       };
     } catch (error) {
+      if (isUniqueViolation(error)) {
+        // Concurrent claim already won the race for this period.
+        const eligibility = await this.checkEligibility(identifier);
+        return {
+          success: false,
+          error: eligibility.reason ?? "Already claimed for this period",
+          nextClaimTime: eligibility.nextClaimTime,
+        };
+      }
       logger.error("Failed to claim daily reward:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+  }
+
+  private getCurrentPeriodKey(now: Date): string {
+    const periodStart = new Date(now);
+    periodStart.setUTCHours(this.config.resetHour, 0, 0, 0);
+    if (periodStart > now) {
+      periodStart.setUTCDate(periodStart.getUTCDate() - 1);
+    }
+    return periodStart.toISOString().slice(0, 10);
   }
 
   /**

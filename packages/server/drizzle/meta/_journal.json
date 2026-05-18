@@ -232,6 +232,13 @@
       "when": 1779112580973,
       "tag": "0032_chilly_hercules",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1779113141480,
+      "tag": "0033_windy_inertia",
+      "breakpoints": true
     }
   ]
 }
