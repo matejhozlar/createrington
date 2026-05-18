@@ -3,6 +3,14 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { getService, Services } from "@/services";
 import config from "@/config";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
+
+const aiAssistLimit = createRateLimit({
+  name: "admin.ai.assist",
+  limit: 30,
+  windowMs: 60 * 60 * 1000,
+  key: (ctx) => ctx.user?.discordId ?? ctx.ip,
+});
 
 const ASSIST_ACTIONS = [
   "rewrite",
@@ -66,6 +74,7 @@ const TEMPERATURES: Record<AssistAction, number> = {
 
 export const adminAiRouter = router({
   assist: adminProcedure
+    .use(aiAssistLimit)
     .meta({
       description:
         "Run a small editing action (rewrite, shorten, grammar, translate to English, etc.) on a piece of admin-authored text using the OpenAI chat completion service.",

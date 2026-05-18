@@ -6,6 +6,7 @@ import { extractBearerToken } from "@/utils/bearer-token";
 /** Per-request context injected into every tRPC procedure. */
 export interface Context {
   user: JWTPayload | null;
+  ip: string;
 }
 
 /**
@@ -32,5 +33,5 @@ export async function createContext({
     }
   }
 
-  return { user };
+  return { user, ip: req.ip ?? "" };
 }

@@ -2,6 +2,14 @@ import { router, publicProcedure } from "@/trpc/trpc";
 import { waitlist, waitlistRepo } from "@/db";
 import { z } from "zod";
 import { trpcError } from "@/trpc/utils";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
+
+const waitlistCreateLimit = createRateLimit({
+  name: "public.waitlists.create",
+  limit: 5,
+  windowMs: 60 * 60 * 1000,
+  key: (ctx) => ctx.ip || "anon",
+});
 
 /** Public waitlists router: check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
@@ -15,6 +23,7 @@ export const waitlistsRouter = router({
     }),
 
   create: publicProcedure
+    .use(waitlistCreateLimit)
     .meta({
       description:
         "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and emails a Discord invite URL. In waitlist mode, requires Discord name + email and goes to pending.",
