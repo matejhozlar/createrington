@@ -464,12 +464,6 @@ function safeSsoRedirect(res: Response, url: string): void {
   res.redirect(validated);
 }
 
-/**
- * Resolve a user-supplied return_to against a fixed base URL and only keep
- * the pathname/search/hash when it stays same-origin. Anything that resolves
- * off-origin (e.g. `//evil.com`, `https://evil.com/x`, `/\evil.com`) collapses
- * to `/`. This is the CWE-601 sanitizer pattern static analysis recognises.
- */
 function safeLocalPath(candidate: string): string {
   try {
     const base = "http://localhost";
