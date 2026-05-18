@@ -231,12 +231,10 @@ export abstract class BaseQueries<
     // 3+ valid keys: pick the first one that resolves to a usable column
     for (const key of validKeys) {
       try {
-        const columnName = this.getColumnName(key);
-        if (columnName) {
-          const testIdentifier = { [key]: obj[key] };
-          this.getColumnMapping(testIdentifier);
-          return testIdentifier as NonNullable<TConfig["Identifier"]>;
-        }
+        this.getColumnName(key);
+        const testIdentifier = { [key]: obj[key] };
+        this.getColumnMapping(testIdentifier);
+        return testIdentifier as NonNullable<TConfig["Identifier"]>;
       } catch {
         // try next
       }
@@ -1313,14 +1311,8 @@ export abstract class BaseQueries<
   }
 
   /**
-   * Executes a raw SQL query with type safety. Protected so that arbitrary
-   * SQL cannot reach this method via the public Q.* surface; subclasses
-   * that genuinely need raw queries should expose a narrower method that
-   * accepts parameters rather than a SQL string.
-   *
-   * @param query - SQL query string
-   * @param params - Query parameters
-   * @returns Promise resolving to query results
+   * Executes a raw SQL query with type safety.
+   * Protected to keep unparameterised SQL off the public Q.* surface.
    */
   protected async raw(
     query: string,
