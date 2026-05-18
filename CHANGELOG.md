@@ -1,3 +1,8 @@
+## v1.18.6 (2026-05-18)
+
+### @createrington/server (1.18.3 → 1.18.4)
+- [fix] Keep legacy unsuffixed cookie names (`crt_access`, `crt_refresh`) on production so external SSO consumers that hardcode those names keep working; only the dev deployment now receives the `_dev` suffix
+
 ## v1.18.5 (2026-05-18)
 
 ### @createrington/server (1.18.2 → 1.18.3)
