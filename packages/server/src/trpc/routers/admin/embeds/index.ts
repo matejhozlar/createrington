@@ -23,7 +23,7 @@ const embedSendLimit = createRateLimit({
   name: "admin.embeds.send",
   limit: 60,
   windowMs: 60 * 60 * 1000,
-  key: (ctx) => ctx.user?.discordId ?? ctx.ip,
+  key: (ctx) => ctx.user!.discordId,
 });
 
 function getMessageService(bot: "main" | "web" = "main") {

@@ -9,7 +9,7 @@ const aiAssistLimit = createRateLimit({
   name: "admin.ai.assist",
   limit: 30,
   windowMs: 60 * 60 * 1000,
-  key: (ctx) => ctx.user?.discordId ?? ctx.ip,
+  key: (ctx) => ctx.user!.discordId,
 });
 
 const ASSIST_ACTIONS = [

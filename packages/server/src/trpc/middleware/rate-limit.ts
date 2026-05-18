@@ -24,6 +24,18 @@ export function createRateLimit(opts: RateLimitOptions) {
 
     bucket.count++;
 
+    // Prune before the limit check so cleanup happens on every request,
+    // not just non-rate-limited ones. Without this, a sustained attack
+    // from many unique IPs would never trigger pruning.
+    if (buckets.size > opts.limit * 4) {
+      for (const [k, b] of buckets) {
+        if (b.resetAt <= now) {
+          buckets.delete(k);
+          break;
+        }
+      }
+    }
+
     if (bucket.count > opts.limit) {
       const retryInSec = Math.ceil((bucket.resetAt - now) / 1000);
       logger.warn(
@@ -33,17 +45,6 @@ export function createRateLimit(opts: RateLimitOptions) {
         code: "TOO_MANY_REQUESTS",
         message: `Rate limit exceeded. Try again in ${retryInSec}s.`,
       });
-    }
-
-    // Cheap prune: drop one expired entry per call so the map can't grow
-    // unbounded under high-cardinality keys (e.g. per-IP).
-    if (buckets.size > opts.limit * 4) {
-      for (const [k, b] of buckets) {
-        if (b.resetAt <= now) {
-          buckets.delete(k);
-          break;
-        }
-      }
     }
 
     return next();
