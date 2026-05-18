@@ -36,3 +36,16 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
   handler: rateLimitHandler,
 });
+
+// Per-player limiter for mod-side mutating currency endpoints (deposit,
+// withdraw, pay). Keyed on the authenticated minecraft UUID so a single
+// compromised player JWT can't pump balance via repeated calls. Mounted
+// after verifyModJWT so req.modAuth.uuid is populated.
+export const modCurrencyMutationLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+  keyGenerator: (req: Request) => req.modAuth?.uuid ?? req.ip ?? "unknown",
+});
