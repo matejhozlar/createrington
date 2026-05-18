@@ -1,3 +1,9 @@
+## v1.18.3 (2026-05-18)
+
+### @createrington/client (0.2.21 → 0.2.22)
+- [add] Sync BlueMap iframe hash to the parent URL so map coordinates become shareable via direct link: navigating inside the embedded map updates the browser address bar in real time, and opening a shared URL restores the exact map position
+- [fix] Detach BlueMap hashchange listener on iframe reload and component unmount to prevent leaked event handlers and stale parent-URL writes
+
 ## v1.18.2 (2026-05-18)
 
 ### @createrington/server (1.18.1 → 1.18.2)
