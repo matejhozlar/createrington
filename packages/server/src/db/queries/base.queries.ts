@@ -136,10 +136,6 @@ export abstract class BaseQueries<
    */
   protected getColumnName(key: string): string {
     const name = this.COLUMN_MAP?.[key] ?? this.camelToSnake(key);
-    // Belt-and-braces validation alongside the Zod-enum filters at tRPC
-    // boundaries. camelToSnake passes spaces, quotes, semicolons through
-    // unchanged, so an attacker-controlled key would otherwise reach the
-    // WHERE/ORDER BY/SELECT interpolation in getColumnMapping & findAll.
     if (!/^[a-z_][a-z0-9_]*$/.test(name)) {
       throw new Error(`Invalid column name resolved for key "${key}"`);
     }
@@ -210,10 +206,8 @@ export abstract class BaseQueries<
       (key) => obj[key] !== undefined && obj[key] !== null,
     );
 
-    // Filter against VALID_IDENTIFIER_FIELDS when the subclass declared it.
-    // Without this, a caller spreading user input (Q.player.find(req.body))
-    // could introduce arbitrary keys that camelToSnake passes through to
-    // getColumnMapping and into the WHERE clause.
+    // Filter early so an unspread user object can't smuggle arbitrary keys
+    // into the WHERE clause via getColumnMapping.
     const validKeys = this.VALID_IDENTIFIER_FIELDS
       ? availableKeys.filter((key) => this.VALID_IDENTIFIER_FIELDS!.has(key))
       : availableKeys;
