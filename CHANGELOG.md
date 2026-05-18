@@ -1,3 +1,14 @@
+## v1.18.5 (2026-05-18)
+
+### @createrington/server (1.18.2 → 1.18.3)
+- [fix] Wait for fonts and images before puppeteer screenshot: the screenshot service now awaits `document.fonts.ready` and all `<img>` element load/error events (with a 10s ceiling) before capturing, replacing the fixed `settleDelay` on most slash commands and eliminating blank-skin or missing-font renders
+- [fix] Move puppeteer render secret from URL query parameter to `x-render-secret` HTTP header: the secret no longer appears in browser history, server access logs, or the DOM; all five slash commands now pass it via the new `extraHeaders` screenshot option
+- [fix] Allow skin image hosts in CSP `img-src`: add `starlightskins.lunareclipse.studio` and `mc-heads.net` to the Content Security Policy so render pages can load Minecraft skin images without being blocked
+
+### @createrington/client (0.2.23 → 0.2.24)
+- [fix] Remove `crossOrigin="anonymous"` from all render page skin images and `Image()` constructors: the attribute was unnecessary since skins are now loaded through CSP-allowed hosts, and it caused CORS preflight failures on some skin APIs
+- [fix] Remove render secret from client-side fetch URLs: render pages no longer read or send the puppeteer secret as a query parameter, since the server now injects it via HTTP header during the puppeteer navigation
+
 ## v1.18.4 (2026-05-18)
 
 ### @createrington/client (0.2.22 → 0.2.23)
