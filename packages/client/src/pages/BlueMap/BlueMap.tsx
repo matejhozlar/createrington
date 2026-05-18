@@ -1,26 +1,36 @@
 // TODO: Refactor to dynamically open the map for a configured server.
 // TODO: Add backend routes to provide the map link per server.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPinOff } from "lucide-react";
 
 const BLUEMAP_URL = import.meta.env.VITE_BLUEMAP_URL as string;
 
 export function BlueMap() {
-  // Compute iframe src once so re-renders triggered by our own
-  // history.replaceState below don't reload the iframe and reset the view.
+  // Computed once so our own replaceState below doesn't reload the iframe.
   const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const syncRef = useRef<{ child: Window; handler: () => void } | null>(null);
   const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
     "loading",
   );
 
-  // BlueMap writes its position into its own URL hash. Mirror that hash into
-  // the parent window so users can copy/share the URL bar, matching BlueMap's
-  // native UX when it isn't iframed. Requires same-origin with BLUEMAP_URL;
-  // in dev (when VITE_BLUEMAP_URL points to prod) this silently no-ops.
+  const detachSync = () => {
+    if (!syncRef.current) return;
+    try {
+      syncRef.current.child.removeEventListener(
+        "hashchange",
+        syncRef.current.handler,
+      );
+    } catch {
+      // child window already torn down
+    }
+    syncRef.current = null;
+  };
+
   const handleLoad = () => {
     setStatus("available");
+    detachSync();
     const child = iframeRef.current?.contentWindow;
     if (!child) return;
     try {
@@ -36,11 +46,13 @@ export function BlueMap() {
       };
       sync();
       child.addEventListener("hashchange", sync);
+      syncRef.current = { child, handler: sync };
     } catch {
-      // Cross-origin BLUEMAP_URL (typically dev pointing at prod). Sharing
-      // via URL bar won't work in this env, but the map still loads.
+      // cross-origin BLUEMAP_URL (dev pointing at prod); sync degrades
     }
   };
+
+  useEffect(() => detachSync, []);
 
   return (
     <div className="flex h-full w-full flex-1">
