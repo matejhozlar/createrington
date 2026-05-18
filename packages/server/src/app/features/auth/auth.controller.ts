@@ -421,16 +421,9 @@ export class AuthController {
 
     const rawReturnTo =
       typeof req.query.return_to === "string" ? req.query.return_to : "/";
-    // Reject anything that isn't a single-slash same-origin path. Browsers
-    // normalise `/\evil.com` to `//evil.com` so the second char check has
-    // to cover both slashes.
-    const returnTo =
-      rawReturnTo.startsWith("/") && !/^\/[\\/]/.test(rawReturnTo)
-        ? rawReturnTo
-        : "/";
 
     refreshTokenService.setCookie(res, token);
-    res.redirect(returnTo);
+    res.redirect(safeLocalPath(rawReturnTo));
   }
 }
 
@@ -469,4 +462,21 @@ function safeSsoRedirect(res: Response, url: string): void {
     throw new BadRequestError("Invalid return_to URL");
   }
   res.redirect(validated);
+}
+
+/**
+ * Resolve a user-supplied return_to against a fixed base URL and only keep
+ * the pathname/search/hash when it stays same-origin. Anything that resolves
+ * off-origin (e.g. `//evil.com`, `https://evil.com/x`, `/\evil.com`) collapses
+ * to `/`. This is the CWE-601 sanitizer pattern static analysis recognises.
+ */
+function safeLocalPath(candidate: string): string {
+  try {
+    const base = "http://localhost";
+    const url = new URL(candidate, base);
+    if (url.origin !== base) return "/";
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return "/";
+  }
 }
