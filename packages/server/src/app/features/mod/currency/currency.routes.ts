@@ -1,5 +1,6 @@
 import {
   customRoute,
+  modCurrencyMutationLimiter,
   requireKnownPlayer,
   verifyModJWT,
   verifyServerIP,
@@ -31,7 +32,12 @@ router.get(
 router.post(
   "/pay",
   ...customRoute(
-    [verifyServerIP, verifyModJWT, requireKnownPlayer],
+    [
+      verifyServerIP,
+      verifyModJWT,
+      requireKnownPlayer,
+      modCurrencyMutationLimiter,
+    ],
     CurrencyController.pay,
   ),
 );
@@ -40,7 +46,12 @@ router.post(
 router.post(
   "/deposit",
   ...customRoute(
-    [verifyServerIP, verifyModJWT, requireKnownPlayer],
+    [
+      verifyServerIP,
+      verifyModJWT,
+      requireKnownPlayer,
+      modCurrencyMutationLimiter,
+    ],
     CurrencyController.deposit,
   ),
 );
@@ -49,7 +60,12 @@ router.post(
 router.post(
   "/withdraw",
   ...customRoute(
-    [verifyServerIP, verifyModJWT, requireKnownPlayer],
+    [
+      verifyServerIP,
+      verifyModJWT,
+      requireKnownPlayer,
+      modCurrencyMutationLimiter,
+    ],
     CurrencyController.withdraw,
   ),
 );
