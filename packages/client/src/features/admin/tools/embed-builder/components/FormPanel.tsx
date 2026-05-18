@@ -593,7 +593,12 @@ function FieldRow({
             placeholder={`Field ${index + 1} name`}
             maxLength={256}
             onChange={(e) => onChange({ name: e.target.value })}
-            className="h-8 flex-1 text-[13px]"
+            aria-invalid={!field.name.trim() || undefined}
+            className={cn(
+              "h-8 flex-1 text-[13px]",
+              !field.name.trim() &&
+                "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/30",
+            )}
           />
           <label
             className={cn(
@@ -620,7 +625,12 @@ function FieldRow({
           rows={6}
           maxLength={1024}
           onChange={(e) => onChange({ value: e.target.value })}
-          className="w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          aria-invalid={!field.value.trim() || undefined}
+          className={cn(
+            "w-full resize-y rounded-md border border-input bg-transparent px-2.5 py-1.5 text-[13px] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+            !field.value.trim() &&
+              "border-destructive/60 focus-visible:border-destructive focus-visible:ring-destructive/30",
+          )}
         />
       </div>
       <div className="flex shrink-0 flex-col gap-0.5">

@@ -56,6 +56,21 @@ function toExternalData(data: EmbedDataInternal): EmbedData {
   return { ...data, fields: stripFieldIds(data.fields) };
 }
 
+function getIncompleteFieldIndexes(fields: { name: string; value: string }[]) {
+  const out: number[] = [];
+  fields.forEach((f, i) => {
+    if (!f.name.trim() || !f.value.trim()) out.push(i);
+  });
+  return out;
+}
+
+function incompleteFieldsMessage(indexes: number[]): string {
+  const list = indexes.map((i) => `#${i + 1}`).join(", ");
+  return indexes.length === 1
+    ? `Field ${list} is empty. Fill in both name and value, or remove it.`
+    : `Fields ${list} are empty. Fill in both name and value, or remove them.`;
+}
+
 const DRAFT_KEY = "embed-builder-draft";
 
 interface DraftState {
@@ -302,6 +317,12 @@ export function useEmbedBuilder() {
         return;
       }
 
+      const incomplete = getIncompleteFieldIndexes(data.fields);
+      if (incomplete.length > 0) {
+        toast.error(incompleteFieldsMessage(incomplete));
+        return;
+      }
+
       const shouldLink = opts?.linkToPreset ?? true;
       const hasActionButtons =
         data.actionButtons && data.actionButtons.length > 0;
@@ -354,6 +375,12 @@ export function useEmbedBuilder() {
       name?: string;
       categoryId?: number | null;
     }): Promise<boolean> => {
+      const incomplete = getIncompleteFieldIndexes(data.fields);
+      if (incomplete.length > 0) {
+        toast.error(incompleteFieldsMessage(incomplete));
+        return false;
+      }
+
       const embedData = toExternalData(data);
 
       if (activePreset) {
@@ -468,6 +495,12 @@ export function useEmbedBuilder() {
   const handleUpdateAll = useCallback(async () => {
     if (!activePreset) return;
 
+    const incomplete = getIncompleteFieldIndexes(data.fields);
+    if (incomplete.length > 0) {
+      toast.error(incompleteFieldsMessage(incomplete));
+      return;
+    }
+
     try {
       const result = await updateAllMutation.mutateAsync({
         presetId: activePreset.id,
@@ -492,6 +525,11 @@ export function useEmbedBuilder() {
 
   const handleUpdateLink = useCallback(
     async (linkId: number) => {
+      const incomplete = getIncompleteFieldIndexes(data.fields);
+      if (incomplete.length > 0) {
+        toast.error(incompleteFieldsMessage(incomplete));
+        return;
+      }
       try {
         await updateLinkMutation.mutateAsync({
           linkId,
