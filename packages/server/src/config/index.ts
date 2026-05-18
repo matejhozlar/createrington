@@ -126,6 +126,17 @@ const config = {
       max: 20,
       idleTimeoutMillis: 30_000,
       connectionTimeoutMillis: 10_000,
+      // Postgres aborts any single statement that exceeds 30s. Without this,
+      // a runaway query (or a heavy attacker-triggered $ilike scan) can hold
+      // a connection from the pool of 20 indefinitely and wedge the app.
+      statement_timeout: 30_000,
+      // Node-pg client-side mirror of statement_timeout, in case the server
+      // doesn't enforce it for some reason.
+      query_timeout: 30_000,
+      // Postgres kills any transaction left idle for over 60s, releasing
+      // its row locks. Protects against code paths that BEGIN but forget
+      // to COMMIT/ROLLBACK on an error.
+      idle_in_transaction_session_timeout: 60_000,
     },
     monitoring: {
       intervalMs: 60_000,
