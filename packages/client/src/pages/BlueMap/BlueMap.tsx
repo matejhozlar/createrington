@@ -1,17 +1,58 @@
 // TODO: Refactor to dynamically open the map for a configured server.
 // TODO: Add backend routes to provide the map link per server.
 
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPinOff } from "lucide-react";
 
 const BLUEMAP_URL = import.meta.env.VITE_BLUEMAP_URL as string;
 
 export function BlueMap() {
-  const location = useLocation();
+  // Computed once so our own replaceState below doesn't reload the iframe.
+  const iframeSrc = useMemo(() => `${BLUEMAP_URL}${window.location.hash}`, []);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const syncRef = useRef<{ child: Window; handler: () => void } | null>(null);
   const [status, setStatus] = useState<"loading" | "available" | "unavailable">(
     "loading",
   );
+
+  const detachSync = () => {
+    if (!syncRef.current) return;
+    try {
+      syncRef.current.child.removeEventListener(
+        "hashchange",
+        syncRef.current.handler,
+      );
+    } catch {
+      // child window already torn down
+    }
+    syncRef.current = null;
+  };
+
+  const handleLoad = () => {
+    setStatus("available");
+    detachSync();
+    const child = iframeRef.current?.contentWindow;
+    if (!child) return;
+    try {
+      const sync = () => {
+        const h = child.location.hash;
+        if (h && window.location.hash !== h) {
+          window.history.replaceState(
+            null,
+            "",
+            window.location.pathname + window.location.search + h,
+          );
+        }
+      };
+      sync();
+      child.addEventListener("hashchange", sync);
+      syncRef.current = { child, handler: sync };
+    } catch {
+      // cross-origin BLUEMAP_URL (dev pointing at prod); sync degrades
+    }
+  };
+
+  useEffect(() => detachSync, []);
 
   return (
     <div className="flex h-full w-full flex-1">
@@ -36,10 +77,11 @@ export function BlueMap() {
 
       {status !== "unavailable" && (
         <iframe
-          src={`${BLUEMAP_URL}/${location.hash}`}
+          ref={iframeRef}
+          src={iframeSrc}
           title="BlueMap Viewer"
           className="h-full w-full flex-1 border-none"
-          onLoad={() => setStatus("available")}
+          onLoad={handleLoad}
           onError={() => setStatus("unavailable")}
         />
       )}
