@@ -16,13 +16,7 @@ import { AtSign, Clock, Hash, Plus, Search, Shield } from "lucide-react";
 import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
-
-function formatName(key: string): string {
-  return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (s) => s.toUpperCase())
-    .trim();
-}
+import { formatConfigKey as formatName } from "@/features/admin/format";
 
 type Tab = "mentions" | "timestamp";
 

@@ -1,3 +1,10 @@
+export function formatConfigKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
 export function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
