@@ -26,10 +26,12 @@ import * as repositories from "./repositories";
  * @env DB_PASSWORD - The database user's password
  * @env DB_PORT - The port PostgreSQL is running on
  */
-const pool = new pg.Pool(config.database.pool);
-
-// Parse PostgreSQL BIGINT (OID 20) as native BigInt instead of string
+// Parse PostgreSQL BIGINT (OID 20) as native BigInt instead of string.
+// Must run before any pool query so the connectivity-test SELECT 1 below
+// (and every subsequent query) uses the registered parser.
 pg.types.setTypeParser(20, BigInt);
+
+const pool = new pg.Pool(config.database.pool);
 
 try {
   await pool.query("SELECT 1");
