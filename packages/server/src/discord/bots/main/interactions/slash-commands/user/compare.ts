@@ -81,13 +81,7 @@ export async function execute(
     let screenshotBuffer: Buffer | null = null;
     try {
       const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-      const baseUrl =
-        config.puppeteer.baseUrl ??
-        (config.envMode.isDev
-          ? "http://localhost:3000"
-          : config.meta.links.website);
-
-      const renderUrl = new URL("/render/compare", baseUrl);
+      const renderUrl = new URL("/render/compare", config.puppeteer.baseUrl);
       renderUrl.searchParams.set("secret", config.puppeteer.secret);
       renderUrl.searchParams.set("player1", user1.id);
       renderUrl.searchParams.set("player2", user2.id);

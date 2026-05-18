@@ -544,13 +544,7 @@ async function handleChart(
   let screenshotBuffer: Buffer | null = null;
   try {
     const puppeteer = await getService(Services.PUPPETEER_SERVICE);
-    const baseUrl =
-      config.puppeteer.baseUrl ??
-      (config.envMode.isDev
-        ? "http://localhost:3000"
-        : config.meta.links.website);
-
-    const renderUrl = new URL("/render/crypto-chart", baseUrl);
+    const renderUrl = new URL("/render/crypto-chart", config.puppeteer.baseUrl);
     renderUrl.searchParams.set("secret", config.puppeteer.secret);
     renderUrl.searchParams.set("symbol", symbol);
     renderUrl.searchParams.set("interval", interval);
