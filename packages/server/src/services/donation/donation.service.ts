@@ -229,6 +229,14 @@ export class DonationService {
       return;
     }
 
+    const existing = await donationRepo.findBySessionId(session.id);
+    if (existing) {
+      logger.info(
+        `Stripe webhook replay for session ${session.id}, already processed, skipping`,
+      );
+      return;
+    }
+
     const donation = await donationRepo.create({
       playerDiscordId: discordId,
       type,

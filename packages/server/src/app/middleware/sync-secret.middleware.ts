@@ -17,13 +17,9 @@ export const verifySyncSecret = (
 ): void => {
   const secret = req.headers["x-sync-secret"];
 
-  if (!config.sync.secret) {
-    next(new UnauthorizedError("Playtime sync is not configured"));
-    return;
-  }
-
   if (
     typeof secret !== "string" ||
+    !config.sync.secret ||
     !timingSafeEqualStrings(secret, config.sync.secret)
   ) {
     logger.warn("Invalid sync secret received on internal presence endpoint");

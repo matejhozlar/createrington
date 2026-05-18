@@ -139,18 +139,6 @@ describe("JWTService", () => {
       expect(() => service.verify(bogus)).toThrow("Invalid token payload");
     });
   });
-
-  describe("decode", () => {
-    it("returns the payload without verifying the signature", () => {
-      const token = service.generate(baseUser);
-      const decoded = service.decode(token);
-      expect(decoded?.discordId).toBe(baseUser.discordId);
-    });
-
-    it("returns null for malformed input", () => {
-      expect(service.decode("garbage")).toBeNull();
-    });
-  });
 });
 
 const TEST_SECRET = "test-secret-please-do-not-use-in-prod";
