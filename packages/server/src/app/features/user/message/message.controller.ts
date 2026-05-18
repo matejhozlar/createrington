@@ -105,6 +105,10 @@ export class MessageController {
       }
     }
 
+    if (messageContent && messageContent.length > 2000) {
+      throw new BadRequestError("Message too long");
+    }
+
     const messageService = await getService(Services.WEB_MESSAGE_SERVICE);
 
     const result = await messageService.send({
