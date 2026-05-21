@@ -318,14 +318,14 @@ export function Home() {
                 {/* CTA */}
                 <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {!user ? (
-                    <Button size="lg" className="text-lg" asChild>
+                    <Button size="xl" asChild>
                       <NavLink to="/apply-to-join">
                         Apply Now
                         <ArrowRight />
                       </NavLink>
                     </Button>
                   ) : (
-                    <Button size="lg" className="text-lg" asChild>
+                    <Button size="xl" asChild>
                       <a
                         href="https://www.curseforge.com/minecraft/modpacks/createrington"
                         target="_blank"
@@ -336,7 +336,7 @@ export function Home() {
                     </Button>
                   )}
 
-                  <Button size="lg" variant="outline" asChild>
+                  <Button size="xl" variant="outline" asChild>
                     <a href="#server-features">Learn More</a>
                   </Button>
                 </div>
@@ -586,8 +586,8 @@ export function Home() {
             </h2>
 
             <div className="flex flex-col gap-3 md:flex-row">
-              <Button size="lg" asChild>
-                <NavLink to="/apply-to-join" className="text-xl! px-8! py-6!">
+              <Button size="xl" asChild>
+                <NavLink to="/apply-to-join">
                   Apply Now
                   <ArrowRight />
                 </NavLink>

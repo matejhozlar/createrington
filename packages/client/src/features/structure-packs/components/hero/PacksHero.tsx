@@ -284,18 +284,13 @@ function HeroCopy({
       </div>
 
       <div className="mt-1 flex flex-wrap items-center gap-3">
-        <Button size="lg" className="group text-base" onClick={onPrimary}>
+        <Button size="xl" className="group" onClick={onPrimary}>
           <Rocket />
           Vote &amp; boost a pack
           <ArrowRight className="group-hover:translate-x-0.5" />
         </Button>
 
-        <Button
-          size="lg"
-          variant="outline"
-          className="text-base"
-          onClick={onSecondary}
-        >
+        <Button size="xl" variant="outline" onClick={onSecondary}>
           View active pack
         </Button>
 
