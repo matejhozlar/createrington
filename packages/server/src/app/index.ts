@@ -188,11 +188,6 @@ export function createApp(): Express {
     }),
   );
 
-  // Dedicated mount for the consumer-sandbox router. Same rationale as the
-  // panel mount above: the sandbox panel types its client against
-  // `SandboxRouter` from `@createrington/api-types`, so its procedures must
-  // resolve relative to their own root. Also MUST precede the generic
-  // `/trpc` mount.
   app.use(
     "/trpc/consumers/sandbox",
     createExpressMiddleware({
