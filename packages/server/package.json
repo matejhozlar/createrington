@@ -1,6 +1,6 @@
 {
   "name": "@createrington/server",
-  "version": "1.18.4",
+  "version": "1.19.0",
   "description": "",
   "private": true,
   "license": "UNLICENSED",
@@ -11,6 +11,9 @@
     },
     "./trpc/panel": {
       "types": "./dist/server/src/trpc/routers/consumers/panel/index.d.ts"
+    },
+    "./trpc/sandbox": {
+      "types": "./dist/server/src/trpc/routers/consumers/sandbox/index.d.ts"
     }
   },
   "scripts": {
