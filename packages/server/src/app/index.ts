@@ -11,6 +11,7 @@ import {
 } from "./middleware";
 import { appRouter } from "@/trpc/router";
 import { panelRouter } from "@/trpc/routers/consumers/panel";
+import { sandboxRouter } from "@/trpc/routers/consumers/sandbox";
 import { createContext } from "@/trpc/context";
 import config from "@/config";
 import cookieParser from "cookie-parser";
@@ -182,6 +183,25 @@ export function createApp(): Express {
           });
         } else {
           logger.warn(`[tRPC consumers.panel] ${path}: ${error.message}`);
+        }
+      },
+    }),
+  );
+
+  app.use(
+    "/trpc/consumers/sandbox",
+    createExpressMiddleware({
+      router: sandboxRouter,
+      createContext,
+      onError({ error, path }) {
+        if (error.code === "INTERNAL_SERVER_ERROR") {
+          logger.error(`[tRPC consumers.sandbox] ${path}:`, {
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+          });
+        } else {
+          logger.warn(`[tRPC consumers.sandbox] ${path}: ${error.message}`);
         }
       },
     }),
