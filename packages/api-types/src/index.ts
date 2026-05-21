@@ -6,3 +6,4 @@
  */
 
 export type { PanelRouter } from "@createrington/server/trpc/panel";
+export type { SandboxRouter } from "@createrington/server/trpc/sandbox";

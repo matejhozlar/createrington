@@ -47,9 +47,10 @@ const { players } = await client.presence.onlineByServer.query({
 
 ## Available router types
 
-| Export        | Consumer    |
-| ------------- | ----------- |
-| `PanelRouter` | Admin panel |
+| Export          | Consumer      |
+| --------------- | ------------- |
+| `PanelRouter`   | Admin panel   |
+| `SandboxRouter` | Sandbox panel |
 
 New router types are added to this package as new first-party consumers
 come online. Each router type is a semver-stable contract for its

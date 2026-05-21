@@ -11,6 +11,9 @@
     },
     "./trpc/panel": {
       "types": "./dist/server/src/trpc/routers/consumers/panel/index.d.ts"
+    },
+    "./trpc/sandbox": {
+      "types": "./dist/server/src/trpc/routers/consumers/sandbox/index.d.ts"
     }
   },
   "scripts": {
