@@ -8,6 +8,7 @@ const VARIANT_CLASS = {
   secondary: "mc-btn--secondary",
   outline: "mc-btn--outline",
   destructive: "mc-btn--destructive",
+  success: "mc-btn--success",
   discord: "mc-btn--discord",
 } as const;
 

@@ -13,6 +13,7 @@ const VARIANTS: { variant: MinecraftButtonVariant; label: string }[] = [
   { variant: "secondary", label: "Secondary" },
   { variant: "outline", label: "Outline" },
   { variant: "destructive", label: "Destructive" },
+  { variant: "success", label: "Success" },
   { variant: "discord", label: "Discord" },
 ];
 

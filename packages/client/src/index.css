@@ -650,6 +650,14 @@
   --mc-text: #ffffff;
 }
 
+.mc-btn--success {
+  --mc-face: oklch(0.696 0.17 162.48);
+  --mc-ring: oklch(from var(--mc-face) calc(l + 0.07) c h);
+  --mc-border: oklch(from var(--mc-face) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--mc-face) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
 .mc-btn--discord {
   --mc-face: var(--discord);
   --mc-ring: oklch(from var(--discord) calc(l + 0.1) c h);
