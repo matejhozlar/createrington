@@ -13,6 +13,7 @@ const VARIANTS: { variant: MinecraftButtonVariant; label: string }[] = [
   { variant: "secondary", label: "Secondary" },
   { variant: "outline", label: "Outline" },
   { variant: "destructive", label: "Destructive" },
+  { variant: "discord", label: "Discord" },
 ];
 
 const SIZES: MinecraftButtonSize[] = ["sm", "default", "lg"];

@@ -650,6 +650,14 @@
   --mc-text: #ffffff;
 }
 
+.mc-btn--discord {
+  --mc-face: var(--discord);
+  --mc-ring: oklch(from var(--discord) calc(l + 0.1) c h);
+  --mc-border: oklch(from var(--discord) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--discord) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .packs-hero-float-y,
   .packs-hero-breathe,
