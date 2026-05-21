@@ -100,6 +100,10 @@ const Advertisement = lazyNamed(
   () => import("./pages/Advertisement"),
   "Advertisement",
 );
+const MinecraftButtonsDemo = lazyNamed(
+  () => import("./features/minecraft-buttons/MinecraftButtonsDemo"),
+  "MinecraftButtonsDemo",
+);
 
 // Protected user pages
 const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
@@ -376,6 +380,7 @@ function AppContent() {
           <Route path="/donate/cancel" element={<DonationCancel />} />
           <Route path="/blue-map" element={<BlueMap />} />
           <Route path="/online-players" element={<OnlinePlayers />} />
+          <Route path="/minecraft-buttons" element={<MinecraftButtonsDemo />} />
           <Route
             path="/crypto"
             element={
