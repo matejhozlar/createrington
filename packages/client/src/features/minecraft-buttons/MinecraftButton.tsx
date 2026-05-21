@@ -1,9 +1,11 @@
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 
 import { cn } from "@/lib/utils";
 
 const VARIANT_CLASS = {
   stone: "",
+  obsidian: "mc-btn--obsidian",
   gold: "mc-btn--gold",
   grass: "mc-btn--grass",
   tnt: "mc-btn--tnt",
@@ -21,22 +23,38 @@ export type MinecraftButtonSize = keyof typeof SIZE_CLASS;
 export interface MinecraftButtonProps extends React.ComponentProps<"button"> {
   variant?: MinecraftButtonVariant;
   size?: MinecraftButtonSize;
+  asChild?: boolean;
 }
 
 export const MinecraftButton = React.forwardRef<
   HTMLButtonElement,
   MinecraftButtonProps
->(({ className, variant = "stone", size = "default", ...props }, ref) => (
-  <button
-    ref={ref}
-    className={cn(
-      "mc-btn [&_svg]:shrink-0",
-      VARIANT_CLASS[variant],
-      SIZE_CLASS[size],
+>(
+  (
+    {
       className,
-    )}
-    {...props}
-  />
-));
+      variant = "stone",
+      size = "default",
+      asChild = false,
+      ...props
+    },
+    ref,
+  ) => {
+    const Comp = asChild ? Slot : "button";
+
+    return (
+      <Comp
+        ref={ref}
+        className={cn(
+          "mc-btn [&_svg]:shrink-0",
+          VARIANT_CLASS[variant],
+          SIZE_CLASS[size],
+          className,
+        )}
+        {...props}
+      />
+    );
+  },
+);
 
 MinecraftButton.displayName = "MinecraftButton";

@@ -10,6 +10,7 @@ import {
 
 const VARIANTS: { variant: MinecraftButtonVariant; label: string }[] = [
   { variant: "stone", label: "Stone" },
+  { variant: "obsidian", label: "Obsidian" },
   { variant: "gold", label: "Gold" },
   { variant: "grass", label: "Grass" },
   { variant: "tnt", label: "TNT" },
