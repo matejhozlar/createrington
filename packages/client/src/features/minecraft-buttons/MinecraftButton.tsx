@@ -4,11 +4,10 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
 const VARIANT_CLASS = {
-  stone: "",
-  obsidian: "mc-btn--obsidian",
-  gold: "mc-btn--gold",
-  grass: "mc-btn--grass",
-  tnt: "mc-btn--tnt",
+  default: "",
+  secondary: "mc-btn--secondary",
+  outline: "mc-btn--outline",
+  destructive: "mc-btn--destructive",
 } as const;
 
 const SIZE_CLASS = {
@@ -33,7 +32,7 @@ export const MinecraftButton = React.forwardRef<
   (
     {
       className,
-      variant = "stone",
+      variant = "default",
       size = "default",
       asChild = false,
       ...props

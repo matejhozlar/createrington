@@ -1,4 +1,4 @@
-import { Pickaxe, Play, Sword, Trash2 } from "lucide-react";
+import { Download, Play, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -9,11 +9,10 @@ import {
 } from "./MinecraftButton";
 
 const VARIANTS: { variant: MinecraftButtonVariant; label: string }[] = [
-  { variant: "stone", label: "Stone" },
-  { variant: "obsidian", label: "Obsidian" },
-  { variant: "gold", label: "Gold" },
-  { variant: "grass", label: "Grass" },
-  { variant: "tnt", label: "TNT" },
+  { variant: "default", label: "Default" },
+  { variant: "secondary", label: "Secondary" },
+  { variant: "outline", label: "Outline" },
+  { variant: "destructive", label: "Destructive" },
 ];
 
 const SIZES: MinecraftButtonSize[] = ["sm", "default", "lg"];
@@ -57,36 +56,30 @@ export function MinecraftButtonsDemo() {
 
       <Section title="Sizes">
         {SIZES.map((size) => (
-          <MinecraftButton key={size} variant="gold" size={size}>
+          <MinecraftButton key={size} size={size}>
             {size}
           </MinecraftButton>
         ))}
       </Section>
 
       <Section title="With icons">
-        <MinecraftButton variant="grass">
+        <MinecraftButton>
+          <Download />
+          Download
+        </MinecraftButton>
+        <MinecraftButton variant="outline">
           <Play />
-          Play Now
+          Learn More
         </MinecraftButton>
-        <MinecraftButton variant="stone">
-          <Pickaxe />
-          Mine
-        </MinecraftButton>
-        <MinecraftButton variant="gold">
-          <Sword />
-          Attack
-        </MinecraftButton>
-        <MinecraftButton variant="tnt">
+        <MinecraftButton variant="destructive">
           <Trash2 />
           Delete
         </MinecraftButton>
       </Section>
 
       <Section title="Disabled">
-        <MinecraftButton variant="stone" disabled>
-          Locked
-        </MinecraftButton>
-        <MinecraftButton variant="gold" disabled>
+        <MinecraftButton disabled>Locked</MinecraftButton>
+        <MinecraftButton variant="secondary" disabled>
           Locked
         </MinecraftButton>
       </Section>
