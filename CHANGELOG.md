@@ -1,3 +1,15 @@
+## v1.19.0 (2026-05-21)
+
+### @createrington/server (1.18.4 → 1.19.0)
+- [add] Add sandbox consumer router at `/trpc/consumers/sandbox` with a `players.resolve` procedure that batch-resolves Minecraft UUIDs to registered player names and online status, consumed by the sandbox admin panel's inventory manager
+- [add] Export `SandboxRouter` type from `@createrington/server/trpc/sandbox` so external consumers can import the typed tRPC client
+
+### @createrington/api-types (0.1.1 → 0.2.0)
+- [add] Export `SandboxRouter` type alongside `PanelRouter`, giving the sandbox panel a semver-stable typed contract for its tRPC client
+
+### @createrington/shared (1.1.4 → 1.1.5)
+- [chore] Enable `noUncheckedIndexedAccess` in tsconfig to catch unsafe indexed-access patterns at compile time
+
 ## v1.18.6 (2026-05-18)
 
 ### @createrington/server (1.18.3 → 1.18.4)
