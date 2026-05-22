@@ -113,7 +113,7 @@ export function TokenCombobox({
               setActiveIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Search tokens..."
+            placeholder="Search"
             className="h-9 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
           />
         </div>
