@@ -41,6 +41,7 @@ export function rethrowTrpc(err: unknown): never {
     throw new TRPCError({
       code: APP_ERROR_TO_TRPC_CODE[err.statusCode] ?? "INTERNAL_SERVER_ERROR",
       message: err.message,
+      cause: err,
     });
   }
   throw err;
