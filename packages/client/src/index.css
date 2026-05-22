@@ -693,4 +693,10 @@
   .packs-hero-portal-glow {
     transition: none !important;
   }
+  .mc-btn--block,
+  .mc-btn--block:not(:disabled):hover,
+  .mc-btn--block:not(:disabled):active {
+    transition: none;
+    transform: none;
+  }
 }
