@@ -6,10 +6,17 @@ import {
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
+import { toast } from "sonner";
 
 interface AuthProviderProps {
   children: React.ReactNode;
 }
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  auth_failed: "Login failed. Please try again.",
+  unverified: "You need to apply to join before logging in.",
+  state_mismatch: "Login session expired. Please try again.",
+};
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -36,9 +43,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         window.location.href = data.data.url;
       } else {
         setError("Failed to initiate login");
+        toast.error("Could not start login. Please try again.");
       }
     } catch (error) {
       setError("Failed to connect to authentication server");
+      toast.error("Could not reach the authentication server.");
       if (import.meta.env.DEV) console.error("Login error:", error);
     }
   }, []);
@@ -51,7 +60,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Verify state parameter for CSRF protection
       const savedState = sessionStorage.getItem("oauth_state");
       if (state && savedState && state !== savedState) {
-        throw new Error("Invalid state parameter - possible CSRF attack");
+        sessionStorage.removeItem("oauth_state");
+        window.location.href = "/?error=state_mismatch";
+        return;
       }
 
       const response = await fetch("/api/auth/discord/callback", {
@@ -78,15 +89,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         localStorage.removeItem("auth_token");
 
         window.location.href = redirectPath;
-      } else {
-        throw new Error(data.error?.message || "Authentication failed");
+        return;
       }
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Authentication failed",
-      );
-      if (import.meta.env.DEV) console.error("Callback error:", error);
 
+      // The error toast is shown on the next page load by the URL-error
+      // effect below, since this redirect unloads the current document.
+      const reason =
+        data.error?.code === "UNVERIFIED" ? "unverified" : "auth_failed";
+      window.location.href = `/?error=${reason}`;
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("Callback error:", error);
       window.location.href = "/?error=auth_failed";
     } finally {
       setLoading(false);
@@ -163,9 +175,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const urlError = params.get("error");
 
     if (urlError) {
-      setError("Authentication failed");
-      setLoading(false);
-      return;
+      const message =
+        AUTH_ERROR_MESSAGES[urlError] ?? AUTH_ERROR_MESSAGES.auth_failed;
+      setError(message);
+
+      if (urlError === "unverified") {
+        toast.error("You're not registered yet", {
+          description: message,
+          duration: 10000,
+          action: {
+            label: "Apply to join",
+            onClick: () => {
+              window.location.href = "/apply-to-join";
+            },
+          },
+        });
+      } else {
+        toast.error(message);
+      }
+
+      // Strip the error param so a refresh doesn't re-trigger the toast.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url);
     }
 
     if (code) {

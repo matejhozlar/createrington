@@ -32,6 +32,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             warning: "[&_[data-icon]]:!text-amber-400",
             info: "[&_[data-icon]]:!text-blue-400",
             description: "!text-muted-foreground",
+            actionButton:
+              "!bg-primary !text-primary-foreground hover:!bg-primary/90",
           },
         }}
       />
