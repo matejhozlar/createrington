@@ -43,10 +43,6 @@ export function TokenCombobox({
   const selected = tokens.find((t) => t.symbol === value);
 
   useEffect(() => {
-    setActiveIndex(0);
-  }, [query]);
-
-  useEffect(() => {
     if (!open) return;
     listRef.current?.children[activeIndex]?.scrollIntoView({
       block: "nearest",
@@ -112,7 +108,10 @@ export function TokenCombobox({
           <input
             ref={searchRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActiveIndex(0);
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Search tokens..."
             className="h-9 w-full bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
