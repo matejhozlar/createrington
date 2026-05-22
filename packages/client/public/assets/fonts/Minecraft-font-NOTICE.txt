@@ -1,0 +1,7 @@
+Minecraft (display typeface)
+
+Designer:    Jacob Debono (JDGraphics Fonts)
+License:     Free for Commercial Use (per the font's embedded metadata)
+Files:       MinecraftRegular.woff2, MinecraftBold.woff2
+
+Used for the Minecraft-style button styling (see src/index.css, .mc-btn).
