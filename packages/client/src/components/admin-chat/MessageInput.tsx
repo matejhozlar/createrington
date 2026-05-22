@@ -100,6 +100,7 @@ export function MessageInput({
         onClick={onSubmit}
         disabled={!canSend}
         aria-label="Send message"
+        className="mb-1"
       >
         {sending ? (
           <Loader2 size={14} className="animate-spin" />
