@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, PanelLeft, Save, Send, Upload } from "lucide-react";
+import { Copy, Save, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -23,10 +23,9 @@ import { SaveAsNewModal } from "./SaveAsNewModal";
 
 interface TopbarProps {
   builder: UseEmbedBuilder;
-  onMobileSidebar?: () => void;
 }
 
-export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
+export function Topbar({ builder }: TopbarProps) {
   const {
     presetName,
     setPresetName,
@@ -91,16 +90,6 @@ export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
   return (
     <>
       <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-3 sm:px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden shrink-0"
-          onClick={onMobileSidebar}
-          aria-label="Open presets"
-        >
-          <PanelLeft className="size-5" />
-        </Button>
-
         <Breadcrumb className="hidden min-w-0 sm:block">
           <BreadcrumbList>
             <BreadcrumbItem>
