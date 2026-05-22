@@ -19,6 +19,7 @@ import { usePlayerData } from "@/contexts/player-data";
 import { useAuth } from "@/contexts/auth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { messagesApi } from "@/services/api/user/messages";
 import { Loading } from "../loading-spinner";
 import { ImagePreview } from "./image-preview";
@@ -313,19 +314,14 @@ export function ServerChat() {
         {/* Right side: player-list toggle + WebSocket connection status */}
         <div className="flex items-center gap-2">
           {!isMobile && (
-            <button
-              type="button"
+            <Button
+              variant={playerListOpen ? "default" : "secondary"}
+              size="icon"
               onClick={() => setPlayerListOpen((prev) => !prev)}
-              className={cn(
-                "flex size-9 items-center justify-center rounded-lg transition-colors cursor-pointer",
-                playerListOpen
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                  : "bg-sidebar-accent text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground",
-              )}
               title={playerListOpen ? "Close player list" : "Show player list"}
             >
               <Users className="size-5" />
-            </button>
+            </Button>
           )}
 
           <div
@@ -466,14 +462,14 @@ export function ServerChat() {
             onChange={handleFileSelect}
           />
 
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="icon-lg"
             onClick={() => fileInputRef.current?.click()}
             disabled={!canSend}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-muted-foreground transition-colors hover:bg-sidebar-accent/80 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
             <Paperclip className="size-5" />
-          </button>
+          </Button>
 
           <textarea
             ref={textareaRef}
@@ -486,18 +482,17 @@ export function ServerChat() {
             className="flex-1 resize-none rounded-lg border border-border bg-sidebar-accent px-4 py-2.5 text-sm text-foreground placeholder-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-40 leading-[1.5] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50"
           />
 
-          <button
-            type="button"
+          <Button
+            size="icon-lg"
             onClick={sendMessage}
             disabled={!canSend || (!draft.trim() && !imageFile)}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
           >
             {sending ? (
               <div className="size-5 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
             ) : (
               <Send className="size-5" />
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
