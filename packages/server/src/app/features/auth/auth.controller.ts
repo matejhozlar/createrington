@@ -98,6 +98,7 @@ export class AuthController {
         logger.warn(`Unverified user ${user.discordId} attempted to login`);
         throw new UnauthorizedError(
           "You are not registered. Please contact an administrator.",
+          { code: "UNVERIFIED" },
         );
       }
 
