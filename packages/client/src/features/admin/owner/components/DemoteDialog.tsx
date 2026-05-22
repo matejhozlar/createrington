@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Check, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -32,13 +33,14 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
   const toast = useToastActions();
   const [reason, setReason] = useState("");
 
+  const display = useStickyValue(admin);
+
   const previewQuery = trpc.owner.admins.previewDemote.useQuery(
-    { discordId: admin?.discordId ?? "" },
-    { enabled: !!admin },
+    { discordId: display?.discordId ?? "" },
+    { enabled: !!display },
   );
   const demoteMutation = trpc.owner.admins.demote.useMutation();
 
-  const display = useStickyValue(admin);
   if (!display) return null;
 
   const preview = previewQuery.data;
@@ -98,7 +100,14 @@ export function DemoteDialog({ admin, onClose, onSuccess }: DemoteDialogProps) {
 
         <div className="rounded-lg border bg-muted/50 p-4">
           {previewQuery.isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex h-5 items-center gap-2">
+                  <Skeleton className="size-4 rounded" />
+                  <Skeleton className="h-3.5 w-44" />
+                </div>
+              ))}
+            </div>
           ) : preview ? (
             <div className="flex flex-col gap-2">
               {actionRow("Remove DB admin entry", preview.inDb)}
