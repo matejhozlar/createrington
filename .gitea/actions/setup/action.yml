@@ -1,0 +1,38 @@
+name: Setup
+description: Set up Node and pnpm, restore a cached store, and install dependencies
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+
+    - name: Resolve pnpm store path
+      id: pnpm-store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+
+    # Reuse the pnpm store across runs so dependencies aren't re-downloaded.
+    - name: Cache pnpm store
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-
+
+    # Retry to tolerate transient network failures during install.
+    - name: Install dependencies
+      shell: bash
+      run: |
+        for attempt in 1 2 3; do
+          if pnpm install; then exit 0; fi
+          echo "::warning::pnpm install failed (attempt $attempt/3), retrying in 10s..."
+          sleep 10
+        done
+        exit 1

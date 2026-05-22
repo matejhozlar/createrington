@@ -20,16 +20,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup
+        uses: ./.gitea/actions/setup
 
       - name: Check formatting
         run: pnpm format:check
@@ -39,16 +31,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup
+        uses: ./.gitea/actions/setup
 
       - name: Lint
         run: pnpm lint
@@ -58,16 +42,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup
+        uses: ./.gitea/actions/setup
 
       - name: Generate code
         run: pnpm generate:ci
@@ -80,16 +56,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup
+        uses: ./.gitea/actions/setup
 
       - name: Generate code
         run: pnpm generate:ci
@@ -105,16 +73,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install
+      - name: Setup
+        uses: ./.gitea/actions/setup
 
       - name: Generate code
         run: pnpm generate:ci
