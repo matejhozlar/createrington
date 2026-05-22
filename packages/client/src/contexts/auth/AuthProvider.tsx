@@ -6,7 +6,7 @@ import {
   setAccessToken,
   refreshAccessToken,
 } from "@/services/auth/token-manager";
-import { useToastActions } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AuthProviderProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ interface AuthProviderProps {
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
   auth_failed: "Login failed. Please try again.",
-  unverified: "You are not registered. Please contact an administrator.",
+  unverified: "You need to apply to join before logging in.",
   state_mismatch: "Login session expired. Please try again.",
 };
 
@@ -22,7 +22,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const toast = useToastActions();
 
   const logoutRef = useRef<(() => Promise<void>) | null>(null);
 
@@ -51,7 +50,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       toast.error("Could not reach the authentication server.");
       if (import.meta.env.DEV) console.error("Login error:", error);
     }
-  }, [toast]);
+  }, []);
 
   const handleCallback = useCallback(async (code: string, state?: string) => {
     try {
@@ -179,7 +178,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const message =
         AUTH_ERROR_MESSAGES[urlError] ?? AUTH_ERROR_MESSAGES.auth_failed;
       setError(message);
-      toast.error(message);
+
+      if (urlError === "unverified") {
+        toast.error("You're not registered yet", {
+          description: message,
+          duration: 10000,
+          action: {
+            label: "Apply to join",
+            onClick: () => {
+              window.location.href = "/apply-to-join";
+            },
+          },
+        });
+      } else {
+        toast.error(message);
+      }
 
       // Strip the error param so a refresh doesn't re-trigger the toast.
       const url = new URL(window.location.href);
@@ -192,7 +205,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } else {
       silentRefresh().finally(() => setLoading(false));
     }
-  }, [handleCallback, silentRefresh, toast]);
+  }, [handleCallback, silentRefresh]);
 
   // Refresh ~2 minutes before the 15-minute access token expires.
   useEffect(() => {
