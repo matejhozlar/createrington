@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Bell, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { TokenCombobox } from "./TokenCombobox";
 
 function AlertRow({
   alert,
@@ -89,6 +90,19 @@ export function PriceAlerts() {
     { enabled: !!user },
   );
 
+  const { data: tokenList } = trpc.public.crypto.list.useQuery(
+    { includesCrashed: false },
+    { enabled: !!user, staleTime: 60_000 },
+  );
+
+  const tokenOptions = useMemo(
+    () =>
+      (tokenList ?? [])
+        .map((t) => ({ symbol: t.symbol, name: t.name }))
+        .sort((a, b) => a.symbol.localeCompare(b.symbol)),
+    [tokenList],
+  );
+
   const createMutation = trpc.user.crypto.alertCreate.useMutation({
     onSuccess: () => {
       toast.success("Price alert created");
@@ -106,9 +120,8 @@ export function PriceAlerts() {
   };
 
   const handleCreate = () => {
-    const trimmedSymbol = symbol.trim();
-    if (!trimmedSymbol) {
-      toast.error("Enter a token symbol");
+    if (!symbol) {
+      toast.error("Select a token");
       return;
     }
 
@@ -119,7 +132,7 @@ export function PriceAlerts() {
     }
 
     createMutation.mutate({
-      symbol: trimmedSymbol.toUpperCase(),
+      symbol,
       targetPrice: targetPrice,
       direction,
     });
@@ -151,11 +164,11 @@ export function PriceAlerts() {
               <Label className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                 Symbol
               </Label>
-              <Input
-                placeholder="e.g. DOGE"
+              <TokenCombobox
+                tokens={tokenOptions}
                 value={symbol}
-                onChange={(e) => setSymbol(e.target.value)}
-                className="mt-1"
+                onChange={setSymbol}
+                disabled={createMutation.isPending}
               />
             </div>
             <div>

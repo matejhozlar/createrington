@@ -1,3 +1,20 @@
+## v1.19.1 (2026-05-22)
+
+### @createrington/client (0.2.24 → 0.2.25)
+- [add] Add Minecraft-style button component with pixelated typeface, 3D depth shadow, press animation, and variants (default, destructive, outline, secondary, success, warning, discord) replacing the previous flat button styling site-wide
+- [add] Add searchable token dropdown (combobox) for price alerts with keyboard navigation and ARIA roles, replacing the free-text symbol input
+- [fix] Prevent demote dialog layout shift by moving the preview query to use the sticky value and replacing the "Loading..." text with skeleton placeholders that match the final layout
+- [fix] Align admin chat send button vertically with the message input field
+- [fix] Switch embed builder topbar to the shared Breadcrumb component with matching header height and background color, and remove the unused mobile presets sheet sidebar
+- [refactor] Replace inline color overrides on maintenance toggle and trade panel buttons with semantic button variants (warning, success, destructive)
+
+### @createrington/server (1.19.0 → 1.19.1)
+- [fix] Normalize IPv6-mapped addresses in the mod currency rate limiter by using the library's `ipKeyGenerator` instead of raw `req.ip`, preventing duplicate rate-limit buckets for the same client behind IPv4/IPv6 dual-stack
+
+### Root
+- [chore] Extract a reusable CI setup composite action that caches the pnpm store and retries `pnpm install` up to 3 times, fixing flaky CI failures caused by transient canvas binary downloads
+- [chore] Bump brace-expansion to 5.0.6 and ws to 8.20.1 via dependency overrides to resolve pnpm audit vulnerabilities
+
 ## v1.19.0 (2026-05-21)
 
 ### @createrington/server (1.18.4 → 1.19.0)

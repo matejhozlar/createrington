@@ -560,6 +560,131 @@
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
+/* ============================================================================
+   Minecraft button styles
+   ============================================================================ */
+
+@font-face {
+  font-family: "Minecraft";
+  src: url("/assets/fonts/MinecraftRegular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Minecraft";
+  src: url("/assets/fonts/MinecraftBold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.mc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Minecraft", ui-monospace, monospace;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: 0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.mc-btn:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+
+.mc-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mc-btn--block {
+  --mc-face: var(--primary);
+  --mc-ring: oklch(from var(--primary) calc(l + 0.07) c h);
+  --mc-border: oklch(from var(--primary) calc(l - 0.24) c h);
+  --mc-base: oklch(from var(--primary) calc(l - 0.3) c h);
+  --mc-text: var(--primary-foreground);
+
+  color: var(--mc-text);
+  background-color: var(--mc-face);
+  border: 1px solid var(--mc-border);
+  box-shadow:
+    inset 0 0 0 2px var(--mc-ring),
+    0 4px 0 0 var(--mc-base);
+  transition:
+    filter 120ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 120ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mc-btn--block:not(:disabled):hover {
+  filter: brightness(1.12);
+  box-shadow:
+    inset 0 0 0 2px var(--mc-ring),
+    0 2px 0 0 var(--mc-base);
+  transform: translateY(2px);
+}
+
+.mc-btn--block:not(:disabled):active {
+  filter: brightness(0.97);
+  box-shadow: inset 0 0 0 2px var(--mc-ring);
+  transform: translateY(4px);
+}
+
+.mc-btn--block:disabled {
+  filter: grayscale(0.5) brightness(0.85);
+}
+
+.mc-btn--secondary {
+  --mc-face: var(--secondary);
+  --mc-ring: oklch(from var(--secondary) calc(l + 0.12) c h);
+  --mc-border: oklch(from var(--secondary) calc(l - 0.1) c h);
+  --mc-base: oklch(from var(--secondary) calc(l - 0.05) c h);
+  --mc-text: var(--secondary-foreground);
+}
+
+.mc-btn--outline {
+  --mc-face: var(--background);
+  --mc-ring: oklch(1 0 0 / 0.08);
+  --mc-border: var(--input);
+  --mc-base: oklch(from var(--background) calc(l + 0.11) c h);
+  --mc-text: var(--foreground);
+}
+
+.mc-btn--destructive {
+  --mc-face: var(--destructive);
+  --mc-ring: oklch(from var(--destructive) calc(l + 0.08) c h);
+  --mc-border: oklch(from var(--destructive) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--destructive) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
+.mc-btn--success {
+  --mc-face: oklch(0.696 0.17 162.48);
+  --mc-ring: oklch(from var(--mc-face) calc(l + 0.07) c h);
+  --mc-border: oklch(from var(--mc-face) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--mc-face) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
+.mc-btn--warning {
+  --mc-face: oklch(0.769 0.188 70.08);
+  --mc-ring: oklch(from var(--mc-face) calc(l + 0.07) c h);
+  --mc-border: oklch(from var(--mc-face) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--mc-face) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
+.mc-btn--discord {
+  --mc-face: var(--discord);
+  --mc-ring: oklch(from var(--discord) calc(l + 0.1) c h);
+  --mc-border: oklch(from var(--discord) calc(l - 0.22) c h);
+  --mc-base: oklch(from var(--discord) calc(l - 0.28) c h);
+  --mc-text: #ffffff;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .packs-hero-float-y,
   .packs-hero-breathe,
@@ -570,5 +695,11 @@
   .packs-hero-portal-interactive,
   .packs-hero-portal-glow {
     transition: none !important;
+  }
+  .mc-btn--block,
+  .mc-btn--block:not(:disabled):hover,
+  .mc-btn--block:not(:disabled):active {
+    transition: none;
+    transform: none;
   }
 }

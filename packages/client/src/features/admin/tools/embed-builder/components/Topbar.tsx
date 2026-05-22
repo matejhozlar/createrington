@@ -1,6 +1,14 @@
 import { useState } from "react";
-import { Copy, PanelLeft, Save, Send, Upload } from "lucide-react";
+import { Copy, Save, Send, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 import {
   Tooltip,
   TooltipContent,
@@ -15,10 +23,9 @@ import { SaveAsNewModal } from "./SaveAsNewModal";
 
 interface TopbarProps {
   builder: UseEmbedBuilder;
-  onMobileSidebar?: () => void;
 }
 
-export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
+export function Topbar({ builder }: TopbarProps) {
   const {
     presetName,
     setPresetName,
@@ -82,34 +89,22 @@ export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 sm:px-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden shrink-0"
-          onClick={onMobileSidebar}
-          aria-label="Open presets"
-        >
-          <PanelLeft className="size-5" />
-        </Button>
-
-        <nav className="hidden min-w-0 items-center gap-1.5 text-[13px] sm:flex">
-          <a
-            href="/admin/dashboard"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Admin
-          </a>
-          <span className="text-muted-foreground">/</span>
-          <a
-            href="/admin/tools"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Tools
-          </a>
-          <span className="text-muted-foreground">/</span>
-          <span className="font-medium text-foreground">Embed builder</span>
-        </nav>
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-3 sm:px-4">
+        <Breadcrumb className="hidden min-w-0 sm:block">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Embed builder</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <div className="ml-auto flex min-w-0 max-w-[320px] flex-1 items-center justify-center gap-1.5">
           <input

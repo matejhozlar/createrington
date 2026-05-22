@@ -1,12 +1,4 @@
 import { useEffect, useState } from "react";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useToastActions } from "@/hooks/use-toast";
 import {
   INSERT_EMBED_EVENT,
@@ -106,9 +98,7 @@ function applyPartialEmbed(
 
 export function EmbedBuilder() {
   const builder = useEmbedBuilder();
-  const isMobile = useIsMobile();
   const toast = useToastActions();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [focused, setFocused] = useState<FocusTarget | null>(null);
 
   // Click handlers for the preview's "+ add field" and "+ add button"
@@ -181,35 +171,12 @@ export function EmbedBuilder() {
 
   return (
     <div className="flex h-svh min-h-0 flex-col">
-      <Topbar builder={builder} onMobileSidebar={() => setSidebarOpen(true)} />
+      <Topbar builder={builder} />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="hidden md:flex">
           <PresetSidebar builder={builder} />
         </div>
-
-        {isMobile && (
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent
-              side="left"
-              className="w-72 p-0"
-              showCloseButton={false}
-            >
-              <SheetHeader className="sr-only">
-                <SheetTitle>Presets</SheetTitle>
-                <SheetDescription>
-                  Browse and manage embed presets.
-                </SheetDescription>
-              </SheetHeader>
-              <PresetSidebar
-                builder={builder}
-                forceExpanded
-                className="w-full border-r-0"
-                onNavigate={() => setSidebarOpen(false)}
-              />
-            </SheetContent>
-          </Sheet>
-        )}
 
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background p-4 md:p-6 lg:flex-row lg:overflow-hidden lg:p-0">
           <section className="flex flex-1 flex-col gap-3 lg:overflow-y-auto lg:p-6">

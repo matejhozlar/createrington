@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import type { Request, Response } from "express";
 
 /** Shared handler for rate limit violations, logs the offending IP and returns 429 */
@@ -47,5 +47,6 @@ export const modCurrencyMutationLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   handler: rateLimitHandler,
-  keyGenerator: (req: Request) => req.modAuth?.uuid ?? req.ip ?? "unknown",
+  keyGenerator: (req: Request) =>
+    req.modAuth?.uuid ?? ipKeyGenerator(req.ip ?? "unknown"),
 });

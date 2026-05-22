@@ -31,7 +31,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarClock, Clock, Wrench, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useCountdown } from "@/hooks/use-countdown";
@@ -228,9 +227,8 @@ export function MaintenanceToggle({
           onOpenChange={setDisableDialogOpen}
         >
           <Button
-            variant="default"
+            variant="warning"
             size="sm"
-            className="bg-amber-500 text-white hover:bg-amber-600"
             onClick={() => setDisableDialogOpen(true)}
           >
             Disable
@@ -370,9 +368,9 @@ export function MaintenanceToggle({
               </p>
               <DialogFooter>
                 <Button
+                  variant="warning"
                   onClick={handleSchedule}
                   disabled={!scheduledAt || scheduleMutation.isPending}
-                  className={cn("bg-amber-500 hover:bg-amber-600")}
                 >
                   {scheduleMutation.isPending
                     ? "Scheduling..."
@@ -389,9 +387,9 @@ export function MaintenanceToggle({
               </p>
               <DialogFooter>
                 <Button
+                  variant="warning"
                   onClick={handleInstantEnable}
                   disabled={toggleMutation.isPending}
-                  className={cn("bg-amber-500 hover:bg-amber-600")}
                 >
                   {toggleMutation.isPending
                     ? "Processing..."

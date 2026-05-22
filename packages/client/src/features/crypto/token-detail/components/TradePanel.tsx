@@ -486,12 +486,8 @@ export function TradePanel({
 
         {/* Submit button */}
         <Button
-          className={cn(
-            "w-full h-11 font-semibold",
-            tab === "buy"
-              ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-              : "bg-destructive hover:bg-destructive/90 text-white",
-          )}
+          variant={tab === "buy" ? "success" : "destructive"}
+          className="w-full h-11"
           onClick={handleTrade}
           disabled={isPending || isCrashed || amountNum <= 0 || isOnCooldown}
         >
