@@ -49,6 +49,18 @@ export interface AuthenticatedUser {
 }
 
 /**
+ * Thrown by `authenticate` when the Discord account has no matching player
+ * record. Distinct from generic auth failures so the callback can return a
+ * targeted "not registered" response.
+ */
+export class UnverifiedUserError extends Error {
+  constructor() {
+    super("User is not a registered player");
+    this.name = "UnverifiedUserError";
+  }
+}
+
+/**
  * Discord OAuth configuration
  */
 interface OAuthConfig {
@@ -232,7 +244,7 @@ export class DiscordOAuthService {
     const role = await this.getAuthRole(discordUser.id);
 
     if (role === AuthRole.UNVERIFIED) {
-      throw new Error("Authentication failed");
+      throw new UnverifiedUserError();
     }
 
     const player = await Q.player.get({ discordId: discordUser.id });
