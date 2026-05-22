@@ -395,12 +395,6 @@ export class AuthController {
     try {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
-      if (user.role === AuthRole.UNVERIFIED) {
-        logger.warn(`Unverified user ${user.discordId} attempted SSO login`);
-        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
-        return;
-      }
-
       const accessToken = jwtService.generate(user);
       const rawRefreshToken = await sessionService.createSession({
         discordId: user.discordId,
@@ -417,6 +411,12 @@ export class AuthController {
 
       safeSsoRedirect(res, entry.returnTo);
     } catch (error) {
+      if (error instanceof UnverifiedUserError) {
+        logger.warn("Unverified user attempted SSO login");
+        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
+        return;
+      }
+
       logger.error("SSO callback failed:", error);
       safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }
