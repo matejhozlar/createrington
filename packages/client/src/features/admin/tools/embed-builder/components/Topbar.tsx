@@ -90,7 +90,7 @@ export function Topbar({ builder, onMobileSidebar }: TopbarProps) {
 
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-3 sm:px-4">
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-3 sm:px-4">
         <Button
           variant="ghost"
           size="icon"
