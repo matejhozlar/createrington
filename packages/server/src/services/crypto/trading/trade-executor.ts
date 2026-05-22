@@ -16,6 +16,11 @@
 import { db, Q, R } from "@/db";
 import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import {
+  BadRequestError,
+  ConflictError,
+  TooManyRequestsError,
+} from "@/app/middleware/error-handler";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
 import { recordTradeVolume } from "../engine/price-engine";
@@ -80,7 +85,7 @@ function checkRateLimit(
     const remainingSeconds = Math.ceil(
       (cooldown - (now - lastTradeTime)) / 1000,
     );
-    throw new Error(
+    throw new TooManyRequestsError(
       `Trade cooldown: wait ${remainingSeconds}s before trading ${tokenSymbol} again`,
     );
   }
@@ -227,17 +232,17 @@ export async function executeBuy(
   amount: bigint,
 ): Promise<TradeResult> {
   if (token.isCrashed) {
-    throw new Error(
+    throw new ConflictError(
       `Token ${token.symbol} has crashed and cannot be purchased`,
     );
   }
 
   if (token.delistedAt) {
-    throw new Error(`Token ${token.symbol} has been delisted`);
+    throw new ConflictError(`Token ${token.symbol} has been delisted`);
   }
 
   if (amount <= 0n) {
-    throw new Error("Amount must be positive");
+    throw new BadRequestError("Amount must be positive");
   }
 
   checkRateLimit(playerUuid, token.id, token.symbol);
@@ -252,7 +257,7 @@ export async function executeBuy(
     const freshToken = await lockAndFetchToken(tx, token.id);
 
     if (amount > freshToken.availableSupply) {
-      throw new Error(
+      throw new ConflictError(
         `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
       );
     }
@@ -273,7 +278,7 @@ export async function executeBuy(
       const currentHeld = existingHolding?.amount ?? 0n;
       if (currentHeld + amount > maxAllocation) {
         const remaining = maxAllocation - currentHeld;
-        throw new Error(
+        throw new ConflictError(
           `IPO allocation limit: you can buy at most ${remaining} more ${freshToken.symbol} (max ${maxAllocation} per player)`,
         );
       }
@@ -413,13 +418,13 @@ export async function executeSell(
   amount: bigint,
 ): Promise<TradeResult> {
   if (isInIpo(token)) {
-    throw new Error(
+    throw new ConflictError(
       `${token.symbol} is in its IPO phase: selling is not allowed until trading opens`,
     );
   }
 
   if (amount <= 0n) {
-    throw new Error("Amount must be positive");
+    throw new BadRequestError("Amount must be positive");
   }
 
   checkRateLimit(playerUuid, token.id, token.symbol);
@@ -442,7 +447,7 @@ export async function executeSell(
       .first();
 
     if (!holding || holding.amount < amount) {
-      throw new Error(
+      throw new ConflictError(
         `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
       );
     }

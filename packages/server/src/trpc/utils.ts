@@ -4,6 +4,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/app/utils/helpers";
+import { AppError } from "@/app/middleware/error-handler";
+
+type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
 /** Shorthand factories for common TRPCError codes. */
 export const trpcError = {
@@ -17,6 +20,32 @@ export const trpcError = {
   internal: (message: string) =>
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };
+
+const APP_ERROR_TO_TRPC_CODE: Record<number, TrpcCode> = {
+  400: "BAD_REQUEST",
+  401: "UNAUTHORIZED",
+  403: "FORBIDDEN",
+  404: "NOT_FOUND",
+  409: "CONFLICT",
+  429: "TOO_MANY_REQUESTS",
+};
+
+/**
+ * Re-throws a service-layer error as a TRPCError. AppError subclasses map to
+ * the tRPC code matching their HTTP status; any other error propagates
+ * unchanged so genuine failures still surface as INTERNAL_SERVER_ERROR rather
+ * than being masked as a client error.
+ */
+export function rethrowTrpc(err: unknown): never {
+  if (err instanceof AppError) {
+    throw new TRPCError({
+      code: APP_ERROR_TO_TRPC_CODE[err.statusCode] ?? "INTERNAL_SERVER_ERROR",
+      message: err.message,
+      cause: err,
+    });
+  }
+  throw err;
+}
 
 /**
  * Parses a player ID string into a typed identifier object.
