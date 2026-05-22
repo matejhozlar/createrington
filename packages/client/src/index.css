@@ -598,7 +598,6 @@
 .mc-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-  filter: grayscale(0.5) brightness(0.85);
 }
 
 .mc-btn--block {
@@ -632,6 +631,10 @@
   filter: brightness(0.97);
   box-shadow: inset 0 0 0 2px var(--mc-ring);
   transform: translateY(4px);
+}
+
+.mc-btn--block:disabled {
+  filter: grayscale(0.5) brightness(0.85);
 }
 
 .mc-btn--secondary {

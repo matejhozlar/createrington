@@ -100,6 +100,7 @@ const Advertisement = lazyNamed(
   () => import("./pages/Advertisement"),
   "Advertisement",
 );
+
 // Protected user pages
 const Profile = lazyNamed(() => import("./pages/Profile/Profile"), "Profile");
 const Settings = lazyNamed(
