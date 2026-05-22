@@ -6,6 +6,11 @@
 import { db, Q, R } from "@/db";
 import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+} from "@/app/middleware/error-handler";
 import { cryptoSetting } from "../settings/accessor";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
@@ -61,21 +66,21 @@ export async function placeOrder(
   expiryHours?: number,
 ): Promise<OrderResult> {
   if (token.isCrashed) {
-    throw new Error(`Token ${token.symbol} has crashed`);
+    throw new ConflictError(`Token ${token.symbol} has crashed`);
   }
   if (token.delistedAt) {
-    throw new Error(`Token ${token.symbol} has been delisted`);
+    throw new ConflictError(`Token ${token.symbol} has been delisted`);
   }
   if (token.ipoEndsAt && token.ipoEndsAt > new Date()) {
-    throw new Error(
+    throw new ConflictError(
       `${token.symbol} is in its IPO phase: limit/stop orders are not available until trading opens`,
     );
   }
   if (amount <= 0n) {
-    throw new Error("Amount must be positive");
+    throw new BadRequestError("Amount must be positive");
   }
   if (Number(targetPrice) <= 0) {
-    throw new Error("Target price must be positive");
+    throw new BadRequestError("Target price must be positive");
   }
 
   const pendingCount = await Q.crypto.order
@@ -87,7 +92,7 @@ export async function placeOrder(
 
   const maxPending = cryptoSetting("MAX_PENDING_ORDERS");
   if (pendingCount >= maxPending) {
-    throw new Error(`Maximum ${maxPending} pending orders allowed`);
+    throw new ConflictError(`Maximum ${maxPending} pending orders allowed`);
   }
 
   const effectiveExpiry = Math.min(
@@ -129,7 +134,7 @@ export async function placeOrder(
         BalanceTransactionType.CRYPTO_BUY,
         { refund: true },
       );
-      throw new Error(
+      throw new ConflictError(
         `Insufficient supply: only ${token.availableSupply} ${token.symbol} available`,
       );
     }
@@ -145,7 +150,7 @@ export async function placeOrder(
       .first();
 
     if (!holding || holding.amount < amount) {
-      throw new Error(
+      throw new ConflictError(
         `Insufficient holdings: you have ${holding?.amount ?? 0n} ${token.symbol}`,
       );
     }
@@ -155,7 +160,7 @@ export async function placeOrder(
     const availableToReserve = holding.amount - existingReserved;
 
     if (amount > availableToReserve) {
-      throw new Error(
+      throw new ConflictError(
         `Insufficient unreserved holdings: ${availableToReserve} ${token.symbol} available (${existingReserved} reserved in other orders)`,
       );
     }
@@ -165,22 +170,22 @@ export async function placeOrder(
   const target = Number(targetPrice);
 
   if (type === "limit_buy" && target >= currentPrice) {
-    throw new Error(
+    throw new BadRequestError(
       `Limit buy price ($${target}) must be below current price ($${currentPrice})`,
     );
   }
   if (type === "limit_sell" && target <= currentPrice) {
-    throw new Error(
+    throw new BadRequestError(
       `Limit sell price ($${target}) must be above current price ($${currentPrice})`,
     );
   }
   if (type === "stop_loss" && target >= currentPrice) {
-    throw new Error(
+    throw new BadRequestError(
       `Stop-loss price ($${target}) must be below current price ($${currentPrice})`,
     );
   }
   if (type === "take_profit" && target <= currentPrice) {
-    throw new Error(
+    throw new BadRequestError(
       `Take-profit price ($${target}) must be above current price ($${currentPrice})`,
     );
   }
@@ -217,10 +222,10 @@ export async function cancelOrder(
   const order = await Q.crypto.order.get({ id: orderId });
 
   if (order.playerMinecraftUuid !== playerUuid) {
-    throw new Error("Order does not belong to this player");
+    throw new ForbiddenError("Order does not belong to this player");
   }
   if (order.status !== "pending") {
-    throw new Error(`Cannot cancel order with status: ${order.status}`);
+    throw new ConflictError(`Cannot cancel order with status: ${order.status}`);
   }
 
   const token = await Q.crypto.token.get({ id: order.tokenId });
@@ -403,7 +408,7 @@ async function fillOrder(
 
       // Check supply within lock
       if (amount > freshToken.availableSupply) {
-        throw new Error(
+        throw new ConflictError(
           `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
         );
       }
