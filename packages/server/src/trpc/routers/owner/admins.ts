@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { router, ownerProcedure } from "@/trpc/trpc";
+import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { getService, Services } from "@/services";
@@ -136,10 +136,7 @@ export const ownerAdminsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const existing = await Q.admin.find({ discordId: input.discordId });
       if (existing) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "User is already an admin",
-        });
+        throw trpcError.conflict("User is already an admin");
       }
 
       const player = await Q.player.find({ discordId: input.discordId });
@@ -201,10 +198,7 @@ export const ownerAdminsRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       if (input.discordId === ctx.user.discordId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "You can't demote yourself",
-        });
+        throw trpcError.badRequest("You can't demote yourself");
       }
 
       const player = await Q.player.find({ discordId: input.discordId });

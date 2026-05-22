@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { router, userProcedure } from "@/trpc/trpc";
+import { trpcError } from "@/trpc/utils";
 import { donationRepo } from "@/db";
 import { getService, Services } from "@/services";
 import config from "@/config";
@@ -33,10 +33,9 @@ export const userDonationsRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       if (!config.stripe.enabled) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Donations are not available at this time",
-        });
+        throw trpcError.preconditionFailed(
+          "Donations are not available at this time",
+        );
       }
       const donationService = await getService(Services.DONATION_SERVICE);
       const baseUrl = config.meta.links.website;
@@ -70,10 +69,9 @@ export const userDonationsRouter = router({
     })
     .mutation(async ({ ctx }) => {
       if (!config.stripe.enabled) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Donations are not available at this time",
-        });
+        throw trpcError.preconditionFailed(
+          "Donations are not available at this time",
+        );
       }
       const donationService = await getService(Services.DONATION_SERVICE);
       const result = await donationService.cancelSubscription(
@@ -81,10 +79,7 @@ export const userDonationsRouter = router({
       );
 
       if (!result) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "No active subscription found",
-        });
+        throw trpcError.notFound("No active subscription found");
       }
 
       return { cancelAt: result.cancelAt.toISOString() };
@@ -97,10 +92,9 @@ export const userDonationsRouter = router({
     })
     .mutation(async ({ ctx }) => {
       if (!config.stripe.enabled) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Donations are not available at this time",
-        });
+        throw trpcError.preconditionFailed(
+          "Donations are not available at this time",
+        );
       }
       const donationService = await getService(Services.DONATION_SERVICE);
       const success = await donationService.reactivateSubscription(
@@ -108,10 +102,9 @@ export const userDonationsRouter = router({
       );
 
       if (!success) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "No cancelled subscription found to reactivate",
-        });
+        throw trpcError.notFound(
+          "No cancelled subscription found to reactivate",
+        );
       }
 
       return { success: true };

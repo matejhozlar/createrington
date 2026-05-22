@@ -17,6 +17,10 @@ export const trpcError = {
   unauthorized: (message: string) =>
     new TRPCError({ code: "UNAUTHORIZED", message }),
   forbidden: (message: string) => new TRPCError({ code: "FORBIDDEN", message }),
+  preconditionFailed: (message: string) =>
+    new TRPCError({ code: "PRECONDITION_FAILED", message }),
+  tooManyRequests: (message: string) =>
+    new TRPCError({ code: "TOO_MANY_REQUESTS", message }),
   internal: (message: string) =>
     new TRPCError({ code: "INTERNAL_SERVER_ERROR", message }),
 };

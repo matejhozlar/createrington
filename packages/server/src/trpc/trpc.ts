@@ -10,6 +10,7 @@
  */
 import { initTRPC, TRPCError } from "@trpc/server";
 import type { Context } from "./context";
+import { trpcError } from "@/trpc/utils";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import config from "@/config";
@@ -33,17 +34,11 @@ export const publicProcedure = t.procedure;
 /** Rejects unauthenticated or unverified users. */
 const isAuthenticated = middleware(async ({ ctx, next }) => {
   if (!ctx.user) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Authentication required",
-    });
+    throw trpcError.unauthorized("Authentication required");
   }
 
   if (ctx.user.role === AuthRole.UNVERIFIED) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Account verification required",
-    });
+    throw trpcError.forbidden("Account verification required");
   }
 
   return next({ ctx: { user: ctx.user } });
@@ -52,19 +47,13 @@ const isAuthenticated = middleware(async ({ ctx, next }) => {
 /** Rejects non-admin users. */
 const isAdmin = middleware(async ({ ctx, next }) => {
   if (!ctx.user?.isAdmin) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Admin access required",
-    });
+    throw trpcError.forbidden("Admin access required");
   }
 
   // JWT isAdmin can be stale up to the access-token lifetime; confirm against DB.
   const stillAdmin = await adminStatusService.isAdmin(ctx.user.discordId);
   if (!stillAdmin) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Admin access required",
-    });
+    throw trpcError.forbidden("Admin access required");
   }
 
   return next({ ctx: { user: ctx.user } });
@@ -82,10 +71,7 @@ const requireCryptoEnabled = middleware(async ({ next }) => {
   try {
     const settings = getServiceSync(Services.CRYPTO_SETTINGS_SERVICE);
     if (!settings.get("cryptoEnabled")) {
-      throw new TRPCError({
-        code: "FORBIDDEN",
-        message: "Crypto market is currently disabled",
-      });
+      throw trpcError.forbidden("Crypto market is currently disabled");
     }
   } catch (err) {
     if (err instanceof TRPCError) throw err;
@@ -97,10 +83,7 @@ const requireCryptoEnabled = middleware(async ({ next }) => {
 /** Rejects anyone whose JWT discordId doesn't match the configured owner. */
 const isOwner = middleware(async ({ ctx, next }) => {
   if (ctx.user?.discordId !== config.app.auth.owner.discordId) {
-    throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "Owner access required",
-    });
+    throw trpcError.forbidden("Owner access required");
   }
   return next({ ctx: { user: ctx.user } });
 });

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
+import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
-import { TRPCError } from "@trpc/server";
 import { getService, Services } from "@/services";
 import config from "@/config";
 
@@ -14,8 +14,7 @@ export const accountRouter = router({
     })
     .query(async ({ ctx }) => {
       const player = await Q.player.find({ discordId: ctx.user.discordId });
-      if (!player)
-        throw new TRPCError({ code: "NOT_FOUND", message: "Player not found" });
+      if (!player) throw trpcError.notFound("Player not found");
 
       return {
         discordId: player.discordId,
@@ -62,10 +61,7 @@ export const accountRouter = router({
       const target = sessions.find((s) => s.id === input.id);
 
       if (!target) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Session not found",
-        });
+        throw trpcError.notFound("Session not found");
       }
 
       await Q.auth.session.revokeById(input.id);
@@ -216,11 +212,7 @@ export const accountRouter = router({
       const { discordId } = ctx.user;
 
       const player = await Q.player.find({ discordId });
-      if (!player)
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Player not found",
-        });
+      if (!player) throw trpcError.notFound("Player not found");
 
       // Delete tickets (creator_discord_id is plain text, no FK cascade)
       const tickets = await Q.ticket.findAll({ creatorDiscordId: discordId });
