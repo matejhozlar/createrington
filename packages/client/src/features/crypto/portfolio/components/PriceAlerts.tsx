@@ -92,7 +92,7 @@ export function PriceAlerts() {
 
   const { data: tokenList } = trpc.public.crypto.list.useQuery(
     { includesCrashed: false },
-    { enabled: !!user },
+    { enabled: !!user, staleTime: 60_000 },
   );
 
   const tokenOptions = useMemo(
