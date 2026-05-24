@@ -1,3 +1,8 @@
+## v1.21.0 (2026-05-24)
+
+### @createrington/server (1.20.0 → 1.21.0)
+- [add] Add admin notification embed when a ghost member is removed: the ghosts router now posts a Discord embed to the admin notifications channel with the removed player, removal timestamp, and the admin who triggered the action
+
 ## v1.20.0 (2026-05-24)
 
 ### @createrington/server (1.19.2 → 1.20.0)
