@@ -8,6 +8,7 @@ import type { TicketService } from "./discord/tickets";
 import type { LeaderboardService } from "./discord/leaderboard";
 import type { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivity-cleanup.service";
 import type { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
+import type { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import type { ServerStatsService } from "./discord/stats";
 import type { RotatingStatusService } from "./discord/status";
 import type { PlaytimeManagerService } from "./playtime/playtime-manager.service";
@@ -402,6 +403,7 @@ export const Services = {
   LEADERBOARD_SERVICE: "discord.leaderboardService",
   MEMBER_CLEANUP_SERVICE: "discord.memberCleanupService",
   INACTIVITY_CLEANUP_SERVICE: "discord.inactivityCleanupService",
+  GHOST_MEMBER_SERVICE: "discord.ghostMemberService",
   SERVER_STATS_SERVICE: "discord.serverStatsService",
   ROTATING_STATUS_SERVICE: "discord.rotatingStatusService",
   PLAYTIME_MANAGER_SERVICE: "minecraft.playtimeManagerService",
@@ -439,6 +441,7 @@ export interface ServiceTypeMap {
   [Services.LEADERBOARD_SERVICE]: LeaderboardService;
   [Services.MEMBER_CLEANUP_SERVICE]: MemberCleanupService;
   [Services.INACTIVITY_CLEANUP_SERVICE]: InactivityCleanupService;
+  [Services.GHOST_MEMBER_SERVICE]: GhostMemberService;
   [Services.SERVER_STATS_SERVICE]: ServerStatsService;
   [Services.ROTATING_STATUS_SERVICE]: RotatingStatusService;
   [Services.PLAYTIME_MANAGER_SERVICE]: PlaytimeManagerService;
