@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,10 +77,6 @@ export function RemoveGhostModal({
       );
     }
   };
-
-  useEffect(() => {
-    if (!open) setConfirmText("");
-  }, [open]);
 
   return (
     <AlertDialog
