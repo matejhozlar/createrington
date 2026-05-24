@@ -9,6 +9,7 @@ import { EmbedPresets } from "@/discord/embeds";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
+import { ghostsRouter } from "./ghosts";
 
 const GRACE_DAYS = 14;
 
@@ -30,6 +31,7 @@ function isManualActionsEnabled(): boolean {
 
 /** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */
 export const inactivityRouter = router({
+  ghosts: ghostsRouter,
   capabilities: adminProcedure
     .meta({
       description:

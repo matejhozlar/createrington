@@ -19,6 +19,7 @@ import {
 import { TicketService } from "./discord/tickets";
 import { LeaderboardService } from "./discord/leaderboard";
 import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivity-cleanup.service";
+import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
@@ -210,6 +211,12 @@ export function registerServices(): void {
       return service;
     },
     { dependencies: [Services.DISCORD_MAIN_BOT] },
+  );
+
+  container.register(
+    Services.GHOST_MEMBER_SERVICE,
+    async () => new GhostMemberService(),
+    { dependencies: [Services.DISCORD_MAIN_BOT, Services.DATABASE] },
   );
 
   // Production-only: never run on local dev or the dev deployment
