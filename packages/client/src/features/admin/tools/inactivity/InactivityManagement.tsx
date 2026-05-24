@@ -73,6 +73,7 @@ import {
 } from "./constants";
 import { ResolveWarningModal } from "./components/modals/ResolveWarningModal";
 import { RemoveWarningModal } from "./components/modals/RemoveWarningModal";
+import { GhostsCard } from "./components/GhostsCard";
 
 type Warning = RouterOutput["admin"]["inactivity"]["list"]["warnings"][number];
 
@@ -629,6 +630,9 @@ export function InactivityManagement() {
             </>
           )}
         </Card>
+
+        {/* Ghost members (registered but missing from Discord) */}
+        <GhostsCard canMutate={canMutate} />
       </div>
 
       {/* Modals */}

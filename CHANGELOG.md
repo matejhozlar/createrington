@@ -1,3 +1,13 @@
+## v1.20.0 (2026-05-24)
+
+### @createrington/server (1.19.2 → 1.20.0)
+- [add] Add ghost member admin tool: a new `GhostMemberService` detects registered players who have left the Discord guild by comparing the player table against the live guild member list, with an in-memory cache populated on demand via admin refresh
+- [add] Add `admin.inactivity.ghosts` tRPC sub-router with `capabilities`, `list`, `refresh`, `verify`, and `remove` procedures, gated to production for destructive actions
+- [refactor] Route ghost service errors through `rethrowTrpc` so `ConflictError` and `NotFoundError` map to proper tRPC error codes instead of surfacing as internal errors
+
+### @createrington/client (0.2.26 → 0.2.27)
+- [add] Add "Members Missing from Discord" card to the admin inactivity page with paginated ghost list, search, on-demand cache refresh, and a confirmation modal that re-verifies Discord membership before allowing removal
+
 ## v1.19.2 (2026-05-24)
 
 ### @createrington/server (1.19.1 → 1.19.2)
