@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { minecraftRcon } from "@/utils/rcon";
 import { mcUuid } from "@/utils/zod-schemas";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
 
 export const adminPartiesRouter = router({
   kpis: adminProcedure
@@ -307,13 +306,11 @@ export const adminPartiesRouter = router({
         );
         return { dispatched: true, response };
       } catch (error) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message:
-            error instanceof Error
-              ? `Failed to dispatch sync: ${error.message}`
-              : "Failed to dispatch sync",
-        });
+        throw trpcError.internal(
+          error instanceof Error
+            ? `Failed to dispatch sync: ${error.message}`
+            : "Failed to dispatch sync",
+        );
       }
     }),
 });
