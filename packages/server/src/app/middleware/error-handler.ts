@@ -12,17 +12,19 @@ import { ZodError } from "zod";
  */
 export class AppError extends Error {
   public playerMessage?: string;
+  public code?: string;
 
   constructor(
     message: string,
     public statusCode: number = 500,
     public isOperational: boolean = true,
     public details?: unknown,
-    options?: { playerMessage?: string },
+    options?: { playerMessage?: string; code?: string },
   ) {
     super(message);
     this.name = "AppError";
     if (options?.playerMessage) this.playerMessage = options.playerMessage;
+    if (options?.code) this.code = options.code;
     Error.captureStackTrace(this, this.constructor);
   }
 }
@@ -41,8 +43,8 @@ export class BadRequestError extends AppError {
 
 /** 401 Unauthorized */
 export class UnauthorizedError extends AppError {
-  constructor(message: string = "Unauthorized") {
-    super(message, 401);
+  constructor(message: string = "Unauthorized", options?: { code?: string }) {
+    super(message, 401, true, undefined, options);
     this.name = "UnauthorizedError";
   }
 }
@@ -68,6 +70,14 @@ export class ConflictError extends AppError {
   constructor(message: string = "Conflict") {
     super(message, 409);
     this.name = "ConflictError";
+  }
+}
+
+/** 429 Too Many Requests */
+export class TooManyRequestsError extends AppError {
+  constructor(message: string = "Too Many Requests") {
+    super(message, 429);
+    this.name = "TooManyRequestsError";
   }
 }
 
@@ -102,6 +112,7 @@ interface ErrorResponse {
   error: {
     message: string;
     statusCode: number;
+    code?: string;
     details?: unknown;
     stack?: string;
   };
@@ -170,6 +181,7 @@ export function errorHandler(
   let isOperational = false;
   let details: unknown = undefined;
   let playerMessage: string | undefined = undefined;
+  let code: string | undefined = undefined;
 
   if (err instanceof ZodError) {
     const { message: ZodMessage, fieldErrors } = formatZodError(err);
@@ -190,6 +202,7 @@ export function errorHandler(
     isOperational = err.isOperational;
     details = err.details;
     playerMessage = err.playerMessage;
+    code = err.code;
   } else if (err instanceof DatabaseError) {
     statusCode = 500;
     message = config.envMode.isDev ? err.message : "Database error occurred";
@@ -233,6 +246,7 @@ export function errorHandler(
     error: {
       message,
       statusCode,
+      ...(code ? { code } : {}),
       ...(details !== undefined ? { details } : {}),
       ...(config.envMode.isDev && { stack: err.stack }),
     },

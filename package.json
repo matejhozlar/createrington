@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.19.1",
+  "version": "1.19.2",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -84,7 +84,7 @@
     "db:down": "docker-compose -f db/docker-compose.yml down",
     "db:logs": "docker-compose -f db/docker-compose.yml logs -f postgres",
     "db:reset": "docker-compose -f db/docker-compose.yml down -v && docker-compose -f db/docker-compose.yml build && docker-compose -f db/docker-compose.yml up -d --wait postgres && pnpm db:migrate && pnpm db:seed",
-    "db:shell": "docker exec -it createrington-db psql -U postgres -d createrington_db",
+    "db:shell": "docker exec -it createrington_db psql -U postgres -d createrington_db",
     "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",

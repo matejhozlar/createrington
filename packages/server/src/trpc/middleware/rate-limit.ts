@@ -1,5 +1,5 @@
-import { TRPCError } from "@trpc/server";
 import { middleware } from "@/trpc/trpc";
+import { trpcError } from "@/trpc/utils";
 import type { Context } from "@/trpc/context";
 
 interface RateLimitOptions {
@@ -41,10 +41,9 @@ export function createRateLimit(opts: RateLimitOptions) {
       logger.warn(
         `[trpc rate-limit] ${opts.name} exceeded by ${key} (${bucket.count}/${opts.limit})`,
       );
-      throw new TRPCError({
-        code: "TOO_MANY_REQUESTS",
-        message: `Rate limit exceeded. Try again in ${retryInSec}s.`,
-      });
+      throw trpcError.tooManyRequests(
+        `Rate limit exceeded. Try again in ${retryInSec}s.`,
+      );
     }
 
     return next();

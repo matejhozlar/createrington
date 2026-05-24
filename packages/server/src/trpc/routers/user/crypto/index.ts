@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, userProcedure, cryptoUserProcedure } from "@/trpc/trpc";
-import { trpcError, buildPagination } from "@/trpc/utils";
+import { trpcError, buildPagination, rethrowTrpc } from "@/trpc/utils";
 import { Q } from "@/db";
 import {
   executeBuy,
@@ -98,9 +98,7 @@ export const cryptoRouter = router({
           ),
         };
       } catch (err) {
-        throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Trade execution failed",
-        );
+        rethrowTrpc(err);
       }
     }),
 
@@ -150,9 +148,7 @@ export const cryptoRouter = router({
           ),
         };
       } catch (err) {
-        throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Trade execution failed",
-        );
+        rethrowTrpc(err);
       }
     }),
 
@@ -289,9 +285,7 @@ export const cryptoRouter = router({
           input.expiryHours,
         );
       } catch (err) {
-        throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Order placement failed",
-        );
+        rethrowTrpc(err);
       }
     }),
 
@@ -303,9 +297,7 @@ export const cryptoRouter = router({
         await cancelOrder(ctx.user.minecraftUuid, input.orderId);
         return { success: true };
       } catch (err) {
-        throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Order cancellation failed",
-        );
+        rethrowTrpc(err);
       }
     }),
 

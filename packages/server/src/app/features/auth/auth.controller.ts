@@ -1,4 +1,8 @@
-import { AuthRole, discordOAuth } from "@/services/discord/oauth/oauth.service";
+import {
+  AuthRole,
+  discordOAuth,
+  UnverifiedUserError,
+} from "@/services/discord/oauth/oauth.service";
 import type { Request, Response } from "express";
 import { BadRequestError, UnauthorizedError } from "@/app/middleware";
 import { jwtService } from "@/services/auth/jwt/jwt.service";
@@ -94,13 +98,6 @@ export class AuthController {
     try {
       const user = await discordOAuth.authenticate(code);
 
-      if (user.role === AuthRole.UNVERIFIED) {
-        logger.warn(`Unverified user ${user.discordId} attempted to login`);
-        throw new UnauthorizedError(
-          "You are not registered. Please contact an administrator.",
-        );
-      }
-
       const accessToken = jwtService.generate(user);
 
       const rawRefreshToken = await sessionService.createSession({
@@ -138,6 +135,14 @@ export class AuthController {
         message: "Authentication successful",
       });
     } catch (error) {
+      if (error instanceof UnverifiedUserError) {
+        logger.warn("Unverified user attempted to login");
+        throw new UnauthorizedError(
+          "You are not registered. Please apply to join before logging in.",
+          { code: "UNVERIFIED" },
+        );
+      }
+
       logger.error("Discord OAuth callback failed:", error);
 
       if (error instanceof UnauthorizedError) {
@@ -390,12 +395,6 @@ export class AuthController {
     try {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
-      if (user.role === AuthRole.UNVERIFIED) {
-        logger.warn(`Unverified user ${user.discordId} attempted SSO login`);
-        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
-        return;
-      }
-
       const accessToken = jwtService.generate(user);
       const rawRefreshToken = await sessionService.createSession({
         discordId: user.discordId,
@@ -412,6 +411,12 @@ export class AuthController {
 
       safeSsoRedirect(res, entry.returnTo);
     } catch (error) {
+      if (error instanceof UnverifiedUserError) {
+        logger.warn("Unverified user attempted SSO login");
+        safeSsoRedirect(res, redirectWithError(entry.returnTo, "unverified"));
+        return;
+      }
+
       logger.error("SSO callback failed:", error);
       safeSsoRedirect(res, redirectWithError(entry.returnTo, "auth_failed"));
     }

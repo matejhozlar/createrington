@@ -1,3 +1,20 @@
+## v1.19.2 (2026-05-24)
+
+### @createrington/server (1.19.1 → 1.19.2)
+- [fix] Fix MemberCleanupService deleting the wrong player: the cleanup query passed the full member object to `Q.player.delete()` instead of the `minecraftUuid` identifier, potentially matching on unintended fields
+- [fix] Surface unverified login attempts with a typed error code: the OAuth service now throws a dedicated `UnverifiedUserError` that the auth controller catches and returns as a 401 with `code: "UNVERIFIED"`, letting the client distinguish "not registered" from generic auth failures; the SSO callback preserves this reason instead of falling through to a generic redirect
+- [add] Add `TooManyRequestsError` (429) to the error hierarchy and propagate an optional `code` field through `AppError` and the JSON error response
+- [refactor] Map crypto trade errors to typed AppError subclasses: all generic `throw new Error()` in the order manager and trade executor are replaced with `ConflictError`, `BadRequestError`, `ForbiddenError`, and `TooManyRequestsError`, so tRPC routes return accurate HTTP status codes instead of masking every failure as 400
+- [refactor] Migrate all inline `new TRPCError()` calls to the `trpcError` helper: auth middleware, rate-limit middleware, and six routers now use the shorthand factories; new `preconditionFailed` and `tooManyRequests` helpers added, plus a `rethrowTrpc()` utility that maps `AppError` status codes to the corresponding tRPC error code
+
+### @createrington/client (0.2.25 → 0.2.26)
+- [fix] Surface auth errors as toast notifications: login failures, state mismatches, and unverified-user rejections now display toasts instead of failing silently; unverified users see a persistent toast with an "Apply to join" action button that navigates to the application page
+- [fix] Style toast action buttons with the primary gold color to match the site palette
+- [fix] Shorten token combobox search placeholder from "Search tokens..." to "Search"
+
+### Root
+- [fix] Fix `db:shell` script container name from `createrington-db` to `createrington_db` to match the actual Docker container
+
 ## v1.19.1 (2026-05-22)
 
 ### @createrington/client (0.2.24 → 0.2.25)
