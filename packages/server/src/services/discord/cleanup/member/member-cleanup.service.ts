@@ -83,7 +83,7 @@ export class MemberCleanupService {
 
       for (const member of expiredMembers) {
         try {
-          await Q.player.delete(member);
+          await Q.player.delete({ minecraftUuid: member.minecraftUuid });
 
           try {
             await minecraftRcon.whitelistAll(
