@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
+import {
+  buildPagination,
+  paginationInput,
+  rethrowTrpc,
+  trpcError,
+} from "@/trpc/utils";
 import config from "@/config";
 import { getService, Services } from "@/services";
 import type { GhostMemberService } from "@/services/discord/cleanup/ghost/ghost-member.service";
@@ -94,10 +99,10 @@ export const ghostsRouter = router({
   verify: adminProcedure
     .meta({
       description:
-        "Re-checks a single user against Discord. If they've rejoined, they're evicted from the cache",
+        "Re-checks a single user against Discord. Mutation (not query) because it mutates the cache: if the user has rejoined, they're evicted",
     })
     .input(z.object({ discordId: z.string().min(1) }))
-    .query(async ({ input }) => {
+    .mutation(async ({ input }) => {
       const service = await getGhostService();
       return service.verify(input.discordId);
     }),
@@ -121,15 +126,7 @@ export const ghostsRouter = router({
       try {
         result = await service.remove(input.discordId);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to remove ghost";
-        if (message.includes("rejoined Discord")) {
-          throw trpcError.conflict(message);
-        }
-        if (message.includes("not found")) {
-          throw trpcError.notFound(message);
-        }
-        throw trpcError.internal(message);
+        rethrowTrpc(error);
       }
 
       await Q.admin.log.action.logAction({

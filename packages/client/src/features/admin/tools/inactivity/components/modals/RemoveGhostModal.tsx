@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,27 +38,31 @@ export function RemoveGhostModal({
   const toast = useToastActions();
   const [confirmText, setConfirmText] = useState("");
 
-  const verifyQuery = trpc.admin.inactivity.ghosts.verify.useQuery(
-    { discordId: ghost.discordId },
-    {
-      enabled: open,
-      // Always re-verify when the dialog opens, even if cached.
-      refetchOnMount: "always",
-      staleTime: 0,
-      gcTime: 0,
-    },
-  );
-
+  const verifyGhost = trpc.admin.inactivity.ghosts.verify.useMutation();
   const removeGhost = trpc.admin.inactivity.ghosts.remove.useMutation();
 
-  const stillGone = verifyQuery.data?.stillGone === true;
-  const rejoined = verifyQuery.data?.stillGone === false;
+  // Verify is a mutation (side-effect: evicts the cache entry if the user is
+  // back in Discord), so we fire it manually each time the dialog opens.
+  useEffect(() => {
+    if (open) {
+      verifyGhost.mutate({ discordId: ghost.discordId });
+    } else {
+      verifyGhost.reset();
+    }
+    // Disable exhaustive-deps: verifyGhost's identity changes every render
+    // (tRPC returns a new mutation object), which would re-fire the verify
+    // forever. We only care about the open/discordId transitions.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, ghost.discordId]);
+
+  const stillGone = verifyGhost.data?.stillGone === true;
+  const rejoined = verifyGhost.data?.stillGone === false;
 
   const canConfirm =
     canMutate &&
     stillGone &&
     confirmText === CONFIRM_TOKEN &&
-    !verifyQuery.isFetching;
+    !verifyGhost.isPending;
 
   const handleClose = () => {
     setConfirmText("");
@@ -99,14 +103,14 @@ export function RemoveGhostModal({
         </AlertDialogHeader>
 
         {/* Verification banner */}
-        {verifyQuery.isFetching ? (
+        {verifyGhost.isPending ? (
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
             <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
             <span className="text-muted-foreground">
               Checking Discord membership...
             </span>
           </div>
-        ) : verifyQuery.isError ? (
+        ) : verifyGhost.isError ? (
           <div className="flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
             <XCircle className="size-4 shrink-0 text-amber-500 mt-0.5" />
             <div>
@@ -114,7 +118,7 @@ export function RemoveGhostModal({
                 Could not verify Discord membership
               </p>
               <p className="text-amber-300/80">
-                {verifyQuery.error?.message ?? "Unknown error"}. Removal blocked
+                {verifyGhost.error?.message ?? "Unknown error"}. Removal blocked
                 until the check succeeds.
               </p>
             </div>
@@ -178,7 +182,7 @@ export function RemoveGhostModal({
             placeholder={CONFIRM_TOKEN}
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            disabled={!stillGone || verifyQuery.isFetching}
+            disabled={!stillGone || verifyGhost.isPending}
             autoFocus
           />
         </Field>

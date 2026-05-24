@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
 import { getServiceSync, Services } from "@/services";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 
@@ -169,14 +170,14 @@ export class GhostMemberService {
   }> {
     const verification = await this.verify(discordId);
     if (!verification.stillGone) {
-      throw new Error(
+      throw new ConflictError(
         "User has rejoined Discord since the cache was last refreshed",
       );
     }
 
     const ghost = verification.ghost;
     if (!ghost) {
-      throw new Error("Ghost not found in cache");
+      throw new NotFoundError("Ghost not found in cache");
     }
 
     try {
