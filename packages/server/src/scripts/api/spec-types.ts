@@ -1,5 +1,5 @@
 /**
- * API spec type system — single source of truth for endpoint metadata.
+ * API spec type system: single source of truth for endpoint metadata.
  * Consumed by both the Java library generator and the API docs generator.
  */
 
@@ -15,13 +15,13 @@ export type PrimitiveFieldType =
   | "double"
   | "boolean";
 
-/** Array type — maps to List<T> in Java */
+/** Array type, maps to List<T> in Java */
 export interface ArrayFieldType {
   type: "array";
   items: FieldType;
 }
 
-/** Nested object type — maps to a separate Java record */
+/** Nested object type, maps to a separate Java record */
 export interface ObjectFieldType {
   type: "object";
   name: string;
@@ -40,7 +40,7 @@ export interface FieldSpec {
   name: string;
   /** Field type */
   type: FieldType;
-  /** JSON wire name — only set when it differs from `name` (e.g. snake_case) */
+  /** JSON wire name (only set when it differs from `name`, e.g. snake_case) */
   jsonName?: string;
   /** Whether the field is optional / nullable */
   nullable?: boolean;

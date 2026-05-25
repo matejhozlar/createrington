@@ -51,7 +51,7 @@ function formatModList(mods: ChangelogMod[]): string {
   return mods
     .map((m) => {
       const link = `[${m.name}](${m.url})`;
-      return m.version ? `- ${link} — \`${m.version}\`` : `- ${link}`;
+      return m.version ? `- ${link} - \`${m.version}\`` : `- ${link}`;
     })
     .join("\n");
 }

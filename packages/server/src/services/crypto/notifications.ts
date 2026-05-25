@@ -427,7 +427,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
       topTraders.length > 0
         ? topTraders
             .map(
-              (e) => `${e.rank}. **${e.playerName}** — ${formatPrice(e.value)}`,
+              (e) => `${e.rank}. **${e.playerName}** - ${formatPrice(e.value)}`,
             )
             .join("\n")
         : "No traders yet";

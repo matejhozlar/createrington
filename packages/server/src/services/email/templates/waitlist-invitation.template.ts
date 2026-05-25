@@ -260,7 +260,7 @@ export class WaitlistInvitationTemplate extends BaseEmailTemplate<WaitlistInvita
     return `
 Hi${data.discordName ? ` ${data.discordName}` : ""},
 
-Great news — a spot has just opened up on Createrington, and you're next in line! We're excited to welcome you to the server and can't wait to see what you'll create.
+Great news: a spot has just opened up on Createrington, and you're next in line! We're excited to welcome you to the server and can't wait to see what you'll create.
 
 What is Createrington?
 
@@ -288,7 +288,7 @@ Server Admin – Createrington
 ${links.website}
 
 ---
-This is an automated message — if you need help, contact matejhoz on Discord
+This is an automated message. If you need help, contact matejhoz on Discord
     `.trim();
   }
 

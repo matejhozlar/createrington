@@ -265,7 +265,7 @@ export const CryptoEmbedPresets = {
   /** Displays a ranked crypto leaderboard for the specified metric */
   leaderboard(typeLabel: string, lines: string) {
     return createEmbed()
-      .title(`Crypto Leaderboard — ${typeLabel}`)
+      .title(`Crypto Leaderboard - ${typeLabel}`)
       .color(EmbedColors.Premium)
       .description(lines)
       .timestamp();

@@ -17,7 +17,7 @@ export const InactivityEmbedPresets = {
 
     const playerLines = data.players.map((p) => {
       const lastSeenUnix = Math.floor(p.lastSeen.getTime() / 1000);
-      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) — last seen <t:${lastSeenUnix}:R>`;
+      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen <t:${lastSeenUnix}:R>`;
     });
 
     const description = [

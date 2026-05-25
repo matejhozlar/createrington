@@ -156,7 +156,7 @@ export async function execute(
       const leaderboard = results
         .map(
           (r, i) =>
-            `${medals[i]} **${r.minecraftUsername}** — ${r.values[0].toLocaleString()}`,
+            `${medals[i]} **${r.minecraftUsername}** - ${r.values[0].toLocaleString()}`,
         )
         .join("\n");
 

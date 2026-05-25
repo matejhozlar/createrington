@@ -128,7 +128,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
 
   const handleRemoveClose = useCallback(() => {
     setRemoveModal({ open: false, ghost: null });
-    // Always refetch on close — if verify evicted the user mid-dialog,
+    // Always refetch on close: if verify evicted the user mid-dialog,
     // they should disappear from the table immediately.
     refetchList();
   }, [refetchList]);

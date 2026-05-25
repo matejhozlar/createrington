@@ -98,7 +98,7 @@ export async function execute(
       const sign = isPositive ? "+" : "";
       const amount = BalanceUtils.formatTrimmed(tx.amount);
       const label = typeLabels[tx.transactionType] ?? tx.transactionType;
-      const desc = tx.description ? ` — ${tx.description}` : "";
+      const desc = tx.description ? ` - ${tx.description}` : "";
 
       return `<t:${timestamp}:R> **${sign}$${amount}** ${label}${desc}`;
     });

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
@@ -12,16 +11,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { AdminActionModal } from "./AdminActionModal";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -87,85 +79,55 @@ export function DeletePlayerModal({
 
   return (
     <>
-      <Dialog
+      <AdminActionModal
         open={open}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) onClose();
-        }}
+        onClose={onClose}
+        title="Delete Player"
+        description={
+          <>
+            This will permanently delete all data for{" "}
+            <span className="font-semibold">{player.minecraftUsername}</span>{" "}
+            including balance, sessions, tickets, and strikes. This action
+            cannot be undone.
+          </>
+        }
+        onConfirm={handleDeleteClick}
+        confirmLabel="Delete Player"
+        loadingLabel="Deleting..."
+        loading={deletePlayer.isPending}
+        disabled={!reason.trim()}
+        destructive
       >
-        <DialogContent className="border-destructive sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">
-              Delete Player
-            </DialogTitle>
-            <DialogDescription>
-              This will permanently delete all data for{" "}
-              <span className="font-semibold">{player.minecraftUsername}</span>{" "}
-              including balance, sessions, tickets, and strikes. This action
-              cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="rounded-lg border border-border bg-muted/50 p-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Username:</span>
-                  <span className="font-medium">
-                    {player.minecraftUsername}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">UUID:</span>
-                  <span className="font-mono text-xs">
-                    {player.minecraftUuid}
-                  </span>
-                </div>
-                {player.discordId && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Discord ID:</span>
-                    <span className="font-mono text-xs">
-                      {player.discordId}
-                    </span>
-                  </div>
-                )}
-              </div>
+        <div className="rounded-lg border border-border bg-muted/50 p-4">
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Username:</span>
+              <span className="font-medium">{player.minecraftUsername}</span>
             </div>
-
-            <Field>
-              <FieldLabel htmlFor="delete-reason">
-                Reason for Deletion
-              </FieldLabel>
-              <Input
-                id="delete-reason"
-                type="text"
-                placeholder="Enter reason for deletion"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </Field>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">UUID:</span>
+              <span className="font-mono text-xs">{player.minecraftUuid}</span>
+            </div>
+            {player.discordId && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Discord ID:</span>
+                <span className="font-mono text-xs">{player.discordId}</span>
+              </div>
+            )}
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={onClose}
-              disabled={deletePlayer.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              className="flex-1"
-              onClick={handleDeleteClick}
-              disabled={!reason.trim() || deletePlayer.isPending}
-            >
-              Delete Player
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        <Field>
+          <FieldLabel htmlFor="delete-reason">Reason for Deletion</FieldLabel>
+          <Input
+            id="delete-reason"
+            type="text"
+            placeholder="Enter reason for deletion"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </Field>
+      </AdminActionModal>
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

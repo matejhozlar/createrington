@@ -28,7 +28,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useAuth, User } from "@/contexts/auth";
+import { useAuth, type User } from "@/contexts/auth";
 import { NavLink } from "react-router-dom";
 
 function TriggerSummary({

@@ -88,7 +88,7 @@ export const adminAiRouter = router({
     .mutation(async ({ input }) => {
       if (!config.ai.enabled) {
         throw trpcError.badRequest(
-          "AI assist is not available — OpenAI API key is not configured.",
+          "AI assist is not available: OpenAI API key is not configured.",
         );
       }
 

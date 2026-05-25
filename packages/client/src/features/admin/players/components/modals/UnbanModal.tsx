@@ -1,16 +1,8 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { AdminActionModal } from "./AdminActionModal";
 
 interface UnbanModalProps {
   open: boolean;
@@ -58,59 +50,35 @@ export function UnbanModal({
   };
 
   return (
-    <Dialog
+    <AdminActionModal
       open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) handleClose();
-      }}
+      onClose={handleClose}
+      title="Unban Player"
+      description="This will lift the ban and allow the player to rejoin the server."
+      onConfirm={handleSubmit}
+      confirmLabel="Unban Player"
+      loadingLabel="Unbanning..."
+      loading={unbanPlayer.isPending}
+      disabled={!reason.trim()}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Unban Player</DialogTitle>
-          <DialogDescription>
-            This will lift the ban and allow the player to rejoin the server.
-          </DialogDescription>
-        </DialogHeader>
+      <div className="rounded-lg border border-border bg-muted/50 p-3">
+        <p className="text-sm">
+          <span className="text-muted-foreground">Ban ID:</span>{" "}
+          <span className="font-mono font-medium">#{banId}</span>
+        </p>
+      </div>
 
-        <div className="space-y-4">
-          <div className="rounded-lg border border-border bg-muted/50 p-3">
-            <p className="text-sm">
-              <span className="text-muted-foreground">Ban ID:</span>{" "}
-              <span className="font-mono font-medium">#{banId}</span>
-            </p>
-          </div>
-
-          <Field>
-            <FieldLabel htmlFor="unban-reason">Reason for Unbanning</FieldLabel>
-            <textarea
-              id="unban-reason"
-              placeholder="Enter reason for lifting the ban..."
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              rows={4}
-            />
-          </Field>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleClose}
-            disabled={unbanPlayer.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handleSubmit}
-            disabled={!reason.trim() || unbanPlayer.isPending}
-          >
-            {unbanPlayer.isPending ? "Unbanning..." : "Unban Player"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <Field>
+        <FieldLabel htmlFor="unban-reason">Reason for Unbanning</FieldLabel>
+        <textarea
+          id="unban-reason"
+          placeholder="Enter reason for lifting the ban..."
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          rows={4}
+        />
+      </Field>
+    </AdminActionModal>
   );
 }

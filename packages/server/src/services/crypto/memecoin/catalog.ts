@@ -160,7 +160,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
   {
     name: "BatBitcoin",
     symbol: "BAT",
-    description: "Hangs upside down — inverted charts enthusiasts rejoice.",
+    description: "Hangs upside down: inverted charts enthusiasts rejoice.",
   },
   {
     name: "ParrotPeso",
@@ -175,7 +175,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
   {
     name: "CakeCoin",
     symbol: "CAK",
-    description: "The cake is not a lie — but the gains might be.",
+    description: "The cake is not a lie, but the gains might be.",
   },
   {
     name: "TNToken",
@@ -268,7 +268,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
     name: "Meowmium",
     symbol: "MOW",
     description:
-      "A coin forged from pure cat energy. Every time a Minecraft cat purrs, Meowmium gains power. But beware—creepers secretly manipulate its market value at night.",
+      "A coin forged from pure cat energy. Every time a Minecraft cat purrs, Meowmium gains power. But beware, creepers secretly manipulate its market value at night.",
   },
   {
     name: "Yeetium",
@@ -346,7 +346,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
     name: "BedrockBar",
     symbol: "BDR",
     description:
-      "Unmovable, indestructible, and completely fake—just like its value. Only obtainable through admin dreams and market delusion.",
+      "Unmovable, indestructible, and completely fake, just like its value. Only obtainable through admin dreams and market delusion.",
   },
   {
     name: "FishCoin",
@@ -562,7 +562,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
     name: "HonkCred",
     symbol: "HNK",
     description:
-      "HonkCred is based entirely on the economy of angry geese. The louder the honk, the higher the price. Goose interference is not only possible—it's expected.",
+      "HonkCred is based entirely on the economy of angry geese. The louder the honk, the higher the price. Goose interference is not only possible, it's expected.",
   },
   {
     name: "DoodleBuck",
@@ -646,7 +646,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
     name: "GlitchToken",
     symbol: "GLT",
     description:
-      "GlitchToken multiplies when the game bugs out and disappears when patched. It's the ghost in the machine—and your wallet.",
+      "GlitchToken multiplies when the game bugs out and disappears when patched. It's the ghost in the machine, and your wallet.",
   },
   {
     name: "PebblePay",
@@ -670,7 +670,7 @@ export const MEMECOIN_CATALOG: MemecoinDefinition[] = [
     name: "FartBuck",
     symbol: "FRB",
     description:
-      "Juvenile, unstable, and loud—FartBuck inflates fast and crashes even faster. Traders say it 'rips' through resistance levels.",
+      "Juvenile, unstable, and loud: FartBuck inflates fast and crashes even faster. Traders say it 'rips' through resistance levels.",
   },
   {
     name: "GloopCoin",

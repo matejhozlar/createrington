@@ -290,9 +290,9 @@ export class PlayerBanService {
    *
    * @example
    * const stats = await banService.getStats();
-   * console.log(`Service running: ${stats.isRunning}`);
-   * console.log(`Expired bans: ${stats.expiredBansCount}`);
-   * console.log(`Next check: ${stats.nextCheck}`);
+   * logger.info(`Service running: ${stats.isRunning}`);
+   * logger.info(`Expired bans: ${stats.expiredBansCount}`);
+   * logger.info(`Next check: ${stats.nextCheck}`);
    */
   async getStats(): Promise<{
     isRunning: boolean;
