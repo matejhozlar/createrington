@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MentionMenu } from "./MentionMenu";
-import { useMentions } from "./use-mentions";
+import { useMentions } from "../hooks/use-mentions";
 
 interface MessageInputProps {
   value: string;

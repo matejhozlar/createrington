@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { useAdminChat } from "@/components/admin-chat/use-admin-chat";
+import { useAdminChat } from "@/contexts/admin-chat";
 
 type AdminNavItem = {
   title: string;

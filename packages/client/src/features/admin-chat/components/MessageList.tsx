@@ -3,7 +3,7 @@ import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MessageRow } from "./MessageRow";
 import { TypingIndicator } from "./TypingIndicator";
-import type { ChatMessage } from "./types";
+import type { ChatMessage } from "../types";
 
 interface MessageListProps {
   messages: ChatMessage[];

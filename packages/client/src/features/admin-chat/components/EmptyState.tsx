@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModelChip } from "./ModelChip";
-import type { AdminChatModel } from "./types";
+import type { AdminChatModel } from "../types";
 
 const QUICK_PROMPTS: string[] = [
   "Find a player by Minecraft username",

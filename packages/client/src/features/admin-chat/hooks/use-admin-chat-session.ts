@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { claudeFetch, runStream } from "./api";
-import type { ChatActionRecord } from "./actions";
+import {
+  endSession as endSessionRequest,
+  fetchChatMessages,
+  fetchSessionStatus,
+  runStream,
+  sendChatMessage,
+  startSession,
+} from "../api";
+import type { ChatActionRecord } from "../actions";
 import {
   isAdminChatModel,
   type AdminChatModel,
   type ChatMessage,
   type PageContext,
-} from "./types";
+} from "../types";
 
 interface UseAdminChatSessionArgs {
   isAdmin: boolean;
@@ -68,35 +75,22 @@ export function useAdminChatSession({
   // Check for existing session on drawer open
   useEffect(() => {
     if (!open || !isAdmin) return;
-    claudeFetch("/session")
-      .then((r) => r.json())
-      .then(
-        (data: {
-          active?: boolean;
-          sessionId?: number | null;
-          lastSessionId?: number | null;
-          model?: string | null;
-          lastSessionModel?: string | null;
-        }) => {
-          const nextId = data.active ? data.sessionId : data.lastSessionId;
-          if (!nextId) return;
-          // Only tear down message state when the session ID is actually
-          // changing: reopening the drawer on the same session would
-          // otherwise flicker between empty → messages as the stream
-          // refills.
-          setSessionId((prev) => {
-            if (prev !== nextId) setMessages([]);
-            return nextId;
-          });
-          setSessionActive(Boolean(data.active));
-          const reportedModel = data.active
-            ? data.model
-            : data.lastSessionModel;
-          setActiveModel(
-            isAdminChatModel(reportedModel) ? reportedModel : null,
-          );
-        },
-      )
+    fetchSessionStatus()
+      .then((data) => {
+        const nextId = data.active ? data.sessionId : data.lastSessionId;
+        if (!nextId) return;
+        // Only tear down message state when the session ID is actually
+        // changing: reopening the drawer on the same session would
+        // otherwise flicker between empty → messages as the stream
+        // refills.
+        setSessionId((prev) => {
+          if (prev !== nextId) setMessages([]);
+          return nextId;
+        });
+        setSessionActive(Boolean(data.active));
+        const reportedModel = data.active ? data.model : data.lastSessionModel;
+        setActiveModel(isAdminChatModel(reportedModel) ? reportedModel : null);
+      })
       .catch(console.error);
   }, [open, isAdmin]);
 
@@ -178,12 +172,8 @@ export function useAdminChatSession({
 
     (async (): Promise<void> => {
       try {
-        const res = await claudeFetch(`/messages?sessionId=${sessionId}`);
+        const data = await fetchChatMessages(sessionId);
         if (cancelled) return;
-        const data = (await res.json()) as {
-          messages?: ChatMessage[];
-          sessionActive?: boolean;
-        };
         if (data.messages) mergeMessages(data.messages);
         if (data.sessionActive !== undefined) {
           setSessionActive(data.sessionActive);
@@ -221,18 +211,10 @@ export function useAdminChatSession({
       if (!isAdmin) return;
       setStarting(true);
       try {
-        const res = await claudeFetch("/start", {
-          method: "POST",
-          body: JSON.stringify({
-            pageContext: pageContext("admin-chat"),
-            ...(model && { model }),
-          }),
+        const data = await startSession({
+          pageContext: pageContext("admin-chat"),
+          ...(model && { model }),
         });
-        const data = (await res.json()) as {
-          sessionId?: number;
-          error?: string;
-          model?: string | null;
-        };
         if (!data.sessionId) return;
         setSessionId(data.sessionId);
         setSessionActive(true);
@@ -253,13 +235,10 @@ export function useAdminChatSession({
               },
             ]);
             setAwaitingReply(true);
-            void claudeFetch("/send", {
-              method: "POST",
-              body: JSON.stringify({
-                sessionId: data.sessionId,
-                message: trimmed,
-                pageContext: pageContext("admin-chat"),
-              }),
+            void sendChatMessage({
+              sessionId: data.sessionId,
+              message: trimmed,
+              pageContext: pageContext("admin-chat"),
             }).catch((err) => {
               console.error("[admin-chat] Failed to send prefill:", err);
               setAwaitingReply(false);
@@ -298,15 +277,12 @@ export function useAdminChatSession({
       ]);
       setAwaitingReply(true);
       try {
-        await claudeFetch("/send", {
-          method: "POST",
-          body: JSON.stringify({
-            sessionId,
-            message: trimmed,
-            pageContext: pageContext(
-              location.pathname.startsWith("/admin") ? "admin" : "page",
-            ),
-          }),
+        await sendChatMessage({
+          sessionId,
+          message: trimmed,
+          pageContext: pageContext(
+            location.pathname.startsWith("/admin") ? "admin" : "page",
+          ),
         });
       } catch (err) {
         console.error("[admin-chat] Failed to send message:", err);
@@ -324,10 +300,7 @@ export function useAdminChatSession({
   const end = useCallback(async (): Promise<void> => {
     if (!sessionId) return;
     try {
-      await claudeFetch("/end", {
-        method: "POST",
-        body: JSON.stringify({ sessionId }),
-      });
+      await endSessionRequest(sessionId);
       setSessionActive(false);
     } catch (err) {
       console.error("[admin-chat] Failed to end session:", err);

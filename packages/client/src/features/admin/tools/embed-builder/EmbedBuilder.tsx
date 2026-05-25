@@ -3,7 +3,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import {
   INSERT_EMBED_EVENT,
   PENDING_EMBED_KEY,
-} from "@/components/admin-chat/actions";
+} from "@/features/admin-chat/actions";
 import type { EmbedData } from "@createrington/shared/api/embed";
 import { useEmbedBuilder } from "./hooks/use-embed-builder";
 import { PresetSidebar } from "./components/PresetSidebar";
