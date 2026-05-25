@@ -8,6 +8,7 @@ import {
   notFoundHandler,
   globalLimiter,
   authLimiter,
+  requestLogger,
 } from "./middleware";
 import { appRouter } from "@/trpc/router";
 import { panelRouter } from "@/trpc/routers/consumers/panel";
@@ -72,6 +73,7 @@ export function createApp(): Express {
       credentials: true,
     }),
   );
+  app.use(requestLogger);
   app.use(globalLimiter);
   app.use("/api/auth", authLimiter);
 
