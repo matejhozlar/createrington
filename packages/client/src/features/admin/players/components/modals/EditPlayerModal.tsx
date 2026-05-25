@@ -166,6 +166,7 @@ export function EditPlayerModal({
         confirmLabel="Review Changes"
         loadingLabel="Saving..."
         loading={updatePlayer.isPending}
+        contentClassName="sm:max-w-lg"
       >
         <Field>
           <FieldLabel htmlFor="edit-minecraft-username">
