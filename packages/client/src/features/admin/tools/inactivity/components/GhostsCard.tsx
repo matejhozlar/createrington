@@ -347,7 +347,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <TooltipContent>
                               {canMutate
                                 ? "Remove now"
-                                : "Disabled in non-production"}
+                                : "Only available on the production deployment"}
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>
