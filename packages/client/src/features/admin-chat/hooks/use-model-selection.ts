@@ -26,11 +26,6 @@ interface UseModelSelectionResult {
   setSelectedModel: (next: AdminChatModel) => void;
 }
 
-/**
- * Per-user model selection persisted to localStorage so reopening the
- * drawer picks up the admin's last choice. Falls back to the default
- * Sonnet model when no value is stored or storage is unavailable.
- */
 export function useModelSelection(
   username: string | undefined,
 ): UseModelSelectionResult {

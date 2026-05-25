@@ -43,10 +43,6 @@ export interface MessagesResponse {
   sessionActive: boolean;
 }
 
-export interface EnabledResponse {
-  enabled?: boolean;
-}
-
 export interface ReposResponse {
   repos?: RepoSuggestion[];
 }
@@ -65,10 +61,6 @@ export function fetchChatMessages(
   sessionId: number,
 ): Promise<MessagesResponse> {
   return api.get<MessagesResponse>(`${PREFIX}/messages`, { sessionId });
-}
-
-export function fetchChatEnabled(): Promise<EnabledResponse> {
-  return api.get<EnabledResponse>(`${PREFIX}/enabled`);
 }
 
 export function fetchSessionStatus(): Promise<SessionStatusResponse> {
