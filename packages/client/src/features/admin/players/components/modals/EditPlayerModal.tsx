@@ -7,14 +7,6 @@ import {
   FieldError,
 } from "@/components/ui/field";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -24,9 +16,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import { useToastActions } from "@/hooks/use-toast";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { AdminActionModal } from "./AdminActionModal";
 
 type PlayerDetailed = RouterOutput["admin"]["players"]["players"]["get"];
 
@@ -165,128 +157,106 @@ export function EditPlayerModal({
 
   return (
     <>
-      {/* Main Edit Form Dialog */}
-      <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Player</DialogTitle>
-            <DialogDescription>
-              Update player information. All changes require a reason and will
-              be logged in the audit trail.
-            </DialogDescription>
-          </DialogHeader>
+      <AdminActionModal
+        open={open}
+        onClose={handleCancel}
+        title="Edit Player"
+        description="Update player information. All changes require a reason and will be logged in the audit trail."
+        onConfirm={handleReviewChanges}
+        confirmLabel="Review Changes"
+        loadingLabel="Saving..."
+        loading={updatePlayer.isPending}
+      >
+        <Field>
+          <FieldLabel htmlFor="edit-minecraft-username">
+            Minecraft Username
+          </FieldLabel>
+          <Input
+            id="edit-minecraft-username"
+            type="text"
+            placeholder="Enter Minecraft username"
+            value={minecraftUsername}
+            onChange={(e) => {
+              setMinecraftUsername(e.target.value);
+              if (errors.minecraftUsername) {
+                setErrors({ ...errors, minecraftUsername: undefined });
+              }
+            }}
+            aria-invalid={!!errors.minecraftUsername}
+            disabled={updatePlayer.isPending}
+          />
+          <FieldDescription>
+            3-16 characters, letters, numbers, and underscores only
+          </FieldDescription>
+          {errors.minecraftUsername && (
+            <FieldError>{errors.minecraftUsername}</FieldError>
+          )}
+        </Field>
 
-          <div className="space-y-4 py-4">
-            <Field>
-              <FieldLabel htmlFor="edit-minecraft-username">
-                Minecraft Username
-              </FieldLabel>
-              <Input
-                id="edit-minecraft-username"
-                type="text"
-                placeholder="Enter Minecraft username"
-                value={minecraftUsername}
-                onChange={(e) => {
-                  setMinecraftUsername(e.target.value);
-                  if (errors.minecraftUsername) {
-                    setErrors({ ...errors, minecraftUsername: undefined });
-                  }
-                }}
-                aria-invalid={!!errors.minecraftUsername}
-                disabled={updatePlayer.isPending}
-              />
-              <FieldDescription>
-                3-16 characters, letters, numbers, and underscores only
-              </FieldDescription>
-              {errors.minecraftUsername && (
-                <FieldError>{errors.minecraftUsername}</FieldError>
+        <Field>
+          <FieldLabel htmlFor="edit-discord-id">Discord ID</FieldLabel>
+          <Input
+            id="edit-discord-id"
+            type="text"
+            placeholder="Enter Discord ID"
+            value={discordId}
+            onChange={(e) => {
+              setDiscordId(e.target.value);
+              if (errors.discordId) {
+                setErrors({ ...errors, discordId: undefined });
+              }
+            }}
+            aria-invalid={!!errors.discordId}
+            disabled={updatePlayer.isPending}
+          />
+          <FieldDescription>17-20 digit Discord user ID</FieldDescription>
+          {errors.discordId && <FieldError>{errors.discordId}</FieldError>}
+        </Field>
+
+        <Field>
+          <FieldLabel htmlFor="edit-reason">Reason for Update</FieldLabel>
+          <textarea
+            id="edit-reason"
+            placeholder="Explain why these changes are being made..."
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+              if (errors.reason) {
+                setErrors({ ...errors, reason: undefined });
+              }
+            }}
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
+            rows={3}
+            aria-invalid={!!errors.reason}
+            disabled={updatePlayer.isPending}
+          />
+          <FieldDescription>
+            Minimum 5 characters required for audit trail
+          </FieldDescription>
+          {errors.reason && <FieldError>{errors.reason}</FieldError>}
+        </Field>
+
+        {(minecraftUsername !== player.minecraftUsername ||
+          discordId !== player.discordId) && (
+          <div className="rounded-lg border border-border bg-muted/50 p-3">
+            <p className="text-sm font-medium text-foreground">
+              Changes to be made:
+            </p>
+            <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+              {minecraftUsername !== player.minecraftUsername && (
+                <li>
+                  • Username: {player.minecraftUsername} → {minecraftUsername}
+                </li>
               )}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="edit-discord-id">Discord ID</FieldLabel>
-              <Input
-                id="edit-discord-id"
-                type="text"
-                placeholder="Enter Discord ID"
-                value={discordId}
-                onChange={(e) => {
-                  setDiscordId(e.target.value);
-                  if (errors.discordId) {
-                    setErrors({ ...errors, discordId: undefined });
-                  }
-                }}
-                aria-invalid={!!errors.discordId}
-                disabled={updatePlayer.isPending}
-              />
-              <FieldDescription>17-20 digit Discord user ID</FieldDescription>
-              {errors.discordId && <FieldError>{errors.discordId}</FieldError>}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="edit-reason">Reason for Update</FieldLabel>
-              <textarea
-                id="edit-reason"
-                placeholder="Explain why these changes are being made..."
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.target.value);
-                  if (errors.reason) {
-                    setErrors({ ...errors, reason: undefined });
-                  }
-                }}
-                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-invalid:border-destructive aria-invalid:ring-destructive/20"
-                rows={3}
-                aria-invalid={!!errors.reason}
-                disabled={updatePlayer.isPending}
-              />
-              <FieldDescription>
-                Minimum 5 characters required for audit trail
-              </FieldDescription>
-              {errors.reason && <FieldError>{errors.reason}</FieldError>}
-            </Field>
-
-            {/* Show what's being changed */}
-            {(minecraftUsername !== player.minecraftUsername ||
-              discordId !== player.discordId) && (
-              <div className="rounded-lg border border-border bg-muted/50 p-3">
-                <p className="text-sm font-medium text-foreground">
-                  Changes to be made:
-                </p>
-                <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  {minecraftUsername !== player.minecraftUsername && (
-                    <li>
-                      • Username: {player.minecraftUsername} →{" "}
-                      {minecraftUsername}
-                    </li>
-                  )}
-                  {discordId !== player.discordId && (
-                    <li>
-                      • Discord ID: {player.discordId} → {discordId}
-                    </li>
-                  )}
-                </ul>
-              </div>
-            )}
+              {discordId !== player.discordId && (
+                <li>
+                  • Discord ID: {player.discordId} → {discordId}
+                </li>
+              )}
+            </ul>
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={updatePlayer.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleReviewChanges}
-              disabled={updatePlayer.isPending}
-            >
-              Review Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        )}
+      </AdminActionModal>
 
       {/* Confirmation AlertDialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
