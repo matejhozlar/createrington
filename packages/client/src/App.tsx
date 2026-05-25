@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -30,7 +30,6 @@ import { Footer } from "./components/footer";
 import { Loading, LoadingScreen } from "./components/loading-spinner";
 import { AdminPlayerProvider } from "./contexts/admin";
 import { CryptoDataProvider } from "./contexts/crypto-data";
-import { AdminChatProvider } from "./components/admin-chat/AdminChatProvider";
 
 // Lazy-loaded routes are code-split. Vite creates a chunk per lazy() call, so
 // a logged-out visitor hitting `/` never downloads the admin, crypto, or
@@ -269,6 +268,11 @@ const AdminChat = lazyNamed(
   () => import("./components/admin-chat"),
   "AdminChat",
 );
+const AdminChatProvider = lazy(() =>
+  import("./components/admin-chat/AdminChatProvider").then((m) => ({
+    default: m.AdminChatProvider,
+  })),
+);
 
 /** Scrolls the window to the top whenever the route pathname changes. */
 function ScrollToTop() {
@@ -337,6 +341,19 @@ function AdminChatGate() {
         <AdminChat />
       </Suspense>
     </ErrorBoundary>
+  );
+}
+
+function AdminChatBoundary({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return <>{children}</>;
+  return (
+    <Suspense fallback={children}>
+      <AdminChatProvider>
+        {children}
+        <AdminChatGate />
+      </AdminChatProvider>
+    </Suspense>
   );
 }
 
@@ -574,14 +591,13 @@ function App() {
                   <CryptoDataProvider autoSubscribe>
                     <BrowserRouter>
                       <ScrollToTop />
-                      <AdminChatProvider>
+                      <AdminChatBoundary>
                         <ErrorBoundary>
                           <SidebarProvider>
                             <AppContent />
                           </SidebarProvider>
                         </ErrorBoundary>
-                        <AdminChatGate />
-                      </AdminChatProvider>
+                      </AdminChatBoundary>
                     </BrowserRouter>
                   </CryptoDataProvider>
                 </ToastProvider>
