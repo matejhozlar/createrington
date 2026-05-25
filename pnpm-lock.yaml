@@ -27,6 +27,7 @@ overrides:
   svix>uuid: '>=14.0.0'
   postcss@<8.5.10: ^8.5.10
   ip-address@<10.1.1: ^10.1.1
+  qs@>=6.11.1 <=6.15.1: '>=6.15.2'
 
 importers:
 
@@ -534,6 +535,7 @@ packages:
 
   '@createrington/logger@0.2.0':
     resolution: {integrity: sha512-C3WB5qw4qvuQYmR9Hb0Pd67I7PI6j6SsNVT0UCcQaK3sEe2gLgQNiP0qn0jSFtKgh0zY9JAaLirQIEeOA42IlQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.2.0/logger-0.2.0.tgz}
+    engines: {node: '>=20'}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -4846,8 +4848,8 @@ packages:
     resolution: {integrity: sha512-MWL3XbUCfVgGR0gRsidzT6oKJT2QydPLhMITU6HoVWiiv4gkb6gJi3pcdAa8q4HwjBTbqISOWVP4aJiiyUJvag==}
     engines: {node: '>=18'}
 
-  qs@6.15.0:
-    resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
+  qs@6.15.2:
+    resolution: {integrity: sha512-Rzq0KEyX/w/tEybncDgdkZrJgVUsUMk3xjh3t5bv3S1HTAtg+uOYt72+ZfwiQwKdysThkTBdL/rTi6HDmX9Ddw==}
     engines: {node: '>=0.6'}
 
   queue-lit@1.5.2:
@@ -8236,7 +8238,7 @@ snapshots:
       http-errors: 2.0.1
       iconv-lite: 0.7.2
       on-finished: 2.4.1
-      qs: 6.15.0
+      qs: 6.15.2
       raw-body: 3.0.2
       type-is: 2.0.1
     transitivePeerDependencies:
@@ -8988,7 +8990,7 @@ snapshots:
       once: 1.4.0
       parseurl: 1.3.3
       proxy-addr: 2.0.7
-      qs: 6.15.0
+      qs: 6.15.2
       range-parser: 1.2.1
       router: 2.2.0
       send: 1.2.1
@@ -10400,7 +10402,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  qs@6.15.0:
+  qs@6.15.2:
     dependencies:
       side-channel: 1.1.0
 
@@ -11412,7 +11414,7 @@ snapshots:
   url@0.11.4:
     dependencies:
       punycode: 1.4.1
-      qs: 6.15.0
+      qs: 6.15.2
 
   use-callback-ref@1.3.3(@types/react@19.2.14)(react@19.2.4):
     dependencies:
