@@ -13,7 +13,7 @@ import type { Context } from "./context";
 import { trpcError } from "@/trpc/utils";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
-import { httpLogger } from "@/http-logger";
+import { httpLogger, colorDuration } from "@/http-logger";
 import config from "@/config";
 
 /** Optional metadata attached to each procedure (used for auto-documentation). */
@@ -35,12 +35,6 @@ const TRPC_TYPE_PREFIX: Record<string, string> = {
   subscription: "s",
 };
 
-function colorDuration(ms: number): string {
-  if (ms < 100) return `\x1b[32m${ms}ms\x1b[0m`;
-  if (ms < 500) return `\x1b[33m${ms}ms\x1b[0m`;
-  return `\x1b[31m${ms}ms\x1b[0m`;
-}
-
 const loggingMiddleware = middleware(async ({ ctx, path, type, next }) => {
   const start = Date.now();
   const result = await next();
@@ -50,7 +44,7 @@ const loggingMiddleware = middleware(async ({ ctx, path, type, next }) => {
   const userTag = userId ? ` u=${userId}` : "";
   const status = result.ok ? "ok" : "err";
   httpLogger.info(
-    `[tRPC] ${tag} ${path} ${colorDuration(ms)} ${status}${userTag}`,
+    `[tRPC] ${tag} ${path} ${status} ${colorDuration(ms)}${userTag}`,
   );
   return result;
 });
