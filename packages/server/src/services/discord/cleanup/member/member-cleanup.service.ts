@@ -1,4 +1,5 @@
 import { Q } from "@/db";
+import { NotFoundError } from "@/db/utils/errors";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
@@ -83,7 +84,11 @@ export class MemberCleanupService {
 
       for (const member of expiredMembers) {
         try {
-          await Q.player.delete({ minecraftUuid: member.minecraftUuid });
+          try {
+            await Q.player.delete({ minecraftUuid: member.minecraftUuid });
+          } catch (error) {
+            if (!(error instanceof NotFoundError)) throw error;
+          }
 
           try {
             await minecraftRcon.whitelistAll(
