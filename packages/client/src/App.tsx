@@ -344,9 +344,6 @@ function AdminChatGate() {
   );
 }
 
-// Wraps the app tree with AdminChatProvider only when the user is an admin.
-// Both the provider and the chat UI lazy-load on demand, so non-admins never
-// pay for the chat bundle.
 function AdminChatBoundary({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   if (!user?.isAdmin) return <>{children}</>;
