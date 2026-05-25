@@ -13,6 +13,7 @@ import type { Context } from "./context";
 import { trpcError } from "@/trpc/utils";
 import { AuthRole } from "@/services/discord/oauth/oauth.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
+import { httpLogger, colorDuration } from "@/http-logger";
 import config from "@/config";
 
 /** Optional metadata attached to each procedure (used for auto-documentation). */
@@ -28,8 +29,30 @@ const t = initTRPC
 export const router = t.router;
 export const middleware = t.middleware;
 
+const TRPC_TYPE_PREFIX: Record<string, string> = {
+  query: "q",
+  mutation: "m",
+  subscription: "s",
+};
+
+const loggingMiddleware = middleware(async ({ ctx, path, type, next }) => {
+  const start = Date.now();
+  const result = await next();
+  const ms = Date.now() - start;
+  const tag = TRPC_TYPE_PREFIX[type] ?? type;
+  const userId = ctx.user?.discordId;
+  const userTag = userId ? ` u=${userId}` : "";
+  const status = result.ok ? "ok" : "err";
+  httpLogger.info(
+    `[tRPC] ${tag} ${path} ${status} ${colorDuration(ms)}${userTag}`,
+  );
+  return result;
+});
+
+const baseProcedure = t.procedure.use(loggingMiddleware);
+
 /** Procedure with no authentication requirement. */
-export const publicProcedure = t.procedure;
+export const publicProcedure = baseProcedure;
 
 /** Rejects unauthenticated or unverified users. */
 const isAuthenticated = middleware(async ({ ctx, next }) => {
@@ -89,11 +112,11 @@ const isOwner = middleware(async ({ ctx, next }) => {
 });
 
 /** Procedure that requires a valid JWT and a verified (non-UNVERIFIED) account. */
-export const userProcedure = t.procedure.use(isAuthenticated);
+export const userProcedure = baseProcedure.use(isAuthenticated);
 /** Procedure that requires a valid JWT, a verified account, and the isAdmin flag. */
-export const adminProcedure = t.procedure.use(isAuthenticated).use(isAdmin);
+export const adminProcedure = baseProcedure.use(isAuthenticated).use(isAdmin);
 /** Procedure gated on matching the configured owner Discord ID. */
-export const ownerProcedure = t.procedure.use(isAuthenticated).use(isOwner);
+export const ownerProcedure = baseProcedure.use(isAuthenticated).use(isOwner);
 
 /**
  * User procedure that additionally fails when the crypto master toggle is off.

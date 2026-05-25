@@ -1,3 +1,16 @@
+## v1.22.0 (2026-05-25)
+
+### @createrington/server (1.21.0 → 1.22.0)
+- [add] Add HTTP request logging for REST and tRPC: a new Express middleware logs method, URL, status code, and response time for all non-static REST requests, while a tRPC logging middleware logs procedure type, path, outcome, and duration for every procedure call; both include the authenticated user's Discord ID when available and write to a dedicated `http` rotating log file
+- [fix] Fix MemberCleanupService failing when a player row is already deleted: the cleanup loop now catches `NotFoundError` from `Q.player.delete()` and treats it as a successful removal, preventing one missing row from aborting the entire batch
+- [chore] Bump @createrington/logger from ^0.1.2 to ^0.2.0
+
+### @createrington/client (0.2.27 → 0.2.28)
+- [add] Make identifiers copyable in the ghosts table: Minecraft username, UUID, and Discord ID cells are now clickable buttons that copy the value to clipboard, with a hover-revealed copy icon and toast confirmation
+- [refactor] Lazy-load AdminChatProvider behind an admin gate: the provider and its dependencies are code-split via `lazy()` and only loaded for admin users; non-admin users receive a no-op default from `useAdminChat`, reducing the initial bundle for regular visitors
+- [fix] Fix model chip tooltip overlapping the chat input by placing it on the bottom side
+- [fix] Unify canMutate tooltip copy on the inactivity admin page to "Only available on the production deployment"
+
 ## v1.21.0 (2026-05-24)
 
 ### @createrington/server (1.20.0 → 1.21.0)

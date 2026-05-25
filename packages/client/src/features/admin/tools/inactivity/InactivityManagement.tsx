@@ -558,7 +558,7 @@ export function InactivityManagement() {
                                 <TooltipContent>
                                   {canMutate
                                     ? "Remove now"
-                                    : "Disabled in non-production"}
+                                    : "Only available on the production deployment"}
                                 </TooltipContent>
                               </Tooltip>
                             </div>

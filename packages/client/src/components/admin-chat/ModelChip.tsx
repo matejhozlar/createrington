@@ -61,7 +61,7 @@ export function ModelChip({
             {label}
           </span>
         </TooltipTrigger>
-        <TooltipContent className="z-[10000]">
+        <TooltipContent side="bottom" className="z-[10000]">
           {tooltip ?? `Replying with ${label}`}
         </TooltipContent>
       </Tooltip>
@@ -89,7 +89,7 @@ export function ModelChip({
             </button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent className="z-[10000]">
+        <TooltipContent side="bottom" className="z-[10000]">
           {tooltip ?? "Model for next chat"}
         </TooltipContent>
       </Tooltip>

@@ -31,7 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Copy, Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
@@ -93,6 +93,19 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
   const handlePageChange = useCallback((newPage: number) => {
     setPage(newPage);
   }, []);
+
+  const handleCopy = useCallback(
+    async (e: React.MouseEvent, text: string, label: string) => {
+      e.stopPropagation();
+      try {
+        await navigator.clipboard.writeText(text);
+        toast.info(`${label} copied`);
+      } catch {
+        toast.error(`Failed to copy ${label}`);
+      }
+    },
+    [toast],
+  );
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -252,18 +265,43 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                       <TableRow key={ghost.discordId}>
                         <TableCell className="px-4">
                           <div>
-                            <p className="font-medium">
+                            <button
+                              type="button"
+                              onClick={(e) =>
+                                handleCopy(
+                                  e,
+                                  ghost.minecraftUsername,
+                                  "Username",
+                                )
+                              }
+                              className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
+                            >
                               {ghost.minecraftUsername}
-                            </p>
-                            <p className="font-mono text-xs text-muted-foreground">
+                              <Copy className="size-3 text-muted-foreground opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) =>
+                                handleCopy(e, ghost.minecraftUuid, "UUID")
+                              }
+                              className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                            >
                               {ghost.minecraftUuid.slice(0, 8)}…
-                            </p>
+                              <Copy className="size-2.5 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="px-4">
-                          <span className="font-mono text-xs">
+                          <button
+                            type="button"
+                            onClick={(e) =>
+                              handleCopy(e, ghost.discordId, "Discord ID")
+                            }
+                            className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
                             {ghost.discordId}
-                          </span>
+                            <Copy className="size-3 opacity-0 transition-opacity group-hover/copy:opacity-100" />
+                          </button>
                         </TableCell>
                         <TableCell className="px-4">
                           <Tooltip>
@@ -309,7 +347,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <TooltipContent>
                               {canMutate
                                 ? "Remove now"
-                                : "Disabled in non-production"}
+                                : "Only available on the production deployment"}
                             </TooltipContent>
                           </Tooltip>
                         </TableCell>

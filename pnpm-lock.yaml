@@ -259,8 +259,8 @@ importers:
   packages/server:
     dependencies:
       '@createrington/logger':
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.2.0
+        version: 0.2.0
       '@createrington/shared':
         specifier: workspace:*
         version: link:../shared
@@ -532,9 +532,8 @@ packages:
       react: '>=18'
       react-dom: '>=18'
 
-  '@createrington/logger@0.1.2':
-    resolution: {integrity: sha512-zX0FUY0AOwhTTrZ5ZODUL4L6u28pn/PxRumsif1YvllvdN3LZvPj3BeTXuW/GhMUBCCvDPTp2K3y7KDZBn0ywQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.1.2/logger-0.1.2.tgz}
-    engines: {node: '>=20'}
+  '@createrington/logger@0.2.0':
+    resolution: {integrity: sha512-C3WB5qw4qvuQYmR9Hb0Pd67I7PI6j6SsNVT0UCcQaK3sEe2gLgQNiP0qn0jSFtKgh0zY9JAaLirQIEeOA42IlQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.2.0/logger-0.2.0.tgz}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -6028,7 +6027,7 @@ snapshots:
       react-dom: 19.2.4(react@19.2.4)
       tailwind-merge: 2.6.1
 
-  '@createrington/logger@0.1.2':
+  '@createrington/logger@0.2.0':
     dependencies:
       winston: 3.19.0
 
