@@ -101,7 +101,7 @@ export const inactivityRouter = router({
       }
 
       if (warning.removedAt) {
-        throw trpcError.conflict("Warning is already removed — cannot resolve");
+        throw trpcError.conflict("Warning is already removed, cannot resolve");
       }
 
       await Q.player.inactivity.warning.resolveWarning(input.id);
@@ -149,7 +149,7 @@ export const inactivityRouter = router({
 
       if (!warning.minecraftUsername || !warning.discordId) {
         throw trpcError.conflict(
-          "Player record is missing — cannot perform manual removal",
+          "Player record is missing, cannot perform manual removal",
         );
       }
 

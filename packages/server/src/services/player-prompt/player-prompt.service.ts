@@ -247,7 +247,7 @@ export class PlayerPromptService {
     });
 
     embed.setFooter({
-      text: "Click Respond to answer — you can edit your reply until it closes.",
+      text: "Click Respond to answer. You can edit your reply until it closes.",
     });
 
     return embed;
@@ -268,7 +268,7 @@ export class PlayerPromptService {
 
     embed.addFields({
       name: "Status",
-      value: `Closed — ${responseCount} response${responseCount === 1 ? "" : "s"} received.`,
+      value: `Closed - ${responseCount} response${responseCount === 1 ? "" : "s"} received.`,
     });
 
     return embed;
