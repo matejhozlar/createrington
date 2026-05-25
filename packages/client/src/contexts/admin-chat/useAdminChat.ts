@@ -1,8 +1,6 @@
 import { useContext } from "react";
-import {
-  AdminChatContext,
-  type AdminChatContextValue,
-} from "./admin-chat-context";
+import { AdminChatContext } from "./context";
+import type { AdminChatContextValue } from "./types";
 
 // Safe defaults for the window before the lazy-loaded provider mounts.
 const NO_PROVIDER_DEFAULT: AdminChatContextValue = {

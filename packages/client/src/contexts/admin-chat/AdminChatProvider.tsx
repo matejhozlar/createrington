@@ -6,26 +6,19 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/contexts/auth";
-import { getAccessToken } from "@/services/auth/token-manager";
-import {
-  AdminChatContext,
-  type AdminChatContextValue,
-} from "./admin-chat-context";
+import { api } from "@/services/api/client";
+import { AdminChatContext } from "./context";
+import type { AdminChatContextValue } from "./types";
 
 const BUBBLE_KEY = "admin-chat:bubble-visible";
-// Inlined here (rather than imported from ./api) so this provider stays
-// outside the lazy admin-chat chunk: the rest of admin-chat is still split.
-const ENABLED_ENDPOINT = "/api/claude-chat/enabled";
+// Inlined here (rather than imported from features/admin-chat/api) so this
+// provider stays outside the lazy admin-chat chunk: the rest of admin-chat
+// is still split.
+const ENABLED_ENDPOINT = "api/claude-chat/enabled";
 
 async function fetchEnabled(): Promise<boolean> {
-  const token = getAccessToken();
-  const headers: HeadersInit = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
   try {
-    const response = await fetch(ENABLED_ENDPOINT, { headers });
-    if (!response.ok) return false;
-    const data = (await response.json()) as { enabled?: boolean };
+    const data = await api.get<{ enabled?: boolean }>(ENABLED_ENDPOINT);
     return data.enabled === true;
   } catch {
     return false;

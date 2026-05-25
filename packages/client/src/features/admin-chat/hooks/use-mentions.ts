@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { claudeFetch } from "./api";
-import type { MentionState, RepoSuggestion } from "./types";
+import { fetchRepos } from "../api";
+import type { MentionState, RepoSuggestion } from "../types";
 
 /**
  * Walk back from the cursor to find an active `@`-mention. Returns the
@@ -58,13 +58,7 @@ export function useMentions(): UseMentionsResult {
     if (reposRef.current !== null || reposLoadingRef.current) return;
     reposLoadingRef.current = true;
     try {
-      const res = await claudeFetch("/repos");
-      if (!res.ok) {
-        reposRef.current = [];
-        setRepos([]);
-        return;
-      }
-      const data = (await res.json()) as { repos?: RepoSuggestion[] };
+      const data = await fetchRepos();
       const loaded = data.repos ?? [];
       reposRef.current = loaded;
       setRepos(loaded);

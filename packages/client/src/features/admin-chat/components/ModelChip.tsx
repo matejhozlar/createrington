@@ -15,7 +15,7 @@ import {
   ADMIN_CHAT_MODELS,
   ADMIN_CHAT_MODEL_LABELS,
   type AdminChatModel,
-} from "./types";
+} from "../types";
 
 interface ModelChipProps {
   value: AdminChatModel;

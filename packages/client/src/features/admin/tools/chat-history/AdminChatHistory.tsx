@@ -28,7 +28,7 @@ import { History, RefreshCw } from "lucide-react";
 import {
   fetchChatSessions,
   type ChatHistorySession,
-} from "@/components/admin-chat/api";
+} from "@/features/admin-chat/api";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 
 const STATUS_VARIANT: Record<
