@@ -8,6 +8,11 @@ interface CacheEntry {
   expires: number;
 }
 
+/**
+ * In-memory TTL cache (30s, capped at 512 entries) for the `Q.admin.exists` lookup,
+ * fronting hot-path admin checks so request middleware does not re-hit the database on
+ * every call. Singleton; cache lives for the process lifetime.
+ */
 class AdminStatusService {
   private static instance: AdminStatusService;
   private cache = new Map<string, CacheEntry>();
@@ -21,6 +26,7 @@ class AdminStatusService {
     return AdminStatusService.instance;
   }
 
+  /** Returns whether the user is an admin, serving cached results for up to 30s. */
   async isAdmin(discordId: string): Promise<boolean> {
     const now = Date.now();
     const cached = this.cache.get(discordId);
@@ -34,6 +40,7 @@ class AdminStatusService {
     return isAdmin;
   }
 
+  /** Drops the cached entry for a user so the next `isAdmin` call re-queries the database. */
   invalidate(discordId: string): void {
     this.cache.delete(discordId);
   }

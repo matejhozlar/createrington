@@ -48,13 +48,7 @@ export class AchievementService {
   /** No-op shutdown: service has no timers or connections to clean up */
   async shutdown(): Promise<void> {}
 
-  /**
-   * Evaluate achievements for all players on a server.
-   * Called after stats import completes.
-   *
-   * @param serverId - The server to evaluate achievements for
-   * @param playerUuids - Minecraft UUIDs of players to evaluate
-   */
+  /** Evaluates every player on a server in sequence. Individual player failures are logged and skipped. */
   async evaluateServer(serverId: number, playerUuids: string[]): Promise<void> {
     let totalNew = 0;
 
@@ -78,15 +72,9 @@ export class AchievementService {
   }
 
   /**
-   * Evaluate all achievement groups for a single player on a server.
-   *
-   * Loads Minecraft stats, playtime, balance history, and crypto data in parallel,
-   * then checks every unearned tier against the player's current value. Newly
-   * completed tiers are batch-inserted in a single query.
-   *
-   * @param playerUuid - Minecraft UUID of the player to evaluate
-   * @param serverId - The server context for stats and playtime lookups
-   * @returns Names of newly completed achievements (formatted as "Group Name tier-roman")
+   * Evaluates every group for one player, batch-inserts newly completed tiers,
+   * and returns their formatted names ("Group Name tier-roman"). Tier iteration
+   * short-circuits once a threshold fails (tiers are ordered).
    */
   async evaluatePlayer(
     playerUuid: string,
@@ -174,12 +162,7 @@ export class AchievementService {
     return newCompletions.map((c) => c.description);
   }
 
-  /**
-   * Evaluate crypto-related achievements after a trade.
-   * Awards on all servers the player has data on.
-   *
-   * @returns Names of newly completed achievements across all servers
-   */
+  /** Evaluates the player on every server they have playtime on and returns the deduped list of newly completed achievements. */
   async evaluateCryptoAchievements(playerUuid: string): Promise<string[]> {
     const serverIds = await this.getPlayerServerIds(playerUuid);
     if (serverIds.length === 0) return [];
@@ -196,10 +179,9 @@ export class AchievementService {
   }
 
   /**
-   * Directly award an event-based crypto achievement (e.g. Paper Hands, 10x Return).
-   * Records on all servers the player has data on. Idempotent via ON CONFLICT DO NOTHING.
-   *
-   * @returns true if the achievement was newly awarded (on at least one server)
+   * Awards an event-based crypto achievement (Paper Hands, 10x Return, etc)
+   * on every server the player has data on. Idempotent. Returns true if newly
+   * awarded on at least one server.
    */
   async awardCryptoEvent(
     playerUuid: string,
@@ -245,10 +227,7 @@ export class AchievementService {
     return awarded;
   }
 
-  /**
-   * Check and award Diamond Hands achievement for all players.
-   * Called from a daily cron job.
-   */
+  /** Daily cron entry point: awards Diamond Hands to every player holding a position created 30+ days ago. */
   async evaluateDiamondHands(): Promise<void> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -274,11 +253,7 @@ export class AchievementService {
     }
   }
 
-  /**
-   * Award Crash Survivor to holders who held through a crash,
-   * and Bag Holder to holders of crashed tokens.
-   * Called when a token crashes.
-   */
+  /** Awards Crash Survivor and Bag Holder to every holder of a token that just crashed. */
   async evaluateCrashAchievements(tokenId: number): Promise<void> {
     const holdings = await Q.crypto.holding.where({ tokenId }).all();
 
@@ -308,10 +283,7 @@ export class AchievementService {
     }
   }
 
-  /**
-   * Check if a player has completed a specific achievement.
-   * Used by the fee calculator for Market Veteran discount.
-   */
+  /** True if the player has completed any tier of the given group. Crypto achievements are global so only the first server is checked. */
   async hasAchievement(playerUuid: string, groupId: string): Promise<boolean> {
     const serverIds = await this.getPlayerServerIds(playerUuid);
     if (serverIds.length === 0) return false;
@@ -326,14 +298,7 @@ export class AchievementService {
     );
   }
 
-  /**
-   * Get progress for all achievement groups for a player on a server.
-   * Runs evaluation first to ensure newly earned tiers are captured.
-   *
-   * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - The server context for stats and playtime lookups
-   * @returns Progress snapshot for every defined achievement group
-   */
+  /** Re-evaluates the player, then returns a progress snapshot for every defined group (current value, highest tier, next tier). */
   async getProgress(
     playerUuid: string,
     serverId: number,
@@ -405,18 +370,7 @@ export class AchievementService {
     });
   }
 
-  /**
-   * Claim reward for a single completed achievement tier.
-   *
-   * Marks the tier as claimed in the database and credits the reward
-   * amount to the player's balance as a `REWARD` transaction.
-   *
-   * @param playerUuid - Minecraft UUID of the player claiming the reward
-   * @param serverId - The server context the achievement was completed on
-   * @param groupId - Achievement group identifier
-   * @param tier - Tier number within the group to claim
-   * @returns Claim result including the reward amount and updated balance
-   */
+  /** Marks the tier claimed and credits the reward to the player's balance as a REWARD transaction. Throws if the tier isn't unclaimed. */
   async claim(
     playerUuid: string,
     serverId: number,
@@ -456,16 +410,7 @@ export class AchievementService {
     };
   }
 
-  /**
-   * Claim all unclaimed completed achievements for a player on a server.
-   *
-   * Errors on individual claims are logged and skipped so a single failure
-   * does not prevent the remaining claims from being processed.
-   *
-   * @param playerUuid - Minecraft UUID of the player
-   * @param serverId - The server context to claim achievements for
-   * @returns Array of successful claim results (may be empty if nothing is unclaimed)
-   */
+  /** Claims every unclaimed completed tier on the server in sequence. Per-tier failures are logged and skipped. */
   async claimAll(playerUuid: string, serverId: number): Promise<ClaimResult[]> {
     const unclaimed = await Q.player.achievement.getUnclaimedForPlayer(
       playerUuid,
@@ -496,16 +441,7 @@ export class AchievementService {
     return results;
   }
 
-  /**
-   * Load crypto market data for a player in parallel (trade count, holdings, portfolio value).
-   *
-   * All three queries are best-effort: any failure falls back to a safe zero/empty value
-   * so a crypto data outage does not block the broader achievement evaluation.
-   *
-   * @private
-   * @param playerUuid - Minecraft UUID of the player
-   * @returns Aggregated crypto data used by criteria resolution
-   */
+  // Each query is best-effort: a crypto data outage must not block broader achievement evaluation.
   private async loadCryptoData(playerUuid: string): Promise<CryptoData> {
     const [tradeCount, holdings, tokens] = await Promise.all([
       Q.crypto.transaction
@@ -536,16 +472,7 @@ export class AchievementService {
     };
   }
 
-  /**
-   * Get all server IDs the player has playtime on.
-   *
-   * Falls back to every known server if the player has no playtime records yet,
-   * ensuring newly joined players can still receive crypto achievements.
-   *
-   * @private
-   * @param playerUuid - Minecraft UUID of the player
-   * @returns Deduplicated list of server IDs
-   */
+  // Falls back to every known server if no playtime exists, so brand-new players can still receive crypto achievements.
   private async getPlayerServerIds(playerUuid: string): Promise<number[]> {
     const summaries = await Q.player.playtime.summary
       .where({ playerMinecraftUuid: playerUuid })
@@ -564,20 +491,6 @@ export class AchievementService {
     return servers.map((s) => s.id);
   }
 
-  /**
-   * Resolve the current numeric value for an achievement criteria source.
-   *
-   * Returns 0 for `crypto_event` criteria: those achievements are awarded
-   * directly via `awardCryptoEvent` and never pass through threshold evaluation.
-   *
-   * @private
-   * @param criteria - The criteria definition specifying the data source
-   * @param stats - Raw Minecraft stats keyed by category then stat key
-   * @param totalSeconds - Cumulative playtime in seconds on the server
-   * @param totalEarned - Total balance earned across all time
-   * @param cryptoData - Pre-loaded crypto market data for the player
-   * @returns Current value to compare against tier thresholds
-   */
   private getCurrentValue(
     criteria: AchievementCriteria,
     stats: Record<string, Record<string, number>>,

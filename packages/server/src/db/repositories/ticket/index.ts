@@ -13,37 +13,24 @@ import type {
 import { DatabaseTable } from "@/generated/db";
 import { Q } from "@/db";
 
-/** Data required to close a ticket */
 interface TicketCloseData {
   closedByDiscordId: string;
   transcriptPath?: string;
 }
 
 /**
- * Repository for ticket lifecycle and querying
- *
- * Handles:
- * - Ticket creation, closing, reopening, and deletion
- * - Ticket action audit logging
- * - User and admin ticket queries
- * - Ticket statistics
+ * Ticket lifecycle and read access. Owns create/close/reopen/delete
+ * transitions, the matching ticket_action audit entries, and the user-facing
+ * and admin-facing query surface. Lifecycle methods always pair the
+ * status change with a logAction() write so the audit trail stays complete.
  */
 export class TicketRepository {
-  /**
-   * Gets the next available ticket number
-   *
-   * @returns Promise resolving to the next ticket number
-   */
+  /** Allocate and return the next monotonic ticket number. */
   async getNext(): Promise<number> {
     return await Q.ticket.getNext();
   }
 
-  /**
-   * Creates a new ticket in the database
-   *
-   * @param data - Ticket creation data
-   * @returns Promise resolving to the created ticket
-   */
+  /** Create an OPEN ticket and log the CREATED action. */
   async create(data: TicketCreate): Promise<Ticket> {
     const ticketNumber = await this.getNext();
 
@@ -74,13 +61,7 @@ export class TicketRepository {
     return ticket;
   }
 
-  /**
-   * Closes a ticket in the database
-   *
-   * @param ticketId - Ticket ID to close
-   * @param data - Close ticket data
-   * @returns Promise resolving to the updated ticket
-   */
+  /** Mark a ticket CLOSED, attach the transcript URL, log the action. Throws if already closed. */
   async close(ticketId: number, data: TicketCloseData): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
@@ -117,13 +98,7 @@ export class TicketRepository {
     return updatedTicket;
   }
 
-  /**
-   * Reopens a closed ticket in the database
-   *
-   * @param ticketId - Ticket ID to reopen
-   * @param reopenedBy - Discord ID of user reopening the ticket
-   * @returns Promise resolving to the updated ticket
-   */
+  /** Move a CLOSED ticket back to OPEN and clear close fields. Throws if it isn't closed. */
   async reopen(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
@@ -155,13 +130,7 @@ export class TicketRepository {
     return updatedTicket;
   }
 
-  /**
-   * Marks a ticket as deleted in the database
-   *
-   * @param ticketId - Ticket ID to delete
-   * @param deletedBy - Discord ID of the user deleting the ticket
-   * @returns Promise resolving to the updated ticket
-   */
+  /** Soft-delete a ticket (status DELETED, deletedAt set); the row is retained for audit. */
   async delete(ticketId: number, deletedBy: string): Promise<Ticket> {
     const ticket = await Q.ticket.get({ id: ticketId });
 
@@ -189,13 +158,7 @@ export class TicketRepository {
     return updatedTicket;
   }
 
-  /**
-   * Updates ticket metadata
-   *
-   * @param ticketId - Ticket ID
-   * @param metadata - Metadata to merge with existing
-   * @returns Promise resolving to the updated Ticket
-   */
+  /** Shallow-merge into the ticket's metadata JSON blob. */
   async updateMetadata(
     ticketId: number,
     metadata: Record<string, unknown>,
@@ -213,22 +176,12 @@ export class TicketRepository {
     );
   }
 
-  /**
-   * Logs an action performed on a ticket
-   *
-   * @param data - Action data
-   * @returns Promise resolving to the created action entry
-   */
+  /** Append a row to the ticket_action audit table. */
   async logAction(data: TicketActionCreate): Promise<TicketAction> {
     return await Q.ticket.action.createAndReturn(data);
   }
 
-  /**
-   * Gets all actions for a ticket
-   *
-   * @param ticketId - Ticket ID
-   * @returns Promise resolving to an array of ticket actions
-   */
+  /** Full audit trail for a ticket, ordered oldest first. */
   async getTicketActions(ticketId: number): Promise<TicketAction[]> {
     return await Q.ticket.action.findAll(
       { id: ticketId },
@@ -239,12 +192,7 @@ export class TicketRepository {
     );
   }
 
-  /**
-   * Gets all open tickets for a user
-   *
-   * @param discordId - Discord user ID
-   * @returns Promise resolving to an array of open tickets
-   */
+  /** Open tickets created by the user. */
   async getUserOpen(discordId: string): Promise<Ticket[]> {
     return await Q.ticket.findAll({
       creatorDiscordId: discordId,
@@ -252,13 +200,7 @@ export class TicketRepository {
     });
   }
 
-  /**
-   * Gets all tickets for a user
-   *
-   * @param discordId - Discord user ID
-   * @param options - Optional query options
-   * @returns Promise resolving to an array of tickets
-   */
+  /** All tickets created by the user, with optional status/type filters and ordering. */
   async getUser(
     discordId: string,
     options?: {
@@ -288,12 +230,7 @@ export class TicketRepository {
     });
   }
 
-  /**
-   * Checks if a user has an open ticket
-   *
-   * @param discordId - Discord user ID
-   * @returns Promise resolving to true if user has an open ticket, false otherwise
-   */
+  /** True if the user has at least one OPEN ticket. */
   async hasOpen(discordId: string): Promise<boolean> {
     const count = await Q.ticket.count({
       creatorDiscordId: discordId,
@@ -303,12 +240,7 @@ export class TicketRepository {
     return count > 0;
   }
 
-  /**
-   * Counts open tickets for a user
-   *
-   * @param discordId - Discord user ID
-   * @returns Promise resolving to the number of open tickets
-   */
+  /** Number of OPEN tickets for the user. */
   async countUserOpen(discordId: string): Promise<number> {
     return await Q.ticket.count({
       creatorDiscordId: discordId,
@@ -316,11 +248,7 @@ export class TicketRepository {
     });
   }
 
-  /**
-   * Gets all open tickets
-   *
-   * @returns Promise resolving to an array of open tickets
-   */
+  /** All OPEN tickets across users, newest first. */
   async getAllOpen(): Promise<Ticket[]> {
     return await Q.ticket.findAll(
       { status: TicketStatus.OPEN },
@@ -331,12 +259,7 @@ export class TicketRepository {
     );
   }
 
-  /**
-   * Gets all tickets by status
-   *
-   * @param status - Ticket status
-   * @returns Promise resolving to an array of tickets
-   */
+  /** All tickets matching a status, newest first. */
   async getByStatus(status: TicketStatus): Promise<Ticket[]> {
     return await Q.ticket.findAll(
       { status },
@@ -347,12 +270,7 @@ export class TicketRepository {
     );
   }
 
-  /**
-   * Gets all tickets by type
-   *
-   * @param type - Ticket type
-   * @returns Promise resolving to an array of tickets
-   */
+  /** All tickets matching a type, newest first. */
   async getByType(type: TicketType): Promise<Ticket[]> {
     return await Q.ticket.findAll(
       { type },
@@ -363,11 +281,7 @@ export class TicketRepository {
     );
   }
 
-  /**
-   * Gets statistics about tickets
-   *
-   * @returns Promise resolving to ticket statistics
-   */
+  /** Global ticket counts broken down by status and by type. */
   async getStats(): Promise<{
     total: number;
     open: number;
@@ -394,13 +308,7 @@ export class TicketRepository {
     };
   }
 
-  /**
-   * Gets recent tickets with pagination
-   *
-   * @param limit - Number of tickets to return
-   * @param offset - Number of tickets to skip
-   * @returns Promise resolving to an array of recent tickets
-   */
+  /** Paginated list of recent tickets, newest first. */
   async getRecent(limit: number = 10, offset: number = 0): Promise<Ticket[]> {
     return await Q.ticket.getAll({
       limit,

@@ -3,9 +3,6 @@ import { Q } from "@/db";
 import { safeAxiosError } from "@/utils/axios-error";
 import axios from "axios";
 
-/**
- * Discord OAuth token response
- */
 interface DiscordTokenResponse {
   access_token: string;
   token_type: string;
@@ -14,9 +11,6 @@ interface DiscordTokenResponse {
   scope: string;
 }
 
-/**
- * Discord user object from API
- */
 export interface DiscordUser {
   id: string;
   username: string;
@@ -26,18 +20,12 @@ export interface DiscordUser {
   global_name?: string;
 }
 
-/**
- * User role type
- */
 export enum AuthRole {
   ADMIN = "admin",
   USER = "user",
   UNVERIFIED = "unverified",
 }
 
-/**
- * Authenticated user data
- */
 export interface AuthenticatedUser {
   discordId: string;
   username: string;
@@ -60,9 +48,6 @@ export class UnverifiedUserError extends Error {
   }
 }
 
-/**
- * Discord OAuth configuration
- */
 interface OAuthConfig {
   clientId: string;
   clientSecret: string;
@@ -70,18 +55,13 @@ interface OAuthConfig {
 }
 
 /**
- * Discord OAuth Service
- *
- * Handles all Discord OAuth 2.0 flows for user authentication:
- * - Generates authorization URLs with the correct scopes and optional CSRF state
- * - Exchanges authorization codes for Discord access and refresh tokens
- * - Fetches the authenticated user's Discord profile from the API
- * - Determines each user's application role (ADMIN / USER / UNVERIFIED)
- * - Orchestrates the full login flow into a single `authenticate` call
- * - Refreshes and revokes Discord OAuth tokens as needed
- *
- * NOTE: Validates that all required OAuth environment variables are present
- * at construction time: misconfiguration throws immediately rather than at runtime
+ * Singleton wrapper around the Discord OAuth 2.0 endpoints used for user
+ * login: authorize URL generation, code-for-token exchange, profile lookup,
+ * refresh, and revoke. `authenticate` glues those steps together and resolves
+ * the caller's application role (ADMIN / USER / UNVERIFIED) from the player
+ * and admin tables, throwing `UnverifiedUserError` when the Discord account
+ * has no matching player. Required env vars are validated at construction so
+ * misconfiguration fails on first `getInstance` rather than at first login.
  */
 export class DiscordOAuthService {
   private static instance: DiscordOAuthService;
@@ -94,7 +74,7 @@ export class DiscordOAuthService {
     this.validate();
   }
 
-  /** Returns the singleton instance, creating it on first call */
+  /** Returns the singleton instance, creating (and validating env) on first call. */
   public static getInstance(): DiscordOAuthService {
     if (!DiscordOAuthService.instance) {
       DiscordOAuthService.instance = new DiscordOAuthService();
@@ -102,12 +82,6 @@ export class DiscordOAuthService {
     return DiscordOAuthService.instance;
   }
 
-  /**
-   * Validate that all required OAuth configuration values are present
-   *
-   * @throws Error if any required environment variables are missing
-   * @private
-   */
   private validate(): void {
     const missing: string[] = [];
 
@@ -131,14 +105,9 @@ export class DiscordOAuthService {
   }
 
   /**
-   * Exchange an authorization code for a Discord access token
-   *
-   * This is the second step in the OAuth2 flow, where the authorization code
-   * received from Discord is exchanged for an access token and refresh token.
-   *
-   * @param code - The authorization code from the Discord OAuth callback
-   * @returns Promise containing the access token, refresh token, and token metadata
-   * @throws Error if the token exchange fails
+   * Exchanges an OAuth authorization code for Discord access/refresh tokens.
+   * `redirectUriOverride` is required when the callback URL differs from the
+   * default (e.g. sandbox / panel SSO consumers).
    */
   async exchange(
     code: string,
@@ -169,15 +138,7 @@ export class DiscordOAuthService {
     }
   }
 
-  /**
-   * Fetch Discord user information using an access token
-   *
-   * Calls the Discord API to retrieve the authenticated user's profile data.
-   *
-   * @param accessToken - Valid Discord OAuth access token
-   * @returns Promise containing the Discord user object
-   * @throws Error if the API request fails
-   */
+  /** Fetches the authenticated user's Discord profile (`/users/@me`). */
   async getUser(accessToken: string): Promise<DiscordUser> {
     try {
       const response = await axios.get<DiscordUser>(
@@ -197,19 +158,6 @@ export class DiscordOAuthService {
     }
   }
 
-  /**
-   * Determines the user's role based on their Discord ID
-   *
-   * Checks the database to see if the user is a player and/or admin:
-   * - UNVERIFIED: User is not in the player database
-   * - USER: User exists as a player but is not an admin
-   * - ADMIN: User exists as both a player and an admin
-   *
-   * @param discordId - The Discord user ID to check
-   * @returns Promise resolving to the user's role
-   *
-   * @private
-   */
   private async getAuthRole(discordId: string): Promise<AuthRole> {
     const playerExists = await Q.player.exists({ discordId });
 
@@ -223,17 +171,11 @@ export class DiscordOAuthService {
   }
 
   /**
-   * Complete authentication flow for a user
-   *
-   * This is the main authentication method that:
-   * 1. Exchanges the authorization code for an access token
-   * 2. Fetches the user's Discord profile
-   * 3. Determines their role in the application
-   * 4. Returns a unified authenticated user object
-   *
-   * @param code - Authorization code from Discord OAuth callback
-   * @returns Promise containing the authenticated user data
-   * @throws Error if any step of the authentication fails
+   * Runs the full login pipeline (code exchange, profile fetch, role lookup,
+   * player record join) and returns an `AuthenticatedUser`. Throws
+   * `UnverifiedUserError` when the Discord account has no player record, so
+   * callers can return a targeted "not registered" response rather than a
+   * generic auth failure.
    */
   async authenticate(
     code: string,
@@ -264,15 +206,7 @@ export class DiscordOAuthService {
     return authenticatedUser;
   }
 
-  /**
-   * Generate a Discord OAuth authorization URL
-   *
-   * Creates the URL that users are redirected to in order to authorize the
-   * application. Includes the client ID, redirect URI, and `identify` scope.
-   *
-   * @param state - Optional state parameter for CSRF protection
-   * @returns The complete Discord authorization URL
-   */
+  /** Builds the Discord authorize URL with the `identify` scope; `state` should be set for CSRF protection on web flows. */
   generateAuthUrl(state?: string, redirectUriOverride?: string): string {
     const params = new URLSearchParams({
       client_id: this.config.clientId,
@@ -288,17 +222,7 @@ export class DiscordOAuthService {
     return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
   }
 
-  /**
-   * Refresh an expired access token using a refresh token
-   *
-   * OAuth access tokens expire after a certain time. This method uses the
-   * refresh token to obtain a new access token without requiring the user
-   * to re-authorize the application.
-   *
-   * @param refreshToken - The refresh token from a previous token response
-   * @returns Promise containing new access token and refresh token
-   * @throws Error if the refresh fails
-   */
+  /** Exchanges a Discord refresh token for a fresh access/refresh token pair. */
   async refresh(refreshToken: string): Promise<DiscordTokenResponse> {
     try {
       const response = await axios.post<DiscordTokenResponse>(
@@ -324,15 +248,7 @@ export class DiscordOAuthService {
     }
   }
 
-  /**
-   * Revoke an access or refresh token
-   *
-   * This invalidates a token, typically used during logout to ensure
-   * the token can no longer be used to access the user's account.
-   *
-   * @param token - The access token or refresh token to revoke
-   * @throws Error if the revocation fails
-   */
+  /** Invalidates a Discord access or refresh token (called on logout). */
   async revoke(token: string): Promise<void> {
     try {
       await axios.post(

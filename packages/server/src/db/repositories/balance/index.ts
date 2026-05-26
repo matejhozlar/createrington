@@ -34,17 +34,12 @@ export enum BalanceTransactionType {
 }
 
 /**
- * Balance Repository
- *
- * Manages player currency balances and their full audit trail:
- * - Reads balances in raw, decimal, and formatted forms
- * - Adds, deducts, and sets balances within atomic DB transactions
- * - Transfers funds between two players atomically
- * - Logs every mutation to the transaction history table
- * - Exposes privileged admin operations that also write to the admin audit log
- *
- * NOTE: Balances are stored as bigint with 3 implicit decimal places
- * (e.g. 1500n represents $1.500). Use BalanceUtils for all conversions.
+ * Manages player currency balances and their full audit trail. Reads,
+ * mutates, and transfers balances inside atomic DB transactions, logs every
+ * change to the transaction history table, and exposes admin-flavored
+ * operations that also write to the admin audit log. Balances are stored as
+ * bigint with 3 implicit decimal places (1500n represents $1.500); use
+ * BalanceUtils for all conversions.
  */
 export class BalanceRepository {
   constructor() {}
@@ -64,13 +59,6 @@ export class BalanceRepository {
     );
   }
 
-  /**
-   * Resolves various player identifier formats to a Minecraft UUID
-   *
-   * @param identifier - Player identifier (UUID string, typed object, or full Player)
-   * @returns Promise resolving to Minecraft UUID
-   * @private
-   */
   private async resolvePlayerUuid(
     identifier: PlayerIdentifier,
   ): Promise<string> {
@@ -82,13 +70,6 @@ export class BalanceRepository {
     return player.minecraftUuid;
   }
 
-  /**
-   * Records a balance transaction to the audit trail
-   *
-   * @param data - Transaction details including amounts, type, and optional metadata
-   * @param txOverride - Optional transaction context to use instead of the default db instance
-   * @private
-   */
   private async logTransaction(
     data: {
       playerMinecraftUuid: string;
@@ -119,26 +100,13 @@ export class BalanceRepository {
     );
   }
 
-  /**
-   * Gets player balance record
-   *
-   * @param identifier - Player identifier
-   * @returns Full balance entity (includes raw bigint balance)
-   */
+  /** Get the full balance entity (raw bigint balance plus metadata). */
   async get(identifier: PlayerIdentifier): Promise<PlayerBalance> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await db.player.balance.get({ minecraftUuid: uuid });
   }
 
-  /**
-   * Gets balance amount as a decimal number
-   *
-   * @param identifier - Player identifier
-   * @returns Balance as a floating-point decimal (e.g. 1.5)
-   *
-   * @example
-   * const amount = await balanceRepo.getAmount(player) // 1.5
-   */
+  /** Get the balance as a decimal number (e.g. 1.5). */
   async getAmount(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const balanceBigInt = await db.player.balance.select.balance({
@@ -147,16 +115,7 @@ export class BalanceRepository {
     return BalanceUtils.fromStorage(balanceBigInt);
   }
 
-  /**
-   * Gets balance formatted as a fixed-decimal string
-   *
-   * @param identifier - Player identifier
-   * @param decimals - Number of decimal places to show (default: 3)
-   * @returns Formatted balance string (e.g. "1.500")
-   *
-   * @example
-   * await balanceRepo.getFormatted(player) // "1.500"
-   */
+  /** Get the balance as a fixed-decimal string (e.g. "1.500"). */
   async getFormatted(
     identifier: PlayerIdentifier,
     decimals: number = 3,
@@ -168,15 +127,7 @@ export class BalanceRepository {
     return BalanceUtils.format(balanceBigInt, decimals);
   }
 
-  /**
-   * Gets balance formatted as a string with trailing zeros removed
-   *
-   * @param identifier - Player identifier
-   * @returns Trimmed balance string (e.g. "1.5" instead of "1.500")
-   *
-   * @example
-   * await balanceRepo.getFormattedTrimmed(player) // "1.5" (instead of "1.500")
-   */
+  /** Get the balance as a string with trailing zeros stripped (e.g. "1.5"). */
   async getFormattedTrimmed(identifier: PlayerIdentifier): Promise<string> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const balanceBigInt = await db.player.balance.select.balance({
@@ -185,12 +136,7 @@ export class BalanceRepository {
     return BalanceUtils.formatTrimmed(balanceBigInt);
   }
 
-  /**
-   * Gets raw balance as bigint (storage format, not user-facing)
-   *
-   * @param identifier - Player identifier
-   * @returns Raw balance in storage format (e.g. 1500n for $1.500)
-   */
+  /** Get the raw storage bigint (e.g. 1500n for $1.500), not user-facing. */
   async getRaw(identifier: PlayerIdentifier): Promise<bigint> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await db.player.balance.select.balance({
@@ -198,18 +144,7 @@ export class BalanceRepository {
     });
   }
 
-  /**
-   * Checks if a player has sufficient balance for a given amount
-   *
-   * @param identifier - Player identifier
-   * @param amount - Required amount as a decimal (e.g. 0.200)
-   * @returns True if the player's balance is greater than or equal to the required amount
-   *
-   * @example
-   * if (await balanceRepo.hasSufficient(player, 0.200)) {
-   *    // Player has at least 0.200
-   * }
-   */
+  /** Returns true if the player's balance is at least the given decimal amount. */
   async hasSufficient(
     identifier: PlayerIdentifier,
     amount: number,
@@ -222,12 +157,7 @@ export class BalanceRepository {
     return balance >= required;
   }
 
-  /**
-   * Gets top N players by balance
-   *
-   * @param limit - Number of top players to return (default: 10)
-   * @returns Array of { name, balance } sorted by balance DESC
-   */
+  /** Top N players by balance, sorted balance DESC. */
   async getTop(
     limit: number = 10,
   ): Promise<Array<{ name: string; balance: number }>> {
@@ -235,11 +165,8 @@ export class BalanceRepository {
   }
 
   /**
-   * Creates initial balance record for a new player
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param initialBalance - Starting balance (default: 0)
-   * @returns Created balance record
+   * Create the initial balance row for a new player. If initialBalance > 0,
+   * also writes an ADMIN_GRANT transaction entry for the seed amount.
    */
   async create(
     playerMinecraftUuid: string,
@@ -271,18 +198,9 @@ export class BalanceRepository {
   }
 
   /**
-   * Adds balance to player's account
-   *
-   * @param identifier - Player identifier
-   * @param amount - Amount to add (e.g. 1.500, 0.200)
-   * @param reason - Transaction reason
-   * @param type - Type of transaction
-   * @param metadata - Additional context
-   * @param txOverride - Optional outer transaction context; if provided the operation joins it instead of creating its own
-   * @returns Promise resolving to the new balance
-   *
-   * @example
-   * const newBalance = await balanceRepo.add(player, 0.200, "Buy token") // 1.700
+   * Add to a player's balance inside a row-locked transaction. Pass txOverride
+   * to join an existing outer transaction instead of starting a new one.
+   * Resolves to the new balance as a decimal.
    */
   async add(
     identifier: PlayerIdentifier,
@@ -333,19 +251,9 @@ export class BalanceRepository {
   }
 
   /**
-   * Deducts balance from a player's account
-   *
-   * @param identifier - Player identifier
-   * @param amount - Amount to deduct (must be positive)
-   * @param reason - Transaction reason
-   * @param type - Type of transaction
-   * @param metadata - Additional context
-   * @param txOverride - Optional outer transaction context; if provided the operation joins it instead of creating its own
-   * @returns Promise resolving to new balance
-   * @throws Error if insufficient balance
-   *
-   * @example
-   * const newBalance = await balanceRepo.deduct(player, 0.200, "Buy item");
+   * Deduct from a player's balance inside a row-locked transaction. Throws if
+   * the player has insufficient funds. Pass txOverride to join an existing
+   * outer transaction. Resolves to the new balance as a decimal.
    */
   async deduct(
     identifier: PlayerIdentifier,
@@ -398,14 +306,8 @@ export class BalanceRepository {
   }
 
   /**
-   * Sets player balance to a specific amount
-   *
-   * @param identifier - Player identifier
-   * @param amount - New balance amount
-   * @param reason - Transaction reason
-   * @param type - Transaction type
-   * @param metadata - Additional context
-   * @returns Promise resolving to new balance
+   * Set a player's balance to an absolute amount. The transaction log records
+   * the signed delta from the previous balance, not the new absolute value.
    */
   async set(
     identifier: PlayerIdentifier,
@@ -452,21 +354,9 @@ export class BalanceRepository {
   }
 
   /**
-   * Transfers balance between two players
-   *
-   * @param from - Sender identifier
-   * @param to - Recipient identifier
-   * @param amount - Amount to transfer
-   * @param description - Optional transfer description
-   * @returns Promise resolving to both new balances
-   *
-   * @example
-   * const result = await balanceRepo.transfer(
-   *   { minecraftUsername: "Steve" },
-   *   { minecraftUsername: "Alex" },
-   *   0.500,
-   *   "Payment"
-   * );
+   * Atomic two-party transfer. Locks both balance rows in lexicographic UUID
+   * order so concurrent reverse transfers cannot deadlock, then writes paired
+   * TRANSFER_SEND / TRANSFER_RECEIVE log entries.
    */
   async transfer(
     from: PlayerIdentifier,
@@ -559,17 +449,7 @@ export class BalanceRepository {
     });
   }
 
-  /**
-   * Admin grants balance to a player
-   * Logs action to admin_log_action
-   *
-   * @param identifier - Player identifier
-   * @param amount - Amount to grant
-   * @param adminDiscordId - Admin performing the action
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for grant
-   * @returns Promise resolving to new balance
-   */
+  /** Admin grant variant of add() that also writes to admin_log_action. */
   async adminGrant(
     identifier: PlayerIdentifier,
     amount: number,
@@ -611,17 +491,7 @@ export class BalanceRepository {
     return newBalance;
   }
 
-  /**
-   * Admin deducts balance from a player
-   * Logs action to admin_log_action
-   *
-   * @param identifier - Player identifier
-   * @param amount - Amount to deduct
-   * @param adminDiscordId - Admin performing the action
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for deduction
-   * @returns Promise resolving to new balance
-   */
+  /** Admin deduction variant of deduct() that also writes to admin_log_action. */
   async adminDeduct(
     identifier: PlayerIdentifier,
     amount: number,
@@ -663,17 +533,7 @@ export class BalanceRepository {
     return newBalance;
   }
 
-  /**
-   * Admin sets balance to exact amount
-   * Logs action to admin_log_action
-   *
-   * @param identifier - Player identifier
-   * @param amount - New balance amount
-   * @param adminDiscordId - Admin performing the action
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for setting balance
-   * @returns Promise resolving to new balance
-   */
+  /** Admin set variant of set() that also writes to admin_log_action. */
   async adminSet(
     identifier: PlayerIdentifier,
     amount: number,
@@ -712,13 +572,7 @@ export class BalanceRepository {
     return newBalance;
   }
 
-  /**
-   * Gets transaction history for a player
-   *
-   * @param identifier - Player identifier
-   * @param limit - Maximum transactions to return (default: 50)
-   * @returns Transactions ordered by most recent first
-   */
+  /** Raw transaction history for a player, ordered most recent first. */
   async getHistory(
     identifier: PlayerIdentifier,
     limit: number = 50,
@@ -738,13 +592,7 @@ export class BalanceRepository {
     );
   }
 
-  /**
-   * Gets formatted transaction history with human-readable balance amounts
-   *
-   * @param identifier - Player identifier
-   * @param limit - Maximum transactions to return (default: 50)
-   * @returns Transactions with comma-formatted amount strings
-   */
+  /** Transaction history with amounts pre-formatted as comma-grouped strings. */
   async getFormattedHistory(
     identifier: PlayerIdentifier,
     limit: number = 50,

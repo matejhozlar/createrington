@@ -4,11 +4,10 @@ import { BalanceTransactionType } from "../../balance";
 import { BasePlayerRepository } from "../base";
 
 /**
- * Repository for player-scoped bulk balance operations
- *
- * - Bulk balance adjustment across multiple players with per-player error isolation
- *
- * NOTE: For single-player balance operations, use BalanceRepository directly
+ * Bulk admin balance adjustments across many players with per-player error
+ * isolation: a failure on one UUID is captured in the result row and does
+ * not abort the rest of the batch. For single-player operations use
+ * BalanceRepository directly.
  */
 export class PlayerBalanceRepository extends BasePlayerRepository {
   constructor() {
@@ -16,14 +15,9 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
   }
 
   /**
-   * Bulk balance adjustment for multiple players
-   *
-   * @param playerUuids - Array of player UUIDs
-   * @param amount - Amount to adjust (positive = grant, negative = deduct)
-   * @param adminDiscordId - Admin performing the action
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for bulk adjustment
-   * @returns Promise resolving to an array of results with success/failure status
+   * Apply the same signed delta to a list of players. Positive amount grants,
+   * negative deducts. Returns a parallel result array with success status per
+   * UUID (success rows include the new balance, failures include an error).
    */
   async bulkAdjust(
     playerUuids: string[],

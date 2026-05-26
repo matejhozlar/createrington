@@ -22,21 +22,14 @@ import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { Q } from "@/db";
 import config from "@/config";
 
-/**
- * Events emitted by MessageCacheService
- */
 export interface MessageCacheEvents {
-  /** New message added to the cache */
   messageCreate: (serverId: number, message: CachedMessage) => void;
-  /** Message updated in cache */
   messageUpdate: (serverId: number, message: CachedMessage) => void;
-  /** Message deleted from cache */
   messageDelete: (serverId: number, messageId: string) => void;
-  /** Cache initialization complete */
   cacheReady: () => void;
-  /** Server started (detected from relay bot) */
+  /** Emitted when a "server started" embed is detected from the relay bot. */
   serverStarted: (serverId: number) => void;
-  /** Server stopped (detected from relay bot) */
+  /** Emitted when a "server closed" embed is detected from the relay bot. */
   serverClosed: (serverId: number) => void;
 }
 
@@ -49,16 +42,16 @@ interface TypedEventEmitter<T> {
 }
 
 /**
- * Service for caching Discord messages from configured channels
+ * In-memory ring buffer of recent Discord messages per configured server.
  *
- * Features:
- * - Caches messages in memory with configurable size limits
- * - Supports multiple servers/channels
- * - Provides query methods for retrieving cached messages
- * - Automatically loads historical messages on startup
- * - Handles message updates and deletions
- * - Emits events for real-time integration (WebSocket, etc.)
- * - Parses messages to detect source (System, Discord, Minecraft, Web)
+ * On init, optionally backfills history from each watched channel, then keeps
+ * the cache live via messageCreate/Update/Delete listeners on the supplied
+ * Discord client. Each cached entry is classified by source (System, Discord,
+ * Minecraft, Web) using the bot identity and embed shape, and mentions are
+ * resolved against player/role/channel maps loaded once at init. Emits typed
+ * events (messageCreate/Update/Delete, cacheReady, serverStarted/Closed) for
+ * downstream WebSocket fanout. The per-server buffer is bounded by
+ * `maxMessages` (default 100) and trims oldest-first on overflow.
  */
 export class MessageCacheService extends (EventEmitter as new () => TypedEventEmitter<MessageCacheEvents> &
   EventEmitter) {
@@ -67,11 +60,8 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   private isInitialized = false;
   private botUserId: string | null = null;
 
-  /** Discord ID → player username for mention resolution */
   private userMap = new Map<string, string>();
-  /** Role ID → display name */
   private roleMap = new Map<string, string>();
-  /** Channel ID → display name */
   private channelMap = new Map<string, string>();
 
   constructor(
@@ -89,7 +79,8 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
   }
 
   /**
-   * Initializes the service and sets up event listeners
+   * Load mention maps, attach Discord listeners, and (optionally) backfill
+   * history. Re-entrant: subsequent calls log a warning and return.
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -120,11 +111,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     );
   }
 
-  /**
-   * Sets up Discord event listeners for message events
-   *
-   * @private
-   */
   private setupEventListeners(): void {
     this.bot.on("messageCreate", (message: Message) => {
       this.handleMessageCreate(message);
@@ -144,11 +130,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     logger.debug("Message cache event listeners registered");
   }
 
-  /**
-   * Loads historical messages from all configured servers
-   *
-   * @private
-   */
   private async loadHistoricalMessages(): Promise<void> {
     logger.info("Loading historical messages...");
 
@@ -166,13 +147,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     logger.info(`Loaded ${totalMessages} historical messages`);
   }
 
-  /**
-   * Loads message history for a specific channel
-   *
-   * @param serverConfig - Server configuration containing channel ID
-   *
-   * @private
-   */
   private async loadChannelHistory(
     serverConfig: ServerCacheConfig,
   ): Promise<void> {
@@ -208,13 +182,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  /**
-   * Handles new message creation
-   *
-   * @param message - Discord message that was created
-   *
-   * @private
-   */
   private handleMessageCreate(message: Message): void {
     const serverId = this.getServerIdForChannel(message.channelId);
     if (serverId === null) {
@@ -233,14 +200,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     );
   }
 
-  /**
-   * Detects server start/stop events from relay bot messages
-   *
-   * @param message - Discord message
-   * @param serverId - Server ID
-   *
-   * @private
-   */
   private detectServerStatus(message: Message, serverId: number): void {
     if (!message.author.bot) {
       return;
@@ -267,15 +226,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  /**
-   * Handles message updates
-   *
-   * @deprecated
-   *
-   * @param message - Updated Discord message
-   *
-   * @private
-   */
   private handleMessageUpdate(message: Message): void {
     const serverId = this.getServerIdForChannel(message.channelId);
     if (serverId === null) {
@@ -300,15 +250,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  /**
-   * Handles message deletion
-   *
-   * @deprecated
-   *
-   * @param message - Discord message that was deleted
-   *
-   * @private
-   */
   private handleMessageDelete(message: Message | PartialMessage): void {
     const serverId = this.getServerIdForChannel(message.channelId);
     if (serverId === null) {
@@ -332,14 +273,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  /**
-   * Gets the server ID for a given channel ID
-   *
-   * @param channelId - Discord channel ID
-   * @returns Server ID or null if channel is not monitored
-   *
-   * @private
-   */
   private getServerIdForChannel(channelId: string): number | null {
     for (const [serverId, config] of this.serverConfig) {
       if (config.channelId === channelId) {
@@ -349,14 +282,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return null;
   }
 
-  /**
-   * Detects the source of a message (System, Discord, Minecraft, Web)
-   *
-   * @param message - Discord message
-   * @returns Message source
-   *
-   * @private
-   */
   private detectMessageSource(message: Message): MessageSource {
     if (!message.author.bot) {
       return MessageSource.DISCORD;
@@ -386,14 +311,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return MessageSource.MINECRAFT;
   }
 
-  /**
-   * Parses Minecraft-specific data from a message
-   *
-   * @param message - Discord message
-   * @returns Minecraft data or undefined
-   *
-   * @private
-   */
   private parseMinecraftData(
     message: Message,
   ): MinecraftMessageData | undefined {
@@ -402,14 +319,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     };
   }
 
-  /**
-   * Parses system message data from embeds
-   *
-   * @param message - Discord message
-   * @returns System data or undefined
-   *
-   * @private
-   */
   private parseSystemData(message: Message): SystemMessageData | undefined {
     if (message.embeds.length === 0) {
       return undefined;
@@ -422,28 +331,12 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     };
   }
 
-  /**
-   * Parses web message data
-   * TODO: Implement when web message are added
-   *
-   * @param message - Discord message
-   * @returns Web data or undefined
-   *
-   * @private
-   */
+  // TODO: implement when web messages are added
   private parseWebData(_message: Message): WebMessageData | undefined {
     // TODO: Implement web message detection
     return undefined;
   }
 
-  /**
-   * Parses Discord embeds into a clean format
-   *
-   * @param embeds - Discord embeds
-   * @returns Parsed embeds
-   *
-   * @private
-   */
   private parseEmbeds(embeds: Embed[]): ParsedEmbed[] {
     return embeds.map((embed) => ({
       type: embed.data?.type || undefined,
@@ -494,14 +387,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }));
   }
 
-  /**
-   * Parses Discord attachments into a clean format
-   *
-   * @param attachments - Discord attachments
-   * @returns Parsed attachments
-   *
-   * @private
-   */
   private parseAttachments(
     attachments: Message["attachments"],
   ): ParsedAttachment[] {
@@ -515,14 +400,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }));
   }
 
-  /**
-   * Strips backticks from text content
-   *
-   * @param text - Text to clean
-   * @returns Text with all backticks removed
-   *
-   * @private
-   */
   private stripBackticks(text: string | null | undefined): string | undefined {
     if (!text) {
       return undefined;
@@ -530,11 +407,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return text.replace(/`/g, "");
   }
 
-  /**
-   * Loads player, role, and channel maps for mention resolution.
-   * Called once on init: roles/channels come from static config,
-   * users come from the player table.
-   */
   private async loadMentionMaps(): Promise<void> {
     const players = await Q.player.findAll(undefined, {
       select: ["discordId", "minecraftUsername"],
@@ -570,9 +442,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     );
   }
 
-  /**
-   * Replaces Discord mention syntax in text with resolved names.
-   */
   private resolveMentions(text: string): string {
     // User mentions: <@123456> or <@!123456>
     text = text.replace(/<@!?(\d+)>/g, (match, id: string) => {
@@ -595,15 +464,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return text;
   }
 
-  /**
-   * Converts a Discord message to a CachedMessage with full parsing
-   *
-   * @param message - Discord message
-   * @param serverId - Server ID this message belongs to
-   * @returns Cached message object
-   *
-   * @private
-   */
   private convertToCachedMessage(
     message: Message,
     serverId: number,
@@ -644,14 +504,6 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return cached;
   }
 
-  /**
-   * Adds a message to the cache, maintaining size limit
-   *
-   * @param serverId - Server ID
-   * @param message - Message to add
-   *
-   * @private
-   */
   private addToCache(serverId: number, message: CachedMessage): void {
     const cache = this.cache.get(serverId);
     const config = this.serverConfig.get(serverId);
@@ -668,13 +520,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     }
   }
 
-  /**
-   * Retrieves cached messages for a server with optional filtering
-   *
-   * @param serverId - Server ID
-   * @param options - Optional query filters
-   * @returns Array of cached messages (newest first by default)
-   */
+  /** Cached messages for a server, newest first, with optional filtering. */
   getMessages(
     serverId: number,
     options?: MessageQueryOptions,
@@ -714,13 +560,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return messages;
   }
 
-  /**
-   * Gets a specific message by ID
-   *
-   * @param serverId - Server ID
-   * @param messageId - Message ID
-   * @returns Cached message or undefined if not found
-   */
+  /** Single cached message by id, or undefined if not in the buffer. */
   getMessage(serverId: number, messageId: string): CachedMessage | undefined {
     const cache = this.cache.get(serverId);
     if (!cache) {
@@ -730,22 +570,12 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return cache.find((m) => m.messageId === messageId);
   }
 
-  /**
-   * Gets the most recent N messages for a server
-   *
-   * @param serverId - Server ID
-   * @param count - Number of messages to retrieve
-   * @returns Array of most recent messages
-   */
+  /** Most recent `count` messages for a server, newest first. */
   getRecentMessages(serverId: number, count: number): CachedMessage[] {
     return this.getMessages(serverId, { limit: count });
   }
 
-  /**
-   * Gets cache statistics
-   *
-   * @returns Object with cache stats per server
-   */
+  /** Per-server counts, oldest/newest timestamps, and breakdown by source. */
   getStats(): Record<
     number,
     {
@@ -781,11 +611,7 @@ export class MessageCacheService extends (EventEmitter as new () => TypedEventEm
     return stats;
   }
 
-  /**
-   * Clears the cache for a specific server
-   *
-   * @param serverId - Server ID
-   */
+  /** Empty the in-memory buffer for a single server. */
   clearCache(serverId: number): void {
     const cache = this.cache.get(serverId);
     if (cache) {

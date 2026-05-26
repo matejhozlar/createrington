@@ -5,28 +5,19 @@ import { EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 
 /**
- * Member Cleanup Service
- *
- * Automatically removes player data for Discord members who departed more than 30 days ago:
- * - Runs an immediate cleanup on startup, then repeats every 6 hours
- * - Deletes the player record from the database
- * - Removes the player from all Minecraft server whitelists via RCON
- * - Marks the departed_member row as deleted with a timestamp
- * - Updates the associated Discord administration notification embed
- *
- * NOTE: RCON failures during whitelist removal are logged but do not
- * abort the rest of the cleanup for that member
+ * Sweeps player data for Discord members who left more than 30 days ago.
+ * Runs an immediate pass on init, then repeats every 6 hours. For each
+ * expired row it deletes the player record, removes the player from every
+ * Minecraft whitelist via RCON, stamps the departed_member row as deleted,
+ * and updates the original administration notification embed. RCON failures
+ * during whitelist removal are logged but do not abort the rest of the
+ * cleanup for that member.
  */
 export class MemberCleanupService {
   private intervalId?: NodeJS.Timeout;
   private readonly CHECK_INTERVAL = 6 * 60 * 60 * 1000; // 6 hours
 
-  /**
-   * Initialize the service and start automatic cleanup scheduler
-   * Called by the service container during startup
-   *
-   * @returns Promise resolving when the service is started
-   */
+  /** Run an immediate cleanup pass and arm the 6-hour interval. */
   async initialize(): Promise<void> {
     logger.info("Initializing MemberCleanupService...");
 
@@ -43,12 +34,7 @@ export class MemberCleanupService {
     logger.info(`MemberCleanupService initialized`);
   }
 
-  /**
-   * Shutdown the service and clean up timers
-   * Called by the service container during graceful shutdown
-   *
-   * @returns Promise resolving when the service is shut down
-   */
+  /** Clear the scheduled interval. Safe to call multiple times. */
   async shutdown(): Promise<void> {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -57,18 +43,6 @@ export class MemberCleanupService {
     }
   }
 
-  /**
-   * Performs a cleanup of departed members older than 30 days
-   *
-   * For each expired member:
-   * 1. Deletes player data from database
-   * 2. Removes from Minecraft server whitelist
-   * 3. Marks as deleted in departed_members table
-   * 4. Updates notification message if it exists
-   *
-   * @returns Promise resolving when the cleanup is finished
-   * @private
-   */
   private async cleanup(): Promise<void> {
     try {
       const expiredMembers = await Q.discord.guild.member.leave.expired();
@@ -149,14 +123,7 @@ export class MemberCleanupService {
     }
   }
 
-  /**
-   * Manually triggers cleanup
-   *
-   * Useful for admin commands or testing to force an immediate cleanup
-   * without waiting for the scheduled interval
-   *
-   * @returns Promise resolving when the cleanup is complete
-   */
+  /** Run the cleanup pass on demand without waiting for the scheduled interval. */
   async triggerManualCleanup(): Promise<void> {
     logger.info("Manual cleanup triggered");
     await this.cleanup();

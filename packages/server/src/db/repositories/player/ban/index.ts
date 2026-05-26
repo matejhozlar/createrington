@@ -6,14 +6,10 @@ import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 import type { BanStatistics } from "@/db/queries/player/ban";
 
 /**
- * Repository for player ban management
- *
- * Handles:
- * - Issuing temporary and permanent bans
- * - Unbanning/pardoning players
- * - Ban history and statistics
- * - Active ban checking
- * - Expired ban cleanup
+ * Player ban lifecycle: issuing temporary or permanent bans, unbanning,
+ * querying history and statistics, and sweeping expired temporary bans.
+ * Every mutation writes a paired admin_log_action entry inside the same DB
+ * transaction. Permanent bans cascade-delete the player row.
  */
 export class PlayerBanRepository extends BasePlayerRepository {
   constructor() {
@@ -21,14 +17,8 @@ export class PlayerBanRepository extends BasePlayerRepository {
   }
 
   /**
-   * Issue a temporary ban to a player
-   * Temporary bans expire after a specified duration and only affect Minecraft server access
-   *
-   * @param identifier - Player to ban
-   * @param data - Ban details including expiry
-   * @param adminDiscordId - Admin issuing the ban
-   * @param adminUsername - Admin username
-   * @returns Promise resolving to created ban record
+   * Issue a temporary ban that expires at the given timestamp. Rejects if the
+   * player already has an active ban or if expiresAt is not in the future.
    */
   async issueTemporary(
     identifier: PlayerIdentifier,
@@ -94,15 +84,9 @@ export class PlayerBanRepository extends BasePlayerRepository {
   }
 
   /**
-   * Issue a permanent ban to a player
-   * Permanent bans result in complete player data deletion from database and Discord
-   * This is irreversible and should be used with extreme caution
-   *
-   * @param identifier - Player to ban permanently
-   * @param data - Ban details
-   * @param adminDiscordId - Admin issuing the ban
-   * @param adminUsername - Admin username
-   * @returns Promise resolving to created ban record (before deletion)
+   * Issue a permanent ban and hard-delete the player. The returned ban row is
+   * a snapshot from before the cascade and cannot be re-fetched afterward.
+   * Irreversible.
    */
   async issuePermanent(
     identifier: PlayerIdentifier,
@@ -168,15 +152,9 @@ export class PlayerBanRepository extends BasePlayerRepository {
   }
 
   /**
-   * Unban/pardon a player
-   * Works for both temporary and permanent bans
-   * Note: Permanent bans that already resulted in player deletion cannot be undone
-   *
-   * @param banId - Ban ID to remove
-   * @param adminDiscordId - Admin removing the ban
-   * @param adminUsername - Admin username
-   * @param reason - Reason for unbanning
-   * @returns Promise resolving to updated ban record
+   * Lift a ban by ID. Works for both ban types, but permanent bans that
+   * already cascade-deleted the player cannot be undone; the player record
+   * stays gone.
    */
   async unban(
     banId: number,
@@ -242,35 +220,19 @@ export class PlayerBanRepository extends BasePlayerRepository {
     });
   }
 
-  /**
-   * Check if a player is currently banned
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to true if player has an active ban
-   */
+  /** True if the player has an active (not unbanned, not expired) ban. */
   async isBanned(identifier: PlayerIdentifier): Promise<boolean> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.ban.isPlayerBanned(uuid);
   }
 
-  /**
-   * Get the current active ban for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to active ban or null
-   */
+  /** The player's currently active ban row, or null. */
   async getCurrent(identifier: PlayerIdentifier): Promise<PlayerBan | null> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.ban.getCurrentBan(uuid);
   }
 
-  /**
-   * Get complete ban history for a player
-   *
-   * @param identifier - Player identifier
-   * @param includeUnbanned - Whether to include unbanned entries
-   * @returns Promise resolving to array of bans
-   */
+  /** Full ban history for a player; pass includeUnbanned=false to skip lifted bans. */
   async getHistory(
     identifier: PlayerIdentifier,
     includeUnbanned: boolean = true,
@@ -279,37 +241,20 @@ export class PlayerBanRepository extends BasePlayerRepository {
     return await Q.player.ban.getBanHistory(uuid, includeUnbanned);
   }
 
-  /**
-   * Get ban statistics for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to ban statistics
-   */
+  /** Aggregate ban statistics for a single player. */
   async getStatistics(identifier: PlayerIdentifier): Promise<BanStatistics> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.ban.getPlayerStatistics(uuid);
   }
 
-  /**
-   * Get active ban counts for multiple players efficiently
-   * Useful for list views
-   *
-   * @param playerUuids - Array of player UUIDs
-   * @returns Promise resolving to map of UUID -> active ban count
-   */
+  /** Batched UUID -> active ban count map, for list views. */
   async getActiveBanCounts(
     playerUuids: string[],
   ): Promise<Record<string, number>> {
     return await Q.player.ban.getActiveBanCounts(playerUuids);
   }
 
-  /**
-   * Get all bans by type
-   *
-   * @param banType - Type of ban to retrieve
-   * @param activeOnly - Whether to only include active bans
-   * @returns Promise resolving to array of bans
-   */
+  /** All bans of a given type; pass activeOnly=false to include lifted/expired. */
   async getByType(
     banType: BanType,
     activeOnly: boolean = true,
@@ -317,23 +262,12 @@ export class PlayerBanRepository extends BasePlayerRepository {
     return await Q.player.ban.getByType(banType, activeOnly);
   }
 
-  /**
-   * Get all bans issued by a specific admin
-   *
-   * @param adminDiscordId - Discord ID of the admin
-   * @returns Promise resolving to array of bans
-   */
+  /** All bans issued by a specific admin. */
   async getByAdmin(adminDiscordId: string): Promise<PlayerBan[]> {
     return await Q.player.ban.getByAdmin(adminDiscordId);
   }
 
-  /**
-   * Get recent bans across all players
-   *
-   * @param limit - Maximum number of bans to return
-   * @param activeOnly - Whether to only include active bans
-   * @returns Promise resolving to array of recent bans
-   */
+  /** Recently issued bans across all players. */
   async getRecent(
     limit: number = 50,
     activeOnly: boolean = true,
@@ -341,23 +275,15 @@ export class PlayerBanRepository extends BasePlayerRepository {
     return await Q.player.ban.getRecent(limit, activeOnly);
   }
 
-  /**
-   * Get all expired temporary bans that need cleanup
-   * Useful for scheduled jobs
-   *
-   * @returns Promise resolving to array of expired bans
-   */
+  /** Temporary bans whose expiresAt has passed but are still marked active. */
   async getExpired(): Promise<PlayerBan[]> {
     return await Q.player.ban.getExpiredBans();
   }
 
   /**
-   * Cleanup expired temporary bans
-   * Marks them as unbanned automatically
-   * Should be run periodically (e.g., via cron job)
-   *
-   * @param systemUsername - Username for system actions (default: "System")
-   * @returns Promise resolving to number of bans cleaned up
+   * Auto-unban every expired temporary ban (designed for periodic cron use).
+   * Per-ban failures are logged and skipped so one bad row never aborts the
+   * sweep. Returns the count successfully cleaned.
    */
   async cleanupExpired(systemUsername: string = "System"): Promise<number> {
     const expiredBans = await this.getExpired();

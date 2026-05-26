@@ -78,6 +78,11 @@ export class PlayerPromptService {
     this.closureTimers.clear();
   }
 
+  /**
+   * Creates a prompt row, posts the announcement to Discord, persists the
+   * resulting message id, and arms its closure timer. Throws if the Discord
+   * post fails (the DB row is rolled back in that case).
+   */
   async createPrompt(opts: {
     question: string;
     description?: string | null;
@@ -127,6 +132,7 @@ export class PlayerPromptService {
     return { ...prompt, messageId: post.messageId };
   }
 
+  /** Upserts a response for the given prompt. Rejects if the prompt is closed or past its end time. */
   async submitResponse(opts: {
     promptId: number;
     discordId: string;
@@ -153,6 +159,11 @@ export class PlayerPromptService {
     return { endsAt: prompt.endsAt };
   }
 
+  /**
+   * Marks the prompt closed, cancels its timer, and edits the Discord
+   * announcement to show a disabled button with the response count. Idempotent:
+   * a no-op if the prompt is already closed or missing.
+   */
   async closePrompt(promptId: number): Promise<void> {
     const timer = this.closureTimers.get(promptId);
     if (timer) {

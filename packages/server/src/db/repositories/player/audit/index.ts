@@ -4,26 +4,15 @@ import type { AdminLogAction } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 
 /**
- * Repository for player audit log management
- *
- * Handles:
- * - Audit log retrieval
- * - Audit log counting
- * - Audit log pagination
+ * Read access over admin_log_action filtered to a single target player.
+ * Used by the admin panel audit-log views.
  */
 export class PlayerAuditRepository extends BasePlayerRepository {
   constructor() {
     super();
   }
 
-  /**
-   * Gets admin action audit log for a player
-   *
-   * @param identifier - Player identifier
-   * @param limit - Number of actions to return
-   * @param offset - Number of actions to skip
-   * @returns Promise resolving to an array of audit logs
-   */
+  /** Paginated admin actions targeting the player, newest first. */
   async getLog(
     identifier: PlayerIdentifier,
     limit: number = 20,
@@ -44,12 +33,7 @@ export class PlayerAuditRepository extends BasePlayerRepository {
     return actions;
   }
 
-  /**
-   * Counts total audit log entries for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to total count
-   */
+  /** Total admin action count targeting the player. */
   async count(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.admin.log.action.count({ targetPlayerUuid: uuid });

@@ -19,18 +19,15 @@ import type {
 } from "./types";
 
 /**
- * General-purpose Discord messaging service
+ * Unified Discord messaging surface for a single bot client.
  *
- * Provides unified methods for all Discord message operations:
- * - send() - Handles text, embeds, components, and files
- * - edit() - Modifies existing messages
- * - delete() - Removes messages
- * - reply() - Creates replies to messages
- * - fetch() - Retrieves messages or channels
- * - withLoading() - Executes operations with loading state
- *
- * NOTE: Guild ID is automatically pulled from config
- * since this bot is exclusive to one Discord server
+ * Wraps send/edit/delete/reply/fetch plus a `withLoading` helper that posts
+ * a placeholder message and rewrites it once the wrapped operation resolves
+ * or throws. Per-client singleton (keyed by Discord.js `Client` instance) so
+ * the main bot and any auxiliary bots each get their own service. The guild
+ * id is resolved once from config since the deployment targets one server,
+ * and `allowedMentions` defaults to `{ parse: [] }` so arbitrary content
+ * cannot ping @everyone, roles, or users unless the caller opts in.
  */
 export class DiscordMessageService {
   private static instance: DiscordMessageService;
@@ -41,12 +38,7 @@ export class DiscordMessageService {
     this.guildId = config.discord.guild.id;
   }
 
-  /**
-   * Gets the singleton instance of DiscordMessageService
-   *
-   * @param client - The Discord client instance to register on
-   * @returns DiscordMessageService instance
-   */
+  /** Per-client singleton accessor; creates the instance on first call. */
   public static getInstance(client: Client): DiscordMessageService {
     if (!DiscordMessageService.instances.has(client)) {
       DiscordMessageService.instances.set(
@@ -57,13 +49,6 @@ export class DiscordMessageService {
     return DiscordMessageService.instances.get(client)!;
   }
 
-  /**
-   * Fetches a channel and validates it's sendable
-   *
-   * @param channelId - The channel ID to fetch
-   *
-   * @private
-   */
   private async fetchSendableChannel(
     channelId: string,
   ): Promise<TextChannel | null> {
@@ -86,40 +71,9 @@ export class DiscordMessageService {
   }
 
   /**
-   * Send method - handles all message sending scenarios
-   *
-   * Automatically detects what needs to be sent based on options provided:
-   * - Plain text
-   * - Embed
-   * - Buttons/Components
-   * - Files
-   * - Any combination of the above
-   *
-   * @param options - Message configuration
-   * @returns Promise resolving to SendMessageResult
-   *
-   * @example
-   * // Plain text
-   * await messageService.send({
-   *    channelId,
-   *    content: "Hello World!"
-   * });
-   *
-   * @example
-   * // Embed only
-   * await messageService.send({
-   *    channelId,
-   *    embeds: embed
-   * });
-   *
-   * @example
-   * // Everything combined
-   * await messageService.send({
-   *    channelId,
-   *    embeds: embed,
-   *    components: [components],
-   *    files: [attachment],
-   * });
+   * Post a message to a channel. Never throws: failures (unknown channel,
+   * permission errors, Discord 5xx) are returned as `{ success: false, error }`.
+   * Suppresses all mentions unless `allowedMentions` is supplied.
    */
   async send(options: SendMessageOptions): Promise<SendMessageResult> {
     try {
@@ -163,29 +117,9 @@ export class DiscordMessageService {
   }
 
   /**
-   * Edit method - modifies existing messages
-   *
-   * Can update any combination of content, embeds, components, or files
-   *
-   * @param options - Edit configuration
-   * @returns Promise resolving to SendMessageResult with edited message
-   *
-   * @example
-   * // Edit just content
-   * await messageService.edit({
-   *    channelId,
-   *    messageId,
-   *    content: "Updated!"
-   * });
-   *
-   * @example
-   * // Edit embed and components
-   * await messageService.edit({
-   *    channelId,
-   *    messageId,
-   *    embeds: newEmbed
-   *    components: [disabledButtons]
-   * });
+   * Edit an existing message. Pass `null` for `embeds` or `components` to
+   * clear them, `undefined` (or omit) to leave them untouched. Returns
+   * `{ success: false, error }` on failure rather than throwing.
    */
   async edit(options: EditMessageOptions): Promise<SendMessageResult> {
     try {
@@ -243,18 +177,7 @@ export class DiscordMessageService {
     }
   }
 
-  /**
-   * Delete method - removes messages
-   *
-   * @param options - Delete configuration
-   * @returns Promise resolving to success status
-   *
-   * @example
-   * await messageService.delete({
-   *    channelId,
-   *    messageId,
-   * });
-   */
+  /** Delete a message. Returns `{ success: false, error }` on failure rather than throwing. */
   async delete(
     options: DeleteMessageOptions,
   ): Promise<{ success: boolean; error?: string }> {
@@ -294,29 +217,8 @@ export class DiscordMessageService {
   }
 
   /**
-   * Reply method - creates replies to messages
-   *
-   * Supports all message types (text, embeds, components, files)
-   *
-   * @param options - Reply configuration
-   * @returns Promise resolving to SendMessageResult with reply message
-   *
-   * @example
-   * // Simple text reply
-   * await messageService.reply({
-   *    channelId,
-   *    messageId,
-   *    content: "Thanks!"
-   * });
-   *
-   * @example
-   * await messageService.reply({
-   *    channelId,
-   *    messageId,
-   *    content: "Choose an option:",
-   *    embeds: optionsEmbed,
-   *    components: [buttonRow]
-   * });
+   * Post a reply to an existing message. Mentions are suppressed by default.
+   * Returns `{ success: false, error }` on failure rather than throwing.
    */
   async reply(options: ReplyMessageOptions): Promise<SendMessageResult> {
     try {
@@ -364,21 +266,7 @@ export class DiscordMessageService {
     }
   }
 
-  /**
-   * Fetches a message from a channel
-   *
-   * @param options - Message fetch configuration
-   * @returns Promise resolving to fetch result with message
-   *
-   * @example
-   * const result = await messageService.fetchMessage({
-   *    channelId,
-   *    messageId
-   * });
-   * if (result.success) {
-   *    await result.message.edit({ content: "Updated!" });
-   * }
-   */
+  /** Fetch a message by id. Returns `{ success: false, error }` if the channel or message is gone. */
   async fetchMessage(
     options: FetchMessageOptions,
   ): Promise<
@@ -416,20 +304,7 @@ export class DiscordMessageService {
     }
   }
 
-  /**
-   * Fetches a channel
-   *
-   * @param options - Channel fetch configuration
-   * @returns Promise resolving to fetch result with channel
-   *
-   * @example
-   * const result = await messageService.fetchChannel({
-   *    channelId,
-   * });
-   * if (result.success) {
-   *    await result.channel.send("Hello!");
-   * }
-   */
+  /** Fetch a sendable text channel by id. Returns `{ success: false, error }` if unavailable. */
   async fetchChannel(
     options: FetchChannelOptions,
   ): Promise<
@@ -459,36 +334,9 @@ export class DiscordMessageService {
   }
 
   /**
-   * Executes an operation with a loading message that updates on completion
-   *
-   * Useful for long-running operations where progress needs to be shown
-   * The loading message will be automatically updated with success or error
-   * state when operation completes
-   *
-   * @template T - The return type of the operation
-   * @param channelId - Discord channel ID
-   * @param operation - Async operation to execute
-   * @param options - Configuration options for loading behavior
-   * @returns Promise resolving to the operation result
-   *
-   * @example
-   * const result = await messageService.withLoading(
-   *    channelId,
-   *    async () => {
-   *        // Long-running operations
-   *        await operation();
-   *        return { processed: 100 };
-   *    },
-   *    {
-   *        loadingMessage: "Processing data...",
-   *        onSuccess: (result) => ({
-   *            content: `Processed ${result.processed} items!`,
-   *        })
-   *        onError: (error) => ({
-   *            content: `Failed: ${error.message}`,
-   *        })
-   *    }
-   * )
+   * Post a loading placeholder, run `operation`, then rewrite the placeholder
+   * with the `onSuccess` / `onError` payload. The wrapped error is re-thrown
+   * after the placeholder is updated, so callers can still try/catch.
    */
   async withLoading<T>(
     channelId: string,
@@ -543,12 +391,6 @@ export class DiscordMessageService {
   }
 }
 
-/**
- * Factory function to create or get the DiscordMessageService instance
- *
- * @param client - Discord.js Client instance
- * @returns DiscordMessageService singleton instance
- */
 export const createDiscordMessageService = (
   client: Client,
 ): DiscordMessageService => DiscordMessageService.getInstance(client);

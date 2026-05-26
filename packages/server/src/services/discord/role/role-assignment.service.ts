@@ -16,26 +16,16 @@ import { Q } from "@/db";
 import { ServerAgeCondition } from "./conditions/server-age-condition";
 
 /**
- * Service for managing automatic role assignments based on various conditions
- *
- * Features:
- * - Checks player eligibility against configured rules
- * - Assigns/removes roles based on conditions (playtime, balance, etc.)
- * - Handles role hierarchies (only assigns highest eligible role)
- * - Supports both realtime and scheduled checks
- * - Integrates with Discord role manager for actual role operations
+ * Evaluates player eligibility against configured role rules (playtime, server
+ * age, etc.) and reconciles Discord role state to match. Hierarchy-aware:
+ * `processRoleHierarchy` assigns only the highest-tier role a player qualifies
+ * for and removes the lower tiers in a single pass, avoiding assign/remove
+ * churn. Notifications are dispatched asynchronously and never block role ops.
+ * Errors are caught per-player so a single failure does not abort batch runs.
  */
 export class RoleAssignmentService {
   constructor(private readonly bot: Client) {}
 
-  /**
-   * Creates the appropriate condition checker for a given rule
-   *
-   * @param rule - The role assignment rule
-   * @returns Condition checker instance
-   *
-   * @private
-   */
   private createCondition(rule: AnyRoleRule): BaseRoleCondition {
     switch (rule.conditionType) {
       case RoleConditionType.PLAYTIME:
@@ -47,13 +37,7 @@ export class RoleAssignmentService {
     }
   }
 
-  /**
-   * Check if a player qualifies for a specific role
-   *
-   * @param discordId - Discord user ID of the player
-   * @param rule - Role assignment rule to check
-   * @returns Promise resolving to eligibility result
-   */
+  /** Checks whether a player currently satisfies the rule's condition. */
   async checkEligibility(
     discordId: string,
     rule: AnyRoleRule,
@@ -62,13 +46,7 @@ export class RoleAssignmentService {
     return await condition.checkEligibility(discordId);
   }
 
-  /**
-   * Check a player's eligibility for multiple roles
-   *
-   * @param discordId - Discord ID of the player
-   * @param rules - Array of role assignment rules to check
-   * @returns Promise resolving to array of eligibility results
-   */
+  /** Checks eligibility for multiple rules in parallel; results map 1:1 to the input order. */
   async checkMultipleRoles(
     discordId: string,
     rules: AnyRoleRule[],
@@ -79,15 +57,9 @@ export class RoleAssignmentService {
   }
 
   /**
-   * Finds the highest eligible role in a hierarchy for a player
-   *
-   * Checks all roles from highest to lowest (by requiredValue) and returns
-   * the first one player qualifies for. This prevents assigning multiple
-   * roles in a hierarchy
-   *
-   * @param discordId - Discord user ID of the player
-   * @param rules - Array of role rules (should be from same hierarchy)
-   * @returns Promise resolving to the highest eligible rule, or null if none qualifies
+   * Returns the highest-tier rule (by required value) the player qualifies
+   * for, or null if none. Caller must pass rules from a single hierarchy;
+   * mixing hierarchies will produce nonsense rankings.
    */
   async findHighestEligibleRole(
     discordId: string,
@@ -113,14 +85,6 @@ export class RoleAssignmentService {
     return null;
   }
 
-  /**
-   * Gets the required value for a rule (handles different condition types)
-   *
-   * @param rule - The role rule
-   * @returns Required value
-   *
-   * @private
-   */
   private getRequiredValue(rule: AnyRoleRule): number {
     switch (rule.conditionType) {
       case RoleConditionType.PLAYTIME:
@@ -133,18 +97,12 @@ export class RoleAssignmentService {
   }
 
   /**
-   * Processes role assignment for a hierarchy of roles
-   *
-   * Instead of processing each role independently, this method:
-   * 1. Finds the highest role the player qualifies for
-   * 2. Assigns only that role
-   * 3. Removes all other roles in the hierarchy
-   *
-   * This prevents the spam of assigning and immediately removing roles.
-   *
-   * @param discordId - Discord ID of the player
-   * @param rules - Array of role rules in the hierarchy (ordered doesn't matter)
-   * @returns Promise resolving to assignment result
+   * Reconciles a player's roles against a single hierarchy: assigns the
+   * highest qualifying tier (if any), removes every lower tier in one pass,
+   * and only fires the rank-up notification when the target role was actually
+   * just added. The new role is granted before stripping old ones so an
+   * assign failure leaves the player on their existing tier rather than
+   * roleless. Input rule order is irrelevant; ranking is by required value.
    */
   async processRoleHierarchy(
     discordId: string,
@@ -284,19 +242,13 @@ export class RoleAssignmentService {
   }
 
   /**
-   * Assigns or removes a role based on eligibility
+   * Single-rule version of role reconciliation: assigns if the player
+   * qualifies (and removes anything listed in `rule.removesRoles`), otherwise
+   * strips the role.
    *
-   * @deprecated Use processRoleHierarchy for hierarchical roles
-   *
-   * Workflow:
-   * 1. Fetch guild member
-   * 2. Check current eligibility
-   * 3. If qualifies and doesn't have role -> assign role and remove hierarchy roles
-   * 4. If doesn't qualify and has role -> remove role
-   *
-   * @param discordId - Discord user ID of the player
-   * @param rule - Role assignment rule to process
-   * @returns Promise resolving to assignment result
+   * @deprecated Prefer `processRoleHierarchy` so the full tier set is
+   * considered together; processing rules independently can churn assigns
+   * and removes within the same hierarchy.
    */
   async processRoleAssignment(
     discordId: string,
@@ -329,16 +281,6 @@ export class RoleAssignmentService {
     }
   }
 
-  /**
-   * Assigns a role to a member and removes hierarchy roles
-   *
-   * @param member - Guild member to assign role to
-   * @param rule - Role assignment rule
-   * @param eligibility - Eligibility result (for logging)
-   * @returns Promise resolving to assignment result
-   *
-   * @private
-   */
   private async assignRole(
     member: GuildMember,
     rule: AnyRoleRule,
@@ -417,15 +359,6 @@ export class RoleAssignmentService {
     };
   }
 
-  /**
-   * Removes a role from a member if they have it
-   *
-   * @param member - Guild member to remove role from
-   * @param rule - Role assignment rule
-   * @returns Promise resolving to assignment result
-   *
-   * @private
-   */
   private async removeRole(
     member: GuildMember,
     rule: AnyRoleRule,
@@ -464,13 +397,10 @@ export class RoleAssignmentService {
   }
 
   /**
-   * Process role assignments for a player across multiple rules
+   * Runs `processRoleAssignment` for each rule in parallel.
    *
-   * @deprecated Use processRoleHierarchy for better hierarchy handling
-   *
-   * @param discordId - Discord user ID of the player
-   * @param rules - Array of role assignments rules to process
-   * @returns Promise resolving to an array of assignment results
+   * @deprecated Prefer `processRoleHierarchy` when the rules belong to a
+   * single hierarchy; this method treats them independently.
    */
   async processMultipleRoles(
     discordId: string,
@@ -482,13 +412,9 @@ export class RoleAssignmentService {
   }
 
   /**
-   * Process role assignments for all registered players
-   *
-   * Useful for daily/scheduled checks across the entire player base
-   * Uses processRoleHierarchy to avoid spamming role changes
-   *
-   * @param rules - Array of role assignment rules to check
-   * @returns Promise resolving to a map of discordId -> result
+   * Runs `processRoleHierarchy` sequentially for every registered player.
+   * Intended for daily scheduled sweeps; sequential to keep Discord rate
+   * limit pressure bounded.
    */
   async processAllPlayers(
     rules: AnyRoleRule[],
