@@ -17,9 +17,11 @@ import { getSkinApiClient } from "@/services/skin-api";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
+const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
 
 const router = Router();
 
@@ -527,15 +529,32 @@ router.get(
       return;
     }
 
+    if (!MC_UUID_REGEX.test(uuid)) {
+      res.status(400).json({ error: "Invalid uuid format" });
+      return;
+    }
+
     const requestedPose =
       typeof pose === "string" && KNOWN_POSE_SET.has(pose as KnownPose)
         ? (pose as KnownPose)
         : pickRandomPose();
 
-    const png = await getSkinApiClient().renderPose({
-      pose: requestedPose,
-      source: { type: "uuid", uuid },
-    });
+    let png: Buffer;
+    try {
+      png = await getSkinApiClient().renderPose({
+        pose: requestedPose,
+        source: { type: "uuid", uuid },
+      });
+    } catch (err) {
+      // Keep the <img> tag rendering something useful instead of triggering
+      // the broken-image icon: bounce to mc-heads on any skin-api failure.
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        `skin-api render failed (uuid=${uuid} pose=${requestedPose}): ${message}, falling back to mc-heads`,
+      );
+      res.redirect(302, `${MC_HEADS_FALLBACK_URL}/${uuid}`);
+      return;
+    }
 
     res.setHeader("Content-Type", "image/png");
     res.setHeader(
