@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mcHeadsAvatar } from "@/lib/external-urls";
-import { starlightBustUrl } from "./skin-utils";
 
 interface ActivityData {
   username: string;
@@ -117,7 +116,6 @@ export function ActivityRender() {
   const [params] = useSearchParams();
   const [data, setData] = useState<ActivityData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
   const player = params.get("player");
   const hasMissingParams = !player;
@@ -137,13 +135,7 @@ export function ActivityRender() {
       .catch(() => setFetchError("Failed to load activity data"));
   }, [hasMissingParams, player]);
 
-  useEffect(() => {
-    if (!data) return;
-    const img = new Image();
-    img.onload = () => setAvatarSrc(img.src);
-    img.onerror = () => setAvatarSrc(mcHeadsAvatar(data.uuid));
-    img.src = starlightBustUrl(data.uuid);
-  }, [data]);
+  const avatarSrc = data ? mcHeadsAvatar(data.uuid) : null;
 
   const error = hasMissingParams ? "Missing parameters" : fetchError;
 

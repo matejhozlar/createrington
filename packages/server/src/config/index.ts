@@ -307,6 +307,11 @@ const config = {
         : `http://127.0.0.1:${env.PORT}`),
   },
 
+  skinApi: {
+    baseUrl: env.SKIN_API_URL ?? "http://127.0.0.1:8787",
+    apiKey: env.SKIN_API_KEY ?? "",
+  },
+
   stripe: {
     secretKey: env.STRIPE_SECRET_KEY ?? "",
     webhookSecret: env.STRIPE_WEBHOOK_SECRET ?? "",

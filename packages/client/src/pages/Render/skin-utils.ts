@@ -1,38 +1,26 @@
+import {
+  KNOWN_POSES,
+  pickRandomPose,
+  type KnownPose,
+} from "@createrington/skin-api-client";
 import { mcHeadsBody } from "@/lib/external-urls";
 
-export const SKIN_POSES = [
-  "default",
-  "marching",
-  "walking",
-  "crouching",
-  "crossed",
-  "cheering",
-  "trudging",
-  "pointing",
-  "dungeons",
-  "facepalm",
-  "kicking",
-  "ultimate",
-] as const;
+export { KNOWN_POSES, pickRandomPose };
+export type { KnownPose };
 
-export function randomPose(): string {
-  return SKIN_POSES[Math.floor(Math.random() * SKIN_POSES.length)];
+export function skinApiUrl(uuid: string, pose: KnownPose): string {
+  const url = new URL("/api/render/skin", window.location.origin);
+  url.searchParams.set("uuid", uuid);
+  url.searchParams.set("pose", pose);
+  return url.toString();
 }
 
-export function starlightSkinUrl(uuid: string, pose: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/${pose}/${uuid}/full`;
-}
-
-export function starlightBustUrl(uuid: string): string {
-  return `https://starlightskins.lunareclipse.studio/render/default/${uuid}/bust`;
-}
-
-/** Try to load a starlightskins render, fall back to mc-heads on failure. */
-export function loadSkin(uuid: string, pose: string): Promise<string> {
+/** Try to load a skin-api render, fall back to mc-heads on failure. */
+export function loadSkin(uuid: string, pose: KnownPose): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img.src);
     img.onerror = () => resolve(mcHeadsBody(uuid));
-    img.src = starlightSkinUrl(uuid, pose);
+    img.src = skinApiUrl(uuid, pose);
   });
 }
