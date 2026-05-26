@@ -24,8 +24,10 @@ export const globalLimiter = rateLimit({
   // Skip long-lived SSE streams: they count as one request but stay open
   // for minutes, and the stream itself has auth + upstream gating, so the
   // per-IP bucket would otherwise burn through and throttle the admin's
-  // other browsing.
-  skip: (req) => req.path === "/api/claude-chat/stream",
+  // other browsing. Also skip /api/health so high-frequency external probes
+  // don't share a bucket with regular traffic from the same upstream IP.
+  skip: (req) =>
+    req.path === "/api/claude-chat/stream" || req.path === "/api/health",
 });
 
 /** Auth-specific rate limiter: 20 requests per 15-minute window per IP */
