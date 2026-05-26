@@ -4,21 +4,26 @@ import config from "@/config";
 import { Q } from "@/db";
 
 /**
- * Service for updating Discord server statistics in channel names.
+ * Updates the Discord server-stats voice channels (members / bots / total).
  *
- * Members come from the player table (linked MC accounts), bots are a fixed
- * config value. Refresh runs at startup, on Discord member join/leave, and on
- * a periodic interval as a self-healer.
+ * Members come from the player table (linked MC accounts), bots is a fixed
+ * config value. Refresh runs at startup and on a periodic interval; concurrent
+ * runs are skipped via an in-flight guard.
  */
 export class ServerStatsService {
   private lastStats: ServerStats | null = null;
   private refreshTimer: NodeJS.Timeout | null = null;
+  private isUpdating = false;
 
   constructor(
     private readonly client: Client,
     private readonly config: ServerStatsConfig,
   ) {}
 
+  /**
+   * Start the service: perform an initial update and arm the refresh interval.
+   * No-op outside production.
+   */
   async initialize(): Promise<void> {
     if (!config.envMode.isProd) {
       logger.info("ServerStatsService skipped (not production)");
@@ -27,11 +32,11 @@ export class ServerStatsService {
 
     logger.info("Initializing ServerStatsService...");
     await this.updateStats();
-    this.setupEventListeners();
     this.startRefreshInterval();
     logger.info("ServerStatsService initialized");
   }
 
+  /** Stop the refresh interval. Safe to call multiple times. */
   async shutdown(): Promise<void> {
     if (this.refreshTimer) {
       clearInterval(this.refreshTimer);
@@ -40,16 +45,17 @@ export class ServerStatsService {
     logger.info("ServerStatsService stopped");
   }
 
-  private setupEventListeners(): void {
-    this.client.on("guildMemberAdd", async () => {
-      await this.updateStats();
-    });
+  /**
+   * Trigger an immediate stats refresh outside the normal interval.
+   * Skipped if another update is already in flight.
+   */
+  async forceUpdate(): Promise<void> {
+    await this.updateStats();
+  }
 
-    this.client.on("guildMemberRemove", async () => {
-      await this.updateStats();
-    });
-
-    logger.debug("ServerStatsService event listeners registered");
+  /** Last published stats, or null if no update has succeeded yet. */
+  getCurrentStats(): ServerStats | null {
+    return this.lastStats;
   }
 
   private startRefreshInterval(): void {
@@ -82,6 +88,12 @@ export class ServerStatsService {
   }
 
   private async updateStats(): Promise<void> {
+    if (this.isUpdating) {
+      logger.debug("Server stats update already in flight, skipping");
+      return;
+    }
+
+    this.isUpdating = true;
     try {
       const stats = await this.fetchStats();
 
@@ -133,14 +145,8 @@ export class ServerStatsService {
       );
     } catch (error) {
       logger.error("Failed to update server stats:", error);
+    } finally {
+      this.isUpdating = false;
     }
-  }
-
-  async forceUpdate(): Promise<void> {
-    await this.updateStats();
-  }
-
-  getCurrentStats(): ServerStats | null {
-    return this.lastStats;
   }
 }

@@ -12,6 +12,7 @@ export const SERVER_STATS_CONFIG: ServerStatsConfig = {
   botsChannelId: Discord.Channels.serverStats.BOTS,
   membersChannelId: Discord.Channels.serverStats.MEMBERS,
   totalMembersChannelId: Discord.Channels.serverStats.ALL_MEMBERS,
+  // main bot, web bot, and two Minecraft server message-relay bots
   botCount: 4,
   refreshIntervalMs: 60 * 60 * 1000,
 };
