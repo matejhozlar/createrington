@@ -11,7 +11,6 @@ interface ComponentBase {
 
 interface DatabaseComponent extends ComponentBase {
   latencyMs?: number;
-  error?: string;
 }
 
 interface DiscordBotComponent extends ComponentBase {
@@ -61,10 +60,8 @@ async function checkDatabase(): Promise<DatabaseComponent> {
     await pool.query("SELECT 1");
     return { status: "up", latencyMs: Date.now() - start };
   } catch (err) {
-    return {
-      status: "down",
-      error: err instanceof Error ? err.message : String(err),
-    };
+    logger.warn("Health check: database ping failed", { error: err });
+    return { status: "down", latencyMs: Date.now() - start };
   }
 }
 
@@ -169,7 +166,7 @@ async function buildHealthSnapshot(): Promise<HealthResponse> {
 async function healthHandler(_req: Request, res: Response): Promise<void> {
   const snapshot = await buildHealthSnapshot();
   res.setHeader("Cache-Control", "no-store");
-  res.json(snapshot);
+  res.status(snapshot.status === "down" ? 503 : 200).json(snapshot);
 }
 
 export function registerHealthRoute(app: Express): void {
