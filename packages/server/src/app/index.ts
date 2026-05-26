@@ -51,12 +51,7 @@ export function createApp(): Express {
             "wss:",
             ...(config.envMode.isProd ? [] : ["ws:"]),
           ],
-          "img-src": [
-            "'self'",
-            "data:",
-            "https://starlightskins.lunareclipse.studio",
-            "https://mc-heads.net",
-          ],
+          "img-src": ["'self'", "data:", "https://mc-heads.net"],
         },
       },
     }),

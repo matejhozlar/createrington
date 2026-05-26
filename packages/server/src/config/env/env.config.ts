@@ -181,6 +181,12 @@ const envSchema = z
     PUPPETEER_EXECUTABLE_PATH: z.string().min(1).optional(),
     PUPPETEER_BASE_URL: z.string().url().optional(),
 
+    SKIN_API_URL: z.string().url("Skin API URL must be a valid URL").optional(),
+    SKIN_API_KEY: z
+      .string()
+      .min(32, "Skin API key must be at least 32 characters")
+      .optional(),
+
     // Playtime sync (cross-environment forwarding)
     PLAYTIME_SYNC_TARGET_URL: z.string().url().optional(),
     PLAYTIME_SYNC_SECRET: z
@@ -252,6 +258,7 @@ const envSchema = z
         "Production OAuth redirect URI is required",
       ],
       ["PUPPETEER_SECRET", "Puppeteer secret is required"],
+      ["SKIN_API_KEY", "Skin API key is required"],
       ["RESEND_API_KEY", "Resend API key is required"],
     ];
 

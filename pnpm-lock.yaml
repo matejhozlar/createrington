@@ -81,6 +81,9 @@ importers:
       '@createrington/icons':
         specifier: 0.3.4
         version: 0.3.4(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@createrington/skin-api-client':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -254,8 +257,8 @@ importers:
         specifier: ^7.3.2
         version: 7.3.2(@types/node@24.12.0)(jiti@2.6.1)(lightningcss@1.31.1)(sass@1.97.3)(tsx@4.21.0)(yaml@2.8.3)
       zod:
-        specifier: ^4.1.13
-        version: 4.3.6
+        specifier: ^4.4.3
+        version: 4.4.3
 
   packages/server:
     dependencies:
@@ -265,6 +268,9 @@ importers:
       '@createrington/shared':
         specifier: workspace:*
         version: link:../shared
+      '@createrington/skin-api-client':
+        specifier: ^0.1.1
+        version: 0.1.1
       '@trpc/server':
         specifier: ^11.1.0
         version: 11.12.0(typescript@5.9.3)
@@ -315,7 +321,7 @@ importers:
         version: 2.1.1
       openai:
         specifier: ^6.27.0
-        version: 6.27.0(ws@8.20.1)(zod@4.3.6)
+        version: 6.27.0(ws@8.20.1)(zod@4.4.3)
       pg:
         specifier: ^8.16.3
         version: 8.20.0
@@ -341,8 +347,8 @@ importers:
         specifier: ^3.18.3
         version: 3.19.0
       zod:
-        specifier: ^4.1.13
-        version: 4.3.6
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.2
@@ -406,7 +412,7 @@ importers:
         version: 9.3.0
       trpc-ui:
         specifier: npm:trpc-ui-zod4@^1.1.0
-        version: trpc-ui-zod4@1.1.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@trpc/server@11.12.0(typescript@5.9.3))(@types/react@19.2.14)(immer@11.1.4)(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react-router-dom@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-router@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(zod@4.3.6)
+        version: trpc-ui-zod4@1.1.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@trpc/server@11.12.0(typescript@5.9.3))(@types/react@19.2.14)(immer@11.1.4)(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react-router-dom@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-router@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(zod@4.4.3)
       tsc-alias:
         specifier: ^1.8.16
         version: 1.8.16
@@ -536,6 +542,12 @@ packages:
   '@createrington/logger@0.2.0':
     resolution: {integrity: sha512-C3WB5qw4qvuQYmR9Hb0Pd67I7PI6j6SsNVT0UCcQaK3sEe2gLgQNiP0qn0jSFtKgh0zY9JAaLirQIEeOA42IlQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.2.0/logger-0.2.0.tgz}
     engines: {node: '>=20'}
+
+  '@createrington/skin-api-client@0.1.1':
+    resolution: {integrity: sha512-mmhVDgkIzlXFyN1Opn3v+cRJK/iAH9xINSTJv7K3YphUMYtSGeXbqzLi6g0QIt5AyXiR/BiSdS+XzfRsBrjoCg==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Fskin-api-client/-/0.1.1/skin-api-client-0.1.1.tgz}
+
+  '@createrington/skin-api-shared@0.1.1':
+    resolution: {integrity: sha512-rHOyW92dK0fo0FCgEntMj7dxIyNWgKR1jDKV0fPrnyb76kFslavqkuajE3siMy9ZpiSgr7rlhs+PZQ6k4wJxlg==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Fskin-api-shared/-/0.1.1/skin-api-shared-0.1.1.tgz}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -5882,8 +5894,8 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.3.6:
-    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
+  zod@4.4.3:
+    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
   zustand@4.5.7:
     resolution: {integrity: sha512-CHOUy7mu3lbD6o6LJLfllpjkzhHXSBlX8B9+qPddUsIfeF5S/UZ5q0kmCsnRqT1UHFQZchNFDDzMbQsuesHWlw==}
@@ -6032,6 +6044,15 @@ snapshots:
   '@createrington/logger@0.2.0':
     dependencies:
       winston: 3.19.0
+
+  '@createrington/skin-api-client@0.1.1':
+    dependencies:
+      '@createrington/skin-api-shared': 0.1.1
+      undici: 6.24.1
+
+  '@createrington/skin-api-shared@0.1.1':
+    dependencies:
+      zod: 4.4.3
 
   '@dabh/diagnostics@2.0.8':
     dependencies:
@@ -8860,8 +8881,8 @@ snapshots:
       '@babel/parser': 7.29.0
       eslint: 9.39.3(jiti@2.6.1)
       hermes-parser: 0.25.1
-      zod: 4.3.6
-      zod-validation-error: 4.0.2(zod@4.3.6)
+      zod: 4.4.3
+      zod-validation-error: 4.0.2(zod@4.4.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -10142,10 +10163,10 @@ snapshots:
     dependencies:
       mimic-function: 5.0.1
 
-  openai@6.27.0(ws@8.20.1)(zod@4.3.6):
+  openai@6.27.0(ws@8.20.1)(zod@4.4.3):
     optionalDependencies:
       ws: 8.20.1
-      zod: 4.3.6
+      zod: 4.4.3
 
   optionator@0.9.4:
     dependencies:
@@ -11246,7 +11267,7 @@ snapshots:
 
   trough@2.2.0: {}
 
-  trpc-ui-zod4@1.1.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@trpc/server@11.12.0(typescript@5.9.3))(@types/react@19.2.14)(immer@11.1.4)(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react-router-dom@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-router@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(zod@4.3.6):
+  trpc-ui-zod4@1.1.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react@19.2.4))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(@trpc/server@11.12.0(typescript@5.9.3))(@types/react@19.2.14)(immer@11.1.4)(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react-router-dom@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-router@7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)(zod@4.4.3):
     dependencies:
       '@monaco-editor/react': 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@stoplight/json-schema-sampler': 0.3.0
@@ -11262,8 +11283,8 @@ snapshots:
       string-byte-length: 1.6.0
       tailwind-merge: 2.6.1
       url: 0.11.4
-      zod: 4.3.6
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
+      zod: 4.4.3
+      zod-to-json-schema: 3.25.1(zod@4.4.3)
     transitivePeerDependencies:
       - '@emotion/react'
       - '@emotion/styled'
@@ -11634,17 +11655,17 @@ snapshots:
 
   yoctocolors@2.1.2: {}
 
-  zod-to-json-schema@3.25.1(zod@4.3.6):
+  zod-to-json-schema@3.25.1(zod@4.4.3):
     dependencies:
-      zod: 4.3.6
+      zod: 4.4.3
 
-  zod-validation-error@4.0.2(zod@4.3.6):
+  zod-validation-error@4.0.2(zod@4.4.3):
     dependencies:
-      zod: 4.3.6
+      zod: 4.4.3
 
   zod@3.25.76: {}
 
-  zod@4.3.6: {}
+  zod@4.4.3: {}
 
   zustand@4.5.7(@types/react@19.2.14)(immer@11.1.4)(react@19.2.4):
     dependencies:

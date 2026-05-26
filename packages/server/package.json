@@ -87,6 +87,7 @@
   "dependencies": {
     "@createrington/logger": "^0.2.0",
     "@createrington/shared": "workspace:*",
+    "@createrington/skin-api-client": "^0.1.1",
     "@trpc/server": "^11.1.0",
     "axios": "^1.15.2",
     "canvas": "^3.2.0",
@@ -112,6 +113,6 @@
     "ssh2-sftp-client": "^12.0.1",
     "stripe": "^20.4.1",
     "winston": "^3.18.3",
-    "zod": "^4.1.13"
+    "zod": "^4.4.3"
   }
 }

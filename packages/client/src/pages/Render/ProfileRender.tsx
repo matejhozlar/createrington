@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mcHeadsBody } from "@/lib/external-urls";
-import { randomPose, starlightSkinUrl } from "./skin-utils";
+import { pickRandomPose, skinApiUrl } from "./skin-utils";
 
 interface ProfileData {
   username: string;
@@ -62,7 +62,7 @@ export function ProfileRender() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
-  const [pose] = useState(randomPose);
+  const [pose] = useState(pickRandomPose);
 
   const player = params.get("player");
   const hasMissingParams = !player;
@@ -82,14 +82,13 @@ export function ProfileRender() {
       .catch(() => setFetchError("Failed to load profile data"));
   }, [hasMissingParams, player]);
 
-  // Load skin image once data arrives: try starlightskins, fall back to mc-heads
   useEffect(() => {
     if (!data) return;
 
     const img = new Image();
     img.onload = () => setSkinSrc(img.src);
     img.onerror = () => setSkinSrc(mcHeadsBody(data.uuid));
-    img.src = starlightSkinUrl(data.uuid, pose);
+    img.src = skinApiUrl(data.uuid, pose);
   }, [data, pose]);
 
   const error = hasMissingParams ? "Missing parameters" : fetchError;
