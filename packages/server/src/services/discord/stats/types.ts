@@ -10,8 +10,10 @@ export interface ServerStatsConfig {
   botsChannelId?: string;
   /** Channel ID for total members count */
   totalMembersChannelId?: string;
-  /** Update interval in milliseconds (default: 30 minutes) */
-  updateInterval?: number;
+  /** Fixed bot count rendered in the bots channel */
+  botCount: number;
+  /** Periodic refresh interval in milliseconds */
+  refreshIntervalMs: number;
 }
 
 /**
