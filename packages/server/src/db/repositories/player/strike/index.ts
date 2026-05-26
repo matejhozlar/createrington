@@ -8,28 +8,16 @@ import type { StrikeStatistics } from "@/db/queries/player/strike";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 
 /**
- * Repository for player strike management
- *
- * Handles:
- * - Issuing strikes
- * - Removing/pardoning strikes
- * - Strike history and statistics
- * - Active strike tracking
+ * Player strike lifecycle: issue, pardon, history, and active-count batching.
+ * Each mutation writes a paired admin_log_action entry in the same DB
+ * transaction.
  */
 export class PlayerStrikeRepository extends BasePlayerRepository {
   constructor() {
     super();
   }
 
-  /**
-   * Issue a strike to a player
-   *
-   * @param identifier - Player to issue strike to
-   * @param data - Strike details
-   * @param adminDiscordId - Admin issuing the strike
-   * @param adminUsername - Admin username
-   * @returns Promise resolving to created strike record
-   */
+  /** Issue a new strike and write its admin_log_action entry in one transaction. */
   async issue(
     identifier: PlayerIdentifier,
     data: {
@@ -83,15 +71,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     });
   }
 
-  /**
-   * Remove/pardon a strike
-   *
-   * @param strikeId - Strike ID to remove
-   * @param adminDiscordId - Admin removing the strike
-   * @param adminUsername - Admin username
-   * @param reason - Reason for removal
-   * @returns Promise resolving to updated strike record
-   */
+  /** Pardon a strike by ID; throws if it was already removed. */
   async remove(
     strikeId: number,
     adminDiscordId: string,
@@ -147,13 +127,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     });
   }
 
-  /**
-   * Get all strikes for a player
-   *
-   * @param identifier - Player identifier
-   * @param activeOnly - Whether to include only active strikes
-   * @returns Promise resolving to an array of player strikes
-   */
+  /** Full strike history for a player; pass activeOnly=true to skip removed strikes. */
   async getHistory(
     identifier: PlayerIdentifier,
     activeOnly: boolean = false,
@@ -162,13 +136,7 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     return await Q.player.strike.getStrikeHistory(uuid, !activeOnly);
   }
 
-  /**
-   * Gets all strikes for a player
-   *
-   * @param identifier - Player identifier
-   * @param activeOnly - Whether to include only active strikes
-   * @returns Promise resolving to an array of player strikes
-   */
+  /** Alias of getHistory(). */
   async get(
     identifier: PlayerIdentifier,
     activeOnly: boolean = false,
@@ -176,35 +144,20 @@ export class PlayerStrikeRepository extends BasePlayerRepository {
     return this.getHistory(identifier, activeOnly);
   }
 
-  /**
-   * Get active strike counts for multiple players efficiently
-   *
-   * @param playerUuids - Array of player UUIDs
-   * @returns Promise resolving to a map of UUID -> active strike count
-   */
+  /** Batched UUID -> active strike count map, for list views. */
   async getActiveStrikeCounts(
     playerUuids: string[],
   ): Promise<Record<string, number>> {
     return await Q.player.strike.getActiveStrikeCounts(playerUuids);
   }
 
-  /**
-   * Get strike statistics for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to strike statistics
-   */
+  /** Aggregate strike statistics for a single player. */
   async getStatistics(identifier: PlayerIdentifier): Promise<StrikeStatistics> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.strike.getPlayerStatistics(uuid);
   }
 
-  /**
-   * Count active strikes for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to a number of strikes
-   */
+  /** Number of strikes currently active (not removed) for the player. */
   async countActive(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     return await Q.player.strike.countActiveStrikes(uuid);

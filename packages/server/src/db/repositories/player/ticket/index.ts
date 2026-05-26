@@ -4,26 +4,16 @@ import type { Ticket } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 
 /**
- * Repository for player ticket management
- *
- * Handles:
- * - Ticket retrieval
- * - Ticket counting
- * - Ticket pagination
+ * Player-scoped read view over the ticket table. Resolves the player from a
+ * PlayerIdentifier first so callers can pass UUID/username/Discord ID
+ * uniformly. Ticket lifecycle writes live in TicketRepository.
  */
 export class PlayerTicketRepository extends BasePlayerRepository {
   constructor() {
     super();
   }
 
-  /**
-   * Gets all tickets for a player
-   *
-   * @param identifier - Player identifier
-   * @param limit - Max entries to get
-   * @param offset - The offset for pagination
-   * @returns Promise to an array of tickets
-   */
+  /** Paginated tickets created by the player, newest first. */
   async getAll(
     identifier: PlayerIdentifier,
     limit: number = 20,
@@ -43,12 +33,7 @@ export class PlayerTicketRepository extends BasePlayerRepository {
     );
   }
 
-  /**
-   * Count all tickets for a player
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to a number of tickets
-   */
+  /** Total ticket count created by the player. */
   async count(identifier: PlayerIdentifier): Promise<number> {
     const uuid = await this.resolvePlayerUuid(identifier);
     const player = await Q.player.get({ minecraftUuid: uuid });

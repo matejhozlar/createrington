@@ -8,27 +8,13 @@ import type { StatsImportServerConfig } from "./config";
 const DEBOUNCE_MS = 30_000;
 
 /**
- * Minecraft Server Stats Import Service
- *
- * Imports per-player Minecraft stats files from game servers via SFTP
- * and stores them as JSONB in the database.
- *
- * Handles:
- * - Connecting to configured game servers over SFTP
- * - Downloading and parsing per-player stats JSON files (<uuid>.json)
- * - Filtering to only known players (exist in the player table)
- * - Batch upserting stats into player_minecraft_stats table
- * - Triggering re-imports when player count changes (debounced)
- *
- * Import triggers:
- * 1. Once on startup (initial import for all configured servers)
- * 2. On sessionStart/sessionEnd events from PlaytimeService (debounced 30s)
- *
- * Optimizations:
- * - Debounce: Multiple quick join/leave events collapse into a single import
- * - Import lock: Prevents concurrent imports for the same server
- * - Player filter: Only imports stats for UUIDs that exist in the player table
- * - Batch upsert: Single SQL statement for all players instead of N queries
+ * Imports per-player Minecraft stats JSON files from each configured game server over
+ * SFTP and batch-upserts them into `player_minecraft_stats`. Triggers: one initial pass
+ * on startup (fire-and-forget, never blocks bootstrap) plus debounced re-imports on
+ * `sessionStart`/`sessionEnd` from each `PlaytimeService` (30s window). A per-server
+ * lock prevents overlapping runs; rows for UUIDs not present in the player table are
+ * skipped. Registered import-complete callbacks (e.g. achievement evaluation) receive
+ * the serverId plus imported UUIDs after each successful run.
  */
 export class StatsImportService {
   private debounceTimers: Map<number, NodeJS.Timeout> = new Map();
@@ -42,10 +28,7 @@ export class StatsImportService {
     private readonly configs: StatsImportServerConfig[],
   ) {}
 
-  /**
-   * Register a callback to be invoked after a successful stats import.
-   * The callback receives the server ID and the list of player UUIDs that were imported.
-   */
+  /** Registers a callback fired after a successful import with the server ID and imported UUIDs. */
   onImportComplete(
     callback: (serverId: number, uuids: string[]) => void,
   ): void {
@@ -53,15 +36,9 @@ export class StatsImportService {
   }
 
   /**
-   * Initializes the service and performs initial imports
-   * Called by the service container during startup
-   *
-   * This method:
-   * - Runs an initial stats import for all configured servers in parallel
-   * - Subscribes to sessionStart/sessionEnd events on each PlaytimeService
-   *   to trigger debounced re-imports when players join or leave
-   *
-   * @returns Promise resolving when initialization is complete
+   * Subscribes to session events on each `PlaytimeService` and kicks off an initial
+   * import in the background. Returns as soon as wiring is done; the first import
+   * runs detached so a slow SFTP host cannot delay server boot.
    */
   async initialize(): Promise<void> {
     logger.info(
@@ -96,12 +73,7 @@ export class StatsImportService {
     logger.info("StatsImportService initialized");
   }
 
-  /**
-   * Shuts down the service and clears all pending debounce timers
-   * Called by the service container during graceful shutdown
-   *
-   * @returns Promise resolving when shutdown is complete
-   */
+  /** Cancels any pending debounced imports; in-flight imports are not interrupted. */
   async shutdown(): Promise<void> {
     for (const [serverId, timer] of this.debounceTimers) {
       clearTimeout(timer);
@@ -111,17 +83,6 @@ export class StatsImportService {
     logger.info("StatsImportService shut down");
   }
 
-  /**
-   * Schedules a debounced stats import for a specific server
-   *
-   * If a timer already exists for this server, it is cleared and reset.
-   * This ensures that rapid join/leave events only trigger a single import
-   * after the debounce period (30s) elapses with no further events.
-   *
-   * @param serverId - The server to schedule an import for
-   *
-   * @private
-   */
   private scheduleImport(serverId: number): void {
     const existing = this.debounceTimers.get(serverId);
     if (existing) {
@@ -141,22 +102,6 @@ export class StatsImportService {
     this.debounceTimers.set(serverId, timer);
   }
 
-  /**
-   * Imports player stats from a single Minecraft server via SFTP
-   *
-   * Import workflow:
-   * 1. Guard against concurrent imports for the same server
-   * 2. Connect to the server's SFTP
-   * 3. List all *.json files in the configured stats directory
-   * 4. Load known player UUIDs from the database
-   * 5. For each file matching a known player, download and parse the JSON
-   * 6. Batch upsert all parsed stats into player_minecraft_stats
-   * 7. Log import summary (imported count, skipped count, duration)
-   *
-   * @param serverId - The server to import stats from
-   *
-   * @private
-   */
   private async importServerStats(serverId: number): Promise<void> {
     if (this.importInProgress.get(serverId)) {
       logger.debug(

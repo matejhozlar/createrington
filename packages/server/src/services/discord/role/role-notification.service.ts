@@ -4,18 +4,13 @@ import type { RoleAssignmentNotification } from "./types";
 import { Discord } from "@/discord/constants";
 
 /**
- * Service for sending role assignment notifications
- *
- * Handles sending celebration messages to the Hall of Fame channel
- * when players earn new roles
+ * Sends Hall of Fame celebration embeds when players earn new roles. Each role
+ * has its own enabled/channel config; a missing or disabled config silently
+ * skips the send. Send failures are logged and swallowed (notifications are
+ * fire-and-forget, never block role assignment).
  */
 export class RoleNotificationService {
-  /**
-   * Sends a notification for a single role assignment
-   *
-   * @param notification - Role assignment notification data
-   * @returns Promise resolving when notification is sent
-   */
+  /** Sends the rank-up embed for a single role assignment, no-op if the role's notification config is disabled or missing a channel. */
   async sendNotification(
     notification: RoleAssignmentNotification,
   ): Promise<void> {
@@ -56,14 +51,7 @@ export class RoleNotificationService {
     }
   }
 
-  /**
-   * Sends a notification for multiple role assignments at once
-   *
-   * Used when a player earns multiple roles simultaneously
-   *
-   * @param notifications - Array of role assignment notifications
-   * @returns Promise resolving when notification is sent
-   */
+  /** Sends a single combined embed for a batch of simultaneous rank-ups, using the channel of the first notification's role config. */
   async sendMultipleNotifications(
     notifications: RoleAssignmentNotification[],
   ): Promise<void> {

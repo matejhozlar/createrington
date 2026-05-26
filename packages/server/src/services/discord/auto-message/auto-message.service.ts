@@ -3,16 +3,15 @@ import type { DiscordMessageService } from "../message/message.service";
 import type { DiscordAutoMessageConfig } from "@createrington/shared/db/discord_auto_message_config.types";
 
 /**
- * Auto-Message Service
- *
- * Manages scheduled, rotating messages sent to Discord channels:
- * - Loads enabled auto-message configs from the database on startup
- * - Maintains per-config interval timers that fire message sends
- * - Supports sequential and random rotation modes across message sets
- * - Resolves template variables (e.g. `{memberCount}`) before sending
- * - Allows individual configs to be started, stopped, or restarted at runtime
- *
- * NOTE: Requires a DiscordMessageService instance for the actual send calls
+ * Drives scheduled, rotating Discord messages. On `initialize` it loads every
+ * enabled `discord_auto_message_config` row and spins up one `setInterval`
+ * per config. On each tick the config is re-fetched so runtime edits (disable,
+ * interval change) take effect on the next fire; messages rotate sequentially
+ * (with a persisted `currentIndex`) or randomly. Optional per-message
+ * follow-ups are scheduled in-memory with additive delays and are dropped on
+ * process restart. Template variables (e.g. `{memberCount}`) are resolved per
+ * send. `shutdown` clears all timers; follow-up `setTimeout`s are not tracked
+ * and may fire briefly during shutdown.
  */
 export class AutoMessageService {
   private timers: Map<number, NodeJS.Timeout> = new Map();
@@ -35,11 +34,7 @@ export class AutoMessageService {
     logger.info("AutoMessageService stopped");
   }
 
-  /**
-   * Loads all enabled auto-message configs and starts their timers
-   *
-   * @returns Promise resolving when all timers are started
-   */
+  /** Reloads every enabled config and (re)starts its timer; safe to call again at runtime to pick up newly enabled configs. */
   async loadAndStartAll(): Promise<void> {
     const configs = await Q.discord.auto.message.config
       .where({ enabled: true })
@@ -52,26 +47,14 @@ export class AutoMessageService {
     logger.info(`Started ${configs.length} auto-message timer(s)`);
   }
 
-  /**
-   * Starts the timer for a single config by ID
-   *
-   * Does nothing if the config does not exist or is not enabled.
-   *
-   * @param configId - Database ID of the auto-message config to start
-   */
+  /** Starts the timer for one config by ID; no-op if the config is missing or disabled. */
   async startConfig(configId: number): Promise<void> {
     const config = await Q.discord.auto.message.config.get({ id: configId });
     if (!config || !config.enabled) return;
     this.startTimer(config);
   }
 
-  /**
-   * Stops the active timer for a single config
-   *
-   * Does nothing if no timer is currently running for the given config.
-   *
-   * @param configId - Database ID of the auto-message config to stop
-   */
+  /** Stops the active timer for a single config; no-op if none is running. */
   stopConfig(configId: number): void {
     const timer = this.timers.get(configId);
     if (timer) {
@@ -81,28 +64,12 @@ export class AutoMessageService {
     }
   }
 
-  /**
-   * Restarts the timer for a single config
-   *
-   * Stops any existing timer before re-fetching the config and starting fresh.
-   * Useful when a config's interval or enabled state has changed.
-   *
-   * @param configId - Database ID of the auto-message config to restart
-   */
+  /** Stops then re-fetches and restarts a single config; use after the config's interval or enabled flag changes. */
   async restartConfig(configId: number): Promise<void> {
     this.stopConfig(configId);
     await this.startConfig(configId);
   }
 
-  /**
-   * Creates and registers the interval timer for a config
-   *
-   * Stops any previously running timer for the same config before starting a
-   * new one. The interval fires `sendNextMessage` at the configured frequency.
-   *
-   * @param config - The auto-message config to schedule
-   * @private
-   */
   private startTimer(config: DiscordAutoMessageConfig): void {
     this.stopConfig(config.id);
 
@@ -123,17 +90,6 @@ export class AutoMessageService {
     );
   }
 
-  /**
-   * Selects and sends the next message for a config
-   *
-   * Re-fetches the config on each call so that runtime changes (disable,
-   * interval update) take effect immediately. Picks the next message using
-   * the configured rotation mode (sequential or random), resolves any template
-   * variables in the content, then delegates to DiscordMessageService.
-   *
-   * @param configId - Database ID of the auto-message config to process
-   * @private
-   */
   private async sendNextMessage(configId: number): Promise<void> {
     const config = await Q.discord.auto.message.config.get({ id: configId });
     if (!config || !config.enabled) {
@@ -188,19 +144,9 @@ export class AutoMessageService {
     }
   }
 
-  /**
-   * Schedules enabled follow-up messages for a primary message.
-   *
-   * Each follow-up's delay is additive along the chain: follow-up #1 fires at
-   * t=delay₁, follow-up #2 at t=delay₁+delay₂, and so on. Scheduling uses
-   * in-memory `setTimeout`: if the server restarts mid-chain, pending
-   * follow-ups are dropped (acceptable for the short delays this feature
-   * targets).
-   *
-   * @param messageId - The primary message whose follow-ups should fire
-   * @param channelId - Discord channel to send the follow-ups to
-   * @private
-   */
+  // Each follow-up's delay is additive: follow-up #1 fires at t=delay1,
+  // #2 at t=delay1+delay2, etc. Uses in-memory setTimeout, so a server
+  // restart mid-chain drops pending follow-ups.
   private async scheduleFollowups(
     messageId: number,
     channelId: string,
@@ -227,16 +173,6 @@ export class AutoMessageService {
     }
   }
 
-  /**
-   * Sends a single follow-up message.
-   *
-   * Re-fetches the follow-up just before sending so that a disable or edit
-   * made during the delay window still takes effect.
-   *
-   * @param followupId - Database ID of the follow-up to send
-   * @param channelId - Discord channel to send to
-   * @private
-   */
   private async sendFollowup(
     followupId: number,
     channelId: string,
@@ -266,12 +202,7 @@ export class AutoMessageService {
     }
   }
 
-  /**
-   * Resolves template variables in message content.
-   *
-   * Supported variables:
-   * - `{memberCount}`: total registered player count
-   */
+  // Supported variables: {memberCount} (total registered player count).
   private async resolveTemplateVariables(content: string): Promise<string> {
     if (!content.includes("{")) return content;
 

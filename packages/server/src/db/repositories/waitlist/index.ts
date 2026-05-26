@@ -15,14 +15,12 @@ import {
   INVITE_MAX_AGE_SECONDS,
 } from "@/discord/bots/main/invites";
 
-/** Result of a waitlist registration attempt */
 interface RegistrationResult {
   entry: WaitlistEntry;
   autoAccepted: boolean;
   inviteUrl?: string;
 }
 
-/** Onboarding progress steps tracked per waitlist entry */
 export enum ProgressStep {
   JOINED_DISCORD = "joinedDiscord",
   VERIFIED = "verified",
@@ -31,20 +29,17 @@ export enum ProgressStep {
 }
 
 /**
- * Repository for waitlist and onboarding management
- *
- * Handles:
- * - Waitlist registration (auto-accept or pending based on capacity)
- * - Manual invitation by admins
- * - Onboarding progress tracking (Discord join, verification, registration, Minecraft join)
- * - Admin queries, deletion, and statistics
+ * Waitlist registration and onboarding tracking. Branches on current player
+ * count to auto-accept (mint a Discord invite and email it) or queue
+ * pending; drives the admin Discord embed that reflects each entry's
+ * progress through join / verify / register / Minecraft milestones; and
+ * sweeps unclaimed entries whose Discord invite expired. Capacity reads
+ * fall closed when the player-count probe fails.
  */
 export class WaitlistRepository {
   /**
-   * Checks if the server has capacity for new players
-   * Based on current player count vs limit
-   *
-   * @returns True if under player limit
+   * True when the live player count is below configured player limit.
+   * Returns false on any DB error so we fail closed and queue the user.
    */
   async hasCapacity(): Promise<boolean> {
     try {
@@ -66,13 +61,6 @@ export class WaitlistRepository {
     }
   }
 
-  /**
-   * Notifies admins in Discord about new waitlist entry
-   *
-   * @param entry - Waitlist entry
-   * @param autoAccepted - Whether the user was auto-accepted
-   * @private
-   */
   private async notifyAdmins(
     entry: WaitlistEntry,
     autoAccepted: boolean,
@@ -120,13 +108,6 @@ export class WaitlistRepository {
     }
   }
 
-  /**
-   * Updates a single onboarding progress step and refreshes the Discord embed
-   *
-   * @param discordId - Discord user ID to update progress step for
-   * @param step - Progress step to mark as complete
-   * @private
-   */
   private async updateProgressStep(
     discordId: string,
     step: ProgressStep,
@@ -139,14 +120,10 @@ export class WaitlistRepository {
   }
 
   /**
-   * Registers a new user to the waitlist with full notification flow
-   *
-   * Two modes based on capacity:
-   * - Under capacity (open mode): Auto-accepted, token generated, no email sent
-   * - At/over capacity (waitlist mode): Pending status, confirmation email sent
-   *
-   * @param data - User registration data
-   * @returns Registration result with auto-accept status
+   * Register a new applicant. Under capacity: mint a one-use Discord invite,
+   * persist as auto_accepted, notify admins, email the invitation. At/over
+   * capacity: persist as pending and email the confirmation. Result flags
+   * which path ran.
    */
   async register(data: WaitlistEntryCreate): Promise<RegistrationResult> {
     const shouldAutoAccept = await this.hasCapacity();
@@ -232,16 +209,9 @@ export class WaitlistRepository {
   }
 
   /**
-   * Creates an auto-accepted waitlist entry for a user who is already a guild
-   * member when they run /register (i.e. they joined via the public Discord
-   * invite rather than the waitlist flow). Marks the entry as already verified
-   * and linked to Discord, and posts the progress embed to the admin channel.
-   *
+   * Create an auto_accepted entry for a Discord member who is registering
+   * after already joining the guild. Pre-marks joinedDiscord and verified.
    * Caller must have already confirmed capacity.
-   *
-   * @param discordId - Discord user ID to link
-   * @param discordName - Discord username for display
-   * @returns The newly created waitlist entry
    */
   async registerForExistingMember(
     discordId: string,
@@ -275,12 +245,9 @@ export class WaitlistRepository {
   }
 
   /**
-   * Manually invites a user (called by admin action).
-   * Generates a one-use Discord invite if none exists, then emails it to the user.
-   *
-   * @param entryId - Waitlist entry ID
-   * @param adminId - Discord ID of admin who approved
-   * @returns Updated waitlist entry with accepted status and generated invite code
+   * Admin-driven acceptance of a pending entry. Always mints a fresh
+   * one-use invite (never reuses an old one), promotes the entry to
+   * accepted, and emails the invitation if an address is on file.
    */
   async manualInvite(entryId: number, adminId: string): Promise<WaitlistEntry> {
     const entry = await Q.waitlist.entry.get({ id: entryId });
@@ -318,23 +285,12 @@ export class WaitlistRepository {
     return Q.waitlist.entry.get({ id: entryId });
   }
 
-  /**
-   * Gets detailed waitlist entry information for admin panel
-   *
-   * @param entryId - Waitlist entry ID
-   * @returns Promise resolving to waitlist entry
-   */
+  /** Fetch a single waitlist entry by ID for the admin panel detail view. */
   async getDetailed(entryId: number): Promise<WaitlistEntry> {
     return await Q.waitlist.entry.get({ id: entryId });
   }
 
-  /**
-   * Gets all waitlist entries with filtering and pagination (for admin list view)
-   *
-   * @param filters - Optional waitlist entry filter criteria
-   * @param options - Pagination and sorting options
-   * @returns Array of waitlist entries matching the criteria
-   */
+  /** Filtered, paginated waitlist list for the admin list view. */
   async getAll(
     filters?: WaitlistEntryFilters,
     options?: {
@@ -347,26 +303,16 @@ export class WaitlistRepository {
     return await Q.waitlist.entry.findAll(filters, options);
   }
 
-  /**
-   * Counts waitlist entries matching filters
-   *
-   * @param filters - Optional waitlist entry filter criteria
-   * @returns Total count
-   */
+  /** Count of waitlist entries matching the given filters. */
   async count(filters?: WaitlistEntryFilters): Promise<number> {
     return await Q.waitlist.entry.count(filters);
   }
 
   /**
-   * Deletes accepted entries whose single-use Discord invite expired before the
-   * applicant ever joined. Targets rows where `discordId` is still NULL and
-   * `inviteCode` is set, applying the per-status TTL that matches how the
-   * invite was issued:
-   *
-   * - `auto_accepted`: invite is 1 hour, so delete after submission + 1 hour
-   * - `accepted`: invite is 7 days, so delete after acceptance + 7 days
-   *
-   * @returns The number of entries deleted
+   * Delete accepted entries whose one-use Discord invite expired before the
+   * applicant ever joined (discordId still NULL, inviteCode set). TTL is per
+   * status: 1h after submission for auto_accepted, 7d after acceptance for
+   * admin-accepted. Returns the number deleted.
    */
   async sweepExpiredUnclaimedEntries(): Promise<number> {
     const now = Date.now();
@@ -408,14 +354,7 @@ export class WaitlistRepository {
     return rows.length;
   }
 
-  /**
-   * Deletes a waitlist entry with admin audit logging
-   *
-   * @param entryId - Waitlist entry ID
-   * @param adminDiscordId - Admin performing the deletion
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for deletion
-   */
+  /** Hard-delete a waitlist entry and write the matching admin_log_action in one transaction. */
   async adminDelete(
     entryId: number,
     adminDiscordId: string,
@@ -452,10 +391,9 @@ export class WaitlistRepository {
   }
 
   /**
-   * Updates the Discord message with current progress
-   *
-   * @param entryId - Waitlist ID to update the progress for
-   * @returns Promise resolving when the progress is updated
+   * Re-render the admin-channel progress embed for an entry. Silently
+   * returns if the entry has no stored Discord message ID; errors are
+   * logged and swallowed so onboarding flows are not blocked by Discord.
    */
   async updateProgressEmbed(entryId: number): Promise<void> {
     try {
@@ -529,11 +467,7 @@ export class WaitlistRepository {
     await this.updateProgressStep(discordId, ProgressStep.JOINED_MINECRAFT);
   }
 
-  /**
-   * Gets overall waitlist statistics for admin dashboard
-   *
-   * @returns Status breakdowns, milestone progress counts, and submission trends
-   */
+  /** Dashboard stats: status breakdowns, milestone progress counts, submission trends. */
   async getStats(): Promise<{
     total: number;
     pending: number;

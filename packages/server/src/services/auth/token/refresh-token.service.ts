@@ -3,17 +3,9 @@ import config from "@/config";
 import type { Request, Response } from "express";
 
 /**
- * Refresh Token Service
- *
- * Handles opaque refresh token generation, hashing, and cookie management:
- * - Generates cryptographically random tokens using Node's crypto module
- * - Hashes tokens with SHA-256 before database storage (raw token never persisted)
- * - Computes expiration dates based on the configured lifetime in days
- * - Sets and clears the httpOnly refresh token cookie on Express responses
- * - Extracts the token from incoming request cookies for rotation/logout flows
- *
- * NOTE: Tokens are always stored as SHA-256 hashes: only the raw token is
- * sent to the client once; subsequent lookups hash the cookie value before querying
+ * Generates, hashes, and ferries opaque refresh tokens between the database and the
+ * httpOnly cookie scoped to `/api/auth`. Raw tokens are only ever held in transit:
+ * everything persisted (and looked up against) is the SHA-256 hash. Singleton.
  */
 class RefreshTokenService {
   private static instance: RefreshTokenService;
@@ -28,7 +20,6 @@ class RefreshTokenService {
     this.cookieDomain = config.app.auth.cookie.domain;
   }
 
-  /** Returns the singleton instance, creating it on first call */
   static getInstance(): RefreshTokenService {
     if (!RefreshTokenService.instance) {
       RefreshTokenService.instance = new RefreshTokenService();
@@ -37,41 +28,29 @@ class RefreshTokenService {
   }
 
   /**
-   * Generate a cryptographically random opaque refresh token
+   * Generates a fresh opaque refresh token.
    *
-   * @returns An 80-character lowercase hex string (40 random bytes)
+   * @returns An 80-character lowercase hex string (40 random bytes).
    */
   generate(): string {
     return crypto.randomBytes(40).toString("hex");
   }
 
-  /**
-   * Hash a raw refresh token with SHA-256 for database storage
-   *
-   * @param token - The raw refresh token to hash
-   * @returns The hex-encoded SHA-256 digest
-   */
+  /** SHA-256 hash of a raw refresh token for storage / lookup. */
   hash(token: string): string {
     return crypto.createHash("sha256").update(token).digest("hex");
   }
 
-  /**
-   * Calculate the expiration date for a new refresh token
-   *
-   * @returns A Date representing the moment the token should expire
-   */
+  /** Absolute expiry timestamp for a token issued now (uses the configured `expiresInDays`). */
   getExpiresAt(): Date {
     return new Date(Date.now() + this.expiresInDays * 86_400_000);
   }
 
   /**
-   * Set the refresh token as an httpOnly cookie on the response
-   *
-   * The cookie is scoped to `/api/auth`, marked `secure` in production,
-   * and uses `SameSite=Lax` to balance CSRF protection with redirect flows.
-   *
-   * @param res - The Express response object to set the cookie on
-   * @param token - The raw refresh token value to store in the cookie
+   * Writes the refresh token to the response as an httpOnly cookie scoped to
+   * `/api/auth`. When `COOKIE_DOMAIN` is set, also clears any leftover host-only
+   * cookie of the same name first so cookie-parser cannot pick the stale value
+   * and trip the rotation system's theft detection.
    */
   setCookie(res: Response, token: string): void {
     // Defensive clear of any leftover host-only cookie from before the
@@ -100,13 +79,9 @@ class RefreshTokenService {
   }
 
   /**
-   * Clear the refresh token cookie from the response
-   *
-   * Must use the same path and security flags as `setCookie` so the browser
-   * matches and removes the existing cookie. Also clears any legacy
-   * host-only cookie left over from before the COOKIE_DOMAIN migration so
-   * logout truly logs the user out (otherwise the host-only cookie sticks
-   * around and confuses subsequent requests).
+   * Clears the refresh token cookie (both domain-scoped and legacy host-only
+   * variants) using the same flags as `setCookie` so the browser actually
+   * matches and removes them.
    */
   clearCookie(res: Response): void {
     if (this.cookieDomain) {
@@ -126,12 +101,7 @@ class RefreshTokenService {
     });
   }
 
-  /**
-   * Extract the refresh token from the incoming request cookies
-   *
-   * @param req - The Express request object to read cookies from
-   * @returns The raw refresh token string, or undefined if the cookie is absent
-   */
+  /** Reads the raw refresh token from the request's cookies, or `undefined` if absent. */
   extractFromRequest(req: Request): string | undefined {
     return req.cookies?.[this.cookieName];
   }

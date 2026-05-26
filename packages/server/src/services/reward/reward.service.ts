@@ -21,11 +21,6 @@ export class RewardService {
     this.initializeRewards();
   }
 
-  /**
-   * Initializes all enabled reward types from configuration.
-   *
-   * @private
-   */
   private initializeRewards(): void {
     const dailyConfig = getRewardConfig(RewardType.DAILY);
     if (dailyConfig.enabled) {
@@ -37,14 +32,6 @@ export class RewardService {
     logger.info(`Initialized ${this.rewards.size} reward type(s)`);
   }
 
-  /**
-   * Returns the cached reward instance for the given type.
-   *
-   * @private
-   * @param type - The reward type to retrieve
-   * @returns The corresponding BaseReward instance
-   * @throws Error if the reward type is not found or not enabled
-   */
   private getReward(type: RewardType): BaseReward {
     const reward = this.rewards.get(type);
     if (!reward) {
@@ -53,21 +40,12 @@ export class RewardService {
     return reward;
   }
 
-  /**
-   * Daily reward accessor: provides `checkEligibility`, `claim`, and `getNextClaimTime`.
-   *
-   * @returns The DailyReward instance
-   * @throws Error if daily rewards are not enabled
-   */
+  /** Daily reward accessor (`checkEligibility`, `claim`, `getNextClaimTime`). Throws if daily rewards are disabled in config. */
   get daily(): BaseReward {
     return this.getReward(RewardType.DAILY);
   }
 
-  /**
-   * Returns the list of currently enabled reward type identifiers.
-   *
-   * @returns Array of enabled RewardType values
-   */
+  /** Returns the identifiers of every reward type enabled in the current config. */
   getAvailableRewards(): RewardType[] {
     return Array.from(this.rewards.keys());
   }

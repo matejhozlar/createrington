@@ -32,15 +32,7 @@ export class PlaytimeForwarderService {
     this.heartbeatEndpoint = `${base}/api/internal/presence/heartbeat`;
   }
 
-  /**
-   * Connects the forwarder to a PlaytimeService instance.
-   *
-   * Subscribes to sessionStart and sessionEnd events and forwards
-   * each event to the production server's internal presence endpoint.
-   *
-   * @param service - PlaytimeService to listen to
-   * @param serverId - Server ID (for logging only)
-   */
+  /** Subscribes to sessionStart and sessionEnd on the given service and forwards each event to production. */
   connectToService(service: PlaytimeService, serverId: number): void {
     service.on("sessionStart", (event) => {
       void this.forwardJoin(event);
@@ -55,12 +47,7 @@ export class PlaytimeForwarderService {
     );
   }
 
-  /**
-   * Forwards a heartbeat player list to the production server.
-   *
-   * Called by the presence controller when a heartbeat is received from the mod.
-   * Production uses this to reconcile stale sessions on its test server entry.
-   */
+  /** Posts the mod heartbeat player list to production so it can reconcile stale sessions on the test-server entry. */
   async forwardHeartbeat(players: MinecraftPlayer[]): Promise<void> {
     try {
       const response = await fetch(this.heartbeatEndpoint, {

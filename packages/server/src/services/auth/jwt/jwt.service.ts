@@ -19,10 +19,11 @@ export class InvalidJwtPayloadError extends Error {
 }
 
 /**
- * JWT access token service
- *
- * Handles short-lived access token generation and verification.
- * Access tokens are sent as Bearer tokens and have a short expiry (default 15m).
+ * Issues and verifies the short-lived HS256 access tokens used as Bearer credentials
+ * (default 15m expiry). Tokens are always signed and verified with the
+ * `createrington.web` audience so mod-signed tokens (same secret, `createrington.mod`
+ * audience) cannot satisfy a web auth check. Singleton; throws on instantiation if
+ * `JWT_ACCESS_SECRET` is missing.
  */
 export class JWTService {
   private static instance: JWTService;
@@ -46,9 +47,7 @@ export class JWTService {
     return JWTService.instance;
   }
 
-  /**
-   * Generates a short-lived access token for an authenticated user
-   */
+  /** Signs a new access token for an authenticated user. */
   generate(user: AuthenticatedUser): string {
     const payload: JWTPayload = {
       discordId: user.discordId,
@@ -75,9 +74,7 @@ export class JWTService {
     return token;
   }
 
-  /**
-   * Generates an access token from a raw JWT payload (used during refresh)
-   */
+  /** Signs an access token directly from an existing payload (used by the refresh flow). */
   generateFromPayload(payload: JWTPayload): string {
     const tokenPayload: JWTPayload = {
       discordId: payload.discordId,
@@ -100,15 +97,10 @@ export class JWTService {
   }
 
   /**
-   * Verifies and decodes a JWT token.
-   *
-   * Enforces the `createrington.web` audience so mod-signed tokens
-   * (same HS256 secret, different `aud`) are rejected at the library
-   * layer. Also validates the payload shape: `jwt.verify` only checks
-   * signature/exp, so a token with a well-formed header but garbage
-   * body would otherwise slip through the `as JWTPayload` cast.
-   *
-   * @throws Error if token is invalid, expired, or the payload shape is wrong
+   * Verifies signature, audience, and payload shape, returning the decoded payload.
+   * Throws `Error("Token expired")`, `Error("Invalid token")`, or
+   * `InvalidJwtPayloadError` depending on the failure (the shape check exists because
+   * `jwt.verify` only validates signature/exp, not payload structure).
    */
   verify(token: string): JWTPayload {
     try {

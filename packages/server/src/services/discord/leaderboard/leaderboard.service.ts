@@ -10,14 +10,6 @@ import {
 } from "discord.js";
 import { EmbedPresets } from "@/discord/embeds";
 
-/**
- * Service for managing Discord leaderboards
- *
- * Handles:
- * - Creating leaderboard messages
- * - Refreshing leaderboard data
- * - Managing persistent leaderboard messages in database
- */
 const MESSAGE_NOT_FOUND_PATTERNS = [
   "Unknown Message",
   "Unknown Channel",
@@ -30,17 +22,22 @@ function isMessageNotFoundError(error?: string): boolean {
   return MESSAGE_NOT_FOUND_PATTERNS.some((p) => error.includes(p));
 }
 
+/**
+ * Owns the persistent leaderboard embeds posted to Discord. On `initialize`
+ * it does one immediate refresh of every `LeaderboardType` and then runs an
+ * hourly refresh interval. Each leaderboard's message ID is stored in
+ * `leaderboard_message` so refreshes edit in place; if Discord reports the
+ * stored message or channel as gone, the stale row is deleted and the next
+ * `createOrUpdate` posts a fresh one. Manual refreshes (`isManual=true`) are
+ * cooldown-tracked separately via `lastManualRefresh` and rate-limited to one
+ * per hour per leaderboard; automatic refreshes ignore the cooldown.
+ */
 export class LeaderboardService {
   private refreshInterval?: NodeJS.Timeout;
   private readonly REFRESH_INTERVAL = 60 * 60 * 1000;
   constructor(private readonly bot: Client) {}
 
-  /**
-   * Initialize the service and start automatic refresh scheduler
-   * Called by the service container during startup
-   *
-   * @returns Promise resolving when the service is initialized
-   */
+  /** Runs an immediate `refreshAll` and then starts the hourly auto-refresh interval. */
   async initialize(): Promise<void> {
     logger.info("Initializing LeaderboardService...");
 
@@ -55,12 +52,7 @@ export class LeaderboardService {
     logger.info("LeaderboardService initialized");
   }
 
-  /**
-   * Shutdown the service and cleanup timers
-   * Called by the service container during graceful shutdown
-   *
-   * @returns Promise resolving when the service is shut down
-   */
+  /** Stops the auto-refresh interval; the last-posted Discord embeds stay in place. */
   async shutdown(): Promise<void> {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
@@ -70,15 +62,10 @@ export class LeaderboardService {
   }
 
   /**
-   * Creates a new leaderboard message or updates an existing one
-   *
-   * If a leaderboard message already exists in the database for this type,
-   * it will be updated. Otherwise, a new message will be created and sent
-   * to the configured channel
-   *
-   * @param type - The type of leaderboard to create or update
-   * @returns Promise resolving to the message ID and channel ID
-   * @throws Error if message creation fails
+   * Edits the existing leaderboard message for `type`, or posts a fresh one
+   * when no record exists or the stored message has been deleted (in which
+   * case the stale row is removed first). Throws on any other edit/send
+   * failure.
    */
   async createOrUpdate(
     type: LeaderboardType,
@@ -159,16 +146,11 @@ export class LeaderboardService {
   }
 
   /**
-   * Refreshes a leaderboard with fresh data
-   *
-   * Fetches new leaderboard data and updates the existing message
-   * If this is a manual refresh, it updates the manual refresh timestamp
-   * which is used for cooldown tracking. Automatic refreshes only update
-   * the display timestamp
-   *
-   * @param type - The type of leaderboard to refresh
-   * @param isManual - Whether this is a manual user refresh (default: false)
-   * @returns Promise resolving to refresh result with success status and entries
+   * Refetches data and edits the existing leaderboard message. Pass
+   * `isManual=true` to also stamp `lastManualRefresh` (drives the 1h cooldown
+   * in `canRefresh`); automatic refreshes only update `lastRefreshed`.
+   * Returns a result instead of throwing; the stale-message row is deleted on
+   * "unknown message" errors.
    */
   async refresh(
     type: LeaderboardType,
@@ -254,16 +236,7 @@ export class LeaderboardService {
     }
   }
 
-  /**
-   * Refreshes all leaderboards
-   *
-   * Iterates through all leaderboard types and refreshes each one
-   * This is typically called by the automatic refresh scheduler
-   * All refreshes are marked as automatic (not manual) and don't
-   * trigger cooldowns
-   *
-   * @returns Promise resolving to an array of refresh results for all leaderboards
-   */
+  /** Runs an automatic refresh for every `LeaderboardType` in parallel; never sets the manual-refresh cooldown. */
   async refreshAll(): Promise<LeaderboardRefreshResult[]> {
     const types = Object.values(LeaderboardType);
     const results = await Promise.all(types.map((type) => this.refresh(type)));
@@ -274,16 +247,7 @@ export class LeaderboardService {
     return results;
   }
 
-  /**
-   * Checks if a leaderboard can be manually refreshed
-   *
-   * Manual refreshes have a 1-hour cooldown to prevent spam
-   * This checks the last manual refresh timestamp (not automatic refreshes)
-   * and determines if enough time has elapsed
-   *
-   * @param type - The type of leaderboard to check
-   * @returns Promise resolving to cooldown status with remaining time if applicable
-   */
+  /** Returns whether a manual refresh is allowed under the 1-hour cooldown, plus `remainingSeconds` until the next allowed run when blocked. */
   async canRefresh(type: LeaderboardType): Promise<{
     canRefresh: boolean;
     remainingSeconds?: number;
@@ -318,18 +282,6 @@ export class LeaderboardService {
     };
   }
 
-  /**
-   * Builds the button components for a leaderboard message
-   *
-   * Creates a refresh button that users can click to manually refresh
-   * the leaderboard data. The button includes the leaderboard type in
-   * its custom ID for routing
-   *
-   * @param type - The type of leaderboard to build buttons for
-   * @returns Array of action rows containing the button components
-   *
-   * @private
-   */
   private buildLeaderboardButtons(
     type: LeaderboardType,
   ): ActionRowBuilder<ButtonBuilder>[] {

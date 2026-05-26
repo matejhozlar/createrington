@@ -41,16 +41,16 @@ function getSocketClientIp(socket: Socket): string {
 }
 
 /**
- * WebSocket Service
- *
- * Manages real-time communication between the server and web clients:
- * - Subscription-based rooms for server status, players, messages, and crypto
- * - Broadcasts live updates from PlaytimeService and MessageCacheService
- * - Serves initial state snapshots on demand via REQUEST_INITIAL_DATA
- * - Tracks connected clients and room memberships for stats
- *
- * NOTE: Call initialize() with MessageCacheService and PlaytimeManagerService
- * after construction to enable event-driven broadcasting
+ * Real-time channel between the server and web clients, built on Socket.IO. Manages
+ * subscription-based rooms (server status, players, messages, crypto market), serves
+ * initial state snapshots on demand, and bridges domain events from
+ * `MessageCacheService` and each `PlaytimeService` into room broadcasts. The handshake
+ * applies a per-IP connection cap (with nginx X-Real-IP awareness) and accepts an
+ * optional Bearer token so future per-user rooms can read `socket.data.user`; invalid
+ * tokens degrade to anonymous rather than reject. Per-socket event budgets prevent
+ * one tab from starving others on the same client. Construction wires the HTTP server
+ * and connection handlers; `initialize()` must be called with both dependency
+ * services before event-driven broadcasting will fire.
  */
 export class WebSocketService {
   private io: SocketIOServer;
@@ -124,13 +124,7 @@ export class WebSocketService {
     return bucket.count <= EVENTS_PER_SOCKET_PER_MIN;
   }
 
-  /**
-   * Initializes the service by wiring up data providers and service event listeners
-   *
-   * @param messageCacheService - Message cache service for Discord messages
-   * @param playtimeManagerService - Playtime manager for player tracking
-   * @returns Promise that resolves when initialization is complete
-   */
+  /** Wires data providers and bridges events from the message cache and every per-server playtime service. */
   async initialize(
     messageCacheService: MessageCacheService,
     playtimeManagerService: PlaytimeManagerService,
@@ -151,11 +145,6 @@ export class WebSocketService {
     logger.info("WebSocketService initialized");
   }
 
-  /**
-   * Registers Socket.IO connection, subscription, and error handlers on the server
-   *
-   * @private
-   */
   private setupConnectionHandlers(): void {
     this.io.on(SocketEvent.CONNECTION, (socket: Socket) => {
       const ip = getSocketClientIp(socket);
@@ -237,18 +226,6 @@ export class WebSocketService {
     logger.debug("Socket.IO connection handlers registered");
   }
 
-  /**
-   * Joins the client socket to the rooms matching the requested subscription type
-   *
-   * Sends a confirmation event back to the client on success or failure.
-   * For CRYPTO_MARKET subscriptions, also pushes an immediate price snapshot.
-   *
-   * @param socket - Client socket
-   * @param request - Subscription request
-   * @param callback - Optional acknowledgment callback
-   *
-   * @private
-   */
   private async handleSubscribe(
     socket: Socket,
     request: SubscriptionRequest,
@@ -324,12 +301,6 @@ export class WebSocketService {
     }
   }
 
-  /**
-   * Pushes the current crypto market state (all token prices + overview) to a single client
-   *
-   * @param socket - The client socket to send the snapshot to
-   * @private
-   */
   private async sendCryptoInitialSnapshot(socket: Socket): Promise<void> {
     const { getService: getSvc } = await import("@/services/index.js");
     const { Services: Svc } = await import("../container.js");
@@ -343,15 +314,6 @@ export class WebSocketService {
     socket.emit(SocketEvent.UPDATE_CRYPTO_PRICES, { prices, overview });
   }
 
-  /**
-   * Removes the client socket from the rooms matching the requested subscription type
-   *
-   * @param socket - Client socket
-   * @param request - Unsubscription request
-   * @param callback - Optional acknowledgment callback
-   *
-   * @private
-   */
   private async handleUnsubscribe(
     socket: Socket,
     request: SubscriptionRequest,
@@ -406,18 +368,6 @@ export class WebSocketService {
     }
   }
 
-  /**
-   * Responds to a client request for current state (servers, players, messages)
-   *
-   * If a serverId is present in the request, returns server-scoped data;
-   * otherwise returns the combined state for all servers.
-   *
-   * @param socket - Client socket
-   * @param request - Initial data request
-   * @param callback - Optional callback to deliver the payload
-   *
-   * @private
-   */
   private async handleInitialDataRequest(
     socket: Socket,
     request: InitialDataRequest,
@@ -466,15 +416,6 @@ export class WebSocketService {
     }
   }
 
-  /**
-   * Subscribes to events from MessageCacheService and PlaytimeManagerService
-   * and wires them to the corresponding broadcast methods
-   *
-   * @param messageCacheService - Message cache service
-   * @param playtimeManagerService - Playtime manager service
-   *
-   * @private
-   */
   private connectToServices(
     messageCacheService: MessageCacheService,
     playtimeManagerService: PlaytimeManagerService,
@@ -515,14 +456,6 @@ export class WebSocketService {
     logger.debug("Connected to external services");
   }
 
-  /**
-   * Broadcasts a server online/offline status update to all subscribed clients
-   *
-   * @param serverId - Server ID
-   * @param online - Whether the server is online
-   *
-   * @private
-   */
   private async broadcastServerStatusUpdate(
     serverId: number,
     online: boolean,
@@ -557,14 +490,6 @@ export class WebSocketService {
     }
   }
 
-  /**
-   * Broadcasts a player join event and triggers a server status update
-   *
-   * @param serverId - Server ID
-   * @param event - Session start event from PlaytimeService
-   *
-   * @private
-   */
   private broadcastPlayerJoin(
     serverId: number,
     event: SessionStartEvent,
@@ -597,14 +522,6 @@ export class WebSocketService {
     this.broadcastServerStatusUpdate(serverId, true);
   }
 
-  /**
-   * Broadcasts a player leave event and triggers a server status update
-   *
-   * @param serverId - Server ID
-   * @param event - Session end event from PlaytimeService
-   *
-   * @private
-   */
   private broadcastPlayerLeave(serverId: number, event: SessionEndEvent): void {
     const payload: PlayersUpdatePayload = {
       serverId,
@@ -634,16 +551,6 @@ export class WebSocketService {
     this.broadcastServerStatusUpdate(serverId, true);
   }
 
-  /**
-   * Broadcasts a Discord message create, update, or delete event
-   *
-   * @param serverId - Server ID
-   * @param type - Update type: "new", "update", or "delete"
-   * @param message - Full message data (for new/update events)
-   * @param messageId - Message ID (for delete events)
-   *
-   * @private
-   */
   private broadcastMessageUpdate(
     serverId: number,
     type: "new" | "update" | "delete",
@@ -671,11 +578,7 @@ export class WebSocketService {
     );
   }
 
-  /**
-   * Returns runtime statistics including connected client count, room sizes, and uptime
-   *
-   * @returns Current WebSocketStats snapshot
-   */
+  /** Runtime snapshot: connected client count, per-room sizes, per-subscription totals, and uptime seconds. */
   async getStats(): Promise<WebSocketStats> {
     const rooms: Record<string, number> = {};
     const subscriptions: Record<SubscriptionType, number> = {
@@ -713,11 +616,7 @@ export class WebSocketService {
     };
   }
 
-  /**
-   * Closes the Socket.IO server and clears all tracked client state
-   *
-   * @returns Promise that resolves when the server has been shut down
-   */
+  /** Closes the Socket.IO server and clears tracked client, IP, and event-bucket state. */
   async close(): Promise<void> {
     if (!this.isInitialized) {
       return;
@@ -732,25 +631,13 @@ export class WebSocketService {
     logger.info("WebSocketService closed");
   }
 
-  /**
-   * Triggers a server status broadcast to all subscribed clients.
-   * Used when external state (e.g. maintenance mode) changes.
-   *
-   * @param serverId - Server ID whose status should be re-broadcast
-   */
+  /** Re-broadcasts the current status for a server; use after external state (e.g. maintenance) changes. */
   async triggerServerStatusUpdate(serverId: number): Promise<void> {
     const status = await this.dataProvider.getServerStatus(serverId);
     await this.broadcastServerStatusUpdate(serverId, status.online);
   }
 
-  /**
-   * Emits a full player sync for a server to all subscribed clients
-   *
-   * Useful for recovery or debugging: sends the complete current player list
-   * rather than incremental join/leave events.
-   *
-   * @param serverId - Server ID to sync players for
-   */
+  /** Emits the complete current player list for a server; use for recovery instead of join/leave deltas. */
   async broadcastPlayerSync(serverId: number): Promise<void> {
     const players = await this.dataProvider.getServerPlayers(serverId);
 
@@ -774,13 +661,7 @@ export class WebSocketService {
     );
   }
 
-  /**
-   * Broadcasts an arbitrary event and payload to all clients in a named room
-   *
-   * @param room - Room name to broadcast to
-   * @param event - Socket event name
-   * @param payload - Data to send
-   */
+  /** Emits an arbitrary event and payload to every client in a named room. */
   broadcastToRoom(room: string, event: string, payload: unknown): void {
     this.io.to(room).emit(event, payload);
   }

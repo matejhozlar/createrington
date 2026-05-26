@@ -7,11 +7,12 @@ import { RoleManager } from "@/discord/utils/roles/role-manager";
 import type { DonationType } from "@createrington/shared/db";
 
 /**
- * Donation Service
- *
- * Manages Stripe checkout session creation and post-payment processing.
- * Role assignment is best-effort: a missing or unconfigured supporter role
- * logs a warning but never blocks the donation from completing.
+ * Stripe-backed donation flow: creates checkout sessions for one-time and monthly
+ * support tiers, processes webhook events into donation records, and manages active
+ * subscriptions (status lookup, cancel-at-period-end, reactivate, MRR stats). Supporter
+ * role assignment is best-effort; a missing role or absent guild member is logged but
+ * does not block the donation from completing. Webhook handlers are idempotent against
+ * replays via the `stripeSessionId` lookup.
  */
 export class DonationService {
   private readonly stripe: Stripe;
@@ -20,11 +21,7 @@ export class DonationService {
     this.stripe = new Stripe(config.stripe.secretKey);
   }
 
-  /**
-   * Creates a Stripe checkout session and a pending donation record.
-   *
-   * @returns Stripe session ID and hosted checkout URL
-   */
+  /** Opens a Stripe checkout session in payment or subscription mode and returns the hosted URL. */
   async createCheckoutSession(opts: {
     discordId: string;
     type: DonationType;
@@ -67,10 +64,7 @@ export class DonationService {
     return { sessionId: session.id, url: session.url! };
   }
 
-  /**
-   * Returns the user's active subscription details from Stripe,
-   * or null if they have no active monthly subscription.
-   */
+  /** Active monthly subscription details fetched live from Stripe, or null if there is none. */
   async getActiveSubscription(discordId: string): Promise<{
     subscriptionId: string;
     amountCents: number;
@@ -101,10 +95,7 @@ export class DonationService {
     }
   }
 
-  /**
-   * Cancels a user's monthly subscription at the end of the current billing
-   * period. The user keeps their perks until the period ends.
-   */
+  /** Marks the subscription to cancel at period end; perks remain until the date returned. */
   async cancelSubscription(
     discordId: string,
   ): Promise<{ cancelAt: Date } | null> {
@@ -127,11 +118,7 @@ export class DonationService {
     return { cancelAt };
   }
 
-  /**
-   * Reactivates a previously cancelled subscription by removing
-   * cancel_at_period_end. Only works if the subscription hasn't actually
-   * ended yet.
-   */
+  /** Clears `cancel_at_period_end` on a still-active subscription. Returns false if already ended. */
   async reactivateSubscription(discordId: string): Promise<boolean> {
     const donation = await donationRepo.findActiveSubscription(discordId);
     if (!donation?.stripeSubscriptionId) return false;
@@ -151,10 +138,7 @@ export class DonationService {
     return true;
   }
 
-  /**
-   * Returns subscription statistics by checking each monthly subscription
-   * against Stripe for its current status.
-   */
+  /** Live subscription stats (active, cancelling, MRR cents); each row is verified against Stripe. */
   async getSubscriptionStats(): Promise<{
     activeCount: number;
     cancellingCount: number;
@@ -190,10 +174,6 @@ export class DonationService {
     return { activeCount, cancellingCount, mrrCents };
   }
 
-  /**
-   * Derives the current period end from a subscription's latest invoice
-   * or cancel_at timestamp. Falls back to billing_cycle_anchor + 30 days.
-   */
   private getSubscriptionPeriodEnd(sub: Stripe.Subscription): Date {
     if (sub.cancel_at) {
       return new Date(sub.cancel_at * 1000);
@@ -213,10 +193,7 @@ export class DonationService {
     return anchor;
   }
 
-  /**
-   * Handles checkout.session.completed: creates the donation record
-   * and grants the supporter role if possible.
-   */
+  /** Webhook: persists the donation row (idempotent on `session.id`) and grants the supporter role. */
   async handleSessionCompleted(
     session: Stripe.Checkout.Session,
   ): Promise<void> {
@@ -256,9 +233,7 @@ export class DonationService {
     await this.grantSupporterRole(discordId);
   }
 
-  /**
-   * Handles customer.subscription.updated: logs cancel_at_period_end changes.
-   */
+  /** Webhook: logs `cancel_at_period_end` transitions for audit; no state mutation. */
   async handleSubscriptionUpdated(
     subscription: Stripe.Subscription,
   ): Promise<void> {
@@ -270,9 +245,8 @@ export class DonationService {
   }
 
   /**
-   * Handles customer.subscription.deleted: currently a no-op but logged
-   * so the admin can track churn. Role removal is intentionally skipped
-   * as a "thank you for your support" gesture.
+   * Webhook: log-only. The supporter role is intentionally retained after cancellation
+   * as a thank-you for past support, so this method does not mutate Discord state.
    */
   async handleSubscriptionDeleted(
     subscription: Stripe.Subscription,
@@ -282,10 +256,6 @@ export class DonationService {
     );
   }
 
-  /**
-   * Grants the supporter role to a Discord member.
-   * Silently skips if the role is not configured or the member is not found.
-   */
   private async grantSupporterRole(discordId: string): Promise<void> {
     if (!DiscordRoles.SUPPORTER) {
       logger.warn("No 'SUPPORTER' role configured, skipping role assignment");
@@ -319,10 +289,7 @@ export class DonationService {
     }
   }
 
-  /**
-   * Verifies a Stripe webhook signature and returns the parsed event.
-   * Throws if the signature is invalid.
-   */
+  /** Verifies a Stripe webhook signature and returns the parsed event; throws on invalid signature. */
   constructWebhookEvent(
     payload: string | Buffer,
     signature: string,

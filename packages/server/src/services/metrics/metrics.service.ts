@@ -5,16 +5,9 @@ import { ModerationMetrics } from "./domains/moderation.metrics";
 import { GrowthMetrics } from "./domains/growth.metrics";
 
 /**
- * Main Metrics Service
- *
- * Orchestrates all metric domains via lazy-initialized getters:
- * - Playtime: total hours, per-server breakdowns
- * - Economy: balance circulation, distribution, transaction volume
- * - Activity: active players, peak concurrent, session length, retention
- * - Moderation: bans, strikes, tickets, moderator leaderboard
- * - Growth: registrations, waitlist funnel, Discord member trends
- *
- * NOTE: Pure DB layer, no async initialization or service dependencies
+ * Aggregate entry point for the five metric domains (playtime, economy, activity,
+ * moderation, growth), each lazily constructed on first access. Pure DB layer:
+ * no async init, no service-container dependencies; safe to construct eagerly.
  */
 export class MetricsService {
   private _playtime?: PlaytimeMetrics;
@@ -23,7 +16,7 @@ export class MetricsService {
   private _moderation?: ModerationMetrics;
   private _growth?: GrowthMetrics;
 
-  /** Lazily initialized playtime metrics domain (total hours, per-server breakdowns) */
+  /** Playtime metrics: total hours, per-server breakdowns. */
   get playtime(): PlaytimeMetrics {
     if (!this._playtime) {
       this._playtime = new PlaytimeMetrics();
@@ -31,7 +24,7 @@ export class MetricsService {
     return this._playtime;
   }
 
-  /** Lazily initialized economy metrics domain (balance circulation, distribution, transaction volume) */
+  /** Economy metrics: balance circulation, distribution, transaction volume. */
   get economy(): EconomyMetrics {
     if (!this._economy) {
       this._economy = new EconomyMetrics();
@@ -39,7 +32,7 @@ export class MetricsService {
     return this._economy;
   }
 
-  /** Lazily initialized activity metrics domain (active players, peak concurrent, session length, retention) */
+  /** Activity metrics: active players, peak concurrent, session length, retention. */
   get activity(): ActivityMetrics {
     if (!this._activity) {
       this._activity = new ActivityMetrics();
@@ -47,7 +40,7 @@ export class MetricsService {
     return this._activity;
   }
 
-  /** Lazily initialized moderation metrics domain (bans, strikes, tickets, moderator leaderboard) */
+  /** Moderation metrics: bans, strikes, tickets, moderator leaderboard. */
   get moderation(): ModerationMetrics {
     if (!this._moderation) {
       this._moderation = new ModerationMetrics();
@@ -55,7 +48,7 @@ export class MetricsService {
     return this._moderation;
   }
 
-  /** Lazily initialized growth metrics domain (registrations, waitlist funnel, Discord member trends) */
+  /** Growth metrics: registrations, waitlist funnel, Discord member trends. */
   get growth(): GrowthMetrics {
     if (!this._growth) {
       this._growth = new GrowthMetrics();

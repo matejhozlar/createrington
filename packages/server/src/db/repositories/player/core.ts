@@ -14,26 +14,17 @@ import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**
- * Repository for core player data operations
- *
- * Handles:
- * - Player CRUD operations
- * - Detailed player info retrieval
- * - Player listing and filtering
- * - Statistics and aggregations
+ * Core player CRUD plus the aggregate read paths used by the admin panel
+ * (detailed lookup, list/count, balance summary, server-wide stats). Mutations
+ * that need an admin audit trail (adminUpdate, adminDelete) write to
+ * admin_log_action inside the same transaction.
  */
 export class PlayerRepository extends BasePlayerRepository {
   constructor() {
     super();
   }
 
-  /**
-   * Gets detailed player information for admin panel
-   * Includes balance, playtime summary, and other related data
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to enriched player data
-   */
+  /** Enriched player view for the admin panel: balance, playtime, tickets, waitlist. */
   async getDetailed(identifier: PlayerIdentifier): Promise<{
     player: Player;
     balance: PlayerBalance | null;
@@ -89,13 +80,7 @@ export class PlayerRepository extends BasePlayerRepository {
     };
   }
 
-  /**
-   * Gets player's balance information with recent transactions
-   *
-   * @param identifier - Player identifier
-   * @param transactionLimit - Number of recent transactions to include
-   * @returns Balance record, formatted balance string, and recent transactions
-   */
+  /** Balance row, pre-formatted balance string, and the most recent transactions. */
   async getBalanceInfo(
     identifier: PlayerIdentifier,
     transactionLimit: number = 10,
@@ -126,13 +111,7 @@ export class PlayerRepository extends BasePlayerRepository {
     };
   }
 
-  /**
-   * Gets all players with filtering and pagination (for admin list view)
-   *
-   * @param filters - Optional player filter criteria
-   * @param options - Pagination and sorting options
-   * @returns Array of players matching the criteria
-   */
+  /** Filtered, paginated player list for the admin list view. */
   async getAll(
     filters?: PlayerFilters,
     options?: {
@@ -145,24 +124,14 @@ export class PlayerRepository extends BasePlayerRepository {
     return await Q.player.findAll(filters, options);
   }
 
-  /**
-   * Counts players matching filters
-   *
-   * @param filters - Optional player filter criteria
-   * @returns Total count
-   */
+  /** Count of players matching the given filters. */
   async count(filters?: PlayerFilters): Promise<number> {
     return await Q.player.count(filters);
   }
 
   /**
-   * Updates player data with admin audit logging
-   *
-   * @param identifier - Player identifier
-   * @param updates - Fields to update
-   * @param adminDiscordId - Admin performing the action
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for update
+   * Update player fields and write one admin_log_action entry per changed
+   * field, all inside a single transaction. Resolves to the post-update row.
    */
   async adminUpdate(
     identifier: PlayerIdentifier,
@@ -204,18 +173,9 @@ export class PlayerRepository extends BasePlayerRepository {
   }
 
   /**
-   * Completely deletes a player and all associated data
-   * Cascades to:
-   * - player_balance
-   * - player_balance_transaction
-   * - player_session
-   * - player_playtime_*
-   * - admin entries (if player is admin)
-   *
-   * @param identifier - Player identifier
-   * @param adminDiscordId - Admin performing the deletion
-   * @param adminUsername - Admin Minecraft username
-   * @param reason - Reason for deletion
+   * Hard-delete a player and let DB cascades drop balance, transactions,
+   * sessions, playtime aggregates, and admin entries. Writes the audit log
+   * row before the delete so it survives the cascade.
    */
   async adminDelete(
     identifier: PlayerIdentifier,
@@ -252,11 +212,7 @@ export class PlayerRepository extends BasePlayerRepository {
     });
   }
 
-  /**
-   * Gets overall player statistics for admin dashboard
-   *
-   * @returns Total/online counts, registration trends, and balance aggregates
-   */
+  /** Dashboard stats: total/online counts, registration trends, balance aggregates. */
   async getStats(): Promise<{
     total: number;
     online: number;
