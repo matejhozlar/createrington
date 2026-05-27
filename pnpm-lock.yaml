@@ -83,9 +83,6 @@ importers:
       '@createrington/icons':
         specifier: 0.3.4
         version: 0.3.4(motion@12.38.0(@emotion/is-prop-valid@1.4.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@createrington/skin-api-client':
-        specifier: ^0.2.1
-        version: 0.2.1
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -137,6 +134,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      createrington-skin-api:
+        specifier: ^1.0.0
+        version: 1.0.0
       embla-carousel-autoplay:
         specifier: ^8.6.0
         version: 8.6.0(embla-carousel@8.6.0)
@@ -181,7 +181,7 @@ importers:
         version: 7.13.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       recharts:
         specifier: ^3.7.0
-        version: 3.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.5)(react@19.2.4)(redux@5.0.1)
+        version: 3.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)(redux@5.0.1)
       remark-breaks:
         specifier: ^4.0.0
         version: 4.0.0
@@ -270,9 +270,6 @@ importers:
       '@createrington/shared':
         specifier: workspace:*
         version: link:../shared
-      '@createrington/skin-api-client':
-        specifier: ^0.2.1
-        version: 0.2.1
       '@trpc/server':
         specifier: ^11.1.0
         version: 11.12.0(typescript@5.9.3)
@@ -288,6 +285,9 @@ importers:
       cors:
         specifier: ^2.8.5
         version: 2.8.6
+      createrington-skin-api:
+        specifier: ^1.0.0
+        version: 1.0.0
       discord-html-transcripts:
         specifier: ^3.2.0
         version: 3.3.0(discord.js@14.25.1)
@@ -589,12 +589,6 @@ packages:
   '@createrington/logger@0.2.0':
     resolution: {integrity: sha512-C3WB5qw4qvuQYmR9Hb0Pd67I7PI6j6SsNVT0UCcQaK3sEe2gLgQNiP0qn0jSFtKgh0zY9JAaLirQIEeOA42IlQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Flogger/-/0.2.0/logger-0.2.0.tgz}
     engines: {node: '>=20'}
-
-  '@createrington/skin-api-client@0.2.1':
-    resolution: {integrity: sha512-rgmbsEczVdTF0kzr186girT2urA54rS75O6z2C1PreHqyBeA6RB00ExgSyS2r3gcEsh5/jakFk71do/tRCUOKQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Fskin-api-client/-/0.2.1/skin-api-client-0.2.1.tgz}
-
-  '@createrington/skin-api-shared@0.2.1':
-    resolution: {integrity: sha512-hL0v/HI9BglSgdtGxCBW4sWw5uYv8Zagua4K7MQeS0qAbnWYMMvV24PLE7Y1YdL81ugWFX14gPzYgV3kWWvvkQ==, tarball: https://gitea.matejhoz.com/api/packages/Createrington/npm/%40createrington%2Fskin-api-shared/-/0.2.1/skin-api-shared-0.2.1.tgz}
 
   '@dabh/diagnostics@2.0.8':
     resolution: {integrity: sha512-R4MSXTVnuMzGD7bzHdW2ZhhdPC/igELENcq5IjEverBvq5hn1SXCWcsi6eSsdWP0/Ur+SItRRjAktmdoX/8R/Q==}
@@ -3151,6 +3145,9 @@ packages:
     resolution: {integrity: sha512-9IkYqtX3YHPCzoVg1Py+o9057a3i0fp7S530UWokCSaFVTc7CwXPRiOjRjBQQ18ZCNafx78YfnG+HALxtVmOGA==}
     engines: {node: '>=10.0.0'}
 
+  createrington-skin-api@1.0.0:
+    resolution: {integrity: sha512-uVuzHRxicnFWXOXP/PoRl1KgU54ms6Py8YVTJvJxqiJ3b/5BSIJS/xuFgGIt/gR2icpXK1EOnrPwduKT3/iN1A==}
+
   cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -4969,9 +4966,6 @@ packages:
   react-is@16.13.1:
     resolution: {integrity: sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==}
 
-  react-is@19.2.5:
-    resolution: {integrity: sha512-Dn0t8IQhCmeIT3wu+Apm1/YVsJXsGWi6k4sPdnBIdqMVtHtv0IGi6dcpNpNkNac0zB2uUAqNX3MHzN8c+z2rwQ==}
-
   react-is@19.2.6:
     resolution: {integrity: sha512-XjBR15BhXuylgWGuslhDKqlSayuqvqBX91BP8pauG8kd1zY8kotkNWbXksTCNRarse4kuGbe2kIY05ARtwNIvw==}
 
@@ -6152,14 +6146,6 @@ snapshots:
   '@createrington/logger@0.2.0':
     dependencies:
       winston: 3.19.0
-
-  '@createrington/skin-api-client@0.2.1':
-    dependencies:
-      '@createrington/skin-api-shared': 0.2.1
-
-  '@createrington/skin-api-shared@0.2.1':
-    dependencies:
-      zod: 4.4.3
 
   '@dabh/diagnostics@2.0.8':
     dependencies:
@@ -8621,6 +8607,8 @@ snapshots:
       nan: 2.25.0
     optional: true
 
+  createrington-skin-api@1.0.0: {}
+
   cross-spawn@7.0.6:
     dependencies:
       path-key: 3.1.1
@@ -10639,8 +10627,6 @@ snapshots:
 
   react-is@16.13.1: {}
 
-  react-is@19.2.5: {}
-
   react-is@19.2.6: {}
 
   react-markdown@10.1.0(@types/react@19.2.14)(react@19.2.4):
@@ -10773,7 +10759,7 @@ snapshots:
 
   readdirp@4.1.2: {}
 
-  recharts@3.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.5)(react@19.2.4)(redux@5.0.1):
+  recharts@3.7.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)(redux@5.0.1):
     dependencies:
       '@reduxjs/toolkit': 2.11.2(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.4)(redux@5.0.1))(react@19.2.4)
       clsx: 2.1.1
@@ -10783,7 +10769,7 @@ snapshots:
       immer: 10.2.0
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
-      react-is: 19.2.5
+      react-is: 19.2.6
       react-redux: 9.2.0(@types/react@19.2.14)(react@19.2.4)(redux@5.0.1)
       reselect: 5.1.1
       tiny-invariant: 1.3.3

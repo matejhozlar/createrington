@@ -1,10 +1,6 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import {
-  KNOWN_POSES,
-  pickRandomPose,
-  type KnownPose,
-} from "@createrington/skin-api-client";
+import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
@@ -22,6 +18,11 @@ import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
 const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
+
+function pickRandomPose(): KnownPose {
+  const idx = Math.floor(Math.random() * KNOWN_POSES.length);
+  return KNOWN_POSES[idx] as KnownPose;
+}
 
 const router = Router();
 
@@ -539,11 +540,11 @@ router.get(
         ? (pose as KnownPose)
         : pickRandomPose();
 
-    let png: Buffer;
+    let png: Uint8Array;
     try {
-      png = await getSkinApiClient().renderPose({
+      png = await getSkinApiClient().render({
         pose: requestedPose,
-        source: { type: "uuid", uuid },
+        source: { uuid },
       });
     } catch (err) {
       // Keep the <img> tag rendering something useful instead of triggering
@@ -562,7 +563,7 @@ router.get(
       `public, max-age=${SKIN_RENDER_CACHE_SECONDS}`,
     );
     res.setHeader("X-Skin-Pose", requestedPose);
-    res.send(png);
+    res.send(Buffer.from(png));
   }),
 );
 
