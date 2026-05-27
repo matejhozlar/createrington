@@ -1,12 +1,15 @@
-import {
-  KNOWN_POSES,
-  pickRandomPose,
-  type KnownPose,
-} from "@createrington/skin-api-client";
+import { KNOWN_POSES, type KnownPose } from "@createrington/skin-api-shared";
 import { mcHeadsBody } from "@/lib/external-urls";
 
-export { KNOWN_POSES, pickRandomPose };
+export { KNOWN_POSES };
 export type { KnownPose };
+
+// Inlined from @createrington/skin-api-client because that module
+// statically imports undici, which breaks browser bundles.
+export function pickRandomPose(): KnownPose {
+  const idx = Math.floor(Math.random() * KNOWN_POSES.length);
+  return KNOWN_POSES[idx]!;
+}
 
 export function skinApiUrl(uuid: string, pose: KnownPose): string {
   const url = new URL("/api/render/skin", window.location.origin);
