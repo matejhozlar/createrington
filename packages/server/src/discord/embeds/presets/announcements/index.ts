@@ -177,9 +177,10 @@ export const AnnouncementEmbedPresets = {
     return createEmbed()
       .title("✅ Maintenance Complete")
       .description(
-        "Server maintenance has been completed and the server is back online. Thanks for your patience!",
+        "Server maintenance has been completed and the server is back online.",
       )
       .color(EmbedColors.Success)
+      .footer("Thanks for your patience!")
       .timestamp();
   },
 };
