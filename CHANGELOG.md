@@ -1,3 +1,12 @@
+## v1.24.0 (2026-05-27)
+
+### @createrington/server (1.23.2 → 1.24.0)
+- [add] Add pose option to the `/skin` slash command: users can pick from all known skin-api poses via autocomplete, which renders the skin server-side and attaches the PNG directly to the reply; unknown pose input is rejected with an explicit error embed
+- [refactor] Move the "Thanks for your patience!" text in the maintenance-ended announcement embed from the description body to the footer
+
+### @createrington/client (0.2.30 → 0.2.31)
+- [fix] Replace the loading spinner in the server-status sidebar widget with a skeleton placeholder that matches the final layout, eliminating the content shift when server data loads
+
 ## v1.23.2 (2026-05-27)
 
 ### @createrington/server (1.23.1 → 1.23.2)
