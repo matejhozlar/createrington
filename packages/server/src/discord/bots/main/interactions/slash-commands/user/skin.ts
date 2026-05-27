@@ -61,10 +61,16 @@ export async function execute(
     .getString("pose", false)
     ?.trim()
     .toLowerCase();
-  const pose: KnownPose | undefined =
-    poseInput && KNOWN_POSE_SET.has(poseInput)
-      ? (poseInput as KnownPose)
-      : undefined;
+
+  if (poseInput && !KNOWN_POSE_SET.has(poseInput)) {
+    const embed = EmbedPresets.error(
+      "Unknown Pose",
+      `\`${poseInput}\` is not a recognized pose. Use the autocomplete suggestions to pick a valid one.`,
+    );
+    await interaction.reply({ embeds: [embed.build()] });
+    return;
+  }
+  const pose = poseInput as KnownPose | undefined;
 
   let player: Awaited<ReturnType<typeof Q.player.get>>;
   try {
