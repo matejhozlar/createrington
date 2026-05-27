@@ -238,6 +238,19 @@ const envSchema = z
     STORAGE_PATH: z.string().min(1).default("./storage"),
   })
   .superRefine((data, ctx) => {
+    // Runs in every environment: MOD_JWT_SECRET must differ from
+    // JWT_ACCESS_SECRET, otherwise the trust-boundary split is silently
+    // defeated — a compromised mod host could mint web tokens with the
+    // shared value.
+    if (data.MOD_JWT_SECRET === data.JWT_ACCESS_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MOD_JWT_SECRET"],
+        message:
+          "MOD_JWT_SECRET must differ from JWT_ACCESS_SECRET (sharing defeats the mod/web trust-boundary split)",
+      });
+    }
+
     // Re-require production-only vars when running a real production
     // deployment. dev.createrington.com ships with NODE_ENV=production but
     // hits the same dev-deployment guards as local dev (no SFTP, no RCON to

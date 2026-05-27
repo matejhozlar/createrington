@@ -108,10 +108,6 @@ describe("verifyModJWT", () => {
   });
 
   it("rejects a properly-signed web-audience token", () => {
-    // Defence-in-depth: even a web JWT signed with the legitimate web
-    // secret must be rejected by the mod verifier on audience alone.
-    // The secret split makes this unforgeable from a mod host, the
-    // audience check is the second wall.
     const token = jwt.sign(
       {
         discordId: "1",
@@ -155,14 +151,6 @@ describe("verifyModJWT", () => {
   });
 
   it("rejects a mod-audience token signed with the web secret (regression: #781)", () => {
-    // #781: previously the mod and web verifiers shared
-    // JWT_ACCESS_SECRET, so a compromise of a Minecraft host let an
-    // attacker forge web tokens by reusing the secret with a different
-    // `aud`. Now that the secrets are split, the mod verifier must
-    // reject anything signed with the web secret, even when the
-    // audience claim is correct. This is the explicit regression
-    // guard: if a future refactor points the mod middleware back at
-    // the web secret, this test fails.
     const token = jwt.sign({ uuid: "u", name: "n" }, WEB_SECRET, {
       algorithm: "HS256",
       audience: "createrington.mod",
