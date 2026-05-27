@@ -111,6 +111,13 @@ const envSchema = z
     JWT_ACCESS_SECRET: z
       .string()
       .min(32, "JWT access secret must be at least 32 characters"),
+    // Dedicated mod JWT signing secret. Must NOT reuse JWT_ACCESS_SECRET:
+    // mod hosts self-sign with this value, so a compromised Minecraft host
+    // would otherwise be able to mint arbitrary createrington.web admin
+    // tokens by reusing the shared secret with a different `aud`.
+    MOD_JWT_SECRET: z
+      .string()
+      .min(32, "Mod JWT secret must be at least 32 characters"),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(
