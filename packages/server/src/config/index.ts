@@ -81,6 +81,9 @@ const config = {
         secret: env.JWT_ACCESS_SECRET,
         expiresIn: env.JWT_ACCESS_EXPIRES_IN,
       },
+      modAccessToken: {
+        secret: env.MOD_JWT_SECRET,
+      },
       refreshToken: {
         expiresInDays: env.REFRESH_TOKEN_EXPIRES_IN_DAYS,
       },

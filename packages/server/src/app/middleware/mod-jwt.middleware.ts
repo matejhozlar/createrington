@@ -6,12 +6,14 @@ import { extractBearerToken } from "@/utils/bearer-token";
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = config.app.auth.accessToken.secret;
+const JWT_SECRET = config.app.auth.modAccessToken.secret;
 
 /**
- * Audience claim mods must carry. Enforced here so a web session JWT
- * (same secret, `aud: "createrington.web"`) can never be substituted
- * for a mod token.
+ * Audience claim mods must carry. The mod and web access-token
+ * secrets are split (see `MOD_JWT_SECRET`), so cross-audience forgery
+ * from a compromised Minecraft host is structurally impossible. The
+ * audience check is still enforced as defence-in-depth against
+ * config drift that re-shares a secret in future.
  */
 export const JWT_AUDIENCE_MOD = "createrington.mod";
 
