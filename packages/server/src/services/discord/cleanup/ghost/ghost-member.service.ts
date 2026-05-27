@@ -44,6 +44,7 @@ export class GhostMemberService {
   private lastRefreshedAt: Date | null = null;
   private refreshInFlight: Promise<void> | null = null;
 
+  /** Timestamp of the last completed refresh, or null if never refreshed. */
   getLastRefreshedAt(): Date | null {
     return this.lastRefreshedAt;
   }

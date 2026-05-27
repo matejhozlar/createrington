@@ -49,11 +49,11 @@ function formatCommand(cmd: RawCommand): string {
 
   if (subs.length > 0) {
     return subs
-      .map((s) => `</${cmd.name} ${s.name}:0> — ${s.description ?? ""}`)
+      .map((s) => `</${cmd.name} ${s.name}:0> - ${s.description ?? ""}`)
       .join("\n");
   }
 
-  return `</${cmd.name}:0> — ${cmd.description}`;
+  return `</${cmd.name}:0> - ${cmd.description}`;
 }
 
 export const data = new SlashCommandBuilder()

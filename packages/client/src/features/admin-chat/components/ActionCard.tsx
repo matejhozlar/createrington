@@ -9,7 +9,7 @@ import {
   type AdminChatAction,
   type HighlightAction,
   type InsertEmbedAction,
-} from "./actions";
+} from "../actions";
 import { EmbedActionPreview } from "./EmbedActionPreview";
 
 /**

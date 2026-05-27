@@ -49,32 +49,25 @@ const LAUNCH_ARGS = [
 ];
 
 /**
- * Headless browser service for server-side rendering tasks
- *
- * - Provides screenshot capture of URLs or specific DOM elements
- * - Supports arbitrary page scripting via withPage()
- * - Lazily launches the Chromium browser on first use
- * - Auto-reconnects if the browser process disconnects
- *
- * NOTE: Uses puppeteer-core (no bundled Chromium);
- * requires PUPPETEER_EXECUTABLE_PATH in production
+ * Headless browser for server-side rendering tasks: screenshots of full URLs or
+ * specific DOM elements and arbitrary page scripting via `withPage()`. Uses
+ * puppeteer-core, so the Chromium executable is not bundled; production requires
+ * `PUPPETEER_EXECUTABLE_PATH`. The browser launches lazily on first use, concurrent
+ * launches share a single promise, and disconnect handlers null out the cached
+ * instance so the next call relaunches transparently.
  */
 export class PuppeteerService {
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
 
-  /**
-   * Initializes the service (browser launches lazily on first use)
-   */
+  /** No-op aside from logging; the browser launches lazily on the first `screenshot()` or `withPage()` call. */
   async initialize(): Promise<void> {
     logger.info(
       "PuppeteerService initialized (browser will launch on first use)",
     );
   }
 
-  /**
-   * Shuts down the browser process if running
-   */
+  /** Closes the browser process if one is running; safe to call when no browser was launched. */
   async shutdown(): Promise<void> {
     if (this.browser) {
       await this.browser.close().catch(() => {});
@@ -85,10 +78,8 @@ export class PuppeteerService {
   }
 
   /**
-   * Takes a screenshot of a URL or a specific element on the page
-   *
-   * @param options - Screenshot configuration (URL, selectors, viewport, format)
-   * @returns Promise resolving to the image buffer and format
+   * Renders a URL (or one element on it) to an image buffer. Waits for fonts and images
+   * to settle by default, capped at 10s so a stuck asset cannot stall the request.
    */
   async screenshot(options: ScreenshotOptions): Promise<ScreenshotResult> {
     const {
@@ -181,14 +172,7 @@ export class PuppeteerService {
     }
   }
 
-  /**
-   * Executes an arbitrary async callback with a fresh page
-   *
-   * The page is automatically closed when the callback completes or throws.
-   *
-   * @param fn - Async callback receiving the page and browser instances
-   * @returns Promise resolving to the callback's return value
-   */
+  /** Runs `fn` against a fresh page; the page is closed whether the callback resolves or throws. */
   async withPage<T>(
     fn: (page: Page, browser: Browser) => Promise<T>,
   ): Promise<T> {
@@ -202,15 +186,6 @@ export class PuppeteerService {
     }
   }
 
-  /**
-   * Returns the active browser or launches a new one
-   *
-   * Guards against concurrent launch attempts by sharing a single promise.
-   *
-   * @returns Promise resolving to the browser instance
-   *
-   * @private
-   */
   private async getBrowser(): Promise<Browser> {
     if (this.browser?.connected) {
       return this.browser;
@@ -231,15 +206,6 @@ export class PuppeteerService {
     }
   }
 
-  /**
-   * Launches a new Chromium browser process
-   *
-   * Registers a disconnect handler for automatic re-launch on next use.
-   *
-   * @returns Promise resolving to the launched browser instance
-   *
-   * @private
-   */
   private async launchBrowser(): Promise<Browser> {
     logger.info("Launching Puppeteer browser...");
 

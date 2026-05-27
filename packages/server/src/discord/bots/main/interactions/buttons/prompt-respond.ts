@@ -52,7 +52,7 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
   if (prompt.status !== "active" || prompt.endsAt.getTime() <= Date.now()) {
     await interaction.reply({
-      content: "This prompt is closed — responses are no longer accepted.",
+      content: "This prompt is closed. Responses are no longer accepted.",
       flags: MessageFlags.Ephemeral,
     });
     return;

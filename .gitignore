@@ -38,6 +38,7 @@ postgres_data/
 IDEAS.md
 .mcp.json
 storage/transcripts
+tmp/
 
 # Auto-generated files
 generated

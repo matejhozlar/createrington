@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { RepoSuggestion } from "./types";
+import type { RepoSuggestion } from "../types";
 
 interface MentionMenuProps {
   matches: RepoSuggestion[];

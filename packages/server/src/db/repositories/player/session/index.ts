@@ -4,27 +4,16 @@ import type { PlayerSession } from "@createrington/shared/db";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
 
 /**
- * Repository for player session history management
- *
- * Handles:
- * - Session history retrieval
- * - Session counting
- * - Session pagination
+ * Read access over player_session scoped to a single player. Session writes
+ * (start/end, aggregation) live in PlaytimeRepository; this class is the
+ * read surface used by admin views and player profiles.
  */
 export class PlayerSessionRepository extends BasePlayerRepository {
   constructor() {
     super();
   }
 
-  /**
-   * Gets player's session history with pagination
-   *
-   * @param identifier - Player identifier
-   * @param serverId - Optional server filter
-   * @param limit - Number of sessions to return
-   * @param offset - Number of sessions to skip (for pagination)
-   * @returns Promise resolving to array of player sessions
-   */
+  /** Paginated session history for a player, newest first; optional server filter. */
   async getHistory(
     identifier: PlayerIdentifier,
     serverId?: number,
@@ -47,13 +36,7 @@ export class PlayerSessionRepository extends BasePlayerRepository {
     );
   }
 
-  /**
-   * Counts total sessions for a player
-   *
-   * @param identifier - Player identifier
-   * @param serverId - Optional server filter
-   * @returns Promise resolving to total session count
-   */
+  /** Total session count for a player, optionally scoped to a server. */
   async count(
     identifier: PlayerIdentifier,
     serverId?: number,

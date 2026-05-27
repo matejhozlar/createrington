@@ -395,7 +395,7 @@ async function handlePortfolio(
     totalInvested += costBasis;
 
     lines.push(
-      `**${token.symbol}** — ${amount.toLocaleString()} @ ${formatPrice(currentPrice)}\n` +
+      `**${token.symbol}** - ${amount.toLocaleString()} @ ${formatPrice(currentPrice)}\n` +
         `Value: ${formatPrice(currentValue)} (${pnlSign}${pnlPercent.toFixed(1)}%)`,
     );
   }
@@ -453,7 +453,7 @@ async function handleLeaderboard(
   const medals = ["🥇", "🥈", "🥉"];
   const lines = entries.map((e) => {
     const prefix = e.rank <= 3 ? medals[e.rank - 1] : `**${e.rank}.**`;
-    return `${prefix} **${e.playerName}** — ${formatPrice(e.value)}`;
+    return `${prefix} **${e.playerName}** - ${formatPrice(e.value)}`;
   });
 
   const embed = EmbedPresets.crypto.leaderboard(
@@ -710,7 +710,7 @@ async function handleAlert(
         const symbol = token?.symbol ?? "???";
         const currentPrice = token ? formatPrice(token.price) : "N/A";
         return (
-          `**#${a.id}** — **${symbol}** ${a.direction} ${formatPrice(a.targetPrice)}\n` +
+          `**#${a.id}** - **${symbol}** ${a.direction} ${formatPrice(a.targetPrice)}\n` +
           `Current: ${currentPrice}`
         );
       });

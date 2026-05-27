@@ -13,16 +13,11 @@ import type {
 import { EmailTemplateRegistry } from "./templates";
 
 /**
- * Email Service
- *
- * Sends transactional emails via Resend:
- * - Plain emails with full header control (to, cc, bcc, replyTo, attachments)
- * - Template-based emails rendered from the EmailTemplateRegistry
- * - Convenience methods for delivering notifications directly to the admin
- * - Normalizes recipient addresses from string or structured email objects
- *
- * NOTE: Implemented as a singleton; use `EmailService.getInstance()` or
- * the pre-initialized `email` export rather than constructing directly
+ * Sends transactional email via Resend, supporting both raw HTML/text payloads and
+ * `EmailTemplateRegistry`-rendered templates. When `RESEND_API_KEY` is unconfigured
+ * the service stays alive but every send is a logged no-op returning a failure
+ * result, so callers do not need to gate on env config. Singleton; prefer the
+ * pre-initialized `email` export over constructing it directly.
  */
 export class EmailService {
   private static instance: EmailService;
@@ -44,13 +39,11 @@ export class EmailService {
     return EmailService.instance;
   }
 
-  /** @private Formats an address input as "Name <email>" or plain email */
   private normalizeEmail(email: string | EmailAddress): string {
     if (typeof email === "string") return email;
     return email.name ? `${email.name} <${email.email}>` : email.email;
   }
 
-  /** @private Normalizes a single or array input into an array of "Name <email>" strings */
   private normalizeEmails(
     emails: string | EmailAddress | Array<string | EmailAddress>,
   ): string[] {
@@ -91,6 +84,7 @@ export class EmailService {
     );
   }
 
+  /** Sends a raw email; returns a failure result (not a throw) when Resend is unconfigured or the API rejects the send. */
   async send(options: EmailOptions): Promise<EmailResult> {
     if (!this.resend) {
       logger.warn(
@@ -146,6 +140,7 @@ export class EmailService {
     }
   }
 
+  /** Renders the named template from `EmailTemplateRegistry` with `data` and sends it. */
   async sendTemplate<T extends EmailTemplate>(
     to: string | EmailAddress,
     template: T,
@@ -172,6 +167,7 @@ export class EmailService {
     }
   }
 
+  /** Convenience: sends a plain email to the configured admin address. */
   async sendToAdmin(
     subject: string,
     html: string,
@@ -185,6 +181,7 @@ export class EmailService {
     });
   }
 
+  /** Convenience: renders a template and sends it to the configured admin address. */
   async sendTemplateToAdmin<T extends EmailTemplate>(
     template: EmailTemplate,
     data: EmailTemplateDataMap[T],
@@ -193,11 +190,8 @@ export class EmailService {
   }
 
   /**
-   * Lightweight health check: lists domains via the Resend API.
-   *
-   * Resend is HTTPS-only, so there's no SMTP-style connection to verify;
-   * this just exercises the API key at a low cost to confirm credentials
-   * are usable before the application begins accepting traffic.
+   * Lightweight health check: lists domains via the Resend API to confirm the
+   * API key is usable. Returns false (no throw) when unconfigured or rejected.
    */
   async verify(): Promise<boolean> {
     if (!this.resend) {

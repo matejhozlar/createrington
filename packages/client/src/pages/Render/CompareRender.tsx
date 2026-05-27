@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { loadSkin, randomPose } from "./skin-utils";
+import { loadSkin, pickRandomPose } from "./skin-utils";
 
 interface PlayerData {
   username: string;
@@ -78,8 +78,8 @@ export function CompareRender() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skinLeft, setSkinLeft] = useState<string | null>(null);
   const [skinRight, setSkinRight] = useState<string | null>(null);
-  const [poseLeft] = useState(randomPose);
-  const [poseRight] = useState(randomPose);
+  const [poseLeft] = useState(pickRandomPose);
+  const [poseRight] = useState(pickRandomPose);
 
   const p1 = params.get("player1");
   const p2 = params.get("player2");

@@ -1,5 +1,5 @@
 import { createContext } from "react";
-import { AdminPlayerContextType } from "./types";
+import type { AdminPlayerContextType } from "./types";
 
 export const AdminPlayersContext = createContext<
   AdminPlayerContextType | undefined

@@ -16,12 +16,14 @@ import { roleNotificationService } from "./role-notification.service";
 import config from "@/config";
 
 /**
- * Central service for managing role assignments
- *
- * Handles:
- * - Realtime role checks triggered by playtime events
- * - Daily scheduled role checks
- * - Integration with PlaytimeService
+ * Top-level coordinator for automatic role assignment. Owns a
+ * `RoleAssignmentService` and drives it from two triggers: realtime, by
+ * subscribing to per-server `PlaytimeService` `sessionAggregated` events, and
+ * scheduled, via a daily timer aligned to `checkTimeHour` UTC (first run is
+ * delayed to the next occurrence, then a 24h interval takes over). The daily
+ * pass also reconciles competitive top-1 roles (top playtime, top crypto
+ * networth) by stripping the role from former leaders and granting it to the
+ * current #1. All scheduling stops on `shutdown`.
  */
 export class RoleManagementService {
   private roleAssignmentService: RoleAssignmentService;
@@ -35,12 +37,7 @@ export class RoleManagementService {
     this.roleAssignmentService = new RoleAssignmentService(client);
   }
 
-  /**
-   * Initialize the service
-   * Called by the service container during startup
-   *
-   * @returns Promise resolving when the service is initialized
-   */
+  /** Starts the daily role-check scheduler. Realtime hooks are wired separately via `setupRealtimeRoleChecking`. */
   async initialize(): Promise<void> {
     logger.info("Initializing RoleManagementService");
 
@@ -49,25 +46,17 @@ export class RoleManagementService {
     logger.info("RoleManagementService initialized");
   }
 
-  /**
-   * Shutdown the service
-   * Called by the service container during graceful shutdown
-   *
-   * @returns Promise resolving when the service is stopped
-   */
+  /** Cancels the daily scheduler (both the initial timeout and the recurring interval). Realtime listeners stay bound to the underlying `PlaytimeService`. */
   async shutdown(): Promise<void> {
     this.stopDailyScheduler();
     logger.info("RoleManagementService stopped");
   }
 
   /**
-   * Sets up realtime role checking for a playtime service
-   *
-   * Subscribes to sessionEnd events and triggers role hierarchy checks.
-   * Should be called after playtime services are initialized.
-   *
-   * @param serverId - Server ID to set up checking for
-   * @param playtimeService - PlaytimeService instance to listen for events on
+   * Subscribes to `sessionAggregated` on the given `PlaytimeService` and runs
+   * the realtime rule set through `processRoleHierarchy` on each event. Call
+   * once per server after its playtime service is initialized; listeners are
+   * not removed on shutdown.
    */
   setupRealtimeRoleChecking(
     serverId: number,
@@ -102,11 +91,6 @@ export class RoleManagementService {
     logger.info(`Realtime role checking setup for server ${serverId}`);
   }
 
-  /**
-   * Start the daily role scheduler
-   *
-   * @private
-   */
   private startDailyScheduler(): void {
     logger.info(
       `Starting daily role scheduler (checks at ${this.checkTimeHour}:00 UTC)`,
@@ -137,11 +121,6 @@ export class RoleManagementService {
     }, msUntilNextCheck);
   }
 
-  /**
-   * Stop the daily role scheduler
-   *
-   * @private
-   */
   private stopDailyScheduler(): void {
     if (this.dailyCheckTimeoutId) {
       clearTimeout(this.dailyCheckTimeoutId);
@@ -156,13 +135,6 @@ export class RoleManagementService {
     logger.info("Daily role scheduler stopped");
   }
 
-  /**
-   * Run the daily role check for all players
-   *
-   * @returns Promise resolving when the check is finished
-   *
-   * @private
-   */
   private async runDailyCheck(): Promise<void> {
     logger.info("Running daily role check...");
 
@@ -226,17 +198,6 @@ export class RoleManagementService {
     }
   }
 
-  /**
-   * Processes a competitive top-playtime role
-   *
-   * Finds the #1 player by total playtime across all servers, removes the role
-   * from any current holder(s), and assigns it to the new leader.
-   *
-   * @param rule - The top playtime role rule
-   * @returns Object indicating whether the role was assigned/removed
-   *
-   * @private
-   */
   private async processTopPlaytimeRole(
     rule: TopPlaytimeRoleRule,
   ): Promise<{ assigned: boolean; removed: boolean }> {
@@ -324,17 +285,6 @@ export class RoleManagementService {
     }
   }
 
-  /**
-   * Processes a competitive top-crypto-networth role
-   *
-   * Finds the #1 player by total crypto portfolio value, removes the role
-   * from any current holder(s), and assigns it to the new leader.
-   *
-   * @param rule - The top crypto networth role rule
-   * @returns Object indicating whether the role was assigned/removed
-   *
-   * @private
-   */
   private async processTopCryptoNetworthRole(
     rule: TopCryptoNetworthRoleRule,
   ): Promise<{ assigned: boolean; removed: boolean }> {
@@ -436,19 +386,13 @@ export class RoleManagementService {
     }
   }
 
-  /**
-   * Manually triggers a role check for a specific player
-   *
-   * @param discordId - Discord user ID of the player
-   */
+  /** Runs the realtime rule set against a single player on demand (e.g. admin command), bypassing the playtime-event trigger. */
   async checkPlayer(discordId: string): Promise<void> {
     const rules = getRealtimeRoleRules();
     await this.roleAssignmentService.processRoleHierarchy(discordId, rules);
   }
 
-  /**
-   * Manually triggers a daily check (for testing and admin commands)
-   */
+  /** Runs the full daily sweep immediately, independent of the scheduler. Useful for admin commands and tests. */
   async triggerManualDailyCheck(): Promise<void> {
     await this.runDailyCheck();
   }

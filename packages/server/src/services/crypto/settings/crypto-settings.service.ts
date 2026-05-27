@@ -14,9 +14,18 @@ export type SettingsChangeEvent = {
   reset: boolean;
 };
 
+/**
+ * In-memory cache of crypto subsystem settings, layered over a compiled registry of defaults.
+ * Loads `crypto_setting` overrides on `initialize()`, validates each via the per-key Zod schema
+ * (silently dropping invalid or unknown rows), and exposes a synchronous hot-path `get()` so
+ * tickers can read settings every loop without hitting the database. Mutations persist, update
+ * the cache, and emit `setting:changed`; listeners (e.g. `CryptoMarketService`) use this to
+ * restart interval-bound jobs in place.
+ */
 export class CryptoSettingsService extends EventEmitter {
   private overrides = new Map<SettingKey, unknown>();
 
+  /** Loads persisted overrides into the in-memory cache; invalid or unknown rows are logged and skipped. */
   async initialize(): Promise<void> {
     const rows = await Q.crypto.setting.where({}).all();
     for (const row of rows) {
@@ -38,7 +47,7 @@ export class CryptoSettingsService extends EventEmitter {
     );
   }
 
-  /** Synchronous hot-path read. Falls back to compiled default. */
+  /** Synchronous hot-path read; falls back to the compiled default if no override is set. */
   get<K extends SettingKey>(key: K): SettingValueOf<K> {
     if (this.overrides.has(key)) {
       return this.overrides.get(key) as SettingValueOf<K>;
@@ -46,11 +55,12 @@ export class CryptoSettingsService extends EventEmitter {
     return SETTINGS_REGISTRY[key].defaultValue as SettingValueOf<K>;
   }
 
+  /** True if the key has a persisted override; false if the caller is reading the compiled default. */
   isOverridden(key: SettingKey): boolean {
     return this.overrides.has(key);
   }
 
-  /** All keys, with current + default values, for admin UI. */
+  /** Every setting key with its current value, default, group, and label (admin UI source). */
   list(): Array<{
     key: SettingKey;
     currentValue: unknown;
@@ -75,8 +85,8 @@ export class CryptoSettingsService extends EventEmitter {
   }
 
   /**
-   * Validates and persists an override. Throws if validation fails.
-   * Emits `setting:changed` after the cache is updated.
+   * Validates and persists an override, updates the cache, then emits `setting:changed`.
+   * Throws if the value fails validation or a paired min/max invariant.
    */
   async set<K extends SettingKey>(
     key: K,
@@ -114,7 +124,7 @@ export class CryptoSettingsService extends EventEmitter {
     return { oldValue, newValue };
   }
 
-  /** Removes the override row; subsequent reads return the compiled default. */
+  /** Removes the override row, emits `setting:changed` with `reset: true`, and reverts reads to the default. */
   async reset<K extends SettingKey>(
     key: K,
     _updatedByDiscordId: string | null,

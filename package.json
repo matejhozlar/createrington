@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.22.0",
+  "version": "1.23.0",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -28,7 +28,8 @@
       "follow-redirects": ">=1.16.0",
       "svix>uuid": ">=14.0.0",
       "postcss@<8.5.10": "^8.5.10",
-      "ip-address@<10.1.1": "^10.1.1"
+      "ip-address@<10.1.1": "^10.1.1",
+      "qs@>=6.11.1 <=6.15.1": ">=6.15.2"
     },
     "onlyBuiltDependencies": [
       "@infisical/cli",
@@ -38,7 +39,17 @@
       "esbuild",
       "protobufjs",
       "ssh2"
-    ]
+    ],
+    "packageExtensions": {
+      "@hookform/resolvers": {
+        "peerDependencies": {
+          "zod": "*"
+        },
+        "peerDependenciesMeta": {
+          "zod": { "optional": true }
+        }
+      }
+    }
   },
   "scripts": {
     "generate": "pnpm --filter @createrington/server generate && pnpm build:shared && pnpm typecheck",

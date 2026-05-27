@@ -1,5 +1,10 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
+import {
+  KNOWN_POSES,
+  pickRandomPose,
+  type KnownPose,
+} from "@createrington/skin-api-client";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
@@ -8,9 +13,15 @@ import { formatPlaytime } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
+import { getSkinApiClient } from "@/services/skin-api";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { timingSafeEqualStrings } from "@/utils/timing-safe-equal";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+
+const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
+const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
+const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
 
 const router = Router();
 
@@ -493,6 +504,65 @@ router.get(
       interval: resolvedInterval,
       priceHistory,
     });
+  }),
+);
+
+/**
+ * GET /api/render/skin?uuid=...&pose=...
+ *
+ * Renders a player skin via the internal skin-api service and streams the
+ * PNG back. Called from the puppeteer-targeted Render pages via <img> tags,
+ * which cannot send custom headers, so the only gate is the loopback check
+ * applied at the router level. The output is a public-ish render (no PII)
+ * so omitting the puppeteer secret here is intentional.
+ *
+ * `pose` is optional; an unknown or missing pose falls back to a random
+ * choice from KNOWN_POSES.
+ */
+router.get(
+  "/skin",
+  asyncHandler(async (req: Request, res: Response) => {
+    const { uuid, pose } = req.query;
+
+    if (!uuid || typeof uuid !== "string") {
+      res.status(400).json({ error: "uuid query param required" });
+      return;
+    }
+
+    if (!MC_UUID_REGEX.test(uuid)) {
+      res.status(400).json({ error: "Invalid uuid format" });
+      return;
+    }
+
+    const requestedPose =
+      typeof pose === "string" && KNOWN_POSE_SET.has(pose as KnownPose)
+        ? (pose as KnownPose)
+        : pickRandomPose();
+
+    let png: Buffer;
+    try {
+      png = await getSkinApiClient().renderPose({
+        pose: requestedPose,
+        source: { type: "uuid", uuid },
+      });
+    } catch (err) {
+      // Keep the <img> tag rendering something useful instead of triggering
+      // the broken-image icon: bounce to mc-heads on any skin-api failure.
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn(
+        `skin-api render failed (uuid=${uuid} pose=${requestedPose}): ${message}, falling back to mc-heads`,
+      );
+      res.redirect(302, `${MC_HEADS_FALLBACK_URL}/${uuid}`);
+      return;
+    }
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Cache-Control",
+      `public, max-age=${SKIN_RENDER_CACHE_SECONDS}`,
+    );
+    res.setHeader("X-Skin-Pose", requestedPose);
+    res.send(png);
   }),
 );
 

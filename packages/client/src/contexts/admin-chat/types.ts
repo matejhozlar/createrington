@@ -1,5 +1,3 @@
-import { createContext } from "react";
-
 export interface AdminChatContextValue {
   enabled: boolean;
   bubbleVisible: boolean;
@@ -9,7 +7,3 @@ export interface AdminChatContextValue {
   toggleDrawer: () => void;
   setBubbleVisible: (visible: boolean) => void;
 }
-
-export const AdminChatContext = createContext<AdminChatContextValue | null>(
-  null,
-);

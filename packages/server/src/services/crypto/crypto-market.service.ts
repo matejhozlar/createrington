@@ -68,22 +68,14 @@ import {
 import { transitionEndedIpos } from "./lifecycle/ipo";
 
 /**
- * Crypto Market Service
- *
- * Orchestrates the in-game cryptocurrency market:
- * - Runs periodic price tickers for memecoins, stablecoins, and blue-chips
- * - Aggregates tick-level snapshots into minute OHLCV candles
- * - Broadcasts real-time price updates to WebSocket subscribers
- * - Maintains in-memory caches for 24h price change% and trade volume
- * - Periodically refreshes demand-pressure and mean-reversion state in the price engine
- * - Checks and fills pending limit/stop-loss/take-profit orders after each tick
- * - Expires stale pending orders on a 5-minute cycle
- * - Cleans up crashed tokens after a configurable grace period
- * - Spawns new memecoins from the catalog with Discord notifications
- * - Manages IPO lifecycle: schedules IPO spawns, skips IPO tokens from price ticking,
- *   and transitions ended IPOs into normal trading with result notifications
- *
- * NOTE: Requires DATABASE and WEBSOCKET_SERVICE to be ready before initialization
+ * Orchestrates the in-game cryptocurrency market. Runs independent tickers for
+ * memecoins, stablecoins, and blue-chips, aggregates tick snapshots into OHLCV
+ * candles, broadcasts price updates over WebSocket, fills pending orders after
+ * each tick, expires stale orders, cleans up crashed tokens, manages the IPO
+ * lifecycle, and schedules daily portfolio snapshots plus a weekly market
+ * report. Tickers no-op while `cryptoEnabled` is false; setting changes for
+ * interval-bound keys restart the affected interval in place. Requires
+ * DATABASE and WEBSOCKET_SERVICE to be ready before `initialize()`.
  */
 export class CryptoMarketService {
   private memecoinInterval: ReturnType<typeof setInterval> | null = null;
@@ -111,19 +103,11 @@ export class CryptoMarketService {
 
   constructor(private readonly settings: CryptoSettingsService) {}
 
-  /** Master toggle short-circuit. `true` if the crypto subsystem is enabled. */
   private get enabled(): boolean {
     return this.settings.get("cryptoEnabled");
   }
 
-  /**
-   * Initializes the crypto market service.
-   *
-   * Ensures the treasury row exists, loads active tokens, seeds the 24h
-   * price/volume caches and engine averages, then starts all ticker intervals.
-   *
-   * @returns Promise that resolves when initialization is complete
-   */
+  /** Ensures treasury, seeds in-memory caches and engine state, then starts every ticker and scheduler. */
   async initialize(): Promise<void> {
     logger.info("CryptoMarketService initializing...");
 
@@ -187,7 +171,6 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService initialized");
   }
 
-  /** @private Restarts the affected interval when an interval-bound setting changes. */
   private handleSettingChange = (event: SettingsChangeEvent): void => {
     // cryptoEnabled deliberately omitted: the per-tick guard handles it without restart.
     const restartMap: Partial<Record<SettingKey, () => void>> = {
@@ -221,7 +204,7 @@ export class CryptoMarketService {
     }
   };
 
-  /** Clears all ticker intervals and releases resources */
+  /** Clears every ticker, scheduler, and the settings listener. Safe to call before `initialize()` completes. */
   async shutdown(): Promise<void> {
     if (this.memecoinInterval) clearInterval(this.memecoinInterval);
     if (this.stablecoinInterval) clearInterval(this.stablecoinInterval);
@@ -249,7 +232,6 @@ export class CryptoMarketService {
     logger.info("CryptoMarketService shutdown complete");
   }
 
-  /** @private Starts the memecoin price ticker with an immediate first tick */
   private startMemecoinTicker(): void {
     this.memecoinInterval = setInterval(async () => {
       if (!this.enabled) return;
@@ -267,7 +249,6 @@ export class CryptoMarketService {
     }
   }
 
-  /** @private Starts the stablecoin price ticker */
   private startStablecoinTicker(): void {
     this.stablecoinInterval = setInterval(async () => {
       if (!this.enabled) return;
@@ -279,7 +260,6 @@ export class CryptoMarketService {
     }, this.settings.get("STABLECOIN_TICK_INTERVAL_MS"));
   }
 
-  /** @private Starts the blue-chip price ticker (hourly, metric-driven) */
   private startBluechipTicker(): void {
     this.bluechipInterval = setInterval(async () => {
       if (!this.enabled) return;
@@ -291,7 +271,6 @@ export class CryptoMarketService {
     }, this.settings.get("BLUECHIP_TICK_INTERVAL_MS"));
   }
 
-  /** @private Removes crashed tokens and their holdings/snapshots every 30 minutes */
   private startCleanupJob(): void {
     this.cleanupInterval = setInterval(
       async () => {
@@ -309,11 +288,6 @@ export class CryptoMarketService {
     );
   }
 
-  /**
-   * Aggregates tick snapshots into minute OHLCV candles every 5 minutes.
-   * Also refreshes the 24h price/volume caches and engine mean-reversion averages.
-   * @private
-   */
   private startMinuteAggregation(): void {
     this.minuteAggregationInterval = setInterval(
       async () => {
@@ -331,7 +305,6 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Aggregates minute → hourly candles every 15 minutes */
   private startHourlyAggregation(): void {
     this.hourlyAggregationInterval = setInterval(
       async () => {
@@ -346,7 +319,6 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Aggregates hourly → daily candles every hour */
   private startDailyAggregation(): void {
     this.dailyAggregationInterval = setInterval(
       async () => {
@@ -361,7 +333,6 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Aggregates daily → weekly candles every 6 hours */
   private startWeeklyAggregation(): void {
     this.weeklyAggregationInterval = setInterval(
       async () => {
@@ -376,11 +347,6 @@ export class CryptoMarketService {
     );
   }
 
-  /**
-   * Calculates new prices for all active memecoins, broadcasts updates,
-   * sends crash notifications, and checks pending orders for fills.
-   * @private
-   */
   private async tickMemecoins(): Promise<void> {
     const memecoins = await Q.crypto.token
       .where({ category: "memecoin", isCrashed: false })
@@ -428,11 +394,6 @@ export class CryptoMarketService {
     this.notifyTriggeredAlerts(triggered);
   }
 
-  /**
-   * Recalculates stablecoin prices based on the current active player count
-   * and broadcasts updates.
-   * @private
-   */
   private async tickStablecoins(): Promise<void> {
     const stablecoins = await Q.crypto.token
       .where({ category: "stable" })
@@ -454,11 +415,6 @@ export class CryptoMarketService {
     await this.broadcastPriceUpdates(updates);
   }
 
-  /**
-   * Recalculates blue-chip prices based on aggregated server metrics (blocks, kills,
-   * achievements), persists metric state in token metadata, and broadcasts updates.
-   * @private
-   */
   private async tickBluechips(): Promise<void> {
     const bluechips = await Q.crypto.token
       .where({ category: "blue_chip" })
@@ -508,23 +464,11 @@ export class CryptoMarketService {
     }
   }
 
-  /**
-   * Computes the 24h price change percentage for a token.
-   * @param tokenId - Token to look up in the 24h price cache
-   * @param currentPrice - Current price as a decimal string
-   * @returns Percentage change (e.g. 12.5 for +12.5%), or 0 if no baseline exists
-   */
+  /** 24h price change for a token as a percentage (12.5 for +12.5%); returns 0 with no baseline. */
   get24hChange(tokenId: number, currentPrice: string): number {
     return this.caches.getChange(tokenId, currentPrice);
   }
 
-  /**
-   * Sends price update payloads to all WebSocket crypto market subscribers.
-   * Includes a market overview snapshot so clients never need to poll for it.
-   * Lazily resolves the WebSocket service if it wasn't available at init time.
-   * @private
-   * @param updates - Price updates from the latest tick to broadcast
-   */
   private async broadcastPriceUpdates(updates: PriceUpdate[]): Promise<void> {
     if (updates.length === 0) return;
 
@@ -560,10 +504,7 @@ export class CryptoMarketService {
     );
   }
 
-  /**
-   * Builds a market overview snapshot from in-memory caches and active tokens.
-   * Used in both price broadcasts and initial snapshots.
-   */
+  /** Market overview snapshot (totals, top mover) drawn from in-memory caches and active tokens. */
   async buildMarketOverview(): Promise<{
     totalMarketCap: string;
     totalVolume24h: string;
@@ -589,10 +530,7 @@ export class CryptoMarketService {
     };
   }
 
-  /**
-   * Builds a full price snapshot for all active tokens.
-   * Used when a client first subscribes to the crypto market room.
-   */
+  /** Full price snapshot for all active (non-crashed, non-delisted) tokens. */
   async buildFullPriceSnapshot(): Promise<
     Array<{
       tokenId: number;
@@ -618,7 +556,6 @@ export class CryptoMarketService {
     }));
   }
 
-  /** @private Expires stale pending orders every 5 minutes */
   private startOrderExpiryJob(): void {
     this.orderExpiryInterval = setInterval(
       async () => {
@@ -636,12 +573,6 @@ export class CryptoMarketService {
     );
   }
 
-  /**
-   * Broadcasts order fill notifications to the crypto market room.
-   * Clients filter incoming events by their own playerUuid.
-   * @private
-   * @param results - Order fill results from the latest tick
-   */
   private notifyOrderFills(results: OrderFillResult[]): void {
     if (results.length === 0 || !this.wsService) return;
 
@@ -664,11 +595,6 @@ export class CryptoMarketService {
     }
   }
 
-  /**
-   * Schedules the daily portfolio snapshot at the configured hour.
-   * Reschedules itself for the next day after completing.
-   * @private
-   */
   private schedulePortfolioSnapshot(): void {
     const now = new Date();
     const target = new Date(now);
@@ -704,11 +630,6 @@ export class CryptoMarketService {
     }, delayMs);
   }
 
-  /**
-   * Schedules the weekly market report for Sunday at 18:00.
-   * Reschedules itself for the next week after completing.
-   * @private
-   */
   private scheduleWeeklyReport(): void {
     const now = new Date();
     const target = new Date(now);
@@ -737,12 +658,6 @@ export class CryptoMarketService {
     }, delayMs);
   }
 
-  /**
-   * Sends WebSocket notifications to the crypto market room for triggered price alerts.
-   * Clients filter incoming events by their own playerUuid.
-   * @private
-   * @param alerts - Price alerts that crossed their target threshold in the latest tick
-   */
   private notifyTriggeredAlerts(alerts: TriggeredAlert[]): void {
     if (alerts.length === 0) return;
 
@@ -773,7 +688,6 @@ export class CryptoMarketService {
     });
   }
 
-  /** @private Rolls for random market events on the configured interval */
   private startEventRoller(): void {
     this.eventRollInterval = setInterval(async () => {
       if (!this.enabled) return;
@@ -791,7 +705,6 @@ export class CryptoMarketService {
     }, this.settings.get("EVENT_ROLL_INTERVAL_MS"));
   }
 
-  /** @private Broadcasts a market event to WebSocket subscribers */
   private broadcastMarketEvent(event: ActiveEvent): void {
     if (!this.wsService) return;
 
@@ -814,7 +727,6 @@ export class CryptoMarketService {
     );
   }
 
-  /** @private Checks for expired seasonal tokens every 10 minutes */
   private startSeasonalTokenCheck(): void {
     this.seasonalCheckInterval = setInterval(
       async () => {
@@ -829,17 +741,11 @@ export class CryptoMarketService {
     );
   }
 
-  /**
-   * Delists a token: auto-sells all player holdings at current price
-   * and marks the token as delisted.
-   *
-   * @param tokenId - ID of the token to delist
-   */
+  /** Delists a token: auto-sells all holdings at current price and marks the token delisted. */
   async delistToken(tokenId: number): Promise<void> {
     return performDelistToken(tokenId);
   }
 
-  /** @private Checks for ended IPOs every 30 seconds and transitions them to normal trading */
   private startIpoTransitionCheck(): void {
     this.ipoCheckInterval = setInterval(async () => {
       if (!this.enabled) return;
@@ -851,7 +757,6 @@ export class CryptoMarketService {
     }, CRYPTO_CONFIG.IPO_CHECK_INTERVAL_MS);
   }
 
-  /** @private Automatically spawns a new IPO memecoin on a recurring schedule */
   private startIpoSpawnScheduler(): void {
     if (this.enabled) {
       this.trySpawnIpo().catch((err) =>
@@ -865,7 +770,6 @@ export class CryptoMarketService {
     }, this.settings.get("IPO_SPAWN_INTERVAL_MS"));
   }
 
-  /** @private Attempts to spawn an IPO memecoin if none is active */
   private async trySpawnIpo(): Promise<void> {
     try {
       const activeIpo = await this.getActiveIpo();
@@ -877,11 +781,7 @@ export class CryptoMarketService {
     }
   }
 
-  /**
-   * Generates a new random memecoin from the catalog and sends a Discord
-   * listing notification on success.
-   * @returns The newly created token, or null if the catalog is exhausted
-   */
+  /** Spawns a new random memecoin and fires a listing notification; null if the catalog is exhausted. */
   async spawnMemecoin(): Promise<CryptoToken | null> {
     const token = await generateMemecoin();
 
@@ -899,10 +799,7 @@ export class CryptoMarketService {
     return token;
   }
 
-  /**
-   * Generates a new memecoin with an IPO phase and sends announcement notification.
-   * @returns The newly created IPO token, or null if the catalog is exhausted
-   */
+  /** Spawns a memecoin with an IPO phase and fires the announcement; null if the catalog is exhausted. */
   async spawnIpoMemecoin(): Promise<CryptoToken | null> {
     const token = await generateIpoMemecoin();
 
@@ -921,10 +818,7 @@ export class CryptoMarketService {
     return token;
   }
 
-  /**
-   * Returns the currently active IPO token, if any.
-   * @returns The token in IPO phase, or null if no IPO is active
-   */
+  /** The token currently in its IPO window, or null if none. */
   async getActiveIpo(): Promise<CryptoToken | null> {
     const memecoins = await Q.crypto.token
       .where({ category: "memecoin", isCrashed: false })
@@ -934,10 +828,7 @@ export class CryptoMarketService {
     return memecoins.find((t) => t.ipoEndsAt && t.ipoEndsAt > now) ?? null;
   }
 
-  /**
-   * Returns all active (non-crashed) tokens.
-   * @returns Array of active crypto tokens
-   */
+  /** All non-crashed tokens (including delisted ones). */
   async getActiveTokens(): Promise<CryptoToken[]> {
     return Q.crypto.token.where({ isCrashed: false }).all();
   }
@@ -957,10 +848,7 @@ export class CryptoMarketService {
     return this.caches.getTokenVolume(tokenId);
   }
 
-  /**
-   * Returns the top gainer and top loser by 24h price change.
-   * Only considers active, non-crashed, non-IPO tokens.
-   */
+  /** Top gainer / loser by 24h price change, restricted to active non-crashed non-IPO tokens. */
   async getTopMovers(): Promise<{
     topGainer: { symbol: string; change24h: number } | null;
     topLoser: { symbol: string; change24h: number } | null;
@@ -989,13 +877,7 @@ export class CryptoMarketService {
     return { topGainer, topLoser };
   }
 
-  /**
-   * Manually triggers a market event (admin action).
-   *
-   * @param eventType - The type of market event to trigger
-   * @param tokenId - Optional token to scope the event to a specific asset
-   * @returns The activated event, or null if the event type could not be triggered
-   */
+  /** Manually triggers a market event (admin action); broadcasts and notifies on success. */
   async triggerEvent(
     eventType: MarketEventType,
     tokenId?: number,
@@ -1011,19 +893,8 @@ export class CryptoMarketService {
   }
 
   /**
-   * Creates a new token (used by admin for seasonal/event tokens).
-   * Sends a Discord new-listing notification on success.
-   *
-   * @param params - Token creation parameters
-   * @param params.name - Display name of the token
-   * @param params.symbol - Unique ticker symbol (e.g. "DOGE")
-   * @param params.description - Optional description shown in the market UI
-   * @param params.category - Token category controlling price engine behavior
-   * @param params.totalSupply - Total number of units to mint
-   * @param params.price - Initial price as a decimal string
-   * @param params.floorPrice - Optional minimum price floor
-   * @param params.delistedAt - Optional date after which the token is auto-delisted
-   * @returns The newly created token record
+   * Creates a new token (admin action for seasonal/event tokens) and fires a listing notification.
+   * Throws if the symbol exists or if a memecoin would exceed `MEMECOIN_MAX_ACTIVE`.
    */
   async createToken(params: {
     name: string;

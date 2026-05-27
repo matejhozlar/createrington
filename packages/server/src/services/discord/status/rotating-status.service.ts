@@ -5,13 +5,10 @@ import config from "@/config";
 import { MAX_STATUS_LENGTH, type StatusConfig } from "./types";
 
 /**
- * Rotating Status Service
- *
  * Cycles a Discord client's custom-status presence through a configured pool
  * of statuses, resolving dynamic ones at rotation time and falling back to
- * each entry's static text on error.
- *
- * Output is hard-clamped to MAX_STATUS_LENGTH so a runaway dynamic resolver
+ * each entry's static text on error. Disabled in dev (initialize is a no-op).
+ * Output is hard-clamped to `MAX_STATUS_LENGTH` so a runaway dynamic resolver
  * cannot exceed Discord's 128-character cap.
  */
 export class RotatingStatusService {
@@ -24,6 +21,7 @@ export class RotatingStatusService {
     private readonly rotatingInterval: number = 60000,
   ) {}
 
+  /** Starts the rotation timer (no-op in dev or when no statuses are configured); waits for the client `ready` event if needed and pushes the first status immediately. */
   async initialize(): Promise<void> {
     if (config.envMode.isDev) {
       logger.warn("Skipping rotating statuses in development environment");
@@ -56,6 +54,7 @@ export class RotatingStatusService {
     );
   }
 
+  /** Stops the rotation timer; the last-set presence remains on the bot. */
   async shutdown(): Promise<void> {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -104,6 +103,7 @@ export class RotatingStatusService {
     logger.debug(`Set bot status to: "${clamped}"`);
   }
 
+  /** Advances to the next status immediately without waiting for the timer; advances the rotation index even if `initialize` has not been called. */
   async forceRotation(): Promise<void> {
     await this.rotateStatus();
   }

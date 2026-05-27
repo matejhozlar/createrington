@@ -89,8 +89,8 @@ export abstract class BaseReward {
    * @example
    * const lastClaim = await this.getLastClaim(playerUuid);
    * if (lastClaim) {
-   *   console.log(lastClaim.claimedAt); // Date(2025-01-24T10:30:00Z)
-   *   console.log(lastClaim.amount); // 0.050 (converted from 50)
+   *   logger.info(lastClaim.claimedAt); // Date(2025-01-24T10:30:00Z)
+   *   logger.info(lastClaim.amount); // 0.050 (converted from 50)
    * }
    */
   protected async getLastClaim(

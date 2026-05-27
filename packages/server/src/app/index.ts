@@ -18,8 +18,7 @@ import config from "@/config";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import helmet from "helmet";
-import { Status } from "discord.js";
-import { container, Services, getServiceSync } from "@/services";
+import { registerHealthRoute } from "./health";
 
 /** Creates and configures the Express application with routes, tRPC, static files, and error handling */
 export function createApp(): Express {
@@ -52,12 +51,7 @@ export function createApp(): Express {
             "wss:",
             ...(config.envMode.isProd ? [] : ["ws:"]),
           ],
-          "img-src": [
-            "'self'",
-            "data:",
-            "https://starlightskins.lunareclipse.studio",
-            "https://mc-heads.net",
-          ],
+          "img-src": ["'self'", "data:", "https://mc-heads.net"],
         },
       },
     }),
@@ -77,86 +71,7 @@ export function createApp(): Express {
   app.use(globalLimiter);
   app.use("/api/auth", authLimiter);
 
-  app.get("/health", async (_req, res) => {
-    const states = container.getAllStates();
-    const entries = Object.entries(states);
-    const failed = entries.filter(([, s]) => s === "failed");
-    const ready = entries.filter(([, s]) => s === "ready");
-
-    const status =
-      failed.length > 0
-        ? "degraded"
-        : ready.length === entries.length
-          ? "healthy"
-          : "starting";
-
-    const discordBots: Record<string, unknown> = {};
-    for (const [key, serviceKey] of [
-      ["mainBot", Services.DISCORD_MAIN_BOT],
-      ["webBot", Services.DISCORD_WEB_BOT],
-    ] as const) {
-      try {
-        const bot = getServiceSync(serviceKey);
-        discordBots[key] = {
-          available: true,
-          status: Status[bot.ws.status],
-          ping: bot.ws.ping,
-        };
-      } catch {
-        discordBots[key] = { available: false };
-      }
-    }
-
-    let websocket: Record<string, unknown>;
-    try {
-      const ws = getServiceSync(Services.WEBSOCKET_SERVICE);
-      const wsStats = await ws.getStats();
-      websocket = {
-        available: true,
-        connectedClients: wsStats.connectedClients,
-        rooms: Object.keys(wsStats.rooms).length,
-        subscriptions: wsStats.subscriptions,
-        uptime: wsStats.uptime,
-      };
-    } catch {
-      websocket = { available: false };
-    }
-
-    let playtime: Record<string, unknown>;
-    try {
-      const pm = getServiceSync(Services.PLAYTIME_MANAGER_SERVICE);
-      const pmStatus = pm.getStatus();
-      const servers: Record<string, unknown> = {};
-      for (const [serverId, info] of Object.entries(pmStatus)) {
-        const s = info as {
-          isInitialized: boolean;
-          activeSessions: number;
-          serverState: string;
-        };
-        servers[serverId] = {
-          isInitialized: s.isInitialized,
-          activeSessions: s.activeSessions,
-          serverState: s.serverState,
-        };
-      }
-      playtime = { available: true, servers };
-    } catch {
-      playtime = { available: false };
-    }
-
-    res.json({
-      status,
-      uptime: process.uptime(),
-      services: Object.fromEntries(
-        entries.map(([name, state]) => [name, state]),
-      ),
-      components: {
-        discord: discordBots,
-        websocket,
-        playtime,
-      },
-    });
-  });
+  registerHealthRoute(app);
 
   registerRoutes(app);
 

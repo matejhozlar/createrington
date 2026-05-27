@@ -264,12 +264,9 @@ const OwnerAdmins = lazyNamed(
 );
 
 // Admin chat widget: gated on isAdmin below so non-admins never download it.
-const AdminChat = lazyNamed(
-  () => import("./components/admin-chat"),
-  "AdminChat",
-);
+const AdminChat = lazyNamed(() => import("./features/admin-chat"), "AdminChat");
 const AdminChatProvider = lazy(() =>
-  import("./components/admin-chat/AdminChatProvider").then((m) => ({
+  import("./contexts/admin-chat/AdminChatProvider").then((m) => ({
     default: m.AdminChatProvider,
   })),
 );

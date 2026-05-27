@@ -21,19 +21,6 @@ import type {
   SessionStartEvent,
 } from "@/services/playtime";
 
-/**
- * Repository for playtime data management
- *
- * Handles:
- * - Session lifecycle (start/end)
- * - Player state synchronization (online status, last seen)
- * - Playtime aggregation (daily/hourly/summary)
- * - Playtime statistics retrieval
- * - Coordinates multiple query classes
- *
- * NOTE: This repository listens to PlaytimeService events to drive all
- * session tracking. Connect it via connectToService() during bootstrap.
- */
 function isUniqueViolation(err: unknown): boolean {
   return (
     typeof err === "object" &&
@@ -43,18 +30,22 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
+/**
+ * Coordinates session lifecycle and playtime aggregation. Owns the writes
+ * that replace the old DB triggers: closing orphaned sessions, aggregating
+ * completed sessions into daily / hourly / summary tables, and syncing
+ * player online status plus last logout position. Wire up to a per-server
+ * PlaytimeService via connectToService() during bootstrap; the service emits
+ * the events this class persists.
+ */
 export class PlaytimeRepository {
   constructor() {}
 
   /**
-   * Start a new session for a player
-   * Called when PlaytimeService emits 'sessionStart' event
-   *
-   * Closes any existing active sessions for this player on this server
-   * before creating a new one to prevent duplicates.
-   *
-   * @param event - Session start event
-   * @returns Session ID for tracking
+   * Persist a session start. Closes any orphaned active sessions for the same
+   * (player, server) pair first, retries once on the unique-index race, then
+   * flips the player online and clears the first-Minecraft onboarding flag.
+   * Returns null when the player is unregistered or the username mismatches.
    */
   async startSession(event: SessionStartEvent): Promise<number | null> {
     try {
@@ -155,16 +146,10 @@ export class PlaytimeRepository {
   }
 
   /**
-   * End a session
-   * Called when PlaytimeService emits 'sessionEnd' event
-   *
-   * Handles: closing the session, aggregating playtime stats,
-   * and syncing the player's online status.
-   *
-   * When sessionId is 0, closes all active DB sessions for the player
-   * on the given server (handles orphaned sessions after backend restart).
-   *
-   * @param event - Session end event data
+   * Persist a session end: close the row, aggregate playtime into daily /
+   * hourly / summary, then sync the player's online flag and logout
+   * position. event.sessionId === 0 means "close every active session on
+   * this server" (used after a backend restart leaves orphans).
    */
   async endSession(event: SessionEndEvent): Promise<void> {
     try {
@@ -231,13 +216,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get active session for a player
-   *
-   * @param playerMinecraftUuid - Minecraft player UUID
-   * @param serverId - Server ID
-   * @returns Active session record, or null if the player has no open session
-   */
+  /** The player's open session on the given server, or null. */
   async getActiveSession(
     playerMinecraftUuid: string,
     serverId: number,
@@ -255,12 +234,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get all active sessions
-   *
-   * @param serverId - Optional server ID filter
-   * @returns Array of sessions with no end timestamp
-   */
+  /** All currently open sessions, optionally filtered to one server. */
   async getActiveSessions(serverId?: number): Promise<PlayerSession[]> {
     try {
       return await Q.player.session.findAll({
@@ -274,10 +248,9 @@ export class PlaytimeRepository {
   }
 
   /**
-   * End all active sessions for a server
-   *
-   * @param serverId - Optional server ID (all servers if omitted)
-   * @returns Promise resolving to the number of sessions terminated
+   * Close every open session (optionally scoped to one server), aggregate
+   * each into playtime tables, and mark affected players offline. Returns
+   * the number of sessions closed.
    */
   async endAllActiveSessions(serverId?: number): Promise<number> {
     try {
@@ -324,14 +297,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get comprehensive player statistics
-   *
-   * @param playerMinecraftUuid - Minecraft player UUID
-   * @param serverId - Server ID
-   *
-   * @returns Object containing PlayerPlaytimeSummary, PlayerPlaytimeDaily, PlayerHourlyPattern
-   */
+  /** Summary row, last 30 days of dailies, and hourly pattern, fetched in parallel. */
   async getPlayerStats(
     playerMinecraftUuid: string,
     serverId: number,
@@ -371,16 +337,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get player's daily stats for a date range
-   * Uses operators for range queries!
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID
-   * @param startDate - Start date (inclusive)
-   * @param endDate - End date (inclusive)
-   * @returns Daily playtime records within the given range, ordered by date ascending
-   */
+  /** Daily playtime rows in [startDate, endDate], ordered by date ascending. */
   async getPlayerDailyRange(
     playerMinecraftUuid: string,
     serverId: number,
@@ -402,16 +359,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get player's hourly data for a time range
-   * Uses operators!
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID
-   * @param startTime - Start timestamp (inclusive)
-   * @param endTime - End timestamp (exclusive)
-   * @returns Hourly playtime records within the given range, ordered by hour ascending
-   */
+  /** Hourly playtime rows in [startTime, endTime), ordered by hour ascending. */
   async getPlayerHourlyRange(
     playerMinecraftUuid: string,
     serverId: number,
@@ -433,15 +381,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get player's recent session history
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID
-   * @param limit - Number of sessions to return
-   * @param includeActive - Whether to include active sessions
-   * @returns Sessions ordered by start time descending
-   */
+  /** Recent sessions for a player on a server, newest first; active sessions excluded by default. */
   async getPlayerSessionHistory(
     playerMinecraftUuid: string,
     serverId: number,
@@ -463,15 +403,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get sessions longer than a certain duration
-   * Uses operators!
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID
-   * @param minSeconds - Minimum session length in seconds
-   * @returns Sessions meeting the minimum duration, ordered by length descending
-   */
+  /** Sessions at least minSeconds long, ordered by length descending. */
   async getLongSessions(
     playerMinecraftUuid: string,
     serverId: number,
@@ -492,12 +424,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get server-wide statistics
-   *
-   * @param serverId - Server ID
-   * @returns Aggregate server summary and top-10 playtime leaderboard
-   */
+  /** Aggregate server summary plus the top-10 playtime leaderboard. */
   async getServerStats(serverId: number): Promise<{
     summary: ServerStats;
     leaderboard: LeaderboardEntry[];
@@ -518,13 +445,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get server activity over time
-   *
-   * @param serverId - Server ID
-   * @param days - Number of days to include (default: 30)
-   * @returns Daily activity records for the server over the requested period
-   */
+  /** Daily activity rows for the server over the trailing N days (default 30). */
   async getServerActivity(
     serverId: number,
     days: number = 30,
@@ -544,13 +465,7 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Get server activity heatmap
-   *
-   * @param serverId - Server ID
-   * @param days - Number of days to include (default: 30)
-   * @returns Hourly heatmap data grouped by day-of-week and hour-of-day
-   */
+  /** Heatmap buckets grouped by day-of-week and hour-of-day over the trailing N days. */
   async getServerHeatmap(
     serverId: number,
     days: number = 30,
@@ -564,14 +479,9 @@ export class PlaytimeRepository {
   }
 
   /**
-   * Get top players by playtime for a specific date range
-   * Uses operators!
-   *
-   * @param serverId - Server ID
-   * @param startDate - Start date (inclusive)
-   * @param endDate - End date (inclusive)
-   * @param limit - Number of players to return (default: 10)
-   * @returns Players ranked by total seconds played within the range, with username and hour totals
+   * Top players by total seconds in [startDate, endDate]. Aggregates from
+   * the dailies in memory and joins back to player names, so cost scales
+   * with the row count over the range, not with the player table.
    */
   async getTopPlayersByDateRange(
     serverId: number,
@@ -615,18 +525,6 @@ export class PlaytimeRepository {
     }
   }
 
-  /**
-   * Aggregates a completed session into daily, hourly, and summary tables
-   *
-   * Runs all three aggregation queries in parallel.
-   * Replaces the old update_playtime_aggregates database trigger.
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param serverId - Server ID the session occurred on
-   * @param sessionStart - Session start timestamp
-   * @param sessionEnd - Session end timestamp
-   * @private
-   */
   private async aggregateSessionPlaytime(
     playerMinecraftUuid: string,
     serverId: number,
@@ -661,15 +559,6 @@ export class PlaytimeRepository {
     ]);
   }
 
-  /**
-   * Checks if a player still has active sessions; if not, marks them offline
-   *
-   * Replaces the old sync_player_online_status database trigger.
-   *
-   * @param playerMinecraftUuid - Player's Minecraft UUID
-   * @param lastSeen - Timestamp to set as last_seen if going offline
-   * @private
-   */
   private async syncPlayerOfflineStatus(
     playerMinecraftUuid: string,
     lastSeen: Date,
@@ -706,11 +595,9 @@ export class PlaytimeRepository {
   }
 
   /**
-   * Connect this repository to a PlaytimeService instance
-   * Sets up event listeners for automatic session tracking
-   *
-   * @param service - PlaytimeService instance
-   * @param serverId - Server ID this service belongs to
+   * Subscribe to a PlaytimeService instance so its sessionStart, sessionEnd,
+   * and serverShutdown events drive this repository's writes. Call once per
+   * server during bootstrap.
    */
   connectToService(service: PlaytimeService, serverId: number): void {
     service.on("sessionStart", async (event) => {

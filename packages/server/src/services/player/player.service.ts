@@ -10,40 +10,9 @@ import {
 import type { PlayerIdentifier } from "@/db/repositories/player/base";
 
 /**
- * Unified Player Service
- *
- * Provides a single interface to all player-related operations by
- * composing multiple focused repositories.
- *
- * Usage:
- * ```ts
- * const playerService = new PlayerService();
- *
- * // Core operations
- * const player = await playerService.core.getDetailed(uuid);
- * await playerService.core.adminUpdate(uuid, updates, adminId, adminName, reason);
- *
- * // Strike operations
- * await playerService.strikes.issue(uuid, strikeData, adminId, adminName);
- * const activeStrikes = await playerService.strikes.countActive(uuid);
- *
- * // Session operations
- * const sessions = await playerService.sessions.getHistory(uuid, serverId);
- *
- * // Ticket operations
- * const tickets = await playerService.tickets.getAll(uuid);
- *
- * // Audit operations
- * const auditLog = await playerService.audit.getLog(uuid);
- *
- * // Balance operations
- * await playerService.balance.bulkAdjust(uuids, amount, adminId, adminName, reason);
- *
- * // Ban operations
- * await playerService.bans.issueTemporary(uuid, { reason, expiresAt }, adminId, adminName);
- * await playerService.bans.issuePermanent(uuid, { reason }, adminId, adminName);
- * const isBanned = await playerService.bans.isBanned(uuid);
- * ```
+ * Composes the player-domain repositories (core, strikes, sessions, tickets,
+ * audit, balance, bans) into a single accessor surface. Stateless: a singleton
+ * is exported at the bottom of the file and reused everywhere.
  */
 export class PlayerService {
   /** Core player CRUD and detailed information */
@@ -77,13 +46,7 @@ export class PlayerService {
     this.bans = new PlayerBanRepository();
   }
 
-  /**
-   * Gets comprehensive player data for admin panel
-   * Aggregates data from multiple repositories
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to comprehensive player data
-   */
+  /** Aggregates detailed player data, strike history, and ban history for the admin panel. */
   async getComprehensive(identifier: PlayerIdentifier) {
     const detailedInfo = await this.core.getDetailed(identifier);
     const strikes = await this.strikes.getHistory(identifier, false); // false = include all strikes
@@ -111,13 +74,7 @@ export class PlayerService {
     };
   }
 
-  /**
-   * Gets player overview with key statistics
-   * Optimized for list views
-   *
-   * @param identifier - Player identifier
-   * @returns Promise resolving to player overview
-   */
+  /** Returns a compact player snapshot (balance plus key counts) suitable for list rows. */
   async getOverview(identifier: PlayerIdentifier) {
     const [player, activeStrikes, sessionCount, openTickets, isBanned] =
       await Promise.all([

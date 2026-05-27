@@ -40,6 +40,10 @@ export class InactivityCleanupService {
   private readonly INACTIVE_DAYS = 60;
   private readonly GRACE_DAYS = 14;
 
+  /**
+   * Kick off a resolve+remove sweep, then arm the weekly cycle. Startup
+   * skips the warn phase so frequent deploys don't double-announce.
+   */
   async initialize(): Promise<void> {
     logger.info("Initializing InactivityCleanupService...");
 
@@ -60,6 +64,7 @@ export class InactivityCleanupService {
     );
   }
 
+  /** Stop the weekly cycle. Safe to call multiple times. */
   async shutdown(): Promise<void> {
     if (this.intervalId) {
       clearInterval(this.intervalId);
@@ -271,11 +276,9 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Run only the resolve and remove phases (no new warnings).
-   * Used on startup to handle expired grace periods without sending
-   * duplicate warning announcements on frequent deploys, and from the
-   * admin panel when admins want to process overdue players without
-   * triggering new warning announcements in #announcements.
+   * Run only the resolve and remove phases (no new warnings posted).
+   * Used on startup and from the admin panel to process overdue players
+   * without firing duplicate warning announcements in #announcements.
    */
   async resolveAndRemoveOnly(
     triggeredBy: InactivityTriggerContext = null,
@@ -289,6 +292,7 @@ export class InactivityCleanupService {
     }
   }
 
+  /** Run the full cycle (resolve, warn, remove) on demand. Does not reset the schedule. */
   async triggerManualCleanup(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -296,6 +300,7 @@ export class InactivityCleanupService {
     await this.runCycle(triggeredBy);
   }
 
+  /** Run resolve+remove on demand, skipping the warn phase. */
   async triggerResolveAndRemove(
     triggeredBy: InactivityTriggerContext = null,
   ): Promise<void> {
@@ -304,11 +309,9 @@ export class InactivityCleanupService {
   }
 
   /**
-   * Force-run the full cleanup cycle now and reset the recurring schedule.
-   * The next automatic run will happen CHECK_INTERVAL from this call's
-   * completion, not from the previously-scheduled tick.
-   *
-   * Used by the owner-only /force-inactivity-cleanup command.
+   * Force-run the full cleanup cycle now and reset the recurring schedule:
+   * the next automatic run is CHECK_INTERVAL after this call's completion,
+   * not from the previously-scheduled tick.
    */
   async forceRunAndResetSchedule(
     triggeredBy: InactivityTriggerContext = null,

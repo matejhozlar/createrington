@@ -62,7 +62,7 @@ export async function execute(
           : "Offline";
 
       serverLines.push(
-        `${statusIcon} **${serverConfig.name}** — ${playerText}`,
+        `${statusIcon} **${serverConfig.name}** - ${playerText}`,
       );
     }
 

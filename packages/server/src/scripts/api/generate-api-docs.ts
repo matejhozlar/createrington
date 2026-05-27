@@ -370,10 +370,10 @@ function authBadge(auth: string): string {
 function extractRouteDescription(comment: string): string {
   if (!comment) return "";
 
-  // Strip leading "METHOD /path - description" (either hyphen or em dash)
+  // Strip leading "METHOD /path - description"
   // Require whitespace before the dash to avoid matching dashes in URL paths
   const stripped = comment
-    .replace(/^(GET|POST|PUT|PATCH|DELETE)\s+\/\S*\s+[-—]\s*/i, "")
+    .replace(/^(GET|POST|PUT|PATCH|DELETE)\s+\/\S*\s+-\s*/i, "")
     // Also strip standalone "METHOD /path" lines
     .replace(/^(GET|POST|PUT|PATCH|DELETE)\s+\/\S*\s*\n?/gim, "")
     .trim();

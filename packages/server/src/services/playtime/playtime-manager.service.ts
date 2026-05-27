@@ -5,37 +5,18 @@ import type { MessageCacheService } from "../discord/message/cache";
 import { ServerState } from "./types";
 
 /**
- * Playtime Manager Service
- *
- * Coordinates playtime tracking across all configured Minecraft servers:
- * - Instantiates and initializes a PlaytimeService per server on startup
- * - Connects each PlaytimeService to the playtime repository
- * - Integrates with MessageCacheService to detect server start/shutdown events
- * - Performs orphaned session cleanup on startup (handles backend restarts)
- * - Exposes aggregate and per-server status queries for monitoring
- *
- * NOTE: Throws during initialization if no PlaytimeServices can be started.
- * setupMessageCacheIntegration must be called after initialize() to enable
- * crash/restart recovery and live server state detection.
+ * Coordinates one PlaytimeService per configured Minecraft server: spins each
+ * up at boot, wires them to the playtime repository, and exposes per-server
+ * status. `initialize()` throws if zero services succeed; per-server failures
+ * are logged and skipped. Call `setupMessageCacheIntegration()` after
+ * `initialize()` to enable crash recovery, orphaned-session cleanup, and live
+ * server start/shutdown detection from the Discord relay.
  */
 export class PlaytimeManagerService {
   private playtimeServices: Map<number, PlaytimeService> = new Map();
   private messageCacheService?: MessageCacheService;
 
-  /**
-   * Initializes playtime services for all configured Minecraft servers
-   *
-   * For each server in MINECRAFT_SERVERS config:
-   * 1. Validates that IP and port are present
-   * 2. Creates a PlaytimeService with the server's connection details
-   * 3. Connects the service to the playtime repository
-   * 4. Initializes the service and registers it in the internal map
-   *
-   * Individual server failures are logged but do not abort the full init.
-   * Throws if zero services succeed.
-   *
-   * @returns Promise that resolves when all services have been initialized
-   */
+  /** Brings up a PlaytimeService for each entry in MINECRAFT_SERVERS in parallel. Throws if none succeed. */
   async initialize(): Promise<void> {
     logger.info("Initializing the PlaytimeManagerService...");
 
@@ -98,14 +79,7 @@ export class PlaytimeManagerService {
     );
   }
 
-  /**
-   * Shuts down all active playtime services
-   *
-   * Calls stop() on each PlaytimeService, which ends all in-memory sessions
-   * and emits a serverShutdown event so the repository can close DB sessions.
-   *
-   * @returns Promise that resolves when all services have stopped
-   */
+  /** Stops every PlaytimeService and clears the internal map. Safe to call when nothing is initialized. */
   async shutdown(): Promise<void> {
     if (this.playtimeServices.size === 0) {
       return;
@@ -124,61 +98,34 @@ export class PlaytimeManagerService {
     logger.info("All PlaytimeServices shut down");
   }
 
-  /**
-   * Returns the PlaytimeService for a specific server
-   *
-   * @param serverId - Numeric server ID
-   * @returns The PlaytimeService instance, or undefined if not initialized
-   */
+  /** Returns the PlaytimeService for `serverId`, or undefined if not initialized. */
   getService(serverId: number): PlaytimeService | undefined {
     return this.playtimeServices.get(serverId);
   }
 
-  /**
-   * Returns a shallow copy of the internal service map
-   *
-   * @returns Map of server ID to PlaytimeService for all initialized servers
-   */
+  /** Returns a shallow copy of the server-id to PlaytimeService map. */
   getAllServices(): Map<number, PlaytimeService> {
     return new Map(this.playtimeServices);
   }
 
-  /**
-   * Returns whether at least one PlaytimeService has been successfully initialized
-   *
-   * @returns True if one or more server services are active
-   */
+  /** True if at least one PlaytimeService is initialized. */
   isInitialized(): boolean {
     return this.playtimeServices.size > 0;
   }
 
-  /**
-   * Checks whether a specific server is currently considered online
-   *
-   * @param serverId - Numeric server ID
-   * @returns True if the server's state is ONLINE, false if offline or not found
-   */
+  /** True if the named server's PlaytimeService reports ONLINE. False if offline or unknown. */
   isServerOnline(serverId: number): boolean {
     const service = this.playtimeServices.get(serverId);
     return service?.isOnline() ?? false;
   }
 
-  /**
-   * Returns the current state of a specific server
-   *
-   * @param serverId - Numeric server ID
-   * @returns The server's ServerState, or undefined if no service exists for it
-   */
+  /** Current ServerState for `serverId`, or undefined if no service exists for it. */
   getServerState(serverId: number): ServerState | undefined {
     const service = this.playtimeServices.get(serverId);
     return service?.getServerState();
   }
 
-  /**
-   * Returns a status snapshot for all initialized services, keyed by server ID
-   *
-   * @returns Object mapping server ID to the result of PlaytimeService.getStatus()
-   */
+  /** Per-server status snapshot keyed by server id (calls PlaytimeService.getStatus on each). */
   getStatus(): Record<number, ReturnType<PlaytimeService["getStatus"]>> {
     const status: ReturnType<PlaytimeManagerService["getStatus"]> = {};
     for (const [serverId, service] of this.playtimeServices) {
@@ -188,18 +135,10 @@ export class PlaytimeManagerService {
   }
 
   /**
-   * Wires up the MessageCacheService for server lifecycle detection
-   *
-   * On call:
-   * 1. Runs detectServerState() for each PlaytimeService to determine initial
-   *    online/offline state from recent Discord relay messages
-   * 2. If a server is ONLINE, performs recovery sync and closes any DB sessions
-   *    for players no longer present on the live server
-   * 3. If a server is OFFLINE, ends all active DB sessions for that server
-   * 4. Subscribes to "serverClosed" and "serverStarted" events for ongoing
-   *    detection during normal runtime
-   *
-   * @param messageCacheService - The MessageCacheService instance to integrate with
+   * Detects each server's initial state from the message cache, runs orphaned
+   * DB-session cleanup (recovery sync if ONLINE, end-all if OFFLINE), and
+   * subscribes to ongoing serverClosed / serverStarted events. Fire-and-forget
+   * per server: failures are logged but do not block the others.
    */
   setupMessageCacheIntegration(messageCacheService: MessageCacheService): void {
     this.messageCacheService = messageCacheService;

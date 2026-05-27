@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { fetchChatMessages } from "@/components/admin-chat/api";
-import { MessageRow } from "@/components/admin-chat/MessageRow";
-import type { ChatMessage } from "@/components/admin-chat/types";
+import { fetchChatMessages } from "@/features/admin-chat/api";
+import { MessageRow } from "@/features/admin-chat/components/MessageRow";
+import type { ChatMessage } from "@/features/admin-chat/types";
 
 export function ChatHistoryDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { httpLogger, colorDuration } from "@/http-logger";
 
-const SKIP_PREFIXES = ["/health", "/assets/", "/favicon", "/trpc"];
+const SKIP_PREFIXES = ["/api/health", "/assets/", "/favicon", "/trpc"];
 
 export function requestLogger(
   req: Request,

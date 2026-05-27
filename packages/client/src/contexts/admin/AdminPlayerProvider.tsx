@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback } from "react";
 import { useServerData } from "@/contexts/server-data";
 import { usePlayerData } from "@/contexts/player-data";
-import { AdminPlayerContextType } from "./types";
+import type { AdminPlayerContextType } from "./types";
 import { AdminPlayersContext } from "./context";
 
 interface AdminPlayerProviderProps {

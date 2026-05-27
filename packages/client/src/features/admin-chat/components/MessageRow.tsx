@@ -3,10 +3,10 @@ import { Check, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { cn } from "@/lib/utils";
-import { coerceAction, parseActionsFromMessage } from "./actions";
+import { coerceAction, parseActionsFromMessage } from "../actions";
 import { ActionCard } from "./ActionCard";
 import { AssistantMarkdown } from "./AssistantMarkdown";
-import type { ChatMessage } from "./types";
+import type { ChatMessage } from "../types";
 
 interface MessageRowProps {
   message: ChatMessage;

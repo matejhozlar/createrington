@@ -7,7 +7,7 @@ import { EmptyState } from "./EmptyState";
 import { MessageInput } from "./MessageInput";
 import { MessageList } from "./MessageList";
 import { ModelChip } from "./ModelChip";
-import type { AdminChatModel, ChatMessage } from "./types";
+import type { AdminChatModel, ChatMessage } from "../types";
 
 interface ChatPanelProps {
   pathname: string;

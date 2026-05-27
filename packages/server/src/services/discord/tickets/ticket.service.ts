@@ -30,17 +30,14 @@ interface CreateTicketResult {
 }
 
 /**
- * Discord Support Ticket Service
- *
- * Manages the full ticket lifecycle:
- * - Creating ticket channels with role-based permissions
- * - Closing tickets (lock channel, post closure embed)
- * - Reopening closed tickets (restore permissions)
- * - Deleting tickets and their channels
- * - Generating and sending HTML transcripts via discord-html-transcripts
- *
- * NOTE: Requires a Discord client (main bot) and is initialized
- * by the service container during startup
+ * Manages the full Discord support-ticket lifecycle: create channel with
+ * role-scoped permission overwrites, close (lock + post closure embed),
+ * reopen (restore permissions), add participants, delete, and produce HTML
+ * transcripts via `discord-html-transcripts`. State is persisted through
+ * `TicketRepository`; the transcripts library is loaded lazily because it
+ * pulls React 19 while the workspace pins React 18, and the transcripts
+ * directory is created (recursively) at construction. Requires the main bot
+ * client and is brought up by the service container at startup.
  */
 export class TicketService {
   private readonly transcriptDir: string;
@@ -52,11 +49,6 @@ export class TicketService {
     this.ensureTranscriptDir();
   }
 
-  /**
-   * Ensures the transcript directory exists
-   *
-   * @private
-   */
   private async ensureTranscriptDir(): Promise<void> {
     try {
       await fs.mkdir(this.transcriptDir, { recursive: true });
@@ -67,10 +59,8 @@ export class TicketService {
   }
 
   /**
-   * Creates a new ticket with dedicated Discord channel
-   *
-   * @param options - Ticket creation options including type and creator ID
-   * @returns Promise resolving to the ticket
+   * Allocate the next ticket number, create a permission-scoped Discord
+   * channel, persist the ticket row, and post the welcome embed.
    */
   async createTicket(
     options: CreateTicketOptions,
@@ -101,17 +91,6 @@ export class TicketService {
     return { ticket, channel };
   }
 
-  /**
-   * Creates the Discord channel for the ticket
-   *
-   * @param ticketNumber - Sequential ticket number for naming
-   * @param prefix - Channel name prefix from ticket type config
-   * @param creatorId - Discord ID of ticket creator
-   * @param allowedRoleIds - Role IDs that can access the ticket
-   * @returns Promise resolving to the created text channel
-   *
-   * @private
-   */
   private async createTicketChannel(
     ticketNumber: number,
     prefix: string,
@@ -160,16 +139,6 @@ export class TicketService {
     return channel as TextChannel;
   }
 
-  /**
-   * Sends the initial welcome message in the ticket channel
-   *
-   * @param channel - Discord text channel to send message in
-   * @param ticket - Created ticket database record
-   * @param creatorId - Discord ID of the ticket creator
-   * @returns Promise resolving when the welcome message is sent
-   *
-   * @private
-   */
   private async sendWelcomeMessage(
     channel: TextChannel,
     ticket: Ticket,
@@ -188,14 +157,6 @@ export class TicketService {
     });
   }
 
-  /**
-   * Gets action button row for active ticket management
-   *
-   * @param ticketId - Database ID of the ticket for button interaction
-   * @returns Array containing action row with ticket buttons
-   *
-   * @private
-   */
   private getTicketActionButtons(
     ticketId: number,
   ): ActionRowBuilder<ButtonBuilder>[] {
@@ -211,13 +172,9 @@ export class TicketService {
   }
 
   /**
-   * Closes an active ticket
-   *
-   * @param ticketId - Ticket ID to close
-   * @param closedBy - Discord ID of user closing the ticket
-   * @param generateTranscript - Whether to generate a transcript
-   * @returns Promise resolving to the closed ticket
-   * @throws Error if ticket is already closed
+   * Close an active ticket: optionally write a transcript, mark the row
+   * closed, lock the channel for the creator, and post the closure embed.
+   * Throws if the ticket is already closed.
    */
   async closeTicket(
     ticketId: number,
@@ -258,14 +215,6 @@ export class TicketService {
     return updatedTicket;
   }
 
-  /**
-   * Locks the ticket channel by removing send message permissions
-   *
-   * @param channelId - Discord channel ID to lock
-   * @param creatorId - Discord ID of the ticket creator to remove permissions from
-   *
-   * @private
-   */
   private async lockTicketChannel(
     channelId: string,
     creatorId: string,
@@ -292,16 +241,6 @@ export class TicketService {
     }
   }
 
-  /**
-   * Sends a closure message in the ticket channel
-   *
-   * @param channelId - Discord channel ID to send message in
-   * @param ticket - Ticket database record being closed
-   * @param closedBy - Discord ID of user who closed the ticket
-   * @returns Promise resolving to the closed message ID, or null
-   *
-   * @private
-   */
   private async sendClosureMessage(
     channelId: string,
     ticket: Ticket,
@@ -318,14 +257,6 @@ export class TicketService {
     return message.messageId || null;
   }
 
-  /**
-   * Creates action button row for closed ticket management
-   *
-   * @param ticketId - Database ID of the ticket for button interactions
-   * @returns Array containing action row with reopen/delete buttons
-   *
-   * @private
-   */
   private getClosedTicketButtons(
     ticketId: number,
   ): ActionRowBuilder<ButtonBuilder>[] {
@@ -349,25 +280,15 @@ export class TicketService {
     ];
   }
 
-  /**
-   * Finds a ticket by identifier
-   *
-   * @param identifier - Identifier of the ticket
-   * @returns Promise resolving to the ticket, or null if not found
-   */
+  /** Look up a ticket by any supported identifier, or null if not found. */
   async find(identifier: TicketIdentifier): Promise<Ticket | null> {
     return await Q.ticket.find(identifier);
   }
 
   /**
-   * Reopens a closed ticket and restores full channel functionality
-   *
-   * Deletes the closure message, unlocks the channel for the original creator,
-   * and posts a reopen notification with the active ticket action buttons.
-   *
-   * @param ticketId - Ticket ID to reopen
-   * @param reopenedBy - Discord ID of user reopening the ticket
-   * @returns Promise resolving to the updated ticket record
+   * Reopen a closed ticket: delete the stored closure message, restore the
+   * creator's channel permissions, and post the reopen embed with active
+   * action buttons.
    */
   async reopenTicket(ticketId: number, reopenedBy: string): Promise<Ticket> {
     const ticket = await this.repository.reopen(ticketId, reopenedBy);
@@ -400,15 +321,6 @@ export class TicketService {
     return ticket;
   }
 
-  /**
-   * Unlocks the ticket channel by restoring send message permission
-   * Re-enables the creator's ability to send messages
-   *
-   * @param channelId - Discord channel ID to unlock
-   * @param creatorId - Discord ID of ticket creator to restore permissions for
-   *
-   * @private
-   */
   private async unlockTicketChannel(
     channelId: string,
     creatorId: string,
@@ -521,28 +433,11 @@ export class TicketService {
     return results.get(discordId) ?? { added: false, reason: "channel-error" };
   }
 
-  /**
-   * Deletes a ticket and its associated Discord channel
-   *
-   * This action cannot be undone.
-   *
-   * @param ticketId - Database ID of the ticket to delete
-   * @param deletedBy - Discord user ID of user deleting the ticket
-   * @returns Promise resolving when the ticket and channel are deleted
-   */
+  /** Permanently delete a ticket and its Discord channel. Cannot be undone. */
   async deleteTicket(ticketId: number, deletedBy: string): Promise<void> {
     await this.repository.delete(ticketId, deletedBy);
   }
 
-  /**
-   * Generates an HTML transcript of ticket conversation
-   *
-   * @param ticket - Ticket to generate transcript for
-   * @returns URL to the transcript
-   *
-   * @private
-   * @todo
-   */
   private async generateTranscript(ticket: Ticket): Promise<string> {
     try {
       const channel = await this.bot.channels.fetch(ticket.channelId);
@@ -580,12 +475,9 @@ export class TicketService {
   }
 
   /**
-   * Sends a generated transcript to the transcript channel
-   *
-   * @param ticketId - Database ID of the ticket
-   * @param generatedBy - Discord ID of user who generated the transcript
-   * @returns Promise resolving to the message ID of the transcript message
-   * @throws Error if transcript file doesn't exist or channel is not accessible
+   * Post a previously generated transcript file to the transcript channel
+   * and log the action. Throws if the ticket has no stored transcript, the
+   * path escapes the transcripts directory, or the file is missing.
    */
   async sendTranscript(ticketId: number, generatedBy: string): Promise<string> {
     const ticket = await Q.ticket.get({ id: ticketId });
@@ -657,12 +549,7 @@ export class TicketService {
     return message.messageId!;
   }
 
-  /**
-   * Checks if a user has an open ticket
-   *
-   * @param discordId - Discord user ID
-   * @returns Promise resolving to true if the user has an open ticket, false otherwise
-   */
+  /** True if the user currently has any non-closed ticket. */
   async hasOpenTicket(discordId: string): Promise<boolean> {
     return this.repository.hasOpen(discordId);
   }
