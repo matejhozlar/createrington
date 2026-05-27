@@ -39,7 +39,17 @@
       "esbuild",
       "protobufjs",
       "ssh2"
-    ]
+    ],
+    "packageExtensions": {
+      "@hookform/resolvers": {
+        "peerDependencies": {
+          "zod": "*"
+        },
+        "peerDependenciesMeta": {
+          "zod": { "optional": true }
+        }
+      }
+    }
   },
   "scripts": {
     "generate": "pnpm --filter @createrington/server generate && pnpm build:shared && pnpm typecheck",
