@@ -111,6 +111,13 @@ const envSchema = z
     JWT_ACCESS_SECRET: z
       .string()
       .min(32, "JWT access secret must be at least 32 characters"),
+    // Dedicated mod JWT signing secret. Must NOT reuse JWT_ACCESS_SECRET:
+    // mod hosts self-sign with this value, so a compromised Minecraft host
+    // would otherwise be able to mint arbitrary createrington.web admin
+    // tokens by reusing the shared secret with a different `aud`.
+    MOD_JWT_SECRET: z
+      .string()
+      .min(32, "Mod JWT secret must be at least 32 characters"),
     JWT_ACCESS_EXPIRES_IN: z
       .string()
       .regex(
@@ -231,6 +238,19 @@ const envSchema = z
     STORAGE_PATH: z.string().min(1).default("./storage"),
   })
   .superRefine((data, ctx) => {
+    // Runs in every environment: MOD_JWT_SECRET must differ from
+    // JWT_ACCESS_SECRET, otherwise the trust-boundary split is silently
+    // defeated — a compromised mod host could mint web tokens with the
+    // shared value.
+    if (data.MOD_JWT_SECRET === data.JWT_ACCESS_SECRET) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["MOD_JWT_SECRET"],
+        message:
+          "MOD_JWT_SECRET must differ from JWT_ACCESS_SECRET (sharing defeats the mod/web trust-boundary split)",
+      });
+    }
+
     // Re-require production-only vars when running a real production
     // deployment. dev.createrington.com ships with NODE_ENV=production but
     // hits the same dev-deployment guards as local dev (no SFTP, no RCON to
