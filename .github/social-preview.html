@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Createrington — social preview source</title>
+    <style>
+      @font-face {
+        font-family: "Minecraft";
+        src: url("../packages/client/public/assets/fonts/MinecraftRegular.woff2")
+          format("woff2");
+        font-weight: 400;
+        font-display: block;
+      }
+      @font-face {
+        font-family: "Minecraft";
+        src: url("../packages/client/public/assets/fonts/MinecraftBold.woff2")
+          format("woff2");
+        font-weight: 700;
+        font-display: block;
+      }
+
+      :root {
+        --background: oklch(0.17 0.0075 285.942);
+        --card: oklch(0.21 0.01 285.885);
+        --foreground: oklch(0.985 0.002 285.885);
+        --primary: oklch(82.8% 0.189 84.429);
+        --muted: oklch(0.707 0.008 285.885);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--background);
+      }
+      body {
+        font-family: "Minecraft", ui-monospace, monospace;
+        color: var(--foreground);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .frame {
+        width: 1280px;
+        height: 640px;
+        position: relative;
+        overflow: hidden;
+        background: var(--background);
+      }
+
+      .bg {
+        position: absolute;
+        inset: 0;
+        background:
+          url("../packages/client/public/assets/hero/mountains-train-station.webp")
+            center/cover no-repeat;
+        opacity: 0.55;
+      }
+
+      .overlay {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(
+            90deg,
+            var(--background) 0%,
+            var(--background) 28%,
+            color-mix(in oklab, var(--background) 70%, transparent) 55%,
+            color-mix(in oklab, var(--background) 30%, transparent) 80%,
+            transparent 100%
+          ),
+          linear-gradient(
+            180deg,
+            color-mix(in oklab, var(--background) 30%, transparent) 0%,
+            transparent 40%,
+            transparent 60%,
+            color-mix(in oklab, var(--background) 40%, transparent) 100%
+          );
+      }
+
+      .content {
+        position: absolute;
+        inset: 0;
+        padding: 72px 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .logo {
+        width: 72px;
+        height: 72px;
+        object-fit: contain;
+        image-rendering: pixelated;
+        filter: drop-shadow(0 4px 16px rgba(0, 0, 0, 0.55));
+      }
+
+      .badge {
+        font-family: "Minecraft";
+        font-weight: 400;
+        font-size: 16px;
+        letter-spacing: 0.18em;
+        color: var(--primary);
+        text-transform: uppercase;
+        padding: 8px 14px;
+        border: 2px solid color-mix(in oklab, var(--primary) 70%, transparent);
+        background: color-mix(in oklab, var(--primary) 10%, transparent);
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+        max-width: 760px;
+      }
+
+      h1 {
+        font-family: "Minecraft";
+        font-weight: 700;
+        font-size: 104px;
+        line-height: 0.95;
+        margin: 0;
+        color: var(--primary);
+        letter-spacing: -0.01em;
+        text-shadow: 0 6px 28px rgba(0, 0, 0, 0.55);
+      }
+
+      .tagline {
+        font-family: "Minecraft";
+        font-weight: 400;
+        font-size: 28px;
+        line-height: 1.35;
+        margin: 0;
+        color: var(--foreground);
+        opacity: 0.92;
+        max-width: 720px;
+      }
+
+      .tagline strong {
+        font-weight: 700;
+        color: var(--primary);
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .rule {
+        height: 4px;
+        width: 64px;
+        background: var(--primary);
+        flex-shrink: 0;
+      }
+
+      .url {
+        font-family: "Minecraft";
+        font-weight: 400;
+        font-size: 22px;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+      }
+
+      .url strong {
+        color: var(--foreground);
+        font-weight: 400;
+      }
+
+      .pillars {
+        position: absolute;
+        right: 80px;
+        bottom: 72px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        align-items: flex-end;
+        font-family: "Minecraft";
+        font-weight: 400;
+        font-size: 18px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+      }
+      .pillars span {
+        padding: 4px 10px;
+        background: color-mix(in oklab, var(--background) 60%, transparent);
+        border-right: 3px solid var(--primary);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <div class="bg"></div>
+      <div class="overlay"></div>
+
+      <div class="content">
+        <div class="top">
+          <img
+            class="logo"
+            src="../packages/client/public/assets/logo/logo.png"
+            alt=""
+          />
+          <div class="badge">Community Portal</div>
+        </div>
+
+        <div class="stack">
+          <h1>CREATERINGTON</h1>
+          <p class="tagline">
+            A community portal for a <strong>Minecraft server</strong>, a
+            <strong>Discord</strong>, and a <strong>web client</strong> —
+            unified by a typed monorepo, real-time chat, and an in-game crypto
+            economy.
+          </p>
+
+          <div class="footer">
+            <div class="rule"></div>
+            <div class="url">
+              <strong>createrington.com</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pillars">
+        <span>Trains</span>
+        <span>Economy</span>
+        <span>Community</span>
+      </div>
+    </div>
+  </body>
+</html>
