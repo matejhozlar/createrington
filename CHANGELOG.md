@@ -1,3 +1,11 @@
+## v1.23.1 (2026-05-27)
+
+### @createrington/server (1.23.0 → 1.23.1)
+- [chore] Migrate skin-api SDK from the internal `@createrington/skin-api-client` v0.2.1 to the public `createrington-skin-api` v1.0.0: `SkinApiClient` is replaced by `SkinApi`, `renderPose()` becomes `render()` with a simplified source parameter, and the return type changes from `Buffer` to `Uint8Array`; `pickRandomPose` is inlined locally since it was dropped from the v1 SDK
+
+### @createrington/client (0.2.29 → 0.2.30)
+- [chore] Migrate skin-api SDK from `@createrington/skin-api-client` to the public `createrington-skin-api` v1.0.0: `pickRandomPose` is inlined in `skin-utils.ts` since the v1 SDK no longer exports it
+
 ## v1.23.0 (2026-05-27)
 
 ### @createrington/server (1.22.0 → 1.23.0)

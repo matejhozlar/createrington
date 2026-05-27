@@ -2,7 +2,7 @@
   "name": "@createrington/client",
   "proxy": "http://localhost:5001",
   "private": true,
-  "version": "0.2.29",
+  "version": "0.2.30",
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@createrington/icons": "0.3.4",
-    "@createrington/skin-api-client": "^0.2.1",
+    "createrington-skin-api": "^1.0.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

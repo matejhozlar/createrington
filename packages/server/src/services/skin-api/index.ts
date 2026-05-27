@@ -1,11 +1,11 @@
-import { SkinApiClient } from "@createrington/skin-api-client";
+import { SkinApi } from "createrington-skin-api";
 import config from "@/config";
 
-let client: SkinApiClient | null = null;
+let client: SkinApi | null = null;
 
-export function getSkinApiClient(): SkinApiClient {
+export function getSkinApiClient(): SkinApi {
   if (!client) {
-    client = new SkinApiClient({
+    client = new SkinApi({
       baseUrl: config.skinApi.baseUrl,
       apiKey: config.skinApi.apiKey,
       userAgent: "createrington-app/1.0",

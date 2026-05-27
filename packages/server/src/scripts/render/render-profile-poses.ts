@@ -20,7 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import puppeteer from "puppeteer-core";
-import { KNOWN_POSES } from "@createrington/skin-api-client";
+import { KNOWN_POSES } from "createrington-skin-api";
 import config from "@/config";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
