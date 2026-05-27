@@ -46,7 +46,9 @@
           "zod": "*"
         },
         "peerDependenciesMeta": {
-          "zod": { "optional": true }
+          "zod": {
+            "optional": true
+          }
         }
       }
     }
@@ -100,7 +102,8 @@
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",
     "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin",
-    "kill-ports": "bash scripts/kill-ports.sh"
+    "kill-ports": "bash scripts/kill-ports.sh",
+    "post-release": "git checkout main && git pull && git checkout dev && git pull && git merge main && git push && git status"
   },
   "devDependencies": {
     "@infisical/cli": "^0.43.84",
