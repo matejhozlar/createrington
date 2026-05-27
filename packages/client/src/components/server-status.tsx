@@ -4,7 +4,7 @@ import { Server } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useServerData } from "@/contexts/server-data";
 import { useSidebar } from "@/components/ui/sidebar";
-import { Loading } from "./loading-spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCountdown } from "@/hooks/use-countdown";
 import type { ScheduledMaintenance } from "@createrington/shared/socket";
@@ -25,21 +25,6 @@ function ServerStatus({
   const isSingleServer = servers.length === 1;
   const singleServer = isSingleServer ? servers[0] : null;
 
-  if (serversLoading) {
-    return (
-      <div
-        className={cn(
-          "flex h-30 flex-col items-center justify-center border-b border-border px-5 py-5",
-          isCollapsed && "px-3",
-          className,
-        )}
-        {...props}
-      >
-        <Loading mode="inline" size="small" text="" />
-      </div>
-    );
-  }
-
   return (
     <div
       className={cn(
@@ -49,12 +34,39 @@ function ServerStatus({
       )}
       {...props}
     >
-      {isSingleServer && singleServer ? (
+      {serversLoading ? (
+        <ServerStatusSkeleton isCollapsed={isCollapsed} />
+      ) : isSingleServer && singleServer ? (
         <ServerStatusSingle server={singleServer} isCollapsed={isCollapsed} />
       ) : (
         <ServerStatusMultiple stats={serverStats} isCollapsed={isCollapsed} />
       )}
     </div>
+  );
+}
+
+function ServerStatusSkeleton({ isCollapsed }: { isCollapsed: boolean }) {
+  return (
+    <>
+      <div className="flex items-center min-h-6 gap-3">
+        <Skeleton
+          className={cn(
+            "size-3 shrink-0 rounded-full",
+            isCollapsed && "size-4",
+          )}
+        />
+        {!isCollapsed && <Skeleton className="h-4 w-20" />}
+      </div>
+
+      <div
+        className={cn("min-h-6 flex items-center", {
+          "justify-center": isCollapsed,
+          "pl-6": !isCollapsed,
+        })}
+      >
+        <Skeleton className={cn("h-3.5", isCollapsed ? "w-8" : "w-24")} />
+      </div>
+    </>
   );
 }
 
