@@ -1,3 +1,32 @@
+## v1.23.0 (2026-05-27)
+
+### @createrington/server (1.22.0 → 1.23.0)
+- [add] Add `/api/render/skin` endpoint that proxies skin renders through the internal skin-api SDK, returning PNG images with 24-hour caching; falls back to a 302 redirect to mc-heads.net on any skin-api error so render pages never show broken images
+- [fix] Fix server stats voice channels sourcing member count from the Discord guild cache instead of the database: member count now uses `Q.player.count()` for linked MC accounts, bot count is a static config value, and updates run on a periodic interval with an in-flight guard instead of event-driven guild member events
+- [refactor] Move `/health` to `/api/health` and expand the health check: the endpoint now pings the database with latency measurement, reads Discord bot WebSocket state, checks the WebSocket service and playtime manager, and derives a three-level rollup (healthy/degraded/down) returning 503 when down
+- [refactor] Re-add terse JSDoc on service and repository classes: all service files and repository classes receive single-line class headers and public method docstrings following the project commenting convention; verbose multi-paragraph blocks removed
+- [chore] Bump `@createrington/skin-api-client` to ^0.2.1 and remove the starlightskins CSP host
+- [chore] Add `render-profile-poses` dev script for screenshotting `/profile` with every skin pose via Puppeteer
+- [chore] Replace em dashes with hyphens in non-UI source strings (Discord embed presets, slash command messages)
+- [chore] Normalize TypeScript config casing across workspaces
+
+### @createrington/client (0.2.28 → 0.2.29)
+- [refactor] Reorganize admin chat from `components/` into `features/admin-chat/` and `contexts/admin-chat/`, splitting the monolithic `AdminChat.tsx` into composable hooks (`use-admin-chat-session`, `use-model-selection`, `use-unread-tracker`)
+- [refactor] Extract `AdminActionModal` shared dialog shell and refactor all seven player action modals (BalanceAdjust, DeletePlayer, EditPlayer, IssueBan, IssueStrike, RemoveStrike, Unban) to use it instead of duplicated Dialog boilerplate
+- [refactor] Switch skin rendering from the external starlightskins service to the internal skin-api SDK: `skin-utils.ts` now re-exports poses from `@createrington/skin-api-client` and generates URLs via the local `/api/render/skin` endpoint
+- [chore] Rename `use-debounced-value.tsx` to `.ts` (no JSX in the file)
+- [chore] Enable `verbatimModuleSyntax` in `tsconfig.app.json`
+- [chore] Bump `@createrington/skin-api-client` to ^0.2.1 and `zod` to ^4.4.3
+
+### @createrington/shared (1.1.5 → 1.1.6)
+- [refactor] Complete barrel exports from the package root: `src/index.ts` now re-exports `./api`, `./auth`, `./db`, and `./socket` alongside the existing `./types`
+- [chore] Add `zod` as a direct production dependency
+- [chore] Enable `isolatedModules` in tsconfig
+
+### Root
+- [chore] Pin `qs >=6.15.2` via pnpm override to resolve audit vulnerability
+- [chore] Declare `zod` as an optional peer dependency of `@hookform/resolvers` via `packageExtensions`
+
 ## v1.22.0 (2026-05-25)
 
 ### @createrington/server (1.21.0 → 1.22.0)
