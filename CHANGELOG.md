@@ -1,3 +1,11 @@
+## v1.23.2 (2026-05-27)
+
+### @createrington/server (1.23.1 → 1.23.2)
+- [security] Split mod JWT signing secret from the web access token: mod-facing endpoints now verify against a dedicated `MOD_JWT_SECRET` env variable so a compromised Minecraft host can no longer forge web session JWTs; startup validation rejects configs where the two secrets match
+
+### Root
+- [chore] Add social preview banner for repository metadata
+
 ## v1.23.1 (2026-05-27)
 
 ### @createrington/server (1.23.0 → 1.23.1)
