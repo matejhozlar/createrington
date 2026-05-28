@@ -44,6 +44,7 @@ export function issueSsoCode(payload: SsoCodePayload): string {
 
 /** Redeem a code: returns the payload once, then deletes it. Null if unknown or expired. */
 export function consumeSsoCode(code: string): SsoCodePayload | null {
+  pruneExpired();
   const hash = hashCode(code);
   const entry = store.get(hash);
   if (!entry) return null;

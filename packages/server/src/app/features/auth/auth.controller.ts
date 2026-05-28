@@ -396,16 +396,12 @@ export class AuthController {
     try {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
-      // Code-exchange consumers (skin-api) get a one-time code in the redirect
-      // and no main-app cookies; they redeem the code server-to-server and run
-      // their own session. Cookie-based consumers (main app, sandbox) keep the
-      // parent-domain cookie behaviour below.
+      // Code-exchange consumers (skin-api) get a one-time code instead of cookies.
       if (isCodeExchangeReturnTo(entry.returnTo)) {
         const ssoCode = issueSsoCode({
           playerId: user.minecraftUuid,
           minecraftUsername: user.minecraftUsername,
-          // authenticate() throws for users without a player record, so a
-          // successful SSO login is always a Createrington member.
+          // authenticate() requires a player record, so SSO success implies member.
           isMember: true,
           isOwner: user.discordId === config.app.auth.owner.discordId,
         });
@@ -490,6 +486,33 @@ export class AuthController {
  * is safe, but if it ever fails we fall back to the raw return_to to keep
  * users out of an error loop.
  */
+function redirectWithError(returnTo: string, reason: string): string {
+  try {
+    const url = new URL(returnTo);
+    url.searchParams.set("sso_error", reason);
+    return url.toString();
+  } catch {
+    return returnTo;
+  }
+}
+
+/**
+ * Revalidates the redirect target against the SSO whitelist before sending
+ * the response. The URL was already validated when the SSO flow was
+ * initiated (via `validateReturnTo` in `ssoStart`), so this is pure
+ * defense-in-depth: it protects against any future path that lets an
+ * unvalidated URL into `pendingSsoStates`, and it gives static-analysis
+ * tools an explicit sanitizer on every `res.redirect` call site, closing
+ * out CWE-601 warnings.
+ */
+function safeSsoRedirect(res: Response, url: string): void {
+  const validated = validateReturnTo(url);
+  if (!validated) {
+    throw new BadRequestError("Invalid return_to URL");
+  }
+  res.redirect(validated);
+}
+
 /**
  * True when the return_to origin is configured for code-exchange SSO
  * (skin-api), so the callback issues a one-time code instead of cookies.
@@ -518,33 +541,6 @@ function appendSsoCode(returnTo: string, code: string): string {
   const url = new URL(returnTo);
   url.searchParams.set("code", code);
   return url.toString();
-}
-
-function redirectWithError(returnTo: string, reason: string): string {
-  try {
-    const url = new URL(returnTo);
-    url.searchParams.set("sso_error", reason);
-    return url.toString();
-  } catch {
-    return returnTo;
-  }
-}
-
-/**
- * Revalidates the redirect target against the SSO whitelist before sending
- * the response. The URL was already validated when the SSO flow was
- * initiated (via `validateReturnTo` in `ssoStart`), so this is pure
- * defense-in-depth: it protects against any future path that lets an
- * unvalidated URL into `pendingSsoStates`, and it gives static-analysis
- * tools an explicit sanitizer on every `res.redirect` call site, closing
- * out CWE-601 warnings.
- */
-function safeSsoRedirect(res: Response, url: string): void {
-  const validated = validateReturnTo(url);
-  if (!validated) {
-    throw new BadRequestError("Invalid return_to URL");
-  }
-  res.redirect(validated);
 }
 
 function safeLocalPath(candidate: string): string {
