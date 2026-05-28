@@ -28,6 +28,7 @@ import { PlaytimeManagerService } from "./playtime/playtime-manager.service";
 import { RoleManagementService } from "./discord/role/role-management.service";
 import { WebSocketService } from "./websocket";
 import { PlayerBanService } from "./player/ban";
+import { playerDeletionService } from "./player/deletion";
 import { StatsImportService, STATS_IMPORT_SERVERS } from "./stats-import";
 import { AchievementService } from "./achievement";
 import { FaqService } from "./discord/faq";
@@ -321,6 +322,15 @@ export function registerServices(): void {
         Services.MESSAGE_SERVICE,
       ],
     },
+  );
+
+  container.register(
+    Services.PLAYER_DELETION_SERVICE,
+    async () => {
+      await playerDeletionService.initialize();
+      return playerDeletionService;
+    },
+    { dependencies: [Services.DATABASE] },
   );
 
   container.register(

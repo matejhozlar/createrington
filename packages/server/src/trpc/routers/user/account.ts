@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, userProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
 import { Q } from "@/db";
+import { playerDeletionService } from "@/services/player/deletion";
 import { getService, Services } from "@/services";
 import config from "@/config";
 
@@ -226,8 +227,17 @@ export const accountRouter = router({
         await Q.ticket.delete({ id: ticket.id });
       }
 
-      // Delete the player row, cascades to all related tables
-      await Q.player.delete({ discordId });
+      await playerDeletionService.delete(
+        { discordId },
+        {
+          actor: {
+            type: "user",
+            discordId,
+            username: player.minecraftUsername,
+          },
+          reason: "Account deleted by user",
+        },
+      );
 
       // Kick from Discord after successful deletion
       try {
