@@ -10,7 +10,7 @@ export function ServerManagement({
   isMaintenance,
 }: ServerManagementProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div>
       <h2 className="mb-1 text-sm font-semibold">Server Management</h2>
       <p className="mb-4 text-xs text-muted-foreground">
         Operational actions are disabled while the server is in maintenance

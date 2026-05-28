@@ -98,13 +98,18 @@ export function AdminServerDetail() {
 
         <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
 
-        <ServerManagement serverId={serverId} isMaintenance={isMaintenance} />
-
         <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="rounded-lg border border-border bg-card p-6">
           {activeTab === "overview" && (
             <OverviewTab serverId={serverId} serverData={serverData} />
+          )}
+
+          {activeTab === "management" && (
+            <ServerManagement
+              serverId={serverId}
+              isMaintenance={isMaintenance}
+            />
           )}
 
           {activeTab === "sessions" && <SessionsTab serverId={serverId} />}
