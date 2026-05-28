@@ -65,7 +65,7 @@ plain `docker attach`, so it works the same on Windows, macOS, and Linux.
 To manage the database and Minecraft server together:
 
 ```bash
-pnpm docker:up     # start both the Postgres and Minecraft containers
+pnpm docker:up     # start Postgres + Minecraft, then attach to the MC console
 pnpm docker:down   # stop both
 pnpm docker:logs   # follow both sets of logs
 pnpm docker:reset  # reset the database (migrate + seed) and the MC world
