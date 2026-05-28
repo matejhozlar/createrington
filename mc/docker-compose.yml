@@ -13,6 +13,11 @@ services:
       VERSION: "1.21.1"
       NEOFORGE_VERSION: "${MC_NEOFORGE_VERSION:-21.1.222}"
       MEMORY: "${MC_MEMORY:-4G}"
+      # Auto-install the Createrington dev mods on first boot. itzg downloads
+      # each CurseForge file in the list via the API (needs CF_API_KEY). The
+      # list mirrors mc/modpack/manifest.json (the importable pack export).
+      CF_API_KEY: "${CURSEFORGE_API_KEY:-}"
+      CURSEFORGE_FILES: "@/modpack/curseforge-files.txt"
       # Online mode mirrors production (real account auth + UUIDs). Set to
       # FALSE locally if you need to join without a premium account.
       ONLINE_MODE: "${MC_ONLINE_MODE:-TRUE}"
@@ -22,6 +27,7 @@ services:
       OVERRIDE_SERVER_PROPERTIES: "true"
     volumes:
       - ./data:/data
+      - ./modpack:/modpack:ro
     healthcheck:
       test: ["CMD", "mc-health"]
       start_period: 5m

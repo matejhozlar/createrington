@@ -4,9 +4,9 @@ A NeoForge 1.21.1 Minecraft server for local development, so game-server-depende
 backend logic can be tested without touching production. Built on
 [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server).
 
-> **Status:** this ships the base server only. The Createrington integration mods
-> and their config (backend URL + shared `MOD_JWT_SECRET`) are wired up in a
-> follow-up. Until then the server runs vanilla NeoForge.
+> **Status:** the server boots with the dev mods auto-installed. Their backend
+> config (base URL + shared `MOD_JWT_SECRET`) is wired up in a follow-up; until
+> then the mods load but stay disconnected from the backend.
 
 ## Modpack
 
@@ -23,8 +23,12 @@ server (and wiring their backend config) is the deferred follow-up noted above.
 
 ## Usage
 
+`mc:up` runs under Infisical so the CurseForge API key is available to
+auto-download the mods. Run it the same way as the backend (e.g. logged into
+the Infisical CLI):
+
 ```bash
-pnpm mc:up        # start the server (downloads NeoForge on first run)
+pnpm mc:up        # start the server (downloads NeoForge + mods on first run)
 pnpm mc:logs      # follow the server logs
 pnpm mc:console   # open an interactive RCON console (e.g. type: list)
 pnpm mc:cmd list  # run a single console command, e.g. pnpm mc:cmd "say hi"

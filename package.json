@@ -102,7 +102,7 @@
     "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",
     "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin",
-    "mc:up": "docker-compose -f mc/docker-compose.yml up -d",
+    "mc:up": "infisical run --env=dev -- docker-compose -f mc/docker-compose.yml up -d",
     "mc:down": "docker-compose -f mc/docker-compose.yml down",
     "mc:logs": "docker-compose -f mc/docker-compose.yml logs -f",
     "mc:console": "docker exec -it createrington_mc rcon-cli",
