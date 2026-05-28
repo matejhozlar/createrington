@@ -21,6 +21,7 @@ merged pull request. For a feature/architecture overview, see the
 - [Pull Requests](#pull-requests)
 - [Continuous Integration](#continuous-integration)
 - [Shared Packages & Sibling Repos](#shared-packages--sibling-repos)
+- [License](#license)
 
 ## Prerequisites
 
@@ -269,3 +270,26 @@ Shared libraries (`@createrington/ui`, `@createrington/icons`,
 monorepo. Changes there go through Changesets:
 `pnpm changeset` → `pnpm version-packages` → `pnpm release`. Do not hand-edit
 versions or changelogs in those repos either.
+
+## License
+
+Createrington is proprietary software. All rights are reserved by the Author
+(Matej Hozlar), and **no license is granted** to use, copy, modify, or
+distribute the Software outside of explicit written authorization. See
+[LICENSE](./LICENSE) for the full terms.
+
+By contributing to this repository you agree that:
+
+- You are authorized to contribute (you are the Author or have been granted
+  explicit permission to access and work on the Software).
+- Your contributions become part of the Software and are owned by and assigned
+  to the Author, covered by the same proprietary license, with all rights
+  reserved.
+- You grant the Author all rights necessary to use, modify, sublicense, and
+  distribute your contributions as part of the Software, without restriction or
+  expectation of compensation.
+- You will not copy, retain, redistribute, or reuse any part of the Software or
+  your contributions to it outside of this project without the Author's prior
+  written permission.
+
+If you do not agree to these terms, do not contribute.
