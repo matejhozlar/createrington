@@ -284,36 +284,6 @@ export class CooldownManager {
   }
 
   /**
-   * Gets remaining cooldown time without affecting the cooldown state
-   *
-   * Useful for debugging or admin commands to check cooldown status.
-   *
-   * @param commandName - Name of the command
-   * @param type - Type of cooldown scope
-   * @param interaction - Interaction context
-   * @param interaction.userId - Discord user ID to get remaining cooldown for
-   * @param interaction.channelId - Discord channel ID to get remaining cooldown for
-   * @param interaction.guildId - Discord guild ID to get remaining cooldown in
-   * @returns Remaining cooldown time in seconds, or null if not on cooldown
-   */
-  public getRemaining(
-    commandName: string,
-    type: CooldownType,
-    interaction: CooldownContext,
-  ): number | null {
-    return this.check(commandName, { duration: 0, type }, interaction);
-  }
-
-  /**
-   * Gets the internal cooldowns map (for debugging/inspection)
-   *
-   * @returns Map of command names to their cooldown entries
-   */
-  public getAllCooldowns(): Map<string, Map<string, CooldownEntry>> {
-    return this.cooldowns;
-  }
-
-  /**
    * Gets statistics about active cooldowns
    *
    * @returns Object containing:

@@ -160,23 +160,3 @@ export async function copyFileToServer(
     }
   }
 }
-
-/**
- * Reads a file from the server's data directory.
- * Returns the file contents as a Buffer.
- */
-export async function readFile(name: string): Promise<Buffer> {
-  const localPath = getLocalPath();
-  if (localPath) {
-    return fs.readFile(path.join(localPath, name));
-  } else {
-    const basePath = getDefaultBasePath();
-    const sftp = await createSftpClient();
-    try {
-      const data = await sftp.get(`${basePath}/${name}`);
-      return Buffer.isBuffer(data) ? data : Buffer.from(data as string);
-    } finally {
-      await sftp.end();
-    }
-  }
-}

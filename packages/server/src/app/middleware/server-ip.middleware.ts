@@ -135,21 +135,3 @@ export const requireLoopback = (
   );
   next(new ForbiddenError("Loopback only"));
 };
-
-/**
- * Check whether an IP address is in the allowlist for the given environment
- *
- * @param ip - IP address to check
- * @param environment - Target environment whose allowlist is used
- * @returns True if the IP is allowed, false otherwise
- */
-export function isIpAllowed(
-  ip: string,
-  environment: "development" | "production",
-): boolean {
-  const normalizedIp = normalizeIp(ip);
-  const allowedIps = ALLOWED_IPS[environment];
-  return allowedIps.some(
-    (allowedIp) => normalizeIp(allowedIp) === normalizedIp,
-  );
-}

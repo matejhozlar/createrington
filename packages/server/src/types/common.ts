@@ -27,14 +27,3 @@ type CamelToSnakeCase<S extends string> = S extends `${infer T}${infer U}`
 export type SnakeCaseKeys<T> = {
   [K in keyof T as CamelToSnakeCase<K & string>]: T[K];
 };
-
-/**
- * Makes specified keys required
- */
-export type RequireKeys<T, K extends keyof T> = T & Required<Pick<T, K>>;
-
-/**
- * Makes specified keys optional
- */
-export type OptionalKeys<T, K extends keyof T> = Omit<T, K> &
-  Partial<Pick<T, K>>;
