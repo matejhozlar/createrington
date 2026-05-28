@@ -11,6 +11,7 @@ import { accessCookieService } from "@/services/auth/token/access-cookie.service
 import { sessionService } from "@/services/auth/session/session.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
+import { issueSsoCode } from "@/services/auth/sso/code-store";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
@@ -395,6 +396,24 @@ export class AuthController {
     try {
       const user = await discordOAuth.authenticate(code, callbackUrl);
 
+      // Code-exchange consumers (skin-api) get a one-time code instead of cookies.
+      if (isCodeExchangeReturnTo(entry.returnTo)) {
+        const ssoCode = issueSsoCode({
+          playerId: user.minecraftUuid,
+          minecraftUsername: user.minecraftUsername,
+          // authenticate() requires a player record, so SSO success implies member.
+          isMember: true,
+          isOwner: user.discordId === config.app.auth.owner.discordId,
+        });
+
+        logger.info(
+          `User ${user.discordId} completed code-exchange SSO to ${entry.returnTo}`,
+        );
+
+        safeSsoRedirect(res, appendSsoCode(entry.returnTo, ssoCode));
+        return;
+      }
+
       const accessToken = jwtService.generate(user);
       const rawRefreshToken = await sessionService.createSession({
         discordId: user.discordId,
@@ -492,6 +511,36 @@ function safeSsoRedirect(res: Response, url: string): void {
     throw new BadRequestError("Invalid return_to URL");
   }
   res.redirect(validated);
+}
+
+/**
+ * True when the return_to origin is configured for code-exchange SSO
+ * (skin-api), so the callback issues a one-time code instead of cookies.
+ */
+function isCodeExchangeReturnTo(returnTo: string): boolean {
+  let origin: string;
+  try {
+    origin = new URL(returnTo).origin;
+  } catch {
+    return false;
+  }
+  return config.app.auth.sso.codeExchangeOrigins.some((allowed) => {
+    try {
+      return new URL(allowed).origin === origin;
+    } catch {
+      return false;
+    }
+  });
+}
+
+/**
+ * Append the one-time `?code=` to a return_to URL via URL parsing so an
+ * existing query string or fragment stays well-formed.
+ */
+function appendSsoCode(returnTo: string, code: string): string {
+  const url = new URL(returnTo);
+  url.searchParams.set("code", code);
+  return url.toString();
 }
 
 function safeLocalPath(candidate: string): string {
