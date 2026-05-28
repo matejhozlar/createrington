@@ -1,7 +1,11 @@
-import { Eye, Clock, BarChart3 } from "lucide-react";
+import { Eye, Clock, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ServerTabType = "overview" | "sessions" | "analytics";
+export type ServerTabType =
+  | "overview"
+  | "management"
+  | "sessions"
+  | "analytics";
 
 interface ServerTabsProps {
   activeTab: ServerTabType;
@@ -14,6 +18,7 @@ const TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
 }> = [
   { id: "overview", label: "Overview", icon: Eye },
+  { id: "management", label: "Management", icon: Settings },
   { id: "sessions", label: "Sessions", icon: Clock },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
