@@ -33,6 +33,8 @@ postgres_data/
 mc/data/
 *.tgz
 *.zip
+# Keep the CurseForge modpack export so devs can import it directly
+!mc/modpack/*.zip
 *.rar
 .cache/
 .playwright-mcp

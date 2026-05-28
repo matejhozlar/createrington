@@ -1,0 +1,43 @@
+{
+  "minecraft": {
+    "version": "1.21.1",
+    "modLoaders": [
+      {
+        "id": "neoforge-21.1.222",
+        "primary": true
+      }
+    ]
+  },
+  "manifestType": "minecraftModpack",
+  "manifestVersion": 1,
+  "name": "createrington-development",
+  "version": "0.1.0",
+  "author": "",
+  "files": [
+    {
+      "projectID": 1509069,
+      "fileID": 8039516,
+      "required": true,
+      "isLocked": false
+    },
+    {
+      "projectID": 328085,
+      "fileID": 7963363,
+      "required": true,
+      "isLocked": false
+    },
+    {
+      "projectID": 1438821,
+      "fileID": 8144488,
+      "required": true,
+      "isLocked": false
+    },
+    {
+      "projectID": 1277058,
+      "fileID": 7977558,
+      "required": true,
+      "isLocked": false
+    }
+  ],
+  "overrides": "overrides"
+}

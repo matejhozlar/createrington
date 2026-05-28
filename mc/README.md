@@ -8,6 +8,19 @@ backend logic can be tested without touching production. Built on
 > and their config (backend URL + shared `MOD_JWT_SECRET`) are wired up in a
 > follow-up. Until then the server runs vanilla NeoForge.
 
+## Modpack
+
+`mc/modpack/` holds the CurseForge modpack for local development:
+
+- `createrington-development-<version>.zip` — import this directly into the
+  CurseForge app (Create Custom Profile -> Import) to get the dev client.
+- `manifest.json` / `modlist.html` — the extracted manifest, checked in so the
+  mod set is reviewable and diffable in git.
+
+The pack targets NeoForge 21.1.222 / MC 1.21.1 and currently includes CRNet,
+Create, PresenceAPI, and Createrington Currency. Installing these mods on the
+server (and wiring their backend config) is the deferred follow-up noted above.
+
 ## Usage
 
 ```bash
