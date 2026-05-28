@@ -222,33 +222,6 @@ export class CooldownManager {
   }
 
   /**
-   * Resets a specific cooldown entry
-   *
-   * @param commandName - Name of the command
-   * @param type - Type of cooldown scope
-   * @param interaction - Interaction context
-   * @param interaction.userId - Discord user ID to reset cooldowns for
-   * @param interaction.channelId - Discord channel ID to reset cooldowns for
-   * @param interaction.guildId - Discord guild ID to reset the cooldowns in
-   * @returns True if a cooldown was reset, false if none existed
-   */
-  public reset(
-    commandName: string,
-    type: CooldownType,
-    interaction: CooldownContext,
-  ): boolean {
-    const key = this.getKey(commandName, type, interaction);
-    const timestamps = this.cooldowns.get(commandName);
-
-    if (timestamps && timestamps.has(key)) {
-      timestamps.delete(key);
-      return true;
-    }
-
-    return false;
-  }
-
-  /**
    * Resets all cooldowns for a specific command
    *
    * @param commandName - Name of the command to reset

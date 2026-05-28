@@ -1,17 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   formatPlaytime,
-  formatDays,
   formatBalance,
-  formatNumber,
-  formatPercentage,
   formatDaysCount,
-  formatDiscordTimestamp,
   formatDuration,
-  truncate,
-  formatFileSize,
   pluralize,
-  formatCount,
 } from "@/utils/format";
 
 describe("formatPlaytime", () => {
@@ -38,31 +31,6 @@ describe("formatPlaytime", () => {
   it("does not roll hours over into days", () => {
     expect(formatPlaytime(90000)).toBe("25h 0m");
     expect(formatPlaytime(360000)).toBe("100h 0m");
-  });
-});
-
-describe("formatDays", () => {
-  it("returns 0 days for the same timestamp", () => {
-    const now = new Date("2026-04-16T12:00:00Z");
-    expect(formatDays(now, now)).toBe("0 days");
-  });
-
-  it("returns singular '1 day' for exactly 24h", () => {
-    const start = new Date("2026-04-15T12:00:00Z");
-    const end = new Date("2026-04-16T12:00:00Z");
-    expect(formatDays(start, end)).toBe("1 day");
-  });
-
-  it("pluralizes for multi-day spans", () => {
-    const start = new Date("2026-04-11T12:00:00Z");
-    const end = new Date("2026-04-16T12:00:00Z");
-    expect(formatDays(start, end)).toBe("5 days");
-  });
-
-  it("floors partial days", () => {
-    const start = new Date("2026-04-15T12:00:00Z");
-    const end = new Date("2026-04-16T11:59:59Z");
-    expect(formatDays(start, end)).toBe("0 days");
   });
 });
 
@@ -98,35 +66,6 @@ describe("formatBalance", () => {
   });
 });
 
-describe("formatNumber", () => {
-  it("formats integers with comma separators", () => {
-    expect(formatNumber(1234)).toBe("1,234");
-    expect(formatNumber(1234567)).toBe("1,234,567");
-  });
-
-  it("respects the decimals argument", () => {
-    expect(formatNumber(1234.567, 2)).toBe("1,234.57");
-  });
-
-  it("forces trailing zeros when decimals are requested", () => {
-    expect(formatNumber(10, 2)).toBe("10.00");
-  });
-});
-
-describe("formatPercentage", () => {
-  it("appends % with the default precision", () => {
-    expect(formatPercentage(50)).toBe("50.0%");
-  });
-
-  it("respects the decimals argument", () => {
-    expect(formatPercentage(66.666, 2)).toBe("66.67%");
-  });
-
-  it("scales decimal inputs when isDecimal=true", () => {
-    expect(formatPercentage(0.5, 1, true)).toBe("50.0%");
-  });
-});
-
 describe("formatDaysCount", () => {
   it("uses singular for 1", () => {
     expect(formatDaysCount(1)).toBe("1 day");
@@ -135,29 +74,6 @@ describe("formatDaysCount", () => {
   it("uses plural for 0 and >1", () => {
     expect(formatDaysCount(0)).toBe("0 days");
     expect(formatDaysCount(5)).toBe("5 days");
-  });
-});
-
-describe("formatDiscordTimestamp", () => {
-  it("formats a Date with the default style", () => {
-    const date = new Date("2026-01-17T21:41:30Z");
-    const expectedUnix = Math.floor(date.getTime() / 1000);
-    expect(formatDiscordTimestamp(date)).toBe(`<t:${expectedUnix}:f>`);
-  });
-
-  it("accepts a numeric timestamp", () => {
-    const ms = 1737147690000;
-    expect(formatDiscordTimestamp(ms, "R")).toBe(
-      `<t:${Math.floor(ms / 1000)}:R>`,
-    );
-  });
-
-  it("supports every documented style", () => {
-    const date = new Date("2026-01-17T21:41:30Z");
-    const unix = Math.floor(date.getTime() / 1000);
-    for (const style of ["t", "T", "d", "D", "f", "F", "R"] as const) {
-      expect(formatDiscordTimestamp(date, style)).toBe(`<t:${unix}:${style}>`);
-    }
   });
 });
 
@@ -214,47 +130,6 @@ describe("formatDuration", () => {
   });
 });
 
-describe("truncate", () => {
-  it("returns the input unchanged when shorter than maxLength", () => {
-    expect(truncate("Short", 10)).toBe("Short");
-  });
-
-  it("returns the input unchanged when length equals maxLength", () => {
-    expect(truncate("Hello", 5)).toBe("Hello");
-  });
-
-  it("appends the default ellipsis when truncating", () => {
-    // maxLength=8, ellipsis="..." => slice(0, 5) + "..."
-    expect(truncate("Hello World", 8)).toBe("Hello...");
-  });
-
-  it("respects a custom ellipsis string", () => {
-    expect(truncate("Long text here", 8, "…")).toBe("Long te…");
-  });
-});
-
-describe("formatFileSize", () => {
-  it("returns '0 Bytes' for 0", () => {
-    expect(formatFileSize(0)).toBe("0 Bytes");
-  });
-
-  it("formats KB with default precision", () => {
-    expect(formatFileSize(1024)).toBe("1 KB");
-  });
-
-  it("formats MB with default precision", () => {
-    expect(formatFileSize(1048576)).toBe("1 MB");
-  });
-
-  it("respects the decimals argument", () => {
-    expect(formatFileSize(1234567, 1)).toBe("1.2 MB");
-  });
-
-  it("formats sub-KB byte counts", () => {
-    expect(formatFileSize(512)).toBe("512 Bytes");
-  });
-});
-
 describe("pluralize", () => {
   it("uses singular for count=1", () => {
     expect(pluralize(1, "item")).toBe("item");
@@ -268,20 +143,5 @@ describe("pluralize", () => {
   it("uses an explicit plural override when provided", () => {
     expect(pluralize(1, "box", "boxes")).toBe("box");
     expect(pluralize(3, "box", "boxes")).toBe("boxes");
-  });
-});
-
-describe("formatCount", () => {
-  it("combines count and singular form for 1", () => {
-    expect(formatCount(1, "player")).toBe("1 player");
-  });
-
-  it("pluralizes for 0 and >1", () => {
-    expect(formatCount(0, "item")).toBe("0 items");
-    expect(formatCount(5, "player")).toBe("5 players");
-  });
-
-  it("supports custom plural forms", () => {
-    expect(formatCount(2, "box", "boxes")).toBe("2 boxes");
   });
 });
