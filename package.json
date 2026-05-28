@@ -108,10 +108,12 @@
     "mc:console": "docker exec -it createrington_mc rcon-cli",
     "mc:cmd": "docker exec -i createrington_mc rcon-cli",
     "mc:reset": "docker-compose -f mc/docker-compose.yml down && rm -rf mc/data",
+    "mc:destroy": "docker-compose -f mc/docker-compose.yml down -v --rmi all && rm -rf mc/data",
     "docker:up": "pnpm db:up && pnpm mc:up",
     "docker:down": "pnpm db:down && pnpm mc:down",
     "docker:logs": "concurrently -n \"db,mc\" -c \"blue,green\" \"pnpm db:logs\" \"pnpm mc:logs\"",
     "docker:reset": "pnpm db:reset && pnpm mc:reset && pnpm mc:up",
+    "docker:destroy": "pnpm db:destroy && pnpm mc:destroy",
     "kill-ports": "bash scripts/kill-ports.sh",
     "post-release": "git checkout main && git pull && git checkout dev && git pull && git merge main && git push && git status"
   },

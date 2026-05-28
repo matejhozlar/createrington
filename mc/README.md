@@ -49,6 +49,7 @@ pnpm mc:console   # open an interactive RCON console (e.g. type: list)
 pnpm mc:cmd list  # run a single console command, e.g. pnpm mc:cmd "say hi"
 pnpm mc:down      # stop and remove the container (world is kept)
 pnpm mc:reset     # stop and delete the world/data for a fresh start
+pnpm mc:destroy   # full teardown: remove container, image, and world/data
 ```
 
 To manage the database and Minecraft server together:
@@ -58,6 +59,7 @@ pnpm docker:up     # start both the Postgres and Minecraft containers
 pnpm docker:down   # stop both
 pnpm docker:logs   # follow both sets of logs
 pnpm docker:reset  # reset the database (migrate + seed) and the MC world
+pnpm docker:destroy # full teardown of both (containers, images, volumes, data)
 ```
 
 The server is reachable at `localhost:25565`. First boot takes a few minutes
