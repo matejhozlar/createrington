@@ -6,7 +6,6 @@ export * from "./compose";
 export * from "./mod-jwt.middleware";
 export * from "./server-ip.middleware";
 export * from "./validation.middleware";
-export * from "./typed-response";
 export * from "./rate-limit.middleware";
 export * from "./request-logger.middleware";
 export * from "./sync-secret.middleware";

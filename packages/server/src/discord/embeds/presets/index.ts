@@ -1,7 +1,6 @@
 import { AnnouncementEmbedPresets } from "./announcements";
 import { CommandEmbedPresets } from "./commands";
 import { CommonEmbedPresets } from "./common";
-import { ConfirmationEmbedPresets } from "./confirmation";
 import { CryptoEmbedPresets } from "./crypto";
 import { DepartedEmbedPresets } from "./departed";
 import { FaqEmbedPresets } from "./faq";
@@ -22,7 +21,6 @@ export const EmbedPresets = {
   crypto: CryptoEmbedPresets,
   waitlist: WaitlistEmbedPresets,
   registration: RegistrationEmbedPresets,
-  confirmation: ConfirmationEmbedPresets,
   progress: ProgressEmbedPresets,
   ticket: TicketEmbedPresets,
   leaderboard: LeaderboardEmbedPresets,
