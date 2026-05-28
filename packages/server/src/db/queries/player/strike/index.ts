@@ -118,25 +118,6 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   }
 
   /**
-   * Get all active (non-removed) strikes for a player
-   *
-   * @param playerMinecraftUuid - Player Minecraft UUID to get all active strikes for
-   * @returns Promise resolving to an array of player strikes
-   */
-  async getActiveStrikes(playerMinecraftUuid: string): Promise<PlayerStrike[]> {
-    return await this.findAll(
-      {
-        playerMinecraftUuid,
-        removed: false,
-      },
-      {
-        orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /**
    * Get active strike counts for multiple players in a single query
    *
    * @param playerUuids - Array of player UUIDs to get counts for
@@ -291,27 +272,6 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
   }
 
   /**
-   * Get strikes by classification across all players
-   *
-   * @param classification - The classification to get players for
-   * @param activeOnly - Whether to include only active strikes
-   * @returns Promise resolving to an array of player strikes
-   */
-  async getByClassification(
-    classification: StrikeClassification,
-    activeOnly: boolean = true,
-  ): Promise<PlayerStrike[]> {
-    const filters = activeOnly
-      ? { classification, removed: false }
-      : { classification };
-
-    return await this.findAll(filters, {
-      orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "desc",
-    });
-  }
-
-  /**
    * Get all strikes issued by a specific admin
    *
    * @param adminDiscordid - Discord user ID of the admin
@@ -342,25 +302,6 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
 
     return await this.findAll(filters, {
       limit,
-      orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
-      orderDirection: "desc",
-    });
-  }
-
-  /**
-   * Get strikes by severity level
-   *
-   * @param severity - The severity to get strikes by
-   * @param activeOnly - Whether to include only active strikes
-   * @returns Promise resolving to an array of player strikes matching the given severity
-   */
-  async getBySeverity(
-    severity: 1 | 2 | 3 | 4 | 5,
-    activeOnly: boolean = true,
-  ): Promise<PlayerStrike[]> {
-    const filters = activeOnly ? { severity, removed: false } : { severity };
-
-    return await this.findAll(filters, {
       orderBy: DatabaseTable.PLAYER_STRIKE.CAMEL_FIELDS.ISSUED_AT,
       orderDirection: "desc",
     });

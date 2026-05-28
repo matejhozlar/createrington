@@ -115,27 +115,6 @@ export class BalanceRepository {
     return BalanceUtils.fromStorage(balanceBigInt);
   }
 
-  /** Get the balance as a fixed-decimal string (e.g. "1.500"). */
-  async getFormatted(
-    identifier: PlayerIdentifier,
-    decimals: number = 3,
-  ): Promise<string> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const balanceBigInt = await db.player.balance.select.balance({
-      minecraftUuid: uuid,
-    });
-    return BalanceUtils.format(balanceBigInt, decimals);
-  }
-
-  /** Get the balance as a string with trailing zeros stripped (e.g. "1.5"). */
-  async getFormattedTrimmed(identifier: PlayerIdentifier): Promise<string> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const balanceBigInt = await db.player.balance.select.balance({
-      minecraftUuid: uuid,
-    });
-    return BalanceUtils.formatTrimmed(balanceBigInt);
-  }
-
   /** Get the raw storage bigint (e.g. 1500n for $1.500), not user-facing. */
   async getRaw(identifier: PlayerIdentifier): Promise<bigint> {
     const uuid = await this.resolvePlayerUuid(identifier);
