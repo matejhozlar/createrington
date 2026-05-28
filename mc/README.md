@@ -43,14 +43,24 @@ auto-download the mods. Run it the same way as the backend (e.g. logged into
 the Infisical CLI):
 
 ```bash
-pnpm mc:up        # start the server (downloads NeoForge + mods on first run)
-pnpm mc:logs      # follow the server logs
-pnpm mc:console   # open an interactive RCON console (e.g. type: list)
+pnpm mc:up        # start the server + attach to the live console (downloads NeoForge + mods on first run)
+pnpm mc:start     # start the server detached (no console attach)
+pnpm mc:attach    # attach to the live server console of a running server
+pnpm mc:logs      # follow the server logs (read-only)
+pnpm mc:console   # open a one-off / interactive RCON console (e.g. type: list)
 pnpm mc:cmd list  # run a single console command, e.g. pnpm mc:cmd "say hi"
 pnpm mc:down      # stop and remove the container (world is kept)
 pnpm mc:reset     # stop and delete the world/data for a fresh start
 pnpm mc:destroy   # full teardown: remove container, image, and world/data
 ```
+
+`mc:up` (and `mc:attach`) drop you into the **live server console**: logs stream
+and you can type server commands directly (`list`, `op <name>`, ...). This is
+plain `docker attach`, so it works the same on Windows, macOS, and Linux.
+
+> **Detach with `Ctrl-P` then `Ctrl-Q`** to leave the server running. Pressing
+> `Ctrl-C` while attached sends a stop signal and shuts the server down. Use
+> `mc:start` if you just want it running in the background.
 
 To manage the database and Minecraft server together:
 
