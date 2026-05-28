@@ -31,25 +31,6 @@ export function formatPlaytime(seconds: number): string {
 }
 
 /**
- * Calculates the number of days between two dates
- *
- * @param start - Start date
- * @param end - End date (defaults to now)
- * @returns Formatted string with day count
- *
- * @example
- * formatDays(pastDate, now) // "5 days"
- * formatDays(yesterday) // "1 day"
- * formatDays(today) // "0 days"
- */
-export function formatDays(start: Date, end: Date = new Date()): string {
-  const diffMs = end.getTime() - start.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  return `${diffDays} ${pluralize(diffDays, "day")}`;
-}
-
-/**
  * Formats a balance/currency value in American format
  *
  * Always floors the value (no decimals) and formats with commas
@@ -81,47 +62,6 @@ export function formatBalance(balance: number | string): string {
 }
 
 /**
- * Formats a large number with American-style thousand separators
- *
- * @param value - The number to format
- * @param decimals - Number of decimal places (default: 0)
- * @returns Formatted number string
- *
- * @example
- * formatNumber(1234)         // "1,234"
- * formatNumber(1234567)      // "1,234,567"
- * formatNumber(1234.567, 2)  // "1,234.57"
- */
-export function formatNumber(value: number, decimals: number = 0): string {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
-/**
- * Formats a percentage value
- *
- * @param value - The percentage value (0-100 or 0-1)
- * @param decimals - Number of decimal places (default: 1)
- * @param isDecimal - Whether the input is in decimal form (0-1) vs percentage form (0-100)
- * @returns Formatted percentage string with % symbol
- *
- * @example
- * formatPercentage(50)           // "50.0%"
- * formatPercentage(66.666, 2)    // "66.67%"
- * formatPercentage(0.5, 1, true) // "50.0%"
- */
-export function formatPercentage(
-  value: number,
-  decimals: number = 1,
-  isDecimal: boolean = false,
-): string {
-  const percentage = isDecimal ? value * 100 : value;
-  return `${percentage.toFixed(decimals)}%`;
-}
-
-/**
  * Formats a number of days with proper pluralization
  *
  * @param days - Number of days
@@ -134,37 +74,6 @@ export function formatPercentage(
  */
 export function formatDaysCount(days: number): string {
   return `${days} ${pluralize(days, "day")}`;
-}
-
-/**
- * Formats a Discord timestamp for relative or absolute display
- *
- * Uses Discord's timestamp formatting syntax for client-side rendering
- *
- * @param date - Date object or timestamp in milliseconds
- * @param style - Discord timestamp style
- * @returns Discord timestamp string
- *
- * Styles:
- * - "t": Short time (e.g., "9:41 PM")
- * - "T": Long time (e.g., "9:41:30 PM")
- * - "d": Short date (e.g., "01/17/2026")
- * - "D": Long date (e.g., "January 17, 2026")
- * - "f": Short date/time (e.g., "January 17, 2026 9:41 PM")
- * - "F": Long date/time (e.g., "Saturday, January 17, 2026 9:41 PM")
- * - "R": Relative time (e.g., "2 hours ago")
- *
- * @example
- * formatDiscordTimestamp(new Date(), "R") // "<t:1705526490:R>" → "2 hours ago"
- * formatDiscordTimestamp(date, "f")       // "<t:1705526490:f>" → "January 17, 2026 9:41 PM"
- */
-export function formatDiscordTimestamp(
-  date: Date | number,
-  style: "t" | "T" | "d" | "D" | "f" | "F" | "R" = "f",
-): string {
-  const timestamp = date instanceof Date ? date.getTime() : date;
-  const unixTimestamp = Math.floor(timestamp / 1000);
-  return `<t:${unixTimestamp}:${style}>`;
 }
 
 /**
@@ -215,54 +124,6 @@ export function formatDuration(start: Date, end: Date = new Date()): string {
 }
 
 /**
- * Truncates a string to a maximum length with ellipsis
- *
- * @param text - The text to truncate
- * @param maxLength - Maximum length (default: 100)
- * @param ellipsis - String to append when truncated (default: "...")
- * @returns Truncated string
- *
- * @example
- * truncate("Hello World", 5)              // "Hello..."
- * truncate("Short", 10)                    // "Short"
- * truncate("Long text here", 8, "…")      // "Long tex…"
- */
-export function truncate(
-  text: string,
-  maxLength: number = 100,
-  ellipsis: string = "...",
-): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return text.slice(0, maxLength - ellipsis.length) + ellipsis;
-}
-
-/**
- * Formats a file size in bytes to human-readable format
- *
- * @param bytes - File size in bytes
- * @param decimals - Number of decimal places (default: 2)
- * @returns Formatted file size string
- *
- * @example
- * formatFileSize(1024)           // "1.00 KB"
- * formatFileSize(1048576)        // "1.00 MB"
- * formatFileSize(1234567, 1)     // "1.2 MB"
- */
-export function formatFileSize(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return "0 Bytes";
-
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${
-    sizes[i]
-  }`;
-}
-
-/**
  * Pluralizes a word based on count
  *
  * @param count - The count to check
@@ -285,25 +146,4 @@ export function pluralize(
     return singular;
   }
   return plural || `${singular}s`;
-}
-
-/**
- * Formats a count with word
- *
- * @param count - The count
- * @param singular - Singular form
- * @param plural - Plural form (optional)
- * @returns Formatted string with count and word
- *
- * @example
- * formatCount(1, "player")          // "1 player"
- * formatCount(5, "player")          // "5 players"
- * formatCount(0, "item")            // "0 items"
- */
-export function formatCount(
-  count: number,
-  singular: string,
-  plural?: string,
-): string {
-  return `${count} ${pluralize(count, singular, plural)}`;
 }

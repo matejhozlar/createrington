@@ -134,20 +134,6 @@ describe("CooldownManager", () => {
     });
   });
 
-  describe("reset", () => {
-    const cfg = { duration: 60, type: CooldownType.USER };
-
-    it("returns true and clears the cooldown when one exists", () => {
-      manager.set("ping", cfg, ctxA);
-      expect(manager.reset("ping", CooldownType.USER, ctxA)).toBe(true);
-      expect(manager.check("ping", cfg, ctxA)).toBeNull();
-    });
-
-    it("returns false when no cooldown exists", () => {
-      expect(manager.reset("ping", CooldownType.USER, ctxA)).toBe(false);
-    });
-  });
-
   describe("resetCommand", () => {
     const cfg = { duration: 60, type: CooldownType.USER };
 

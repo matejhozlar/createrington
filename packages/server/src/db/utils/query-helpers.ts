@@ -28,14 +28,3 @@ export function createNotFoundError(
 export function escapeLike(input: string): string {
   return input.replace(/[%_\\]/g, "\\$&");
 }
-
-/**
- * Extracts the first key-value pair from a criteria object
- * Useful for discriminated union types
- */
-export function getFirstCriteria<T extends Record<string, unknown>>(
-  criteria: T,
-): { key: keyof T; value: T[keyof T] } {
-  const key = Object.keys(criteria)[0] as keyof T;
-  return { key, value: criteria[key] };
-}

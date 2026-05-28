@@ -35,81 +35,7 @@ export const ButtonPresets = {
     },
   },
 
-  common: {
-    /**
-     * Generic confirm button
-     */
-    confirm(customId: string = "confirm"): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId(customId)
-        .setLabel("Confirm")
-        .setStyle(ButtonStyle.Success);
-    },
-
-    /**
-     * Generic cancel button
-     */
-    cancel(customId: string = "cancel"): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId(customId)
-        .setLabel("Cancel")
-        .setStyle(ButtonStyle.Secondary);
-    },
-
-    /**
-     * Generic delete button
-     */
-    delete(customId: string = "delete"): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId(customId)
-        .setLabel("Delete")
-        .setStyle(ButtonStyle.Danger);
-    },
-
-    /**
-     * Generic link button
-     */
-    link(label: string, url: string): ButtonBuilder {
-      return new ButtonBuilder()
-        .setLabel(label)
-        .setStyle(ButtonStyle.Link)
-        .setURL(url);
-    },
-
-    /**
-     * Help/Support button
-     */
-    help(url: string = "https://createrington.com/support"): ButtonBuilder {
-      return new ButtonBuilder()
-        .setLabel("Get Help")
-        .setEmoji("❓")
-        .setStyle(ButtonStyle.Link)
-        .setURL(url);
-    },
-
-    /**
-     * Disabled placeholder button
-     */
-    disabled(label: string): ButtonBuilder {
-      return new ButtonBuilder()
-        .setCustomId("disabled")
-        .setLabel(label)
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(true);
-    },
-  },
-
   links: {
-    /**
-     * Main website link
-     */
-    website(): ButtonBuilder {
-      return new ButtonBuilder()
-        .setLabel("Visit Website")
-        .setStyle(ButtonStyle.Link)
-        .setURL(cfg.website);
-    },
-
     /**
      * Admin panel link
      */
@@ -118,26 +44,6 @@ export const ButtonPresets = {
         .setLabel("Open Admin Panel")
         .setStyle(ButtonStyle.Link)
         .setURL(cfg.adminPanel);
-    },
-
-    /**
-     * CurseForge modpack link
-     */
-    modpack(): ButtonBuilder {
-      return new ButtonBuilder()
-        .setLabel("Open CurseForge")
-        .setStyle(ButtonStyle.Link)
-        .setURL(cfg.modpack);
-    },
-
-    /**
-     * Server map link
-     */
-    map(): ButtonBuilder {
-      return new ButtonBuilder()
-        .setLabel("Open Map")
-        .setStyle(ButtonStyle.Link)
-        .setURL(cfg.map);
     },
   },
 
