@@ -15,6 +15,7 @@ import type { PlaytimeManagerService } from "./playtime/playtime-manager.service
 import type { RoleManagementService } from "./discord/role/role-management.service";
 import type { WebSocketService } from "./websocket";
 import type { PlayerBanService } from "./player/ban";
+import type { PlayerDeletionService } from "./player/deletion";
 import type { StatsImportService } from "./stats-import";
 import type { AchievementService } from "./achievement";
 import type { FaqService } from "./discord/faq";
@@ -410,6 +411,7 @@ export const Services = {
   ROLE_MANAGEMENT_SERVICE: "discord.roleManagementService",
   WEBSOCKET_SERVICE: "http.webSocketService",
   PLAYER_BAN_SERVICE: "player.banService",
+  PLAYER_DELETION_SERVICE: "player.deletionService",
   STATS_IMPORT_SERVICE: "minecraft.statsImportService",
   ACHIEVEMENT_SERVICE: "achievement.achievementService",
   FAQ_SERVICE: "discord.faqService",
@@ -448,6 +450,7 @@ export interface ServiceTypeMap {
   [Services.ROLE_MANAGEMENT_SERVICE]: RoleManagementService;
   [Services.WEBSOCKET_SERVICE]: WebSocketService;
   [Services.PLAYER_BAN_SERVICE]: PlayerBanService;
+  [Services.PLAYER_DELETION_SERVICE]: PlayerDeletionService;
   [Services.STATS_IMPORT_SERVICE]: StatsImportService;
   [Services.ACHIEVEMENT_SERVICE]: AchievementService;
   [Services.FAQ_SERVICE]: FaqService;

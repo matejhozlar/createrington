@@ -1,8 +1,7 @@
 import { Q } from "@/db";
-import { NotFoundError } from "@/db/utils/errors";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { playerDeletionService } from "@/services/player/deletion";
 
 /**
  * Sweeps player data for Discord members who left more than 30 days ago.
@@ -58,23 +57,14 @@ export class MemberCleanupService {
 
       for (const member of expiredMembers) {
         try {
-          try {
-            await Q.player.delete({ minecraftUuid: member.minecraftUuid });
-          } catch (error) {
-            if (!(error instanceof NotFoundError)) throw error;
-          }
-
-          try {
-            await minecraftRcon.whitelistAll(
-              WhitelistAction.REMOVE,
-              member.minecraftUsername,
-            );
-          } catch (error) {
-            logger.error(
-              `Failed to remove ${member.minecraftUsername} from whitelist:`,
-              error,
-            );
-          }
+          await playerDeletionService.delete(
+            { minecraftUuid: member.minecraftUuid },
+            {
+              actor: { type: "system" },
+              reason: "Departed Discord 30+ days ago",
+              ignoreMissing: true,
+            },
+          );
 
           await Q.discord.guild.member.leave.update(member, {
             deletedAt: new Date(),

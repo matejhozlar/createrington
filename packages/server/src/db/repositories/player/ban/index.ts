@@ -1,5 +1,5 @@
 import { db, Q } from "@/db";
-import { DatabaseTable } from "@/generated/db";
+import { DatabaseTable, type DatabaseQueries } from "@/generated/db";
 import type { PlayerBan, BanType } from "@createrington/shared/db";
 import { AdminEdit } from "@/types";
 import { BasePlayerRepository, type PlayerIdentifier } from "../base";
@@ -84,12 +84,19 @@ export class PlayerBanRepository extends BasePlayerRepository {
   }
 
   /**
-   * Issue a permanent ban and hard-delete the player. The returned ban row is
-   * a snapshot from before the cascade and cannot be re-fetched afterward.
-   * Irreversible.
+   * Create a permanent ban record plus its audit row inside an existing
+   * transaction, returning a pre-cascade snapshot of the ban. Does not delete
+   * the player: the caller (PlayerDeletionService) deletes the player in the
+   * same transaction, which cascade-removes this ban row. Rejects if the player
+   * already has an active ban.
    */
-  async issuePermanent(
-    identifier: PlayerIdentifier,
+  async createPermanent(
+    tx: DatabaseQueries,
+    player: {
+      minecraftUuid: string;
+      discordId: string;
+      minecraftUsername: string;
+    },
     data: {
       reason: string;
       serverId?: number;
@@ -98,57 +105,48 @@ export class PlayerBanRepository extends BasePlayerRepository {
     adminDiscordId: string,
     adminUsername: string,
   ): Promise<PlayerBan> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await Q.player.get({ minecraftUuid: uuid });
-
-    const existingBan = await Q.player.ban.getCurrentBan(uuid);
+    const existingBan = await tx.player.ban.getCurrentBan(player.minecraftUuid);
     if (existingBan) {
       throw new Error(
         `Player is already banned (Ban #${existingBan.id}). Use unban first if you want to change ban type.`,
       );
     }
 
-    return await db.inTransaction(async (tx) => {
-      // Create ban record first (will be deleted with player due to CASCADE)
-      const ban = await tx.player.ban.createAndReturn({
-        playerMinecraftUuid: uuid,
-        banType: "permanent" as BanType,
-        reason: data.reason,
-        bannedByDiscordId: adminDiscordId,
-        bannedByUsername: adminUsername,
-        expiresAt: null, // Permanent bans don't expire
-        serverId: data.serverId,
-        metadata: data.metadata || {},
-      });
-
-      await tx.admin.log.action.create({
-        adminDiscordId,
-        adminUsername,
-        actionType: AdminEdit.BAN_PLAYER_PERMANENT,
-        targetPlayerUuid: uuid,
-        targetPlayerName: player.minecraftUsername,
-        tableName: DatabaseTable.PLAYER_BAN.TABLE,
-        fieldName: DatabaseTable.PLAYER_BAN.FIELDS.BAN_TYPE,
-        oldValue: null,
-        newValue: "permanent",
-        reason: data.reason,
-        serverId: data.serverId,
-        metadata: {
-          banId: ban.id,
-          discordId: player.discordId,
-          minecraftUsername: player.minecraftUsername,
-        },
-      });
-
-      // Delete the player - cascades to all related data including the ban record
-      await tx.player.delete({ minecraftUuid: uuid });
-
-      logger.warn(
-        `PERMANENT BAN: Player ${player.minecraftUsername} (${uuid}) permanently banned and deleted by ${adminUsername}. Reason: ${data.reason}`,
-      );
-
-      return ban;
+    const ban = await tx.player.ban.createAndReturn({
+      playerMinecraftUuid: player.minecraftUuid,
+      banType: "permanent" as BanType,
+      reason: data.reason,
+      bannedByDiscordId: adminDiscordId,
+      bannedByUsername: adminUsername,
+      expiresAt: null, // Permanent bans don't expire
+      serverId: data.serverId,
+      metadata: data.metadata || {},
     });
+
+    await tx.admin.log.action.create({
+      adminDiscordId,
+      adminUsername,
+      actionType: AdminEdit.BAN_PLAYER_PERMANENT,
+      targetPlayerUuid: player.minecraftUuid,
+      targetPlayerName: player.minecraftUsername,
+      tableName: DatabaseTable.PLAYER_BAN.TABLE,
+      fieldName: DatabaseTable.PLAYER_BAN.FIELDS.BAN_TYPE,
+      oldValue: null,
+      newValue: "permanent",
+      reason: data.reason,
+      serverId: data.serverId,
+      metadata: {
+        banId: ban.id,
+        discordId: player.discordId,
+        minecraftUsername: player.minecraftUsername,
+      },
+    });
+
+    logger.warn(
+      `PERMANENT BAN: Player ${player.minecraftUsername} (${player.minecraftUuid}) permanently banned by ${adminUsername}. Reason: ${data.reason}`,
+    );
+
+    return ban;
   }
 
   /**

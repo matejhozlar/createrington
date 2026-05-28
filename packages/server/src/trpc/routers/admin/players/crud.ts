@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
+import { playerDeletionService } from "@/services/player/deletion";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
@@ -243,12 +244,14 @@ export const playersRouter = router({
     .mutation(async ({ input, ctx }) => {
       const identifier = parsePlayerId(input.id);
 
-      await playerService.core.adminDelete(
-        identifier,
-        ctx.user.discordId,
-        ctx.user.minecraftUsername,
-        input.reason,
-      );
+      await playerDeletionService.delete(identifier, {
+        actor: {
+          type: "admin",
+          discordId: ctx.user.discordId,
+          username: ctx.user.minecraftUsername,
+        },
+        reason: input.reason,
+      });
 
       return { message: "Player deleted successfully" };
     }),
