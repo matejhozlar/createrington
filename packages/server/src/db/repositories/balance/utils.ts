@@ -86,21 +86,9 @@ export class BalanceUtils {
     return result;
   }
 
-  /** Three-way compare: returns -1, 0, or 1. */
-  static compare(a: bigint, b: bigint): number {
-    if (a < b) return -1;
-    if (a > b) return 1;
-    return 0;
-  }
-
   /** Returns true if adding amountToAdd to currentBalance would exceed MAX_BALANCE. */
   static wouldOverflow(currentBalance: bigint, amountToAdd: number): boolean {
     const amountBigInt = this.toStorage(amountToAdd);
     return currentBalance + amountBigInt > this.MAX_BALANCE_BIG_INT;
-  }
-
-  /** Number of decimal places used in the storage format (always 3). */
-  static getPrecision(): number {
-    return 3;
   }
 }

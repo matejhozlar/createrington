@@ -447,21 +447,6 @@ export class WaitlistRepository {
     }
   }
 
-  /** Mark the "joined Discord" onboarding step as complete */
-  async markJoinedDiscord(discordId: string): Promise<void> {
-    await this.updateProgressStep(discordId, ProgressStep.JOINED_DISCORD);
-  }
-
-  /** Mark the "verified" onboarding step as complete */
-  async markVerified(discordId: string): Promise<void> {
-    await this.updateProgressStep(discordId, ProgressStep.VERIFIED);
-  }
-
-  /** Mark the "registered" onboarding step as complete */
-  async markRegistered(discordId: string): Promise<void> {
-    await this.updateProgressStep(discordId, ProgressStep.REGISTERED);
-  }
-
   /** Mark the "joined Minecraft" onboarding step as complete */
   async markJoinedMinecraft(discordId: string): Promise<void> {
     await this.updateProgressStep(discordId, ProgressStep.JOINED_MINECRAFT);

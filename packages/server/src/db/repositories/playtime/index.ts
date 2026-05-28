@@ -1,19 +1,11 @@
 import { Q, waitlistRepo } from "@/db";
 import type { ServerActivity } from "@/db/queries/player/playtime/daily";
-import type {
-  PlayerHourlyPattern,
-  ServerHeatMap,
-} from "@/db/queries/player/playtime/hourly";
+import type { ServerHeatMap } from "@/db/queries/player/playtime/hourly";
 import type {
   LeaderboardEntry,
   ServerStats,
 } from "@/db/queries/player/playtime/summary";
-import type {
-  PlayerPlaytimeDaily,
-  PlayerPlaytimeHourly,
-  PlayerPlaytimeSummary,
-  PlayerSession,
-} from "@/generated/db";
+import type { PlayerSession } from "@/generated/db";
 import { PlaytimeService } from "@/services/playtime";
 import type {
   SessionEndEvent,
@@ -216,24 +208,6 @@ export class PlaytimeRepository {
     }
   }
 
-  /** The player's open session on the given server, or null. */
-  async getActiveSession(
-    playerMinecraftUuid: string,
-    serverId: number,
-  ): Promise<PlayerSession | null> {
-    try {
-      const sessions = await Q.player.session.findAll({
-        playerMinecraftUuid,
-        serverId,
-        sessionEnd: null,
-      });
-      return sessions[0] || null;
-    } catch (error) {
-      logger.error("Failed to get active session:", error);
-      throw error;
-    }
-  }
-
   /** All currently open sessions, optionally filtered to one server. */
   async getActiveSessions(serverId?: number): Promise<PlayerSession[]> {
     try {
@@ -293,133 +267,6 @@ export class PlaytimeRepository {
       return activeSessions.length;
     } catch (error) {
       logger.error("Failed to end all active sessions:", error);
-      throw error;
-    }
-  }
-
-  /** Summary row, last 30 days of dailies, and hourly pattern, fetched in parallel. */
-  async getPlayerStats(
-    playerMinecraftUuid: string,
-    serverId: number,
-  ): Promise<{
-    summary: PlayerPlaytimeSummary | null;
-    dailyLast30: PlayerPlaytimeDaily[];
-    hourlyPattern: PlayerHourlyPattern[];
-  }> {
-    try {
-      const [summary, dailyLast30, hourlyPattern] = await Promise.all([
-        Q.player.playtime.summary.find({
-          playerMinecraftUuid,
-          serverId,
-        }),
-        Q.player.playtime.daily.findAll(
-          {
-            playerMinecraftUuid,
-            serverId,
-            playDate: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-          },
-          { orderBy: "playDate", orderDirection: "asc" },
-        ),
-        Q.player.playtime.hourly.getPlayerHourlyPattern(
-          playerMinecraftUuid,
-          serverId,
-        ),
-      ]);
-
-      return {
-        summary,
-        dailyLast30,
-        hourlyPattern,
-      };
-    } catch (error) {
-      logger.error("Failed to get player stats:", error);
-      throw error;
-    }
-  }
-
-  /** Daily playtime rows in [startDate, endDate], ordered by date ascending. */
-  async getPlayerDailyRange(
-    playerMinecraftUuid: string,
-    serverId: number,
-    startDate: Date,
-    endDate: Date,
-  ): Promise<PlayerPlaytimeDaily[]> {
-    try {
-      return await Q.player.playtime.daily.findAll(
-        {
-          playerMinecraftUuid,
-          serverId,
-          playDate: { $between: [startDate, endDate] },
-        },
-        { orderBy: "playDate", orderDirection: "asc" },
-      );
-    } catch (error) {
-      logger.error("Failed to get player daily range:", error);
-      throw error;
-    }
-  }
-
-  /** Hourly playtime rows in [startTime, endTime), ordered by hour ascending. */
-  async getPlayerHourlyRange(
-    playerMinecraftUuid: string,
-    serverId: number,
-    startTime: Date,
-    endTime: Date,
-  ): Promise<PlayerPlaytimeHourly[]> {
-    try {
-      return await Q.player.playtime.hourly.findAll(
-        {
-          playerMinecraftUuid,
-          serverId,
-          playHour: { $gte: startTime, $lt: endTime },
-        },
-        { orderBy: "playHour", orderDirection: "asc" },
-      );
-    } catch (error) {
-      logger.error("Failed to get player hourly range:", error);
-      throw error;
-    }
-  }
-
-  /** Recent sessions for a player on a server, newest first; active sessions excluded by default. */
-  async getPlayerSessionHistory(
-    playerMinecraftUuid: string,
-    serverId: number,
-    limit: number = 50,
-    includeActive: boolean = false,
-  ): Promise<PlayerSession[]> {
-    try {
-      return await Q.player.session.findAll(
-        {
-          playerMinecraftUuid,
-          serverId,
-          ...(includeActive ? {} : { sessionEnd: { $ne: null } }),
-        },
-        { limit, orderBy: "sessionStart", orderDirection: "desc" },
-      );
-    } catch (error) {
-      logger.error("Failed to get player session history:", error);
-      throw error;
-    }
-  }
-
-  /** Sessions at least minSeconds long, ordered by length descending. */
-  async getLongSessions(
-    playerMinecraftUuid: string,
-    serverId: number,
-    minSeconds: bigint,
-  ): Promise<PlayerSession[]> {
-    try {
-      return await Q.player.session.findAll(
-        {
-          playerMinecraftUuid,
-          serverId,
-          secondsPlayed: { $gte: minSeconds },
-        },
-        { orderBy: "secondsPlayed", orderDirection: "desc" },
-      );
-    } catch (error) {
-      logger.error("Failed to get long sessions:", error);
       throw error;
     }
   }

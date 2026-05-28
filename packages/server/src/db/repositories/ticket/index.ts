@@ -1,16 +1,10 @@
-import {
-  TicketStatus,
-  TicketType,
-  TicketUserAction,
-} from "@/services/discord/tickets";
+import { TicketStatus, TicketUserAction } from "@/services/discord/tickets";
 import type {
   Ticket,
   TicketAction,
   TicketActionCreate,
   TicketCreate,
-  TicketFilters,
 } from "@/generated/db";
-import { DatabaseTable } from "@/generated/db";
 import { Q } from "@/db";
 
 interface TicketCloseData {
@@ -181,55 +175,6 @@ export class TicketRepository {
     return await Q.ticket.action.createAndReturn(data);
   }
 
-  /** Full audit trail for a ticket, ordered oldest first. */
-  async getTicketActions(ticketId: number): Promise<TicketAction[]> {
-    return await Q.ticket.action.findAll(
-      { id: ticketId },
-      {
-        orderBy: DatabaseTable.TICKET_ACTION.CAMEL_FIELDS.PERFORMED_AT,
-        orderDirection: "asc",
-      },
-    );
-  }
-
-  /** Open tickets created by the user. */
-  async getUserOpen(discordId: string): Promise<Ticket[]> {
-    return await Q.ticket.findAll({
-      creatorDiscordId: discordId,
-      status: TicketStatus.OPEN,
-    });
-  }
-
-  /** All tickets created by the user, with optional status/type filters and ordering. */
-  async getUser(
-    discordId: string,
-    options?: {
-      status?: TicketStatus;
-      type?: TicketType;
-      limit?: number;
-      orderBy?: "createdAt" | "ticketNumber";
-      orderDirection?: "asc" | "desc";
-    },
-  ): Promise<Ticket[]> {
-    const filters: Partial<TicketFilters> = {
-      creatorDiscordId: discordId,
-    };
-
-    if (options?.status) {
-      filters.status = options.status;
-    }
-
-    if (options?.type) {
-      filters.type = options.type;
-    }
-
-    return await Q.ticket.findAll(filters, {
-      limit: options?.limit,
-      orderBy: options?.orderBy,
-      orderDirection: options?.orderDirection,
-    });
-  }
-
   /** True if the user has at least one OPEN ticket. */
   async hasOpen(discordId: string): Promise<boolean> {
     const count = await Q.ticket.count({
@@ -238,83 +183,5 @@ export class TicketRepository {
     });
 
     return count > 0;
-  }
-
-  /** Number of OPEN tickets for the user. */
-  async countUserOpen(discordId: string): Promise<number> {
-    return await Q.ticket.count({
-      creatorDiscordId: discordId,
-      status: TicketStatus.OPEN,
-    });
-  }
-
-  /** All OPEN tickets across users, newest first. */
-  async getAllOpen(): Promise<Ticket[]> {
-    return await Q.ticket.findAll(
-      { status: TicketStatus.OPEN },
-      {
-        orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /** All tickets matching a status, newest first. */
-  async getByStatus(status: TicketStatus): Promise<Ticket[]> {
-    return await Q.ticket.findAll(
-      { status },
-      {
-        orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /** All tickets matching a type, newest first. */
-  async getByType(type: TicketType): Promise<Ticket[]> {
-    return await Q.ticket.findAll(
-      { type },
-      {
-        orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-        orderDirection: "desc",
-      },
-    );
-  }
-
-  /** Global ticket counts broken down by status and by type. */
-  async getStats(): Promise<{
-    total: number;
-    open: number;
-    closed: number;
-    deleted: number;
-    byType: Record<TicketType, number>;
-  }> {
-    const total = await Q.ticket.count();
-    const open = await Q.ticket.count({ status: TicketStatus.OPEN });
-    const closed = await Q.ticket.count({ status: TicketStatus.CLOSED });
-    const deleted = await Q.ticket.count({ status: TicketStatus.DELETED });
-
-    const byType: Record<TicketType, number> = {
-      [TicketType.GENERAL]: await Q.ticket.count({ type: TicketType.GENERAL }),
-      [TicketType.REPORT]: await Q.ticket.count({ type: TicketType.REPORT }),
-    };
-
-    return {
-      total,
-      open,
-      closed,
-      deleted,
-      byType,
-    };
-  }
-
-  /** Paginated list of recent tickets, newest first. */
-  async getRecent(limit: number = 10, offset: number = 0): Promise<Ticket[]> {
-    return await Q.ticket.getAll({
-      limit,
-      offset,
-      orderBy: DatabaseTable.TICKET.CAMEL_FIELDS.CREATED_AT,
-      orderDirection: "desc",
-    });
   }
 }

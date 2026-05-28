@@ -114,34 +114,6 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
   }
 
   /**
-   * Get all active (non-unbanned, non-expired) bans for a player
-   *
-   * @param playerMinecraftUuid - Player Minecraft UUID
-   * @returns Promise resolving to array of active bans
-   */
-  async getActiveBans(playerMinecraftUuid: string): Promise<PlayerBan[]> {
-    const query = `
-      SELECT * FROM ${this.table}
-      WHERE player_minecraft_uuid = $1
-        AND unbanned = false
-        AND (
-          expires_at IS NULL OR
-          expires_at > NOW()
-        )
-      ORDER BY banned_at DESC`;
-
-    try {
-      const result = await this.db.query<PlayerBan>(query, [
-        playerMinecraftUuid,
-      ]);
-      return this.mapRowsToEntities(result.rows);
-    } catch (error) {
-      logger.error("Failed to get active bans:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Check if a player is currently banned
    *
    * @param playerMinecraftUuid - Player Minecraft UUID
