@@ -4,9 +4,10 @@ A NeoForge 1.21.1 Minecraft server for local development, so game-server-depende
 backend logic can be tested without touching production. Built on
 [`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server).
 
-> **Status:** the server boots with the dev mods auto-installed. Their backend
-> config (base URL + shared `MOD_JWT_SECRET`) is wired up in a follow-up; until
-> then the mods load but stay disconnected from the backend.
+> **Status:** the server boots with the dev mods auto-installed and pre-pointed
+> at the host backend (`http://host.docker.internal:5001`). The shared
+> `MOD_JWT_SECRET` matches the mods' default, so no per-developer setup is
+> needed once the backend is running.
 
 ## Modpack
 
@@ -14,12 +15,26 @@ backend logic can be tested without touching production. Built on
 
 - `createrington-development-<version>.zip` — import this directly into the
   CurseForge app (Create Custom Profile -> Import) to get the dev client.
-- `manifest.json` / `modlist.html` — the extracted manifest, checked in so the
-  mod set is reviewable and diffable in git.
+- `manifest.json` / `modlist.html` / `overrides/` — the extracted pack, checked
+  in so the mod set is reviewable and diffable in git. `overrides/servers.dat`
+  pre-adds the dev server to the client's multiplayer list on import.
+- `curseforge-files.txt` — the `<slug>:<fileID>` list the server container uses
+  to auto-download the mods (mirrors `manifest.json`).
 
-The pack targets NeoForge 21.1.222 / MC 1.21.1 and currently includes CRNet,
-Create, PresenceAPI, and Createrington Currency. Installing these mods on the
-server (and wiring their backend config) is the deferred follow-up noted above.
+The pack targets NeoForge 21.1.222 / MC 1.21.1 and includes CRNet, Create,
+PresenceAPI, and Createrington Currency.
+
+## Mod configuration
+
+The server mods read their config from `mc/config/` (mounted into the
+container's `/data/config`). The Createrington mod configs are pre-baked there
+so the mods point at the host backend out of the box:
+
+- `apiBaseUrl` / `apiUrl` -> `http://host.docker.internal:5001`
+- `jwtSecret` -> matches the backend's dev `MOD_JWT_SECRET`
+
+Only those two files are tracked; every other mod's config is generated into
+this directory at runtime and git-ignored.
 
 ## Usage
 

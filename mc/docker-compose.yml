@@ -28,6 +28,11 @@ services:
     volumes:
       - ./data:/data
       - ./modpack:/modpack:ro
+      # Pre-baked mod config so the dev mods point at the host backend out of
+      # the box (mods default to 127.0.0.1:5000; the backend is on host:5001).
+      # Mounted as a directory so the mods' config library can rewrite files;
+      # only the Createrington mod configs are tracked (see config/.gitignore).
+      - ./config:/data/config
     healthcheck:
       test: ["CMD", "mc-health"]
       start_period: 5m

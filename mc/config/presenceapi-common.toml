@@ -1,0 +1,26 @@
+#PresenceAPI Configuration
+[api]
+	#The base URL of the backend API (e.g. http://127.0.0.1:5000). Requires server restart to take effect
+	apiUrl = "http://host.docker.internal:5001"
+	#Secret key used to sign JWT tokens for API authentication. Requires server restart to take effect
+	jwtSecret = "CHANGE-ME-must-be-at-least-32-chars"
+	#Optional server identifier to include in all requests (useful for multi-server setups)
+	serverId = "1"
+	#Enable or disable presence tracking system. Requires server restart to take effect
+	enabled = true
+	#Interval in minutes between heartbeat syncs (sends full player list to backend). Set to 0 to disable. Requires server restart to take effect
+	# Default: 5
+	# Range: 0 ~ 60
+	heartbeatIntervalMinutes = 5
+
+#Player Data Configuration
+[data]
+	#Include the dimension the player is in
+	dimension = true
+	#Include the player's coordinates
+	position = true
+
+#Logging Configuration
+[logging]
+	#Log all outgoing API requests
+	logRequests = true
