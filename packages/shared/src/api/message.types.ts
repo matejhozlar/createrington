@@ -61,15 +61,3 @@ export interface SendMessageResponse {
   data: SendMessageData;
   message: string;
 }
-
-/**
- * Error response for message endpoints
- */
-export interface MessageErrorResponse {
-  success: false;
-  error: {
-    message: string;
-    statusCode: number;
-    stack?: string;
-  };
-}

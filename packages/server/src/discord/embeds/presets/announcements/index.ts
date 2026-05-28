@@ -127,22 +127,6 @@ export const AnnouncementEmbedPresets = {
     return embed;
   },
 
-  /** Creates a warning embed sent at intervals before scheduled maintenance begins */
-  maintenanceWarning(data: { startsAt: Date; minutesBefore: number }) {
-    return createEmbed()
-      .title("⚠️ Maintenance Starting Soon")
-      .description(
-        `Server maintenance begins ${formatDiscordTimestamp(data.startsAt, "R")}`,
-      )
-      .color(EmbedColors.Warning)
-      .field(
-        "Time Remaining",
-        `${data.minutesBefore} minute${data.minutesBefore !== 1 ? "s" : ""}`,
-      )
-      .footer("Players will be kicked when maintenance begins.")
-      .timestamp();
-  },
-
   /** Creates a maintenance/update announcement embed with start time, duration, and expected end */
   maintenance(data: MaintenanceData) {
     const cfg = MAINTENANCE_CONFIG[data.type];
