@@ -18,6 +18,7 @@ import { OverviewTab } from "./components/tabs/OverviewTab";
 import { SessionsTab } from "./components/tabs/SessionsTab";
 import { AnalyticsTab } from "./components/tabs/AnalyticsTab";
 import { MaintenanceToggle } from "./components/MaintenanceToggle";
+import { ServerManagement } from "./components/ServerManagement";
 
 export function AdminServerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -96,6 +97,8 @@ export function AdminServerDetail() {
         />
 
         <MaintenanceToggle serverId={serverId} isMaintenance={isMaintenance} />
+
+        <ServerManagement serverId={serverId} isMaintenance={isMaintenance} />
 
         <ServerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 

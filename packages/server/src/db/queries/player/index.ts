@@ -6,10 +6,38 @@ import { PlayerBaseQueries } from "@/generated/db/player.queries";
  *
  * - Inherits standard CRUD from PlayerBaseQueries
  * - Adds registration analytics (getRegistrationsByPeriod)
+ * - Adds whitelist entry generation (getWhitelistEntries)
  */
 export class PlayerQueries extends PlayerBaseQueries {
   constructor(db: Pool | PoolClient) {
     super(db);
+  }
+
+  /**
+   * Get whitelist entries for every registered player without an active ban,
+   * shaped to match Minecraft's whitelist.json format.
+   *
+   * @returns Array of { uuid, name }, ordered by username
+   */
+  async getWhitelistEntries(): Promise<Array<{ uuid: string; name: string }>> {
+    const query = `
+      SELECT minecraft_uuid AS uuid, minecraft_username AS name
+      FROM ${this.table}
+      WHERE minecraft_uuid NOT IN (
+        SELECT player_minecraft_uuid
+        FROM player_ban
+        WHERE unbanned = false
+          AND (expires_at IS NULL OR expires_at > NOW())
+      )
+      ORDER BY minecraft_username`;
+
+    try {
+      const result = await this.db.query<{ uuid: string; name: string }>(query);
+      return result.rows;
+    } catch (error) {
+      logger.error("Failed to get whitelist entries:", error);
+      throw error;
+    }
   }
 
   /**
