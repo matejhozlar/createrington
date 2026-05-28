@@ -13,6 +13,7 @@ import renderRoutes from "./render/render.routes";
 import chunksRoutes from "./mod/chunks/chunks.routes";
 import trainRoutes from "./mod/trains/trains.routes";
 import internalPresenceRoutes from "./internal/presence/presence.routes";
+import internalSsoExchangeRoutes from "./internal/sso-exchange/sso-exchange.routes";
 import adminChatRoutes from "./admin-chat/admin-chat.routes";
 
 /** Mounts all feature route modules onto the Express app under the /api prefix */
@@ -35,6 +36,12 @@ export function registerRoutes(app: Express): void {
   if (config.sync.secret) {
     app.use(`${API_PREFIX}/internal/presence`, internalPresenceRoutes);
     logger.info("Internal sync routes registered");
+  }
+
+  // Internal skin-api routes (only active when the shared secret is set)
+  if (config.internal.secret) {
+    app.use(`${API_PREFIX}/internal/sso-exchange`, internalSsoExchangeRoutes);
+    logger.info("Internal skin-api routes registered");
   }
 
   // Admin chat proxy, only active when the upstream URL is configured.

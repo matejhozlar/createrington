@@ -104,6 +104,10 @@ const config = {
           .split(",")
           .map((s) => s.trim())
           .filter(Boolean),
+        codeExchangeOrigins: (env.SSO_CODE_EXCHANGE_ORIGINS ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
       },
       allowedServerIps: {
         local: env.LOCAL_SERVER_IP_ADDRESS,
@@ -261,6 +265,10 @@ const config = {
   sync: {
     targetUrl: env.PLAYTIME_SYNC_TARGET_URL,
     secret: env.PLAYTIME_SYNC_SECRET,
+  },
+
+  internal: {
+    secret: env.INTERNAL_API_SHARED_SECRET ?? "",
   },
 
   ai: {

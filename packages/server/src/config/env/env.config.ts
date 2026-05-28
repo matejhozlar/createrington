@@ -140,6 +140,20 @@ const envSchema = z
     // with credentials. Doubles as the SSO return-to allowlist: the main
     // website is included automatically via config.meta.links.website.
     SSO_CORS_ORIGINS: z.string().default(""),
+    // Comma-separated list of allowed SSO origins that complete login via a
+    // one-time code in the redirect (skin-api) instead of the parent-domain
+    // access cookie. These origins are automatically added to the return-to
+    // allowlist, so they do not also need to be in SSO_CORS_ORIGINS.
+    SSO_CODE_EXCHANGE_ORIGINS: z.string().default(""),
+    // Shared secret authenticating server-to-server calls from skin-api to
+    // /api/internal/* (sso-exchange, player-exists). Distinct from
+    // PLAYTIME_SYNC_SECRET: different trust boundary (public-facing sibling
+    // product, not the dev/prod playtime relay). Internal skin-api routes
+    // only mount when this is set.
+    INTERNAL_API_SHARED_SECRET: z
+      .string()
+      .min(32, "Internal API shared secret must be at least 32 characters")
+      .optional(),
     // Discord ID of the sole owner; gates the owner-only admin management
     // panel. Must be a Discord snowflake (17–20 digits).
     OWNER_DISCORD_ID: z
