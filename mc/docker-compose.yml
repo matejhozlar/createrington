@@ -1,0 +1,30 @@
+services:
+  minecraft:
+    image: itzg/minecraft-server:java21
+    container_name: createrington_mc
+    tty: true
+    stdin_open: true
+    ports:
+      - "25565:25565"
+      - "${MC_RCON_PORT:-25575}:25575"
+    environment:
+      EULA: "TRUE"
+      TYPE: "NEOFORGE"
+      VERSION: "1.21.1"
+      NEOFORGE_VERSION: "${MC_NEOFORGE_VERSION:-21.1.222}"
+      MEMORY: "${MC_MEMORY:-4G}"
+      # Online mode mirrors production (real account auth + UUIDs). Set to
+      # FALSE locally if you need to join without a premium account.
+      ONLINE_MODE: "${MC_ONLINE_MODE:-TRUE}"
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "${MC_RCON_PASSWORD:-dev-rcon}"
+      RCON_PORT: "25575"
+      OVERRIDE_SERVER_PROPERTIES: "true"
+    volumes:
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "mc-health"]
+      start_period: 5m
+      interval: 30s
+      timeout: 10s
+      retries: 5

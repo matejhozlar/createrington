@@ -30,6 +30,7 @@ Thumbs.db
 
 # Misc
 postgres_data/
+mc/data/
 *.tgz
 *.zip
 *.rar

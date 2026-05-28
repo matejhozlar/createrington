@@ -1,0 +1,58 @@
+# Local Minecraft server
+
+A NeoForge 1.21.1 Minecraft server for local development, so game-server-dependent
+backend logic can be tested without touching production. Built on
+[`itzg/minecraft-server`](https://github.com/itzg/docker-minecraft-server).
+
+> **Status:** this ships the base server only. The Createrington integration mods
+> and their config (backend URL + shared `MOD_JWT_SECRET`) are wired up in a
+> follow-up. Until then the server runs vanilla NeoForge.
+
+## Usage
+
+```bash
+pnpm mc:up        # start the server (downloads NeoForge on first run)
+pnpm mc:logs      # follow the server logs
+pnpm mc:console   # open an interactive RCON console (e.g. type: list)
+pnpm mc:cmd list  # run a single console command, e.g. pnpm mc:cmd "say hi"
+pnpm mc:down      # stop and remove the container (world is kept)
+pnpm mc:reset     # stop and delete the world/data for a fresh start
+```
+
+To manage the database and Minecraft server together:
+
+```bash
+pnpm docker:up     # start both the Postgres and Minecraft containers
+pnpm docker:down   # stop both
+pnpm docker:logs   # follow both sets of logs
+pnpm docker:reset  # reset the database (migrate + seed) and the MC world
+```
+
+The server is reachable at `localhost:25565`. First boot takes a few minutes
+while NeoForge and the server jar download.
+
+## Persistence
+
+World and server data live in `mc/data/` (bind-mounted into the container and
+git-ignored), so they survive `pnpm mc:down` and container restarts. Use
+`pnpm mc:reset` to wipe and regenerate from scratch.
+
+## Configuration
+
+All settings are environment variables read by `docker-compose.yml`, with safe
+defaults (see `.env.example`). Secrets are injected via Infisical:
+
+```bash
+infisical run -- pnpm mc:up
+```
+
+| Variable              | Default     | Purpose                                    |
+| --------------------- | ----------- | ------------------------------------------ |
+| `MC_MEMORY`           | `4G`        | JVM heap allocated to the server           |
+| `MC_NEOFORGE_VERSION` | `21.1.222`  | NeoForge build (matches the mods' target)  |
+| `MC_RCON_PASSWORD`    | `dev-rcon`  | RCON password                              |
+| `MC_RCON_PORT`        | `25575`     | Host port mapped to the container's RCON   |
+| `MC_ONLINE_MODE`      | `TRUE`      | Online auth (mirrors prod); `FALSE` to skip |
+
+To let the backend's file operations (maintenance mode, whitelist resync) target
+this server locally, set `MC_SERVER_LOCAL_PATH=./mc/data` in your root `.env`.
