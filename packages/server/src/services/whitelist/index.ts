@@ -4,7 +4,6 @@ import {
   writeFile,
   deleteFile,
 } from "@/services/mc-server/file-ops";
-import { maintenanceService } from "@/services/maintenance";
 import { Q } from "@/db";
 
 const WHITELIST_FILE = "whitelist.json";
@@ -17,9 +16,9 @@ const WHITELIST_FILE = "whitelist.json";
  * local filesystem path (dev) or SFTP (production), then reloads the whitelist
  * over RCON.
  *
- * Resync is refused while a server is in maintenance mode, because maintenance
+ * Callers must not invoke this while a server is in maintenance mode: maintenance
  * replaces whitelist.json with an empty list and stashes the real one in
- * whitelist.json.bak; rewriting it then would clobber that state.
+ * whitelist.json.bak, so rewriting it then would clobber that state.
  */
 export class WhitelistService {
   /**
@@ -33,12 +32,6 @@ export class WhitelistService {
     if (!isFileOpsAllowed()) {
       throw new Error(
         "Whitelist resync is not available (no local path or SFTP access)",
-      );
-    }
-
-    if (maintenanceService.isInMaintenance(serverId)) {
-      throw new Error(
-        "Cannot resync the whitelist while the server is in maintenance mode",
       );
     }
 
