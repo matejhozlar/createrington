@@ -9,14 +9,14 @@ import type { ChatActionRecord } from "./actions";
  */
 export const ADMIN_CHAT_MODELS = [
   "claude-sonnet-4-6",
-  "claude-opus-4-7",
+  "claude-opus-4-8",
 ] as const;
 export type AdminChatModel = (typeof ADMIN_CHAT_MODELS)[number];
 export const DEFAULT_ADMIN_CHAT_MODEL: AdminChatModel = "claude-sonnet-4-6";
 
 export const ADMIN_CHAT_MODEL_LABELS: Record<AdminChatModel, string> = {
   "claude-sonnet-4-6": "Sonnet 4.6",
-  "claude-opus-4-7": "Opus 4.7",
+  "claude-opus-4-8": "Opus 4.8",
 };
 
 export function isAdminChatModel(value: unknown): value is AdminChatModel {
