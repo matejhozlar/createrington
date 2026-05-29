@@ -136,7 +136,7 @@ export function PlayerListPanel({
   return (
     <div
       className={cn(
-        "fixed inset-y-0 left-0 z-[20] flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground",
+        "fixed inset-y-0 left-0 z-[20] flex h-full flex-col overflow-hidden border-r border-border bg-sidebar text-sidebar-foreground",
         "transition-transform duration-300 ease-out",
         sidebarState === "collapsed"
           ? "w-[var(--sidebar-width-icon)]"
@@ -148,10 +148,10 @@ export function PlayerListPanel({
       {/* Header row */}
       <div
         className={cn(
-          "flex items-center border-b border-sidebar-border",
+          "flex min-h-20 items-center border-b border-border",
           isCollapsed
-            ? "justify-center px-0 py-3"
-            : "justify-between px-4 py-3",
+            ? "justify-center px-0 py-4"
+            : "justify-between px-6 py-4",
         )}
       >
         {!isCollapsed && (

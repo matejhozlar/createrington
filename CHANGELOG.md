@@ -1,3 +1,30 @@
+## v1.25.0 (2026-05-29)
+
+### @createrington/server (1.24.0 → 1.25.0)
+- [add] Add skin-api SSO code-exchange bridge: skin-api can now complete Discord OAuth via a one-time code flow instead of shared cookies; the auth callback issues a short-lived code (60s TTL, single-use) for configured `SSO_CODE_EXCHANGE_ORIGINS`, and a new `/api/internal/sso-exchange` endpoint lets skin-api redeem it for the player identity payload, authenticated via a dedicated `X-Internal-Secret` header with timing-safe comparison
+- [add] Centralize player deletion into `PlayerDeletionService`: a single service now owns the DB delete, audit log row, RCON whitelist removal, and a post-deletion hook registry, replacing six independent deletion paths (admin manual, permanent ban, user self-delete, ghost cleanup, inactivity removal, member-leave cleanup) that each had their own inline logic
+- [add] Add admin whitelist resync server action: new `admin.servers.resyncWhitelist` tRPC mutation regenerates a server's whitelist.json from non-banned registered players and reloads it via RCON, with a new `getWhitelistEntries` player query backing it
+- [refactor] Remove dead code across queries, repositories, services, and utilities: deleted unused query classes (player/ban, player/strike, server/ally, server/forceload), repository methods (balance, playtime, ticket, waitlist, player/core), services (curseforge, pool-monitor), Discord utilities (rate-limiter, cooldown-manager, confirmation flows, message-helpers), typed-response middleware, format utils, and their associated tests
+- [refactor] Switch admin chat Opus opt-up model from 4.7 to 4.8
+- [chore] Remove unused `uuid` dependency
+
+### @createrington/client (0.2.31 → 0.2.32)
+- [add] Add server Management tab with whitelist resync action card: the admin server detail page now has a Management tab with a confirmation dialog that regenerates the server whitelist from the database
+- [refactor] Align online players panel header with chat header: panel header now uses matching border, padding, and min-height
+- [refactor] Reuse shared `DiscordIcon` component in login prompt and nav Discord login, removing two inline SVG duplicates
+- [refactor] Remove orphaned components and dead utility code: deleted MentionPicker, PartyExpandedRow, OrderBook, CopyBlock, PackCard, ComingSoon page, contexts barrel export, and unused utils
+- [refactor] Switch admin chat Opus opt-up model from 4.7 to 4.8
+- [chore] Remove unused `@trpc/client` and `motion` dependencies
+
+### @createrington/shared (1.1.6 → 1.1.7)
+- [remove] Remove dead exported types: `MessageErrorResponse` from message types, `DateToString` from shared types, and the entire `api/utils.ts` module (Serialize, Deserialize, ApiContract, etc.)
+
+### Root
+- [refactor] Consolidate `db/` and new `mc/` compose directories under `docker/`: all database Docker scripts now reference `docker/db/` instead of `db/`
+- [add] Add local NeoForge Minecraft server for development: `docker/mc/` provides a pre-configured NeoForge 1.21.1 server with auto-installed dev mods and backend connectivity; new npm scripts (`mc:start`, `mc:up`, `mc:console`, `mc:down`, `mc:reset`, `mc:destroy`, `docker:up/down/logs/reset/destroy`) manage the server lifecycle with an interactive RCON console
+- [chore] Add CONTRIBUTING guide with license and contribution terms section
+- [chore] Add post-release script for merging main back into dev
+
 ## v1.24.0 (2026-05-27)
 
 ### @createrington/server (1.23.2 → 1.24.0)

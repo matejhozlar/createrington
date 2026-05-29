@@ -1,6 +1,6 @@
 import { Q } from "@/db";
 import { getServiceSync, Services } from "@/services";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { playerDeletionService } from "@/services/player/deletion";
 
 /**
  * Minimal warning shape needed for removal. Compatible with both
@@ -20,8 +20,8 @@ export interface WarningToRemove {
  *
  * 1. Marks the warning row as removed (must happen first, see below)
  * 2. Kicks the Discord guild member if they're still present
- * 3. Removes the player from all Minecraft server whitelists via RCON
- * 4. Deletes the player record (cascades to the warning row)
+ * 3. Deletes the player and removes them from all Minecraft whitelists via
+ *    the deletion service (cascades to the warning row)
  *
  * Step 1 runs before step 2 so the `guildMemberRemove` event handler
  * (`leave-notification.ts`) can reliably detect an inactivity-driven
@@ -69,21 +69,13 @@ export async function removeInactiveWarning(
   }
 
   try {
-    await minecraftRcon.whitelistAll(
-      WhitelistAction.REMOVE,
-      warning.minecraftUsername,
+    await playerDeletionService.delete(
+      { minecraftUuid: warning.playerMinecraftUuid },
+      {
+        actor: { type: "system" },
+        reason,
+      },
     );
-  } catch (error) {
-    logger.error(
-      `Failed to remove ${warning.minecraftUsername} from whitelist:`,
-      error,
-    );
-  }
-
-  try {
-    await Q.player.delete({
-      minecraftUuid: warning.playerMinecraftUuid,
-    });
   } catch (error) {
     // Rollback the markRemoved set above so the warning stays retryable
     // by findExpiredWarnings and the leave-notification handler doesn't

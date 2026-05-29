@@ -36,16 +36,6 @@ export interface CurseForgeSearchResult {
   inModpack: boolean;
 }
 
-export interface CurseForgeModDetail {
-  id: number;
-  name: string;
-  slug: string;
-  url: string;
-  summary: string;
-  thumbnailUrl?: string;
-  downloadCount: number;
-}
-
 export interface CurseForgeModFile {
   id: number;
   displayName: string;
@@ -64,13 +54,6 @@ export interface ResolvedDependency {
   thumbnailUrl?: string;
   inPack: boolean;
   bestFile: { id: number; fileName: string } | null;
-}
-
-export interface RemovableDep {
-  modId: number;
-  modName: string;
-  safe: boolean;
-  neededBy: string[];
 }
 
 /**
@@ -127,46 +110,6 @@ export async function searchMods(
     thumbnailUrl: m.logo?.thumbnailUrl,
     inModpack: modpackModIds.has(m.id),
   }));
-}
-
-/**
- * Fetch detailed metadata for a single mod by its CurseForge project ID
- *
- * @param modId - CurseForge project ID of the mod
- * @returns Mod detail including summary, download count, and thumbnail
- */
-export async function getMod(modId: number): Promise<CurseForgeModDetail> {
-  ensureApiKey();
-
-  const res = await fetch(`${CURSEFORGE_API}/v1/mods/${modId}`, {
-    headers: cfHeaders(),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge getMod failed (${res.status}): ${text}`);
-  }
-
-  const body = (await res.json()) as {
-    data: {
-      id: number;
-      name: string;
-      slug: string;
-      summary: string;
-      downloadCount: number;
-      links: { websiteUrl: string };
-      logo?: { thumbnailUrl: string };
-    };
-  };
-
-  return {
-    id: body.data.id,
-    name: body.data.name,
-    slug: body.data.slug,
-    url: body.data.links.websiteUrl,
-    summary: body.data.summary,
-    thumbnailUrl: body.data.logo?.thumbnailUrl,
-    downloadCount: body.data.downloadCount,
-  };
 }
 
 /**

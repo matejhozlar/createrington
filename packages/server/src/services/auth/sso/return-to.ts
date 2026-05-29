@@ -20,6 +20,7 @@ function buildAllowedOrigins(): Set<string> {
   const raw = [
     config.meta.links.website,
     ...config.app.auth.sso.corsOrigins,
+    ...config.app.auth.sso.codeExchangeOrigins,
   ].filter(Boolean);
 
   const origins = new Set<string>();

@@ -41,22 +41,3 @@ export function getServiceSync<K extends ServiceKey>(
 export function isServiceReady(key: ServiceKey): boolean {
   return container.getState(key) === "ready";
 }
-
-/**
- * Wait for a service to be ready
- */
-export async function waitForService<K extends ServiceKey>(
-  key: K,
-  timeoutMs: number = 30000,
-): Promise<ServiceTypeMap[K]> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
-    if (isServiceReady(key)) {
-      return container.get<ServiceTypeMap[K]>(key);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  throw new Error(`Service ${key} did not become ready within ${timeoutMs}ms`);
-}

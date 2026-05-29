@@ -1,7 +1,10 @@
 import { Q } from "@/db";
 import { ConflictError, NotFoundError } from "@/app/middleware/error-handler";
 import { getServiceSync, Services } from "@/services";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import {
+  playerDeletionService,
+  type DeletionActor,
+} from "@/services/player/deletion";
 
 export interface GhostMember {
   discordId: string;
@@ -165,7 +168,10 @@ export class GhostMemberService {
    * Throws if the user is no longer a ghost (rejoined Discord between
    * dialog open and confirm click), or if the player record is missing.
    */
-  async remove(discordId: string): Promise<{
+  async remove(
+    discordId: string,
+    actor: DeletionActor,
+  ): Promise<{
     minecraftUuid: string;
     minecraftUsername: string;
   }> {
@@ -181,19 +187,14 @@ export class GhostMemberService {
       throw new NotFoundError("Ghost not found in cache");
     }
 
-    try {
-      await minecraftRcon.whitelistAll(
-        WhitelistAction.REMOVE,
-        ghost.minecraftUsername,
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to remove ${ghost.minecraftUsername} from whitelist:`,
-        error,
-      );
-    }
-
-    await Q.player.delete({ minecraftUuid: ghost.minecraftUuid });
+    await playerDeletionService.delete(
+      { minecraftUuid: ghost.minecraftUuid },
+      {
+        actor,
+        reason: "Removed via ghost-member tool (missing from Discord)",
+        writeAudit: false,
+      },
+    );
 
     this.cache.delete(discordId);
 

@@ -3,7 +3,6 @@ import {
   formatCriteria,
   createNotFoundError,
   escapeLike,
-  getFirstCriteria,
 } from "@/db/utils/query-helpers";
 import { NotFoundError } from "@/db/utils/errors";
 
@@ -60,20 +59,5 @@ describe("escapeLike", () => {
 
   it("returns an empty string unchanged", () => {
     expect(escapeLike("")).toBe("");
-  });
-});
-
-describe("getFirstCriteria", () => {
-  it("returns the first key-value pair (insertion order)", () => {
-    expect(getFirstCriteria({ discordId: "123", username: "alice" })).toEqual({
-      key: "discordId",
-      value: "123",
-    });
-  });
-
-  it("preserves the value's runtime type", () => {
-    const result = getFirstCriteria({ count: 42, name: "x" });
-    expect(result.key).toBe("count");
-    expect(result.value).toBe(42);
   });
 });

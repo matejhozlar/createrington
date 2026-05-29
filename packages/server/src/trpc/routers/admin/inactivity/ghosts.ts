@@ -127,7 +127,11 @@ export const ghostsRouter = router({
 
       let result: { minecraftUuid: string; minecraftUsername: string };
       try {
-        result = await service.remove(input.discordId);
+        result = await service.remove(input.discordId, {
+          type: "admin",
+          discordId: ctx.user.discordId,
+          username: ctx.user.minecraftUsername,
+        });
       } catch (error) {
         rethrowTrpc(error);
       }

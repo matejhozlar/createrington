@@ -46,7 +46,7 @@ const pageContextSchema = z
 
 // Models the admin can pin a chat session to, must stay in sync with the
 // claude-automation allowlist in `chat.routes.ts`.
-const ADMIN_CHAT_MODELS = ["claude-sonnet-4-6", "claude-opus-4-7"] as const;
+const ADMIN_CHAT_MODELS = ["claude-sonnet-4-6", "claude-opus-4-8"] as const;
 
 const startBodySchema = z.object({
   pageContext: pageContextSchema.optional(),

@@ -1,7 +1,7 @@
 import { Q } from "@/db";
 import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
-import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { playerDeletionService } from "@/services/player/deletion";
 import {
   type ButtonInteraction,
   type GuildMember,
@@ -123,20 +123,17 @@ async function handleDeleteNow(
       return;
     }
 
-    await Q.player.delete({ minecraftUuid: departed.minecraftUuid });
-
-    try {
-      await minecraftRcon.whitelist(
-        1,
-        WhitelistAction.REMOVE,
-        departed.minecraftUsername,
-      );
-    } catch (error) {
-      logger.error(
-        `Failed to remove ${departed.minecraftUsername} from whitelist:`,
-        error,
-      );
-    }
+    await playerDeletionService.delete(
+      { minecraftUuid: departed.minecraftUuid },
+      {
+        actor: {
+          type: "admin",
+          discordId: interaction.user.id,
+          username: interaction.user.username,
+        },
+        reason: "Departed member deleted via admin button",
+      },
+    );
 
     await Q.discord.guild.member.leave.update(
       { id: departedId },

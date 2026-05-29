@@ -1,0 +1,6 @@
+# The container generates every mod's config into this directory. Track only
+# the Createrington mod configs we pre-bake; ignore the rest.
+*
+!.gitignore
+!createringtoncurrency-common.toml
+!presenceapi-common.toml

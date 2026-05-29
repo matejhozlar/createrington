@@ -15,9 +15,9 @@ import { BasePlayerRepository, type PlayerIdentifier } from "./base";
 
 /**
  * Core player CRUD plus the aggregate read paths used by the admin panel
- * (detailed lookup, list/count, balance summary, server-wide stats). Mutations
- * that need an admin audit trail (adminUpdate, adminDelete) write to
- * admin_log_action inside the same transaction.
+ * (detailed lookup, list/count, balance summary, server-wide stats).
+ * adminUpdate writes an admin_log_action audit row inside the same
+ * transaction. Player deletion is owned by PlayerDeletionService.
  */
 export class PlayerRepository extends BasePlayerRepository {
   constructor() {
@@ -169,46 +169,6 @@ export class PlayerRepository extends BasePlayerRepository {
       }
 
       return await tx.player.get({ minecraftUuid: uuid });
-    });
-  }
-
-  /**
-   * Hard-delete a player and let DB cascades drop balance, transactions,
-   * sessions, playtime aggregates, and admin entries. Writes the audit log
-   * row before the delete so it survives the cascade.
-   */
-  async adminDelete(
-    identifier: PlayerIdentifier,
-    adminDiscordId: string,
-    adminUsername: string,
-    reason: string,
-  ): Promise<void> {
-    const uuid = await this.resolvePlayerUuid(identifier);
-    const player = await Q.player.get({ minecraftUuid: uuid });
-
-    await db.inTransaction(async (tx) => {
-      await tx.admin.log.action.create({
-        adminDiscordId,
-        adminUsername,
-        actionType: AdminEdit.DELETE_PLAYER,
-        targetPlayerUuid: uuid,
-        targetPlayerName: player.minecraftUsername,
-        tableName: DatabaseTable.PLAYER.TABLE,
-        fieldName: "deleted",
-        oldValue: "false",
-        newValue: "true",
-        reason,
-        metadata: {
-          discordId: player.discordId,
-          minecraftUsername: player.minecraftUsername,
-        },
-      });
-
-      await tx.player.delete({ minecraftUuid: uuid });
-
-      logger.info(
-        `Admin ${adminUsername} deleted player ${player.minecraftUsername} (${uuid})`,
-      );
     });
   }
 

@@ -30,8 +30,11 @@ Thumbs.db
 
 # Misc
 postgres_data/
+docker/mc/data/
 *.tgz
 *.zip
+# Keep the CurseForge modpack export so devs can import it directly
+!docker/mc/modpack/*.zip
 *.rar
 .cache/
 .playwright-mcp

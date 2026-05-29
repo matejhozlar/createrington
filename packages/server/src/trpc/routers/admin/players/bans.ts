@@ -1,7 +1,9 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { playerService } from "@/services/player";
+import { playerDeletionService } from "@/services/player/deletion";
 import { Q } from "@/db";
+import type { PlayerBan } from "@createrington/shared/db";
 import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
@@ -154,16 +156,35 @@ export const bansRouter = router({
         }
       }
 
-      const ban = await playerService.bans.issuePermanent(
-        identifier,
-        {
-          reason: input.reason,
-          serverId: input.serverId,
-          metadata: input.metadata,
+      let ban: PlayerBan | undefined;
+      await playerDeletionService.delete(identifier, {
+        actor: {
+          type: "admin",
+          discordId: ctx.user.discordId,
+          username: ctx.user.minecraftUsername,
         },
-        ctx.user.discordId,
-        ctx.user.minecraftUsername,
-      );
+        reason: input.reason,
+        writeAudit: false,
+        removeFromWhitelist: false,
+        serverId: input.serverId,
+        beforeDelete: async (tx, deletedPlayer) => {
+          ban = await playerService.bans.createPermanent(
+            tx,
+            deletedPlayer,
+            {
+              reason: input.reason,
+              serverId: input.serverId,
+              metadata: input.metadata,
+            },
+            ctx.user.discordId,
+            ctx.user.minecraftUsername,
+          );
+        },
+      });
+
+      if (!ban) {
+        throw new Error("Failed to create permanent ban record");
+      }
 
       try {
         await minecraftRcon.whitelistAll(

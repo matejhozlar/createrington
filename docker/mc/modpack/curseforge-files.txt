@@ -1,0 +1,12 @@
+# CurseForge mods auto-installed onto the local dev server (pnpm mc:up).
+# Format: <slug>:<fileID>. Mirrors manifest.json; requires CF_API_KEY
+# (Infisical CURSEFORGE_API_KEY). Bump the fileIDs when the pack updates.
+
+# CRNet
+crnet:8039516
+# Create
+create:7963363
+# PresenceAPI
+presenceapi:8144488
+# Createrington Currency
+create-rington-currency:7977558

@@ -1,6 +1,6 @@
 {
   "name": "createrington",
-  "version": "1.24.0",
+  "version": "1.25.0",
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
@@ -46,7 +46,9 @@
           "zod": "*"
         },
         "peerDependenciesMeta": {
-          "zod": { "optional": true }
+          "zod": {
+            "optional": true
+          }
         }
       }
     }
@@ -91,16 +93,30 @@
     "db:generate": "pnpm --filter @createrington/server db:generate",
     "db:migrate": "pnpm --filter @createrington/server db:migrate",
     "setup": "pnpm install && pnpm --filter @createrington/server util:scrape-discord && pnpm db:up && pnpm generate",
-    "db:up": "docker-compose -f db/docker-compose.yml up -d postgres",
-    "db:down": "docker-compose -f db/docker-compose.yml down",
-    "db:logs": "docker-compose -f db/docker-compose.yml logs -f postgres",
-    "db:reset": "docker-compose -f db/docker-compose.yml down -v && docker-compose -f db/docker-compose.yml build && docker-compose -f db/docker-compose.yml up -d --wait postgres && pnpm db:migrate && pnpm db:seed",
+    "db:up": "docker-compose -f docker/db/docker-compose.yml up -d postgres",
+    "db:down": "docker-compose -f docker/db/docker-compose.yml down",
+    "db:logs": "docker-compose -f docker/db/docker-compose.yml logs -f postgres",
+    "db:reset": "docker-compose -f docker/db/docker-compose.yml down -v && docker-compose -f docker/db/docker-compose.yml build && docker-compose -f docker/db/docker-compose.yml up -d --wait postgres && pnpm db:migrate && pnpm db:seed",
     "db:shell": "docker exec -it createrington_db psql -U postgres -d createrington_db",
-    "db:destroy": "docker-compose -f db/docker-compose.yml down -v --rmi all",
-    "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f db/data/test-data.sql",
+    "db:destroy": "docker-compose -f docker/db/docker-compose.yml down -v --rmi all",
+    "db:seed": "psql -h localhost -p 5433 -U postgres -d createrington_db -f docker/db/data/test-data.sql",
     "db:setup": "pnpm db:up && sleep 5 && pnpm db:up",
-    "pgadmin": "docker-compose -f db/docker-compose.yml up -d pgadmin",
-    "kill-ports": "bash scripts/kill-ports.sh"
+    "pgadmin": "docker-compose -f docker/db/docker-compose.yml up -d pgadmin",
+    "mc:start": "infisical run --env=dev -- docker-compose -f docker/mc/docker-compose.yml up -d",
+    "mc:up": "pnpm mc:start && pnpm mc:console",
+    "mc:down": "docker-compose -f docker/mc/docker-compose.yml down",
+    "mc:logs": "docker-compose -f docker/mc/docker-compose.yml logs -f",
+    "mc:console": "docker attach --detach-keys=ctrl-c createrington_mc",
+    "mc:cmd": "docker exec -i createrington_mc rcon-cli",
+    "mc:reset": "docker-compose -f docker/mc/docker-compose.yml down && rm -rf docker/mc/data",
+    "mc:destroy": "docker-compose -f docker/mc/docker-compose.yml down -v --rmi all && rm -rf docker/mc/data",
+    "docker:up": "pnpm db:up && pnpm mc:up",
+    "docker:down": "pnpm db:down && pnpm mc:down",
+    "docker:logs": "concurrently -n \"db,mc\" -c \"blue,green\" \"pnpm db:logs\" \"pnpm mc:logs\"",
+    "docker:reset": "pnpm db:reset && pnpm mc:reset && pnpm mc:start",
+    "docker:destroy": "pnpm db:destroy && pnpm mc:destroy",
+    "kill-ports": "bash scripts/kill-ports.sh",
+    "post-release": "git checkout main && git pull && git checkout dev && git pull && git merge main && git push && git status"
   },
   "devDependencies": {
     "@infisical/cli": "^0.43.84",

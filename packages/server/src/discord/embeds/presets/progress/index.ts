@@ -125,57 +125,6 @@ export const ProgressEmbedPresets = {
   },
 
   /**
-   * Creates a simple progress embed (just bar and percentage)
-   */
-  simple(options: {
-    title: string;
-    completed: number;
-    total: number;
-    description?: string;
-  }): DiscordEmbedBuilder {
-    const { title, completed, total, description } = options;
-    const percent = Math.round((completed / total) * 100);
-
-    const barLen = 12;
-    const filled = Math.round((completed / total) * barLen);
-    const bar = "▰".repeat(filled) + "▱".repeat(barLen - filled);
-
-    const embed = createEmbed()
-      .title(title)
-      .description(
-        description
-          ? `${description}\n\n${bar}  **${percent}%**`
-          : `${bar}  **${percent}%**`,
-      )
-      .color(percent === 100 ? EmbedColors.Success : EmbedColors.Info);
-
-    return embed;
-  },
-
-  /**
-   * Creates a loading/processing embed with animated progress
-   */
-  loading(message: string = "Processing..."): DiscordEmbedBuilder {
-    return createEmbed()
-      .title("⏳ Please wait")
-      .description(message)
-      .color(EmbedColors.Info);
-  },
-
-  /**
-   * Creates a completion embed
-   */
-  complete(title: string, description?: string): DiscordEmbedBuilder {
-    const embed = createEmbed().title(`✅ ${title}`).color(EmbedColors.Success);
-
-    if (description) {
-      embed.description(description);
-    }
-
-    return embed;
-  },
-
-  /**
    * Creates a failed/error embed
    */
   error(
