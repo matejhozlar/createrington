@@ -4,7 +4,6 @@ import { cryptoTokenProcedures } from "./tokens";
 import { cryptoEventProcedures } from "./events";
 import { cryptoMarketProcedures } from "./market";
 
-/** Admin crypto router: token management, event triggers, treasury, and market stats. */
 export const adminCryptoRouter = router({
   settings: adminCryptoSettingsRouter,
   ...cryptoTokenProcedures,

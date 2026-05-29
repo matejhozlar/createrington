@@ -12,7 +12,6 @@ export const modFileName = z
     "fileName must be a basename (no path separators) ending in .jar",
   );
 
-/** Resolves the structure pack rotation service from the DI container */
 export async function getRotationService(): Promise<StructurePackRotationService> {
   return getService(Services.STRUCTURE_PACK_ROTATION);
 }

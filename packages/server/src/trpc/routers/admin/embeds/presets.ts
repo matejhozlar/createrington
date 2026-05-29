@@ -10,7 +10,6 @@ import {
 import { embedPresetCategoriesRouter } from "./preset-categories";
 import { embedPresetLinksRouter } from "./preset-links";
 
-/** Admin embed presets router: preset CRUD, categorisation, and linked-message listing. */
 export const embedPresetsRouter = router({
   list: adminProcedure
     .meta({
