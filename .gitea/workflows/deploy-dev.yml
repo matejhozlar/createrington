@@ -155,7 +155,7 @@ jobs:
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "DROP DATABASE IF EXISTS $DB_DATABASE WITH (FORCE);"
             psql -h "$DB_HOST" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_DATABASE;"
             pnpm db:migrate
-            psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_DATABASE" -f db/data/test-data.sql
+            psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_DATABASE" -f docker/db/data/test-data.sql
           '
 
       - name: Sync runtime .env from Infisical

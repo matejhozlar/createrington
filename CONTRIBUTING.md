@@ -136,7 +136,7 @@ To add or change a table/enum:
 4. `pnpm generate` to regenerate TypeScript types
    (`packages/shared/src/db/`) and query classes
    (`packages/server/src/generated/db/`).
-5. Add any seed/test data to `db/data/test-data.sql`.
+5. Add any seed/test data to `docker/db/data/test-data.sql`.
 
 Important rules:
 

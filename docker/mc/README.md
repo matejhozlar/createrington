@@ -11,7 +11,7 @@ backend logic can be tested without touching production. Built on
 
 ## Modpack
 
-`mc/modpack/` holds the CurseForge modpack for local development:
+`docker/mc/modpack/` holds the CurseForge modpack for local development:
 
 - `createrington-development-<version>.zip` — import this directly into the
   CurseForge app (Create Custom Profile -> Import) to get the dev client.
@@ -26,7 +26,7 @@ PresenceAPI, and Createrington Currency.
 
 ## Mod configuration
 
-The server mods read their config from `mc/config/` (mounted into the
+The server mods read their config from `docker/mc/config/` (mounted into the
 container's `/data/config`). The Createrington mod configs are pre-baked there
 so the mods point at the host backend out of the box:
 
@@ -80,7 +80,7 @@ while NeoForge and the server jar download.
 
 ## Persistence
 
-World and server data live in `mc/data/` (bind-mounted into the container and
+World and server data live in `docker/mc/data/` (bind-mounted into the container and
 git-ignored), so they survive `pnpm mc:down` and container restarts. Use
 `pnpm mc:reset` to wipe and regenerate from scratch.
 
@@ -102,4 +102,4 @@ infisical run -- pnpm mc:up
 | `MC_ONLINE_MODE`      | `TRUE`      | Online auth (mirrors prod); `FALSE` to skip |
 
 To let the backend's file operations (maintenance mode, whitelist resync) target
-this server locally, set `MC_SERVER_LOCAL_PATH=./mc/data` in your root `.env`.
+this server locally, set `MC_SERVER_LOCAL_PATH=./docker/mc/data` in your root `.env`.
