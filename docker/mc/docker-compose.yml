@@ -15,7 +15,7 @@ services:
       MEMORY: "${MC_MEMORY:-4G}"
       # Auto-install the Createrington dev mods on first boot. itzg downloads
       # each CurseForge file in the list via the API (needs CF_API_KEY). The
-      # list mirrors mc/modpack/manifest.json (the importable pack export).
+      # list mirrors docker/mc/modpack/manifest.json (the importable pack export).
       CF_API_KEY: "${CURSEFORGE_API_KEY:-}"
       CURSEFORGE_FILES: "@/modpack/curseforge-files.txt"
       # Online mode mirrors production (real account auth + UUIDs). Set to
