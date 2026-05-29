@@ -3,7 +3,6 @@ import react from "@vitejs/plugin-react";
 import path from "node:path";
 import { readFileSync } from "node:fs";
 import tailwindcss from "@tailwindcss/vite";
-import { visualizer } from "rollup-plugin-visualizer";
 
 const rootPkg = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"),
@@ -12,7 +11,7 @@ const rootPkg = JSON.parse(
 const analyze = process.env.ANALYZE === "1";
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(async () => ({
   define: {
     __APP_VERSION__: JSON.stringify(
       process.env.VITE_APP_VERSION || rootPkg.version,
@@ -22,7 +21,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     analyze &&
-      visualizer({
+      (await import("rollup-plugin-visualizer")).visualizer({
         filename: "dist/stats.html",
         gzipSize: true,
         brotliSize: true,
@@ -30,6 +29,7 @@ export default defineConfig({
       }),
   ],
   build: {
+    // Flags the eager entry chunk (~890 kB); the heaviest lazy route sits ~560 kB.
     chunkSizeWarningLimit: 600,
   },
   resolve: {
@@ -56,4 +56,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
