@@ -1,0 +1,40 @@
+#General command and gameplay settings
+[general]
+	#If true, the /deposit and /withdraw commands will NOT be registered
+	disableCashCommands = false
+	#Global cooldown for all currency commands in milliseconds
+	commandCooldownMs = 5000
+
+#Backend API connection settings
+[api]
+	#Base URL for the Createrington backend, eg. 'http://127.0.0.1:5000'
+	apiBaseUrl = "http://host.docker.internal:5001"
+	#Shared HMAC secret used to sign short-lived mod JWTs. Must match the backend's auth secret. Requires server restart to take effect.
+	jwtSecret = "CHANGE-ME-must-be-at-least-32-chars"
+
+#Currency drops from mob kills
+[mobDrops]
+	#Maximum amount of currency a player can earn from mob kills per day (0 = no mob drops)
+	# Default: 1000
+	# Range: > 0
+	mobDailyLimit = 1000
+	#Drop chance of 1$ bills from zombies, spiders, creepers, eg. '50.0' = 50% chance
+	zomSpiCreDrop = 2.0
+	#Drop chance of 1$ bills from skeletons, eg. '50.0' = 50% chance
+	skeletonDrop = 3.0
+	#Drop chance of 1$ bills from wither skeletons, eg. '50.0' = 50% chance
+	witherSkeletonDrop = 3.5
+	#Drop chance of 1$ bills from wither blazes, eg. '50.0' = 50% chance
+	blazeDrop = 3.5
+
+#Lottery command settings
+[lottery]
+	#Cooldown duration for /lottery in minutes, don't use this if you are not using integrated discord bots
+	# Default: 15
+	# Range: 0 ~ 1440
+	lotteryCooldownMinutes = 15
+
+#Integrations with other mods
+[integrations]
+	#Enable reporting Create train crashes to the API (requires Create mod)
+	trainCrashReportingEnabled = true
