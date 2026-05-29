@@ -1,10 +1,3 @@
-/**
- * Waitlist API - shared Zod schemas
- *
- * Single source of truth for the waitlist payload, consumed by both the
- * client application form and the server's tRPC input validation.
- */
-
 import { z } from "zod";
 
 export const waitlistDiscordNameSchema = z
@@ -28,10 +21,7 @@ export const waitlistCreateInputSchema = z.object({
 
 export type WaitlistCreateInput = z.infer<typeof waitlistCreateInputSchema>;
 
-/**
- * Client-side form schema. Waitlist mode requires Discord name + email;
- * open-enrollment mode only requires the terms checkbox.
- */
+// Waitlist mode requires Discord name + email; open enrollment only the terms checkbox.
 export function buildWaitlistFormSchema(isWaitlistMode: boolean) {
   return z
     .object({
