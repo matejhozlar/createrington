@@ -1,6 +1,6 @@
 import { router, publicProcedure } from "@/trpc/trpc";
 import { waitlist, waitlistRepo } from "@/db";
-import { z } from "zod";
+import { waitlistCreateInputSchema } from "@createrington/shared/api";
 import { trpcError } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 
@@ -28,22 +28,7 @@ export const waitlistsRouter = router({
       description:
         "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and emails a Discord invite URL. In waitlist mode, requires Discord name + email and goes to pending.",
     })
-    .input(
-      z.object({
-        discordName: z
-          .string()
-          .min(1, "Discord name too short")
-          .max(100, "Discord name too long")
-          .optional(),
-        email: z.string().email("Invalid email format").optional(),
-        metadata: z
-          .record(
-            z.string(),
-            z.union([z.string(), z.number(), z.boolean(), z.null()]),
-          )
-          .optional(),
-      }),
-    )
+    .input(waitlistCreateInputSchema)
     .mutation(async ({ input }) => {
       const { discordName, email, metadata } = input;
 
