@@ -55,12 +55,13 @@ pnpm mc:destroy   # full teardown: remove container, image, and world/data
 
 `mc:up` and `mc:console` drop you into the **live server console**: logs stream
 and you can type server commands directly (`list`, `op <name>`, ...). This is
-plain `docker attach`, so it works the same on Windows, macOS, and Linux. For a
-one-off command without attaching, use `mc:cmd` (which goes through RCON).
+`docker attach` (with `--sig-proxy=false`), so it works the same on Windows,
+macOS, and Linux. For a one-off command without attaching, use `mc:cmd` (which
+goes through RCON).
 
-> **Detach with `Ctrl-P` then `Ctrl-Q`** to leave the server running. Pressing
-> `Ctrl-C` while attached sends a stop signal and shuts the server down. Use
-> `mc:start` if you just want it running in the background.
+> **Closing the terminal or pressing `Ctrl-C` just detaches** and leaves the
+> server running (that's what `--sig-proxy=false` buys us). `Ctrl-P` then
+> `Ctrl-Q` also detaches. Stop the server with `pnpm mc:down`.
 
 To manage the database and Minecraft server together:
 

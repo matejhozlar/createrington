@@ -106,7 +106,7 @@
     "mc:up": "pnpm mc:start && pnpm mc:console",
     "mc:down": "docker-compose -f mc/docker-compose.yml down",
     "mc:logs": "docker-compose -f mc/docker-compose.yml logs -f",
-    "mc:console": "docker attach createrington_mc",
+    "mc:console": "docker attach --sig-proxy=false createrington_mc",
     "mc:cmd": "docker exec -i createrington_mc rcon-cli",
     "mc:reset": "docker-compose -f mc/docker-compose.yml down && rm -rf mc/data",
     "mc:destroy": "docker-compose -f mc/docker-compose.yml down -v --rmi all && rm -rf mc/data",
