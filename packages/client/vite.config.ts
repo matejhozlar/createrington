@@ -8,14 +8,30 @@ const rootPkg = JSON.parse(
   readFileSync(path.resolve(__dirname, "../../package.json"), "utf-8"),
 );
 
+const analyze = process.env.ANALYZE === "1";
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(async () => ({
   define: {
     __APP_VERSION__: JSON.stringify(
       process.env.VITE_APP_VERSION || rootPkg.version,
     ),
   },
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    analyze &&
+      (await import("rollup-plugin-visualizer")).visualizer({
+        filename: "dist/stats.html",
+        gzipSize: true,
+        brotliSize: true,
+        template: "treemap",
+      }),
+  ],
+  build: {
+    // Flags the eager entry chunk (~890 kB); the heaviest lazy route sits ~560 kB.
+    chunkSizeWarningLimit: 600,
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
@@ -40,4 +56,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
