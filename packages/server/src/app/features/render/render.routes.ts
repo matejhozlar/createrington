@@ -441,9 +441,7 @@ router.get(
         ? (interval as PriceInterval)
         : "minute";
 
-    const token = await Q.crypto.token
-      .where({ symbol: symbol.toUpperCase() })
-      .first();
+    const token = await Q.crypto.token.find({ symbol: symbol.toUpperCase() });
 
     if (!token) {
       res.status(404).json({ error: `Token ${symbol} not found` });

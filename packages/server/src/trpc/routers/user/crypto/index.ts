@@ -150,9 +150,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get remaining trade cooldown for a token" })
     .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol })
-        .first();
+      const token = await Q.crypto.token.find({ symbol: input.symbol });
 
       if (!token) return { expiresAt: null };
 
