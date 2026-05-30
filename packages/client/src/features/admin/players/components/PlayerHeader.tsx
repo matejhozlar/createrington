@@ -25,9 +25,9 @@ export function PlayerHeader({
   const activeStrikes = 0;
   const toast = useToastActions();
 
-  const copyToClipboard = (text: string, label: string) => {
+  const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copied`);
+    toast.success("Copied to clipboard");
   };
 
   return (
@@ -96,12 +96,12 @@ export function PlayerHeader({
             <CopyField
               label="UUID"
               value={player.minecraftUuid}
-              onCopy={() => copyToClipboard(player.minecraftUuid, "UUID")}
+              onCopy={() => copyToClipboard(player.minecraftUuid)}
             />
             <CopyField
               label="Discord"
               value={player.discordId}
-              onCopy={() => copyToClipboard(player.discordId, "Discord ID")}
+              onCopy={() => copyToClipboard(player.discordId)}
             />
           </div>
 
@@ -178,7 +178,7 @@ function LogoutPosition({
   y: number;
   z: number;
   dimension: string | null;
-  onCopy: (text: string, label: string) => void;
+  onCopy: (text: string) => void;
 }) {
   const tp = tpCommand(dimension ?? "minecraft:overworld", x, y, z);
 
@@ -195,7 +195,7 @@ function LogoutPosition({
       </div>
       <button
         type="button"
-        onClick={() => onCopy(tp, "TP command")}
+        onClick={() => onCopy(tp)}
         className="group flex cursor-pointer items-center gap-1 rounded border border-border bg-sidebar-accent/50 px-2 py-0.5 text-[11px] font-mono text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
       >
         {tp}

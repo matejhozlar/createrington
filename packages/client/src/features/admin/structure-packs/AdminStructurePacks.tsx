@@ -150,7 +150,7 @@ export function AdminStructurePacks() {
       ],
     };
     navigator.clipboard.writeText(JSON.stringify(exported, null, 2));
-    toast.success(`Copied "${pack.name}" to clipboard`);
+    toast.success("Copied to clipboard");
   }
 
   async function handleImport() {

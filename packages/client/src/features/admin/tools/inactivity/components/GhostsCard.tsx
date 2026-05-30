@@ -258,11 +258,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <button
                               type="button"
                               onClick={(e) =>
-                                handleCopy(
-                                  e,
-                                  ghost.minecraftUsername,
-                                  "Username",
-                                )
+                                handleCopy(e, ghost.minecraftUsername)
                               }
                               className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                             >
@@ -272,7 +268,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <button
                               type="button"
                               onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUuid, "UUID")
+                                handleCopy(e, ghost.minecraftUuid)
                               }
                               className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
@@ -284,9 +280,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                         <TableCell className="px-4">
                           <button
                             type="button"
-                            onClick={(e) =>
-                              handleCopy(e, ghost.discordId, "Discord ID")
-                            }
+                            onClick={(e) => handleCopy(e, ghost.discordId)}
                             className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
                             {ghost.discordId}

@@ -115,9 +115,9 @@ export function ChunkTable({
     });
   }, [filtered, sortField, sortDirection]);
 
-  const copy = (text: string, label: string) => {
+  const copy = (text: string) => {
     navigator.clipboard.writeText(text);
-    toast.success(`${label} copied`);
+    toast.success("Copied to clipboard");
   };
 
   if (sorted.length === 0) {
@@ -205,7 +205,7 @@ export function ChunkTable({
                         variant="ghost"
                         size="icon"
                         className="size-7"
-                        onClick={() => copy(tp, "/tp command")}
+                        onClick={() => copy(tp)}
                         aria-label="Copy /tp command"
                       >
                         <Copy className="size-3.5" />
@@ -229,34 +229,24 @@ export function ChunkTable({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
                       <DropdownMenuLabel>Copy</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => copy(tp, "/tp command")}>
+                      <DropdownMenuItem onClick={() => copy(tp)}>
                         /tp command
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() =>
-                          copy(`${chunk.x}, ${chunk.z}`, "Chunk coords")
-                        }
+                        onClick={() => copy(`${chunk.x}, ${chunk.z}`)}
                       >
                         Chunk coords
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() =>
-                          copy(
-                            `${chunk.x * 16 + 8}, ${chunk.z * 16 + 8}`,
-                            "Block coords",
-                          )
+                          copy(`${chunk.x * 16 + 8}, ${chunk.z * 16 + 8}`)
                         }
                       >
                         Block coords (center)
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() =>
-                          copy(
-                            regionFileName(chunk.x, chunk.z),
-                            "Region file name",
-                          )
-                        }
+                        onClick={() => copy(regionFileName(chunk.x, chunk.z))}
                       >
                         Region file ({regionFileName(chunk.x, chunk.z)})
                       </DropdownMenuItem>
