@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { DiscordMessageService } from "@/services/discord/message/message.service";
 import { Discord } from "@/discord/constants";
@@ -111,8 +111,7 @@ export const announcementsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "announcement_changelog",
         description: `Sent modpack changelog v${input.version} (${input.added.length} added, ${input.removed.length} removed, ${input.updated.length} updated, ${input.highlights?.length ?? 0} highlights)`,
         metadata: { version: input.version },
@@ -149,8 +148,7 @@ export const announcementsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "announcement_maintenance",
         description: `Sent ${input.type} announcement (starts ${input.startsAt}, ~${input.estimatedMinutes}min)`,
         metadata: {

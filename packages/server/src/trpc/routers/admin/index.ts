@@ -1,5 +1,6 @@
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
+import { auditActor } from "@/trpc/utils";
 import { adminAiRouter } from "./ai";
 import { autoMessagesRouter } from "./auto-messages";
 import { announcementsRouter } from "./announcements";
@@ -30,8 +31,7 @@ export const adminRouter = router({
       const result = await refetchDiscordEntities();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "discord_entities_refetch",
         description: "Re-scraped Discord roles, channels, and categories",
       });

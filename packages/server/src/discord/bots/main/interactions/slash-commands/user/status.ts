@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import { getAllServerIds, getServerById } from "@/services/playtime/config";
@@ -82,10 +83,11 @@ export async function execute(
   } catch (error) {
     logger.error("/status failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Status Error",
       "Failed to fetch server status. Please try again.",
+      { ephemeral: false },
     );
-    await interaction.reply({ embeds: [embed.build()] });
   }
 }

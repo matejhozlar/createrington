@@ -10,6 +10,7 @@ import type {
 import { MessageFlags } from "discord.js";
 import { cooldownManager } from "@/discord/utils/cooldown";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { Q } from "@/db";
 
 import { requireAdmin, requireOwner } from "@/discord/utils/admin-guard";
@@ -144,15 +145,11 @@ async function checkPermission(
         error,
       );
 
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Permission Check Failed",
         "An error ocurred while checking permissions",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
 
       return false;
     }

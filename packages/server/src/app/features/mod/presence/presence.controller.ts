@@ -6,7 +6,8 @@ import type {
   ModPlayerLeaveData,
 } from "@/services/playtime";
 import { PlaytimeForwarderService } from "@/services/playtime/forwarder.service";
-import { getServerByIp } from "@/services/playtime/config";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { resolveServerId } from "../shared/resolve-server-id";
 import config from "@/config";
 import type { Request, Response } from "express";
 
@@ -31,7 +32,7 @@ export class PresenceController {
    * @returns Promise that resolves when the event has been processed
    */
   static async updatePresence(req: Request, res: Response): Promise<void> {
-    const { minecraftUsername, uuid, state, timestamp, serverId } = req.body;
+    const { minecraftUsername, uuid, state, timestamp } = req.body;
 
     if (!minecraftUsername || !uuid || !state) {
       throw new BadRequestError(
@@ -43,39 +44,11 @@ export class PresenceController {
       throw new BadRequestError('state must be either "joined" or "left"');
     }
 
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(uuid)) {
+    if (!MC_UUID_REGEX.test(uuid)) {
       throw new BadRequestError("Invalid UUID format");
     }
 
-    // Resolve the target server: explicit serverId in body takes priority,
-    // otherwise fall back to the IP that was verified by the middleware
-    let targetServerId: number | undefined;
-
-    if (serverId) {
-      targetServerId = parseInt(serverId, 10);
-      if (isNaN(targetServerId)) {
-        throw new BadRequestError("Invalid serverId format");
-      }
-    } else {
-      const serverIp = req.serverIp;
-      if (!serverIp) {
-        throw new InternalServerError(
-          "Server IP not detected - IP verification middleware may not be properly configured",
-        );
-      }
-
-      const serverInfo = getServerByIp(serverIp);
-      if (!serverInfo) {
-        logger.warn(`Unknown server IP: ${serverIp}`);
-        throw new BadRequestError(
-          `Server IP ${serverIp} is not configured. Please contact an administrator`,
-        );
-      }
-
-      targetServerId = serverInfo.serverId;
-    }
+    const targetServerId = resolveServerId(req, "Presence update");
 
     try {
       const playtimeManager = await getService(
@@ -159,47 +132,20 @@ export class PresenceController {
    * @param res - Express response
    */
   static async heartbeat(req: Request, res: Response): Promise<void> {
-    const { players, serverId } = req.body;
+    const { players } = req.body;
 
     if (!Array.isArray(players)) {
       throw new BadRequestError("players must be an array");
     }
 
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
     const onlinePlayers: MinecraftPlayer[] = [];
     for (const p of players) {
       if (!p.uuid || !p.username) continue;
-      if (!uuidRegex.test(p.uuid)) continue;
+      if (!MC_UUID_REGEX.test(p.uuid)) continue;
       onlinePlayers.push({ uuid: p.uuid, username: p.username });
     }
 
-    let targetServerId: number | undefined;
-
-    if (serverId) {
-      targetServerId = parseInt(serverId, 10);
-      if (isNaN(targetServerId)) {
-        throw new BadRequestError("Invalid serverId format");
-      }
-    } else {
-      const serverIp = req.serverIp;
-      if (!serverIp) {
-        throw new InternalServerError(
-          "Server IP not detected - IP verification middleware may not be properly configured",
-        );
-      }
-
-      const serverInfo = getServerByIp(serverIp);
-      if (!serverInfo) {
-        logger.warn(`Heartbeat from unknown server IP: ${serverIp}`);
-        throw new BadRequestError(
-          `Server IP ${serverIp} is not configured. Please contact an administrator`,
-        );
-      }
-
-      targetServerId = serverInfo.serverId;
-    }
+    const targetServerId = resolveServerId(req, "Heartbeat");
 
     try {
       const playtimeManager = await getService(

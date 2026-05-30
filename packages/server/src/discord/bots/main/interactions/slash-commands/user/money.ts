@@ -1,6 +1,7 @@
 import { Q } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import {
   type ChatInputCommandInteraction,
@@ -63,14 +64,10 @@ export async function execute(
   } catch (error) {
     logger.error("/money failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Balance Error",
       "Something went wrong while fetching your balance. Please try again.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

@@ -3,6 +3,7 @@ import { EmbedColors } from "../../colors";
 import { ActionRowBuilder, ButtonBuilder, User } from "discord.js";
 import { ButtonPresets } from "../buttons";
 import type { Player, WaitlistEntry } from "@/generated/db";
+import { discordTimestamp } from "@/utils/format";
 
 export const WaitlistEmbedPresets = {
   /**
@@ -121,9 +122,7 @@ export const WaitlistEmbedPresets = {
     }
 
     if (entry.acceptedAt) {
-      details.push(
-        `Accepted: <t:${Math.floor(entry.acceptedAt.getTime() / 1000)}:R>`,
-      );
+      details.push(`Accepted: ${discordTimestamp(entry.acceptedAt, "R")}`);
     }
 
     if (details.length > 0) {

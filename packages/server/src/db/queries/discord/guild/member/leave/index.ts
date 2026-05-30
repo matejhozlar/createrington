@@ -37,16 +37,12 @@ export class DiscordGuildMemberLeaveQueries extends DiscordGuildMemberLeaveBaseQ
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{ period: string; count: number }>(
-        query,
-        [start, end, granularity],
-      );
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get leaves by period:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ period: string; count: number }>(
+      "get leaves by period",
+      query,
+      [start, end, granularity],
+    );
+    return result.rows;
   }
 
   /**

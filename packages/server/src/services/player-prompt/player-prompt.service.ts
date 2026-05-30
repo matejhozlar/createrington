@@ -5,6 +5,7 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { Q } from "@/db";
+import { discordTimestamp } from "@/utils/format";
 import type { DiscordMessageService } from "@/services/discord/message/message.service";
 import type { PlayerPrompt } from "@createrington/shared/db/player_prompt.types";
 
@@ -251,10 +252,9 @@ export class PlayerPromptService {
       embed.setDescription(prompt.description);
     }
 
-    const endsAtSeconds = Math.floor(prompt.endsAt.getTime() / 1000);
     embed.addFields({
       name: "Closes",
-      value: `<t:${endsAtSeconds}:R>`,
+      value: discordTimestamp(prompt.endsAt, "R"),
     });
 
     embed.setFooter({

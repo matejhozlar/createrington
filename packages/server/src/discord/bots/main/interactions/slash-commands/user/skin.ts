@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getSkinApiClient } from "@/services/skin-api";
 import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
@@ -63,11 +64,12 @@ export async function execute(
     .toLowerCase();
 
   if (poseInput && !KNOWN_POSE_SET.has(poseInput)) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Unknown Pose",
       `\`${poseInput}\` is not a recognized pose. Use the autocomplete suggestions to pick a valid one.`,
+      { ephemeral: false },
     );
-    await interaction.reply({ embeds: [embed.build()] });
     return;
   }
   const pose = poseInput as KnownPose | undefined;
@@ -76,11 +78,12 @@ export async function execute(
   try {
     player = await Q.player.get({ discordId: targetUser.id });
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Lookup Error",
       `Could not find player data for ${targetUser.displayName}. They may not be registered.`,
+      { ephemeral: false },
     );
-    await interaction.reply({ embeds: [embed.build()] });
     return;
   }
 
@@ -115,10 +118,10 @@ export async function execute(
     await interaction.editReply({ embeds: [embed], files: [attachment] });
   } catch (err) {
     logger.warn(`Skin-api render failed for pose "${pose}":`, err);
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Render Error",
       `Could not render the **${titleCasePose(pose)}** pose for ${player.minecraftUsername}. Please try again later.`,
     );
-    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

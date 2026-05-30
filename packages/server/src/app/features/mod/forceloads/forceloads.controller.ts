@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { getServerByIp } from "@/services/playtime/config";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
 import {
   replaceForceloadState,
@@ -8,9 +9,6 @@ import {
   type PartyPayload,
   type PlayerPayload,
 } from "./forceloads.service";
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function parseChunk(raw: unknown, context: string): ChunkPayload {
   if (!raw || typeof raw !== "object") {
@@ -37,7 +35,7 @@ function parsePlayer(raw: unknown, index: number): PlayerPayload {
     throw new BadRequestError(`players[${index}] must be an object`);
   }
   const p = raw as Record<string, unknown>;
-  if (typeof p.uuid !== "string" || !UUID_REGEX.test(p.uuid)) {
+  if (typeof p.uuid !== "string" || !MC_UUID_REGEX.test(p.uuid)) {
     throw new BadRequestError(`players[${index}].uuid must be a valid UUID`);
   }
   if (!Array.isArray(p.chunks)) {
@@ -56,7 +54,7 @@ function parseParty(raw: unknown, index: number): PartyPayload {
     throw new BadRequestError(`parties[${index}] must be an object`);
   }
   const p = raw as Record<string, unknown>;
-  if (typeof p.partyId !== "string" || !UUID_REGEX.test(p.partyId)) {
+  if (typeof p.partyId !== "string" || !MC_UUID_REGEX.test(p.partyId)) {
     throw new BadRequestError(`parties[${index}].partyId must be a valid UUID`);
   }
   if (typeof p.partyName !== "string") {
@@ -84,7 +82,7 @@ function parseParty(raw: unknown, index: number): PartyPayload {
       );
     }
     const uuid = (m as Record<string, unknown>).uuid;
-    if (typeof uuid !== "string" || !UUID_REGEX.test(uuid)) {
+    if (typeof uuid !== "string" || !MC_UUID_REGEX.test(uuid)) {
       throw new BadRequestError(
         `parties[${index}].members[${i}].uuid must be a valid UUID`,
       );
@@ -102,37 +100,6 @@ function parseParty(raw: unknown, index: number): PartyPayload {
       parseChunk(c, `parties[${index}].chunks[${i}]`),
     ),
   };
-}
-
-function resolveServerId(req: Request): number {
-  const bodyServerId = (req.body as { serverId?: unknown })?.serverId;
-
-  if (bodyServerId !== undefined && bodyServerId !== null) {
-    const parsed =
-      typeof bodyServerId === "number"
-        ? bodyServerId
-        : parseInt(String(bodyServerId), 10);
-    if (!Number.isInteger(parsed)) {
-      throw new BadRequestError("Invalid serverId format");
-    }
-    return parsed;
-  }
-
-  const serverIp = req.serverIp;
-  if (!serverIp) {
-    throw new InternalServerError(
-      "Server IP not detected - IP verification middleware may not be properly configured",
-    );
-  }
-
-  const serverInfo = getServerByIp(serverIp);
-  if (!serverInfo) {
-    logger.warn(`Forceload sync from unknown server IP: ${serverIp}`);
-    throw new BadRequestError(
-      `Server IP ${serverIp} is not configured. Please contact an administrator`,
-    );
-  }
-  return serverInfo.serverId;
 }
 
 /**
@@ -155,7 +122,7 @@ export class ForceloadsController {
       throw new BadRequestError("parties must be an array");
     }
 
-    const serverId = resolveServerId(req);
+    const serverId = resolveServerId(req, "Forceload sync");
     const players = body.players.map((p, i) => parsePlayer(p, i));
     const parties = body.parties.map((p, i) => parseParty(p, i));
 

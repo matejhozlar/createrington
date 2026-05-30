@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination } from "@/trpc/utils";
+import { paginationInput, buildPagination, auditActor } from "@/trpc/utils";
 import { getRotationService } from "./helpers";
 
 const rotationConfigRouter = router({
@@ -34,8 +34,7 @@ const rotationConfigRouter = router({
       const service = await getRotationService();
       const config = await service.updateConfig(input);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_config_update",
         description: "Updated structure pack rotation config",
         metadata: input,
@@ -51,8 +50,7 @@ export const structurePackRotationProcedures = {
       const service = await getRotationService();
       await service.executeRotation(true);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_force_rotation",
         description: "Triggered manual structure pack rotation",
       });
@@ -65,8 +63,7 @@ export const structurePackRotationProcedures = {
       const service = await getRotationService();
       await service.clearRotation();
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_clear_rotation",
         description: "Cleared active structure pack rotation",
       });

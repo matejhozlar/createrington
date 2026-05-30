@@ -106,20 +106,14 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
       GROUP BY EXTRACT(HOUR FROM play_hour)
       ORDER BY hour_of_day`;
 
-    try {
-      const result = await this.db.query(query, [
-        playerMinecraftUuid,
-        serverId,
-      ]);
+    const result = await this.runQuery("get player hourly pattern", query, [
+      playerMinecraftUuid,
+      serverId,
+    ]);
 
-      return this.mapRowsToEntities<
-        PlayerHourlyPatternRow,
-        PlayerHourlyPattern
-      >(result.rows);
-    } catch (error) {
-      logger.error("Failed to get player hourly pattern:", error);
-      throw error;
-    }
+    return this.mapRowsToEntities<PlayerHourlyPatternRow, PlayerHourlyPattern>(
+      result.rows,
+    );
   }
 
   /**
@@ -153,15 +147,11 @@ export class PlayerPlaytimeHourlyQueries extends PlayerPlaytimeHourlyBaseQueries
       GROUP BY DATE_TRUNC('day', play_hour), EXTRACT(HOUR FROM play_hour)
       ORDER BY day, hour`;
 
-    try {
-      const result = await this.db.query(query, [serverId, days]);
+    const result = await this.runQuery("get server heatmap", query, [
+      serverId,
+      days,
+    ]);
 
-      return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(
-        result.rows,
-      );
-    } catch (error) {
-      logger.error("Failed to get server heatmap:", error);
-      throw error;
-    }
+    return this.mapRowsToEntities<ServerHeatMapRow, ServerHeatMap>(result.rows);
   }
 }

@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import {
   type AutocompleteInteraction,
@@ -95,14 +96,11 @@ export async function execute(
   const subcommand = interaction.options.getSubcommand();
   try {
     if (!interaction.channel) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Error",
         "This command can only be used in a channel.",
       );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -133,26 +131,20 @@ export async function execute(
       });
 
       if (!ticket) {
-        const embed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Not a Ticket",
           "This command can only be used inside a ticket channel.",
         );
-        await interaction.reply({
-          embeds: [embed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
       if (ticket.status === "closed") {
-        const embed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Already Closed",
           "This ticket is already closed.",
         );
-        await interaction.reply({
-          embeds: [embed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -170,14 +162,11 @@ export async function execute(
       });
 
       if (!ticket) {
-        const embed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Not a Ticket",
           "This command can only be used inside a ticket channel.",
         );
-        await interaction.reply({
-          embeds: [embed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -185,14 +174,11 @@ export async function execute(
       const partyUuid = interaction.options.getString("party", false);
 
       if (!user && !partyUuid) {
-        const embed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Nothing to Add",
           "Provide a user, a party, or both.",
         );
-        await interaction.reply({
-          embeds: [embed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -300,28 +286,15 @@ export async function execute(
 
       await interaction.editReply({ embeds: [embed.build()] });
     } else {
-      const embed = EmbedPresets.error("Error", "Invalid subcommand.");
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
+      await replyError(interaction, "Error", "Invalid subcommand.");
       return;
     }
   } catch (error) {
     logger.error("/ticket failed:", error);
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Ticket Error",
       "Something went wrong while executing the command. Please try again.",
     );
-
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply({ embeds: [embed.build()] });
-    } else {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
   }
 }

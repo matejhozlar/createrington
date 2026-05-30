@@ -1,9 +1,5 @@
-import {
-  type ChatInputCommandInteraction,
-  type GuildMember,
-  MessageFlags,
-} from "discord.js";
-import { EmbedPresets } from "../embeds";
+import { type ChatInputCommandInteraction, type GuildMember } from "discord.js";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { isAdminDb } from "@/db/utils";
 import { RoleManager } from "./roles/role-manager";
 import { Discord } from "../constants";
@@ -56,14 +52,11 @@ export async function requireAdmin(
   const member = resolveGuildMember(interaction);
 
   if (!member || !(await isAdmin(member))) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Permission denied",
       "This command requires administrator privileges",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return false;
   }
 
@@ -83,14 +76,11 @@ export async function requireOwner(
   const member = resolveGuildMember(interaction);
 
   if (!member || !RoleManager.has(member, Discord.Roles.OWNER)) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Permission denied",
       "This command is owner-only",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return false;
   }
 

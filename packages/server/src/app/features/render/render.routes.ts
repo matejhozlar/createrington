@@ -5,7 +5,7 @@ import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime, toUnixSeconds } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
@@ -461,7 +461,7 @@ router.get(
       .all();
 
     const priceHistory = snapshots.reverse().map((s) => ({
-      time: Math.floor(s.recordedAt.getTime() / 1000),
+      time: toUnixSeconds(s.recordedAt),
       open: Number(s.openPrice),
       high: Number(s.highPrice),
       low: Number(s.lowPrice),

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { trpcError } from "@/trpc/utils";
+import { toUnixSeconds } from "@/utils/format";
 import { Q } from "@/db";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { getRecentEvents } from "@/services/crypto/events/news-feed";
@@ -144,7 +145,7 @@ export const cryptoRouter = router({
 
       // Return in chronological order
       return snapshots.reverse().map((s) => ({
-        time: Math.floor(s.recordedAt.getTime() / 1000),
+        time: toUnixSeconds(s.recordedAt),
         open: Number(s.openPrice),
         high: Number(s.highPrice),
         low: Number(s.lowPrice),

@@ -46,35 +46,30 @@ export class WaitlistEntryQueries extends WaitlistEntryBaseQueries {
         COUNT(*) FILTER (WHERE joined_minecraft = true)::integer AS joined_minecraft
       FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{
-        total: number;
-        pending: number;
-        accepted: number;
-        auto_accepted: number;
-        declined: number;
-        completed: number;
-        joined_discord: number;
-        verified: number;
-        registered: number;
-        joined_minecraft: number;
-      }>(query);
-      const row = result.rows[0];
-      return {
-        total: row.total,
-        pending: row.pending,
-        accepted: row.accepted,
-        autoAccepted: row.auto_accepted,
-        declined: row.declined,
-        completed: row.completed,
-        joinedDiscord: row.joined_discord,
-        verified: row.verified,
-        registered: row.registered,
-        joinedMinecraft: row.joined_minecraft,
-      };
-    } catch (error) {
-      logger.error("Failed to get waitlist funnel stats:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      total: number;
+      pending: number;
+      accepted: number;
+      auto_accepted: number;
+      declined: number;
+      completed: number;
+      joined_discord: number;
+      verified: number;
+      registered: number;
+      joined_minecraft: number;
+    }>("get waitlist funnel stats", query);
+    const row = result.rows[0];
+    return {
+      total: row.total,
+      pending: row.pending,
+      accepted: row.accepted,
+      autoAccepted: row.auto_accepted,
+      declined: row.declined,
+      completed: row.completed,
+      joinedDiscord: row.joined_discord,
+      verified: row.verified,
+      registered: row.registered,
+      joinedMinecraft: row.joined_minecraft,
+    };
   }
 }

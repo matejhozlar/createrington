@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { minecraftRcon } from "@/utils/rcon";
+import { discordTimestamp } from "@/utils/format";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import type { Client } from "discord.js";
@@ -138,7 +139,7 @@ export class PlayerBanService {
       description: [
         `**Player**: ${minecraftUsername}`,
         `**Original ban reason**: ${ban.reason}`,
-        `**Banned at**: <t:${Math.floor(ban.bannedAt.getTime() / 1000)}:F>`,
+        `**Banned at**: ${discordTimestamp(ban.bannedAt, "F")}`,
         `**Ban duration**: ${this.calculateDuration(ban.bannedAt, ban.expiresAt!)}`,
         wasDeleted ? `\n⚠️ *Player data was previously deleted*` : "",
       ]

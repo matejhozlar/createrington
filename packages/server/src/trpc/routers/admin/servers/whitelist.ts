@@ -4,7 +4,7 @@ import { Q } from "@/db";
 import { maintenanceService } from "@/services/maintenance";
 import { whitelistService } from "@/services/whitelist";
 import { getServerById } from "@/services/playtime/config";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 
 export const serverWhitelistProcedures = {
   resyncWhitelist: adminProcedure
@@ -37,8 +37,7 @@ export const serverWhitelistProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "server_whitelist_resync",
         description: `Resynced whitelist on ${serverConfig.name} (${count} players)`,
         serverId: input.serverId,

@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 import {
@@ -30,11 +31,11 @@ export async function execute(
     try {
       service = await getService(Services.INACTIVITY_CLEANUP_SERVICE);
     } catch {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Service Unavailable",
         "The inactivity cleanup service only runs on the production deployment.",
       );
-      await interaction.editReply({ embeds: [embed.build()] });
       return;
     }
 
@@ -57,18 +58,10 @@ export async function execute(
   } catch (error) {
     logger.error("/force-inactivity-cleanup failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Cleanup Failed",
       error instanceof Error ? error.message : "An unknown error occurred",
     );
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      await interaction.editReply({ embeds: [embed.build()] });
-    }
   }
 }

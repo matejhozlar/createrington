@@ -4,7 +4,7 @@ import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { maintenanceService } from "@/services/maintenance";
 import { getServerById } from "@/services/playtime/config";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
 
@@ -89,8 +89,7 @@ export const serverMaintenanceProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: input.enabled
           ? "server_maintenance_enable"
           : "server_maintenance_disable",
@@ -177,8 +176,7 @@ export const serverMaintenanceProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "server_maintenance_schedule",
         description: `Scheduled maintenance on ${serverConfig.name} for ${scheduledAt.toISOString()} (~${input.estimatedMinutes}min)`,
         serverId: input.serverId,
@@ -213,8 +211,7 @@ export const serverMaintenanceProcedures = {
 
       const serverConfig = getServerById(input.serverId);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "server_maintenance_cancel",
         description: `Cancelled scheduled maintenance on ${serverConfig?.name ?? `server ${input.serverId}`}`,
         serverId: input.serverId,

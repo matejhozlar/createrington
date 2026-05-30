@@ -1,5 +1,6 @@
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   getAllLeaderboardTypes,
@@ -109,21 +110,11 @@ export async function execute(
   } catch (error) {
     logger.error("/leaderboard failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Command Failed",
       error instanceof Error ? error.message : "An unknown error occurred",
     );
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      await interaction.editReply({
-        embeds: [embed.build()],
-      });
-    }
   }
 }
 

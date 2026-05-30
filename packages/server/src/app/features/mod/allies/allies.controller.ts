@@ -1,5 +1,6 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { getServerByIp } from "@/services/playtime/config";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
 import {
   replaceAllyState,
@@ -10,9 +11,6 @@ import {
   type QualifiedPlayerPayload,
 } from "./allies.service";
 
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 function parseFakeMember(raw: unknown, index: number): AllyFakeMemberPayload {
   if (!raw || typeof raw !== "object") {
     throw new BadRequestError(
@@ -20,7 +18,7 @@ function parseFakeMember(raw: unknown, index: number): AllyFakeMemberPayload {
     );
   }
   const m = raw as Record<string, unknown>;
-  if (typeof m.uuid !== "string" || !UUID_REGEX.test(m.uuid)) {
+  if (typeof m.uuid !== "string" || !MC_UUID_REGEX.test(m.uuid)) {
     throw new BadRequestError(
       `fakePlayerParty.members[${index}].uuid must be a valid UUID`,
     );
@@ -33,10 +31,10 @@ function parseFakeParty(raw: unknown): AllyFakePartyPayload {
     throw new BadRequestError("fakePlayerParty must be an object");
   }
   const p = raw as Record<string, unknown>;
-  if (typeof p.partyId !== "string" || !UUID_REGEX.test(p.partyId)) {
+  if (typeof p.partyId !== "string" || !MC_UUID_REGEX.test(p.partyId)) {
     throw new BadRequestError("fakePlayerParty.partyId must be a valid UUID");
   }
-  if (typeof p.ownerUuid !== "string" || !UUID_REGEX.test(p.ownerUuid)) {
+  if (typeof p.ownerUuid !== "string" || !MC_UUID_REGEX.test(p.ownerUuid)) {
     throw new BadRequestError("fakePlayerParty.ownerUuid must be a valid UUID");
   }
   if (typeof p.ownerName !== "string" || p.ownerName.length === 0) {
@@ -60,7 +58,7 @@ function parseAlliedParty(raw: unknown, index: number): AlliedPartyPayload {
     throw new BadRequestError(`allies[${index}] must be an object`);
   }
   const a = raw as Record<string, unknown>;
-  if (typeof a.partyId !== "string" || !UUID_REGEX.test(a.partyId)) {
+  if (typeof a.partyId !== "string" || !MC_UUID_REGEX.test(a.partyId)) {
     throw new BadRequestError(`allies[${index}].partyId must be a valid UUID`);
   }
   if (typeof a.alliedAt !== "number" || !Number.isFinite(a.alliedAt)) {
@@ -78,7 +76,7 @@ function parseQualifiedPlayer(
     throw new BadRequestError(`${field}[${index}] must be an object`);
   }
   const q = raw as Record<string, unknown>;
-  if (typeof q.uuid !== "string" || !UUID_REGEX.test(q.uuid)) {
+  if (typeof q.uuid !== "string" || !MC_UUID_REGEX.test(q.uuid)) {
     throw new BadRequestError(`${field}[${index}].uuid must be a valid UUID`);
   }
   if (typeof q.qualifiedAt !== "number" || !Number.isFinite(q.qualifiedAt)) {
@@ -87,37 +85,6 @@ function parseQualifiedPlayer(
     );
   }
   return { uuid: q.uuid, qualifiedAt: q.qualifiedAt };
-}
-
-function resolveServerId(req: Request): number {
-  const bodyServerId = (req.body as { serverId?: unknown })?.serverId;
-
-  if (bodyServerId !== undefined && bodyServerId !== null) {
-    const parsed =
-      typeof bodyServerId === "number"
-        ? bodyServerId
-        : parseInt(String(bodyServerId), 10);
-    if (!Number.isInteger(parsed)) {
-      throw new BadRequestError("Invalid serverId format");
-    }
-    return parsed;
-  }
-
-  const serverIp = req.serverIp;
-  if (!serverIp) {
-    throw new InternalServerError(
-      "Server IP not detected - IP verification middleware may not be properly configured",
-    );
-  }
-
-  const serverInfo = getServerByIp(serverIp);
-  if (!serverInfo) {
-    logger.warn(`Ally sync from unknown server IP: ${serverIp}`);
-    throw new BadRequestError(
-      `Server IP ${serverIp} is not configured. Please contact an administrator`,
-    );
-  }
-  return serverInfo.serverId;
 }
 
 /**
@@ -143,7 +110,7 @@ export class AlliesController {
       throw new BadRequestError("pending must be an array");
     }
 
-    const serverId = resolveServerId(req);
+    const serverId = resolveServerId(req, "Ally sync");
     const fakePlayerParty = parseFakeParty(body.fakePlayerParty);
     const allies = body.allies.map((a, i) => parseAlliedParty(a, i));
     const qualified = body.qualified.map((q, i) =>

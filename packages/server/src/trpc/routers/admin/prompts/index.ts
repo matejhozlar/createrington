@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  trpcError,
+  auditActor,
+} from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 
@@ -97,8 +102,7 @@ export const adminPromptsRouter = router({
       });
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "player_prompt_create",
         description: `Created player prompt "${input.question.slice(0, 80)}"`,
         metadata: { promptId: prompt.id },
@@ -118,8 +122,7 @@ export const adminPromptsRouter = router({
       await service.closePrompt(input.id);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "player_prompt_close",
         description: `Manually closed player prompt #${input.id}`,
         metadata: { promptId: input.id },
