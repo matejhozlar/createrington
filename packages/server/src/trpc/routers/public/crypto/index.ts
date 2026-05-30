@@ -239,9 +239,7 @@ export const cryptoRouter = router({
       if (!ipoToken) return null;
 
       const totalSold = ipoToken.totalSupply - ipoToken.availableSupply;
-      const holders = await Q.crypto.holding
-        .where({ tokenId: ipoToken.id })
-        .count();
+      const holders = await Q.crypto.holding.count({ tokenId: ipoToken.id });
       const maxPerPlayer = Math.floor(
         Number(ipoToken.totalSupply) *
           cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
@@ -274,7 +272,7 @@ export const cryptoRouter = router({
         .where({ tokenId: token.id })
         .all();
 
-      const players = await Q.player.where({}).all();
+      const players = await Q.player.getAll();
       const nameMap = new Map(
         players.map((p) => [p.minecraftUuid, p.minecraftUsername ?? "Unknown"]),
       );

@@ -99,7 +99,7 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
       const cashBalance = details.balance

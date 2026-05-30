@@ -126,7 +126,7 @@ type PlayerNameMap = Map<string, string>;
  * @returns Map keyed by Minecraft UUID with display username as value
  */
 async function buildPlayerNameMap(): Promise<PlayerNameMap> {
-  const players = await Q.player.where({}).all();
+  const players = await Q.player.getAll();
   const map: PlayerNameMap = new Map();
   for (const p of players) {
     map.set(p.minecraftUuid, p.minecraftUsername);
@@ -341,11 +341,11 @@ async function buildPendingOrdersSection(tokenId: number): Promise<string> {
 async function buildPreviousEventsSection(
   currentEventId: number,
 ): Promise<string> {
-  const events = await Q.crypto.market.event
-    .where({})
-    .orderBy("createdAt", "desc")
-    .limit(4)
-    .all();
+  const events = await Q.crypto.market.event.getAll({
+    orderBy: "createdAt",
+    orderDirection: "desc",
+    limit: 4,
+  });
 
   const previous = events.filter((e) => e.id !== currentEventId).slice(0, 3);
   if (previous.length === 0) return "";

@@ -401,7 +401,7 @@ export class CryptoMarketService {
 
     if (stablecoins.length === 0) return;
 
-    const activePlayers = await Q.player.where({ online: true }).count();
+    const activePlayers = await Q.player.count({ online: true });
 
     const updates: PriceUpdate[] = [];
 

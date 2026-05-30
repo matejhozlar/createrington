@@ -21,7 +21,7 @@ function randomInt(min: number, max: number): number {
 
 /** Returns the set of token symbols already in use (active or crashed) */
 async function getUsedSymbols(): Promise<Set<string>> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   return new Set(tokens.map((t) => t.symbol));
 }
 

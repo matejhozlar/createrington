@@ -27,7 +27,7 @@ export class CryptoSettingsService extends EventEmitter {
 
   /** Loads persisted overrides into the in-memory cache; invalid or unknown rows are logged and skipped. */
   async initialize(): Promise<void> {
-    const rows = await Q.crypto.setting.where({}).all();
+    const rows = await Q.crypto.setting.getAll();
     for (const row of rows) {
       if (this.isKnownKey(row.key)) {
         const parsed = this.tryValidate(row.key, this.unwrap(row.value));

@@ -90,7 +90,7 @@ router.get(
       playerRepo.getDetailed({ discordId: player2 }),
     ]);
 
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
     const computeCryptoValue = async (uuid: string) => {
@@ -151,7 +151,7 @@ router.get(
 
     const details = await playerRepo.getDetailed({ discordId: player });
 
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
     const cashBalance = details.balance

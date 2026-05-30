@@ -15,14 +15,14 @@ export const cryptoMarketProcedures = {
   marketStats: adminProcedure
     .meta({ description: "Admin market analytics" })
     .query(async () => {
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const activeTokens = tokens.filter((t) => !t.isCrashed && !t.delistedAt);
       const crashedTokens = tokens.filter((t) => t.isCrashed);
 
       // 24h window is computed in-memory from the full transaction set to avoid
       // a parameterised date query; acceptable given expected transaction volume.
       const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      const allTxs = await Q.crypto.transaction.where({}).all();
+      const allTxs = await Q.crypto.transaction.getAll();
       const dailyTxs = allTxs.filter((tx) => tx.createdAt >= dayAgo);
       const dailyVolume = dailyTxs.reduce(
         (sum, tx) => sum + Math.abs(Number(tx.totalCost)),

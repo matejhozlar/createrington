@@ -76,12 +76,12 @@ export const faqRouter = router({
         });
       }
 
-      const countQuery = Q.faq.entry.where({});
+      let countQuery = Q.faq.entry.where({});
       if (input.enabled !== undefined) {
-        countQuery.where({ enabled: input.enabled });
+        countQuery = countQuery.where({ enabled: input.enabled });
       }
       if (input.search) {
-        countQuery.where({
+        countQuery = countQuery.where({
           title: { $ilike: `%${escapeLike(input.search)}%` },
         });
       }

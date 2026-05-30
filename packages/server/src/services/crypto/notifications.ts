@@ -359,7 +359,7 @@ export async function getMarketSummary() {
   ).length;
 
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const allTxs = await Q.crypto.transaction.where({}).all();
+  const allTxs = await Q.crypto.transaction.getAll();
   const dailyTxs = allTxs.filter((tx) => tx.createdAt >= dayAgo);
   const dailyVolume = dailyTxs.reduce(
     (sum, tx) => sum + Math.abs(Number(tx.totalCost)),
@@ -412,7 +412,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     ).length;
 
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const allTxs = await Q.crypto.transaction.where({}).all();
+    const allTxs = await Q.crypto.transaction.getAll();
     const weeklyTxs = allTxs.filter((tx) => tx.createdAt >= weekAgo);
     const weeklyVolume = weeklyTxs.reduce(
       (sum, tx) => sum + Math.abs(Number(tx.totalCost)),

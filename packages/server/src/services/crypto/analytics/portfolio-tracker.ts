@@ -13,11 +13,11 @@ import type { CryptoPortfolioSnapshot } from "@createrington/shared/db/crypto_po
  * @returns The number of player snapshots written
  */
 export async function takeDailySnapshots(): Promise<number> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
   // Fetch all holdings once and partition by player to avoid N+1 queries
-  const allHoldings = await Q.crypto.holding.where({}).all();
+  const allHoldings = await Q.crypto.holding.getAll();
   const playerUuids = [
     ...new Set(allHoldings.map((h) => h.playerMinecraftUuid)),
   ];

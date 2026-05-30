@@ -45,10 +45,10 @@ export async function getLeaderboard(
 async function getNetworthLeaderboard(
   limit: number,
 ): Promise<LeaderboardEntry[]> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
-  const allHoldings = await Q.crypto.holding.where({}).all();
+  const allHoldings = await Q.crypto.holding.getAll();
   const playerValues = new Map<string, number>();
 
   for (const h of allHoldings) {
@@ -97,7 +97,7 @@ async function getPnlLeaderboard(limit: number): Promise<LeaderboardEntry[]> {
 async function getVolumeLeaderboard(
   limit: number,
 ): Promise<LeaderboardEntry[]> {
-  const allTxs = await Q.crypto.transaction.where({}).all();
+  const allTxs = await Q.crypto.transaction.getAll();
 
   const playerVolume = new Map<string, number>();
 
@@ -131,7 +131,7 @@ async function buildLeaderboard(
     .slice(0, limit);
 
   // Resolve player names in a single query rather than per-entry lookups
-  const players = await Q.player.where({}).all();
+  const players = await Q.player.getAll();
   const nameMap = new Map(
     players.map((p) => [
       p.minecraftUuid,
