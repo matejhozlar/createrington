@@ -4,6 +4,7 @@ import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
 import { trpcError, auditActor } from "@/trpc/utils";
+import { cryptoSymbol } from "@/utils/zod-schemas";
 
 function serializeToken<
   T extends { totalSupply: bigint; availableSupply: bigint },
@@ -31,11 +32,7 @@ export const cryptoTokenProcedures = {
     .input(
       z.object({
         name: z.string().min(1).max(50),
-        symbol: z
-          .string()
-          .min(1)
-          .max(10)
-          .transform((s) => s.toUpperCase()),
+        symbol: cryptoSymbol,
         description: z.string().max(500).optional(),
         category: z.enum(["memecoin", "seasonal"]),
         totalSupply: z.number().int().positive(),
