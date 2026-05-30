@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { mcHeadsBody } from "@/lib/external-urls";
-import { pickRandomPose, skinApiUrl } from "./skin-utils";
+import { randomPose, skinApiUrl } from "./skin-utils";
 
 interface ProfileData {
   username: string;
@@ -62,7 +62,7 @@ export function ProfileRender() {
   const [data, setData] = useState<ProfileData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skinSrc, setSkinSrc] = useState<string | null>(null);
-  const [pose] = useState(pickRandomPose);
+  const [pose] = useState(randomPose);
 
   const player = params.get("player");
   const hasMissingParams = !player;
