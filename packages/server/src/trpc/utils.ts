@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/app/utils/helpers";
 import { AppError } from "@/app/middleware/error-handler";
+import { Q } from "@/db";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
@@ -113,4 +114,20 @@ export function buildPagination(page: number, limit: number, total: number) {
     total,
     totalPages: Math.ceil(total / limit),
   };
+}
+
+/**
+ * Looks up a crypto token by symbol (case-insensitive), throwing a 404
+ * TRPCError when no token matches.
+ */
+export async function resolveTokenOrThrow(symbol: string) {
+  const token = await Q.crypto.token
+    .where({ symbol: symbol.toUpperCase() })
+    .first();
+
+  if (!token) {
+    throw trpcError.notFound(`Token ${symbol} not found`);
+  }
+
+  return token;
 }

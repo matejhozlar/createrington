@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, resolveTokenOrThrow } from "@/trpc/utils";
 import { toUnixSeconds } from "@/utils/format";
 import { Q } from "@/db";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
@@ -88,13 +88,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get single token by symbol" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       return {
         id: token.id,
@@ -126,13 +120,7 @@ export const cryptoRouter = router({
       }),
     )
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       const snapshots = await Q.crypto.price.snapshot
         .where({
@@ -279,13 +267,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get token ownership distribution" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       const holdings = await Q.crypto.holding
         .where({ tokenId: token.id })

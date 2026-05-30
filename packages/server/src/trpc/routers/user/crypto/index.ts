@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { router, userProcedure, cryptoUserProcedure } from "@/trpc/trpc";
-import { trpcError, buildPagination, rethrowTrpc } from "@/trpc/utils";
+import {
+  trpcError,
+  buildPagination,
+  rethrowTrpc,
+  resolveTokenOrThrow,
+} from "@/trpc/utils";
 import { Q } from "@/db";
 import {
   executeBuy,
@@ -61,13 +66,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const result = await executeBuy(
@@ -111,13 +110,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const result = await executeSell(
@@ -267,13 +260,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         return await placeOrder(
@@ -393,13 +380,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get remaining IPO allocation for a token" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
     .query(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       if (!token.ipoEndsAt || token.ipoEndsAt <= new Date()) {
         return null; // Not in IPO
@@ -453,13 +434,7 @@ export const cryptoRouter = router({
     .meta({ description: "Add token to watchlist" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         await addToWatchlist(ctx.user.minecraftUuid, token.id);
@@ -475,13 +450,7 @@ export const cryptoRouter = router({
     .meta({ description: "Remove token from watchlist" })
     .input(z.object({ symbol: z.string().min(1).max(10) }))
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         await removeFromWatchlist(ctx.user.minecraftUuid, token.id);
@@ -529,13 +498,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const alert = await createAlert(
