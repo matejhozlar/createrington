@@ -1,12 +1,11 @@
-import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
+import {
+  KNOWN_POSES,
+  randomPose,
+  type KnownPose,
+} from "createrington-skin-api";
 import { mcHeadsBody } from "@/lib/external-urls";
 
-export function pickRandomPose(): KnownPose {
-  const idx = Math.floor(Math.random() * KNOWN_POSES.length);
-  return KNOWN_POSES[idx] as KnownPose;
-}
-
-export { KNOWN_POSES };
+export { KNOWN_POSES, randomPose };
 export type { KnownPose };
 
 export function skinApiUrl(uuid: string, pose: KnownPose): string {

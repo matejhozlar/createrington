@@ -88,7 +88,7 @@
   "dependencies": {
     "@createrington/logger": "^0.2.0",
     "@createrington/shared": "workspace:*",
-    "createrington-skin-api": "^2.0.0",
+    "createrington-skin-api": "^2.1.0",
     "@trpc/server": "^11.1.0",
     "axios": "^1.15.2",
     "canvas": "^3.2.0",

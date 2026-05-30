@@ -1,6 +1,10 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
+import {
+  KNOWN_POSES,
+  randomPose,
+  type KnownPose,
+} from "createrington-skin-api";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
@@ -18,11 +22,6 @@ import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
 const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
-
-function pickRandomPose(): KnownPose {
-  const idx = Math.floor(Math.random() * KNOWN_POSES.length);
-  return KNOWN_POSES[idx] as KnownPose;
-}
 
 const router = Router();
 
@@ -536,7 +535,7 @@ router.get(
     const requestedPose =
       typeof pose === "string" && KNOWN_POSE_SET.has(pose as KnownPose)
         ? (pose as KnownPose)
-        : pickRandomPose();
+        : randomPose();
 
     let png: Uint8Array;
     try {

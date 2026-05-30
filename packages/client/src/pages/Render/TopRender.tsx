@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { loadSkin, pickRandomPose } from "./skin-utils";
+import { loadSkin, randomPose } from "./skin-utils";
 
 interface PlayerEntry {
   username: string;
@@ -93,11 +93,7 @@ export function TopRender() {
   const [data, setData] = useState<TopData | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [skins, setSkins] = useState<string[] | null>(null);
-  const [poses] = useState(() => [
-    pickRandomPose(),
-    pickRandomPose(),
-    pickRandomPose(),
-  ]);
+  const [poses] = useState(() => [randomPose(), randomPose(), randomPose()]);
 
   const category = params.get("category");
   const item = params.get("item");
