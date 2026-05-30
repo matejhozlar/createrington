@@ -10,6 +10,7 @@ import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
 import { discordTimestamp } from "@/utils/format";
 import { parsePlayerId } from "@/trpc/utils";
+import { sessionService } from "@/services/auth/session/session.service";
 
 /** Admin bans router: issue temporary/permanent bans, unban, and list recent bans. */
 export const bansRouter = router({
@@ -77,6 +78,8 @@ export const bansRouter = router({
       const player = await Q.player.get({
         minecraftUuid: ban.playerMinecraftUuid,
       });
+
+      await sessionService.revokeAllForUser(player.discordId);
 
       try {
         await minecraftRcon.banAll(
