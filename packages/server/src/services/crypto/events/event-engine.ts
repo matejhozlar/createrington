@@ -423,10 +423,10 @@ export async function restoreActiveEvents(): Promise<void> {
  * @private
  */
 async function getActiveEventsFromDb() {
-  const all = await Q.crypto.market.event
-    .where({})
-    .orderBy("createdAt", "desc")
-    .all();
+  const all = await Q.crypto.market.event.getAll({
+    orderBy: "createdAt",
+    orderDirection: "desc",
+  });
   const now = new Date();
   return all.filter((e) => e.activeUntil && e.activeUntil > now);
 }

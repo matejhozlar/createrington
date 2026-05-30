@@ -24,7 +24,7 @@ export const adminCryptoSettingsRouter = router({
     })
     .query(async () => {
       const settings = await getService(Services.CRYPTO_SETTINGS_SERVICE);
-      const rows = await Q.crypto.setting.where({}).all();
+      const rows = await Q.crypto.setting.getAll();
       const rowMap = new Map(rows.map((r) => [r.key, r]));
 
       return settings.list().map((entry) => {

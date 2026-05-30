@@ -21,7 +21,7 @@ export const cryptoTokenProcedures = {
       description: "List memecoin catalog entries not already in the DB",
     })
     .query(async () => {
-      const existing = await Q.crypto.token.where({}).all();
+      const existing = await Q.crypto.token.getAll();
       const usedSymbols = new Set(existing.map((t) => t.symbol));
       return MEMECOIN_CATALOG.filter((m) => !usedSymbols.has(m.symbol));
     }),

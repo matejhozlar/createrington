@@ -445,17 +445,13 @@ export class AchievementService {
   private async loadCryptoData(playerUuid: string): Promise<CryptoData> {
     const [tradeCount, holdings, tokens] = await Promise.all([
       Q.crypto.transaction
-        .where({ playerMinecraftUuid: playerUuid })
-        .count()
+        .count({ playerMinecraftUuid: playerUuid })
         .catch(() => 0),
       Q.crypto.holding
         .where({ playerMinecraftUuid: playerUuid })
         .all()
         .catch(() => []),
-      Q.crypto.token
-        .where({})
-        .all()
-        .catch(() => []),
+      Q.crypto.token.getAll().catch(() => []),
     ]);
 
     const tokenPrices = new Map(tokens.map((t) => [t.id, Number(t.price)]));
@@ -484,10 +480,7 @@ export class AchievementService {
     }
 
     // Fallback: use all servers if no playtime data yet
-    const servers = await Q.server
-      .where({})
-      .all()
-      .catch(() => []);
+    const servers = await Q.server.getAll().catch(() => []);
     return servers.map((s) => s.id);
   }
 

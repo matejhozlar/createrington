@@ -191,7 +191,7 @@ export const cryptoRouter = router({
         };
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       let totalValue = 0;
@@ -293,7 +293,7 @@ export const cryptoRouter = router({
     .query(async ({ ctx }) => {
       const orders = await getPlayerOrders(ctx.user.minecraftUuid);
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return orders.map((o) => {
@@ -339,7 +339,7 @@ export const cryptoRouter = router({
         filtered = filtered.filter((tx) => tx.type === input.type);
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       if (input.symbol) {
@@ -414,7 +414,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get user's watchlist" })
     .query(async ({ ctx }) => {
       const entries = await getWatchlist(ctx.user.minecraftUuid);
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return entries.map((e) => {
@@ -468,7 +468,7 @@ export const cryptoRouter = router({
     .meta({ description: "List active price alerts" })
     .query(async ({ ctx }) => {
       const alerts = await getPlayerAlerts(ctx.user.minecraftUuid);
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return alerts.map((a) => {

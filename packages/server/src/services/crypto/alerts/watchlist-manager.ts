@@ -39,9 +39,9 @@ export async function addToWatchlist(
     throw new Error("Token is already in your watchlist");
   }
 
-  const count = await Q.crypto.watchlist
-    .where({ playerMinecraftUuid: playerUuid })
-    .count();
+  const count = await Q.crypto.watchlist.count({
+    playerMinecraftUuid: playerUuid,
+  });
 
   const max = cryptoSetting("MAX_WATCHLIST_SIZE");
   if (count >= max) {

@@ -152,9 +152,9 @@ async function checkWhaleAlert(
  * @returns Total lifetime trade count
  */
 async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
-  const result = await Q.crypto.transaction
-    .where({ playerMinecraftUuid: playerUuid })
-    .count();
+  const result = await Q.crypto.transaction.count({
+    playerMinecraftUuid: playerUuid,
+  });
   return result;
 }
 

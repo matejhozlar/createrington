@@ -66,16 +66,16 @@ export const autoMessagesRouter = router({
     list: adminProcedure
       .meta({ description: "List all auto-message configs" })
       .query(async () => {
-        const configs = await Q.discord.auto.message.config
-          .where({})
-          .orderBy("createdAt", "desc")
-          .all();
+        const configs = await Q.discord.auto.message.config.getAll({
+          orderBy: "createdAt",
+          orderDirection: "desc",
+        });
 
         const configsWithCount = await Promise.all(
           configs.map(async (c) => {
-            const messageCount = await Q.discord.auto.message
-              .where({ configId: c.id })
-              .count();
+            const messageCount = await Q.discord.auto.message.count({
+              configId: c.id,
+            });
             return { ...c, messageCount };
           }),
         );

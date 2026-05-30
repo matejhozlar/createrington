@@ -7,15 +7,13 @@ export const embedPresetCategoriesRouter = router({
   list: adminProcedure
     .meta({ description: "List all preset categories with preset counts" })
     .query(async () => {
-      const cats = await Q.discord.embed.preset.category
-        .where({})
-        .orderBy("sortOrder", "asc")
-        .all();
+      const cats = await Q.discord.embed.preset.category.getAll({
+        orderBy: "sortOrder",
+        orderDirection: "asc",
+      });
 
       const counts = await Promise.all(
-        cats.map((cat) =>
-          Q.discord.embed.preset.where({ categoryId: cat.id }).count(),
-        ),
+        cats.map((cat) => Q.discord.embed.preset.count({ categoryId: cat.id })),
       );
 
       return cats.map((cat, i) => ({
@@ -35,11 +33,11 @@ export const embedPresetCategoriesRouter = router({
         throw trpcError.conflict("A category with that name already exists");
       }
 
-      const maxSort = await Q.discord.embed.preset.category
-        .where({})
-        .orderBy("sortOrder", "desc")
-        .limit(1)
-        .all();
+      const maxSort = await Q.discord.embed.preset.category.getAll({
+        orderBy: "sortOrder",
+        orderDirection: "desc",
+        limit: 1,
+      });
       const nextSort = maxSort.length > 0 ? maxSort[0].sortOrder + 1 : 0;
 
       const created = await Q.discord.embed.preset.category.createAndReturn({

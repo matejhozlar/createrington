@@ -70,11 +70,11 @@ export async function createMarketEvent(params: {
 export async function getRecentEvents(
   limit = 20,
 ): Promise<CryptoMarketEvent[]> {
-  return Q.crypto.market.event
-    .where({})
-    .orderBy("createdAt", "desc")
-    .limit(limit)
-    .all();
+  return Q.crypto.market.event.getAll({
+    orderBy: "createdAt",
+    orderDirection: "desc",
+    limit,
+  });
 }
 
 /**

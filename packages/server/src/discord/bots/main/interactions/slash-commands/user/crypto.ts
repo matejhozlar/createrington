@@ -359,7 +359,7 @@ async function handlePortfolio(
     return;
   }
 
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
   let totalValue = 0;
@@ -680,7 +680,7 @@ async function handleAlert(
         return;
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       const lines = alerts.map((a) => {
