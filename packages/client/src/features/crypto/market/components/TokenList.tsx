@@ -9,7 +9,7 @@ import {
   useActiveEventTokenIds,
   useHasMarketWideEvent,
 } from "../hooks/use-active-events";
-import { formatPrice } from "../../format";
+import { formatPrice, changeColor, formatChangePercent } from "../../format";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 type CategoryFilter = "stable" | "blue_chip" | "memecoin" | "seasonal";
@@ -152,15 +152,10 @@ export function TokenList() {
                   <span
                     className={cn(
                       "sm:hidden block text-[11px] font-mono tabular-nums",
-                      change24h > 0
-                        ? "text-emerald-400"
-                        : change24h < 0
-                          ? "text-destructive"
-                          : "text-muted-foreground",
+                      changeColor(change24h),
                     )}
                   >
-                    {change24h > 0 ? "+" : ""}
-                    {change24h.toFixed(2)}%
+                    {formatChangePercent(change24h)}
                   </span>
                 </div>
 
@@ -168,15 +163,10 @@ export function TokenList() {
                 <span
                   className={cn(
                     "hidden sm:block w-16 text-right text-sm font-mono tabular-nums",
-                    change24h > 0
-                      ? "text-emerald-400"
-                      : change24h < 0
-                        ? "text-destructive"
-                        : "text-muted-foreground",
+                    changeColor(change24h),
                   )}
                 >
-                  {change24h > 0 ? "+" : ""}
-                  {change24h.toFixed(2)}%
+                  {formatChangePercent(change24h)}
                 </span>
               </div>
             );

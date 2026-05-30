@@ -1,13 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Filter, Search } from "lucide-react";
@@ -222,19 +215,12 @@ function VerbTag({ kind }: { kind: Kind }) {
 }
 
 const HEADER = (
-  <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>Changelog</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  </header>
+  <AdminPageHeader
+    trail={[
+      { label: "Admin", href: "/admin/dashboard" },
+      { label: "Changelog" },
+    ]}
+  />
 );
 
 export function Changelog() {
