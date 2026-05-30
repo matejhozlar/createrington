@@ -140,9 +140,9 @@ export function AdminWaitlists() {
     async (email: string) => {
       try {
         await navigator.clipboard.writeText(email);
-        toast.info("Email copied to clipboard");
+        toast.success("Copied to clipboard");
       } catch {
-        toast.error("Failed to copy email");
+        toast.error("Failed to copy to clipboard");
       }
     },
     [toast],

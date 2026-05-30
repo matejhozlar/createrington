@@ -523,11 +523,7 @@ export function AdminPlayers() {
                                 <button
                                   type="button"
                                   onClick={(e) =>
-                                    handleCopy(
-                                      e,
-                                      player.minecraftUsername,
-                                      "Username",
-                                    )
+                                    handleCopy(e, player.minecraftUsername)
                                   }
                                   className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                                 >
@@ -537,7 +533,7 @@ export function AdminPlayers() {
                                 <button
                                   type="button"
                                   onClick={(e) =>
-                                    handleCopy(e, player.minecraftUuid, "UUID")
+                                    handleCopy(e, player.minecraftUuid)
                                   }
                                   className="group/copy flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >
@@ -550,9 +546,7 @@ export function AdminPlayers() {
                           <TableCell className="px-4">
                             <button
                               type="button"
-                              onClick={(e) =>
-                                handleCopy(e, player.discordId, "Discord ID")
-                              }
+                              onClick={(e) => handleCopy(e, player.discordId)}
                               className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                             >
                               {player.discordId}

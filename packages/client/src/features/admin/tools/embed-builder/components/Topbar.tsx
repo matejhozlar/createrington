@@ -43,7 +43,7 @@ export function Topbar({ builder }: TopbarProps) {
 
   function handleCopyJson() {
     navigator.clipboard.writeText(JSON.stringify(externalData, null, 2));
-    toast.success("Embed JSON copied to clipboard");
+    toast.success("Copied to clipboard");
   }
 
   async function handleImportJson() {

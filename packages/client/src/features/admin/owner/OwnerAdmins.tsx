@@ -124,9 +124,7 @@ export function OwnerAdmins() {
                       <TableCell className="px-4">
                         <button
                           type="button"
-                          onClick={(e) =>
-                            handleCopy(e, admin.discordId, "Discord ID")
-                          }
+                          onClick={(e) => handleCopy(e, admin.discordId)}
                           className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {admin.discordId}
