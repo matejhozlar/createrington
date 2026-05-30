@@ -38,24 +38,19 @@ export class TicketQueries extends TicketBaseQueries {
         )::float AS avg_resolution_seconds
       FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{
-        total: number;
-        open: number;
-        closed: number;
-        avg_resolution_seconds: number;
-      }>(query);
-      const row = result.rows[0];
-      return {
-        total: row.total,
-        open: row.open,
-        closed: row.closed,
-        avgResolutionSeconds: row.avg_resolution_seconds,
-      };
-    } catch (error) {
-      logger.error("Failed to get ticket overview:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      total: number;
+      open: number;
+      closed: number;
+      avg_resolution_seconds: number;
+    }>("get ticket overview", query);
+    const row = result.rows[0];
+    return {
+      total: row.total,
+      open: row.open,
+      closed: row.closed,
+      avgResolutionSeconds: row.avg_resolution_seconds,
+    };
   }
 
   /**
@@ -102,17 +97,12 @@ export class TicketQueries extends TicketBaseQueries {
       ) c USING (period)
       ORDER BY period`;
 
-    try {
-      const result = await this.db.query<{
-        period: string;
-        opened: number;
-        closed: number;
-      }>(query, [start, end, granularity]);
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get ticket volume by period:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      period: string;
+      opened: number;
+      closed: number;
+    }>("get ticket volume by period", query, [start, end, granularity]);
+    return result.rows;
   }
 
   /**
@@ -123,13 +113,11 @@ export class TicketQueries extends TicketBaseQueries {
   async getNext(): Promise<number> {
     const query = `SELECT COALESCE(MAX(ticket_number), 0) + 1 AS ticket_number FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{ ticket_number: string }>(query);
-      return parseInt(result.rows[0].ticket_number, 10);
-    } catch (error) {
-      logger.error("Failed to get next ticket number:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ ticket_number: string }>(
+      "get next ticket number",
+      query,
+    );
+    return parseInt(result.rows[0].ticket_number, 10);
   }
 
   /**
@@ -140,12 +128,10 @@ export class TicketQueries extends TicketBaseQueries {
   async getCurrent(): Promise<number> {
     const query = `SELECT COALESCE(MAX(ticket_number), 0) AS ticket_number FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{ ticket_number: string }>(query);
-      return parseInt(result.rows[0].ticket_number, 10);
-    } catch (error) {
-      logger.error("Failed to get current ticket number:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ ticket_number: string }>(
+      "get current ticket number",
+      query,
+    );
+    return parseInt(result.rows[0].ticket_number, 10);
   }
 }

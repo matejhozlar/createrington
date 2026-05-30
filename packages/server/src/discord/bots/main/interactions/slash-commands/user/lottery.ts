@@ -1,8 +1,9 @@
 import { player } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { lotteryService } from "@/services/lottery";
-import { formatBalance } from "@/utils/format";
+import { discordTimestamp, formatBalance } from "@/utils/format";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import config from "@/config";
 import {
@@ -57,15 +58,11 @@ export async function execute(
     const foundPlayer = await player.find({ discordId: interaction.user.id });
 
     if (!foundPlayer) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Not Registered",
         "You must be registered to participate in the lottery. Use `/register` to get started.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -100,12 +97,10 @@ export async function execute(
         amount,
       );
 
-      const endsAtTimestamp = Math.floor(result.endsAt.getTime() / 1000);
-
       const embed = EmbedPresets.success(
         "Lottery Started",
         `You started a lottery with **${formatBalance(BalanceUtils.format(BalanceUtils.toStorage(result.entryAmount)))}**`,
-      ).field("Ends", `<t:${endsAtTimestamp}:R>`, true);
+      ).field("Ends", discordTimestamp(result.endsAt, "R"), true);
 
       await interaction.reply({
         embeds: [embed.build()],
@@ -119,16 +114,12 @@ export async function execute(
   } catch (error) {
     logger.error("/lottery failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Lottery Error",
       error instanceof Error
         ? error.message
         : "Something went wrong. Please try again later.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

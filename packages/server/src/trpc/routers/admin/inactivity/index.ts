@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { buildPagination, paginationInput, trpcError } from "@/trpc/utils";
+import {
+  buildPagination,
+  paginationInput,
+  trpcError,
+  auditActor,
+} from "@/trpc/utils";
 import config from "@/config";
 import { getService, getServiceSync, Services } from "@/services";
 import { Discord } from "@/discord/constants";
@@ -107,8 +112,7 @@ export const inactivityRouter = router({
       await Q.player.inactivity.warning.resolveWarning(input.id);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "inactivity_resolve_manual",
         description: `Manually resolved inactivity warning for ${
           warning.minecraftUsername ?? warning.playerMinecraftUuid
@@ -186,8 +190,7 @@ export const inactivityRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "inactivity_remove_manual",
         description: `Manually removed inactive player ${warning.minecraftUsername}`,
       });
@@ -220,8 +223,7 @@ export const inactivityRouter = router({
       });
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "inactivity_trigger_cleanup",
         description: "Force-triggered inactivity cleanup cycle",
       });
@@ -254,8 +256,7 @@ export const inactivityRouter = router({
       });
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "inactivity_trigger_resolve_remove",
         description:
           "Force-ran inactivity resolve+remove phases (no new warnings)",

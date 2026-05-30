@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import config from "@/config";
 import {
   embedDataSchema,
@@ -115,8 +115,7 @@ export const embedCrudProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "embed_send",
         description: `Sent embed to channel ${channelId}${data.title ? `: "${data.title}"` : ""}`,
         metadata: {
@@ -174,8 +173,7 @@ export const embedCrudProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "embed_edit",
         description: `Edited embed ${messageId} in channel ${channelId}`,
         metadata: { channelId, messageId, presetId: input.presetId },

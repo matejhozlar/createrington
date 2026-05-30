@@ -102,15 +102,14 @@ export class PlayerPlaytimeDailyQueries extends PlayerPlaytimeDailyBaseQueries {
     GROUP BY play_date
     ORDER BY play_date ASC`;
 
-    try {
-      const result = await this.db.query(query, [serverId, startDate, endDate]);
+    const result = await this.runQuery("get server daily activity", query, [
+      serverId,
+      startDate,
+      endDate,
+    ]);
 
-      return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
-        result.rows,
-      );
-    } catch (error) {
-      logger.error("Failed to get server daily activity:", error);
-      throw error;
-    }
+    return this.mapRowsToEntities<ServerActivityRow, ServerActivity>(
+      result.rows,
+    );
   }
 }

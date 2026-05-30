@@ -157,11 +157,6 @@ export class PlayerMinecraftStatsQueries extends PlayerMinecraftStatsBaseQueries
         updated_at = NOW()
     `;
 
-    try {
-      await this.db.query(query, values);
-    } catch (error) {
-      logger.error("Failed to batch upsert minecraft stats:", error);
-      throw error;
-    }
+    await this.runQuery("batch upsert minecraft stats", query, values);
   }
 }

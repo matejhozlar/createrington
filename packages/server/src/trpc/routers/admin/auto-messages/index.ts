@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
@@ -21,8 +21,7 @@ async function logAutoMessageAction(
   metadata?: Record<string, unknown>,
 ) {
   await Q.admin.log.action.logAction({
-    adminDiscordId: ctx.user.discordId,
-    adminUsername: ctx.user.minecraftUsername,
+    ...auditActor(ctx),
     actionType,
     description,
     metadata,

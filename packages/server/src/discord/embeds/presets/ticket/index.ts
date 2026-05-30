@@ -2,6 +2,7 @@ import config from "@/config";
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
 import { Discord } from "@/discord/constants";
+import { discordTimestamp } from "@/utils/format";
 
 export const TicketEmbedPresets = {
   /**
@@ -109,14 +110,12 @@ export const TicketEmbedPresets = {
       .fields([
         {
           name: "Created At",
-          value: `<t:${Math.floor(data.createdAt.getTime() / 1000)}:F>`,
+          value: discordTimestamp(data.createdAt, "F"),
           inline: true,
         },
         {
           name: "Closed At",
-          value: data.closedAt
-            ? `<t:${Math.floor(data.closedAt.getTime() / 1000)}:F>`
-            : "N/A",
+          value: data.closedAt ? discordTimestamp(data.closedAt, "F") : "N/A",
           inline: true,
         },
       ])

@@ -15,6 +15,7 @@
 
 import { Q } from "@/db";
 import config from "@/config";
+import { toUnixSeconds } from "@/utils/format";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 import { getLeaderboard } from "../analytics/leaderboard";
@@ -433,7 +434,7 @@ async function buildPriceHistoryData(
 
   // Reverse to chronological order
   return snapshots.reverse().map((s) => ({
-    time: Math.floor(s.recordedAt.getTime() / 1000),
+    time: toUnixSeconds(s.recordedAt),
     open: Number(s.openPrice),
     high: Number(s.highPrice),
     low: Number(s.lowPrice),

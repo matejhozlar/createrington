@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -50,15 +51,11 @@ export async function execute(
   const targetUser = interaction.options.getUser("user");
 
   if (!interaction.channel || !("bulkDelete" in interaction.channel)) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Invalid channel",
       "This command can only be used in text channels.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -96,13 +93,10 @@ export async function execute(
   } catch (error) {
     logger.error("/purge failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Purge Failed",
       "Failed to purge messages. Make sure they are not older than 14 days.",
     );
-
-    await interaction.editReply({
-      embeds: [embed.build()],
-    });
   }
 }

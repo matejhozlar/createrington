@@ -49,18 +49,13 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
       ORDER BY p.created_at DESC
       LIMIT ${limitParam} OFFSET ${offsetParam}`;
 
-    try {
-      const result = await this.db.query<
-        Record<string, unknown> & { response_count: number }
-      >(query, params);
-      return result.rows.map((row) => ({
-        ...this.mapRowToEntity(row as never),
-        responseCount: row.response_count,
-      }));
-    } catch (error) {
-      logger.error("Failed to list prompts with response count:", error);
-      throw error;
-    }
+    const result = await this.runQuery<
+      Record<string, unknown> & { response_count: number }
+    >("list prompts with response count", query, params);
+    return result.rows.map((row) => ({
+      ...this.mapRowToEntity(row as never),
+      responseCount: row.response_count,
+    }));
   }
 
   /**
@@ -72,12 +67,10 @@ export class PlayerPromptQueries extends PlayerPromptBaseQueries {
       SELECT * FROM ${this.table}
       WHERE status = 'active'
       ORDER BY ends_at ASC`;
-    try {
-      const result = await this.db.query<Record<string, unknown>>(query);
-      return result.rows.map((row) => this.mapRowToEntity(row as never));
-    } catch (error) {
-      logger.error("Failed to find active prompts:", error);
-      throw error;
-    }
+    const result = await this.runQuery<Record<string, unknown>>(
+      "find active prompts",
+      query,
+    );
+    return result.rows.map((row) => this.mapRowToEntity(row as never));
   }
 }

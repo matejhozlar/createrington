@@ -1,5 +1,6 @@
 import { player } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -59,14 +60,10 @@ export async function execute(
   } catch (error) {
     logger.error("/username failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Username Error",
       "Something went wrong while fetching username. Please try again.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

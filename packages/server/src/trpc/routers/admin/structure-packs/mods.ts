@@ -8,6 +8,7 @@ import {
   resolveDependencies,
   getFilesDependencies,
 } from "@/services/curseforge";
+import { auditActor } from "@/trpc/utils";
 import { modFileName, getRotationService } from "./helpers";
 
 export const structurePackModProcedures = {
@@ -34,8 +35,7 @@ export const structurePackModProcedures = {
       const { packId, ...modData } = input;
       const mod = await structurePackService.addMod(packId, modData);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_add_mod",
         description: `Added mod "${input.modName}" to pack #${packId}`,
         metadata: { packId, modName: input.modName },
@@ -54,8 +54,7 @@ export const structurePackModProcedures = {
     .mutation(async ({ input, ctx }) => {
       await structurePackService.removeMod(input.packId, input.modId);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_remove_mod",
         description: `Removed mod #${input.modId} from pack #${input.packId}`,
       });

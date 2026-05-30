@@ -1,5 +1,6 @@
 import { playerRepo } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatPlaytime } from "@/utils/format";
 import { getService, Services } from "@/services";
@@ -101,10 +102,10 @@ export async function execute(
       await interaction.editReply({ embeds: [embed.build()] });
     }
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Activity Error",
       "Could not fetch player data. They may not be registered.",
     );
-    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

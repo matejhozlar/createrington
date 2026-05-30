@@ -1,5 +1,6 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
+import { discordTimestamp } from "@/utils/format";
 
 export interface DepartedMemberInfo {
   discordId: string;
@@ -14,7 +15,6 @@ export const DepartedEmbedPresets = {
    * Admin notification when a registered member leaves
    */
   departedMember(info: DepartedMemberInfo) {
-    const unixTimestamp = Math.floor(info.departedAt.getTime() / 1000);
     const autoDeleteTimestamp = Math.floor(
       (info.departedAt.getTime() + 30 * 24 * 60 * 60 * 1000) / 1000,
     );
@@ -29,7 +29,7 @@ export const DepartedEmbedPresets = {
       .field("Discord ID", `\`${info.discordId}\``, true)
       .field("Minecraft Username", `\`${info.minecraftUsername}\``, true)
       .field("Minecraft UUID", `\`${info.minecraftUuid}\``, true)
-      .field("Departed", `<t:${unixTimestamp}:R>`, true)
+      .field("Departed", discordTimestamp(info.departedAt, "R"), true)
       .field("Auto-Delete", `<t:${autoDeleteTimestamp}:R>`, true)
       .timestamp();
   },
@@ -42,8 +42,6 @@ export const DepartedEmbedPresets = {
     deletedBy: string;
     deletedAt: Date;
   }) {
-    const unixTimestamp = Math.floor(info.deletedAt.getTime() / 1000);
-
     return createEmbed()
       .title("✅ Member Deleted")
       .description(
@@ -51,7 +49,7 @@ export const DepartedEmbedPresets = {
       )
       .color(EmbedColors.Success)
       .field("Deleted By", info.deletedBy, true)
-      .field("Deleted At", `<t:${unixTimestamp}:F>`, true)
+      .field("Deleted At", discordTimestamp(info.deletedAt, "F"), true)
       .footer("This member's data has been permanently removed")
       .timestamp();
   },
@@ -64,17 +62,14 @@ export const DepartedEmbedPresets = {
     departedAt: Date;
     returnedAt: Date;
   }) {
-    const departedTimestamp = Math.floor(info.departedAt.getTime() / 1000);
-    const returnedTimestamp = Math.floor(info.returnedAt.getTime() / 1000);
-
     return createEmbed()
       .title("Member Returned")
       .description(
         `**${info.minecraftUsername}** has rejoined the server. Scheduled deletion has been cancelled.`,
       )
       .color(EmbedColors.Info)
-      .field("Departed", `<t:${departedTimestamp}:R>`, true)
-      .field("Returned", `<t:${returnedTimestamp}:F>`, true)
+      .field("Departed", discordTimestamp(info.departedAt, "R"), true)
+      .field("Returned", discordTimestamp(info.returnedAt, "F"), true)
       .footer("Departure record cancelled")
       .timestamp();
   },
@@ -87,17 +82,14 @@ export const DepartedEmbedPresets = {
     departedAt: Date;
     deletedAt: Date;
   }) {
-    const departedTimestamp = Math.floor(info.departedAt.getTime() / 1000);
-    const deletedTimestamp = Math.floor(info.deletedAt.getTime() / 1000);
-
     return createEmbed()
       .title("Member Auto-Deleted")
       .description(
         `**${info.minecraftUsername}** was automatically removed after 30 days.`,
       )
       .color(EmbedColors.Success)
-      .field("Departed", `<t:${departedTimestamp}:R>`, true)
-      .field("Auto-Deleted", `<t:${deletedTimestamp}:F>`, true)
+      .field("Departed", discordTimestamp(info.departedAt, "R"), true)
+      .field("Auto-Deleted", discordTimestamp(info.deletedAt, "F"), true)
       .footer("30-day grace period expired")
       .timestamp();
   },

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import {
   embedDataSchema,
   embedBotSchema,
@@ -68,8 +68,7 @@ export const embedLinkedMessageProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "embed_update_all",
         description: `Updated preset #${input.presetId} and ${updated}/${links.length} linked messages`,
         metadata: { presetId: input.presetId, updated, failed: errors.length },

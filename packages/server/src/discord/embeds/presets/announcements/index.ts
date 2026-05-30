@@ -1,5 +1,6 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed, type DiscordEmbedBuilder } from "../../embed-builder";
+import { discordTimestamp } from "@/utils/format";
 
 const EMBED_FIELD_VALUE_MAX = 1024;
 
@@ -90,12 +91,6 @@ function addModListFields(
   });
 }
 
-/** Formats a Date as a Discord timestamp tag (`<t:unix:style>`) */
-function formatDiscordTimestamp(date: Date, style: "f" | "R"): string {
-  const timestamp = Math.floor(date.getTime() / 1000);
-  return `<t:${timestamp}:${style}>`;
-}
-
 export const AnnouncementEmbedPresets = {
   /** Creates a modpack update announcement embed with added, removed, and updated mod lists */
   modpackUpdate(data: ChangelogData) {
@@ -141,7 +136,7 @@ export const AnnouncementEmbedPresets = {
       .fields([
         {
           name: "🕒 Starts",
-          value: `${formatDiscordTimestamp(data.startsAt, "f")} (${formatDiscordTimestamp(data.startsAt, "R")})`,
+          value: `${discordTimestamp(data.startsAt, "f")} (${discordTimestamp(data.startsAt, "R")})`,
         },
         {
           name: "⏳ Estimated Duration",
@@ -149,7 +144,7 @@ export const AnnouncementEmbedPresets = {
         },
         {
           name: "🔚 Expected End",
-          value: `${formatDiscordTimestamp(endTime, "f")} (${formatDiscordTimestamp(endTime, "R")})`,
+          value: `${discordTimestamp(endTime, "f")} (${discordTimestamp(endTime, "R")})`,
         },
       ])
       .footer("Thanks for your patience!")

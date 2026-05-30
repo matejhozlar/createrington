@@ -1,7 +1,9 @@
 import { balanceRepo, player } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { discordTimestamp } from "@/utils/format";
 import {
   ChatInputCommandInteraction,
   MessageFlags,
@@ -64,14 +66,11 @@ export async function execute(
     const playerEntry = await player.find({ discordId: interaction.user.id });
 
     if (!playerEntry) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Not Registered",
         "You must be registered to view history. Use `/register` to get started.",
       );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -93,14 +92,13 @@ export async function execute(
     }
 
     const lines = transactions.map((tx) => {
-      const timestamp = Math.floor(tx.createdAt.getTime() / 1000);
       const isPositive = tx.amount >= 0n;
       const sign = isPositive ? "+" : "";
       const amount = BalanceUtils.formatTrimmed(tx.amount);
       const label = typeLabels[tx.transactionType] ?? tx.transactionType;
       const desc = tx.description ? ` - ${tx.description}` : "";
 
-      return `<t:${timestamp}:R> **${sign}$${amount}** ${label}${desc}`;
+      return `${discordTimestamp(tx.createdAt, "R")} **${sign}$${amount}** ${label}${desc}`;
     });
 
     const embed = EmbedPresets.info("Transaction History", lines.join("\n"));
@@ -112,13 +110,10 @@ export async function execute(
   } catch (error) {
     logger.error("/history failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "History Error",
       "Failed to fetch transaction history. Please try again.",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

@@ -44,18 +44,13 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
         updated_at = NOW()
       RETURNING *`;
 
-    try {
-      const result = await this.db.query(query, [
-        data.promptId,
-        data.discordId,
-        data.minecraftUuid,
-        data.responseText,
-      ]);
-      return this.mapRowToEntity(result.rows[0]);
-    } catch (error) {
-      logger.error("Failed to upsert prompt response:", error);
-      throw error;
-    }
+    const result = await this.runQuery("upsert prompt response", query, [
+      data.promptId,
+      data.discordId,
+      data.minecraftUuid,
+      data.responseText,
+    ]);
+    return this.mapRowToEntity(result.rows[0]);
   }
 
   /**
@@ -76,18 +71,13 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
       WHERE r.prompt_id = $1
       ORDER BY GREATEST(r.submitted_at, r.updated_at) DESC`;
 
-    try {
-      const result = await this.db.query<
-        Record<string, unknown> & { minecraft_username: string | null }
-      >(query, [promptId]);
-      return result.rows.map((row) => ({
-        ...this.mapRowToEntity(row as never),
-        minecraftUsername: row.minecraft_username,
-      }));
-    } catch (error) {
-      logger.error("Failed to find responses with player:", error);
-      throw error;
-    }
+    const result = await this.runQuery<
+      Record<string, unknown> & { minecraft_username: string | null }
+    >("find responses with player", query, [promptId]);
+    return result.rows.map((row) => ({
+      ...this.mapRowToEntity(row as never),
+      minecraftUsername: row.minecraft_username,
+    }));
   }
 
   /** Returns the current response for a (prompt, Discord user) or null. */
@@ -98,12 +88,11 @@ export class PlayerPromptResponseQueries extends PlayerPromptResponseBaseQueries
     const query = `
       SELECT * FROM ${this.table}
       WHERE prompt_id = $1 AND discord_id = $2`;
-    try {
-      const result = await this.db.query(query, [promptId, discordId]);
-      return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
-    } catch (error) {
-      logger.error("Failed to find response by prompt+discord:", error);
-      throw error;
-    }
+    const result = await this.runQuery(
+      "find response by prompt+discord",
+      query,
+      [promptId, discordId],
+    );
+    return result.rows.length ? this.mapRowToEntity(result.rows[0]) : null;
   }
 }

@@ -1,6 +1,8 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
+import { discordTimestamp } from "@/utils/format";
 import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
 
 /**
@@ -59,20 +61,18 @@ export async function execute(
     }
 
     if (!player.online) {
-      const lastSeenUnix = Math.floor(player.lastSeen.getTime() / 1000);
-      embed.field("Last Seen", `<t:${lastSeenUnix}:R>`, true);
+      embed.field("Last Seen", discordTimestamp(player.lastSeen, "R"), true);
     }
 
-    const createdAtUnix = Math.floor(player.createdAt.getTime() / 1000);
-    embed.field("Member Since", `<t:${createdAtUnix}:D>`);
+    embed.field("Member Since", discordTimestamp(player.createdAt, "D"));
 
     await interaction.reply({ embeds: [embed.build()] });
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Lookup Error",
       `Could not find player data for ${targetUser.displayName}. They may not be registered.`,
+      { ephemeral: false },
     );
-
-    await interaction.reply({ embeds: [embed.build()] });
   }
 }

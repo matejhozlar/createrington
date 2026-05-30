@@ -8,6 +8,7 @@ import {
   ButtonStyle,
 } from "discord.js";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { getAllTicketTypes } from "@/services/discord/tickets";
 import { TicketButtonGenerator } from "@/services/discord/tickets";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -48,15 +49,11 @@ export async function execute(
 ): Promise<void> {
   try {
     if (!isSendableChannel(interaction.channel)) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Invalid Channel",
         "This command can only be used in text channels.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -100,20 +97,10 @@ export async function execute(
   } catch (error) {
     logger.error("/ticket-panel failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Panel Creation Failed",
       "Failed to create ticket panel. Please try again.",
     );
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      await interaction.editReply({
-        embeds: [embed.build()],
-      });
-    }
   }
 }

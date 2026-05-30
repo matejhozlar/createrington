@@ -58,19 +58,14 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{
-        period: string;
-        unique_players: number;
-      }>(query, [start, end, granularity]);
-      return result.rows.map((row) => ({
-        period: row.period,
-        uniquePlayers: row.unique_players,
-      }));
-    } catch (error) {
-      logger.error("Failed to get active player counts:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      period: string;
+      unique_players: number;
+    }>("get active player counts", query, [start, end, granularity]);
+    return result.rows.map((row) => ({
+      period: row.period,
+      uniquePlayers: row.unique_players,
+    }));
   }
 
   /**
@@ -101,16 +96,12 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       FROM ${this.table}
       WHERE ${conditions.join(" AND ")}`;
 
-    try {
-      const result = await this.db.query<{ avg_seconds: number }>(
-        query,
-        params,
-      );
-      return result.rows[0].avg_seconds;
-    } catch (error) {
-      logger.error("Failed to get average session length:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ avg_seconds: number }>(
+      "get average session length",
+      query,
+      params,
+    );
+    return result.rows[0].avg_seconds;
   }
 
   /**
@@ -142,20 +133,15 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       ORDER BY peak_count DESC, h.hour
       LIMIT 1`;
 
-    try {
-      const result = await this.db.query<{
-        peak_time: string;
-        peak_count: number;
-      }>(query, [start, end]);
-      const row = result.rows[0];
-      return {
-        peakCount: row?.peak_count ?? 0,
-        peakTime: row?.peak_time ?? start.toISOString(),
-      };
-    } catch (error) {
-      logger.error("Failed to get peak concurrent:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      peak_time: string;
+      peak_count: number;
+    }>("get peak concurrent", query, [start, end]);
+    const row = result.rows[0];
+    return {
+      peakCount: row?.peak_count ?? 0,
+      peakTime: row?.peak_time ?? start.toISOString(),
+    };
   }
 
   /**
@@ -197,22 +183,17 @@ export class PlayerSessionQueries extends PlayerSessionBaseQueries {
       )
       SELECT * FROM daily ORDER BY date`;
 
-    try {
-      const result = await this.db.query<{
-        date: string;
-        new_players: number;
-        returning_players: number;
-      }>(query, [start, end]);
+    const result = await this.runQuery<{
+      date: string;
+      new_players: number;
+      returning_players: number;
+    }>("get new vs returning", query, [start, end]);
 
-      return result.rows.map((row) => ({
-        date: row.date,
-        newPlayers: row.new_players,
-        returningPlayers: row.returning_players,
-      }));
-    } catch (error) {
-      logger.error("Failed to get new vs returning:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      date: row.date,
+      newPlayers: row.new_players,
+      returningPlayers: row.returning_players,
+    }));
   }
 
   /**

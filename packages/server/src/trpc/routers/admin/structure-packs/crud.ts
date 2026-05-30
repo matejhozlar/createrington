@@ -2,6 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { structurePackService } from "@/services/structure-pack";
+import { auditActor } from "@/trpc/utils";
 import { modFileName } from "./helpers";
 
 export const structurePackCrudProcedures = {
@@ -32,8 +33,7 @@ export const structurePackCrudProcedures = {
         input.description,
       );
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_create",
         description: `Created structure pack "${input.name}"`,
       });
@@ -53,8 +53,7 @@ export const structurePackCrudProcedures = {
       const { id, ...data } = input;
       const pack = await structurePackService.updatePack(id, data);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_update",
         description: `Updated structure pack #${id}`,
         metadata: { packId: id, changes: data },
@@ -68,8 +67,7 @@ export const structurePackCrudProcedures = {
     .mutation(async ({ input, ctx }) => {
       await structurePackService.deletePack(input.id);
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_delete",
         description: `Deleted structure pack #${input.id}`,
       });
@@ -90,8 +88,7 @@ export const structurePackCrudProcedures = {
         input.enabled,
       );
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_toggle",
         description: `${input.enabled ? "Enabled" : "Disabled"} structure pack #${input.id}`,
       });
@@ -152,8 +149,7 @@ export const structurePackCrudProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "structure_pack_import",
         description: `Imported ${created.length} structure packs (${skipped.length} skipped)`,
         metadata: { created, skipped },

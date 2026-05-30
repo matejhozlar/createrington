@@ -1,4 +1,4 @@
-import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import { isValidLeaderboardType } from "@/services/discord/leaderboard/config";
 import type { LeaderboardType } from "@/services/discord/leaderboard/types";
@@ -103,15 +103,11 @@ async function handleRefresh(
     const expiresAt = cooldownCheck.lastRefreshed!.getTime() + 60 * 60 * 1000;
     const unixTimestamp = Math.floor(expiresAt / 1000);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Leaderboard on Cooldown",
       `This leaderboard can be refreshed <t:${unixTimestamp}:R>.`,
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -128,14 +124,10 @@ async function handleRefresh(
   } catch (error) {
     logger.error("Failed to refresh leaderboard:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Refresh Failed",
       "Failed to refresh the leaderboard. Please try again later.",
     );
-
-    await interaction.followUp({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

@@ -50,8 +50,7 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       byClassification: Record<string, number>;
     }>
   > {
-    try {
-      const rawQuery = `
+    const rawQuery = `
         SELECT
           DATE_TRUNC($3, issued_at)::text AS period,
           classification,
@@ -61,34 +60,30 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
         GROUP BY 1, classification
         ORDER BY 1`;
 
-      const result = await this.db.query<{
-        period: string;
-        classification: string;
-        count: number;
-      }>(rawQuery, [start, end, granularity]);
+    const result = await this.runQuery<{
+      period: string;
+      classification: string;
+      count: number;
+    }>("get strike counts by period", rawQuery, [start, end, granularity]);
 
-      const periodMap = new Map<
-        string,
-        { total: number; byClassification: Record<string, number> }
-      >();
+    const periodMap = new Map<
+      string,
+      { total: number; byClassification: Record<string, number> }
+    >();
 
-      for (const row of result.rows) {
-        if (!periodMap.has(row.period)) {
-          periodMap.set(row.period, { total: 0, byClassification: {} });
-        }
-        const entry = periodMap.get(row.period)!;
-        entry.total += row.count;
-        entry.byClassification[row.classification] = row.count;
+    for (const row of result.rows) {
+      if (!periodMap.has(row.period)) {
+        periodMap.set(row.period, { total: 0, byClassification: {} });
       }
-
-      return Array.from(periodMap.entries()).map(([period, data]) => ({
-        period,
-        ...data,
-      }));
-    } catch (error) {
-      logger.error("Failed to get strike counts by period:", error);
-      throw error;
+      const entry = periodMap.get(row.period)!;
+      entry.total += row.count;
+      entry.byClassification[row.classification] = row.count;
     }
+
+    return Array.from(periodMap.entries()).map(([period, data]) => ({
+      period,
+      ...data,
+    }));
   }
 
   /**
@@ -106,15 +101,11 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       GROUP BY severity
       ORDER BY severity`;
 
-    try {
-      const result = await this.db.query<{ severity: number; count: number }>(
-        query,
-      );
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get severity distribution:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ severity: number; count: number }>(
+      "get severity distribution",
+      query,
+    );
+    return result.rows;
   }
 
   /**
@@ -139,27 +130,22 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       GROUP BY player_minecraft_uuid
       `;
 
-    try {
-      const result = await this.db.query<{
-        player_minecraft_uuid: string;
-        count: number;
-      }>(query, [playerUUids]);
+    const result = await this.runQuery<{
+      player_minecraft_uuid: string;
+      count: number;
+    }>("get active strike counts", query, [playerUUids]);
 
-      const counts: Record<string, number> = {};
+    const counts: Record<string, number> = {};
 
-      playerUUids.forEach((uuid) => {
-        counts[uuid] = 0;
-      });
+    playerUUids.forEach((uuid) => {
+      counts[uuid] = 0;
+    });
 
-      result.rows.forEach((row) => {
-        counts[row.player_minecraft_uuid] = row.count;
-      });
+    result.rows.forEach((row) => {
+      counts[row.player_minecraft_uuid] = row.count;
+    });
 
-      return counts;
-    } catch (error) {
-      logger.error("Failed to get active strike counts:", error);
-      throw error;
-    }
+    return counts;
   }
 
   /**
@@ -194,15 +180,11 @@ export class PlayerStrikeQueries extends PlayerStrikeBaseQueries {
       FROM ${this.table}
       WHERE removed = false`;
 
-    try {
-      const result = await this.db.query<{ player_minecraft_uuid: string }>(
-        query,
-      );
-      return result.rows.map((row) => row.player_minecraft_uuid);
-    } catch (error) {
-      logger.error("Failed to get players with active strikes:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
+      "get players with active strikes",
+      query,
+    );
+    return result.rows.map((row) => row.player_minecraft_uuid);
   }
 
   /**

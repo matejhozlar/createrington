@@ -10,6 +10,7 @@ import type { ActiveEvent } from "./events/event-engine";
 import { getService } from "@/services";
 import { Services } from "../container";
 import type { TriggeredAlert } from "./alerts/alert-manager";
+import { discordTimestamp } from "@/utils/format";
 
 function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
@@ -112,7 +113,7 @@ export async function sendIpoAnnouncementNotification(
   const event = await createMarketEvent({
     type: "ipo_launch",
     title: `IPO: ${name} (${symbol})`,
-    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends <t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>.`,
+    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends ${discordTimestamp(ipoEndsAt, "R")}.`,
     severity: "info",
   }).catch((err) => {
     logger.error("Failed to record IPO launch event:", err);
@@ -125,7 +126,7 @@ export async function sendIpoAnnouncementNotification(
     ipoPrice: formatPrice(ipoPrice),
     totalSupply: Number(totalSupply).toLocaleString(),
     maxPerPlayer: maxPerPlayer.toLocaleString(),
-    ipoEndsAt: `<t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>`,
+    ipoEndsAt: discordTimestamp(ipoEndsAt, "R"),
     duration: `${durationMin} minutes`,
   });
 
@@ -305,8 +306,7 @@ export async function sendMarketEventNotification(
   );
 
   if (event.activeUntil) {
-    const unixEnd = Math.floor(event.activeUntil.getTime() / 1000);
-    embed.field("Ends", `<t:${unixEnd}:R>`, true);
+    embed.field("Ends", discordTimestamp(event.activeUntil, "R"), true);
   } else {
     embed.field("Type", "Instant", true);
   }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
+import { auditActor } from "@/trpc/utils";
 import type { MarketEventType } from "@/services/crypto/events/event-definitions";
 
 export const cryptoEventProcedures = {
@@ -40,8 +41,7 @@ export const cryptoEventProcedures = {
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_event_trigger",
         description: `Triggered ${input.eventType} event on ${event.tokenSymbol ?? "all tokens"}`,
         metadata: {

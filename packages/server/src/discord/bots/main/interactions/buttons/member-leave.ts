@@ -1,6 +1,7 @@
 import { Q } from "@/db";
 import { isAdmin } from "@/discord/utils/admin-guard";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { playerDeletionService } from "@/services/player/deletion";
 import {
   type ButtonInteraction,
@@ -110,15 +111,11 @@ async function handleDeleteNow(
     });
 
     if (!departed) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Not Found",
         "This member has already been deleted or the record doesn't exist.",
       );
-
-      await interaction.followUp({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
 
       return;
     }
@@ -167,14 +164,10 @@ async function handleDeleteNow(
   } catch (error) {
     logger.error("Failed to delete departed member:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Deletion Failed",
       error instanceof Error ? error.message : "Unknown error",
     );
-
-    await interaction.followUp({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

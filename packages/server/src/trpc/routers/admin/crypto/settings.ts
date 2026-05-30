@@ -7,7 +7,7 @@ import {
   SETTINGS_REGISTRY,
   type SettingKey,
 } from "@/services/crypto";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 
 const settingKeySchema = z.enum(
   ALL_SETTING_KEYS as [SettingKey, ...SettingKey[]],
@@ -57,8 +57,7 @@ export const adminCryptoSettingsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_update",
         description: `Updated ${input.key}`,
         tableName: "crypto_setting",
@@ -82,8 +81,7 @@ export const adminCryptoSettingsRouter = router({
       const result = await settings.reset(input.key, ctx.user.discordId);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_reset",
         description: `Reset ${input.key} to default`,
         tableName: "crypto_setting",
@@ -107,8 +105,7 @@ export const adminCryptoSettingsRouter = router({
       const cleared = await settings.resetAll(ctx.user.discordId);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_reset_all",
         description: `Reset ${cleared} crypto settings to defaults`,
         tableName: "crypto_setting",

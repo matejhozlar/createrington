@@ -124,6 +124,36 @@ export function formatDuration(start: Date, end: Date = new Date()): string {
 }
 
 /**
+ * Converts a Date to whole seconds since the Unix epoch, the unit Discord's
+ * `<t:...>` timestamp markup expects.
+ *
+ * @param date - The date to convert
+ * @returns Seconds since the Unix epoch (floored)
+ */
+export function toUnixSeconds(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
+}
+
+/**
+ * Builds a Discord timestamp markup string (`<t:unix:style>`) that clients
+ * render in the viewer's local timezone.
+ *
+ * @param date - The date to render
+ * @param style - Discord timestamp style (default "R" for relative)
+ * @returns Discord timestamp markup
+ *
+ * @example
+ * discordTimestamp(date)        // "<t:1717000000:R>"
+ * discordTimestamp(date, "F")   // "<t:1717000000:F>"
+ */
+export function discordTimestamp(
+  date: Date,
+  style: "t" | "T" | "d" | "D" | "f" | "F" | "R" = "R",
+): string {
+  return `<t:${toUnixSeconds(date)}:${style}>`;
+}
+
+/**
  * Pluralizes a word based on count
  *
  * @param count - The count to check

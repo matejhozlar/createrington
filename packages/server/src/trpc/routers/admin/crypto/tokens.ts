@@ -3,7 +3,7 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { getService, Services } from "@/services";
 import { MEMECOIN_CATALOG } from "@/services/crypto/memecoin/catalog";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 
 function serializeToken<
   T extends { totalSupply: bigint; availableSupply: bigint },
@@ -70,8 +70,7 @@ export const cryptoTokenProcedures = {
       });
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_token_create",
         description: `Created token ${input.symbol} (${input.name})`,
         metadata: {
@@ -117,8 +116,7 @@ export const cryptoTokenProcedures = {
       const token = await Q.crypto.token.get({ id });
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_token_update",
         description: `Updated token ${oldToken.symbol}`,
         metadata: { tokenId: id, symbol: oldToken.symbol, changes: updates },
@@ -140,8 +138,7 @@ export const cryptoTokenProcedures = {
       await service.delistToken(input.id);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_token_delist",
         description: `Delisted token ${token.symbol} (${token.name})`,
         metadata: { tokenId: input.id, symbol: token.symbol },

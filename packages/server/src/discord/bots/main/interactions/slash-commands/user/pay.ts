@@ -1,6 +1,7 @@
 import { balanceRepo, player } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { formatBalance } from "@/utils/format";
 import {
@@ -74,28 +75,20 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   const note = interaction.options.getString("note") || undefined;
 
   if (sender.id === recipient.id) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Invalid Transfer",
       "You cannot send money to yourself.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
   if (recipient.bot) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Invalid Transfer",
       "You cannot send money to bots.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -103,46 +96,35 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     try {
       BalanceUtils.validate(amount);
     } catch (error) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Invalid Amount",
         error instanceof Error
           ? error.message
           : "Amount must have at most 3 decimals!",
       );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
     const senderPlayer = await player.find({ discordId: sender.id });
 
     if (!senderPlayer) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Not Registered",
         "You must be registered to send money. Use `/register` to get started.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
     const recipientPlayer = await player.find({ discordId: recipient.id });
 
     if (!recipientPlayer) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Recipient Not Registered",
         `${recipient.tag} is not registered in the system.`,
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -151,17 +133,13 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     if (!hasSufficient) {
       const senderBalance = await balanceRepo.getAmount(senderPlayer);
 
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Insufficient Balance",
         `You don't have enough money to complete this transfer.\n\n` +
           `**Your Balance:** $${BalanceUtils.format(BalanceUtils.toStorage(senderBalance))}\n` +
           `**Required:** $${BalanceUtils.format(BalanceUtils.toStorage(amount))}`,
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -196,16 +174,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   } catch (error) {
     logger.error("/pay failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Transfer Failed",
       error instanceof Error
         ? error.message
         : "Something went wrong while processing the transfer.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

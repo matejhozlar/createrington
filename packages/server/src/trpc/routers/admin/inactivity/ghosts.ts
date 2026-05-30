@@ -6,6 +6,7 @@ import {
   paginationInput,
   rethrowTrpc,
   trpcError,
+  auditActor,
 } from "@/trpc/utils";
 import config from "@/config";
 import { getService, getServiceSync, Services } from "@/services";
@@ -90,8 +91,7 @@ export const ghostsRouter = router({
       const result = await service.refresh();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "ghost_members_refresh",
         description: `Refreshed ghost member cache (${result.count} ghost(s))`,
       });
@@ -164,8 +164,7 @@ export const ghostsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "ghost_members_remove",
         description: `Removed ghost player ${result.minecraftUsername}`,
         targetPlayerUuid: result.minecraftUuid,

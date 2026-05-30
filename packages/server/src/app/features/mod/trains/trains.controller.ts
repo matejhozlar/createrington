@@ -3,15 +3,11 @@ import { Q } from "@/db";
 import { Discord } from "@/discord/constants";
 import { createEmbed } from "@/discord/embeds";
 import { EmbedColors } from "@/discord/embeds/colors";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
 import { z } from "zod";
 
-const uuidSchema = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    "Invalid UUID",
-  );
+const uuidSchema = z.string().regex(MC_UUID_REGEX, "Invalid UUID");
 const playerNameSchema = z.string().min(1).max(32);
 
 const trainCrashSchema = z.object({

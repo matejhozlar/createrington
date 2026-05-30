@@ -129,17 +129,15 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       ORDER BY s.total_seconds DESC
       LIMIT $2`;
 
-    try {
-      const result = await this.db.query(query, [serverId, limit]);
+    const result = await this.runQuery("get leaderboard", query, [
+      serverId,
+      limit,
+    ]);
 
-      return result.rows.map((row) => ({
-        ...this.mapRowToEntity(row),
-        minecraftUsername: row.minecraft_username,
-      }));
-    } catch (error) {
-      logger.error("Failed to get leaderboard:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      ...this.mapRowToEntity(row),
+      minecraftUsername: row.minecraft_username,
+    }));
   }
 
   /**
@@ -162,14 +160,9 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       FROM ${this.table}
       WHERE server_id = $1`;
 
-    try {
-      const result = await this.db.query(query, [serverId]);
+    const result = await this.runQuery("get server stats", query, [serverId]);
 
-      return this.mapRowToEntity<ServerStats, ServerStats>(result.rows[0]);
-    } catch (error) {
-      logger.error("Failed to get server stats:", error);
-      throw error;
-    }
+    return this.mapRowToEntity<ServerStats, ServerStats>(result.rows[0]);
   }
 
   /**
@@ -199,47 +192,42 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       WHERE s.player_minecraft_uuid = $1
       ORDER BY s.total_seconds DESC`;
 
-    try {
-      const result = await this.db.query(query, [playerMinecraftUuid]);
+    const result = await this.runQuery("get playtime breakdown", query, [
+      playerMinecraftUuid,
+    ]);
 
-      if (result.rows.length === 0) {
-        throw new Error(
-          `No playtime data found for player ${playerMinecraftUuid}`,
-        );
-      }
-
-      const servers: PlayerServerPlaytime[] = result.rows.map((row) => ({
-        serverId: row.server_id,
-        serverName: row.server_name,
-        totalSeconds: Number(row.total_seconds),
-        totalSessions: row.total_sessions,
-        avgSessionSeconds: Number(row.avg_session_seconds),
-        firstSeen: row.first_seen,
-        lastSeen: row.last_seen,
-      }));
-
-      // Calculate totals
-      const totals = {
-        totalSeconds: servers.reduce((sum, s) => sum + s.totalSeconds, 0),
-        totalSessions: servers.reduce((sum, s) => sum + s.totalSessions, 0),
-        serverCount: servers.length,
-        firstSeen: new Date(
-          Math.min(...servers.map((s) => s.firstSeen.getTime())),
-        ),
-        lastSeen: new Date(
-          Math.max(...servers.map((s) => s.lastSeen.getTime())),
-        ),
-      };
-
-      return {
-        playerMinecraftUuid,
-        servers,
-        totals,
-      };
-    } catch (error) {
-      logger.error("Failed to get playtime breakdown:", error);
-      throw error;
+    if (result.rows.length === 0) {
+      throw new Error(
+        `No playtime data found for player ${playerMinecraftUuid}`,
+      );
     }
+
+    const servers: PlayerServerPlaytime[] = result.rows.map((row) => ({
+      serverId: row.server_id,
+      serverName: row.server_name,
+      totalSeconds: Number(row.total_seconds),
+      totalSessions: row.total_sessions,
+      avgSessionSeconds: Number(row.avg_session_seconds),
+      firstSeen: row.first_seen,
+      lastSeen: row.last_seen,
+    }));
+
+    // Calculate totals
+    const totals = {
+      totalSeconds: servers.reduce((sum, s) => sum + s.totalSeconds, 0),
+      totalSessions: servers.reduce((sum, s) => sum + s.totalSessions, 0),
+      serverCount: servers.length,
+      firstSeen: new Date(
+        Math.min(...servers.map((s) => s.firstSeen.getTime())),
+      ),
+      lastSeen: new Date(Math.max(...servers.map((s) => s.lastSeen.getTime()))),
+    };
+
+    return {
+      playerMinecraftUuid,
+      servers,
+      totals,
+    };
   }
 
   /**
@@ -275,19 +263,15 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
         FROM ${this.table}
       `;
 
-    try {
-      const result = await this.db.query<{ total_hours: string | null }>(
-        query,
-        serverId ? [serverId] : [],
-      );
+    const result = await this.runQuery<{ total_hours: string | null }>(
+      "get total hours",
+      query,
+      serverId ? [serverId] : [],
+    );
 
-      // Handle null (no data) or convert string to number
-      const totalHours = result.rows[0]?.total_hours;
-      return totalHours ? parseInt(totalHours, 10) : 0;
-    } catch (error) {
-      logger.error("Failed to get total hours:", error);
-      throw error;
-    }
+    // Handle null (no data) or convert string to number
+    const totalHours = result.rows[0]?.total_hours;
+    return totalHours ? parseInt(totalHours, 10) : 0;
   }
 
   /**
@@ -320,26 +304,21 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       ORDER BY hours DESC
     `;
 
-    try {
-      const result = await this.db.query<{
-        server_id: number;
-        server_name: string;
-        hours: string;
-      }>(query);
+    const result = await this.runQuery<{
+      server_id: number;
+      server_name: string;
+      hours: string;
+    }>("get total hours breakdown", query);
 
-      const byServer = result.rows.map((row) => ({
-        serverId: row.server_id,
-        serverName: row.server_name,
-        hours: parseInt(row.hours, 10),
-      }));
+    const byServer = result.rows.map((row) => ({
+      serverId: row.server_id,
+      serverName: row.server_name,
+      hours: parseInt(row.hours, 10),
+    }));
 
-      const total = byServer.reduce((sum, server) => sum + server.hours, 0);
+    const total = byServer.reduce((sum, server) => sum + server.hours, 0);
 
-      return { byServer, total };
-    } catch (error) {
-      logger.error("Failed to get total hours breakdown:", error);
-      throw error;
-    }
+    return { byServer, total };
   }
 
   /**
@@ -366,18 +345,15 @@ export class PlayerPlaytimeSummaryQueries extends PlayerPlaytimeSummaryBaseQueri
       ORDER BY total_seconds DESC
       LIMIT $1`;
 
-    try {
-      const result = await this.db.query(query, [limit]);
+    const result = await this.runQuery("get global leaderboard", query, [
+      limit,
+    ]);
 
-      return result.rows.map((row) => ({
-        discordId: row.discord_id,
-        minecraftUsername: row.minecraft_username,
-        playerMinecraftUuid: row.player_minecraft_uuid,
-        totalSeconds: Number(row.total_seconds),
-      }));
-    } catch (error) {
-      logger.error("Failed to get global leaderboard:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      discordId: row.discord_id,
+      minecraftUsername: row.minecraft_username,
+      playerMinecraftUuid: row.player_minecraft_uuid,
+      totalSeconds: Number(row.total_seconds),
+    }));
   }
 }

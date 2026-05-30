@@ -1,6 +1,6 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
-import { getServerByIp } from "@/services/playtime/config";
 import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+import { resolveServerId } from "../shared/resolve-server-id";
 import type { Request, Response } from "express";
 import {
   syncChunkState,
@@ -118,37 +118,6 @@ function parsePlayer(raw: unknown, index: number): PlayerChunkData {
   };
 }
 
-function resolveServerId(req: Request): number {
-  const bodyServerId = (req.body as { serverId?: unknown })?.serverId;
-
-  if (bodyServerId !== undefined && bodyServerId !== null) {
-    const parsed =
-      typeof bodyServerId === "number"
-        ? bodyServerId
-        : parseInt(String(bodyServerId), 10);
-    if (!Number.isInteger(parsed)) {
-      throw new BadRequestError("Invalid serverId format");
-    }
-    return parsed;
-  }
-
-  const serverIp = req.serverIp;
-  if (!serverIp) {
-    throw new InternalServerError(
-      "Server IP not detected - IP verification middleware may not be properly configured",
-    );
-  }
-
-  const serverInfo = getServerByIp(serverIp);
-  if (!serverInfo) {
-    logger.warn(`Chunk sync from unknown server IP: ${serverIp}`);
-    throw new BadRequestError(
-      `Server IP ${serverIp} is not configured. Please contact an administrator`,
-    );
-  }
-  return serverInfo.serverId;
-}
-
 /**
  * Chunks Controller
  *
@@ -170,7 +139,7 @@ export class ChunksController {
       throw new BadRequestError("players must be an array");
     }
 
-    const serverId = resolveServerId(req);
+    const serverId = resolveServerId(req, "Chunk sync");
     const players = body.players.map((p, i) => parsePlayer(p, i));
 
     const totalChunks = players.reduce((sum, p) => sum + p.chunks.length, 0);

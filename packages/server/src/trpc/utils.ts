@@ -67,6 +67,19 @@ export function parsePlayerId(id: string) {
 }
 
 /**
+ * Maps an authenticated admin context to the actor fields every audit log
+ * entry requires. Spread into `logAction` calls: `{ ...auditActor(ctx), ... }`.
+ */
+export function auditActor(ctx: {
+  user: { discordId: string; minecraftUsername: string };
+}) {
+  return {
+    adminDiscordId: ctx.user.discordId,
+    adminUsername: ctx.user.minecraftUsername,
+  };
+}
+
+/**
  * Returns Zod schemas for `page` and `limit` input fields.
  * @param opts.maxLimit - Upper bound for limit (default 100)
  * @param opts.defaultLimit - Default page size (default 20)

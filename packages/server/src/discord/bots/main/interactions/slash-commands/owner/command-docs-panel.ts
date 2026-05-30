@@ -1,5 +1,6 @@
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { COMMAND_GROUPS, GROUP_ORDER } from "@/config/command-groups";
 import config from "@/config";
 import fs from "node:fs";
@@ -78,26 +79,20 @@ export async function execute(
 ): Promise<void> {
   try {
     if (!isSendableChannel(interaction.channel)) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Invalid Channel",
         "This command can only be used in text channels.",
       );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
     if (!fs.existsSync(JSON_PATH)) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "No Command Data",
         "discord-commands.json not found. Run `pnpm generate-command-docs:json` first.",
       );
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -159,14 +154,11 @@ export async function execute(
         .catch(() => null);
 
       if (!existing) {
-        const errEmbed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Message Not Found",
           `Could not find message with ID \`${messageId}\` in this channel.`,
         );
-        await interaction.reply({
-          embeds: [errEmbed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -201,19 +193,10 @@ export async function execute(
   } catch (error) {
     logger.error("/command-docs-panel failed:", error);
 
-    const errEmbed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Panel Error",
       "Failed to create or update the command docs panel.",
     );
-
-    const replyMethod =
-      interaction.replied || interaction.deferred
-        ? interaction.followUp
-        : interaction.reply;
-
-    await replyMethod.call(interaction, {
-      embeds: [errEmbed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

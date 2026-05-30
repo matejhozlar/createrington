@@ -1,5 +1,6 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
+import { discordTimestamp } from "@/utils/format";
 
 export interface InactivePlayerInfo {
   discordId: string;
@@ -13,15 +14,12 @@ export const InactivityEmbedPresets = {
    * Lists all warned players with their Discord mentions and last-seen timestamps.
    */
   warning(data: { players: InactivePlayerInfo[]; deadlineDate: Date }) {
-    const deadlineUnix = Math.floor(data.deadlineDate.getTime() / 1000);
-
     const playerLines = data.players.map((p) => {
-      const lastSeenUnix = Math.floor(p.lastSeen.getTime() / 1000);
-      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen <t:${lastSeenUnix}:R>`;
+      return `- <@${p.discordId}> (\`${p.minecraftUsername}\`) - last seen ${discordTimestamp(p.lastSeen, "R")}`;
     });
 
     const description = [
-      `The following players have not logged into the server for **60+ days**. They have until <t:${deadlineUnix}:F> (<t:${deadlineUnix}:R>) to log back in, otherwise they will be **removed from the server**.`,
+      `The following players have not logged into the server for **60+ days**. They have until ${discordTimestamp(data.deadlineDate, "F")} (${discordTimestamp(data.deadlineDate, "R")}) to log back in, otherwise they will be **removed from the server**.`,
       "",
       ...playerLines,
     ].join("\n");
@@ -51,8 +49,6 @@ export const InactivityEmbedPresets = {
     triggeredBy: { discordId: string; username: string | null } | null;
     removedAt: Date;
   }) {
-    const removedUnix = Math.floor(data.removedAt.getTime() / 1000);
-
     const triggeredByLine = data.triggeredBy
       ? `<@${data.triggeredBy.discordId}>${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`
       : "Automated";
@@ -62,7 +58,7 @@ export const InactivityEmbedPresets = {
       .join("\n");
 
     const description = [
-      `**${data.players.length}** inactive player${data.players.length === 1 ? "" : "s"} removed at <t:${removedUnix}:F>.`,
+      `**${data.players.length}** inactive player${data.players.length === 1 ? "" : "s"} removed at ${discordTimestamp(data.removedAt, "F")}.`,
       `**Triggered by:** ${triggeredByLine}`,
       "",
       playerLines,
@@ -84,14 +80,12 @@ export const InactivityEmbedPresets = {
    * Announcement embed when inactive players are removed after their grace period expired.
    */
   removed(data: { players: string[]; removedAt: Date }) {
-    const removedUnix = Math.floor(data.removedAt.getTime() / 1000);
-
     const playerLines = data.players
       .map((username) => `- \`${username}\``)
       .join("\n");
 
     const description = [
-      `The following players have been removed from the server due to inactivity. Their grace period expired on <t:${removedUnix}:F>.`,
+      `The following players have been removed from the server due to inactivity. Their grace period expired on ${discordTimestamp(data.removedAt, "F")}.`,
       "",
       playerLines,
     ].join("\n");

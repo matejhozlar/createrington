@@ -38,20 +38,15 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
         COUNT(*)::integer AS player_count
       FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{
-        total_balance: bigint;
-        player_count: number;
-      }>(query);
-      const row = result.rows[0];
-      return {
-        totalBalance: BalanceUtils.fromStorage(row.total_balance),
-        playerCount: row.player_count,
-      };
-    } catch (error) {
-      logger.error("Failed to get total in circulation:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      total_balance: bigint;
+      player_count: number;
+    }>("get total in circulation", query);
+    const row = result.rows[0];
+    return {
+      totalBalance: BalanceUtils.fromStorage(row.total_balance),
+      playerCount: row.player_count,
+    };
   }
 
   /**
@@ -77,15 +72,11 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       GROUP BY 1
       ORDER BY MIN(balance)`;
 
-    try {
-      const result = await this.db.query<{ range: string; count: number }>(
-        query,
-      );
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get balance distribution:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ range: string; count: number }>(
+      "get balance distribution",
+      query,
+    );
+    return result.rows;
   }
 
   /**
@@ -106,22 +97,17 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
         COALESCE(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY balance), 0)::bigint AS median
       FROM ${this.table}`;
 
-    try {
-      const result = await this.db.query<{
-        total: bigint;
-        average: bigint;
-        median: bigint;
-      }>(query);
-      const row = result.rows[0];
-      return {
-        total: BigInt(row.total),
-        average: BigInt(row.average),
-        median: BigInt(row.median),
-      };
-    } catch (error) {
-      logger.error("Failed to get balance aggregate stats:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      total: bigint;
+      average: bigint;
+      median: bigint;
+    }>("get balance aggregate stats", query);
+    const row = result.rows[0];
+    return {
+      total: BigInt(row.total),
+      average: BigInt(row.average),
+      median: BigInt(row.median),
+    };
   }
 
   /**
@@ -138,19 +124,15 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
       ORDER BY pb.balance DESC
       LIMIT $1`;
 
-    try {
-      const result = await this.db.query<{ name: string; balance: bigint }>(
-        query,
-        [limit],
-      );
+    const result = await this.runQuery<{ name: string; balance: bigint }>(
+      "get top balances",
+      query,
+      [limit],
+    );
 
-      return result.rows.map((row) => ({
-        name: row.name,
-        balance: BalanceUtils.fromStorage(row.balance),
-      }));
-    } catch (error) {
-      logger.error("Failed to get top balances:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      name: row.name,
+      balance: BalanceUtils.fromStorage(row.balance),
+    }));
   }
 }

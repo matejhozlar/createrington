@@ -34,16 +34,12 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{ period: string; count: number }>(
-        query,
-        [start, end, granularity],
-      );
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get joins by period:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ period: string; count: number }>(
+      "get joins by period",
+      query,
+      [start, end, granularity],
+    );
+    return result.rows;
   }
 
   /**
@@ -65,25 +61,21 @@ export class DiscordGuildMemberJoinQueries extends DiscordGuildMemberJoinBaseQue
             DO NOTHING
             RETURNING join_number`;
 
-      try {
-        const result = await this.db.query<{ join_number: number }>(query, [
-          userId,
-          username,
-        ]);
+      const result = await this.runQuery<{ join_number: number }>(
+        "record member join",
+        query,
+        [userId, username],
+      );
 
-        if (result.rows.length === 0) {
-          const existing = await this.find({ userId });
-          if (!existing) {
-            throw new Error("Failed to record join - no result returned");
-          }
-          return existing.joinNumber;
+      if (result.rows.length === 0) {
+        const existing = await this.find({ userId });
+        if (!existing) {
+          throw new Error("Failed to record join - no result returned");
         }
-
-        return result.rows[0].join_number;
-      } catch (error) {
-        logger.error("Failed to record member join:", error);
-        throw error;
+        return existing.joinNumber;
       }
+
+      return result.rows[0].join_number;
     }
   }
 }

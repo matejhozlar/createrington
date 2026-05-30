@@ -6,6 +6,7 @@ import {
 import { getNotificationConfig } from "../../config/notification-selection";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 
 /**
  * Handles notification selection buttons
@@ -139,14 +140,10 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
       error,
     );
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Action Failed",
       "Something went wrong while updating your roles. Please try again or contact an administrator.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }
