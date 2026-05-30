@@ -121,9 +121,7 @@ export function buildPagination(page: number, limit: number, total: number) {
  * TRPCError when no token matches.
  */
 export async function resolveTokenOrThrow(symbol: string) {
-  const token = await Q.crypto.token
-    .where({ symbol: symbol.toUpperCase() })
-    .first();
+  const token = await Q.crypto.token.find({ symbol: symbol.toUpperCase() });
 
   if (!token) {
     throw trpcError.notFound(`Token ${symbol} not found`);
