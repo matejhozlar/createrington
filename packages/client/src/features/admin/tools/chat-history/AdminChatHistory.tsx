@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -101,23 +94,13 @@ export function AdminChatHistory() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Chat History</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools", href: "/admin/tools" },
+          { label: "Chat History" },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex items-center justify-between gap-3">

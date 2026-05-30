@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { trpc } from "@/lib/trpc";
 import { useServerData } from "@/contexts/server-data";
 import { ServerHeader } from "./components/ServerHeader";
@@ -61,23 +54,13 @@ export function AdminServerDetail() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/servers">Servers</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{serverData.server.serverName}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Servers", href: "/admin/servers" },
+          { label: serverData.server.serverName },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 py-4">
         <ServerHeader

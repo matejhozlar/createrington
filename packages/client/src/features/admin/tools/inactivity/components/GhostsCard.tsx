@@ -35,6 +35,7 @@ import { Copy, Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
@@ -94,18 +95,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     setPage(newPage);
   }, []);
 
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent, text: string, label: string) => {
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(text);
-        toast.info(`${label} copied`);
-      } catch {
-        toast.error(`Failed to copy ${label}`);
-      }
-    },
-    [toast],
-  );
+  const handleCopy = useCopyToClipboard();
 
   const handleRefresh = useCallback(async () => {
     try {

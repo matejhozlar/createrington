@@ -1,14 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
@@ -26,7 +19,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useAdminPlayers } from "@/contexts/admin";
-import { useToastActions } from "@/hooks/use-toast";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -107,8 +100,6 @@ export function AdminPlayers() {
   const { isPlayerOnline, getPlayerServerId, getServerName } =
     useAdminPlayers();
 
-  const toast = useToastActions();
-
   const [page, setPage] = useState(0);
   const [limit] = useState(20);
 
@@ -174,18 +165,7 @@ export function AdminPlayers() {
     [orderBy],
   );
 
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent, text: string, label: string) => {
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(text);
-        toast.info(`${label} copied`);
-      } catch {
-        toast.error(`Failed to copy ${label}`);
-      }
-    },
-    [toast],
-  );
+  const handleCopy = useCopyToClipboard();
 
   const renderSortIcon = useCallback(
     (field: SortField) => {
@@ -255,19 +235,12 @@ export function AdminPlayers() {
   return (
     <div className="flex flex-1 flex-col gap-4">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Players</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Players" },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Stats Cards */}
