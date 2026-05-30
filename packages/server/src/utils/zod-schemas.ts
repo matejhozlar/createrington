@@ -12,3 +12,10 @@ export const MC_UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const mcUuid = z.string().regex(MC_UUID_REGEX, "Invalid Minecraft UUID");
+
+/** Crypto token symbol input, normalised to uppercase so call sites never repeat `.toUpperCase()`. */
+export const cryptoSymbol = z
+  .string()
+  .min(1)
+  .max(10)
+  .transform((s) => s.toUpperCase());

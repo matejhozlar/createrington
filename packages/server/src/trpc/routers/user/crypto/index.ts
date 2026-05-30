@@ -6,6 +6,7 @@ import {
   rethrowTrpc,
   resolveTokenOrThrow,
 } from "@/trpc/utils";
+import { cryptoSymbol } from "@/utils/zod-schemas";
 import { Q } from "@/db";
 import {
   executeBuy,
@@ -61,7 +62,7 @@ export const cryptoRouter = router({
     .meta({ description: "Market buy tokens" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
@@ -105,7 +106,7 @@ export const cryptoRouter = router({
     .meta({ description: "Market sell tokens" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
@@ -147,10 +148,10 @@ export const cryptoRouter = router({
 
   cooldown: userProcedure
     .meta({ description: "Get remaining trade cooldown for a token" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ ctx, input }) => {
       const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
+        .where({ symbol: input.symbol })
         .first();
 
       if (!token) return { expiresAt: null };
@@ -250,7 +251,7 @@ export const cryptoRouter = router({
     .meta({ description: "Place a limit, stop-loss, or take-profit order" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         type: z.enum(["limit_buy", "limit_sell", "stop_loss", "take_profit"]),
         amount: z.number().int().positive().max(1_000_000_000),
         targetPrice: z
@@ -320,7 +321,7 @@ export const cryptoRouter = router({
         .object({
           page: z.number().int().min(0).default(0),
           limit: z.number().int().min(1).max(50).default(20),
-          symbol: z.string().optional(),
+          symbol: cryptoSymbol.optional(),
           type: z.enum(["buy", "sell"]).optional(),
         })
         .optional()
@@ -343,9 +344,8 @@ export const cryptoRouter = router({
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       if (input.symbol) {
-        const upperSymbol = input.symbol.toUpperCase();
         filtered = filtered.filter(
-          (tx) => tokenMap.get(tx.tokenId)?.symbol === upperSymbol,
+          (tx) => tokenMap.get(tx.tokenId)?.symbol === input.symbol,
         );
       }
 
@@ -378,7 +378,7 @@ export const cryptoRouter = router({
 
   ipoAllocation: userProcedure
     .meta({ description: "Get remaining IPO allocation for a token" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ ctx, input }) => {
       const token = await resolveTokenOrThrow(input.symbol);
 
@@ -432,7 +432,7 @@ export const cryptoRouter = router({
 
   watchlistAdd: userProcedure
     .meta({ description: "Add token to watchlist" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .mutation(async ({ ctx, input }) => {
       const token = await resolveTokenOrThrow(input.symbol);
 
@@ -448,7 +448,7 @@ export const cryptoRouter = router({
 
   watchlistRemove: userProcedure
     .meta({ description: "Remove token from watchlist" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .mutation(async ({ ctx, input }) => {
       const token = await resolveTokenOrThrow(input.symbol);
 
@@ -490,7 +490,7 @@ export const cryptoRouter = router({
     .meta({ description: "Create a price alert" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         targetPrice: z
           .string()
           .refine((v) => Number(v) > 0, "Price must be positive"),

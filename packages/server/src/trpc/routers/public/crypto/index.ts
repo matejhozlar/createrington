@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
 import { trpcError, resolveTokenOrThrow } from "@/trpc/utils";
+import { cryptoSymbol } from "@/utils/zod-schemas";
 import { toUnixSeconds } from "@/utils/format";
 import { Q } from "@/db";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
@@ -86,7 +87,7 @@ export const cryptoRouter = router({
 
   get: publicProcedure
     .meta({ description: "Get single token by symbol" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ input }) => {
       const token = await resolveTokenOrThrow(input.symbol);
 
@@ -114,7 +115,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get price history (OHLCV) for a token" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         interval: z.enum(["tick", "minute", "hourly", "daily", "weekly"]),
         limit: z.number().int().min(1).max(500).default(100),
       }),
@@ -265,7 +266,7 @@ export const cryptoRouter = router({
 
   tokenDistribution: publicProcedure
     .meta({ description: "Get token ownership distribution" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ input }) => {
       const token = await resolveTokenOrThrow(input.symbol);
 
