@@ -15,8 +15,8 @@ export const DepartedEmbedPresets = {
    * Admin notification when a registered member leaves
    */
   departedMember(info: DepartedMemberInfo) {
-    const autoDeleteTimestamp = Math.floor(
-      (info.departedAt.getTime() + 30 * 24 * 60 * 60 * 1000) / 1000,
+    const autoDeleteDate = new Date(
+      info.departedAt.getTime() + 30 * 24 * 60 * 60 * 1000,
     );
 
     return createEmbed()
@@ -30,7 +30,7 @@ export const DepartedEmbedPresets = {
       .field("Minecraft Username", `\`${info.minecraftUsername}\``, true)
       .field("Minecraft UUID", `\`${info.minecraftUuid}\``, true)
       .field("Departed", discordTimestamp(info.departedAt, "R"), true)
-      .field("Auto-Delete", `<t:${autoDeleteTimestamp}:R>`, true)
+      .field("Auto-Delete", discordTimestamp(autoDeleteDate, "R"), true)
       .timestamp();
   },
 
