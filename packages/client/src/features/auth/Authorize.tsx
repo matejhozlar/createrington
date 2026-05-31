@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/loading-spinner";
 import { toast } from "sonner";
-import { ShieldCheck, User, Hash, BadgeCheck, Crown } from "lucide-react";
+import { ShieldCheck, User, Hash, BadgeCheck } from "lucide-react";
 
 interface ConsentResponse {
   success: boolean;
@@ -21,7 +21,6 @@ const SCOPE_LABELS: Record<string, { icon: typeof User; label: string }> = {
   minecraftUsername: { icon: User, label: "Minecraft username" },
   playerId: { icon: Hash, label: "Player ID" },
   isMember: { icon: BadgeCheck, label: "Membership status" },
-  isOwner: { icon: Crown, label: "Owner status" },
 };
 
 interface AuthorizeResponse {
@@ -97,7 +96,7 @@ export function Authorize() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background select-none">
+    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background select-none">
       <Card className="w-full max-w-md border-border bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/50">
         <CardHeader className="items-center space-y-3 text-center">
           <img
