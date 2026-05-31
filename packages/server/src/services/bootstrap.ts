@@ -570,8 +570,8 @@ export async function initializeServices(): Promise<void> {
     await scheduler.initialize();
     maintenanceService.setScheduler(scheduler);
     logger.info("Maintenance scheduler initialized");
-  } catch (err) {
-    logger.warn(`Maintenance scheduler init failed: ${err}`);
+  } catch (error) {
+    logger.warn(`Maintenance scheduler init failed: ${error}`);
   }
 
   try {
@@ -589,8 +589,8 @@ export async function initializeServices(): Promise<void> {
     container.register(Services.STRUCTURE_PACK_ROTATION, () => rotationService);
     await rotationService.initialize();
     logger.info("Structure pack rotation service initialized");
-  } catch (err) {
-    logger.warn(`Structure pack rotation service init failed: ${err}`);
+  } catch (error) {
+    logger.warn(`Structure pack rotation service init failed: ${error}`);
   }
 }
 

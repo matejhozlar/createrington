@@ -30,9 +30,9 @@ export const serverWhitelistProcedures = {
       let count: number;
       try {
         ({ count } = await whitelistService.resync(input.serverId));
-      } catch (err) {
+      } catch (error) {
         throw trpcError.internal(
-          err instanceof Error ? err.message : "Failed to resync whitelist",
+          error instanceof Error ? error.message : "Failed to resync whitelist",
         );
       }
 

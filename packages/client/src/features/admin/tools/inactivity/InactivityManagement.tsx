@@ -154,9 +154,9 @@ export function InactivityManagement() {
       toast.success("Cleanup cycle completed");
       refetchList();
       refetchStats();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run cleanup cycle",
+        error instanceof Error ? error.message : "Failed to run cleanup cycle",
       );
     }
   }, [triggerCleanup, toast, refetchList, refetchStats]);
@@ -167,10 +167,10 @@ export function InactivityManagement() {
       toast.success("Overdue warnings processed");
       refetchList();
       refetchStats();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Failed to process overdue warnings",
       );
     }

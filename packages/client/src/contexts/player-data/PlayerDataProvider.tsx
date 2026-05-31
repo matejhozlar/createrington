@@ -87,11 +87,13 @@ export function PlayerDataProvider({
 
         setPlayers(playerMap);
       }
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to load initial player data:", err);
+        console.error("Failed to load initial player data:", error);
       setError(
-        err instanceof Error ? err : new Error("Failed to load player data"),
+        error instanceof Error
+          ? error
+          : new Error("Failed to load player data"),
       );
     } finally {
       setLoading(false);
@@ -191,12 +193,12 @@ export function PlayerDataProvider({
       }
 
       setIsSubscribed(true);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to subscribe to player updates:", err);
+        console.error("Failed to subscribe to player updates:", error);
       setError(
-        err instanceof Error
-          ? err
+        error instanceof Error
+          ? error
           : new Error("Failed to subscribe to updates"),
       );
     }
@@ -213,9 +215,9 @@ export function PlayerDataProvider({
       }
 
       setIsSubscribed(false);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to unsubscribe from player updates:", err);
+        console.error("Failed to unsubscribe from player updates:", error);
     }
   }, [unsubscribe, serverIds]);
 

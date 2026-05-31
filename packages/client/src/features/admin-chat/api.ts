@@ -117,8 +117,8 @@ export async function runStream(
       timeout: false,
       retry: 0,
     });
-  } catch (err) {
-    if ((err as { name?: string }).name !== "AbortError") {
+  } catch (error) {
+    if ((error as { name?: string }).name !== "AbortError") {
       handlers.onError?.();
     }
     return;

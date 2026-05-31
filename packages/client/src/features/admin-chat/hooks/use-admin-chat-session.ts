@@ -193,9 +193,9 @@ export function useAdminChatSession({
           },
           abort.signal,
         );
-      } catch (err) {
-        if ((err as { name?: string }).name !== "AbortError") {
-          console.error("[admin-chat] stream error:", err);
+      } catch (error) {
+        if ((error as { name?: string }).name !== "AbortError") {
+          console.error("[admin-chat] stream error:", error);
         }
       }
     })();
@@ -245,8 +245,8 @@ export function useAdminChatSession({
             });
           }
         }
-      } catch (err) {
-        console.error("[admin-chat] Failed to start session:", err);
+      } catch (error) {
+        console.error("[admin-chat] Failed to start session:", error);
       } finally {
         setStarting(false);
       }
@@ -284,8 +284,8 @@ export function useAdminChatSession({
             location.pathname.startsWith("/admin") ? "admin" : "page",
           ),
         });
-      } catch (err) {
-        console.error("[admin-chat] Failed to send message:", err);
+      } catch (error) {
+        console.error("[admin-chat] Failed to send message:", error);
         // POST failed: drop the optimistic so the admin doesn't see a
         // ghost message that never actually reached the backend.
         setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
@@ -302,8 +302,8 @@ export function useAdminChatSession({
     try {
       await endSessionRequest(sessionId);
       setSessionActive(false);
-    } catch (err) {
-      console.error("[admin-chat] Failed to end session:", err);
+    } catch (error) {
+      console.error("[admin-chat] Failed to end session:", error);
     }
   }, [sessionId]);
 

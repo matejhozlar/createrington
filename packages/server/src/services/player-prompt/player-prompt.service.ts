@@ -122,10 +122,10 @@ export class PlayerPromptService {
     // messageId means closePrompt can't edit the announcement later.
     try {
       await this.persistMessageId(prompt.id, post.messageId);
-    } catch (err) {
+    } catch (error) {
       logger.error(
         `Posted prompt #${prompt.id} to Discord (message ${post.messageId}) but failed to persist messageId. Close-time message edit will be skipped.`,
-        err,
+        error,
       );
     }
 

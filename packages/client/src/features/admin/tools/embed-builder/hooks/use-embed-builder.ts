@@ -352,9 +352,9 @@ export function useEmbedBuilder() {
         toast.success(
           `Embed sent${result.messageId ? ` (${result.messageId})` : ""}`,
         );
-      } catch (err) {
+      } catch (error) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to send embed",
+          error instanceof Error ? error.message : "Failed to send embed",
         );
       }
     },
@@ -407,9 +407,9 @@ export function useEmbedBuilder() {
             `Preset "${updates.name ?? activePreset.name}" updated`,
           );
           return true;
-        } catch (err) {
+        } catch (error) {
           toast.error(
-            err instanceof Error ? err.message : "Failed to update preset",
+            error instanceof Error ? error.message : "Failed to update preset",
           );
           return false;
         }
@@ -440,9 +440,9 @@ export function useEmbedBuilder() {
           setSelectedCategoryId(created.categoryId ?? null);
           toast.success(`Preset "${name}" created`);
           return true;
-        } catch (err) {
+        } catch (error) {
           toast.error(
-            err instanceof Error ? err.message : "Failed to save preset",
+            error instanceof Error ? error.message : "Failed to save preset",
           );
           return false;
         }
@@ -518,8 +518,10 @@ export function useEmbedBuilder() {
           `Updated ${result.updated} linked message${result.updated === 1 ? "" : "s"}`,
         );
       }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update all");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update all",
+      );
     }
   }, [activePreset, data, bot, updateAllMutation, toast]);
 
@@ -537,9 +539,9 @@ export function useEmbedBuilder() {
           bot,
         });
         toast.success("Linked message updated");
-      } catch (err) {
+      } catch (error) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to update message",
+          error instanceof Error ? error.message : "Failed to update message",
         );
       }
     },
@@ -590,9 +592,9 @@ export function useEmbedBuilder() {
         utils.admin.embeds.presets.list.invalidate();
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Duplicated as "${copyName}"`);
-      } catch (err) {
+      } catch (error) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to duplicate preset",
+          error instanceof Error ? error.message : "Failed to duplicate preset",
         );
       }
     },
@@ -623,9 +625,9 @@ export function useEmbedBuilder() {
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success(`Category "${name}" created`);
         return created;
-      } catch (err) {
+      } catch (error) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to create category",
+          error instanceof Error ? error.message : "Failed to create category",
         );
         return null;
       }
@@ -639,9 +641,9 @@ export function useEmbedBuilder() {
         await updateCategoryMutation.mutateAsync({ id, ...updates });
         utils.admin.embeds.presets.categories.list.invalidate();
         toast.success("Category updated");
-      } catch (err) {
+      } catch (error) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to update category",
+          error instanceof Error ? error.message : "Failed to update category",
         );
       }
     },

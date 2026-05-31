@@ -543,10 +543,10 @@ router.get(
         pose: requestedPose,
         source: { uuid },
       });
-    } catch (err) {
+    } catch (error) {
       // Keep the <img> tag rendering something useful instead of triggering
       // the broken-image icon: bounce to mc-heads on any skin-api failure.
-      const message = err instanceof Error ? err.message : String(err);
+      const message = error instanceof Error ? error.message : String(error);
       logger.warn(
         `skin-api render failed (uuid=${uuid} pose=${requestedPose}): ${message}, falling back to mc-heads`,
       );

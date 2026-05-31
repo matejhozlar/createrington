@@ -59,8 +59,8 @@ async function checkDatabase(): Promise<DatabaseComponent> {
   try {
     await pool.query("SELECT 1");
     return { status: "up", latencyMs: Date.now() - start };
-  } catch (err) {
-    logger.warn("Health check: database ping failed", { error: err });
+  } catch (error) {
+    logger.warn("Health check: database ping failed", { error });
     return { status: "down", latencyMs: Date.now() - start };
   }
 }

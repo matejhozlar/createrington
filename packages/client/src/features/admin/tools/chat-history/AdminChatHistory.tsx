@@ -63,8 +63,10 @@ export function AdminChatHistory() {
       const page = await fetchChatSessions({ limit: 25 });
       setSessions(page.sessions);
       setNextCursor(page.nextCursor);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load sessions");
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to load sessions",
+      );
     } finally {
       setLoading(false);
     }
@@ -78,10 +80,10 @@ export function AdminChatHistory() {
       const page = await fetchChatSessions({ limit: 25, cursor: nextCursor });
       setSessions((prev) => [...prev, ...page.sessions]);
       setNextCursor(page.nextCursor);
-    } catch (err) {
+    } catch (error) {
       // Inline error: don't clobber the whole list on a pagination failure.
       setLoadMoreError(
-        err instanceof Error ? err.message : "Failed to load more",
+        error instanceof Error ? error.message : "Failed to load more",
       );
     } finally {
       setLoadingMore(false);

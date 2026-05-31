@@ -82,11 +82,13 @@ export function ServerDataProvider({
 
         setServers(serverMap);
       }
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to load initial server data:", err);
+        console.error("Failed to load initial server data:", error);
       setError(
-        err instanceof Error ? err : new Error("Failed to load server data"),
+        error instanceof Error
+          ? error
+          : new Error("Failed to load server data"),
       );
     } finally {
       setLoading(false);
@@ -137,12 +139,12 @@ export function ServerDataProvider({
       }
 
       setIsSubscribed(true);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to subscribe to server updates:", err);
+        console.error("Failed to subscribe to server updates:", error);
       setError(
-        err instanceof Error
-          ? err
+        error instanceof Error
+          ? error
           : new Error("Failed to subscribe to updates"),
       );
     }
@@ -159,9 +161,9 @@ export function ServerDataProvider({
       }
 
       setIsSubscribed(false);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to unsubscribe from server updates:", err);
+        console.error("Failed to unsubscribe from server updates:", error);
     }
   }, [unsubscribe, serverIds]);
 

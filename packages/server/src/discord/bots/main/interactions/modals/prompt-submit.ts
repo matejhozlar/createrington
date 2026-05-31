@@ -53,8 +53,9 @@ export async function execute(
       content: `Recorded. You can edit your response until ${time(endsAt, "R")}.`,
       flags: MessageFlags.Ephemeral,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Something went wrong";
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Something went wrong";
     await interaction.reply({
       content: `Couldn't record your response: ${message}`,
       flags: MessageFlags.Ephemeral,

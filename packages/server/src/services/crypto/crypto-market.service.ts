@@ -237,8 +237,8 @@ export class CryptoMarketService {
       if (!this.enabled) return;
       try {
         await this.tickMemecoins();
-      } catch (err) {
-        logger.error("Memecoin tick failed:", err);
+      } catch (error) {
+        logger.error("Memecoin tick failed:", error);
       }
     }, this.settings.get("MEMECOIN_TICK_INTERVAL_MS"));
 
@@ -254,8 +254,8 @@ export class CryptoMarketService {
       if (!this.enabled) return;
       try {
         await this.tickStablecoins();
-      } catch (err) {
-        logger.error("Stablecoin tick failed:", err);
+      } catch (error) {
+        logger.error("Stablecoin tick failed:", error);
       }
     }, this.settings.get("STABLECOIN_TICK_INTERVAL_MS"));
   }
@@ -265,8 +265,8 @@ export class CryptoMarketService {
       if (!this.enabled) return;
       try {
         await this.tickBluechips();
-      } catch (err) {
-        logger.error("Blue-chip tick failed:", err);
+      } catch (error) {
+        logger.error("Blue-chip tick failed:", error);
       }
     }, this.settings.get("BLUECHIP_TICK_INTERVAL_MS"));
   }
@@ -280,8 +280,8 @@ export class CryptoMarketService {
           if (cleaned > 0) {
             logger.info(`Cleaned up ${cleaned} crashed memecoins`);
           }
-        } catch (err) {
-          logger.error("Crashed token cleanup failed:", err);
+        } catch (error) {
+          logger.error("Crashed token cleanup failed:", error);
         }
       },
       30 * 60 * 1000,
@@ -297,8 +297,8 @@ export class CryptoMarketService {
           await this.caches.refreshPrices();
           await this.caches.refreshVolumes();
           await refresh24hAverages();
-        } catch (err) {
-          logger.error("Minute aggregation failed:", err);
+        } catch (error) {
+          logger.error("Minute aggregation failed:", error);
         }
       },
       5 * 60 * 1000,
@@ -311,8 +311,8 @@ export class CryptoMarketService {
         if (!this.enabled) return;
         try {
           await aggregateHourlySnapshots();
-        } catch (err) {
-          logger.error("Hourly aggregation failed:", err);
+        } catch (error) {
+          logger.error("Hourly aggregation failed:", error);
         }
       },
       15 * 60 * 1000,
@@ -325,8 +325,8 @@ export class CryptoMarketService {
         if (!this.enabled) return;
         try {
           await aggregateDailySnapshots();
-        } catch (err) {
-          logger.error("Daily aggregation failed:", err);
+        } catch (error) {
+          logger.error("Daily aggregation failed:", error);
         }
       },
       60 * 60 * 1000,
@@ -339,8 +339,8 @@ export class CryptoMarketService {
         if (!this.enabled) return;
         try {
           await aggregateWeeklySnapshots();
-        } catch (err) {
-          logger.error("Weekly aggregation failed:", err);
+        } catch (error) {
+          logger.error("Weekly aggregation failed:", error);
         }
       },
       6 * 60 * 60 * 1000,
@@ -565,8 +565,8 @@ export class CryptoMarketService {
           if (expired > 0) {
             logger.info(`Expired ${expired} crypto orders`);
           }
-        } catch (err) {
-          logger.error("Order expiry job failed:", err);
+        } catch (error) {
+          logger.error("Order expiry job failed:", error);
         }
       },
       5 * 60 * 1000,
@@ -613,8 +613,8 @@ export class CryptoMarketService {
       try {
         const count = await takeDailySnapshots();
         logger.info(`Took ${count} portfolio snapshots`);
-      } catch (err) {
-        logger.error("Portfolio snapshot failed:", err);
+      } catch (error) {
+        logger.error("Portfolio snapshot failed:", error);
       }
 
       // Daily snapshot is the trigger for Diamond Hands: holdings must have
@@ -622,8 +622,8 @@ export class CryptoMarketService {
       try {
         const achievementSvc = await getService(Services.ACHIEVEMENT_SERVICE);
         await achievementSvc.evaluateDiamondHands();
-      } catch (err) {
-        logger.error("Diamond Hands evaluation failed:", err);
+      } catch (error) {
+        logger.error("Diamond Hands evaluation failed:", error);
       }
 
       this.schedulePortfolioSnapshot();
@@ -651,8 +651,8 @@ export class CryptoMarketService {
     this.weeklyReportTimeout = setTimeout(async () => {
       try {
         await sendWeeklyMarketReport();
-      } catch (err) {
-        logger.error("Weekly market report failed:", err);
+      } catch (error) {
+        logger.error("Weekly market report failed:", error);
       }
       this.scheduleWeeklyReport();
     }, delayMs);
@@ -699,8 +699,8 @@ export class CryptoMarketService {
             logger.error("Failed to send event notification:", err),
           );
         }
-      } catch (err) {
-        logger.error("Event roll failed:", err);
+      } catch (error) {
+        logger.error("Event roll failed:", error);
       }
     }, this.settings.get("EVENT_ROLL_INTERVAL_MS"));
   }
@@ -733,8 +733,8 @@ export class CryptoMarketService {
         if (!this.enabled) return;
         try {
           await processExpiredSeasonalTokens();
-        } catch (err) {
-          logger.error("Seasonal token check failed:", err);
+        } catch (error) {
+          logger.error("Seasonal token check failed:", error);
         }
       },
       10 * 60 * 1000,
@@ -751,8 +751,8 @@ export class CryptoMarketService {
       if (!this.enabled) return;
       try {
         await transitionEndedIpos();
-      } catch (err) {
-        logger.error("IPO transition check failed:", err);
+      } catch (error) {
+        logger.error("IPO transition check failed:", error);
       }
     }, CRYPTO_CONFIG.IPO_CHECK_INTERVAL_MS);
   }
@@ -776,8 +776,8 @@ export class CryptoMarketService {
       if (!activeIpo) {
         await this.spawnIpoMemecoin();
       }
-    } catch (err) {
-      logger.error("IPO spawn scheduler failed:", err);
+    } catch (error) {
+      logger.error("IPO spawn scheduler failed:", error);
     }
   }
 

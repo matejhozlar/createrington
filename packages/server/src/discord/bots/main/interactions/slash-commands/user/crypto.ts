@@ -544,10 +544,10 @@ async function handleChart(
     });
 
     screenshotBuffer = result.buffer;
-  } catch (err) {
+  } catch (error) {
     logger.warn(
       "Puppeteer screenshot failed for /crypto chart, falling back to text embed:",
-      err,
+      error,
     );
   }
 
