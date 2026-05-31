@@ -1,3 +1,32 @@
+## v1.25.1 (2026-05-31)
+
+### @createrington/server (1.25.0 → 1.25.1)
+- [fix] Fix web sessions not being revoked when issuing a temporary ban, allowing banned players to continue accessing the site until their JWT expired naturally
+- [fix] Fix FAQ list count query silently dropping filters (enabled status, search text) because the `.where()` result was not reassigned to the builder variable
+- [refactor] Split six oversized admin tRPC routers into focused sub-files: crypto (tokens, events, market), embeds (CRUD, linked messages, presets, preset categories, preset links), structure packs (CRUD, mods, rotation), servers (stats, maintenance, whitelist), parties (parties, chunks), and inactivity (ghosts)
+- [refactor] Extract shared admin router helpers to deduplicate repeated logic: `auditActor()` for audit log actor objects, `resolveTokenOrThrow()` for crypto token lookups, and embed builder helpers (`buildDiscordEmbed`, `buildButtons`, `getMessageService`, `hasEmbedContent`)
+- [refactor] Add `cryptoSymbol` Zod schema with auto-uppercase transform, replacing ad-hoc `.transform(s => s.toUpperCase())` across crypto inputs
+- [refactor] Add `runQuery()` base method to `BaseQueries`, centralizing the try/catch and logger.error boilerplate in custom query methods
+- [refactor] Add `toUnixSeconds()` and `discordTimestamp()` format helpers, replacing repeated inline timestamp arithmetic and Discord markup construction
+- [refactor] Replace hardcoded `http://localhost:3000` dev client origin with `config.app.devClientOrigin`, sourced from a new `DEV_CLIENT_ORIGIN` env variable
+- [refactor] Simplify ~20 query call sites to use `getAll()`/`count()` instead of `.where({}).all()`/`.where({}).count()`, and `find()` instead of `.where().first()` for crypto token lookups
+- [refactor] Normalize all `catch (err)` bindings to `catch (error)` for consistency
+- [chore] Bump `createrington-skin-api` to ^2.1.0 and adopt the library's `randomPose()` export, replacing the locally inlined helper
+
+### @createrington/client (0.2.32 → 0.2.33)
+- [fix] Fix flashlight overlay double-removal by coordinating the `transitionend` listener and fallback timeout with an `AbortController`, so whichever fires first cancels the other
+- [refactor] Extract `AdminPageHeader` component to replace ~20 inline breadcrumb header blocks across all admin pages, accepting a `trail` array of crumbs and optional action children
+- [refactor] Extract `useCopyToClipboard` hook and normalize all copy toasts to a generic "Copied to clipboard" message, replacing context-specific messages across admin pages
+- [refactor] Replace hand-rolled pagination in four admin table tabs (TicketsTab, TransactionsTab, SessionsTab, RotationHistory) with the shared `Paginator` component, removing ~200 lines of duplicated code
+- [refactor] Extract shared crypto format helpers (`changeColor`, `formatChangePercent`) into `format.ts`, replacing duplicated inline ternary chains across TokenList, Watchlist, and TokenDetail
+- [refactor] Move waitlist form validation schema from `ApplyToJoin.tsx` to `@createrington/shared/api`, enabling server-side reuse
+- [refactor] Normalize all `catch (err)` bindings to `catch (error)` for consistency
+- [chore] Bump `createrington-skin-api` to ^2.1.0 and replace local `pickRandomPose()` with the library's `randomPose()` export
+- [chore] Add bundle-size analysis via `rollup-plugin-visualizer` behind an `ANALYZE=1` flag, with chunk size warning limit set to 600 kB
+
+### @createrington/shared (1.1.7 → 1.1.8)
+- [refactor] Add waitlist form validation schemas (`buildWaitlistFormSchema`, `waitlistCreateInputSchema`, and field-level schemas), moved from the client's `ApplyToJoin` page to enable server-side reuse
+
 ## v1.25.0 (2026-05-29)
 
 ### @createrington/server (1.24.0 → 1.25.0)
