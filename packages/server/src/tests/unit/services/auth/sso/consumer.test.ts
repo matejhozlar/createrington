@@ -21,6 +21,12 @@ describe("sso consumer name resolution", () => {
     expect(resolveConsumerName("https://forum.example.com/x")).toBe("Forum");
   });
 
+  it("does not blanket-label every www. host as Createrington", () => {
+    expect(resolveConsumerName("https://www.example.com/x")).not.toBe(
+      "Createrington",
+    );
+  });
+
   it("falls back gracefully for an unparseable return_to", () => {
     expect(resolveConsumerName("not a url")).toBe("the requesting app");
   });

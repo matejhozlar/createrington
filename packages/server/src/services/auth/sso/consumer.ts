@@ -56,7 +56,9 @@ export function resolveConsumerName(returnTo: string): string {
     websiteHost = undefined;
   }
 
-  if (host === websiteHost || host.startsWith("www.")) return "Createrington";
+  if (host === websiteHost || (websiteHost && host === `www.${websiteHost}`)) {
+    return "Createrington";
+  }
 
   const label = host.split(".")[0] ?? host;
   return (
