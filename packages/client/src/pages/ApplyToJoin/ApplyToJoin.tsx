@@ -93,10 +93,10 @@ export function ApplyToJoin() {
         email: values.email.trim() || undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       const message =
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Something went wrong. Please try again.";
       // Surfaced at the bottom of the form under the submit button, matching
       // the previous `formError` placement.

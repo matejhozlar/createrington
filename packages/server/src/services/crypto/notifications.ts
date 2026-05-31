@@ -84,8 +84,8 @@ export async function sendNewListingNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send new listing notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send new listing notification to Discord:", error);
   }
 }
 
@@ -137,10 +137,10 @@ export async function sendIpoAnnouncementNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
+  } catch (error) {
     logger.error(
       "Failed to send IPO announcement notification to Discord:",
-      err,
+      error,
     );
   }
 }
@@ -193,8 +193,8 @@ export async function sendIpoResultNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send IPO result notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send IPO result notification to Discord:", error);
   }
 }
 
@@ -230,8 +230,8 @@ export async function sendCrashNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send crash notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send crash notification to Discord:", error);
   }
 }
 
@@ -270,8 +270,8 @@ export async function sendWhaleAlertNotification(
       embeds: embed.build(),
       components: eventId ? readMoreButton(eventId) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send whale alert notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send whale alert notification to Discord:", error);
   }
 }
 
@@ -322,8 +322,8 @@ export async function sendMarketEventNotification(
       embeds: embed.build(),
       components: readMoreButton(event.eventId),
     });
-  } catch (err) {
-    logger.error("Failed to send market event notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send market event notification to Discord:", error);
   }
 }
 
@@ -448,8 +448,8 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     });
 
     logger.info("Weekly crypto market report sent");
-  } catch (err) {
-    logger.error("Failed to send weekly market report:", err);
+  } catch (error) {
+    logger.error("Failed to send weekly market report:", error);
   }
 }
 
@@ -491,10 +491,10 @@ export async function sendPriceAlertDMs(
       });
 
       await user.send({ embeds: [embed.build()] });
-    } catch (err) {
+    } catch (error) {
       logger.error(
         `Failed to send price alert DM for alert ${alert.alertId}:`,
-        err,
+        error,
       );
     }
   }

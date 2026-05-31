@@ -28,9 +28,9 @@ export function ChatHistoryDetail() {
     try {
       const data = await fetchChatMessages(numericId);
       setMessages(data.messages);
-    } catch (err) {
+    } catch (error) {
       setError(
-        err instanceof Error ? err.message : "Failed to load transcript",
+        error instanceof Error ? error.message : "Failed to load transcript",
       );
     } finally {
       setLoading(false);

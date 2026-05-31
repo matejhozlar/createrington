@@ -103,9 +103,11 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
       toast.success(`Cache refreshed: ${result.count} ghost(s)`);
       refetchList();
       refetchCapabilities();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to refresh ghost cache",
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh ghost cache",
       );
     }
   }, [refreshGhosts, toast, refetchList, refetchCapabilities]);

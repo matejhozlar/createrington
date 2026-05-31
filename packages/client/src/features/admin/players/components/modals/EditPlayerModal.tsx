@@ -127,9 +127,9 @@ export function EditPlayerModal({
       setShowConfirmDialog(false);
       onClose();
       onSuccess();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to update player",
+        error instanceof Error ? error.message : "Failed to update player",
       );
     }
   };

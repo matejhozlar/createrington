@@ -143,8 +143,8 @@ export function AIButton({ value, onApply, iconOnly }: AIButtonProps) {
       });
       onApply(result.text);
       setOpen(false);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "AI assist failed");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "AI assist failed");
     } finally {
       setPendingAction(null);
     }

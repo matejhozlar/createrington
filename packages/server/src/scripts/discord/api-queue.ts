@@ -63,10 +63,10 @@ export class DiscordApiQueue {
         await task.fn();
         results.push({ label: task.label, success: true });
         console.log(`  ${progress} ✓ ${task.label}`);
-      } catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
-        results.push({ label: task.label, success: false, error });
-        console.log(`  ${progress} ✗ ${task.label}: ${error}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        results.push({ label: task.label, success: false, error: message });
+        console.log(`  ${progress} ✗ ${task.label}: ${message}`);
       }
 
       // Delay between calls (skip after the last one)

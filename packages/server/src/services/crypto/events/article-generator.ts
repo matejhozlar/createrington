@@ -49,9 +49,9 @@ async function processQueue(): Promise<void> {
         job.severity,
         job.metadata,
       );
-    } catch (err) {
+    } catch (error) {
       logger.warn(
-        `Failed to generate article for event ${job.eventId}: ${err}`,
+        `Failed to generate article for event ${job.eventId}: ${error}`,
       );
     }
   }

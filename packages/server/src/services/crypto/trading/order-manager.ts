@@ -290,10 +290,10 @@ export async function checkAndFillOrders(
         try {
           const result = await fillOrder(order, token);
           results.push(result);
-        } catch (err) {
+        } catch (error) {
           logger.error(
             `Failed to fill order ${order.id} for ${token.symbol}:`,
-            err,
+            error,
           );
           // Cancel the order if it can't be filled (e.g., insufficient supply)
           await cancelOrder(order.playerMinecraftUuid, order.id);

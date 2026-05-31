@@ -75,16 +75,18 @@ export const serverMaintenanceProcedures = {
                 channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
                 embeds: embed.build(),
               });
-            } catch (err) {
+            } catch (error) {
               logger.warn(
-                `Failed to send maintenance ended announcement: ${err}`,
+                `Failed to send maintenance ended announcement: ${error}`,
               );
             }
           }
         }
-      } catch (err) {
+      } catch (error) {
         throw trpcError.internal(
-          err instanceof Error ? err.message : "Failed to toggle maintenance",
+          error instanceof Error
+            ? error.message
+            : "Failed to toggle maintenance",
         );
       }
 
@@ -164,8 +166,8 @@ export const serverMaintenanceProcedures = {
           channelId: Discord.Channels.createringtonOfficial.ANNOUNCEMENTS,
           embeds: embed.build(),
         });
-      } catch (err) {
-        logger.warn(`Failed to send maintenance announcement: ${err}`);
+      } catch (error) {
+        logger.warn(`Failed to send maintenance announcement: ${error}`);
       }
 
       try {

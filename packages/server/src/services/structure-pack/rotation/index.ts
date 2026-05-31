@@ -243,8 +243,8 @@ export class StructurePackRotationService {
             await copyFileToServer(cachePath, modPath);
             logger.info(`Installed mod file: ${mod.fileName}`);
           }
-        } catch (err) {
-          const reason = err instanceof Error ? err.message : String(err);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
           logger.error(`Rotation file operations failed: ${reason}`);
           await this.recordRotation(
             activePack?.id ?? null,
@@ -290,8 +290,8 @@ export class StructurePackRotationService {
       );
 
       this.scheduleNextRotation(rotationConfig);
-    } catch (err) {
-      logger.error("Rotation failed:", err);
+    } catch (error) {
+      logger.error("Rotation failed:", error);
       // Try to reschedule even on failure
       try {
         const cfg = await Q.structure.pack.rotation.config.getOrCreateDefault();

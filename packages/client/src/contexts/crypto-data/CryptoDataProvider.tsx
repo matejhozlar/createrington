@@ -70,9 +70,9 @@ export function CryptoDataProvider({
     try {
       await subscribe("crypto:market" as SubscriptionType);
       setIsSubscribed(true);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to subscribe to crypto updates:", err);
+        console.error("Failed to subscribe to crypto updates:", error);
     }
   }, [subscribe]);
 
@@ -80,9 +80,9 @@ export function CryptoDataProvider({
     try {
       await unsubscribe("crypto:market" as SubscriptionType);
       setIsSubscribed(false);
-    } catch (err) {
+    } catch (error) {
       if (import.meta.env.DEV)
-        console.error("Failed to unsubscribe from crypto updates:", err);
+        console.error("Failed to unsubscribe from crypto updates:", error);
     }
   }, [unsubscribe]);
 

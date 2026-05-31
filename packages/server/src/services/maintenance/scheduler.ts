@@ -300,9 +300,9 @@ export class MaintenanceScheduler {
       logger.info(
         `Auto-activated maintenance #${schedule.id} for server ${schedule.serverId}`,
       );
-    } catch (err) {
+    } catch (error) {
       logger.error(
-        `Failed to auto-activate maintenance #${schedule.id}: ${err}`,
+        `Failed to auto-activate maintenance #${schedule.id}: ${error}`,
       );
     }
   }

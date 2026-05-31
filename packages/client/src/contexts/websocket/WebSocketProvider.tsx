@@ -78,9 +78,9 @@ export function WebSocketProvider({
       listeners.forEach((callback) => {
         try {
           callback(data);
-        } catch (err) {
+        } catch (error) {
           if (import.meta.env.DEV)
-            console.error(`Error in event listener for ${event}:`, err);
+            console.error(`Error in event listener for ${event}:`, error);
         }
       });
     }

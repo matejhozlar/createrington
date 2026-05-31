@@ -98,10 +98,10 @@ export async function execute(
       });
 
       screenshotBuffer = result.buffer;
-    } catch (err) {
+    } catch (error) {
       logger.warn(
         "Puppeteer screenshot failed for /compare, falling back to text embed:",
-        err,
+        error,
       );
     }
 

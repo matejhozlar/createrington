@@ -38,8 +38,9 @@ export class DonationController {
         req.body as Buffer,
         signature,
       );
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invalid signature";
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid signature";
       logger.warn(`Stripe webhook signature verification failed: ${message}`);
       res.status(400).json({ error: `Webhook error: ${message}` });
       return;
@@ -64,8 +65,8 @@ export class DonationController {
       }
 
       res.json({ received: true });
-    } catch (err) {
-      logger.error(`Error handling Stripe event ${event.type}:`, err);
+    } catch (error) {
+      logger.error(`Error handling Stripe event ${event.type}:`, error);
       res.status(500).json({ error: "Internal error processing webhook" });
     }
   }

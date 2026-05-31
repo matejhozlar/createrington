@@ -50,9 +50,9 @@ export const adminCryptoSettingsRouter = router({
       let result;
       try {
         result = await settings.set(input.key, input.value, ctx.user.discordId);
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Setting update failed",
+          error instanceof Error ? error.message : "Setting update failed",
         );
       }
 

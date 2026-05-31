@@ -97,8 +97,8 @@ export const cryptoRouter = router({
             token.id,
           ),
         };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -141,8 +141,8 @@ export const cryptoRouter = router({
             token.id,
           ),
         };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -270,8 +270,8 @@ export const cryptoRouter = router({
           input.targetPrice,
           input.expiryHours,
         );
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -282,8 +282,8 @@ export const cryptoRouter = router({
       try {
         await cancelOrder(ctx.user.minecraftUuid, input.orderId);
         return { success: true };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -437,9 +437,9 @@ export const cryptoRouter = router({
       try {
         await addToWatchlist(ctx.user.minecraftUuid, token.id);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to add to watchlist",
+          error instanceof Error ? error.message : "Failed to add to watchlist",
         );
       }
     }),
@@ -453,10 +453,10 @@ export const cryptoRouter = router({
       try {
         await removeFromWatchlist(ctx.user.minecraftUuid, token.id);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error
-            ? err.message
+          error instanceof Error
+            ? error.message
             : "Failed to remove from watchlist",
         );
       }
@@ -513,9 +513,9 @@ export const cryptoRouter = router({
           direction: alert.direction,
           createdAt: alert.createdAt.toISOString(),
         };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to create alert",
+          error instanceof Error ? error.message : "Failed to create alert",
         );
       }
     }),
@@ -527,9 +527,9 @@ export const cryptoRouter = router({
       try {
         await deleteAlert(ctx.user.minecraftUuid, input.alertId);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to delete alert",
+          error instanceof Error ? error.message : "Failed to delete alert",
         );
       }
     }),

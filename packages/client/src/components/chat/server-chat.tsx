@@ -172,8 +172,10 @@ export function ServerChat() {
       setDraft("");
       setImageFile(null);
       textareaRef.current?.focus();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
+    } catch (error) {
+      setError(
+        error instanceof Error ? error.message : "Failed to send message",
+      );
     } finally {
       setSending(false);
     }

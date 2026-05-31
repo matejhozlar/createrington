@@ -108,9 +108,9 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
       toast.success("Prompt posted to Discord");
       reset();
       onSuccess();
-    } catch (err) {
+    } catch (error) {
       const message =
-        err instanceof Error ? err.message : "Something went wrong";
+        error instanceof Error ? error.message : "Something went wrong";
       toast.error(message);
     }
   };

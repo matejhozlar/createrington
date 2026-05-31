@@ -116,8 +116,8 @@ export async function execute(
       .build();
 
     await interaction.editReply({ embeds: [embed], files: [attachment] });
-  } catch (err) {
-    logger.warn(`Skin-api render failed for pose "${pose}":`, err);
+  } catch (error) {
+    logger.warn(`Skin-api render failed for pose "${pose}":`, error);
     await replyError(
       interaction,
       "Render Error",

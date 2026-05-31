@@ -110,8 +110,8 @@ router.get(
         headers: claudeHeaders(),
       });
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -128,8 +128,8 @@ router.get(
         headers: claudeHeaders(),
       });
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -150,8 +150,8 @@ router.get(
         headers: claudeHeaders(),
       });
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -175,8 +175,8 @@ router.get(
         headers: claudeHeaders(),
       });
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -202,8 +202,8 @@ router.get(
         headers: claudeHeaders(),
       });
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -233,8 +233,8 @@ router.post(
         { headers: claudeHeaders() },
       );
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -263,8 +263,8 @@ router.post(
         { headers: claudeHeaders() },
       );
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -287,8 +287,8 @@ router.post(
         { headers: claudeHeaders() },
       );
       res.json(r.data);
-    } catch (err) {
-      forwardUpstreamError(err, res);
+    } catch (error) {
+      forwardUpstreamError(error, res);
     }
   }),
 );
@@ -325,14 +325,14 @@ router.get(
         // Disable axios timeout for the long-lived stream.
         timeout: 0,
       });
-    } catch (err) {
-      if (err instanceof AxiosError && err.response) {
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
         res
-          .status(err.response.status)
-          .json(err.response.data ?? { error: "upstream error" });
+          .status(error.response.status)
+          .json(error.response.data ?? { error: "upstream error" });
         return;
       }
-      throw err;
+      throw error;
     }
 
     res.setHeader("Content-Type", "text/event-stream");

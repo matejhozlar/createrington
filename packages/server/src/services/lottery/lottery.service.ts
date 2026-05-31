@@ -46,10 +46,10 @@ export class LotteryService {
         logger.info(
           `Refunded ${BalanceUtils.formatTrimmed(entry.amount)} to ${entry.minecraftUsername}`,
         );
-      } catch (err) {
+      } catch (error) {
         logger.error(
           `Failed to refund lottery entry for ${entry.minecraftUsername}:`,
-          err,
+          error,
         );
       }
     }
@@ -118,11 +118,11 @@ export class LotteryService {
           amount: BalanceUtils.toStorage(amount),
         });
       });
-    } catch (err) {
+    } catch (error) {
       // Rollback in-memory state if DB operations fail
       clearTimeout(timer);
       this.activeLottery = null;
-      throw err;
+      throw error;
     }
 
     const message = `🎲 **Lottery Started**\nHost: **${username}**\nType \`/join <amount>\` to participate!\nWinner will be announced in 2 minutes...`;
@@ -188,14 +188,14 @@ export class LotteryService {
           amount: BalanceUtils.toStorage(amount),
         });
       });
-    } catch (err) {
+    } catch (error) {
       // Rollback in-memory state if DB operations fail
       const idx = this.activeLottery.participants.indexOf(participant);
       if (idx !== -1) {
         this.activeLottery.participants.splice(idx, 1);
         this.activeLottery.totalPot -= amount;
       }
-      throw err;
+      throw error;
     }
 
     return {
@@ -278,8 +278,8 @@ export class LotteryService {
       }
 
       await db.lottery.participant.drop();
-    } catch (err) {
-      logger.error("Lottery resolution error:", err);
+    } catch (error) {
+      logger.error("Lottery resolution error:", error);
     } finally {
       this.activeLottery = null;
       this.resolving = false;

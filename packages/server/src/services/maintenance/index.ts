@@ -91,9 +91,9 @@ export class MaintenanceService {
             `Server ${serverId} is in maintenance mode (whitelist.json.bak found)`,
           );
         }
-      } catch (err) {
+      } catch (error) {
         logger.warn(
-          `Could not check maintenance state for server ${serverId}: ${err}`,
+          `Could not check maintenance state for server ${serverId}: ${error}`,
         );
       }
     }
@@ -130,8 +130,10 @@ export class MaintenanceService {
     for (const username of onlinePlayers) {
       try {
         await rcon.kick(serverId, username, "Server entering maintenance mode");
-      } catch (err) {
-        logger.warn(`Failed to kick ${username} on server ${serverId}: ${err}`);
+      } catch (error) {
+        logger.warn(
+          `Failed to kick ${username} on server ${serverId}: ${error}`,
+        );
       }
     }
 
