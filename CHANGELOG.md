@@ -1,3 +1,11 @@
+## v1.26.1 (2026-05-31)
+
+### @createrington/server (1.26.0 → 1.26.1)
+- [fix] Hide owner status from the SSO consent screen scope list, keeping the flag in the actual SSO payload but no longer surfacing it as a visible data category to the user
+
+### @createrington/client (0.2.34 → 0.2.35)
+- [fix] Remove owner status label from the SSO consent card and fix horizontal centering by adding full-width styling to the card container
+
 ## v1.26.0 (2026-05-31)
 
 ### @createrington/server (1.25.1 → 1.26.0)

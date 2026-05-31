@@ -37,15 +37,15 @@ const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Categories of account data shared with a consumer on SSO approval, mirroring
- * the SsoCodePayload fields. Exposed to the consent screen as labels only; the
- * actual values are never echoed back to the browser.
+ * Account-data categories surfaced on the consent screen, as labels only (the
+ * actual values are never echoed back to the browser). A subset of the
+ * SsoCodePayload: the owner flag is still shared with consumers but is
+ * deliberately not displayed on the screen.
  */
 const SSO_SHARED_SCOPES = [
   "minecraftUsername",
   "playerId",
   "isMember",
-  "isOwner",
 ] as const;
 
 /**
