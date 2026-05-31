@@ -185,7 +185,7 @@ function allowedAuthOrigins(): string[] {
   if (cachedAllowedAuthOrigins) return cachedAllowedAuthOrigins;
   cachedAllowedAuthOrigins = config.envMode.isProd
     ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
-    : ["http://localhost:3000"];
+    : [config.app.devClientOrigin];
   return cachedAllowedAuthOrigins;
 }
 

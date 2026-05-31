@@ -438,7 +438,7 @@ export function registerServices(): void {
       const websocketService = new WebSocketService(httpServer, {
         cors: {
           origin: config.envMode.isDev
-            ? "http://localhost:3000"
+            ? config.app.devClientOrigin
             : config.meta.links.website,
           credentials: true,
         },
