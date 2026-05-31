@@ -63,7 +63,7 @@ export function createApp(): Express {
     cors({
       origin: config.envMode.isProd
         ? [config.meta.links.website, ...config.app.auth.sso.corsOrigins]
-        : "http://localhost:3000",
+        : config.app.devClientOrigin,
       credentials: true,
     }),
   );
