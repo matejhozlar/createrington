@@ -37,8 +37,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
           sessionStorage.setItem("oauth_state", data.data.state);
         }
 
-        // Save current path so we can redirect back after login
-        sessionStorage.setItem("oauth_redirect", window.location.pathname);
+        // Save current path (including query) so we can redirect back after
+        // login. The query matters for deep links like /authorize?state=...
+        sessionStorage.setItem(
+          "oauth_redirect",
+          window.location.pathname + window.location.search,
+        );
 
         window.location.href = data.data.url;
       } else {

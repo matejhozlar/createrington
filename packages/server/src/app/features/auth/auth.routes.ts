@@ -30,6 +30,14 @@ if (config.app.auth.sso.callbackUrl) {
   router.get("/sso/start", ...route("public", AuthController.ssoStart));
   // GET /api/auth/sso/callback - Server-side SSO completion (Discord redirects here)
   router.get("/sso/callback", ...route("public", AuthController.ssoCallback));
+  // GET /api/auth/sso/consent - Metadata for the consent screen (no Discord round-trip)
+  router.get("/sso/consent", ...route("user", AuthController.ssoConsent));
+  // POST /api/auth/sso/authorize - Complete SSO from the active session
+  router.post(
+    "/sso/authorize",
+    requireTrustedOrigin,
+    ...route("user", AuthController.ssoAuthorize),
+  );
 }
 // POST /api/auth/refresh - Rotate refresh token (cookie-based, no Bearer needed)
 router.post(

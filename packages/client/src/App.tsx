@@ -58,6 +58,12 @@ const TopRender = lazyNamed(
   "TopRender",
 );
 
+// SSO consent screen (standalone, no app shell)
+const Authorize = lazyNamed(
+  () => import("./features/auth/Authorize"),
+  "Authorize",
+);
+
 // Public / informational pages
 const Rules = lazyNamed(() => import("./features/rules/Rules"), "Rules");
 const PrivacyPolicy = lazyNamed(
@@ -361,6 +367,9 @@ function AppContent() {
       <Routes>
         {/* Standalone full-screen route (no sidebar/footer), temporary */}
         <Route path="/ad" element={<Advertisement />} />
+
+        {/* SSO consent screen (standalone, no sidebar/footer) */}
+        <Route path="/authorize" element={<Authorize />} />
 
         {/* Puppeteer render routes (no layout, screenshot targets) */}
         <Route path="/render/compare" element={<CompareRender />} />
