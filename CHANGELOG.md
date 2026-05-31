@@ -1,3 +1,15 @@
+## v1.26.0 (2026-05-31)
+
+### @createrington/server (1.25.1 → 1.26.0)
+- [add] Add SSO consent screen flow for cross-subdomain login: logged-in users now authorize SSO requests directly from a consent screen instead of being redirected through a full Discord OAuth round-trip; new `GET /api/auth/sso/consent` returns the requesting app name and shared data categories, and `POST /api/auth/sso/authorize` completes or denies the flow using the active session
+- [refactor] Extract SSO state management into a dedicated `state-store.ts` module with issue/peek/consume semantics and a 15-minute TTL (up from 5 minutes), replacing the inline Map in the auth controller and better accommodating the login-then-consent round-trip for logged-out users
+- [refactor] Extract SSO consumer classification (`isCodeExchangeReturnTo`, `resolveConsumerName`) into `consumer.ts`, moving origin-matching and friendly app name resolution out of the auth controller
+- [chore] Add unit tests for SSO state-store (issue, peek, consume, expiry) and consumer name resolution (known subdomains, unknown labels, unparseable URLs)
+
+### @createrington/client (0.2.33 → 0.2.34)
+- [add] Add `/authorize` consent page for SSO: standalone screen showing the requesting app name, origin, and the categories of account data being shared, with approve and deny buttons that complete the flow without leaving the main app
+- [fix] Fix OAuth redirect losing query parameters: the post-login redirect now preserves the full path and query string, so deep links like `/authorize?state=...` survive the Discord login round-trip
+
 ## v1.25.1 (2026-05-31)
 
 ### @createrington/server (1.25.0 → 1.25.1)
