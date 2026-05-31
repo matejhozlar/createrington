@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
 import config from "@/config";
@@ -96,11 +97,11 @@ export async function execute(
     );
 
     if (results.length === 0) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "No Data",
         `No players found with stats for **${item}** in **${category}**.`,
       );
-      await interaction.editReply({ embeds: [embed.build()] });
       return;
     }
 
@@ -123,10 +124,10 @@ export async function execute(
       });
 
       screenshotBuffer = result.buffer;
-    } catch (err) {
+    } catch (error) {
       logger.warn(
         "Puppeteer screenshot failed for /top, falling back to text embed:",
-        err,
+        error,
       );
     }
 
@@ -169,10 +170,10 @@ export async function execute(
       await interaction.editReply({ embeds: [embed.build()] });
     }
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Leaderboard Error",
       "Could not fetch stat data.",
     );
-    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

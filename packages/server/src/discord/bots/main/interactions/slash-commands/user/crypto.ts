@@ -13,8 +13,10 @@ import { getMarketSummary } from "@/services/crypto/notifications";
 import { getActiveEventsInMemory } from "@/services/crypto/events/event-engine";
 import { EVENT_DEFINITIONS } from "@/services/crypto/events/event-definitions";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { getService, Services } from "@/services";
+import { discordTimestamp } from "@/utils/format";
 import config from "@/config";
 import {
   AttachmentBuilder,
@@ -220,11 +222,7 @@ export async function execute(
 
     const message =
       error instanceof Error ? error.message : "Something went wrong.";
-    const embed = EmbedPresets.error("Trade Failed", message);
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
+    await replyError(interaction, "Trade Failed", message);
   }
 }
 
@@ -252,28 +250,22 @@ async function handleTrade(
   const playerEntry = await Q.player.find({ discordId });
 
   if (!playerEntry) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Not Registered",
       "You must be registered to trade crypto. Use `/register` to get started.",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
   const token = await Q.crypto.token.find({ symbol });
 
   if (!token) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Token Not Found",
       `No token with symbol **${symbol}** exists.`,
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -293,9 +285,7 @@ async function handleTrade(
       fee: `$${result.feeAmount.toFixed(4)}`,
       totalCost: `$${result.totalCost.toFixed(2)}`,
       isIpo,
-      ipoEndsAt: isIpo
-        ? `<t:${Math.floor(token.ipoEndsAt!.getTime() / 1000)}:R>`
-        : undefined,
+      ipoEndsAt: isIpo ? discordTimestamp(token.ipoEndsAt!, "R") : undefined,
     });
 
     await interaction.reply({ embeds: [embed.build()] });
@@ -334,14 +324,11 @@ async function handlePortfolio(
   const playerEntry = await Q.player.find({ discordId });
 
   if (!playerEntry) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Not Registered",
       "You must be registered to view your portfolio. Use `/register` to get started.",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -372,7 +359,7 @@ async function handlePortfolio(
     return;
   }
 
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
   let totalValue = 0;
@@ -528,14 +515,11 @@ async function handleChart(
   const token = await Q.crypto.token.find({ symbol });
 
   if (!token) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Token Not Found",
       `No token with symbol **${symbol}** exists.`,
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -560,10 +544,10 @@ async function handleChart(
     });
 
     screenshotBuffer = result.buffer;
-  } catch (err) {
+  } catch (error) {
     logger.warn(
       "Puppeteer screenshot failed for /crypto chart, falling back to text embed:",
-      err,
+      error,
     );
   }
 
@@ -618,14 +602,11 @@ async function handleAlert(
   const playerEntry = await Q.player.find({ discordId });
 
   if (!playerEntry) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Not Registered",
       "You must be registered to manage alerts. Use `/register` to get started.",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 
@@ -642,14 +623,11 @@ async function handleAlert(
       const token = await Q.crypto.token.find({ symbol });
 
       if (!token) {
-        const embed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Token Not Found",
           `No token with symbol **${symbol}** exists.`,
         );
-        await interaction.reply({
-          embeds: [embed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -702,7 +680,7 @@ async function handleAlert(
         return;
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       const lines = alerts.map((a) => {

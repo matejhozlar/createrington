@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Star, X } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { formatPrice } from "../../format";
+import { formatPrice, changeColor, formatChangePercent } from "../../format";
 import { AnimatedNumber } from "../../components/AnimatedNumber";
 
 export function Watchlist() {
@@ -93,15 +93,10 @@ export function Watchlist() {
                         <span
                           className={cn(
                             "text-[10px] font-mono tabular-nums block text-right",
-                            change24h > 0
-                              ? "text-emerald-400"
-                              : change24h < 0
-                                ? "text-destructive"
-                                : "text-muted-foreground",
+                            changeColor(change24h),
                           )}
                         >
-                          {change24h > 0 ? "+" : ""}
-                          {change24h.toFixed(2)}%
+                          {formatChangePercent(change24h)}
                         </span>
                       )}
                     </div>

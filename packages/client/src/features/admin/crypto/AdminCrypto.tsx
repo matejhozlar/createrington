@@ -2,13 +2,12 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Loading } from "@/components/loading-spinner";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Breadcrumb,
   BreadcrumbList,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
   Card,
@@ -618,23 +617,13 @@ export function AdminCrypto() {
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Crypto Market</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </header>
+        <AdminPageHeader
+          trail={[
+            { label: "Admin", href: "/admin/dashboard" },
+            { label: "Tools", href: "/admin/tools" },
+            { label: "Crypto Market" },
+          ]}
+        />
         <div className="flex flex-1 items-center justify-center">
           <Loading size="medium" text="Loading market data..." />
         </div>

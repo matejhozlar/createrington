@@ -17,7 +17,7 @@ import {
 import { TradePanel } from "./components/TradePanel";
 import { PriceChart } from "./components/PriceChart";
 import { TokenDistribution } from "./components/TokenDistribution";
-import { formatPrice } from "../format";
+import { formatPrice, formatChangePercent } from "../format";
 
 const CATEGORY_COLORS: Record<string, string> = {
   stable: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
@@ -200,8 +200,7 @@ export function TokenDetail() {
                   ) : (
                     <TrendingDown className="size-3.5" />
                   )}
-                  {change24h > 0 ? "+" : ""}
-                  {change24h.toFixed(2)}%
+                  {formatChangePercent(change24h)}
                 </div>
               )}
             </div>

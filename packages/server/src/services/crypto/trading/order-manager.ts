@@ -83,12 +83,10 @@ export async function placeOrder(
     throw new BadRequestError("Target price must be positive");
   }
 
-  const pendingCount = await Q.crypto.order
-    .where({
-      playerMinecraftUuid: playerUuid,
-      status: "pending",
-    })
-    .count();
+  const pendingCount = await Q.crypto.order.count({
+    playerMinecraftUuid: playerUuid,
+    status: "pending",
+  });
 
   const maxPending = cryptoSetting("MAX_PENDING_ORDERS");
   if (pendingCount >= maxPending) {
@@ -292,10 +290,10 @@ export async function checkAndFillOrders(
         try {
           const result = await fillOrder(order, token);
           results.push(result);
-        } catch (err) {
+        } catch (error) {
           logger.error(
             `Failed to fill order ${order.id} for ${token.symbol}:`,
-            err,
+            error,
           );
           // Cancel the order if it can't be filled (e.g., insufficient supply)
           await cancelOrder(order.playerMinecraftUuid, order.id);
@@ -565,9 +563,7 @@ async function fillOrder(
 
 /** Queries the total number of trades a player has ever executed (for volume discounts) */
 async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
-  return Q.crypto.transaction
-    .where({ playerMinecraftUuid: playerUuid })
-    .count();
+  return Q.crypto.transaction.count({ playerMinecraftUuid: playerUuid });
 }
 
 /** Sums reserved tokens across all pending sell-type orders for a player-token pair */

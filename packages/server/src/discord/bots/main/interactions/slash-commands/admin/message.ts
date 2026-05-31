@@ -1,5 +1,6 @@
 import { EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -56,14 +57,10 @@ export async function execute(
   } catch (error) {
     logger.error("/message failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Message Error",
       "Failed to send message to the channel. Please try again later.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

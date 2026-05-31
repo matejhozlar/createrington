@@ -1,6 +1,8 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { rewardService } from "@/services/reward";
+import { discordTimestamp } from "@/utils/format";
 import {
   type ChatInputCommandInteraction,
   MessageFlags,
@@ -59,12 +61,9 @@ export async function execute(
       );
 
       if (eligibility.nextClaimTime) {
-        const timestamp = Math.floor(
-          eligibility.nextClaimTime.getTime() / 1000,
-        );
         embed.field(
           "Next Claim",
-          `<t:${timestamp}:F> (<t:${timestamp}:R>)`,
+          `${discordTimestamp(eligibility.nextClaimTime, "F")} (${discordTimestamp(eligibility.nextClaimTime, "R")})`,
           false,
         );
       }
@@ -79,15 +78,11 @@ export async function execute(
     const result = await rewardService.daily.claim({ discordId });
 
     if (!result.success) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Claim Failed",
         "Failed to claim your daily reward. Please try again.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -99,8 +94,11 @@ export async function execute(
       .timestamp();
 
     if (result.nextClaimTime) {
-      const timestamp = Math.floor(result.nextClaimTime.getTime() / 1000);
-      embed.field("Next Claim", `<t:${timestamp}:R>`, true);
+      embed.field(
+        "Next Claim",
+        discordTimestamp(result.nextClaimTime, "R"),
+        true,
+      );
     }
 
     await interaction.reply({
@@ -114,14 +112,10 @@ export async function execute(
   } catch (error) {
     logger.error("/daily failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Daily Reward Error",
       "Something went wrong while claiming your reward. Please try again later.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

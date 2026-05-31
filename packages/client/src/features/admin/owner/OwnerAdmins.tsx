@@ -1,13 +1,6 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
@@ -28,6 +21,7 @@ import { Copy, UserMinus, UserPlus } from "lucide-react";
 import { PlayerLabel } from "@/components/player-label";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatRelativeDate } from "@/features/admin/format";
 import { PromoteDialog } from "./components/PromoteDialog";
 import { DemoteDialog } from "./components/DemoteDialog";
@@ -56,38 +50,17 @@ export function OwnerAdmins() {
     void auditQuery.refetch();
   };
 
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent, text: string, label: string) => {
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(text);
-        toast.info(`${label} copied`);
-      } catch {
-        toast.error(`Failed to copy ${label}`);
-      }
-    },
-    [toast],
-  );
+  const handleCopy = useCopyToClipboard();
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Owner</BreadcrumbPage>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Admins</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Home", href: "/" },
+          { label: "Owner" },
+          { label: "Admins" },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <Card>
@@ -151,9 +124,7 @@ export function OwnerAdmins() {
                       <TableCell className="px-4">
                         <button
                           type="button"
-                          onClick={(e) =>
-                            handleCopy(e, admin.discordId, "Discord ID")
-                          }
+                          onClick={(e) => handleCopy(e, admin.discordId)}
                           className="group/copy flex items-center gap-1 text-sm font-mono text-muted-foreground hover:text-foreground transition-colors"
                         >
                           {admin.discordId}

@@ -1,5 +1,6 @@
 import { EmbedColors } from "../../colors";
 import { createEmbed } from "../../embed-builder";
+import { discordTimestamp } from "@/utils/format";
 
 export const GhostEmbedPresets = {
   /**
@@ -12,12 +13,10 @@ export const GhostEmbedPresets = {
     triggeredBy: { discordId: string; username: string | null };
     removedAt: Date;
   }) {
-    const removedUnix = Math.floor(data.removedAt.getTime() / 1000);
-
     const triggeredByLine = `<@${data.triggeredBy.discordId}>${data.triggeredBy.username ? ` (\`${data.triggeredBy.username}\`)` : ""}`;
 
     const description = [
-      `**1** ghost member removed at <t:${removedUnix}:F>.`,
+      `**1** ghost member removed at ${discordTimestamp(data.removedAt, "F")}.`,
       `**Triggered by:** ${triggeredByLine}`,
       "",
       `- <@${data.target.discordId}> (\`${data.target.minecraftUsername}\`)`,

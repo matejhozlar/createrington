@@ -12,9 +12,7 @@ let store: Map<string, StoredRow>;
 vi.mock("@/db", () => {
   // Minimal Q.crypto.setting stub mirroring the methods the service uses.
   const setting = {
-    where: () => ({
-      all: async () => Array.from(store.values()),
-    }),
+    getAll: async () => Array.from(store.values()),
     upsert: async (data: Partial<StoredRow> & { key: string }) => {
       store.set(data.key, {
         key: data.key,

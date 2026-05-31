@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { router, ownerProcedure } from "@/trpc/trpc";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { getService, Services } from "@/services";
@@ -169,8 +169,7 @@ export const ownerAdminsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: ACTION_PROMOTE,
         description: `Promoted ${player?.minecraftUsername ?? input.discordId} to admin`,
         targetPlayerUuid: player?.minecraftUuid,
@@ -263,8 +262,7 @@ export const ownerAdminsRouter = router({
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: ACTION_DEMOTE,
         description: `Demoted ${player?.minecraftUsername ?? input.discordId} from admin`,
         targetPlayerUuid: player?.minecraftUuid,

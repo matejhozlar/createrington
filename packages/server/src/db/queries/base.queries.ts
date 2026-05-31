@@ -1,4 +1,4 @@
-import type { Pool, PoolClient, QueryResultRow } from "pg";
+import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
 import { createNotFoundError } from "../utils/query-helpers";
 import type { FilterValue } from "@createrington/shared/db/base.types";
@@ -1306,6 +1306,23 @@ export abstract class BaseQueries<
       return typeof count === "bigint" ? Number(count) : Number(count ?? 0);
     } catch (error) {
       logger.error(`Failed to count ${this.table}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Runs a parameterized query, logging and rethrowing on failure.
+   * Centralizes the try/catch + logger.error pattern used by custom query
+   * methods. `label` is the action phrase logged as `Failed to ${label}:`.
+   */
+  protected async runQuery<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors pg's query() default so untyped calls keep loose rows
+    R extends QueryResultRow = any,
+  >(label: string, query: string, params?: unknown[]): Promise<QueryResult<R>> {
+    try {
+      return await this.db.query<R>(query, params);
+    } catch (error) {
+      logger.error(`Failed to ${label}:`, error);
       throw error;
     }
   }

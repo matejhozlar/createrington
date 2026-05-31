@@ -8,7 +8,9 @@ import { getService, Services } from "@/services";
 import { Discord } from "@/discord/constants";
 import { EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { minecraftRcon, WhitelistAction } from "@/utils/rcon";
+import { discordTimestamp } from "@/utils/format";
 import { parsePlayerId } from "@/trpc/utils";
+import { sessionService } from "@/services/auth/session/session.service";
 
 /** Admin bans router: issue temporary/permanent bans, unban, and list recent bans. */
 export const bansRouter = router({
@@ -77,6 +79,8 @@ export const bansRouter = router({
         minecraftUuid: ban.playerMinecraftUuid,
       });
 
+      await sessionService.revokeAllForUser(player.discordId);
+
       try {
         await minecraftRcon.banAll(
           player.minecraftUsername,
@@ -100,7 +104,7 @@ export const bansRouter = router({
             `**Reason**: ${input.reason}`,
             `**Banned by**: <@${ctx.user.discordId}>`,
             `**Duration**: ${input.durationDays} day${input.durationDays !== 1 ? "s" : ""}`,
-            `**Expires**: <t:${Math.floor(expiresAt.getTime() / 1000)}:R>`,
+            `**Expires**: ${discordTimestamp(expiresAt)}`,
           ].join("\n"),
           color: 0xffa500,
         });

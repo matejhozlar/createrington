@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q, db } from "@/db";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 import { getServiceSync, Services } from "@/services";
 import config from "@/config";
 
@@ -21,8 +21,7 @@ async function logAutoMessageAction(
   metadata?: Record<string, unknown>,
 ) {
   await Q.admin.log.action.logAction({
-    adminDiscordId: ctx.user.discordId,
-    adminUsername: ctx.user.minecraftUsername,
+    ...auditActor(ctx),
     actionType,
     description,
     metadata,
@@ -67,16 +66,16 @@ export const autoMessagesRouter = router({
     list: adminProcedure
       .meta({ description: "List all auto-message configs" })
       .query(async () => {
-        const configs = await Q.discord.auto.message.config
-          .where({})
-          .orderBy("createdAt", "desc")
-          .all();
+        const configs = await Q.discord.auto.message.config.getAll({
+          orderBy: "createdAt",
+          orderDirection: "desc",
+        });
 
         const configsWithCount = await Promise.all(
           configs.map(async (c) => {
-            const messageCount = await Q.discord.auto.message
-              .where({ configId: c.id })
-              .count();
+            const messageCount = await Q.discord.auto.message.count({
+              configId: c.id,
+            });
             return { ...c, messageCount };
           }),
         );

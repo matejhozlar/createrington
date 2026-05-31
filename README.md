@@ -591,7 +591,7 @@ Slash commands are defined in `packages/server/src/discord/commands/` and deploy
 
 ## Contributing
 
-- Format: Biome (spaces, double quotes, semicolons, trailing commas)
+- Format: Prettier (spaces, double quotes, semicolons, trailing commas)
 - Commit format: `type(scope): description` — e.g. `feat(server): add player ban endpoint`
 - Allowed types: `feat`, `fix`, `chore`, `refactor`
 - Scopes: `server`, `client`, `shared` (or omit if change spans multiple packages)

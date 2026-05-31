@@ -89,8 +89,8 @@ export class PlaytimeRepository {
           serverId: event.serverId,
           sessionStart: event.sessionStart,
         });
-      } catch (err) {
-        if (isUniqueViolation(err)) {
+      } catch (error) {
+        if (isUniqueViolation(error)) {
           await closeOrphans();
           session = await Q.player.session.createAndReturn({
             playerMinecraftUuid: event.uuid,
@@ -98,7 +98,7 @@ export class PlaytimeRepository {
             sessionStart: event.sessionStart,
           });
         } else {
-          throw err;
+          throw error;
         }
       }
 

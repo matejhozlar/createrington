@@ -76,6 +76,7 @@ const config = {
 
   app: {
     port: env.PORT,
+    devClientOrigin: env.DEV_CLIENT_ORIGIN,
     auth: {
       accessToken: {
         secret: env.JWT_ACCESS_SECRET,
@@ -313,9 +314,7 @@ const config = {
     // app/index.ts) so no public hostname or reverse proxy is involved.
     baseUrl:
       env.PUPPETEER_BASE_URL ??
-      (envMode.isDev
-        ? "http://localhost:3000"
-        : `http://127.0.0.1:${env.PORT}`),
+      (envMode.isDev ? env.DEV_CLIENT_ORIGIN : `http://127.0.0.1:${env.PORT}`),
   },
 
   skinApi: {

@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { getService, Services } from "@/services";
 import {
   type ChatInputCommandInteraction,
@@ -60,14 +61,10 @@ export async function execute(
   } catch (error) {
     logger.error("/list failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "List Error",
       "Failed to fetch player list. Please try again.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

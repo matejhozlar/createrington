@@ -19,7 +19,7 @@ export class MarketCaches {
    * 24h window.
    */
   async refreshPrices(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     // A window: between 24h ago and 23h ago to find the closest snapshot
     const windowEnd = new Date(cutoff.getTime() + 60 * 60 * 1000);
@@ -57,7 +57,7 @@ export class MarketCaches {
    * Sums absolute transaction amounts to capture both buys and sells.
    */
   async refreshVolumes(): Promise<void> {
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     for (const token of tokens) {

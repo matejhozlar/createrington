@@ -1,8 +1,9 @@
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { formatPlaytime } from "@/utils/format";
+import { discordTimestamp, formatPlaytime } from "@/utils/format";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import {
@@ -76,10 +77,10 @@ export async function execute(
       });
 
       screenshotBuffer = result.buffer;
-    } catch (err) {
+    } catch (error) {
       logger.warn(
         "Puppeteer screenshot failed for /profile, falling back to text embed:",
-        err,
+        error,
       );
     }
 
@@ -98,7 +99,7 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
       const cashBalance = details.balance
@@ -116,7 +117,6 @@ export async function execute(
 
       const pt = formatPlaytime(details.playtime.totalSeconds);
       const sessions = details.playtime.totalSessions.toLocaleString();
-      const joined = Math.floor(details.player.createdAt.getTime() / 1000);
       const statusStr = details.player.online ? "🟢 Online" : "🔴 Offline";
 
       const embed = EmbedPresets.info(`${username}'s Profile`)
@@ -128,15 +128,19 @@ export async function execute(
         .field("\u200b", "\u200b")
         .field("Playtime", pt, true)
         .field("Sessions", sessions, true)
-        .field("Member Since", `<t:${joined}:D>`, false);
+        .field(
+          "Member Since",
+          discordTimestamp(details.player.createdAt, "D"),
+          false,
+        );
 
       await interaction.editReply({ embeds: [embed.build()] });
     }
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Profile Error",
       "Could not fetch player data. They may not be registered.",
     );
-    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

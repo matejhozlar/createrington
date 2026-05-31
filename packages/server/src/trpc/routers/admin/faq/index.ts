@@ -2,7 +2,12 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
-import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
+import {
+  paginationInput,
+  buildPagination,
+  trpcError,
+  auditActor,
+} from "@/trpc/utils";
 import { container, Services } from "@/services/container";
 import { FaqService } from "@/services/discord/faq";
 
@@ -71,12 +76,12 @@ export const faqRouter = router({
         });
       }
 
-      const countQuery = Q.faq.entry.where({});
+      let countQuery = Q.faq.entry.where({});
       if (input.enabled !== undefined) {
-        countQuery.where({ enabled: input.enabled });
+        countQuery = countQuery.where({ enabled: input.enabled });
       }
       if (input.search) {
-        countQuery.where({
+        countQuery = countQuery.where({
           title: { $ilike: `%${escapeLike(input.search)}%` },
         });
       }
@@ -136,8 +141,7 @@ export const faqRouter = router({
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "faq_create",
         description: `Created FAQ entry "${input.title}"`,
       });
@@ -175,8 +179,7 @@ export const faqRouter = router({
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "faq_update",
         description: `Updated FAQ entry "${existing.title}"`,
       });
@@ -199,8 +202,7 @@ export const faqRouter = router({
       await faqService.refreshPatterns();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "faq_delete",
         description: `Deleted FAQ entry "${existing.title}"`,
       });
@@ -215,8 +217,7 @@ export const faqRouter = router({
       await faqService.repostWelcomeMessage();
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "faq_repost_welcome",
         description: "Reposted FAQ welcome message",
       });

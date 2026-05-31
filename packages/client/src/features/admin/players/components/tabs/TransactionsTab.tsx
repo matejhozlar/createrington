@@ -2,6 +2,7 @@ import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Loading } from "@/components/loading-spinner";
+import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeftRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeftRight } from "lucide-react";
 
 interface TransactionsTabProps {
   playerId: string;
@@ -139,29 +140,15 @@ export function TransactionsTab({ playerId }: TransactionsTabProps) {
             </Table>
           </div>
 
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-3 border-t border-border pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-              >
-                <ChevronLeft className="size-4" />
-              </Button>
-              <span className="text-sm text-muted-foreground tabular-nums font-mono">
-                {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages - 1}
-              >
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="transaction"
+            className="border-t border-border pt-4"
+          />
         </>
       )}
     </div>

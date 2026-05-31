@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { NavLink } from "react-router-dom";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { buildWaitlistFormSchema } from "@createrington/shared/api";
 import { Loading } from "@/components/loading-spinner";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
@@ -40,56 +40,6 @@ interface FormValues {
   agreedToTerms: boolean;
 }
 
-/**
- * Waitlist vs open-enrollment changes which fields are required, so the
- * schema is rebuilt whenever mode changes. The form isn't rendered during
- * the status query's loading state, so the schema only ever settles once
- * before the user can submit.
- */
-function buildSchema(isWaitlistMode: boolean) {
-  return z
-    .object({
-      discordName: z.string(),
-      email: z.string(),
-      referralSource: z.string(),
-      referralOther: z.string(),
-      agreedToTerms: z.boolean(),
-    })
-    .superRefine((values, ctx) => {
-      if (!values.agreedToTerms) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "You must agree to the Privacy Policy and Terms of Service",
-          path: ["agreedToTerms"],
-        });
-      }
-
-      if (isWaitlistMode) {
-        if (!values.email.trim()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Email is required",
-            path: ["email"],
-          });
-        } else if (!z.string().email().safeParse(values.email).success) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Enter a valid email address",
-            path: ["email"],
-          });
-        }
-
-        if (!values.discordName.trim()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Discord username is required",
-            path: ["discordName"],
-          });
-        }
-      }
-    });
-}
-
 export function ApplyToJoin() {
   const statusQuery = trpc.public.waitlists.status.useQuery();
   const createMutation = trpc.public.waitlists.create.useMutation();
@@ -97,7 +47,10 @@ export function ApplyToJoin() {
   const mode = statusQuery.data?.mode;
   const isWaitlistMode = mode === "waitlist";
 
-  const schema = useMemo(() => buildSchema(isWaitlistMode), [isWaitlistMode]);
+  const schema = useMemo(
+    () => buildWaitlistFormSchema(isWaitlistMode),
+    [isWaitlistMode],
+  );
 
   const {
     register,
@@ -140,10 +93,10 @@ export function ApplyToJoin() {
         email: values.email.trim() || undefined,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
       });
-    } catch (err: unknown) {
+    } catch (error: unknown) {
       const message =
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Something went wrong. Please try again.";
       // Surfaced at the bottom of the form under the submit button, matching
       // the previous `formError` placement.

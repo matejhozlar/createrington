@@ -1,8 +1,9 @@
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
-import { formatPlaytime } from "@/utils/format";
+import { discordTimestamp, formatPlaytime } from "@/utils/format";
 import { getService, Services } from "@/services";
 import config from "@/config";
 import {
@@ -58,11 +59,12 @@ export async function execute(
     interaction.options.getUser("player2", false) || interaction.user;
 
   if (user1.id === user2.id) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Invalid Comparison",
       "You can't compare a player with themselves!",
+      { ephemeral: false },
     );
-    await interaction.reply({ embeds: [embed.build()] });
     return;
   }
 
@@ -96,10 +98,10 @@ export async function execute(
       });
 
       screenshotBuffer = result.buffer;
-    } catch (err) {
+    } catch (error) {
       logger.warn(
         "Puppeteer screenshot failed for /compare, falling back to text embed:",
-        err,
+        error,
       );
     }
 
@@ -118,7 +120,7 @@ export async function execute(
       });
     } else {
       // Text fallback if Puppeteer is unavailable
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
       const computeNetworth = async (
@@ -149,9 +151,6 @@ export async function execute(
       const sessions1 = details1.playtime.totalSessions.toLocaleString();
       const sessions2 = details2.playtime.totalSessions.toLocaleString();
 
-      const joined1 = Math.floor(details1.player.createdAt.getTime() / 1000);
-      const joined2 = Math.floor(details2.player.createdAt.getTime() / 1000);
-
       const embed = EmbedPresets.info(`${name1} vs ${name2}`)
         .field("Networth", `${name1}: $${nw1}\n${name2}: $${nw2}`, true)
         .field("Playtime", `${name1}: ${pt1}\n${name2}: ${pt2}`, true)
@@ -163,17 +162,17 @@ export async function execute(
         )
         .field(
           "Member Since",
-          `${name1}: <t:${joined1}:D>\n${name2}: <t:${joined2}:D>`,
+          `${name1}: ${discordTimestamp(details1.player.createdAt, "D")}\n${name2}: ${discordTimestamp(details2.player.createdAt, "D")}`,
           true,
         );
 
       await interaction.editReply({ embeds: [embed.build()] });
     }
   } catch {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Comparison Error",
       "Could not fetch data for one or both players. They may not be registered.",
     );
-    await interaction.editReply({ embeds: [embed.build()] });
   }
 }

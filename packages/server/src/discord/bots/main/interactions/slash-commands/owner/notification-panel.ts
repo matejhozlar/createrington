@@ -1,5 +1,6 @@
 import { createEmbed, EmbedColors, EmbedPresets } from "@/discord/embeds";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
+import { replyError } from "@/discord/utils/interaction-reply";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -52,30 +53,22 @@ export async function execute(
 ): Promise<void> {
   try {
     if (!isSendableChannel(interaction.channel)) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Invalid Channel",
         "This command can only be used in text channels.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
     const enabledNotifications = getEnabledNotifications();
 
     if (enabledNotifications.length === 0) {
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "No Notifications Available",
         "There are currently no enabled notifications to display.",
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
       return;
     }
 
@@ -123,14 +116,11 @@ export async function execute(
         .catch(() => null);
 
       if (!existing) {
-        const errEmbed = EmbedPresets.error(
+        await replyError(
+          interaction,
           "Message Not Found",
           `Could not find message with ID \`${messageId}\` in this channel.`,
         );
-        await interaction.reply({
-          embeds: [errEmbed.build()],
-          flags: MessageFlags.Ephemeral,
-        });
         return;
       }
 
@@ -167,20 +157,10 @@ export async function execute(
   } catch (error) {
     logger.error("/notification-panel failed:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Panel Creation Failed",
       "Failed to create notification panel. Please try again.",
     );
-
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      await interaction.editReply({
-        embeds: [embed.build()],
-      });
-    }
   }
 }

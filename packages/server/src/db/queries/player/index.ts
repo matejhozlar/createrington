@@ -31,13 +31,11 @@ export class PlayerQueries extends PlayerBaseQueries {
       )
       ORDER BY minecraft_username`;
 
-    try {
-      const result = await this.db.query<{ uuid: string; name: string }>(query);
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get whitelist entries:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ uuid: string; name: string }>(
+      "get whitelist entries",
+      query,
+    );
+    return result.rows;
   }
 
   /**
@@ -64,15 +62,11 @@ export class PlayerQueries extends PlayerBaseQueries {
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{ period: string; count: number }>(
-        query,
-        [start, end, granularity],
-      );
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get registrations by period:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ period: string; count: number }>(
+      "get registrations by period",
+      query,
+      [start, end, granularity],
+    );
+    return result.rows;
   }
 }

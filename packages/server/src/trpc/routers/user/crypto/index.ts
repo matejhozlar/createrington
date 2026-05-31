@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { router, userProcedure, cryptoUserProcedure } from "@/trpc/trpc";
-import { trpcError, buildPagination, rethrowTrpc } from "@/trpc/utils";
+import {
+  trpcError,
+  buildPagination,
+  rethrowTrpc,
+  resolveTokenOrThrow,
+} from "@/trpc/utils";
+import { cryptoSymbol } from "@/utils/zod-schemas";
 import { Q } from "@/db";
 import {
   executeBuy,
@@ -56,18 +62,12 @@ export const cryptoRouter = router({
     .meta({ description: "Market buy tokens" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const result = await executeBuy(
@@ -97,8 +97,8 @@ export const cryptoRouter = router({
             token.id,
           ),
         };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -106,18 +106,12 @@ export const cryptoRouter = router({
     .meta({ description: "Market sell tokens" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         amount: z.number().int().positive().max(1_000_000_000),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const result = await executeSell(
@@ -147,18 +141,16 @@ export const cryptoRouter = router({
             token.id,
           ),
         };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
   cooldown: userProcedure
     .meta({ description: "Get remaining trade cooldown for a token" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
+      const token = await Q.crypto.token.find({ symbol: input.symbol });
 
       if (!token) return { expiresAt: null };
 
@@ -198,7 +190,7 @@ export const cryptoRouter = router({
         };
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       let totalValue = 0;
@@ -257,7 +249,7 @@ export const cryptoRouter = router({
     .meta({ description: "Place a limit, stop-loss, or take-profit order" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         type: z.enum(["limit_buy", "limit_sell", "stop_loss", "take_profit"]),
         amount: z.number().int().positive().max(1_000_000_000),
         targetPrice: z
@@ -267,13 +259,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         return await placeOrder(
@@ -284,8 +270,8 @@ export const cryptoRouter = router({
           input.targetPrice,
           input.expiryHours,
         );
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -296,8 +282,8 @@ export const cryptoRouter = router({
       try {
         await cancelOrder(ctx.user.minecraftUuid, input.orderId);
         return { success: true };
-      } catch (err) {
-        rethrowTrpc(err);
+      } catch (error) {
+        rethrowTrpc(error);
       }
     }),
 
@@ -306,7 +292,7 @@ export const cryptoRouter = router({
     .query(async ({ ctx }) => {
       const orders = await getPlayerOrders(ctx.user.minecraftUuid);
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return orders.map((o) => {
@@ -333,7 +319,7 @@ export const cryptoRouter = router({
         .object({
           page: z.number().int().min(0).default(0),
           limit: z.number().int().min(1).max(50).default(20),
-          symbol: z.string().optional(),
+          symbol: cryptoSymbol.optional(),
           type: z.enum(["buy", "sell"]).optional(),
         })
         .optional()
@@ -352,13 +338,12 @@ export const cryptoRouter = router({
         filtered = filtered.filter((tx) => tx.type === input.type);
       }
 
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       if (input.symbol) {
-        const upperSymbol = input.symbol.toUpperCase();
         filtered = filtered.filter(
-          (tx) => tokenMap.get(tx.tokenId)?.symbol === upperSymbol,
+          (tx) => tokenMap.get(tx.tokenId)?.symbol === input.symbol,
         );
       }
 
@@ -391,15 +376,9 @@ export const cryptoRouter = router({
 
   ipoAllocation: userProcedure
     .meta({ description: "Get remaining IPO allocation for a token" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       if (!token.ipoEndsAt || token.ipoEndsAt <= new Date()) {
         return null; // Not in IPO
@@ -433,7 +412,7 @@ export const cryptoRouter = router({
     .meta({ description: "Get user's watchlist" })
     .query(async ({ ctx }) => {
       const entries = await getWatchlist(ctx.user.minecraftUuid);
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return entries.map((e) => {
@@ -451,45 +430,33 @@ export const cryptoRouter = router({
 
   watchlistAdd: userProcedure
     .meta({ description: "Add token to watchlist" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         await addToWatchlist(ctx.user.minecraftUuid, token.id);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to add to watchlist",
+          error instanceof Error ? error.message : "Failed to add to watchlist",
         );
       }
     }),
 
   watchlistRemove: userProcedure
     .meta({ description: "Remove token from watchlist" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         await removeFromWatchlist(ctx.user.minecraftUuid, token.id);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error
-            ? err.message
+          error instanceof Error
+            ? error.message
             : "Failed to remove from watchlist",
         );
       }
@@ -499,7 +466,7 @@ export const cryptoRouter = router({
     .meta({ description: "List active price alerts" })
     .query(async ({ ctx }) => {
       const alerts = await getPlayerAlerts(ctx.user.minecraftUuid);
-      const tokens = await Q.crypto.token.where({}).all();
+      const tokens = await Q.crypto.token.getAll();
       const tokenMap = new Map(tokens.map((t) => [t.id, t]));
 
       return alerts.map((a) => {
@@ -521,7 +488,7 @@ export const cryptoRouter = router({
     .meta({ description: "Create a price alert" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         targetPrice: z
           .string()
           .refine((v) => Number(v) > 0, "Price must be positive"),
@@ -529,13 +496,7 @@ export const cryptoRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       try {
         const alert = await createAlert(
@@ -552,9 +513,9 @@ export const cryptoRouter = router({
           direction: alert.direction,
           createdAt: alert.createdAt.toISOString(),
         };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to create alert",
+          error instanceof Error ? error.message : "Failed to create alert",
         );
       }
     }),
@@ -566,9 +527,9 @@ export const cryptoRouter = router({
       try {
         await deleteAlert(ctx.user.minecraftUuid, input.alertId);
         return { success: true };
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Failed to delete alert",
+          error instanceof Error ? error.message : "Failed to delete alert",
         );
       }
     }),

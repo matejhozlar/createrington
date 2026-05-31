@@ -16,6 +16,7 @@ import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import { isAdmin } from "@/discord/utils/admin-guard";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { TicketSystemIds } from "@/services/discord/tickets";
 import { getService, Services } from "@/services";
 
@@ -55,19 +56,8 @@ async function respondDenied(
   interaction: ButtonInteraction,
   message: string,
 ): Promise<void> {
-  const embed = EmbedPresets.error("Permission denied", message);
   try {
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    } else {
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
-    }
+    await replyError(interaction, "Permission denied", message);
   } catch (error) {
     logger.error("Failed to send ticket permission-denied reply:", error);
   }
@@ -220,17 +210,13 @@ async function handleTranscript(
   } catch (error) {
     logger.error("Failed to handle transcript:", error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Transcript Failed",
       error instanceof Error
         ? error.message
         : "Failed to generate or send transcript",
     );
-
-    await interaction.followUp({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }
 
@@ -258,16 +244,13 @@ async function handleCreate(
       { creatorDiscordId: interaction.user.id, status: TicketStatus.OPEN },
       { limit: 1 },
     );
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Ticket Already Open",
       `You already have an open ticket ${Discord.Channels.mention(
         existingTicket[0].channelId,
       )}. Please close it before creating a new one.`,
     );
-
-    await interaction.editReply({
-      embeds: [embed.build()],
-    });
     return;
   }
 

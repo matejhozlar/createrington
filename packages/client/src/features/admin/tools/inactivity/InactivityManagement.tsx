@@ -1,13 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import {
   Card,
   CardContent,
@@ -161,9 +154,9 @@ export function InactivityManagement() {
       toast.success("Cleanup cycle completed");
       refetchList();
       refetchStats();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to run cleanup cycle",
+        error instanceof Error ? error.message : "Failed to run cleanup cycle",
       );
     }
   }, [triggerCleanup, toast, refetchList, refetchStats]);
@@ -174,10 +167,10 @@ export function InactivityManagement() {
       toast.success("Overdue warnings processed");
       refetchList();
       refetchStats();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Failed to process overdue warnings",
       );
     }
@@ -228,23 +221,13 @@ export function InactivityManagement() {
   return (
     <div className="flex flex-1 flex-col gap-4">
       {/* Header */}
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Inactivity Management</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools", href: "/admin/tools" },
+          { label: "Inactivity Management" },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Title + Actions */}

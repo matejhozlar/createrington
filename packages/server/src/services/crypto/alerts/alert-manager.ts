@@ -47,9 +47,10 @@ export async function createAlert(
   targetPrice: string,
   direction: "above" | "below",
 ): Promise<CryptoPriceAlert> {
-  const count = await Q.crypto.price.alert
-    .where({ playerMinecraftUuid: playerUuid, triggered: false })
-    .count();
+  const count = await Q.crypto.price.alert.count({
+    playerMinecraftUuid: playerUuid,
+    triggered: false,
+  });
 
   const max = cryptoSetting("MAX_ACTIVE_ALERTS");
   if (count >= max) {

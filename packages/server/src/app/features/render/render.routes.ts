@@ -1,11 +1,15 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
-import { KNOWN_POSES, type KnownPose } from "createrington-skin-api";
+import {
+  KNOWN_POSES,
+  randomPose,
+  type KnownPose,
+} from "createrington-skin-api";
 import { asyncHandler } from "@/app/middleware/async-handler";
 import config from "@/config";
 import { Q, playerRepo } from "@/db";
 import { BalanceUtils } from "@/db/repositories/balance/utils";
-import { formatPlaytime } from "@/utils/format";
+import { formatPlaytime, toUnixSeconds } from "@/utils/format";
 import { UnauthorizedError } from "@/app/middleware";
 import { requireLoopback } from "@/app/middleware/server-ip.middleware";
 import { getService, Services } from "@/services";
@@ -18,11 +22,6 @@ import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 const SKIN_RENDER_CACHE_SECONDS = 24 * 60 * 60;
 const KNOWN_POSE_SET: ReadonlySet<KnownPose> = new Set(KNOWN_POSES);
 const MC_HEADS_FALLBACK_URL = "https://mc-heads.net/body";
-
-function pickRandomPose(): KnownPose {
-  const idx = Math.floor(Math.random() * KNOWN_POSES.length);
-  return KNOWN_POSES[idx] as KnownPose;
-}
 
 const router = Router();
 
@@ -90,7 +89,7 @@ router.get(
       playerRepo.getDetailed({ discordId: player2 }),
     ]);
 
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
     const computeCryptoValue = async (uuid: string) => {
@@ -151,7 +150,7 @@ router.get(
 
     const details = await playerRepo.getDetailed({ discordId: player });
 
-    const tokens = await Q.crypto.token.where({}).all();
+    const tokens = await Q.crypto.token.getAll();
     const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
     const cashBalance = details.balance
@@ -441,9 +440,7 @@ router.get(
         ? (interval as PriceInterval)
         : "minute";
 
-    const token = await Q.crypto.token
-      .where({ symbol: symbol.toUpperCase() })
-      .first();
+    const token = await Q.crypto.token.find({ symbol: symbol.toUpperCase() });
 
     if (!token) {
       res.status(404).json({ error: `Token ${symbol} not found` });
@@ -461,7 +458,7 @@ router.get(
       .all();
 
     const priceHistory = snapshots.reverse().map((s) => ({
-      time: Math.floor(s.recordedAt.getTime() / 1000),
+      time: toUnixSeconds(s.recordedAt),
       open: Number(s.openPrice),
       high: Number(s.highPrice),
       low: Number(s.lowPrice),
@@ -538,7 +535,7 @@ router.get(
     const requestedPose =
       typeof pose === "string" && KNOWN_POSE_SET.has(pose as KnownPose)
         ? (pose as KnownPose)
-        : pickRandomPose();
+        : randomPose();
 
     let png: Uint8Array;
     try {
@@ -546,10 +543,10 @@ router.get(
         pose: requestedPose,
         source: { uuid },
       });
-    } catch (err) {
+    } catch (error) {
       // Keep the <img> tag rendering something useful instead of triggering
       // the broken-image icon: bounce to mc-heads on any skin-api failure.
-      const message = err instanceof Error ? err.message : String(err);
+      const message = error instanceof Error ? error.message : String(error);
       logger.warn(
         `skin-api render failed (uuid=${uuid} pose=${requestedPose}): ${message}, falling back to mc-heads`,
       );

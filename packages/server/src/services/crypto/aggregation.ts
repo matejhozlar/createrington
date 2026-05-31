@@ -10,7 +10,7 @@ import { CRYPTO_CONFIG } from "./crypto.config";
  * configured retention window are deleted.
  */
 export async function aggregateMinuteSnapshots(): Promise<void> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const now = new Date();
   now.setSeconds(0, 0);
 
@@ -75,7 +75,7 @@ export async function aggregateMinuteSnapshots(): Promise<void> {
  * Rolls up minute-level snapshots into hourly OHLCV candles and prunes old minute snapshots.
  */
 export async function aggregateHourlySnapshots(): Promise<void> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const now = new Date();
 
   const currentHourStart = new Date(now);
@@ -137,7 +137,7 @@ export async function aggregateHourlySnapshots(): Promise<void> {
  * Uses midnight-to-midnight UTC boundaries.
  */
 export async function aggregateDailySnapshots(): Promise<void> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const now = new Date();
 
   // Start of today UTC
@@ -200,7 +200,7 @@ export async function aggregateDailySnapshots(): Promise<void> {
  * Uses Monday-to-Sunday UTC boundaries.
  */
 export async function aggregateWeeklySnapshots(): Promise<void> {
-  const tokens = await Q.crypto.token.where({}).all();
+  const tokens = await Q.crypto.token.getAll();
   const now = new Date();
 
   // Find this Monday 00:00 UTC

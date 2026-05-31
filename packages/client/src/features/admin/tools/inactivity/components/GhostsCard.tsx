@@ -35,6 +35,7 @@ import { Copy, Ghost, RefreshCw, Search, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
+import { useCopyToClipboard } from "@/hooks/use-copy-to-clipboard";
 import { formatFullDate, formatRelativeDate } from "@/features/admin/format";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { RemoveGhostModal } from "./modals/RemoveGhostModal";
@@ -94,18 +95,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
     setPage(newPage);
   }, []);
 
-  const handleCopy = useCallback(
-    async (e: React.MouseEvent, text: string, label: string) => {
-      e.stopPropagation();
-      try {
-        await navigator.clipboard.writeText(text);
-        toast.info(`${label} copied`);
-      } catch {
-        toast.error(`Failed to copy ${label}`);
-      }
-    },
-    [toast],
-  );
+  const handleCopy = useCopyToClipboard();
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -113,9 +103,11 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
       toast.success(`Cache refreshed: ${result.count} ghost(s)`);
       refetchList();
       refetchCapabilities();
-    } catch (err) {
+    } catch (error) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to refresh ghost cache",
+        error instanceof Error
+          ? error.message
+          : "Failed to refresh ghost cache",
       );
     }
   }, [refreshGhosts, toast, refetchList, refetchCapabilities]);
@@ -268,11 +260,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <button
                               type="button"
                               onClick={(e) =>
-                                handleCopy(
-                                  e,
-                                  ghost.minecraftUsername,
-                                  "Username",
-                                )
+                                handleCopy(e, ghost.minecraftUsername)
                               }
                               className="group/copy flex items-center gap-1 font-medium hover:text-foreground transition-colors"
                             >
@@ -282,7 +270,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                             <button
                               type="button"
                               onClick={(e) =>
-                                handleCopy(e, ghost.minecraftUuid, "UUID")
+                                handleCopy(e, ghost.minecraftUuid)
                               }
                               className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
@@ -294,9 +282,7 @@ export function GhostsCard({ canMutate }: { canMutate: boolean }) {
                         <TableCell className="px-4">
                           <button
                             type="button"
-                            onClick={(e) =>
-                              handleCopy(e, ghost.discordId, "Discord ID")
-                            }
+                            onClick={(e) => handleCopy(e, ghost.discordId)}
                             className="group/copy flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
                             {ghost.discordId}

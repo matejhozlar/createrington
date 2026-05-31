@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { router, publicProcedure } from "@/trpc/trpc";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, resolveTokenOrThrow } from "@/trpc/utils";
+import { cryptoSymbol } from "@/utils/zod-schemas";
+import { toUnixSeconds } from "@/utils/format";
 import { Q } from "@/db";
 import { getLeaderboard } from "@/services/crypto/analytics/leaderboard";
 import { getRecentEvents } from "@/services/crypto/events/news-feed";
@@ -85,15 +87,9 @@ export const cryptoRouter = router({
 
   get: publicProcedure
     .meta({ description: "Get single token by symbol" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       return {
         id: token.id,
@@ -119,19 +115,13 @@ export const cryptoRouter = router({
     .meta({ description: "Get price history (OHLCV) for a token" })
     .input(
       z.object({
-        symbol: z.string().min(1).max(10),
+        symbol: cryptoSymbol,
         interval: z.enum(["tick", "minute", "hourly", "daily", "weekly"]),
         limit: z.number().int().min(1).max(500).default(100),
       }),
     )
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       const snapshots = await Q.crypto.price.snapshot
         .where({
@@ -144,7 +134,7 @@ export const cryptoRouter = router({
 
       // Return in chronological order
       return snapshots.reverse().map((s) => ({
-        time: Math.floor(s.recordedAt.getTime() / 1000),
+        time: toUnixSeconds(s.recordedAt),
         open: Number(s.openPrice),
         high: Number(s.highPrice),
         low: Number(s.lowPrice),
@@ -249,9 +239,7 @@ export const cryptoRouter = router({
       if (!ipoToken) return null;
 
       const totalSold = ipoToken.totalSupply - ipoToken.availableSupply;
-      const holders = await Q.crypto.holding
-        .where({ tokenId: ipoToken.id })
-        .count();
+      const holders = await Q.crypto.holding.count({ tokenId: ipoToken.id });
       const maxPerPlayer = Math.floor(
         Number(ipoToken.totalSupply) *
           cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
@@ -276,21 +264,15 @@ export const cryptoRouter = router({
 
   tokenDistribution: publicProcedure
     .meta({ description: "Get token ownership distribution" })
-    .input(z.object({ symbol: z.string().min(1).max(10) }))
+    .input(z.object({ symbol: cryptoSymbol }))
     .query(async ({ input }) => {
-      const token = await Q.crypto.token
-        .where({ symbol: input.symbol.toUpperCase() })
-        .first();
-
-      if (!token) {
-        throw trpcError.notFound(`Token ${input.symbol} not found`);
-      }
+      const token = await resolveTokenOrThrow(input.symbol);
 
       const holdings = await Q.crypto.holding
         .where({ tokenId: token.id })
         .all();
 
-      const players = await Q.player.where({}).all();
+      const players = await Q.player.getAll();
       const nameMap = new Map(
         players.map((p) => [p.minecraftUuid, p.minecraftUsername ?? "Unknown"]),
       );

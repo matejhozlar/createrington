@@ -228,11 +228,19 @@ export class FlashlightEffect {
     if (!overlay) return;
     this.canvasOverlay = null;
 
-    // Fade out then remove
     overlay.style.opacity = "0";
-    overlay.addEventListener("transitionend", () => overlay.remove(), {
+
+    const controller = new AbortController();
+    const removeOverlay = () => {
+      controller.abort();
+      clearTimeout(fallbackTimer);
+      overlay.remove();
+    };
+
+    overlay.addEventListener("transitionend", removeOverlay, {
       once: true,
+      signal: controller.signal,
     });
-    setTimeout(() => overlay.remove(), FADE_OUT_DURATION + 100);
+    const fallbackTimer = setTimeout(removeOverlay, FADE_OUT_DURATION + 100);
   }
 }

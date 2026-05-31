@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loading } from "@/components/loading-spinner";
-import {
-  Breadcrumb,
-  BreadcrumbList,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbSeparator,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { fetchChatMessages } from "@/features/admin-chat/api";
@@ -35,9 +28,9 @@ export function ChatHistoryDetail() {
     try {
       const data = await fetchChatMessages(numericId);
       setMessages(data.messages);
-    } catch (err) {
+    } catch (error) {
       setError(
-        err instanceof Error ? err.message : "Failed to load transcript",
+        error instanceof Error ? error.message : "Failed to load transcript",
       );
     } finally {
       setLoading(false);
@@ -50,31 +43,16 @@ export function ChatHistoryDetail() {
 
   return (
     <div className="flex flex-1 flex-col gap-4">
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-sidebar px-4">
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/dashboard">Admin</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools">Tools</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/admin/tools/chat-history">
-                Chat History
-              </BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>
-                Session #{Number.isFinite(numericId) ? numericId : "—"}
-              </BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      </header>
+      <AdminPageHeader
+        trail={[
+          { label: "Admin", href: "/admin/dashboard" },
+          { label: "Tools", href: "/admin/tools" },
+          { label: "Chat History", href: "/admin/tools/chat-history" },
+          {
+            label: `Session #${Number.isFinite(numericId) ? numericId : "—"}`,
+          },
+        ]}
+      />
 
       <div className="mx-auto w-full max-w-[1000px] flex flex-1 flex-col gap-4 px-4 pb-4">
         <div className="flex items-center justify-between gap-3">

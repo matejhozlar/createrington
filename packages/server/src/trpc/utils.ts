@@ -5,6 +5,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { idToObject } from "@/app/utils/helpers";
 import { AppError } from "@/app/middleware/error-handler";
+import { Q } from "@/db";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
@@ -67,6 +68,19 @@ export function parsePlayerId(id: string) {
 }
 
 /**
+ * Maps an authenticated admin context to the actor fields every audit log
+ * entry requires. Spread into `logAction` calls: `{ ...auditActor(ctx), ... }`.
+ */
+export function auditActor(ctx: {
+  user: { discordId: string; minecraftUsername: string };
+}) {
+  return {
+    adminDiscordId: ctx.user.discordId,
+    adminUsername: ctx.user.minecraftUsername,
+  };
+}
+
+/**
  * Returns Zod schemas for `page` and `limit` input fields.
  * @param opts.maxLimit - Upper bound for limit (default 100)
  * @param opts.defaultLimit - Default page size (default 20)
@@ -100,4 +114,18 @@ export function buildPagination(page: number, limit: number, total: number) {
     total,
     totalPages: Math.ceil(total / limit),
   };
+}
+
+/**
+ * Looks up a crypto token by symbol (case-insensitive), throwing a 404
+ * TRPCError when no token matches.
+ */
+export async function resolveTokenOrThrow(symbol: string) {
+  const token = await Q.crypto.token.find({ symbol: symbol.toUpperCase() });
+
+  if (!token) {
+    throw trpcError.notFound(`Token ${symbol} not found`);
+  }
+
+  return token;
 }

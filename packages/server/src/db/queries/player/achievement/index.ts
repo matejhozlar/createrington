@@ -30,13 +30,11 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
       WHERE minecraft_uuid = $1 AND server_id = $2
       ORDER BY achievement_group_id, tier`;
 
-    try {
-      const result = await this.db.query(query, [playerUuid, serverId]);
-      return this.mapRowsToEntities(result.rows);
-    } catch (error) {
-      logger.error("Failed to get completed achievements:", error);
-      throw error;
-    }
+    const result = await this.runQuery("get completed achievements", query, [
+      playerUuid,
+      serverId,
+    ]);
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -55,13 +53,11 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
       WHERE minecraft_uuid = $1 AND server_id = $2 AND claimed_at IS NULL
       ORDER BY achievement_group_id, tier`;
 
-    try {
-      const result = await this.db.query(query, [playerUuid, serverId]);
-      return this.mapRowsToEntities(result.rows);
-    } catch (error) {
-      logger.error("Failed to get unclaimed achievements:", error);
-      throw error;
-    }
+    const result = await this.runQuery("get unclaimed achievements", query, [
+      playerUuid,
+      serverId,
+    ]);
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -106,12 +102,7 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
       VALUES ${rows.join(", ")}
       ON CONFLICT (minecraft_uuid, server_id, achievement_group_id, tier) DO NOTHING`;
 
-    try {
-      await this.db.query(query, values);
-    } catch (error) {
-      logger.error("Failed to batch complete achievements:", error);
-      throw error;
-    }
+    await this.runQuery("batch complete achievements", query, values);
   }
 
   /**
@@ -142,17 +133,11 @@ export class PlayerAchievementQueries extends PlayerAchievementBaseQueries {
         AND claimed_at IS NULL
       RETURNING reward_amount`;
 
-    try {
-      const result = await this.db.query<{ reward_amount: number }>(query, [
-        playerUuid,
-        serverId,
-        groupId,
-        tier,
-      ]);
-      return result.rows[0]?.reward_amount ?? null;
-    } catch (error) {
-      logger.error("Failed to claim achievement reward:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ reward_amount: number }>(
+      "claim achievement reward",
+      query,
+      [playerUuid, serverId, groupId, tier],
+    );
+    return result.rows[0]?.reward_amount ?? null;
   }
 }

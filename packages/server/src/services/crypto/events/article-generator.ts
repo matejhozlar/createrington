@@ -15,6 +15,7 @@
 
 import { Q } from "@/db";
 import config from "@/config";
+import { toUnixSeconds } from "@/utils/format";
 import { getService } from "@/services";
 import { Services } from "@/services/container";
 import { getLeaderboard } from "../analytics/leaderboard";
@@ -48,9 +49,9 @@ async function processQueue(): Promise<void> {
         job.severity,
         job.metadata,
       );
-    } catch (err) {
+    } catch (error) {
       logger.warn(
-        `Failed to generate article for event ${job.eventId}: ${err}`,
+        `Failed to generate article for event ${job.eventId}: ${error}`,
       );
     }
   }
@@ -125,7 +126,7 @@ type PlayerNameMap = Map<string, string>;
  * @returns Map keyed by Minecraft UUID with display username as value
  */
 async function buildPlayerNameMap(): Promise<PlayerNameMap> {
-  const players = await Q.player.where({}).all();
+  const players = await Q.player.getAll();
   const map: PlayerNameMap = new Map();
   for (const p of players) {
     map.set(p.minecraftUuid, p.minecraftUsername);
@@ -340,11 +341,11 @@ async function buildPendingOrdersSection(tokenId: number): Promise<string> {
 async function buildPreviousEventsSection(
   currentEventId: number,
 ): Promise<string> {
-  const events = await Q.crypto.market.event
-    .where({})
-    .orderBy("createdAt", "desc")
-    .limit(4)
-    .all();
+  const events = await Q.crypto.market.event.getAll({
+    orderBy: "createdAt",
+    orderDirection: "desc",
+    limit: 4,
+  });
 
   const previous = events.filter((e) => e.id !== currentEventId).slice(0, 3);
   if (previous.length === 0) return "";
@@ -433,7 +434,7 @@ async function buildPriceHistoryData(
 
   // Reverse to chronological order
   return snapshots.reverse().map((s) => ({
-    time: Math.floor(s.recordedAt.getTime() / 1000),
+    time: toUnixSeconds(s.recordedAt),
     open: Number(s.openPrice),
     high: Number(s.highPrice),
     low: Number(s.lowPrice),

@@ -1,3 +1,5 @@
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
+
 /**
  * Function to detect ID type
  * Properly detects between discordId, minecraftUuid, and minecraftUsername
@@ -8,8 +10,7 @@
 export function getIdType(
   id: string,
 ): "minecraftUuid" | "minecraftUsername" | "discord" | "invalid" {
-  const isMinecraftUUID =
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  const isMinecraftUUID = MC_UUID_REGEX.test(id);
   if (isMinecraftUUID) return "minecraftUuid";
 
   const isDiscordID = /^\d{17,20}$/.test(id);

@@ -10,6 +10,7 @@ import type { ActiveEvent } from "./events/event-engine";
 import { getService } from "@/services";
 import { Services } from "../container";
 import type { TriggeredAlert } from "./alerts/alert-manager";
+import { discordTimestamp } from "@/utils/format";
 
 function articleUrl(eventId: number): string {
   return `${config.meta.links.website}/crypto/news/${eventId}`;
@@ -83,8 +84,8 @@ export async function sendNewListingNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send new listing notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send new listing notification to Discord:", error);
   }
 }
 
@@ -112,7 +113,7 @@ export async function sendIpoAnnouncementNotification(
   const event = await createMarketEvent({
     type: "ipo_launch",
     title: `IPO: ${name} (${symbol})`,
-    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends <t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>.`,
+    description: `IPO at ${formatPrice(ipoPrice)} with ${Number(totalSupply).toLocaleString()} supply. Max ${maxPerPlayer.toLocaleString()} per player. Ends ${discordTimestamp(ipoEndsAt, "R")}.`,
     severity: "info",
   }).catch((err) => {
     logger.error("Failed to record IPO launch event:", err);
@@ -125,7 +126,7 @@ export async function sendIpoAnnouncementNotification(
     ipoPrice: formatPrice(ipoPrice),
     totalSupply: Number(totalSupply).toLocaleString(),
     maxPerPlayer: maxPerPlayer.toLocaleString(),
-    ipoEndsAt: `<t:${Math.floor(ipoEndsAt.getTime() / 1000)}:R>`,
+    ipoEndsAt: discordTimestamp(ipoEndsAt, "R"),
     duration: `${durationMin} minutes`,
   });
 
@@ -136,10 +137,10 @@ export async function sendIpoAnnouncementNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
+  } catch (error) {
     logger.error(
       "Failed to send IPO announcement notification to Discord:",
-      err,
+      error,
     );
   }
 }
@@ -192,8 +193,8 @@ export async function sendIpoResultNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send IPO result notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send IPO result notification to Discord:", error);
   }
 }
 
@@ -229,8 +230,8 @@ export async function sendCrashNotification(
       embeds: embed.build(),
       components: event ? readMoreButton(event.id) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send crash notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send crash notification to Discord:", error);
   }
 }
 
@@ -269,8 +270,8 @@ export async function sendWhaleAlertNotification(
       embeds: embed.build(),
       components: eventId ? readMoreButton(eventId) : undefined,
     });
-  } catch (err) {
-    logger.error("Failed to send whale alert notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send whale alert notification to Discord:", error);
   }
 }
 
@@ -305,8 +306,7 @@ export async function sendMarketEventNotification(
   );
 
   if (event.activeUntil) {
-    const unixEnd = Math.floor(event.activeUntil.getTime() / 1000);
-    embed.field("Ends", `<t:${unixEnd}:R>`, true);
+    embed.field("Ends", discordTimestamp(event.activeUntil, "R"), true);
   } else {
     embed.field("Type", "Instant", true);
   }
@@ -322,8 +322,8 @@ export async function sendMarketEventNotification(
       embeds: embed.build(),
       components: readMoreButton(event.eventId),
     });
-  } catch (err) {
-    logger.error("Failed to send market event notification to Discord:", err);
+  } catch (error) {
+    logger.error("Failed to send market event notification to Discord:", error);
   }
 }
 
@@ -359,7 +359,7 @@ export async function getMarketSummary() {
   ).length;
 
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const allTxs = await Q.crypto.transaction.where({}).all();
+  const allTxs = await Q.crypto.transaction.getAll();
   const dailyTxs = allTxs.filter((tx) => tx.createdAt >= dayAgo);
   const dailyVolume = dailyTxs.reduce(
     (sum, tx) => sum + Math.abs(Number(tx.totalCost)),
@@ -412,7 +412,7 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     ).length;
 
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const allTxs = await Q.crypto.transaction.where({}).all();
+    const allTxs = await Q.crypto.transaction.getAll();
     const weeklyTxs = allTxs.filter((tx) => tx.createdAt >= weekAgo);
     const weeklyVolume = weeklyTxs.reduce(
       (sum, tx) => sum + Math.abs(Number(tx.totalCost)),
@@ -448,8 +448,8 @@ export async function sendWeeklyMarketReport(): Promise<void> {
     });
 
     logger.info("Weekly crypto market report sent");
-  } catch (err) {
-    logger.error("Failed to send weekly market report:", err);
+  } catch (error) {
+    logger.error("Failed to send weekly market report:", error);
   }
 }
 
@@ -491,10 +491,10 @@ export async function sendPriceAlertDMs(
       });
 
       await user.send({ embeds: [embed.build()] });
-    } catch (err) {
+    } catch (error) {
       logger.error(
         `Failed to send price alert DM for alert ${alert.alertId}:`,
-        err,
+        error,
       );
     }
   }

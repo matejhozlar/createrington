@@ -1,11 +1,11 @@
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 import { CooldownType } from "@/discord/utils/cooldown";
 import { runRegistration } from "@/discord/bots/main/registration/run-registration";
 import {
   type ChatInputCommandInteraction,
   type GuildTextBasedChannel,
-  MessageFlags,
   SlashCommandBuilder,
 } from "discord.js";
 
@@ -49,14 +49,11 @@ export async function execute(
   }
 
   if (!member.roles.cache.has(Discord.Roles.UNVERIFIED)) {
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Already Registered",
       "You are already verified or not eligible to register",
     );
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
     return;
   }
 

@@ -46,24 +46,19 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{
-        period: string;
-        transaction_count: number;
-        total_credits: bigint;
-        total_debits: bigint;
-      }>(query, [start, end, granularity]);
+    const result = await this.runQuery<{
+      period: string;
+      transaction_count: number;
+      total_credits: bigint;
+      total_debits: bigint;
+    }>("get transaction volume by period", query, [start, end, granularity]);
 
-      return result.rows.map((row) => ({
-        period: row.period,
-        transactionCount: row.transaction_count,
-        totalCredits: Number(row.total_credits),
-        totalDebits: Number(row.total_debits),
-      }));
-    } catch (error) {
-      logger.error("Failed to get transaction volume by period:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      period: row.period,
+      transactionCount: row.transaction_count,
+      totalCredits: Number(row.total_credits),
+      totalDebits: Number(row.total_debits),
+    }));
   }
 
   /**
@@ -80,14 +75,11 @@ export class PlayerBalanceTransactionQueries extends PlayerBalanceTransactionBas
       FROM ${this.table}
       WHERE player_minecraft_uuid = $1 AND amount > 0`;
 
-    try {
-      const result = await this.db.query<{ total_earned: bigint }>(query, [
-        playerUuid,
-      ]);
-      return Number(result.rows[0].total_earned);
-    } catch (error) {
-      logger.error("Failed to get total earned:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ total_earned: bigint }>(
+      "get total earned",
+      query,
+      [playerUuid],
+    );
+    return Number(result.rows[0].total_earned);
   }
 }

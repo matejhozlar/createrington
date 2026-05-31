@@ -1,9 +1,7 @@
 import { BadRequestError, InternalServerError } from "@/app/middleware";
 import { playtimeRepo, Q } from "@/db";
+import { MC_UUID_REGEX } from "@/utils/zod-schemas";
 import type { Request, Response } from "express";
-
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const TEST_SERVER_NAME = "Cogs & Steam (Test)";
 const TEST_SERVER_IDENTIFIER = "cogs-test";
@@ -70,7 +68,7 @@ export class InternalPresenceController {
       throw new BadRequestError('state must be either "joined" or "left"');
     }
 
-    if (!UUID_REGEX.test(uuid)) {
+    if (!MC_UUID_REGEX.test(uuid)) {
       throw new BadRequestError("Invalid UUID format");
     }
 
@@ -147,7 +145,7 @@ export class InternalPresenceController {
     const onlinePlayers: Array<{ uuid: string; username: string }> = [];
     for (const p of players) {
       if (!p.uuid || !p.username) continue;
-      if (!UUID_REGEX.test(p.uuid)) continue;
+      if (!MC_UUID_REGEX.test(p.uuid)) continue;
       onlinePlayers.push({ uuid: p.uuid, username: p.username });
     }
 

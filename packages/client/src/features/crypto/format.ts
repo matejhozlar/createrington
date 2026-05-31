@@ -17,6 +17,18 @@ export function formatSupply(available: string, total: string): string {
   return `${percent}% held`;
 }
 
+/** Tailwind text-color class for a signed change value (up/down/flat). */
+export function changeColor(value: number): string {
+  if (value > 0) return "text-emerald-400";
+  if (value < 0) return "text-destructive";
+  return "text-muted-foreground";
+}
+
+/** Formats a signed percentage change with an explicit "+" for gains. */
+export function formatChangePercent(value: number): string {
+  return `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
 /** Converts an ISO date string to a human-readable relative time label. */
 export function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);

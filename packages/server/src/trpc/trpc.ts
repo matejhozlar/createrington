@@ -96,8 +96,8 @@ const requireCryptoEnabled = middleware(async ({ next }) => {
     if (!settings.get("cryptoEnabled")) {
       throw trpcError.forbidden("Crypto market is currently disabled");
     }
-  } catch (err) {
-    if (err instanceof TRPCError) throw err;
+  } catch (error) {
+    if (error instanceof TRPCError) throw error;
     // Service not yet ready (boot or test harness): fall through.
   }
   return next();

@@ -190,6 +190,7 @@ const envSchema = z
     ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
     ASSETS_URL: z.string().url("Assets URL must be a valid URL"),
     MAP_URL: z.string().url("Map URL must be a valid URL"),
+    DEV_CLIENT_ORIGIN: z.string().url().default("http://localhost:3000"),
 
     // Puppeteer (internal rendering)
     // Production-only: render routes reject calls when the secret is empty

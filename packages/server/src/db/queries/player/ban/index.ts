@@ -59,18 +59,13 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       GROUP BY 1
       ORDER BY 1`;
 
-    try {
-      const result = await this.db.query<{
-        period: string;
-        total: number;
-        temporary: number;
-        permanent: number;
-      }>(query, [start, end, granularity]);
-      return result.rows;
-    } catch (error) {
-      logger.error("Failed to get ban counts by period:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{
+      period: string;
+      total: number;
+      temporary: number;
+      permanent: number;
+    }>("get ban counts by period", query, [start, end, granularity]);
+    return result.rows;
   }
 
   /**
@@ -95,22 +90,17 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       ORDER BY ban_count DESC
       LIMIT $1`;
 
-    try {
-      const result = await this.db.query<{
-        discord_id: string;
-        username: string;
-        ban_count: number;
-      }>(query, [limit]);
+    const result = await this.runQuery<{
+      discord_id: string;
+      username: string;
+      ban_count: number;
+    }>("get moderator activity", query, [limit]);
 
-      return result.rows.map((row) => ({
-        discordId: row.discord_id,
-        username: row.username,
-        banCount: row.ban_count,
-      }));
-    } catch (error) {
-      logger.error("Failed to get moderator activity:", error);
-      throw error;
-    }
+    return result.rows.map((row) => ({
+      discordId: row.discord_id,
+      username: row.username,
+      banCount: row.ban_count,
+    }));
   }
 
   /**
@@ -131,15 +121,12 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
           )
       ) as is_banned`;
 
-    try {
-      const result = await this.db.query<{ is_banned: boolean }>(query, [
-        playerMinecraftUuid,
-      ]);
-      return result.rows[0]?.is_banned || false;
-    } catch (error) {
-      logger.error("Failed to check if player is banned:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ is_banned: boolean }>(
+      "check if player is banned",
+      query,
+      [playerMinecraftUuid],
+    );
+    return result.rows[0]?.is_banned || false;
   }
 
   /**
@@ -160,15 +147,10 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
       ORDER BY banned_at DESC
       LIMIT 1`;
 
-    try {
-      const result = await this.db.query<PlayerBan>(query, [
-        playerMinecraftUuid,
-      ]);
-      return result.rows[0] ? this.mapRowToEntity(result.rows[0]) : null;
-    } catch (error) {
-      logger.error("Failed to get current ban:", error);
-      throw error;
-    }
+    const result = await this.runQuery<PlayerBan>("get current ban", query, [
+      playerMinecraftUuid,
+    ]);
+    return result.rows[0] ? this.mapRowToEntity(result.rows[0]) : null;
   }
 
   /**
@@ -247,13 +229,8 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
         AND expires_at <= NOW()
       ORDER BY expires_at ASC`;
 
-    try {
-      const result = await this.db.query<PlayerBan>(query);
-      return this.mapRowsToEntities(result.rows);
-    } catch (error) {
-      logger.error("Failed to get expired bans:", error);
-      throw error;
-    }
+    const result = await this.runQuery<PlayerBan>("get expired bans", query);
+    return this.mapRowsToEntities(result.rows);
   }
 
   /**
@@ -278,13 +255,10 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
           )
         ORDER BY banned_at DESC`;
 
-      try {
-        const result = await this.db.query<PlayerBan>(query, [banType]);
-        return this.mapRowsToEntities(result.rows);
-      } catch (error) {
-        logger.error("Failed to get bans by type:", error);
-        throw error;
-      }
+      const result = await this.runQuery<PlayerBan>("get bans by type", query, [
+        banType,
+      ]);
+      return this.mapRowsToEntities(result.rows);
     }
 
     return await this.findAll(
@@ -334,13 +308,10 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
         ORDER BY banned_at DESC
         LIMIT $1`;
 
-      try {
-        const result = await this.db.query<PlayerBan>(query, [limit]);
-        return this.mapRowsToEntities(result.rows);
-      } catch (error) {
-        logger.error("Failed to get recent bans:", error);
-        throw error;
-      }
+      const result = await this.runQuery<PlayerBan>("get recent bans", query, [
+        limit,
+      ]);
+      return this.mapRowsToEntities(result.rows);
     }
 
     return await this.findAll(undefined, {
@@ -376,27 +347,22 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
         )
       GROUP BY player_minecraft_uuid`;
 
-    try {
-      const result = await this.db.query<{
-        player_minecraft_uuid: string;
-        count: number;
-      }>(query, [playerUuids]);
+    const result = await this.runQuery<{
+      player_minecraft_uuid: string;
+      count: number;
+    }>("get active ban counts", query, [playerUuids]);
 
-      const counts: Record<string, number> = {};
+    const counts: Record<string, number> = {};
 
-      playerUuids.forEach((uuid) => {
-        counts[uuid] = 0;
-      });
+    playerUuids.forEach((uuid) => {
+      counts[uuid] = 0;
+    });
 
-      result.rows.forEach((row) => {
-        counts[row.player_minecraft_uuid] = row.count;
-      });
+    result.rows.forEach((row) => {
+      counts[row.player_minecraft_uuid] = row.count;
+    });
 
-      return counts;
-    } catch (error) {
-      logger.error("Failed to get active ban counts:", error);
-      throw error;
-    }
+    return counts;
   }
 
   /**
@@ -414,14 +380,10 @@ export class PlayerBanQueries extends PlayerBanBaseQueries {
           expires_at > NOW()
         )`;
 
-    try {
-      const result = await this.db.query<{ player_minecraft_uuid: string }>(
-        query,
-      );
-      return result.rows.map((row) => row.player_minecraft_uuid);
-    } catch (error) {
-      logger.error("Failed to get players with active bans:", error);
-      throw error;
-    }
+    const result = await this.runQuery<{ player_minecraft_uuid: string }>(
+      "get players with active bans",
+      query,
+    );
+    return result.rows.map((row) => row.player_minecraft_uuid);
   }
 }

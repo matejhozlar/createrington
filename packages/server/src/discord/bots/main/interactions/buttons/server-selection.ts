@@ -6,6 +6,7 @@ import {
 import { getServerConfig } from "../../config/server-selection";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { EmbedPresets } from "@/discord/embeds";
+import { replyError } from "@/discord/utils/interaction-reply";
 
 /**
  * Handles server selection buttons
@@ -102,16 +103,12 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
         throw new Error("Failed to remove role");
       }
 
-      const embed = EmbedPresets.error(
+      await replyError(
+        interaction,
         "Server Access Removed",
         `You no longer have access to **${serverConfig.label}** channels.\n\n` +
           `Click the button again to rejoin.`,
       );
-
-      await interaction.reply({
-        embeds: [embed.build()],
-        flags: MessageFlags.Ephemeral,
-      });
 
       logger.info(
         `${member.user.tag} removed access to ${serverConfig.label} (${serverId})`,
@@ -144,14 +141,10 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
   } catch (error) {
     logger.error(`Failed to toggle server role for ${member.user.tag}:`, error);
 
-    const embed = EmbedPresets.error(
+    await replyError(
+      interaction,
       "Action Failed",
       "Something went wrog while updating yur roles. Please try again or contact an administrator.",
     );
-
-    await interaction.reply({
-      embeds: [embed.build()],
-      flags: MessageFlags.Ephemeral,
-    });
   }
 }

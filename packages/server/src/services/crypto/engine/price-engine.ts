@@ -288,11 +288,11 @@ export async function aggregateBluechipMetric(
   config: BluechipMetricConfig,
 ): Promise<number> {
   if (config.type === "achievement_count") {
-    return Q.player.achievement.where({}).count();
+    return Q.player.achievement.count();
   }
 
   // minecraft_stat: sum all values under the stat category across all players
-  const allStats = await Q.player.minecraft.stats.where({}).all();
+  const allStats = await Q.player.minecraft.stats.getAll();
   let total = 0;
 
   for (const row of allStats) {

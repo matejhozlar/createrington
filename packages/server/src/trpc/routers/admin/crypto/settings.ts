@@ -7,7 +7,7 @@ import {
   SETTINGS_REGISTRY,
   type SettingKey,
 } from "@/services/crypto";
-import { trpcError } from "@/trpc/utils";
+import { trpcError, auditActor } from "@/trpc/utils";
 
 const settingKeySchema = z.enum(
   ALL_SETTING_KEYS as [SettingKey, ...SettingKey[]],
@@ -24,7 +24,7 @@ export const adminCryptoSettingsRouter = router({
     })
     .query(async () => {
       const settings = await getService(Services.CRYPTO_SETTINGS_SERVICE);
-      const rows = await Q.crypto.setting.where({}).all();
+      const rows = await Q.crypto.setting.getAll();
       const rowMap = new Map(rows.map((r) => [r.key, r]));
 
       return settings.list().map((entry) => {
@@ -50,15 +50,14 @@ export const adminCryptoSettingsRouter = router({
       let result;
       try {
         result = await settings.set(input.key, input.value, ctx.user.discordId);
-      } catch (err) {
+      } catch (error) {
         throw trpcError.badRequest(
-          err instanceof Error ? err.message : "Setting update failed",
+          error instanceof Error ? error.message : "Setting update failed",
         );
       }
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_update",
         description: `Updated ${input.key}`,
         tableName: "crypto_setting",
@@ -82,8 +81,7 @@ export const adminCryptoSettingsRouter = router({
       const result = await settings.reset(input.key, ctx.user.discordId);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_reset",
         description: `Reset ${input.key} to default`,
         tableName: "crypto_setting",
@@ -107,8 +105,7 @@ export const adminCryptoSettingsRouter = router({
       const cleared = await settings.resetAll(ctx.user.discordId);
 
       await Q.admin.log.action.logAction({
-        adminDiscordId: ctx.user.discordId,
-        adminUsername: ctx.user.minecraftUsername,
+        ...auditActor(ctx),
         actionType: "crypto_setting_reset_all",
         description: `Reset ${cleared} crypto settings to defaults`,
         tableName: "crypto_setting",
