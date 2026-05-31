@@ -8,21 +8,21 @@ import { Loading } from "@/components/loading-spinner";
 import { toast } from "sonner";
 import { ShieldCheck, User, Hash, BadgeCheck, Crown } from "lucide-react";
 
-interface ConsentShares {
-  playerId: string;
-  minecraftUsername: string;
-  isMember: boolean;
-  isOwner: boolean;
-}
-
 interface ConsentResponse {
   success: boolean;
   data: {
     appName: string;
     appOrigin: string;
-    shares: ConsentShares;
+    scopes: string[];
   };
 }
+
+const SCOPE_LABELS: Record<string, { icon: typeof User; label: string }> = {
+  minecraftUsername: { icon: User, label: "Minecraft username" },
+  playerId: { icon: Hash, label: "Player ID" },
+  isMember: { icon: BadgeCheck, label: "Membership status" },
+  isOwner: { icon: Crown, label: "Owner status" },
+};
 
 interface AuthorizeResponse {
   success: boolean;
@@ -140,24 +140,15 @@ export function Authorize() {
                 This will share
               </div>
               <ul className="space-y-3 text-sm">
-                <ShareRow
-                  icon={User}
-                  label="Minecraft username"
-                  value={consent.shares.minecraftUsername}
-                />
-                <ShareRow
-                  icon={Hash}
-                  label="Player ID"
-                  value={consent.shares.playerId}
-                />
-                <ShareRow
-                  icon={BadgeCheck}
-                  label="Membership status"
-                  value={consent.shares.isMember ? "Member" : "Not a member"}
-                />
-                {consent.shares.isOwner && (
-                  <ShareRow icon={Crown} label="Owner status" value="Owner" />
-                )}
+                {consent.scopes
+                  .filter((scope) => scope in SCOPE_LABELS)
+                  .map((scope) => (
+                    <ShareRow
+                      key={scope}
+                      icon={SCOPE_LABELS[scope].icon}
+                      label={SCOPE_LABELS[scope].label}
+                    />
+                  ))}
               </ul>
             </div>
 
@@ -195,22 +186,11 @@ export function Authorize() {
   );
 }
 
-function ShareRow({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: typeof User;
-  label: string;
-  value: string;
-}) {
+function ShareRow({ icon: Icon, label }: { icon: typeof User; label: string }) {
   return (
-    <li className="flex items-start gap-3">
-      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
-        <p className="text-foreground">{label}</p>
-        <p className="truncate text-xs text-muted-foreground">{value}</p>
-      </div>
+    <li className="flex items-center gap-3">
+      <Icon className="size-4 shrink-0 text-muted-foreground" />
+      <span className="text-foreground">{label}</span>
     </li>
   );
 }

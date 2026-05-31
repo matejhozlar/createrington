@@ -37,6 +37,18 @@ const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Categories of account data shared with a consumer on SSO approval, mirroring
+ * the SsoCodePayload fields. Exposed to the consent screen as labels only; the
+ * actual values are never echoed back to the browser.
+ */
+const SSO_SHARED_SCOPES = [
+  "minecraftUsername",
+  "playerId",
+  "isMember",
+  "isOwner",
+] as const;
+
+/**
  * Authentication controller
  *
  * Handles Discord OAuth flow, dual-token management (access + refresh),
@@ -356,10 +368,11 @@ export class AuthController {
    * GET /api/auth/sso/consent?state=<state>
    *
    * Read-only metadata for the consent screen: the friendly name of the app
-   * that initiated SSO and the exact account fields that will be shared on
-   * approval. Requires a valid session (the screen is only meaningful once the
-   * user is logged in). Does not consume the state, the user may reload the
-   * screen before deciding.
+   * that initiated SSO and the categories of account data shared on approval.
+   * Only the scope labels are returned, never the user's actual values, the
+   * screen describes what will be shared without echoing it back. Requires a
+   * valid session and does not consume the state (the user may reload before
+   * deciding).
    */
   static async ssoConsent(req: Request, res: Response): Promise<void> {
     if (!req.user) {
@@ -382,12 +395,7 @@ export class AuthController {
       data: {
         appName: resolveConsumerName(entry.returnTo),
         appOrigin: new URL(entry.returnTo).origin,
-        shares: {
-          playerId: req.user.minecraftUuid,
-          minecraftUsername: req.user.minecraftUsername,
-          isMember: req.user.role !== AuthRole.UNVERIFIED,
-          isOwner: req.user.discordId === config.app.auth.owner.discordId,
-        },
+        scopes: SSO_SHARED_SCOPES,
       },
     });
   }
