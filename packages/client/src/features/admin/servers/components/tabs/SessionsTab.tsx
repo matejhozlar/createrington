@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Table,
@@ -8,17 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Loading } from "@/components/loading-spinner";
+import { Paginator } from "@/components/paginator";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 
 interface SessionsTabProps {
@@ -48,42 +40,6 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
   const totalPages = pagination?.totalPages ?? 0;
   const total = pagination?.total ?? 0;
   const loading = sessionsQuery.isLoading;
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
 
   if (loading) {
     return (
@@ -145,62 +101,14 @@ export function SessionsTab({ serverId }: SessionsTabProps) {
         </TableBody>
       </Table>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)} of{" "}
-            {total} sessions
-          </p>
-
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (page > 0) handlePageChange(page - 1);
-                }}
-                className={cn(page === 0 && "pointer-events-none opacity-50")}
-              />
-            </PaginationItem>
-
-            {getPaginationItems().map((item, index) => (
-              <PaginationItem
-                key={item === "ellipsis" ? `ellipsis-${index}` : item}
-              >
-                {item === "ellipsis" ? (
-                  <PaginationEllipsis />
-                ) : (
-                  <PaginationLink
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handlePageChange(item);
-                    }}
-                    isActive={page === item}
-                  >
-                    {item + 1}
-                  </PaginationLink>
-                )}
-              </PaginationItem>
-            ))}
-
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (page < totalPages - 1) handlePageChange(page + 1);
-                }}
-                className={cn(
-                  page >= totalPages - 1 && "pointer-events-none opacity-50",
-                )}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </div>
-      )}
+      <Paginator
+        page={page}
+        limit={limit}
+        total={total}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        itemLabel="session"
+      />
     </div>
   );
 }

@@ -1,16 +1,9 @@
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { Loading } from "@/components/loading-spinner";
+import { Paginator } from "@/components/paginator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Ticket } from "lucide-react";
-import {
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 
@@ -33,42 +26,6 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
   const totalPages = ticketsQuery.data?.pagination.totalPages ?? 0;
   const loading = ticketsQuery.isLoading;
   const error = ticketsQuery.error?.message ?? null;
-
-  const getPaginationItems = useCallback(() => {
-    const items: (number | "ellipsis")[] = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
-
-    items.push(0);
-
-    if (page <= 2) {
-      items.push(1, 2, 3);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    } else if (page >= totalPages - 3) {
-      items.push("ellipsis");
-      items.push(
-        totalPages - 4,
-        totalPages - 3,
-        totalPages - 2,
-        totalPages - 1,
-      );
-    } else {
-      items.push("ellipsis");
-      items.push(page - 1, page, page + 1);
-      items.push("ellipsis");
-      items.push(totalPages - 1);
-    }
-
-    return items;
-  }, [page, totalPages]);
-
-  const handlePageChange = useCallback((newPage: number) => {
-    setPage(newPage);
-  }, []);
 
   const isClosed = (t: (typeof tickets)[number]) =>
     String(t.status).toLowerCase() === "closed";
@@ -166,66 +123,15 @@ export function TicketsTab({ playerId }: TicketsTabProps) {
             })}
           </div>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center gap-4 border-t border-border pt-4">
-              <p className="flex-1 text-sm text-muted-foreground">
-                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
-                of {total} tickets
-              </p>
-
-              {/* Right-aligned: no <Pagination /> wrapper */}
-              <PaginationContent className="ml-auto flex-nowrap justify-end">
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page > 0) handlePageChange(page - 1);
-                    }}
-                    className={cn(
-                      page === 0 && "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-
-                {getPaginationItems().map((item, index) => (
-                  <PaginationItem
-                    key={item === "ellipsis" ? `ellipsis-${index}` : item}
-                  >
-                    {item === "ellipsis" ? (
-                      <PaginationEllipsis />
-                    ) : (
-                      <PaginationLink
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handlePageChange(item);
-                        }}
-                        isActive={page === item}
-                      >
-                        {item + 1}
-                      </PaginationLink>
-                    )}
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (page < totalPages - 1) handlePageChange(page + 1);
-                    }}
-                    className={cn(
-                      page >= totalPages - 1 &&
-                        "pointer-events-none opacity-50",
-                    )}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </div>
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={total}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            itemLabel="ticket"
+            className="border-t border-border pt-4"
+          />
         </>
       )}
     </div>
