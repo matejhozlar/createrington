@@ -12,6 +12,15 @@ import { sessionService } from "@/services/auth/session/session.service";
 import { adminStatusService } from "@/services/auth/admin-status/admin-status.service";
 import { validateReturnTo } from "@/services/auth/sso/return-to";
 import { issueSsoCode } from "@/services/auth/sso/code-store";
+import {
+  issueSsoState,
+  peekSsoState,
+  consumeSsoState,
+} from "@/services/auth/sso/state-store";
+import {
+  isCodeExchangeReturnTo,
+  resolveConsumerName,
+} from "@/services/auth/sso/consumer";
 import { verifyDevLoginToken } from "@/services/auth/dev-login/hmac";
 import config from "@/config";
 import { Q } from "@/db";
@@ -28,14 +37,16 @@ const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * In-memory store for the server-driven SSO flow. Distinct from
- * `pendingStates` because each entry carries the validated return_to URL
- * so the callback knows where to send the user after the Discord round-trip.
+ * Categories of account data shared with a consumer on SSO approval, mirroring
+ * the SsoCodePayload fields. Exposed to the consent screen as labels only; the
+ * actual values are never echoed back to the browser.
  */
-const pendingSsoStates = new Map<
-  string,
-  { expiry: number; returnTo: string }
->();
+const SSO_SHARED_SCOPES = [
+  "minecraftUsername",
+  "playerId",
+  "isMember",
+  "isOwner",
+] as const;
 
 /**
  * Authentication controller
@@ -321,15 +332,15 @@ export class AuthController {
    * Server-driven SSO entry point for cross-subdomain consumers (e.g. the
    * sandbox panel). Validates `return_to` against the configured whitelist,
    * stores it server-side keyed by a fresh state token, and redirects the
-   * browser to Discord's authorization page with the SSO callback URI.
+   * browser to the main app's consent screen.
    *
-   * Distinct from /api/auth/discord because the existing flow expects the
-   * client (main React app) to handle the redirect, that doesn't work
-   * cross-origin, so this endpoint takes ownership of the entire round-trip.
+   * The consent screen (gated by the AuthProvider) handles both cases: a
+   * logged-in user authorizes directly with no Discord round-trip, a
+   * logged-out user is sent through the normal Createrington login first and
+   * returns to consent. Completion happens via POST /api/auth/sso/authorize.
    */
   static async ssoStart(req: Request, res: Response): Promise<void> {
-    const callbackUrl = config.app.auth.sso.callbackUrl;
-    if (!callbackUrl) {
+    if (!config.app.auth.sso.callbackUrl) {
       throw new BadRequestError("SSO is not configured on this server");
     }
 
@@ -346,18 +357,127 @@ export class AuthController {
       );
     }
 
-    const state = crypto.randomBytes(32).toString("hex");
-    pendingSsoStates.set(state, {
-      expiry: Date.now() + STATE_TTL_MS,
-      returnTo,
-    });
+    const state = issueSsoState(returnTo);
 
-    // Cleanup expired SSO states opportunistically
-    for (const [key, entry] of pendingSsoStates) {
-      if (entry.expiry < Date.now()) pendingSsoStates.delete(key);
+    const consentUrl = new URL("/authorize", config.meta.links.website);
+    consentUrl.searchParams.set("state", state);
+    res.redirect(consentUrl.toString());
+  }
+
+  /**
+   * GET /api/auth/sso/consent?state=<state>
+   *
+   * Read-only metadata for the consent screen: the friendly name of the app
+   * that initiated SSO and the categories of account data shared on approval.
+   * Only the scope labels are returned, never the user's actual values, the
+   * screen describes what will be shared without echoing it back. Requires a
+   * valid session and does not consume the state (the user may reload before
+   * deciding).
+   */
+  static async ssoConsent(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
     }
 
-    res.redirect(discordOAuth.generateAuthUrl(state, callbackUrl));
+    const rawState = req.query.state;
+    const state = typeof rawState === "string" ? rawState : undefined;
+    if (!state) {
+      throw new BadRequestError("Missing state");
+    }
+
+    const entry = peekSsoState(state);
+    if (!entry) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+
+    res.json({
+      success: true,
+      data: {
+        appName: resolveConsumerName(entry.returnTo),
+        appOrigin: new URL(entry.returnTo).origin,
+        scopes: SSO_SHARED_SCOPES,
+      },
+    });
+  }
+
+  /**
+   * POST /api/auth/sso/authorize
+   * Body: { state: string, action: "approve" | "deny" }
+   *
+   * Completes the server-driven SSO flow using the caller's existing session
+   * instead of a Discord round-trip. CSRF-safe via `requireTrustedOrigin`
+   * (Origin allowlist) and session-bound via the `user` auth level.
+   *
+   * On approval it mirrors ssoCallback's two outcomes: a one-time `?code=` for
+   * code-exchange consumers (skin-api), or the already-shared cross-subdomain
+   * cookies (refreshed) for cookie consumers. On denial it returns the
+   * consumer's return_to with `?sso_error=denied`. The returned redirect URL
+   * is always re-validated against the allowlist before being handed back.
+   */
+  static async ssoAuthorize(req: Request, res: Response): Promise<void> {
+    if (!req.user) {
+      throw new UnauthorizedError("Authentication required");
+    }
+
+    const { state, action } = req.body ?? {};
+    if (typeof state !== "string" || !state) {
+      throw new BadRequestError("Missing state");
+    }
+    if (action !== "approve" && action !== "deny") {
+      throw new BadRequestError("Invalid action");
+    }
+
+    const entry = consumeSsoState(state);
+    if (!entry) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+    const { returnTo } = entry;
+
+    if (action === "deny") {
+      logger.info(`User ${req.user.discordId} denied SSO to ${returnTo}`);
+      res.json({
+        success: true,
+        data: {
+          redirectUrl: safeReturnTo(redirectWithError(returnTo, "denied")),
+        },
+      });
+      return;
+    }
+
+    if (isCodeExchangeReturnTo(returnTo)) {
+      const ssoCode = issueSsoCode({
+        playerId: req.user.minecraftUuid,
+        minecraftUsername: req.user.minecraftUsername,
+        isMember: req.user.role !== AuthRole.UNVERIFIED,
+        isOwner: req.user.discordId === config.app.auth.owner.discordId,
+      });
+
+      logger.info(
+        `User ${req.user.discordId} authorized code-exchange SSO to ${returnTo}`,
+      );
+
+      res.json({
+        success: true,
+        data: { redirectUrl: safeReturnTo(appendSsoCode(returnTo, ssoCode)) },
+      });
+      return;
+    }
+
+    // Cookie consumers ride the shared `.createrington.com` cookies the active
+    // session already set; refresh the access cookie so the consumer lands
+    // with a current token rather than relying on whatever is left of the 15m
+    // window. The refresh cookie is untouched (the session is unchanged).
+    accessCookieService.setCookie(
+      res,
+      jwtService.generateFromPayload(req.user),
+    );
+
+    logger.info(`User ${req.user.discordId} authorized SSO to ${returnTo}`);
+
+    res.json({
+      success: true,
+      data: { redirectUrl: safeReturnTo(returnTo) },
+    });
   }
 
   /**
@@ -384,12 +504,8 @@ export class AuthController {
       throw new BadRequestError("Missing code or state");
     }
 
-    const entry = pendingSsoStates.get(state);
+    const entry = consumeSsoState(state);
     if (!entry) {
-      throw new BadRequestError("Invalid or expired state parameter");
-    }
-    pendingSsoStates.delete(state);
-    if (entry.expiry < Date.now()) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
 
@@ -501,36 +617,26 @@ function redirectWithError(returnTo: string, reason: string): string {
  * the response. The URL was already validated when the SSO flow was
  * initiated (via `validateReturnTo` in `ssoStart`), so this is pure
  * defense-in-depth: it protects against any future path that lets an
- * unvalidated URL into `pendingSsoStates`, and it gives static-analysis
+ * unvalidated URL into the SSO state store, and it gives static-analysis
  * tools an explicit sanitizer on every `res.redirect` call site, closing
  * out CWE-601 warnings.
  */
 function safeSsoRedirect(res: Response, url: string): void {
+  res.redirect(safeReturnTo(url));
+}
+
+/**
+ * Revalidates a redirect target against the SSO allowlist and returns it, for
+ * the JSON authorize flow where the client (not the server) performs the
+ * top-level navigation. Throws on an unvalidated URL so a bug can never leak
+ * an open redirect into the response.
+ */
+function safeReturnTo(url: string): string {
   const validated = validateReturnTo(url);
   if (!validated) {
     throw new BadRequestError("Invalid return_to URL");
   }
-  res.redirect(validated);
-}
-
-/**
- * True when the return_to origin is configured for code-exchange SSO
- * (skin-api), so the callback issues a one-time code instead of cookies.
- */
-function isCodeExchangeReturnTo(returnTo: string): boolean {
-  let origin: string;
-  try {
-    origin = new URL(returnTo).origin;
-  } catch {
-    return false;
-  }
-  return config.app.auth.sso.codeExchangeOrigins.some((allowed) => {
-    try {
-      return new URL(allowed).origin === origin;
-    } catch {
-      return false;
-    }
-  });
+  return validated;
 }
 
 /**
