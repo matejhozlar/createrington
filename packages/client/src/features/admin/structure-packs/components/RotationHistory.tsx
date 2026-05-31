@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { History, CheckCircle2, XCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Paginator } from "@/components/paginator";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -84,31 +84,15 @@ export function RotationHistory() {
             </TableBody>
           </Table>
 
-          {data.pagination.totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Page {page + 1} of {data.pagination.totalPages}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={page >= data.pagination.totalPages - 1}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <Paginator
+            page={page}
+            limit={limit}
+            total={data.pagination.total}
+            totalPages={data.pagination.totalPages}
+            onPageChange={setPage}
+            itemLabel="rotation"
+            className="mt-4"
+          />
         </>
       )}
     </div>
