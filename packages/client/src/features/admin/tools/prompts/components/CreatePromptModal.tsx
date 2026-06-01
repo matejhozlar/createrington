@@ -228,7 +228,7 @@ export function CreatePromptModal({ open, onClose, onSuccess }: Props) {
           <DialogFooter>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={handleClose}
               disabled={createMutation.isPending}
             >
