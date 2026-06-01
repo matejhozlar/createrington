@@ -1,4 +1,8 @@
-import { customRoute, verifyInternalSecret } from "@/app/middleware";
+import {
+  customRoute,
+  internalSsoLimiter,
+  verifyInternalSecret,
+} from "@/app/middleware";
 import { Router } from "express";
 import { InternalSsoExchangeController } from "./sso-exchange.controller";
 
@@ -17,6 +21,7 @@ const router = Router();
  * Redeem a one-time SSO code for the cross-service identity payload.
  *
  * Security:
+ * - Per-IP rate limit (backstop if the shared secret leaks)
  * - Requires valid X-Internal-Secret header
  *
  * Request body: { code: string }
@@ -25,7 +30,7 @@ const router = Router();
 router.post(
   "/",
   ...customRoute(
-    [verifyInternalSecret],
+    [internalSsoLimiter, verifyInternalSecret],
     InternalSsoExchangeController.exchange,
   ),
 );
