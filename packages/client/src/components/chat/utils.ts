@@ -10,19 +10,13 @@ export function transformWaypoints(text: string): string {
   return text.replace(
     XAERO_WAYPOINT_REGEX,
     (_, name, x, y, z, dimensionId: string) => {
-      const badge = dimensionId.includes("nether")
-        ? "🔴"
-        : dimensionId.includes("end")
-          ? "🟣"
-          : "🌍";
-
       const safeX = x === "~" ? 0 : Number(x);
       const safeY = y === "~" ? 64 : Number(y);
       const safeZ = z === "~" ? 0 : Number(z);
 
       const url = bluemapUrl(dimensionId, safeX, safeY, safeZ);
 
-      return `${badge} [${name} (${safeX}, ${safeY}, ${safeZ})](${url})`;
+      return `[${name} (${safeX}, ${safeY}, ${safeZ})](${url})`;
     },
   );
 }
