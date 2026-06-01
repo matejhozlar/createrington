@@ -15,6 +15,7 @@ import { DiscordMessageService } from "@/services/discord/message/message.servic
 import { removeInactiveWarning } from "@/services/discord/cleanup/inactivity/remove-warning";
 import type { InactivityCleanupService } from "@/services/discord/cleanup/inactivity/inactivity-cleanup.service";
 import { ghostsRouter } from "./ghosts";
+import { unlinkedRouter } from "./unlinked";
 
 const GRACE_DAYS = 14;
 
@@ -37,6 +38,7 @@ function isManualActionsEnabled(): boolean {
 /** Admin inactivity router: list, stats, and manual resolve/remove/trigger. */
 export const inactivityRouter = router({
   ghosts: ghostsRouter,
+  unlinked: unlinkedRouter,
   capabilities: adminProcedure
     .meta({
       description:
