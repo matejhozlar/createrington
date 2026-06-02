@@ -1,3 +1,14 @@
+## v1.27.0 (2026-06-02)
+
+### @createrington/server (1.26.1 → 1.27.0)
+- [add] Add unlinked member detection service and admin tRPC router: new `UnlinkedMemberService` identifies verified Discord members with no matching player record (the inverse of the ghost member tool), with an in-memory cache populated on demand via admin refresh; new `admin.inactivity.unlinked` sub-router exposes paginated list and refresh procedures with audit logging
+- [security] Add per-IP rate limit to the internal SSO code-exchange endpoint as a brute-force backstop in case the shared secret leaks, capped at 60 requests per minute per IP
+
+### @createrington/client (0.2.35 → 0.2.36)
+- [add] Add "Members Missing from Database" card to the admin inactivity page with paginated table, search, on-demand cache refresh, and copy-to-clipboard on member names and IDs
+- [fix] Remove emoji badge prefix from translated waypoint links in chat, displaying clean coordinate links instead of dimension-colored emoji markers
+- [fix] Switch CreatePromptModal cancel button from ghost to outline variant for better visual distinction
+
 ## v1.26.1 (2026-05-31)
 
 ### @createrington/server (1.26.0 → 1.26.1)

@@ -39,6 +39,19 @@ export const authLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+// Backstop for the internal SSO code-exchange endpoint. It is internet
+// exposed (skin-api is remote) and protected by the shared secret alone, so
+// this caps blind brute force if that secret ever leaks. Legitimate traffic
+// is server-to-server from skin-api (one IP, one call per login), so the
+// per-IP limit is set well above real peak login volume.
+export const internalSsoLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
 // Per-player limiter for mod-side mutating currency endpoints (deposit,
 // withdraw, pay). Keyed on the authenticated minecraft UUID so a single
 // compromised player JWT can't pump balance via repeated calls. Mounted
