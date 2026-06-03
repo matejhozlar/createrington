@@ -1,3 +1,8 @@
+## v1.28.0 (2026-06-03)
+
+### @createrington/server (1.27.0 → 1.28.0)
+- [add] Add Nomads server whitelist sync: registering a player now adds them to the Nomads Minecraft server whitelist over RCON, and deleting a player removes them; the integration self-disables outside the real production deployment or when any RCON env var is missing, opens a short-lived connection per call, and never blocks the triggering flow; failures are logged and surfaced to the admin notifications channel via a Discord embed
+
 ## v1.27.0 (2026-06-02)
 
 ### @createrington/server (1.26.1 → 1.27.0)
