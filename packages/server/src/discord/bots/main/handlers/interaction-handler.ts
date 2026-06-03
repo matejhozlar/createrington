@@ -267,15 +267,19 @@ async function handleChatCommands(
     success = false;
     logger.error(`Error executing command ${interaction.commandName}:`, error);
 
-    const replyMethod =
-      interaction.replied || interaction.deferred
-        ? interaction.followUp
-        : interaction.reply;
+    try {
+      const replyMethod =
+        interaction.replied || interaction.deferred
+          ? interaction.followUp
+          : interaction.reply;
 
-    await replyMethod.call(interaction, {
-      content: "❌ Command failed",
-      flags: MessageFlags.Ephemeral,
-    });
+      await replyMethod.call(interaction, {
+        content: "❌ Command failed",
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (replyError) {
+      logger.error("Failed to send command error response:", error, replyError);
+    }
   }
 
   Q.discord.command.usage
