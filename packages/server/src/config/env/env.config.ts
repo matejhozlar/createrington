@@ -185,6 +185,17 @@ const envSchema = z
       .max(100, "RCON password is too long")
       .optional(),
 
+    // Nomads server: whitelist automation only (no playtime, no registration).
+    // All optional; the integration self-disables when any value is missing and
+    // runs only on the real production deployment.
+    NOMADS_SERVER_IP: ipv4("Nomads server IP").optional(),
+    NOMADS_SERVER_PORT: port("Nomads server port").optional(),
+    NOMADS_RCON_PORT: port("Nomads RCON port").optional(),
+    NOMADS_RCON_PASSWORD: z
+      .string()
+      .max(100, "Nomads RCON password is too long")
+      .optional(),
+
     // URLs
     WEBSITE_URL: z.string().url("Website URL must be a valid URL"),
     ADMIN_PANEL_URL: z.string().url("Admin panel URL must be a valid URL"),
