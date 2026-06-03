@@ -255,6 +255,16 @@ const config = {
         statsPath: env.COGS_AND_STEAM_SFTP_STATS_PATH ?? "",
       },
     },
+    nomads: {
+      ip: env.NOMADS_SERVER_IP,
+      port: env.NOMADS_SERVER_PORT,
+      name: "Nomads",
+      rcon: {
+        host: env.NOMADS_SERVER_IP,
+        port: env.NOMADS_RCON_PORT,
+        password: env.NOMADS_RCON_PASSWORD,
+      },
+    },
     playerLimit: env.PLAYER_LIMIT,
   },
 
