@@ -1,3 +1,18 @@
+## v1.29.0 (2026-06-04)
+
+### @createrington/server (1.28.0 → 1.29.0)
+- [add] Add Open Graph link-preview card generator script using @napi-rs/canvas, rendering a branded 1200x630 social card with supersampled browser window mockups, team member skin figures, and the vendored Outfit webfont; outputs to the client's public assets for use in OG meta tags
+- [fix] Prevent uncaught exception when a Discord slash command error reply fails by wrapping the ephemeral error response in a try/catch, logging both the original command error and the reply failure
+- [chore] Bump vitest from ^4.0.16 to ^4.1.0 to resolve a dependency audit advisory
+
+### @createrington/client (0.2.36 → 0.2.37)
+- [add] Add full Open Graph and Twitter Card meta tags to index.html with proper image dimensions, type, and alt text for the new og-card.png, replacing the previous logo-only og:image
+- [chore] Bump react-router-dom from ^7.13.0 to ^7.16.0 to resolve audit advisories
+
+### Repository
+- [chore] Add pnpm audit CI job that fails on high-severity advisories
+- [remove] Remove unused GitHub social preview banner image
+
 ## v1.28.0 (2026-06-03)
 
 ### @createrington/server (1.27.0 → 1.28.0)
