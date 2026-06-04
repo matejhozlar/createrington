@@ -1,16 +1,12 @@
 // Headless tool: composites the social / link-preview card (og-card.png) for
-// the Createrington client SPA. Dark, amber-spotlit brand background with the
-// Cogs & Steam woodmark, hero tagline, and a rim-lit team lineup on the left,
-// and a cascade of browser-framed product screenshots on the right (the same
-// "web showcase" treatment the marketing video uses). Brand assets are read
-// from the client's public assets and the repo-root screenshots/ folder so the
-// card stays in sync with the live site; the Outfit webfont is vendored
+// the Createrington client SPA. Brand assets are read from the client's public
+// assets and the repo-root screenshots/ folder; the Outfit webfont is vendored
 // alongside this tool.
 //
-// The team figures are rendered once via the skin-api and cached under
-// assets/team/ (committed), so regenerating the card stays offline. To refresh
-// them after a skin change, delete assets/team/ and re-run with the skin-api
-// key in the environment:
+// Team figures are rendered once via the skin-api and cached under assets/team/
+// (committed), so regenerating the card stays offline. To refresh them after a
+// skin change, delete assets/team/ and re-run with the skin-api key in the
+// environment:
 //   infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card
 //
 // Run: pnpm --filter @createrington/server util:render-og-card [outPath]
@@ -20,6 +16,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// @napi-rs/canvas rather than the server's node-canvas: its GlobalFonts loads
+// the vendored .woff2 fonts, which node-canvas's registerFont cannot read.
 import {
   createCanvas,
   loadImage,
@@ -184,6 +182,8 @@ async function getTeamFigure(m: TeamMember): Promise<Image> {
           `infisical run --env=dev -- pnpm --filter @createrington/server util:render-og-card`,
       );
     }
+    // Defaults to the public skin-api so the script runs without env setup;
+    // dev/infisical runs override via SKIN_API_URL.
     const baseUrl = process.env.SKIN_API_URL ?? "https://api.createrington.com";
     const query = new URLSearchParams({
       pose: m.pose,
