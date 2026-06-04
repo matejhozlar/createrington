@@ -81,3 +81,14 @@ jobs:
 
       - name: Run server unit tests
         run: pnpm --filter @createrington/server test:unit
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup
+        uses: ./.gitea/actions/setup
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=high
