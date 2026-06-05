@@ -2,13 +2,12 @@ import { Q } from "@/db";
 import { getLeaderboardConfig } from "./config";
 import { type LeaderboardRefreshResult, LeaderboardType } from "./types";
 import { Discord } from "@/discord/constants";
-import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  type Client,
-} from "discord.js";
-import { EmbedPresets } from "@/discord/embeds";
+import { type Client } from "discord.js";
+import { LeaderboardComponentPresets } from "@/discord/components/presets/leaderboard";
+
+// Components V2 caps a message at 40 total components; the V2 layout (banner,
+// per-player head sections, separators, footer) fits 8 ranked entries.
+const LEADERBOARD_LIMIT = 8;
 
 const MESSAGE_NOT_FOUND_PATTERNS = [
   "Unknown Message",
@@ -23,7 +22,7 @@ function isMessageNotFoundError(error?: string): boolean {
 }
 
 /**
- * Owns the persistent leaderboard embeds posted to Discord. On `initialize`
+ * Owns the persistent leaderboard messages posted to Discord. On `initialize`
  * it does one immediate refresh of every `LeaderboardType` and then runs an
  * hourly refresh interval. Each leaderboard's message ID is stored in
  * `leaderboard_message` so refreshes edit in place; if Discord reports the
@@ -52,7 +51,7 @@ export class LeaderboardService {
     logger.info("LeaderboardService initialized");
   }
 
-  /** Stops the auto-refresh interval; the last-posted Discord embeds stay in place. */
+  /** Stops the auto-refresh interval; the last-posted Discord messages stay in place. */
   async shutdown(): Promise<void> {
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
@@ -72,11 +71,16 @@ export class LeaderboardService {
   ): Promise<{ messageId: string; channelId: string }> {
     const config = getLeaderboardConfig(type);
 
-    const entries = await config.fetchData(config.serverId ?? 0, 10);
+    const entries = await config.fetchData(
+      config.serverId ?? 0,
+      LEADERBOARD_LIMIT,
+    );
 
-    const embed = EmbedPresets.leaderboard.display(type, entries);
-
-    const buttons = this.buildLeaderboardButtons(type);
+    const { components, flags } = LeaderboardComponentPresets.display(
+      config,
+      entries,
+      new Date(),
+    );
 
     const existing = await Q.leaderboard.message.find({
       leaderboardType: type,
@@ -86,8 +90,9 @@ export class LeaderboardService {
       const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
-        embeds: embed.build(),
-        components: buttons,
+        embeds: null,
+        components,
+        flags,
       });
 
       if (editResult.success) {
@@ -118,31 +123,28 @@ export class LeaderboardService {
       }
     }
 
-    // No existing record or stale record was just deleted: create fresh
-    {
-      const result = await Discord.Messages.send({
-        channelId: config.channelId,
-        embeds: embed.build(),
-        components: buttons,
-      });
+    const result = await Discord.Messages.send({
+      channelId: config.channelId,
+      components,
+      flags,
+    });
 
-      if (!result.success || !result.messageId) {
-        throw new Error(`Failed to create ${type} leaderboard message`);
-      }
-
-      await Q.leaderboard.message.create({
-        leaderboardType: type,
-        channelId: config.channelId,
-        messageId: result.messageId,
-      });
-
-      logger.info(`Created ${type} leaderboard message ${result.messageId}`);
-
-      return {
-        messageId: result.messageId,
-        channelId: config.channelId,
-      };
+    if (!result.success || !result.messageId) {
+      throw new Error(`Failed to create ${type} leaderboard message`);
     }
+
+    await Q.leaderboard.message.create({
+      leaderboardType: type,
+      channelId: config.channelId,
+      messageId: result.messageId,
+    });
+
+    logger.info(`Created ${type} leaderboard message ${result.messageId}`);
+
+    return {
+      messageId: result.messageId,
+      channelId: config.channelId,
+    };
   }
 
   /**
@@ -159,7 +161,10 @@ export class LeaderboardService {
     try {
       const config = getLeaderboardConfig(type);
 
-      const entries = await config.fetchData(config.serverId ?? 0, 10);
+      const entries = await config.fetchData(
+        config.serverId ?? 0,
+        LEADERBOARD_LIMIT,
+      );
 
       const existing = await Q.leaderboard.message.find({
         leaderboardType: type,
@@ -177,14 +182,18 @@ export class LeaderboardService {
         };
       }
 
-      const embed = EmbedPresets.leaderboard.display(type, entries);
-      const buttons = this.buildLeaderboardButtons(type);
+      const { components, flags } = LeaderboardComponentPresets.display(
+        config,
+        entries,
+        new Date(),
+      );
 
       const editResult = await Discord.Messages.edit({
         channelId: existing.channelId,
         messageId: existing.messageId,
-        embeds: embed.build(),
-        components: buttons,
+        embeds: null,
+        components,
+        flags,
       });
 
       if (!editResult.success) {
@@ -280,17 +289,5 @@ export class LeaderboardService {
       remainingSeconds,
       lastRefreshed: existing?.lastManualRefresh,
     };
-  }
-
-  private buildLeaderboardButtons(
-    type: LeaderboardType,
-  ): ActionRowBuilder<ButtonBuilder>[] {
-    const refreshButton = new ButtonBuilder()
-      .setCustomId(`leaderboard:refresh:${type}`)
-      .setLabel("Refresh")
-      .setEmoji("🔄")
-      .setStyle(ButtonStyle.Primary);
-
-    return [new ActionRowBuilder<ButtonBuilder>().addComponents(refreshButton)];
   }
 }

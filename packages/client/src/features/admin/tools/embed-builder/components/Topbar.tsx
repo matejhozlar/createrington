@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { embedDataSchema } from "@createrington/shared/api/embed";
+import {
+  embedDataSchema,
+  componentsDataSchema,
+} from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
@@ -27,6 +30,10 @@ interface TopbarProps {
 
 export function Topbar({ builder }: TopbarProps) {
   const {
+    kind,
+    setKind,
+    components,
+    setComponents,
     presetName,
     setPresetName,
     activePreset,
@@ -42,7 +49,11 @@ export function Topbar({ builder }: TopbarProps) {
   const [saveOpen, setSaveOpen] = useState(false);
 
   function handleCopyJson() {
-    navigator.clipboard.writeText(JSON.stringify(externalData, null, 2));
+    const json =
+      kind === "components"
+        ? JSON.stringify({ components }, null, 2)
+        : JSON.stringify(externalData, null, 2);
+    navigator.clipboard.writeText(json);
     toast.success("Copied to clipboard");
   }
 
@@ -63,16 +74,28 @@ export function Topbar({ builder }: TopbarProps) {
       return;
     }
 
-    const result = embedDataSchema.safeParse(raw);
-    if (!result.success) {
-      toast.error(
-        "Clipboard isn't a valid embed — make sure you copied an embed exported from this tool",
-      );
+    // Try components first: its schema requires a non-empty `components` array,
+    // so an embed JSON won't false-match it (embedDataSchema is all-optional and
+    // would accept almost anything). Matching either format switches the mode.
+    const componentsResult = componentsDataSchema.safeParse(raw);
+    if (componentsResult.success) {
+      setKind("components");
+      setComponents(componentsResult.data.components);
+      toast.success("Components imported from clipboard");
       return;
     }
 
-    setEmbedData(result.data);
-    toast.success("Embed imported from clipboard");
+    const embedResult = embedDataSchema.safeParse(raw);
+    if (embedResult.success) {
+      setKind("embed");
+      setEmbedData(embedResult.data);
+      toast.success("Embed imported from clipboard");
+      return;
+    }
+
+    toast.error(
+      "Clipboard isn't a valid embed or components message. Copy one exported from this tool.",
+    );
   }
 
   const saveDisabled = activePreset

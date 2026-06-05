@@ -239,6 +239,13 @@
       "when": 1779113141480,
       "tag": "0033_windy_inertia",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1780656996792,
+      "tag": "0034_tricky_blue_marvel",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,7 @@ import type {
   EmbedBuilder,
   Message,
   MessageCreateOptions,
+  MessageEditOptions,
 } from "discord.js";
 
 /**
@@ -17,11 +18,11 @@ export interface SendMessageOptions {
   content?: string;
   /** Optional embed to include in the message */
   embeds?: EmbedBuilder;
-  /** Optional components (buttons, select menus) to attach */
-  components?: ActionRowBuilder<ButtonBuilder>[];
+  /** Optional components to attach. Accepts classic action rows or top-level Components V2 builders. */
+  components?: MessageCreateOptions["components"];
   /** Optional file attachments to include */
   files?: AttachmentBuilder[];
-  /** Optional message flags (e.g. MessageFlags.SuppressNotifications) */
+  /** Optional message flags (e.g. MessageFlags.SuppressNotifications, MessageFlags.IsComponentsV2) */
   flags?: MessageCreateOptions["flags"];
   /**
    * Optional allowed-mentions guard. Useful when the message content
@@ -49,10 +50,16 @@ export interface EditMessageOptions {
   content?: string | null;
   /** New embed. `null` clears all existing embeds. */
   embeds?: EmbedBuilder | null;
-  /** New components. `null` clears all existing components. */
-  components?: ActionRowBuilder<ButtonBuilder>[] | null;
+  /** New components. `null` clears all existing components. Accepts classic action rows or top-level Components V2 builders. */
+  components?: MessageEditOptions["components"] | null;
   /** Optional new file attachments */
   files?: AttachmentBuilder[];
+  /**
+   * Optional message flags. A Components V2 message must keep the
+   * `IS_COMPONENTS_V2` flag on edit so Discord interprets `components` as V2
+   * rather than rejecting the top-level container/section as invalid.
+   */
+  flags?: MessageEditOptions["flags"];
 }
 
 /**

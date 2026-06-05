@@ -3,10 +3,8 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { escapeLike } from "@/db/utils";
 import { paginationInput, buildPagination, trpcError } from "@/trpc/utils";
-import {
-  embedDataSchema,
-  type EmbedData,
-} from "@createrington/shared/api/embed";
+import { messagePayloadSchema } from "@createrington/shared/api/embed";
+import { payloadToStorage } from "./helpers";
 import { embedPresetCategoriesRouter } from "./preset-categories";
 import { embedPresetLinksRouter } from "./preset-links";
 
@@ -72,13 +70,14 @@ export const embedPresetsRouter = router({
     }),
 
   create: adminProcedure
-    .meta({ description: "Create a new embed preset" })
+    .meta({ description: "Create a new embed or components preset" })
     .input(
-      z.object({
-        name: z.string().min(1).max(100),
-        data: embedDataSchema,
-        categoryId: z.number().int().positive().nullish(),
-      }),
+      z
+        .object({
+          name: z.string().min(1).max(100),
+          categoryId: z.number().int().positive().nullish(),
+        })
+        .and(messagePayloadSchema),
     )
     .mutation(async ({ input, ctx }) => {
       const existing = await Q.discord.embed.preset.find({
@@ -88,9 +87,11 @@ export const embedPresetsRouter = router({
         throw trpcError.conflict("A preset with that name already exists");
       }
 
+      const { kind, data } = payloadToStorage(input);
       const created = await Q.discord.embed.preset.createAndReturn({
         name: input.name,
-        data: input.data as EmbedData as Record<string, unknown>,
+        kind,
+        data,
         createdBy: ctx.user.minecraftUsername,
         categoryId: input.categoryId ?? undefined,
       });
@@ -99,17 +100,18 @@ export const embedPresetsRouter = router({
         message: "Preset created",
         id: created.id,
         name: created.name,
+        kind: created.kind,
         categoryId: created.categoryId ?? null,
       };
     }),
 
   update: adminProcedure
-    .meta({ description: "Update an existing embed preset" })
+    .meta({ description: "Update an existing preset" })
     .input(
       z.object({
         id: z.number().int().positive(),
         name: z.string().min(1).max(100).optional(),
-        data: embedDataSchema.optional(),
+        payload: messagePayloadSchema.optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -129,7 +131,14 @@ export const embedPresetsRouter = router({
 
       const updates: Record<string, unknown> = {};
       if (input.name) updates.name = input.name;
-      if (input.data) updates.data = input.data;
+      if (input.payload) {
+        if (input.payload.kind !== existing.kind) {
+          throw trpcError.badRequest(
+            `Preset is a ${existing.kind} preset and cannot be changed to ${input.payload.kind}`,
+          );
+        }
+        updates.data = payloadToStorage(input.payload).data;
+      }
 
       await Q.discord.embed.preset.update({ id: input.id }, updates);
 

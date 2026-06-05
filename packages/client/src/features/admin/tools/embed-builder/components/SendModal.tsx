@@ -22,6 +22,7 @@ interface SendModalProps {
 
 export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
   const {
+    kind,
     channelId,
     setChannelId,
     bot,
@@ -34,6 +35,7 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
     handleUpdateAll,
     updateAllPending,
   } = builder;
+  const noun = kind === "components" ? "message" : "embed";
 
   const [linkToPreset, setLinkToPreset] = useState(true);
   const hasLinks = (linksQuery.data?.links.length ?? 0) > 0;
@@ -52,9 +54,9 @@ export function SendModal({ open, onOpenChange, builder }: SendModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Send Embed</DialogTitle>
+          <DialogTitle>Send {noun}</DialogTitle>
           <DialogDescription>
-            Choose a channel and bot to send the embed to Discord.
+            Choose a channel and bot to send the {noun} to Discord.
           </DialogDescription>
         </DialogHeader>
 

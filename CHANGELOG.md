@@ -1,3 +1,25 @@
+## v1.30.0 (2026-06-05)
+
+### @createrington/server (1.29.0 → 1.30.0)
+- [add] Add in-code Components V2 builder and preset system for constructing Discord's new component-based messages: a typed builder converts a data-first `ComponentsData` tree into discord.js builders, with validation enforcing Discord's 40-component and 4000-character aggregate limits; reusable presets cover common patterns (success, error, info, loading, plain) and domain-specific layouts (maintenance announcements, feature spotlights), all stripeless by default with opt-in accent colors
+- [add] Render leaderboards as Components V2 messages with per-player head thumbnails, title banner images, subtitle lines (session count, last seen, balance/crypto split), and an inline refresh button, replacing the previous flat-text embed format
+- [add] Rework net worth leaderboard to combine in-game balance with crypto holding value per player, replacing the crypto-only ranking; new `getAllBalances` balance query and `rankNetWorth` function merge both sources and display the breakdown in a subtitle
+- [add] Add `discord_embed_preset_kind` enum and `kind` column to `discord_embed_preset`, allowing presets to store either classic embeds or Components V2 layouts
+- [refactor] Refactor embed admin tRPC routes (send, edit, presets, linked messages) to accept a discriminated `messagePayloadSchema` union that handles both classic embeds and Components V2 transparently, replacing the embed-only input shapes
+- [refactor] Widen message service `components` and `flags` types to accept top-level Components V2 builders alongside classic action rows, and forward the `IS_COMPONENTS_V2` flag on edit so Discord interprets the payload correctly
+- [remove] Remove legacy `LeaderboardEmbedPresets` classic embed preset, replaced by the Components V2 leaderboard renderer
+
+### @createrington/client (0.2.37 → 0.2.38)
+- [add] Add Components V2 mode to the embed builder with a toggle between classic embed and Components V2, a full tree editor for containers, text displays, sections, separators, media galleries, and action rows, and a live preview panel; presets load in the correct mode and dirty-tracking works across both formats
+- [add] Support Components V2 insertion from admin chat: new `insert_components` action type stashes a validated component tree in session storage and switches the embed builder into components mode on apply, with a compact `ComponentsActionPreview` card in the chat
+- [fix] Forward `IS_COMPONENTS_V2` flag when editing V2 messages so Discord does not reject the top-level containers as invalid classic components
+- [add] Add `numberToHex` utility for formatting Discord color integers as hex strings
+
+### @createrington/shared (1.1.8 → 1.2.0)
+- [add] Add Components V2 Zod schemas and TypeScript types: `componentContainerSchema`, `componentTextDisplaySchema`, `componentSectionSchema`, `componentSeparatorSchema`, `componentMediaGallerySchema`, `componentActionRowSchema`, `componentButtonSchema`, `componentThumbnailSchema`, and the top-level `componentsDataSchema` with Discord's aggregate limits as constants
+- [add] Add `messagePayloadSchema` discriminated union (`embed` or `components`) and `presetKindSchema` enum, enabling the server to accept either message format in a single input shape
+- [fix] Increase emoji field max length from 32 to 64 characters on embed link and action button schemas to accommodate longer Unicode emoji sequences
+
 ## v1.29.0 (2026-06-04)
 
 ### @createrington/server (1.28.0 → 1.29.0)

@@ -850,6 +850,9 @@ INSERT INTO discord_embed_preset (name, data, created_by) VALUES
 ('event-announcement', '{"title":"{event_name}","description":"{event_description}","color":16776960,"fields":[{"name":"Date","value":"{date}","inline":true},{"name":"Prize","value":"{prize}","inline":true}],"footer":{"text":"React to sign up!"}}', 'The_Bigshot'),
 ('server-status', '{"title":"Server Status","description":"Current server information","color":65280,"fields":[{"name":"Players Online","value":"{online_count}","inline":true},{"name":"TPS","value":"{tps}","inline":true},{"name":"Uptime","value":"{uptime}","inline":true}]}', 'saunhardy');
 
+INSERT INTO discord_embed_preset (name, kind, data, created_by) VALUES
+('welcome-components-v2', 'components', '{"components":[{"type":"container","accentColor":5814783,"spoiler":false,"components":[{"type":"text","content":"# Welcome to Createrington!\nThanks for joining our community."},{"type":"separator","divider":true,"spacing":1},{"type":"section","components":[{"type":"text","content":"Read the rules to get started."}],"accessory":{"type":"button","label":"Rules","url":"https://createrington.com/rules"}}]},{"type":"text","content":"-# Posted via the Components V2 builder"}]}', 'saunhardy');
+
 -- ============================================================================
 -- DISCORD GUILD MEMBER LEAVES
 -- ============================================================================

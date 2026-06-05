@@ -35,6 +35,12 @@ export const discordAutoMessageRotationEnum = pgEnum(
   ["sequential", "random"],
 );
 
+// Whether a saved Discord message preset holds a classic embed or a Components V2 layout
+export const discordEmbedPresetKindEnum = pgEnum("discord_embed_preset_kind", [
+  "embed",
+  "components",
+]);
+
 // Token categories drive price engine behaviour (volatility, floor, demand curve)
 export const cryptoTokenCategoryEnum = pgEnum("crypto_token_category", [
   "stable",
