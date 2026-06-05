@@ -3,13 +3,10 @@ import type {
   ComponentNode,
   ComponentSection,
 } from "@createrington/shared/api/embed";
+import { numberToHex } from "@/lib/utils";
 
 interface ComponentsActionPreviewProps {
   components: ComponentNode[];
-}
-
-function numberToHex(color: number): string {
-  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 /**
@@ -58,7 +55,11 @@ function NodePreview({ node }: { node: ComponentNode }): React.JSX.Element {
         </div>
       );
     case "separator":
-      return <div className="my-0.5 h-px w-full bg-border" aria-hidden />;
+      return node.divider ? (
+        <div className="my-0.5 h-px w-full bg-border" aria-hidden />
+      ) : (
+        <div className="my-0.5" aria-hidden />
+      );
     case "media_gallery":
       return (
         <div className="text-[0.6875rem] text-muted-foreground">

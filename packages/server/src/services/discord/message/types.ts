@@ -54,6 +54,12 @@ export interface EditMessageOptions {
   components?: MessageEditOptions["components"] | null;
   /** Optional new file attachments */
   files?: AttachmentBuilder[];
+  /**
+   * Optional message flags. A Components V2 message must keep the
+   * `IS_COMPONENTS_V2` flag on edit so Discord interprets `components` as V2
+   * rather than rejecting the top-level container/section as invalid.
+   */
+  flags?: MessageEditOptions["flags"];
 }
 
 /**

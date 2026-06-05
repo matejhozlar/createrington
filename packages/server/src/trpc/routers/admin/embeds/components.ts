@@ -172,9 +172,9 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
       let count = 1;
       let text = 0;
       for (const child of node.components) {
-        const child_measure = measure(child);
-        count += child_measure.count;
-        text += child_measure.text;
+        const childMeasure = measure(child);
+        count += childMeasure.count;
+        text += childMeasure.text;
       }
       return { count, text };
     }

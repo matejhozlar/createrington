@@ -212,7 +212,7 @@ export function toEditOptions(
   messageId: string,
 ): EditMessageOptions {
   return built.kind === "components"
-    ? { channelId, messageId, components: built.components }
+    ? { channelId, messageId, components: built.components, flags: built.flags }
     : {
         channelId,
         messageId,

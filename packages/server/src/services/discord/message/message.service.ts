@@ -154,6 +154,7 @@ export class DiscordMessageService {
         components:
           options.components === null ? [] : (options.components ?? undefined),
         files: options.files,
+        flags: options.flags,
         allowedMentions: { parse: [] },
       };
 

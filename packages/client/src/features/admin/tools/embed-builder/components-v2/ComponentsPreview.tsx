@@ -5,11 +5,8 @@ import type {
   ComponentSection,
 } from "@createrington/shared/api/embed";
 import { useMentionResolver } from "@/features/admin/hooks/use-mention-resolver";
+import { numberToHex } from "@/lib/utils";
 import { DiscordMarkdown } from "../components/DiscordMarkdown";
-
-function numberToHex(color: number): string {
-  return `#${color.toString(16).padStart(6, "0")}`;
-}
 
 type MentionResolver = ReturnType<typeof useMentionResolver>;
 
