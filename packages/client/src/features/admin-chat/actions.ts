@@ -12,7 +12,7 @@
  *     ```
  */
 
-import type { EmbedData } from "@createrington/shared/api/embed";
+import type { ComponentNode, EmbedData } from "@createrington/shared/api/embed";
 
 export interface HighlightAction {
   type: "highlight";
@@ -31,6 +31,14 @@ export interface InsertEmbedAction {
   label?: string;
 }
 
+export interface InsertComponentsAction {
+  type: "insert_components";
+  /** Top-level Components V2 nodes (validated against componentsDataSchema on apply). */
+  components: ComponentNode[];
+  /** Optional label shown on the preview card. */
+  label?: string;
+}
+
 export interface NavigateAction {
   type: "navigate";
   /** Same-origin path to push into the router (e.g. "/admin/tools/embed-builder"). */
@@ -42,6 +50,7 @@ export interface NavigateAction {
 export type AdminChatAction =
   | HighlightAction
   | InsertEmbedAction
+  | InsertComponentsAction
   | NavigateAction;
 
 /**
@@ -64,6 +73,12 @@ export const PENDING_EMBED_KEY = "admin-chat:pending-embed";
 
 /** Event the EmbedBuilder listens to when already mounted. */
 export const INSERT_EMBED_EVENT = "admin-chat:insert-embed";
+
+/** sessionStorage key for a pending Components V2 insertion. */
+export const PENDING_COMPONENTS_KEY = "admin-chat:pending-components";
+
+/** Event the EmbedBuilder listens to for a Components V2 insertion. */
+export const INSERT_COMPONENTS_EVENT = "admin-chat:insert-components";
 
 /**
  * Pull action envelopes out of an assistant message. Envelopes that parse
@@ -151,6 +166,9 @@ function isValidAction(a: unknown): a is AdminChatAction {
       rec.path.startsWith("/")
     );
   }
+  if (rec.type === "insert_components") {
+    return Array.isArray(rec.components) && rec.components.length > 0;
+  }
   if (rec.type === "insert_embed") {
     if (rec.embed && typeof rec.embed === "object") return true;
     // Forgiveness: Claude sometimes flattens the embed fields to the top
@@ -182,6 +200,10 @@ export function describeAction(action: AdminChatAction): string {
   }
   if (action.type === "navigate") {
     return `Go to ${action.path}`;
+  }
+  if (action.type === "insert_components") {
+    const count = action.components.length;
+    return `Insert components message (${count} component${count === 1 ? "" : "s"})`;
   }
   const title = (action.embed.title as string | undefined) ?? "untitled";
   return `Insert embed: ${title}`;
