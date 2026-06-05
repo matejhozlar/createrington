@@ -1,9 +1,16 @@
 import config from "@/config";
 import { type LeaderboardConfig, LeaderboardType } from "./types";
 import { Q } from "@/db";
-import { formatPlaytime, formatBalance } from "@/utils/format";
+import {
+  formatPlaytime,
+  formatBalance,
+  discordTimestamp,
+} from "@/utils/format";
 import { Discord } from "@/discord/constants";
-import { getLeaderboard as getCryptoLeaderboard } from "@/services/crypto/analytics/leaderboard";
+import { getHoldingValueByPlayer } from "@/services/crypto/analytics/leaderboard";
+import { rankNetWorth } from "./networth";
+
+const TITLE_IMAGE_BASE = "https://assets.createrington.com/titles";
 
 /**
  * Configuration registry for all leaderboard types
@@ -22,6 +29,7 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
     title: "Top Players by Playtime",
     description: "Players with the most time on the server",
     emoji: "",
+    titleImageUrl: `${TITLE_IMAGE_BASE}/playtime.png`,
     channelId: Discord.Channels.general.LEADERBOARDS,
     serverId: config.servers.cogs.id,
     /**
@@ -37,30 +45,51 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
         limit,
       );
 
-      return leaderboard.map((entry, index) => ({
-        rank: index + 1,
-        playerName: entry.minecraftUsername,
-        value: entry.totalSeconds.toString(),
-        formattedValue: formatPlaytime(Number(entry.totalSeconds)),
-      }));
+      return leaderboard.map((entry, index) => {
+        const sessions = entry.totalSessions === 1 ? "session" : "sessions";
+        const parts = [`${entry.totalSessions} ${sessions}`];
+        if (entry.lastSeen) {
+          parts.push(`last seen ${discordTimestamp(entry.lastSeen, "R")}`);
+        }
+
+        return {
+          rank: index + 1,
+          playerName: entry.minecraftUsername,
+          playerUuid: entry.playerMinecraftUuid,
+          value: entry.totalSeconds.toString(),
+          formattedValue: formatPlaytime(Number(entry.totalSeconds)),
+          subtitle: parts.join(" • "),
+        };
+      });
     },
     formatValue: formatPlaytime,
   },
-  [LeaderboardType.CRYPTO_NETWORTH]: {
-    type: LeaderboardType.CRYPTO_NETWORTH,
-    title: "Top Players by Crypto Net Worth",
-    description: "Players with the highest crypto portfolio value",
+  [LeaderboardType.NET_WORTH]: {
+    type: LeaderboardType.NET_WORTH,
+    title: "Top Players by Net Worth",
+    description: "Players with the highest combined balance and crypto value",
     emoji: "💰",
+    titleImageUrl: `${TITLE_IMAGE_BASE}/net-worth.png`,
     channelId: Discord.Channels.general.LEADERBOARDS,
+    /**
+     * Computes net worth as in-game balance plus current crypto holding value,
+     * summed per player, then ranks the top players.
+     */
     fetchData: async (_serverId: number, limit: number) => {
-      const leaderboard = await getCryptoLeaderboard("networth", limit);
+      const [holdingValues, balances, players] = await Promise.all([
+        getHoldingValueByPlayer(),
+        Q.player.balance.getAllBalances(),
+        Q.player.getAll(),
+      ]);
 
-      return leaderboard.map((entry) => ({
-        rank: entry.rank,
-        playerName: entry.playerName,
-        value: entry.value,
-        formattedValue: formatBalance(entry.value),
-      }));
+      const nameMap = new Map(
+        players.map((p) => [
+          p.minecraftUuid,
+          p.minecraftUsername ?? p.minecraftUuid,
+        ]),
+      );
+
+      return rankNetWorth(holdingValues, balances, nameMap, limit);
     },
     formatValue: (value: number) => formatBalance(value),
   },

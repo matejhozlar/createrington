@@ -36,15 +36,11 @@ export async function getLeaderboard(
 }
 
 /**
- * Ranks players by the current market value of their holdings.
+ * Sums the current market value of every player's crypto holdings.
  *
- * @private
- * @param limit - Maximum number of entries to return
- * @returns Leaderboard entries sorted by descending net worth
+ * @returns Map of player UUID to total holding value at current prices
  */
-async function getNetworthLeaderboard(
-  limit: number,
-): Promise<LeaderboardEntry[]> {
+export async function getHoldingValueByPlayer(): Promise<Map<string, number>> {
   const tokens = await Q.crypto.token.getAll();
   const tokenPriceMap = new Map(tokens.map((t) => [t.id, Number(t.price)]));
 
@@ -60,7 +56,20 @@ async function getNetworthLeaderboard(
     );
   }
 
-  return buildLeaderboard(playerValues, limit);
+  return playerValues;
+}
+
+/**
+ * Ranks players by the current market value of their holdings.
+ *
+ * @private
+ * @param limit - Maximum number of entries to return
+ * @returns Leaderboard entries sorted by descending net worth
+ */
+async function getNetworthLeaderboard(
+  limit: number,
+): Promise<LeaderboardEntry[]> {
+  return buildLeaderboard(await getHoldingValueByPlayer(), limit);
 }
 
 /**
