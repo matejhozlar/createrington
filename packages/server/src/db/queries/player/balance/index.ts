@@ -137,14 +137,14 @@ export class PlayerBalanceQueries extends PlayerBalanceBaseQueries {
   }
 
   /**
-   * Gets every player's balance keyed by Minecraft UUID.
+   * Gets every player's non-zero balance keyed by Minecraft UUID.
    *
-   * @returns All balance records as user-facing decimals
+   * @returns Balance records as user-facing decimals
    */
   async getAllBalances(): Promise<
     Array<{ minecraftUuid: string; balance: number }>
   > {
-    const query = `SELECT minecraft_uuid, balance FROM ${this.table}`;
+    const query = `SELECT minecraft_uuid, balance FROM ${this.table} WHERE balance > 0`;
 
     const result = await this.runQuery<{
       minecraft_uuid: string;

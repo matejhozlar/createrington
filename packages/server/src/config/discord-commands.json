@@ -63,8 +63,8 @@
                   "value": "playtime"
                 },
                 {
-                  "name": "Crypto_networth",
-                  "value": "crypto_networth"
+                  "name": "Net_worth",
+                  "value": "net_worth"
                 }
               ],
               "name": "type",
@@ -86,8 +86,8 @@
                   "value": "playtime"
                 },
                 {
-                  "name": "Crypto_networth",
-                  "value": "crypto_networth"
+                  "name": "Net_worth",
+                  "value": "net_worth"
                 }
               ],
               "name": "type",

@@ -46,7 +46,8 @@ export const LEADERBOARD_CONFIGS: Record<LeaderboardType, LeaderboardConfig> = {
       );
 
       return leaderboard.map((entry, index) => {
-        const parts = [`${entry.totalSessions} sessions`];
+        const sessions = entry.totalSessions === 1 ? "session" : "sessions";
+        const parts = [`${entry.totalSessions} ${sessions}`];
         if (entry.lastSeen) {
           parts.push(`last seen ${discordTimestamp(entry.lastSeen, "R")}`);
         }
