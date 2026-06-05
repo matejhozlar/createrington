@@ -31,6 +31,7 @@ interface TopbarProps {
 export function Topbar({ builder }: TopbarProps) {
   const {
     kind,
+    setKind,
     components,
     setComponents,
     presetName,
@@ -73,29 +74,28 @@ export function Topbar({ builder }: TopbarProps) {
       return;
     }
 
-    if (kind === "components") {
-      const result = componentsDataSchema.safeParse(raw);
-      if (!result.success) {
-        toast.error(
-          "Clipboard isn't a valid components message — make sure you copied one exported from this tool",
-        );
-        return;
-      }
-      setComponents(result.data.components);
+    // Try components first: its schema requires a non-empty `components` array,
+    // so an embed JSON won't false-match it (embedDataSchema is all-optional and
+    // would accept almost anything). Matching either format switches the mode.
+    const componentsResult = componentsDataSchema.safeParse(raw);
+    if (componentsResult.success) {
+      setKind("components");
+      setComponents(componentsResult.data.components);
       toast.success("Components imported from clipboard");
       return;
     }
 
-    const result = embedDataSchema.safeParse(raw);
-    if (!result.success) {
-      toast.error(
-        "Clipboard isn't a valid embed — make sure you copied an embed exported from this tool",
-      );
+    const embedResult = embedDataSchema.safeParse(raw);
+    if (embedResult.success) {
+      setKind("embed");
+      setEmbedData(embedResult.data);
+      toast.success("Embed imported from clipboard");
       return;
     }
 
-    setEmbedData(result.data);
-    toast.success("Embed imported from clipboard");
+    toast.error(
+      "Clipboard isn't a valid embed or components message. Copy one exported from this tool.",
+    );
   }
 
   const saveDisabled = activePreset

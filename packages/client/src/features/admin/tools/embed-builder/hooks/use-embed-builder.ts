@@ -6,6 +6,7 @@ import type {
   EmbedData,
   EmbedBot,
   EmbedField,
+  ComponentButton,
   ComponentNode,
   MessagePayload,
   PresetKind,
@@ -72,6 +73,59 @@ function incompleteFieldsMessage(indexes: number[]): string {
   return indexes.length === 1
     ? `Field ${list} is empty. Fill in both name and value, or remove it.`
     : `Fields ${list} are empty. Fill in both name and value, or remove them.`;
+}
+
+function checkComponentButton(button: ComponentButton): string | null {
+  if (!button.label.trim()) return "A button is missing a label.";
+  if (!button.url.trim()) return "A button is missing a URL.";
+  return null;
+}
+
+/**
+ * Walk a Components V2 tree for empty required fields the Zod schema would
+ * reject, returning a friendly message so the user sees that instead of a raw
+ * tRPC validation error. Mirrors the classic path's incomplete-field check.
+ */
+function findComponentIssue(nodes: ComponentNode[]): string | null {
+  for (const node of nodes) {
+    switch (node.type) {
+      case "text":
+        if (!node.content.trim()) return "A text component is empty.";
+        break;
+      case "separator":
+        break;
+      case "media_gallery":
+        if (node.items.some((item) => !item.url.trim())) {
+          return "A media gallery image is missing a URL.";
+        }
+        break;
+      case "action_row":
+        for (const button of node.components) {
+          const issue = checkComponentButton(button);
+          if (issue) return issue;
+        }
+        break;
+      case "section":
+        if (node.components.some((text) => !text.content.trim())) {
+          return "A section text is empty.";
+        }
+        if (node.accessory.type === "thumbnail") {
+          if (!node.accessory.url.trim()) {
+            return "A section thumbnail is missing an image URL.";
+          }
+        } else {
+          const issue = checkComponentButton(node.accessory);
+          if (issue) return issue;
+        }
+        break;
+      case "container": {
+        const issue = findComponentIssue(node.components);
+        if (issue) return issue;
+        break;
+      }
+    }
+  }
+  return null;
 }
 
 const DRAFT_KEY = "embed-builder-draft";
@@ -364,6 +418,12 @@ export function useEmbedBuilder() {
           toast.error(incompleteFieldsMessage(incomplete));
           return;
         }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
+          return;
+        }
       }
 
       const shouldLink = opts?.linkToPreset ?? true;
@@ -412,6 +472,7 @@ export function useEmbedBuilder() {
       sendEmbed,
       linksQuery,
       toast,
+      components,
     ],
   );
 
@@ -424,6 +485,12 @@ export function useEmbedBuilder() {
         const incomplete = getIncompleteFieldIndexes(data.fields);
         if (incomplete.length > 0) {
           toast.error(incompleteFieldsMessage(incomplete));
+          return false;
+        }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
           return false;
         }
       }
@@ -500,6 +567,7 @@ export function useEmbedBuilder() {
     [
       kind,
       data,
+      components,
       currentPayload,
       serializedData,
       activePreset,
@@ -548,6 +616,7 @@ export function useEmbedBuilder() {
   );
 
   const handleNewEmbed = useCallback(() => {
+    setKind("embed");
     setData({ ...DEFAULT_EMBED });
     setComponents([]);
     setActivePreset(null);
@@ -565,6 +634,12 @@ export function useEmbedBuilder() {
       const incomplete = getIncompleteFieldIndexes(data.fields);
       if (incomplete.length > 0) {
         toast.error(incompleteFieldsMessage(incomplete));
+        return;
+      }
+    } else {
+      const issue = findComponentIssue(components);
+      if (issue) {
+        toast.error(issue);
         return;
       }
     }
@@ -595,6 +670,7 @@ export function useEmbedBuilder() {
     activePreset,
     kind,
     data,
+    components,
     currentPayload,
     serializedData,
     bot,
@@ -608,6 +684,12 @@ export function useEmbedBuilder() {
         const incomplete = getIncompleteFieldIndexes(data.fields);
         if (incomplete.length > 0) {
           toast.error(incompleteFieldsMessage(incomplete));
+          return;
+        }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
           return;
         }
       }
@@ -624,7 +706,7 @@ export function useEmbedBuilder() {
         );
       }
     },
-    [kind, data, currentPayload, bot, updateLinkMutation, toast],
+    [kind, data, components, currentPayload, bot, updateLinkMutation, toast],
   );
 
   const handleUnlink = useCallback(
