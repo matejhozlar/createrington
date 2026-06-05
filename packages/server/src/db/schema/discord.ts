@@ -12,7 +12,10 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import { discordAutoMessageRotationEnum } from "./enums";
+import {
+  discordAutoMessageRotationEnum,
+  discordEmbedPresetKindEnum,
+} from "./enums";
 
 // --- discord_embed_preset_category ---
 
@@ -36,6 +39,7 @@ export const discordEmbedPresetCategory = pgTable(
 export const discordEmbedPreset = pgTable("discord_embed_preset", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull().unique(),
+  kind: discordEmbedPresetKindEnum("kind").notNull().default("embed"),
   data: jsonb("data").notNull(),
   createdBy: varchar("created_by", { length: 100 }).notNull(),
   categoryId: integer("category_id").references(

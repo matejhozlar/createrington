@@ -3,15 +3,14 @@ import { adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { trpcError, auditActor } from "@/trpc/utils";
 import {
-  embedDataSchema,
   embedBotSchema,
-  type EmbedData,
+  messagePayloadSchema,
 } from "@createrington/shared/api/embed";
 import {
   getMessageService,
-  hasEmbedContent,
-  buildDiscordEmbed,
-  buildButtons,
+  buildMessage,
+  payloadToStorage,
+  toEditOptions,
 } from "./helpers";
 
 export const embedLinkedMessageProcedures = {
@@ -20,45 +19,37 @@ export const embedLinkedMessageProcedures = {
       description: "Update a preset and all its linked messages at once.",
     })
     .input(
-      z.object({
-        presetId: z.number().int().positive(),
-        embed: embedDataSchema,
-        bot: embedBotSchema.default("main"),
-      }),
+      z
+        .object({
+          presetId: z.number().int().positive(),
+          bot: embedBotSchema.default("main"),
+        })
+        .and(messagePayloadSchema),
     )
     .mutation(async ({ input, ctx }) => {
-      const data = input.embed as EmbedData;
-
-      if (!data.content && !hasEmbedContent(data)) {
-        throw trpcError.badRequest(
-          "Message must have content, a title, a description, or at least one field",
-        );
+      const built = buildMessage(input, input.presetId);
+      if (!built.ok) {
+        throw trpcError.badRequest(built.error);
       }
 
       await Q.discord.embed.preset.update(
         { id: input.presetId },
-        { data: data as Record<string, unknown> },
+        { data: payloadToStorage(input).data },
       );
 
       const links = await Q.discord.embed.preset.message
         .where({ presetId: input.presetId })
         .all();
 
-      const embed = buildDiscordEmbed(data);
-      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
       let updated = 0;
       const errors: string[] = [];
 
       for (const link of links) {
-        const result = await messageService.edit({
-          channelId: link.channelId,
-          messageId: link.messageId,
-          content: data.content ?? null,
-          embeds: embed ?? null,
-          components: components ?? null,
-        });
+        const result = await messageService.edit(
+          toEditOptions(built, link.channelId, link.messageId),
+        );
 
         if (result.success) {
           updated++;
@@ -79,24 +70,17 @@ export const embedLinkedMessageProcedures = {
 
   updateLink: adminProcedure
     .meta({
-      description: "Update a single linked message with current embed data.",
+      description: "Update a single linked message with current builder data.",
     })
     .input(
-      z.object({
-        linkId: z.number().int().positive(),
-        embed: embedDataSchema,
-        bot: embedBotSchema.default("main"),
-      }),
+      z
+        .object({
+          linkId: z.number().int().positive(),
+          bot: embedBotSchema.default("main"),
+        })
+        .and(messagePayloadSchema),
     )
     .mutation(async ({ input }) => {
-      const data = input.embed as EmbedData;
-
-      if (!data.content && !hasEmbedContent(data)) {
-        throw trpcError.badRequest(
-          "Message must have content, a title, a description, or at least one field",
-        );
-      }
-
       const link = await Q.discord.embed.preset.message.find({
         id: input.linkId,
       });
@@ -104,17 +88,16 @@ export const embedLinkedMessageProcedures = {
         throw trpcError.notFound("Link not found");
       }
 
-      const embed = buildDiscordEmbed(data);
-      const components = buildButtons(data, link.presetId);
+      const built = buildMessage(input, link.presetId);
+      if (!built.ok) {
+        throw trpcError.badRequest(built.error);
+      }
+
       const messageService = getMessageService(input.bot);
 
-      const result = await messageService.edit({
-        channelId: link.channelId,
-        messageId: link.messageId,
-        content: data.content ?? null,
-        embeds: embed ?? null,
-        components: components ?? null,
-      });
+      const result = await messageService.edit(
+        toEditOptions(built, link.channelId, link.messageId),
+      );
 
       if (!result.success) {
         throw trpcError.internal(

@@ -5,12 +5,16 @@ import { cn } from "@/lib/utils";
 import {
   PENDING_EMBED_KEY,
   INSERT_EMBED_EVENT,
+  PENDING_COMPONENTS_KEY,
+  INSERT_COMPONENTS_EVENT,
   describeAction,
   type AdminChatAction,
   type HighlightAction,
   type InsertEmbedAction,
+  type InsertComponentsAction,
 } from "../actions";
 import { EmbedActionPreview } from "./EmbedActionPreview";
+import { ComponentsActionPreview } from "./ComponentsActionPreview";
 
 /**
  * Apply a highlight action to the current document. Scrolls the element
@@ -56,6 +60,33 @@ function applyInsertEmbed(
   } catch {
     // Best-effort: if storage is unavailable, navigation alone still lets
     // the admin reapply from chat history.
+  }
+  navigate("/admin/tools/embed-builder");
+}
+
+/**
+ * Apply an insert_components action. Same dispatch/stash pattern as
+ * applyInsertEmbed, keyed for Components V2 so the builder switches into
+ * components mode and loads the tree.
+ */
+function applyInsertComponents(
+  action: InsertComponentsAction,
+  navigate: (to: string) => void,
+): void {
+  const serialized = JSON.stringify(action.components);
+  const onBuilderPage = window.location.pathname.startsWith(
+    "/admin/tools/embed-builder",
+  );
+  if (onBuilderPage) {
+    window.dispatchEvent(
+      new CustomEvent(INSERT_COMPONENTS_EVENT, { detail: action.components }),
+    );
+    return;
+  }
+  try {
+    sessionStorage.setItem(PENDING_COMPONENTS_KEY, serialized);
+  } catch {
+    // Best-effort: navigation alone still lets the admin reapply from history.
   }
   navigate("/admin/tools/embed-builder");
 }
@@ -108,6 +139,11 @@ export function ActionCard({
       setPersistent("applied");
       return;
     }
+    if (action.type === "insert_components") {
+      applyInsertComponents(action, navigate);
+      setPersistent("applied");
+      return;
+    }
     applyInsertEmbed(action, navigate);
     setPersistent("applied");
   };
@@ -117,7 +153,9 @@ export function ActionCard({
       ? "Highlight"
       : action.type === "navigate"
         ? "Navigate"
-        : "Insert embed";
+        : action.type === "insert_components"
+          ? "Insert components"
+          : "Insert embed";
 
   return (
     <div
@@ -138,6 +176,9 @@ export function ActionCard({
       </div>
       {action.type === "insert_embed" && (
         <EmbedActionPreview embed={action.embed} />
+      )}
+      {action.type === "insert_components" && (
+        <ComponentsActionPreview components={action.components} />
       )}
       <div className="flex items-center gap-1.5">
         {state === "pending" ? (

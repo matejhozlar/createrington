@@ -1,16 +1,26 @@
 import { useEffect, useState } from "react";
 import { useToastActions } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   INSERT_EMBED_EVENT,
   PENDING_EMBED_KEY,
+  INSERT_COMPONENTS_EVENT,
+  PENDING_COMPONENTS_KEY,
 } from "@/features/admin-chat/actions";
-import type { EmbedData } from "@createrington/shared/api/embed";
+import {
+  componentsDataSchema,
+  type ComponentNode,
+  type EmbedData,
+  type PresetKind,
+} from "@createrington/shared/api/embed";
 import { useEmbedBuilder } from "./hooks/use-embed-builder";
 import { PresetSidebar } from "./components/PresetSidebar";
 import { Topbar } from "./components/Topbar";
 import { FormPanel } from "./components/FormPanel";
 import { EmbedPreview } from "./components/EmbedPreview";
 import { LinkedMessages } from "./components/LinkedMessages";
+import { ComponentsPreview } from "./components-v2/ComponentsPreview";
+import { ComponentTreeEditor } from "./components-v2/ComponentTreeEditor";
 import type { FocusTarget } from "./focus";
 
 function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
@@ -96,6 +106,39 @@ function applyPartialEmbed(
   }));
 }
 
+function readPending(key: string): string | null {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function clearPending(key: string): void {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+/**
+ * Validate an assistant-supplied Components V2 payload and load it into the
+ * builder in components mode. Returns false if the payload is invalid so the
+ * caller can surface an error instead of silently applying garbage.
+ */
+function applyInsertedComponents(
+  raw: unknown,
+  setKind: (kind: PresetKind) => void,
+  setComponents: (nodes: ComponentNode[]) => void,
+): boolean {
+  const result = componentsDataSchema.safeParse({ components: raw });
+  if (!result.success) return false;
+  setKind("components");
+  setComponents(result.data.components);
+  return true;
+}
+
 export function EmbedBuilder() {
   const builder = useEmbedBuilder();
   const toast = useToastActions();
@@ -133,39 +176,64 @@ export function EmbedBuilder() {
   };
 
   const setEmbedData = builder.setEmbedData;
+  const setKind = builder.setKind;
+  const setComponents = builder.setComponents;
   useEffect(() => {
-    const pending = (() => {
+    // Classic embed insertions force embed mode so they aren't applied to a
+    // hidden state while the builder is in components mode.
+    const pendingEmbed = readPending(PENDING_EMBED_KEY);
+    if (pendingEmbed) {
       try {
-        return sessionStorage.getItem(PENDING_EMBED_KEY);
-      } catch {
-        return null;
-      }
-    })();
-    if (pending) {
-      try {
-        const parsed = JSON.parse(pending) as Partial<EmbedData>;
+        const parsed = JSON.parse(pendingEmbed) as Partial<EmbedData>;
+        setKind("embed");
         applyPartialEmbed(setEmbedData, parsed);
         toast.success("Embed inserted from Createrington Assistant");
       } catch {
         toast.error("Assistant sent an invalid embed payload");
       } finally {
-        try {
-          sessionStorage.removeItem(PENDING_EMBED_KEY);
-        } catch {
-          // ignore
-        }
+        clearPending(PENDING_EMBED_KEY);
       }
     }
 
-    const handler = (e: Event): void => {
+    const pendingComponents = readPending(PENDING_COMPONENTS_KEY);
+    if (pendingComponents) {
+      try {
+        const parsed = JSON.parse(pendingComponents);
+        if (applyInsertedComponents(parsed, setKind, setComponents)) {
+          toast.success("Components inserted from Createrington Assistant");
+        } else {
+          toast.error("Assistant sent an invalid components payload");
+        }
+      } catch {
+        toast.error("Assistant sent an invalid components payload");
+      } finally {
+        clearPending(PENDING_COMPONENTS_KEY);
+      }
+    }
+
+    const embedHandler = (e: Event): void => {
       const detail = (e as CustomEvent<Partial<EmbedData>>).detail;
       if (!detail) return;
+      setKind("embed");
       applyPartialEmbed(setEmbedData, detail);
       toast.success("Embed inserted from Createrington Assistant");
     };
-    window.addEventListener(INSERT_EMBED_EVENT, handler);
-    return () => window.removeEventListener(INSERT_EMBED_EVENT, handler);
-  }, [setEmbedData, toast]);
+    const componentsHandler = (e: Event): void => {
+      const detail = (e as CustomEvent<ComponentNode[]>).detail;
+      if (!detail) return;
+      if (applyInsertedComponents(detail, setKind, setComponents)) {
+        toast.success("Components inserted from Createrington Assistant");
+      } else {
+        toast.error("Assistant sent an invalid components payload");
+      }
+    };
+    window.addEventListener(INSERT_EMBED_EVENT, embedHandler);
+    window.addEventListener(INSERT_COMPONENTS_EVENT, componentsHandler);
+    return () => {
+      window.removeEventListener(INSERT_EMBED_EVENT, embedHandler);
+      window.removeEventListener(INSERT_COMPONENTS_EVENT, componentsHandler);
+    };
+  }, [setEmbedData, setKind, setComponents, toast]);
 
   const externalData = builder.externalData;
 
@@ -181,14 +249,22 @@ export function EmbedBuilder() {
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background p-4 md:p-6 lg:flex-row lg:overflow-hidden lg:p-0">
           <section className="flex flex-1 flex-col gap-3 lg:overflow-y-auto lg:p-6">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Preview
-              </span>
+              <ModeToggle
+                kind={builder.kind}
+                onChange={builder.setKind}
+                disabled={!!builder.activePreset}
+              />
               <span className="text-xs text-muted-foreground">
-                Click anything to edit
+                {builder.kind === "components"
+                  ? "Components V2 message"
+                  : "Click anything to edit"}
               </span>
             </div>
-            <EmbedPreview data={externalData} editable onEdit={handleEdit} />
+            {builder.kind === "components" ? (
+              <ComponentsPreview components={builder.components} />
+            ) : (
+              <EmbedPreview data={externalData} editable onEdit={handleEdit} />
+            )}
             {builder.activePreset && (
               <div className="mt-2">
                 <LinkedMessages builder={builder} />
@@ -197,15 +273,56 @@ export function EmbedBuilder() {
           </section>
 
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[380px] lg:border-l lg:border-t-0">
-            <FormPanel
-              data={externalData}
-              onChange={builder.setEmbedData}
-              focused={focused}
-              setFocused={setFocused}
-            />
+            {builder.kind === "components" ? (
+              <ComponentTreeEditor builder={builder} />
+            ) : (
+              <FormPanel
+                data={externalData}
+                onChange={builder.setEmbedData}
+                focused={focused}
+                setFocused={setFocused}
+              />
+            )}
           </aside>
         </main>
       </div>
+    </div>
+  );
+}
+
+const MODE_LABELS: Record<PresetKind, string> = {
+  embed: "Classic embed",
+  components: "Components V2",
+};
+
+function ModeToggle({
+  kind,
+  onChange,
+  disabled,
+}: {
+  kind: PresetKind;
+  onChange: (kind: PresetKind) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="inline-flex rounded-md border border-border p-0.5">
+      {(["embed", "components"] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          disabled={disabled && kind !== k}
+          onClick={() => onChange(k)}
+          className={cn(
+            "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+            kind === k
+              ? "bg-accent text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+            disabled && kind !== k && "cursor-not-allowed opacity-40",
+          )}
+        >
+          {MODE_LABELS[k]}
+        </button>
+      ))}
     </div>
   );
 }

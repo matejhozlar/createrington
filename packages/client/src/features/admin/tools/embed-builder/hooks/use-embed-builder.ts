@@ -6,6 +6,10 @@ import type {
   EmbedData,
   EmbedBot,
   EmbedField,
+  ComponentButton,
+  ComponentNode,
+  MessagePayload,
+  PresetKind,
 } from "@createrington/shared/api/embed";
 
 export interface EmbedFieldInternal extends EmbedField {
@@ -71,10 +75,65 @@ function incompleteFieldsMessage(indexes: number[]): string {
     : `Fields ${list} are empty. Fill in both name and value, or remove them.`;
 }
 
+function checkComponentButton(button: ComponentButton): string | null {
+  if (!button.label.trim()) return "A button is missing a label.";
+  if (!button.url.trim()) return "A button is missing a URL.";
+  return null;
+}
+
+/**
+ * Walk a Components V2 tree for empty required fields the Zod schema would
+ * reject, returning a friendly message so the user sees that instead of a raw
+ * tRPC validation error. Mirrors the classic path's incomplete-field check.
+ */
+function findComponentIssue(nodes: ComponentNode[]): string | null {
+  for (const node of nodes) {
+    switch (node.type) {
+      case "text":
+        if (!node.content.trim()) return "A text component is empty.";
+        break;
+      case "separator":
+        break;
+      case "media_gallery":
+        if (node.items.some((item) => !item.url.trim())) {
+          return "A media gallery image is missing a URL.";
+        }
+        break;
+      case "action_row":
+        for (const button of node.components) {
+          const issue = checkComponentButton(button);
+          if (issue) return issue;
+        }
+        break;
+      case "section":
+        if (node.components.some((text) => !text.content.trim())) {
+          return "A section text is empty.";
+        }
+        if (node.accessory.type === "thumbnail") {
+          if (!node.accessory.url.trim()) {
+            return "A section thumbnail is missing an image URL.";
+          }
+        } else {
+          const issue = checkComponentButton(node.accessory);
+          if (issue) return issue;
+        }
+        break;
+      case "container": {
+        const issue = findComponentIssue(node.components);
+        if (issue) return issue;
+        break;
+      }
+    }
+  }
+  return null;
+}
+
 const DRAFT_KEY = "embed-builder-draft";
 
 interface DraftState {
+  kind: PresetKind;
   data: EmbedData;
+  components: ComponentNode[];
   presetName: string;
   bot: EmbedBot;
   channelId: string;
@@ -153,10 +212,16 @@ export function useEmbedBuilder() {
   // rule. Never updated after mount: a ref further down handles the
   // one-shot "draft restored" toast.
   const [pendingDraft] = useState(loadDraft);
+  const [kind, setKind] = useState<PresetKind>(
+    () => pendingDraft?.kind ?? "embed",
+  );
   const [data, setData] = useState<EmbedDataInternal>(() =>
     pendingDraft
       ? normalizeLoadedEmbed(pendingDraft.data)
       : { ...DEFAULT_EMBED },
+  );
+  const [components, setComponents] = useState<ComponentNode[]>(
+    () => pendingDraft?.components ?? [],
   );
   const [bot, setBot] = useState<EmbedBot>(() => pendingDraft?.bot ?? "main");
   const [channelId, setChannelId] = useState(
@@ -174,23 +239,47 @@ export function useEmbedBuilder() {
   );
 
   const debouncedSearch = useDebouncedValue(search, 300);
-  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
-    pendingDraft?.activePreset ? JSON.stringify(pendingDraft.data) : "",
-  );
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() => {
+    if (!pendingDraft?.activePreset) return "";
+    return pendingDraft.kind === "components"
+      ? JSON.stringify({ components: pendingDraft.components })
+      : JSON.stringify(pendingDraft.data);
+  });
 
   const externalData = useMemo(() => toExternalData(data), [data]);
 
+  const currentPayload = useMemo<MessagePayload>(
+    () =>
+      kind === "components"
+        ? { kind: "components", components: { components } }
+        : { kind: "embed", embed: externalData },
+    [kind, components, externalData],
+  );
+
+  const serializedData = useMemo(
+    () =>
+      JSON.stringify(
+        currentPayload.kind === "components"
+          ? currentPayload.components
+          : currentPayload.embed,
+      ),
+    [currentPayload],
+  );
+
   const isDirty = useMemo(() => {
     if (!activePreset) return false;
-    return JSON.stringify(externalData) !== lastSavedSnapshot;
-  }, [externalData, activePreset, lastSavedSnapshot]);
+    return serializedData !== lastSavedSnapshot;
+  }, [serializedData, activePreset, lastSavedSnapshot]);
 
-  const hasContent = !!(
-    data.content ||
-    data.title ||
-    data.description ||
-    data.fields.length > 0
-  );
+  const hasContent =
+    kind === "components"
+      ? components.length > 0
+      : !!(
+          data.content ||
+          data.title ||
+          data.description ||
+          data.fields.length > 0
+        );
 
   const draftToastedRef = useRef(false);
   useEffect(() => {
@@ -205,7 +294,9 @@ export function useEmbedBuilder() {
     const id = window.setTimeout(() => {
       if (hasContent || activePreset) {
         saveDraft({
+          kind,
           data: toExternalData(data),
+          components,
           presetName,
           bot,
           channelId,
@@ -218,7 +309,9 @@ export function useEmbedBuilder() {
     }, 500);
     return () => window.clearTimeout(id);
   }, [
+    kind,
     data,
+    components,
     presetName,
     bot,
     channelId,
@@ -312,20 +405,32 @@ export function useEmbedBuilder() {
       }
       if (!hasContent) {
         toast.error(
-          "Message must have content, a title, a description, or at least one field",
+          kind === "components"
+            ? "Add at least one component"
+            : "Message must have content, a title, a description, or at least one field",
         );
         return;
       }
 
-      const incomplete = getIncompleteFieldIndexes(data.fields);
-      if (incomplete.length > 0) {
-        toast.error(incompleteFieldsMessage(incomplete));
-        return;
+      if (kind === "embed") {
+        const incomplete = getIncompleteFieldIndexes(data.fields);
+        if (incomplete.length > 0) {
+          toast.error(incompleteFieldsMessage(incomplete));
+          return;
+        }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
+          return;
+        }
       }
 
       const shouldLink = opts?.linkToPreset ?? true;
       const hasActionButtons =
-        data.actionButtons && data.actionButtons.length > 0;
+        kind === "embed" &&
+        !!data.actionButtons &&
+        data.actionButtons.length > 0;
 
       if (hasActionButtons && !activePreset) {
         toast.error(
@@ -344,29 +449,30 @@ export function useEmbedBuilder() {
       try {
         const result = await sendEmbed.mutateAsync({
           channelId,
-          embed: toExternalData(data),
           presetId,
           bot,
+          ...currentPayload,
         });
         if (activePreset && shouldLink) linksQuery.refetch();
         toast.success(
-          `Embed sent${result.messageId ? ` (${result.messageId})` : ""}`,
+          `${kind === "components" ? "Message" : "Embed"} sent${result.messageId ? ` (${result.messageId})` : ""}`,
         );
       } catch (error) {
-        toast.error(
-          error instanceof Error ? error.message : "Failed to send embed",
-        );
+        toast.error(error instanceof Error ? error.message : "Failed to send");
       }
     },
     [
       channelId,
       hasContent,
+      kind,
       data,
+      currentPayload,
       activePreset,
       bot,
       sendEmbed,
       linksQuery,
       toast,
+      components,
     ],
   );
 
@@ -375,25 +481,35 @@ export function useEmbedBuilder() {
       name?: string;
       categoryId?: number | null;
     }): Promise<boolean> => {
-      const incomplete = getIncompleteFieldIndexes(data.fields);
-      if (incomplete.length > 0) {
-        toast.error(incompleteFieldsMessage(incomplete));
-        return false;
+      if (kind === "embed") {
+        const incomplete = getIncompleteFieldIndexes(data.fields);
+        if (incomplete.length > 0) {
+          toast.error(incompleteFieldsMessage(incomplete));
+          return false;
+        }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
+          return false;
+        }
       }
-
-      const embedData = toExternalData(data);
 
       if (activePreset) {
         try {
-          const updates: { id: number; name?: string; data?: EmbedData } = {
+          const updates: {
+            id: number;
+            name?: string;
+            payload: MessagePayload;
+          } = {
             id: activePreset.id,
-            data: embedData,
+            payload: currentPayload,
           };
           if (presetName.trim() && presetName.trim() !== activePreset.name) {
             updates.name = presetName.trim();
           }
           await updatePreset.mutateAsync(updates);
-          setLastSavedSnapshot(JSON.stringify(embedData));
+          setLastSavedSnapshot(serializedData);
           clearDraft();
           if (updates.name) {
             setActivePreset({
@@ -424,10 +540,10 @@ export function useEmbedBuilder() {
         try {
           const created = await createPreset.mutateAsync({
             name,
-            data: embedData,
             categoryId,
+            ...currentPayload,
           });
-          setLastSavedSnapshot(JSON.stringify(embedData));
+          setLastSavedSnapshot(serializedData);
           clearDraft();
           utils.admin.embeds.presets.list.invalidate();
           utils.admin.embeds.presets.categories.list.invalidate();
@@ -449,7 +565,11 @@ export function useEmbedBuilder() {
       }
     },
     [
+      kind,
       data,
+      components,
+      currentPayload,
+      serializedData,
       activePreset,
       presetName,
       selectedCategoryId,
@@ -464,11 +584,25 @@ export function useEmbedBuilder() {
     (preset: {
       id: number;
       name: string;
+      kind?: PresetKind;
       data: unknown;
       categoryId?: number | null;
     }) => {
-      const normalized = normalizeLoadedEmbed(preset.data as EmbedData);
-      setData(normalized);
+      const presetKind: PresetKind = preset.kind ?? "embed";
+      if (presetKind === "components") {
+        const loaded =
+          (preset.data as { components?: ComponentNode[] })?.components ?? [];
+        setKind("components");
+        setComponents(loaded);
+        setData({ ...DEFAULT_EMBED });
+        setLastSavedSnapshot(JSON.stringify({ components: loaded }));
+      } else {
+        const normalized = normalizeLoadedEmbed(preset.data as EmbedData);
+        setKind("embed");
+        setComponents([]);
+        setData(normalized);
+        setLastSavedSnapshot(JSON.stringify(toExternalData(normalized)));
+      }
       setActivePreset({
         id: preset.id,
         name: preset.name,
@@ -476,14 +610,15 @@ export function useEmbedBuilder() {
       });
       setPresetName(preset.name);
       setSelectedCategoryId(preset.categoryId ?? null);
-      setLastSavedSnapshot(JSON.stringify(toExternalData(normalized)));
       toast.success(`Loaded "${preset.name}"`);
     },
     [toast],
   );
 
   const handleNewEmbed = useCallback(() => {
+    setKind("embed");
     setData({ ...DEFAULT_EMBED });
+    setComponents([]);
     setActivePreset(null);
     setPresetName("");
     setChannelId("");
@@ -495,19 +630,27 @@ export function useEmbedBuilder() {
   const handleUpdateAll = useCallback(async () => {
     if (!activePreset) return;
 
-    const incomplete = getIncompleteFieldIndexes(data.fields);
-    if (incomplete.length > 0) {
-      toast.error(incompleteFieldsMessage(incomplete));
-      return;
+    if (kind === "embed") {
+      const incomplete = getIncompleteFieldIndexes(data.fields);
+      if (incomplete.length > 0) {
+        toast.error(incompleteFieldsMessage(incomplete));
+        return;
+      }
+    } else {
+      const issue = findComponentIssue(components);
+      if (issue) {
+        toast.error(issue);
+        return;
+      }
     }
 
     try {
       const result = await updateAllMutation.mutateAsync({
         presetId: activePreset.id,
-        embed: toExternalData(data),
         bot,
+        ...currentPayload,
       });
-      setLastSavedSnapshot(JSON.stringify(toExternalData(data)));
+      setLastSavedSnapshot(serializedData);
       if (result.failed > 0) {
         toast.warning(
           `Updated ${result.updated}, failed ${result.failed}`,
@@ -523,20 +666,38 @@ export function useEmbedBuilder() {
         error instanceof Error ? error.message : "Failed to update all",
       );
     }
-  }, [activePreset, data, bot, updateAllMutation, toast]);
+  }, [
+    activePreset,
+    kind,
+    data,
+    components,
+    currentPayload,
+    serializedData,
+    bot,
+    updateAllMutation,
+    toast,
+  ]);
 
   const handleUpdateLink = useCallback(
     async (linkId: number) => {
-      const incomplete = getIncompleteFieldIndexes(data.fields);
-      if (incomplete.length > 0) {
-        toast.error(incompleteFieldsMessage(incomplete));
-        return;
+      if (kind === "embed") {
+        const incomplete = getIncompleteFieldIndexes(data.fields);
+        if (incomplete.length > 0) {
+          toast.error(incompleteFieldsMessage(incomplete));
+          return;
+        }
+      } else {
+        const issue = findComponentIssue(components);
+        if (issue) {
+          toast.error(issue);
+          return;
+        }
       }
       try {
         await updateLinkMutation.mutateAsync({
           linkId,
-          embed: toExternalData(data),
           bot,
+          ...currentPayload,
         });
         toast.success("Linked message updated");
       } catch (error) {
@@ -545,7 +706,7 @@ export function useEmbedBuilder() {
         );
       }
     },
-    [data, bot, updateLinkMutation, toast],
+    [kind, data, components, currentPayload, bot, updateLinkMutation, toast],
   );
 
   const handleUnlink = useCallback(
@@ -565,9 +726,11 @@ export function useEmbedBuilder() {
     async (preset: {
       id: number;
       name: string;
+      kind?: PresetKind;
       data: unknown;
       categoryId?: number | null;
     }) => {
+      const presetKind: PresetKind = preset.kind ?? "embed";
       const baseName = preset.name.replace(/ \(copy(?: \d+)?\)$/, "");
       let copyName = `${baseName} (copy)`;
 
@@ -583,11 +746,28 @@ export function useEmbedBuilder() {
         copyName = `${baseName} (copy ${n})`;
       }
 
+      const payload: MessagePayload =
+        presetKind === "components"
+          ? {
+              kind: "components",
+              components: {
+                components:
+                  (preset.data as { components?: ComponentNode[] })
+                    ?.components ?? [],
+              },
+            }
+          : {
+              kind: "embed",
+              embed: toExternalData(
+                normalizeLoadedEmbed(preset.data as EmbedData),
+              ),
+            };
+
       try {
         await createPreset.mutateAsync({
           name: copyName,
-          data: toExternalData(normalizeLoadedEmbed(preset.data as EmbedData)),
           categoryId: preset.categoryId ?? null,
+          ...payload,
         });
         utils.admin.embeds.presets.list.invalidate();
         utils.admin.embeds.presets.categories.list.invalidate();
@@ -688,6 +868,10 @@ export function useEmbedBuilder() {
 
   return {
     // State
+    kind,
+    setKind,
+    components,
+    setComponents,
     data,
     externalData,
     setEmbedData,
