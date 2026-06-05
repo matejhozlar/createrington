@@ -45,24 +45,24 @@ function buildButton(button: ComponentButton): ButtonBuilder {
   return builder;
 }
 
-function buildTextDisplay(text: ComponentTextDisplay): TextDisplayBuilder {
-  return new TextDisplayBuilder().setContent(text.content);
+function buildTextDisplay(node: ComponentTextDisplay): TextDisplayBuilder {
+  return new TextDisplayBuilder().setContent(node.content);
 }
 
-function buildSeparator(separator: ComponentSeparator): SeparatorBuilder {
+function buildSeparator(node: ComponentSeparator): SeparatorBuilder {
   return new SeparatorBuilder()
-    .setDivider(separator.divider)
+    .setDivider(node.divider)
     .setSpacing(
-      separator.spacing === 2
+      node.spacing === 2
         ? SeparatorSpacingSize.Large
         : SeparatorSpacingSize.Small,
     );
 }
 
-function buildThumbnail(thumbnail: ComponentThumbnail): ThumbnailBuilder {
-  const builder = new ThumbnailBuilder().setURL(thumbnail.url);
-  if (thumbnail.description) builder.setDescription(thumbnail.description);
-  if (thumbnail.spoiler) builder.setSpoiler(thumbnail.spoiler);
+function buildThumbnail(node: ComponentThumbnail): ThumbnailBuilder {
+  const builder = new ThumbnailBuilder().setURL(node.url);
+  if (node.description) builder.setDescription(node.description);
+  if (node.spoiler) builder.setSpoiler(node.spoiler);
   return builder;
 }
 
@@ -88,26 +88,26 @@ function buildActionRow(
   return builder;
 }
 
-function buildSection(section: ComponentSection): SectionBuilder {
+function buildSection(node: ComponentSection): SectionBuilder {
   const builder = new SectionBuilder();
-  for (const text of section.components) {
-    builder.addTextDisplayComponents(buildTextDisplay(text));
+  for (const textNode of node.components) {
+    builder.addTextDisplayComponents(buildTextDisplay(textNode));
   }
-  if (section.accessory.type === "thumbnail") {
-    builder.setThumbnailAccessory(buildThumbnail(section.accessory));
+  if (node.accessory.type === "thumbnail") {
+    builder.setThumbnailAccessory(buildThumbnail(node.accessory));
   } else {
-    builder.setButtonAccessory(buildButton(section.accessory));
+    builder.setButtonAccessory(buildButton(node.accessory));
   }
   return builder;
 }
 
-function buildContainer(container: ComponentContainer): ContainerBuilder {
+function buildContainer(node: ComponentContainer): ContainerBuilder {
   const builder = new ContainerBuilder();
-  if (container.accentColor !== undefined) {
-    builder.setAccentColor(container.accentColor);
+  if (node.accentColor !== undefined) {
+    builder.setAccentColor(node.accentColor);
   }
-  if (container.spoiler) builder.setSpoiler(container.spoiler);
-  for (const child of container.components) {
+  if (node.spoiler) builder.setSpoiler(node.spoiler);
+  for (const child of node.components) {
     switch (child.type) {
       case "text":
         builder.addTextDisplayComponents(buildTextDisplay(child));
@@ -164,12 +164,12 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
     case "action_row":
       return { count: 1 + node.components.length, text: 0 };
     case "section": {
-      const text = node.components.reduce(
+      const textLength = node.components.reduce(
         (sum, t) => sum + t.content.length,
         0,
       );
       // Each text display + the accessory each count as a component.
-      return { count: 1 + node.components.length + 1, text };
+      return { count: 1 + node.components.length + 1, text: textLength };
     }
     case "container": {
       let count = 1;
