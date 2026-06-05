@@ -4,16 +4,16 @@ import { Q } from "@/db";
 import { trpcError, auditActor } from "@/trpc/utils";
 import config from "@/config";
 import {
-  embedDataSchema,
   embedBotSchema,
-  type EmbedData,
+  messagePayloadSchema,
 } from "@createrington/shared/api/embed";
 import {
   embedSendLimit,
   getMessageService,
-  hasEmbedContent,
-  buildDiscordEmbed,
-  buildButtons,
+  buildMessage,
+  payloadToStorage,
+  toSendOptions,
+  toEditOptions,
 } from "./helpers";
 
 const colors = config.discord.embeds.colors;
@@ -72,38 +72,30 @@ export const embedCrudProcedures = {
 
   send: adminProcedure
     .use(embedSendLimit)
-    .meta({ description: "Send an embed to a Discord channel" })
+    .meta({ description: "Send an embed or components message to a channel" })
     .input(
-      z.object({
-        channelId: z.string().min(1),
-        embed: embedDataSchema,
-        presetId: z.number().int().positive().optional(),
-        bot: embedBotSchema.default("main"),
-      }),
+      z
+        .object({
+          channelId: z.string().min(1),
+          presetId: z.number().int().positive().optional(),
+          bot: embedBotSchema.default("main"),
+        })
+        .and(messagePayloadSchema),
     )
     .mutation(async ({ input, ctx }) => {
       const { channelId } = input;
-      const data = input.embed as EmbedData;
 
-      if (!data.content && !hasEmbedContent(data)) {
-        throw trpcError.badRequest(
-          "Message must have content, a title, a description, or at least one field",
-        );
+      const built = buildMessage(input, input.presetId);
+      if (!built.ok) {
+        throw trpcError.badRequest(built.error);
       }
 
-      const embed = buildDiscordEmbed(data);
-      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
-      const result = await messageService.send({
-        channelId,
-        content: data.content,
-        embeds: embed,
-        components,
-      });
+      const result = await messageService.send(toSendOptions(built, channelId));
 
       if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to send embed");
+        throw trpcError.internal(result.error ?? "Failed to send message");
       }
 
       if (input.presetId && result.messageId) {
@@ -114,12 +106,17 @@ export const embedCrudProcedures = {
         });
       }
 
+      const label =
+        input.kind === "embed" && input.embed.title
+          ? `: "${input.embed.title}"`
+          : "";
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "embed_send",
-        description: `Sent embed to channel ${channelId}${data.title ? `: "${data.title}"` : ""}`,
+        description: `Sent ${input.kind === "components" ? "components message" : "embed"} to channel ${channelId}${label}`,
         metadata: {
           channelId,
+          kind: input.kind,
           presetId: input.presetId,
           messageId: result.messageId,
         },
@@ -129,54 +126,52 @@ export const embedCrudProcedures = {
     }),
 
   edit: adminProcedure
-    .meta({ description: "Edit an existing embed message" })
+    .meta({ description: "Edit an existing embed or components message" })
     .input(
-      z.object({
-        channelId: z.string().min(1),
-        messageId: z.string().min(1),
-        embed: embedDataSchema,
-        presetId: z.number().int().positive().optional(),
-        bot: embedBotSchema.default("main"),
-      }),
+      z
+        .object({
+          channelId: z.string().min(1),
+          messageId: z.string().min(1),
+          presetId: z.number().int().positive().optional(),
+          bot: embedBotSchema.default("main"),
+        })
+        .and(messagePayloadSchema),
     )
     .mutation(async ({ input, ctx }) => {
       const { channelId, messageId } = input;
-      const data = input.embed as EmbedData;
 
-      if (!data.content && !hasEmbedContent(data)) {
-        throw trpcError.badRequest(
-          "Message must have content, a title, a description, or at least one field",
-        );
+      const built = buildMessage(input, input.presetId);
+      if (!built.ok) {
+        throw trpcError.badRequest(built.error);
       }
 
-      const embed = buildDiscordEmbed(data);
-      const components = buildButtons(data, input.presetId);
       const messageService = getMessageService(input.bot);
 
-      const result = await messageService.edit({
-        channelId,
-        messageId,
-        content: data.content ?? null,
-        embeds: embed ?? null,
-        components: components ?? null,
-      });
+      const result = await messageService.edit(
+        toEditOptions(built, channelId, messageId),
+      );
 
       if (!result.success) {
-        throw trpcError.internal(result.error ?? "Failed to edit embed");
+        throw trpcError.internal(result.error ?? "Failed to edit message");
       }
 
       if (input.presetId) {
         await Q.discord.embed.preset.update(
           { id: input.presetId },
-          { data: input.embed as EmbedData as Record<string, unknown> },
+          { data: payloadToStorage(input).data },
         );
       }
 
       await Q.admin.log.action.logAction({
         ...auditActor(ctx),
         actionType: "embed_edit",
-        description: `Edited embed ${messageId} in channel ${channelId}`,
-        metadata: { channelId, messageId, presetId: input.presetId },
+        description: `Edited message ${messageId} in channel ${channelId}`,
+        metadata: {
+          channelId,
+          messageId,
+          kind: input.kind,
+          presetId: input.presetId,
+        },
       });
 
       return { messageId: result.messageId };

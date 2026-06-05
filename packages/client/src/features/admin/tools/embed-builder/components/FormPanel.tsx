@@ -929,13 +929,14 @@ function ButtonRow({
           <Input
             value={item.btn.emoji ?? ""}
             placeholder="🔗"
-            maxLength={4}
+            maxLength={64}
+            title="A unicode emoji, or a custom emoji as <:name:id>"
             onChange={(e) =>
               item.kind === "link"
                 ? onChangeLink({ emoji: e.target.value || undefined })
                 : onChangeAction({ emoji: e.target.value || undefined })
             }
-            className="h-8 w-12 text-center text-[13px]"
+            className="h-8 w-16 text-center text-[13px]"
           />
           <Input
             ref={labelRef}

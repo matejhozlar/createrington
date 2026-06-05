@@ -1,0 +1,2 @@
+CREATE TYPE "public"."discord_embed_preset_kind" AS ENUM('embed', 'components');--> statement-breakpoint
+ALTER TABLE "discord_embed_preset" ADD COLUMN "kind" "discord_embed_preset_kind" DEFAULT 'embed' NOT NULL;

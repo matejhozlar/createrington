@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { embedDataSchema } from "@createrington/shared/api/embed";
+import {
+  embedDataSchema,
+  componentsDataSchema,
+} from "@createrington/shared/api/embed";
 import type { UseEmbedBuilder } from "../hooks/use-embed-builder";
 import { SendModal } from "./SendModal";
 import { SaveAsNewModal } from "./SaveAsNewModal";
@@ -27,6 +30,9 @@ interface TopbarProps {
 
 export function Topbar({ builder }: TopbarProps) {
   const {
+    kind,
+    components,
+    setComponents,
     presetName,
     setPresetName,
     activePreset,
@@ -42,7 +48,11 @@ export function Topbar({ builder }: TopbarProps) {
   const [saveOpen, setSaveOpen] = useState(false);
 
   function handleCopyJson() {
-    navigator.clipboard.writeText(JSON.stringify(externalData, null, 2));
+    const json =
+      kind === "components"
+        ? JSON.stringify({ components }, null, 2)
+        : JSON.stringify(externalData, null, 2);
+    navigator.clipboard.writeText(json);
     toast.success("Copied to clipboard");
   }
 
@@ -60,6 +70,19 @@ export function Topbar({ builder }: TopbarProps) {
       raw = JSON.parse(text);
     } catch {
       toast.error("Clipboard doesn't contain valid JSON");
+      return;
+    }
+
+    if (kind === "components") {
+      const result = componentsDataSchema.safeParse(raw);
+      if (!result.success) {
+        toast.error(
+          "Clipboard isn't a valid components message — make sure you copied one exported from this tool",
+        );
+        return;
+      }
+      setComponents(result.data.components);
+      toast.success("Components imported from clipboard");
       return;
     }
 

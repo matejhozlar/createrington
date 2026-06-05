@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { useToastActions } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import {
   INSERT_EMBED_EVENT,
   PENDING_EMBED_KEY,
 } from "@/features/admin-chat/actions";
-import type { EmbedData } from "@createrington/shared/api/embed";
+import type { EmbedData, PresetKind } from "@createrington/shared/api/embed";
 import { useEmbedBuilder } from "./hooks/use-embed-builder";
 import { PresetSidebar } from "./components/PresetSidebar";
 import { Topbar } from "./components/Topbar";
 import { FormPanel } from "./components/FormPanel";
 import { EmbedPreview } from "./components/EmbedPreview";
 import { LinkedMessages } from "./components/LinkedMessages";
+import { ComponentsPreview } from "./components-v2/ComponentsPreview";
+import { ComponentTreeEditor } from "./components-v2/ComponentTreeEditor";
 import type { FocusTarget } from "./focus";
 
 function normalizePartialEmbed(raw: unknown): Partial<EmbedData> {
@@ -181,14 +184,22 @@ export function EmbedBuilder() {
         <main className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-background p-4 md:p-6 lg:flex-row lg:overflow-hidden lg:p-0">
           <section className="flex flex-1 flex-col gap-3 lg:overflow-y-auto lg:p-6">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Preview
-              </span>
+              <ModeToggle
+                kind={builder.kind}
+                onChange={builder.setKind}
+                disabled={!!builder.activePreset}
+              />
               <span className="text-xs text-muted-foreground">
-                Click anything to edit
+                {builder.kind === "components"
+                  ? "Components V2 message"
+                  : "Click anything to edit"}
               </span>
             </div>
-            <EmbedPreview data={externalData} editable onEdit={handleEdit} />
+            {builder.kind === "components" ? (
+              <ComponentsPreview components={builder.components} />
+            ) : (
+              <EmbedPreview data={externalData} editable onEdit={handleEdit} />
+            )}
             {builder.activePreset && (
               <div className="mt-2">
                 <LinkedMessages builder={builder} />
@@ -197,15 +208,56 @@ export function EmbedBuilder() {
           </section>
 
           <aside className="flex w-full shrink-0 flex-col border-t border-border bg-card lg:w-[380px] lg:border-l lg:border-t-0">
-            <FormPanel
-              data={externalData}
-              onChange={builder.setEmbedData}
-              focused={focused}
-              setFocused={setFocused}
-            />
+            {builder.kind === "components" ? (
+              <ComponentTreeEditor builder={builder} />
+            ) : (
+              <FormPanel
+                data={externalData}
+                onChange={builder.setEmbedData}
+                focused={focused}
+                setFocused={setFocused}
+              />
+            )}
           </aside>
         </main>
       </div>
+    </div>
+  );
+}
+
+const MODE_LABELS: Record<PresetKind, string> = {
+  embed: "Classic embed",
+  components: "Components V2",
+};
+
+function ModeToggle({
+  kind,
+  onChange,
+  disabled,
+}: {
+  kind: PresetKind;
+  onChange: (kind: PresetKind) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="inline-flex rounded-md border border-border p-0.5">
+      {(["embed", "components"] as const).map((k) => (
+        <button
+          key={k}
+          type="button"
+          disabled={disabled && kind !== k}
+          onClick={() => onChange(k)}
+          className={cn(
+            "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+            kind === k
+              ? "bg-accent text-foreground"
+              : "text-muted-foreground hover:text-foreground",
+            disabled && kind !== k && "cursor-not-allowed opacity-40",
+          )}
+        >
+          {MODE_LABELS[k]}
+        </button>
+      ))}
     </div>
   );
 }
