@@ -29,7 +29,7 @@ export interface MaintenanceAnnouncement {
 export interface FeatureSpotlight {
   title: string;
   description: string;
-  imageUrls: string[];
+  imageUrls: [string, ...string[]];
   learnMoreUrl?: string;
   /** Add the info-colored stripe (off by default) */
   accent?: boolean;

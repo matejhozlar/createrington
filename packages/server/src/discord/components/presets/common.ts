@@ -6,12 +6,10 @@ import type {
   ComponentsData,
 } from "@createrington/shared/api/embed";
 
-/** When `accent` is set, attach the semantic stripe; otherwise stay stripeless. */
 function stripe(accentColor: number, accent?: boolean) {
   return accent ? { accentColor } : {};
 }
 
-/** Toggle the optional colored stripe on a common preset (off by default). */
 type AccentOptions = { accent?: boolean };
 
 /**

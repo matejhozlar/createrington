@@ -208,10 +208,6 @@ export function validateComponentsV2(data: ComponentsData): string | null {
   return null;
 }
 
-// Node constructors for data-first authoring. Each returns a plain node object
-// that `componentsDataSchema.parse` accepts, so callers compose trees by hand
-// without touching discord.js builders.
-
 export function text(content: string): ComponentTextDisplay {
   return { type: "text", content };
 }
