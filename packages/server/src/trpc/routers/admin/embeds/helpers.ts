@@ -21,7 +21,7 @@ import {
   buildComponentsV2,
   validateComponentsV2,
   type TopLevelComponent,
-} from "./components";
+} from "@/discord/components";
 
 export const embedSendLimit = createRateLimit({
   name: "admin.embeds.send",
