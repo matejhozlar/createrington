@@ -173,13 +173,13 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
     }
     case "container": {
       let count = 1;
-      let text = 0;
+      let textLength = 0;
       for (const child of node.components) {
         const childMeasure = measure(child);
         count += childMeasure.count;
-        text += childMeasure.text;
+        textLength += childMeasure.text;
       }
-      return { count, text };
+      return { count, text: textLength };
     }
   }
 }
