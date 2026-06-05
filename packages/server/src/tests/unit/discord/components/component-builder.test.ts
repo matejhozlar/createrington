@@ -1,10 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { ComponentType, SeparatorSpacingSize } from "discord.js";
+import { ComponentType, MessageFlags, SeparatorSpacingSize } from "discord.js";
 import { componentsDataSchema } from "@createrington/shared/api/embed";
 import {
+  actionRow,
+  buildComponentsMessage,
   buildComponentsV2,
+  container,
+  linkButton,
+  mediaGallery,
+  section,
+  separator,
+  text,
+  thumbnail,
   validateComponentsV2,
-} from "@/trpc/routers/admin/embeds/components";
+} from "@/discord/components";
 
 const sampleTree = componentsDataSchema.parse({
   components: [
@@ -117,5 +126,88 @@ describe("validateComponentsV2", () => {
       ],
     });
     expect(validateComponentsV2(tree)).toMatch(/Too much text/);
+  });
+});
+
+describe("node constructors", () => {
+  it("apply schema defaults so the tree parses without extra fields", () => {
+    const tree = {
+      components: [
+        container(
+          [
+            text("Body"),
+            separator(),
+            section(
+              ["Section body"],
+              thumbnail("https://example.com/thumb.png"),
+            ),
+            mediaGallery([{ url: "https://example.com/image.png" }]),
+            actionRow([linkButton("Open", "https://example.com", "🔗")]),
+          ],
+          { accentColor: 0x5865f2 },
+        ),
+      ],
+    };
+
+    expect(() => componentsDataSchema.parse(tree)).not.toThrow();
+  });
+
+  it("set separator defaults to a small divider", () => {
+    expect(separator()).toEqual({
+      type: "separator",
+      divider: true,
+      spacing: 1,
+    });
+  });
+
+  it("omit the button emoji when none is given", () => {
+    expect(linkButton("Open", "https://example.com")).toEqual({
+      type: "button",
+      label: "Open",
+      url: "https://example.com",
+    });
+  });
+
+  it("accept raw strings or text nodes as section bodies", () => {
+    const built = section(["a", text("b")], {
+      type: "button",
+      label: "Go",
+      url: "https://example.com",
+    });
+    expect(built.components).toEqual([
+      { type: "text", content: "a" },
+      { type: "text", content: "b" },
+    ]);
+  });
+
+  it("default thumbnail spoiler to false", () => {
+    expect(thumbnail("https://example.com/t.png")).toMatchObject({
+      type: "thumbnail",
+      url: "https://example.com/t.png",
+      spoiler: false,
+    });
+  });
+});
+
+describe("buildComponentsMessage", () => {
+  it("returns top-level builders and the Components V2 flag", () => {
+    const result = buildComponentsMessage({
+      components: [container([text("Hello")], { accentColor: 0x5865f2 })],
+    });
+
+    expect(result.flags).toBe(MessageFlags.IsComponentsV2);
+    expect(result.components).toHaveLength(1);
+    expect(result.components[0].toJSON().type).toBe(ComponentType.Container);
+  });
+
+  it("throws when the tree exceeds the aggregate limits", () => {
+    expect(() =>
+      buildComponentsMessage({
+        components: [
+          { type: "text", content: "a".repeat(2500) },
+          { type: "text", content: "b".repeat(2500) },
+        ],
+      }),
+    ).toThrow(/Too much text/);
   });
 });

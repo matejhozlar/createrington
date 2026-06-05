@@ -5,6 +5,7 @@ import {
   ContainerBuilder,
   MediaGalleryBuilder,
   MediaGalleryItemBuilder,
+  MessageFlags,
   SectionBuilder,
   SeparatorBuilder,
   SeparatorSpacingSize,
@@ -14,6 +15,7 @@ import {
 import {
   COMPONENTS_V2_MAX_COMPONENTS,
   COMPONENTS_V2_MAX_TEXT,
+  componentsDataSchema,
   type ComponentActionRow,
   type ComponentButton,
   type ComponentContainer,
@@ -127,6 +129,7 @@ function buildContainer(container: ComponentContainer): ContainerBuilder {
   return builder;
 }
 
+/** Translate a validated Components V2 tree into top-level discord.js builders. */
 export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
   return data.components.map((node) => {
     switch (node.type) {
@@ -181,6 +184,7 @@ function measure(node: AnyComponentNode): { count: number; text: number } {
   }
 }
 
+/** Enforce Discord's aggregate component/text ceilings; returns an error string or null. */
 export function validateComponentsV2(data: ComponentsData): string | null {
   if (data.components.length === 0) {
     return "Add at least one component";
@@ -202,4 +206,105 @@ export function validateComponentsV2(data: ComponentsData): string | null {
   }
 
   return null;
+}
+
+// Node constructors for data-first authoring. Each returns a plain node object
+// that `componentsDataSchema.parse` accepts, so callers compose trees by hand
+// without touching discord.js builders.
+
+export function text(content: string): ComponentTextDisplay {
+  return { type: "text", content };
+}
+
+export function separator(
+  options: { divider?: boolean; spacing?: 1 | 2 } = {},
+): ComponentSeparator {
+  return {
+    type: "separator",
+    divider: options.divider ?? true,
+    spacing: options.spacing ?? 1,
+  };
+}
+
+export function linkButton(
+  label: string,
+  url: string,
+  emoji?: string,
+): ComponentButton {
+  return emoji
+    ? { type: "button", label, url, emoji }
+    : { type: "button", label, url };
+}
+
+export function thumbnail(
+  url: string,
+  options: { description?: string; spoiler?: boolean } = {},
+): ComponentThumbnail {
+  return {
+    type: "thumbnail",
+    url,
+    description: options.description,
+    spoiler: options.spoiler ?? false,
+  };
+}
+
+export function mediaGallery(
+  items: Array<{ url: string; description?: string; spoiler?: boolean }>,
+): ComponentMediaGallery {
+  return {
+    type: "media_gallery",
+    items: items.map((item) => ({
+      url: item.url,
+      description: item.description,
+      spoiler: item.spoiler ?? false,
+    })),
+  };
+}
+
+export function actionRow(buttons: ComponentButton[]): ComponentActionRow {
+  return { type: "action_row", components: buttons };
+}
+
+export function section(
+  texts: Array<string | ComponentTextDisplay>,
+  accessory: ComponentSection["accessory"],
+): ComponentSection {
+  return {
+    type: "section",
+    components: texts.map((t) => (typeof t === "string" ? text(t) : t)),
+    accessory,
+  };
+}
+
+export function container(
+  children: ComponentContainer["components"],
+  options: { accentColor?: number; spoiler?: boolean } = {},
+): ComponentContainer {
+  return {
+    type: "container",
+    accentColor: options.accentColor,
+    spoiler: options.spoiler ?? false,
+    components: children,
+  };
+}
+
+/**
+ * Validate a data-first Components V2 tree and produce send-ready pieces.
+ * Applies schema defaults, enforces the aggregate limits, and returns the
+ * top-level builders plus the `IS_COMPONENTS_V2` flag for `messageService.send`.
+ * Throws if the tree is invalid (a programming error for in-code callers).
+ */
+export function buildComponentsMessage(data: ComponentsData): {
+  components: TopLevelComponent[];
+  flags: number;
+} {
+  const parsed = componentsDataSchema.parse(data);
+  const error = validateComponentsV2(parsed);
+  if (error) {
+    throw new Error(`Invalid Components V2 message: ${error}`);
+  }
+  return {
+    components: buildComponentsV2(parsed),
+    flags: MessageFlags.IsComponentsV2,
+  };
 }
