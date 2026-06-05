@@ -6,37 +6,61 @@ import type {
   ComponentsData,
 } from "@createrington/shared/api/embed";
 
+/** When `accent` is set, attach the semantic stripe; otherwise stay stripeless. */
+function stripe(accentColor: number, accent?: boolean) {
+  return accent ? { accentColor } : {};
+}
+
+/** Toggle the optional colored stripe on a common preset (off by default). */
+type AccentOptions = { accent?: boolean };
+
 /**
  * Reusable Components V2 presets for common response patterns. Each returns a
  * `ComponentsData` tree; pass it to `buildComponentsMessage` before sending.
+ * Containers are stripeless by default; pass `{ accent: true }` to add the
+ * semantic colored stripe.
  */
 export const CommonComponentPresets = {
-  /** A green-accented success container */
-  success(title: string, description?: string): ComponentsData {
+  /** A success container, optionally green-accented */
+  success(
+    title: string,
+    description?: string,
+    options: AccentOptions = {},
+  ): ComponentsData {
     const children: ComponentContainer["components"] = [
       text(`✅ **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
       components: [
-        container(children, { accentColor: ComponentColors.Success }),
+        container(children, stripe(ComponentColors.Success, options.accent)),
       ],
     };
   },
 
-  /** A red-accented error container */
-  error(title: string, description?: string): ComponentsData {
+  /** An error container, optionally red-accented */
+  error(
+    title: string,
+    description?: string,
+    options: AccentOptions = {},
+  ): ComponentsData {
     const children: ComponentContainer["components"] = [
       text(`❌ **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
-      components: [container(children, { accentColor: ComponentColors.Error })],
+      components: [
+        container(children, stripe(ComponentColors.Error, options.accent)),
+      ],
     };
   },
 
-  /** A red-accented error container with an admin contact prompt appended */
-  errorWithAdmin(title: string, description?: string): ComponentsData {
+  /** An error container with an admin contact prompt appended */
+  errorWithAdmin(
+    title: string,
+    description?: string,
+    options: AccentOptions = {},
+  ): ComponentsData {
     const contact = `If this issue persists, please contact ${Discord.Roles.mention(
       Discord.Roles.ADMIN,
     )}`;
@@ -46,46 +70,62 @@ export const CommonComponentPresets = {
     if (description) children.push(text(description));
     children.push(text(contact));
     return {
-      components: [container(children, { accentColor: ComponentColors.Error })],
+      components: [
+        container(children, stripe(ComponentColors.Error, options.accent)),
+      ],
     };
   },
 
-  /** A blue-accented info container */
-  info(title: string, description?: string): ComponentsData {
+  /** An info container, optionally blue-accented */
+  info(
+    title: string,
+    description?: string,
+    options: AccentOptions = {},
+  ): ComponentsData {
     const children: ComponentContainer["components"] = [
       text(`ℹ️ **${title}**`),
     ];
     if (description) children.push(text(description));
     return {
-      components: [container(children, { accentColor: ComponentColors.Info })],
+      components: [
+        container(children, stripe(ComponentColors.Info, options.accent)),
+      ],
     };
   },
 
-  /** A bare container with optional title, description, and accent override */
-  plain(data: {
-    title?: string;
-    description?: string;
-    accentColor?: number;
-  }): ComponentsData {
+  /** A bare container with a title and/or description and an optional stripe */
+  plain(
+    data: { accentColor?: number } & (
+      | { title: string; description?: string }
+      | { title?: string; description: string }
+    ),
+  ): ComponentsData {
     const children: ComponentContainer["components"] = [];
     if (data.title) children.push(text(`**${data.title}**`));
     if (data.description) children.push(text(data.description));
     return {
       components: [
-        container(children, {
-          accentColor: data.accentColor ?? ComponentColors.Info,
-        }),
+        container(
+          children,
+          data.accentColor !== undefined
+            ? { accentColor: data.accentColor }
+            : {},
+        ),
       ],
     };
   },
 
-  /** A loading/processing container */
-  loading(message: string = "Processing..."): ComponentsData {
+  /** A loading/processing container, optionally gray-accented */
+  loading(
+    message: string = "Processing...",
+    options: AccentOptions = {},
+  ): ComponentsData {
     return {
       components: [
-        container([text("⏳ **Please wait**"), text(message)], {
-          accentColor: ComponentColors.Info,
-        }),
+        container(
+          [text("⏳ **Please wait**"), text(message)],
+          stripe(ComponentColors.Loading, options.accent),
+        ),
       ],
     };
   },

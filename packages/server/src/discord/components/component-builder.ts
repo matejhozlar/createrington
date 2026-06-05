@@ -243,7 +243,9 @@ export function thumbnail(
   return {
     type: "thumbnail",
     url,
-    description: options.description,
+    ...(options.description !== undefined && {
+      description: options.description,
+    }),
     spoiler: options.spoiler ?? false,
   };
 }
@@ -255,7 +257,7 @@ export function mediaGallery(
     type: "media_gallery",
     items: items.map((item) => ({
       url: item.url,
-      description: item.description,
+      ...(item.description !== undefined && { description: item.description }),
       spoiler: item.spoiler ?? false,
     })),
   };
@@ -282,7 +284,9 @@ export function container(
 ): ComponentContainer {
   return {
     type: "container",
-    accentColor: options.accentColor,
+    ...(options.accentColor !== undefined && {
+      accentColor: options.accentColor,
+    }),
     spoiler: options.spoiler ?? false,
     components: children,
   };

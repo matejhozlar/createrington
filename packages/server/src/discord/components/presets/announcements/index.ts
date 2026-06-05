@@ -22,6 +22,8 @@ export interface MaintenanceAnnouncement {
   estimatedMinutes: number;
   iconUrl?: string;
   statusUrl?: string;
+  /** Add the warning-colored stripe (off by default) */
+  accent?: boolean;
 }
 
 export interface FeatureSpotlight {
@@ -29,6 +31,8 @@ export interface FeatureSpotlight {
   description: string;
   imageUrls: string[];
   learnMoreUrl?: string;
+  /** Add the info-colored stripe (off by default) */
+  accent?: boolean;
 }
 
 /** Components V2 presets for server-wide announcements */
@@ -59,7 +63,10 @@ export const AnnouncementComponentPresets = {
 
     return {
       components: [
-        container(children, { accentColor: ComponentColors.Warning }),
+        container(
+          children,
+          data.accent ? { accentColor: ComponentColors.Warning } : {},
+        ),
       ],
     };
   },
@@ -78,7 +85,12 @@ export const AnnouncementComponentPresets = {
     }
 
     return {
-      components: [container(children, { accentColor: ComponentColors.Info })],
+      components: [
+        container(
+          children,
+          data.accent ? { accentColor: ComponentColors.Info } : {},
+        ),
+      ],
     };
   },
 };
