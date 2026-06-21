@@ -5,6 +5,7 @@ import { BadRequestError, ConflictError } from "@/app/middleware";
 import { Discord } from "@/discord/constants";
 import { getService, Services } from "@/services";
 import config from "@/config";
+import { pickWeightedWinner } from "./weighted-winner";
 import type {
   ActiveLottery,
   LotteryParticipant,
@@ -253,7 +254,7 @@ export class LotteryService {
           `Lottery cancelled, refunded ${solo.minecraftUsername} $${solo.amount}`,
         );
       } else {
-        const winner = this.pickWeightedWinner(participants);
+        const winner = pickWeightedWinner(participants);
 
         await R.balanceRepo.add(
           winner.minecraftUuid,
@@ -284,23 +285,6 @@ export class LotteryService {
       this.activeLottery = null;
       this.resolving = false;
     }
-  }
-
-  private pickWeightedWinner(
-    participants: LotteryParticipant[],
-  ): LotteryParticipant {
-    const totalWeight = participants.reduce((sum, p) => sum + p.amount, 0);
-    let random = Math.random() * totalWeight;
-
-    for (const participant of participants) {
-      random -= participant.amount;
-      if (random <= 0) {
-        return participant;
-      }
-    }
-
-    // Fallback (should not happen)
-    return participants[participants.length - 1];
   }
 
   private announceToDiscord(message: string): void {
