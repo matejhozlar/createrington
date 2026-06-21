@@ -23,6 +23,9 @@ import {
 } from "@/app/middleware/error-handler";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
+import { updateTreasury } from "./treasury";
+import { getLifetimeTradeCount } from "./lifetime-trades";
+import { getReservedTokens } from "./reservations";
 import { recordTradeVolume } from "../engine/price-engine";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import { cryptoSetting } from "../settings/accessor";
@@ -65,6 +68,10 @@ export function getCooldownExpiresAt(
 /**
  * Enforces a per-token trade cooldown per player (matches old system's 3-minute per-token cooldown).
  *
+ * Read-only: it never starts a new cooldown. The cooldown is only armed by
+ * `recordTradeCooldown` after a trade commits, so a failed trade does not lock
+ * the player out.
+ *
  * @private
  * @param playerUuid - Minecraft UUID of the player to check
  * @param tokenId - Token being traded
@@ -89,8 +96,17 @@ function checkRateLimit(
       `Trade cooldown: wait ${remainingSeconds}s before trading ${tokenSymbol} again`,
     );
   }
+}
 
-  cooldownMap.set(key, now);
+/**
+ * Arms the per-token cooldown for a player after a trade has committed.
+ *
+ * @private
+ * @param playerUuid - Minecraft UUID of the player
+ * @param tokenId - Token that was traded
+ */
+function recordTradeCooldown(playerUuid: string, tokenId: number): void {
+  cooldownMap.set(`${playerUuid}:${tokenId}`, Date.now());
 }
 
 /**
@@ -140,22 +156,6 @@ async function checkWhaleAlert(
       logger.error("Failed to send whale alert notification:", err),
     );
   }
-}
-
-/**
- * Returns the total number of trades a player has ever executed.
- *
- * Used by the fee calculator to apply volume-based discounts.
- *
- * @private
- * @param playerUuid - Minecraft UUID of the player
- * @returns Total lifetime trade count
- */
-async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
-  const result = await Q.crypto.transaction.count({
-    playerMinecraftUuid: playerUuid,
-  });
-  return result;
 }
 
 /**
@@ -369,7 +369,7 @@ export async function executeBuy(
     });
 
     if (feeAmount > 0) {
-      await updateTreasury(feeAmount, freshToken.category, tx);
+      await updateTreasury(feeAmount, freshToken.category, tx.crypto);
     }
 
     return {
@@ -383,6 +383,9 @@ export async function executeBuy(
       totalCost,
     };
   });
+
+  // Arm the cooldown only now that the trade has committed
+  recordTradeCooldown(playerUuid, token.id);
 
   // Fire-and-forget side effects (outside transaction)
   recordTradeVolume(token.id, Number(amount), true);
@@ -446,9 +449,19 @@ export async function executeSell(
       })
       .first();
 
-    if (!holding || holding.amount < amount) {
+    // Tokens backing pending sell orders are reserved and cannot be market-sold
+    const reservedTokens = await getReservedTokens(
+      playerUuid,
+      freshToken.id,
+      tx.crypto,
+    );
+    const availableToSell = (holding?.amount ?? 0n) - reservedTokens;
+
+    if (!holding || availableToSell < amount) {
       throw new ConflictError(
-        `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
+        reservedTokens > 0n
+          ? `Insufficient unreserved holdings: ${availableToSell > 0n ? availableToSell : 0n} ${freshToken.symbol} available (${reservedTokens} reserved in pending sell orders)`
+          : `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
       );
     }
 
@@ -526,7 +539,7 @@ export async function executeSell(
     });
 
     if (feeAmount > 0) {
-      await updateTreasury(feeAmount, freshToken.category, tx);
+      await updateTreasury(feeAmount, freshToken.category, tx.crypto);
     }
 
     return {
@@ -541,6 +554,9 @@ export async function executeSell(
     };
   });
 
+  // Arm the cooldown only now that the trade has committed
+  recordTradeCooldown(playerUuid, token.id);
+
   // Fire-and-forget side effects (outside transaction)
   recordTradeVolume(token.id, Number(amount), false);
   checkWhaleAlert(
@@ -553,46 +569,4 @@ export async function executeSell(
   triggerTradeAchievements(playerUuid, token, tradeResult);
 
   return tradeResult;
-}
-
-/**
- * Updates the fee treasury with the fee collected from a trade.
- * For memecoins, a portion of the fee is burned (removed from circulation)
- * based on FEES.BURN_RATIO; the remainder is credited as collected.
- *
- * @private
- * @param feeAmount - Total fee amount in in-game currency
- * @param category - Token category ("memecoin", "stable", "blue_chip") used to determine burn ratio
- * @param txOverride - Optional transaction-bound DatabaseQueries for atomic operations
- */
-async function updateTreasury(
-  feeAmount: number,
-  category: string,
-  txOverride?: DatabaseQueries,
-): Promise<void> {
-  const burnAmount =
-    category === "memecoin" ? feeAmount * cryptoSetting("FEES.BURN_RATIO") : 0;
-  const collectedAmount = feeAmount - burnAmount;
-
-  const crypto = txOverride ? txOverride.crypto : Q.crypto;
-
-  // Treasury is a singleton row: create it on first fee collection if absent
-  const treasury = await crypto.treasury.where({}).first();
-  if (treasury) {
-    await crypto.treasury.update(
-      { id: treasury.id },
-      {
-        totalCollected: (
-          Number(treasury.totalCollected) + collectedAmount
-        ).toFixed(8),
-        totalBurned: (Number(treasury.totalBurned) + burnAmount).toFixed(8),
-        updatedAt: new Date(),
-      },
-    );
-  } else {
-    await crypto.treasury.create({
-      totalCollected: collectedAmount.toFixed(8),
-      totalBurned: burnAmount.toFixed(8),
-    });
-  }
 }
