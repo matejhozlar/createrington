@@ -4,16 +4,19 @@
  */
 
 import { db, Q, R } from "@/db";
-import type { DatabaseQueries } from "@/generated/db";
 import { BalanceTransactionType } from "@/db/repositories/balance";
 import {
   BadRequestError,
   ConflictError,
   ForbiddenError,
+  NotFoundError,
 } from "@/app/middleware/error-handler";
 import { cryptoSetting } from "../settings/accessor";
 import { calculateFee } from "./fee-calculator";
 import { recordCostBasisLot, consumeCostBasis } from "./cost-basis-tracker";
+import { updateTreasury } from "./treasury";
+import { getLifetimeTradeCount } from "./lifetime-trades";
+import { getReservedTokens } from "./reservations";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import type { CryptoOrder } from "@createrington/shared/db/crypto_order.types";
 import type { CryptoOrderType } from "@createrington/shared/db/database.types";
@@ -217,31 +220,39 @@ export async function cancelOrder(
   playerUuid: string,
   orderId: number,
 ): Promise<void> {
-  const order = await Q.crypto.order.get({ id: orderId });
+  await db.inTransaction(async (tx) => {
+    const order = await tx.crypto.order.lockForUpdate(orderId);
 
-  if (order.playerMinecraftUuid !== playerUuid) {
-    throw new ForbiddenError("Order does not belong to this player");
-  }
-  if (order.status !== "pending") {
-    throw new ConflictError(`Cannot cancel order with status: ${order.status}`);
-  }
+    if (!order) {
+      throw new NotFoundError(`Order ${orderId} not found`);
+    }
+    if (order.playerMinecraftUuid !== playerUuid) {
+      throw new ForbiddenError("Order does not belong to this player");
+    }
+    if (order.status !== "pending") {
+      throw new ConflictError(
+        `Cannot cancel order with status: ${order.status}`,
+      );
+    }
 
-  const token = await Q.crypto.token.get({ id: order.tokenId });
+    const token = await tx.crypto.token.get({ id: order.tokenId });
 
-  await Q.crypto.order.update(
-    { id: orderId },
-    { status: "cancelled", cancelledAt: new Date() },
-  );
-
-  if (order.type === "limit_buy" && Number(order.reservedBalance) > 0) {
-    await R.balanceRepo.add(
-      { minecraftUuid: playerUuid },
-      Number(order.reservedBalance),
-      `Crypto order cancelled: refund for ${token.symbol} limit buy`,
-      BalanceTransactionType.CRYPTO_BUY,
-      { orderId, refund: true },
+    await tx.crypto.order.update(
+      { id: orderId },
+      { status: "cancelled", cancelledAt: new Date() },
     );
-  }
+
+    if (order.type === "limit_buy" && Number(order.reservedBalance) > 0) {
+      await R.balanceRepo.add(
+        { minecraftUuid: playerUuid },
+        Number(order.reservedBalance),
+        `Crypto order cancelled: refund for ${token.symbol} limit buy`,
+        BalanceTransactionType.CRYPTO_BUY,
+        { orderId, refund: true },
+        tx,
+      );
+    }
+  });
 }
 
 /**
@@ -289,14 +300,22 @@ export async function checkAndFillOrders(
       if (shouldFill) {
         try {
           const result = await fillOrder(order, token);
-          results.push(result);
+          if (result) results.push(result);
         } catch (error) {
           logger.error(
             `Failed to fill order ${order.id} for ${token.symbol}:`,
             error,
           );
-          // Cancel the order if it can't be filled (e.g., insufficient supply)
-          await cancelOrder(order.playerMinecraftUuid, order.id);
+          // Cancel the order if it can't be filled (e.g., insufficient supply).
+          // A concurrent cancel/expiry may already have closed it, so a failure
+          // here must not abort the remaining fills.
+          await cancelOrder(order.playerMinecraftUuid, order.id).catch(
+            (cancelError) =>
+              logger.error(
+                `Failed to cancel unfillable order ${order.id}:`,
+                cancelError,
+              ),
+          );
         }
       }
     }
@@ -316,26 +335,36 @@ export async function expireOrders(): Promise<number> {
   const now = new Date();
   let expiredCount = 0;
 
-  for (const order of pendingOrders) {
-    if (order.expiresAt <= now) {
-      await Q.crypto.order.update(
+  for (const candidate of pendingOrders) {
+    if (candidate.expiresAt > now) continue;
+
+    const expired = await db.inTransaction(async (tx) => {
+      const order = await tx.crypto.order.lockForUpdate(candidate.id);
+      if (!order || order.status !== "pending" || order.expiresAt > now) {
+        return false;
+      }
+
+      await tx.crypto.order.update(
         { id: order.id },
         { status: "expired", cancelledAt: now },
       );
 
       if (order.type === "limit_buy" && Number(order.reservedBalance) > 0) {
-        const token = await Q.crypto.token.get({ id: order.tokenId });
+        const token = await tx.crypto.token.get({ id: order.tokenId });
         await R.balanceRepo.add(
           { minecraftUuid: order.playerMinecraftUuid },
           Number(order.reservedBalance),
           `Crypto order expired: refund for ${token.symbol} limit buy`,
           BalanceTransactionType.CRYPTO_BUY,
           { orderId: order.id, expired: true },
+          tx,
         );
       }
 
-      expiredCount++;
-    }
+      return true;
+    });
+
+    if (expired) expiredCount++;
   }
 
   return expiredCount;
@@ -359,8 +388,11 @@ export async function getPlayerOrders(
 /**
  * @private Executes a triggered order at the current market price.
  *
- * The entire operation is wrapped in a database transaction with a
- * SELECT FOR UPDATE lock on the token row to prevent race conditions.
+ * The entire operation is wrapped in a database transaction that locks the
+ * order row (to serialize against cancel/expire) and the token row (to prevent
+ * concurrent supply races). The order is re-read under its lock and the fill is
+ * abandoned if it is no longer pending, so a concurrent cancel or expiry can
+ * never coexist with a fill.
  *
  * For limit buys: deducts from reserved balance, upserts holding, records cost basis,
  * refunds any excess reservation. For sell-type orders: credits balance, consumes
@@ -368,12 +400,12 @@ export async function getPlayerOrders(
  *
  * @param order - The pending order to fill
  * @param token - Current token state (price used for execution)
- * @returns Fill result with execution details for notifications
+ * @returns Fill result with execution details, or null if the order was no longer pending
  */
 async function fillOrder(
   order: CryptoOrder,
   token: CryptoToken,
-): Promise<OrderFillResult> {
+): Promise<OrderFillResult | null> {
   const amount = order.amount;
   const amountNum = Number(amount);
   const lifetimeCount = await getLifetimeTradeCount(order.playerMinecraftUuid);
@@ -383,6 +415,11 @@ async function fillOrder(
       : order.type;
 
   return await db.inTransaction(async (tx) => {
+    const lockedOrder = await tx.crypto.order.lockForUpdate(order.id);
+    if (!lockedOrder || lockedOrder.status !== "pending") {
+      return null;
+    }
+
     const client = tx.getDb();
     await client.query("SELECT 1 FROM crypto_token WHERE id = $1 FOR UPDATE", [
       token.id,
@@ -464,6 +501,19 @@ async function fillOrder(
       }
     } else {
       // Sell execution (limit_sell, stop_loss, take_profit)
+      const holding = await tx.crypto.holding
+        .where({
+          playerMinecraftUuid: order.playerMinecraftUuid,
+          tokenId: freshToken.id,
+        })
+        .first();
+
+      if (!holding || holding.amount < amount) {
+        throw new ConflictError(
+          `Insufficient holdings to fill ${triggerType} sell: have ${holding?.amount ?? 0n} ${freshToken.symbol}, need ${amount}`,
+        );
+      }
+
       const rawRevenue = price * amountNum;
       feeAmount = calculateFee(rawRevenue, freshToken.category, lifetimeCount);
       const netRevenue = rawRevenue - feeAmount;
@@ -498,29 +548,20 @@ async function fillOrder(
       );
       realizedPnl = rawRevenue - costBasisConsumed;
 
-      const holding = await tx.crypto.holding
-        .where({
-          playerMinecraftUuid: order.playerMinecraftUuid,
-          tokenId: freshToken.id,
-        })
-        .first();
-
-      if (holding) {
-        const newAmount = holding.amount - amount;
-        if (newAmount <= 0n) {
-          await tx.crypto.holding.delete({ id: holding.id });
-        } else {
-          await tx.crypto.holding.update(
-            { id: holding.id },
-            {
-              amount: newAmount,
-              totalCostBasis: (
-                Number(holding.totalCostBasis) - costBasisConsumed
-              ).toFixed(8),
-              updatedAt: new Date(),
-            },
-          );
-        }
+      const newAmount = holding.amount - amount;
+      if (newAmount <= 0n) {
+        await tx.crypto.holding.delete({ id: holding.id });
+      } else {
+        await tx.crypto.holding.update(
+          { id: holding.id },
+          {
+            amount: newAmount,
+            totalCostBasis: (
+              Number(holding.totalCostBasis) - costBasisConsumed
+            ).toFixed(8),
+            updatedAt: new Date(),
+          },
+        );
       }
     }
 
@@ -543,7 +584,7 @@ async function fillOrder(
     );
 
     if (feeAmount > 0) {
-      await updateTreasury(feeAmount, freshToken.category, tx);
+      await updateTreasury(feeAmount, freshToken.category, tx.crypto);
     }
 
     return {
@@ -559,51 +600,4 @@ async function fillOrder(
       realizedPnl,
     };
   });
-}
-
-/** Queries the total number of trades a player has ever executed (for volume discounts) */
-async function getLifetimeTradeCount(playerUuid: string): Promise<number> {
-  return Q.crypto.transaction.count({ playerMinecraftUuid: playerUuid });
-}
-
-/** Sums reserved tokens across all pending sell-type orders for a player-token pair */
-async function getReservedTokens(
-  playerUuid: string,
-  tokenId: number,
-): Promise<bigint> {
-  const orders = await Q.crypto.order
-    .where({
-      playerMinecraftUuid: playerUuid,
-      tokenId,
-      status: "pending",
-    })
-    .all();
-
-  return orders.reduce((sum, o) => sum + o.reservedTokens, 0n);
-}
-
-/** Updates the fee treasury; for memecoins, a portion is burned based on FEES.BURN_RATIO */
-async function updateTreasury(
-  feeAmount: number,
-  category: string,
-  txOverride?: DatabaseQueries,
-): Promise<void> {
-  const burnAmount =
-    category === "memecoin" ? feeAmount * cryptoSetting("FEES.BURN_RATIO") : 0;
-  const collectedAmount = feeAmount - burnAmount;
-
-  const crypto = txOverride ? txOverride.crypto : Q.crypto;
-  const treasury = await crypto.treasury.where({}).first();
-  if (treasury) {
-    await crypto.treasury.update(
-      { id: treasury.id },
-      {
-        totalCollected: (
-          Number(treasury.totalCollected) + collectedAmount
-        ).toFixed(8),
-        totalBurned: (Number(treasury.totalBurned) + burnAmount).toFixed(8),
-        updatedAt: new Date(),
-      },
-    );
-  }
 }
