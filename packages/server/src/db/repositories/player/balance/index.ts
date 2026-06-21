@@ -1,6 +1,4 @@
-import { db, Q } from "@/db";
-import { BalanceUtils } from "../../balance/utils";
-import { BalanceTransactionType } from "../../balance";
+import { Q, balanceRepo } from "@/db";
 import { BasePlayerRepository } from "../base";
 
 /**
@@ -42,50 +40,26 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
 
         const newBalance =
           amount >= 0
-            ? await db.inTransaction(async (tx) => {
-                return await tx.player.balance.transaction.createAndReturn({
-                  playerMinecraftUuid: uuid,
-                  amount: BalanceUtils.toStorage(amount),
-                  balanceBefore: (
-                    await tx.player.balance.get({ minecraftUuid: uuid })
-                  ).balance,
-                  balanceAfter:
-                    (await tx.player.balance.get({ minecraftUuid: uuid }))
-                      .balance + BalanceUtils.toStorage(amount),
-                  transactionType: BalanceTransactionType.ADMIN_GRANT,
-                  description: reason,
-                  metadata: {
-                    adminDiscordId,
-                    adminUsername,
-                    bulkOperation: true,
-                  },
-                });
-              })
-            : await db.inTransaction(async (tx) => {
-                return await tx.player.balance.transaction.createAndReturn({
-                  playerMinecraftUuid: uuid,
-                  amount: BalanceUtils.toStorage(amount),
-                  balanceBefore: (
-                    await tx.player.balance.get({ minecraftUuid: uuid })
-                  ).balance,
-                  balanceAfter:
-                    (await tx.player.balance.get({ minecraftUuid: uuid }))
-                      .balance + BalanceUtils.toStorage(amount),
-                  transactionType: BalanceTransactionType.ADMIN_DEDUCT,
-                  description: reason,
-                  metadata: {
-                    adminDiscordId,
-                    adminUsername,
-                    bulkOperation: true,
-                  },
-                });
-              });
+            ? await balanceRepo.adminGrant(
+                uuid,
+                amount,
+                adminDiscordId,
+                adminUsername,
+                reason,
+              )
+            : await balanceRepo.adminDeduct(
+                uuid,
+                Math.abs(amount),
+                adminDiscordId,
+                adminUsername,
+                reason,
+              );
 
         results.push({
           playerUuid: uuid,
           playerUsername: player.minecraftUsername,
           success: true,
-          newBalance: BalanceUtils.fromStorage(newBalance.balanceAfter),
+          newBalance,
         });
       } catch (error) {
         results.push({

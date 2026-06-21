@@ -99,6 +99,10 @@ export const balanceRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      if (input.amount === 0) {
+        throw trpcError.badRequest("Amount cannot be zero");
+      }
+
       const results = await playerService.balance.bulkAdjust(
         input.playerUuids,
         input.amount,
