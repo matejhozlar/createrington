@@ -564,8 +564,9 @@ export class BalanceRepository {
       {
         limit,
         offset,
-        orderBy:
-          DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.CREATED_AT,
+        // Order by the serial id, not created_at: it is the insertion order and
+        // is unique, so rows written in the same tick still sort deterministically.
+        orderBy: DatabaseTable.PLAYER_BALANCE_TRANSACTION.CAMEL_FIELDS.ID,
         orderDirection: "desc",
       },
     );

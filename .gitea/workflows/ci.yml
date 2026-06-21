@@ -82,6 +82,43 @@ jobs:
       - name: Run server unit tests
         run: pnpm --filter @createrington/server test:unit
 
+  # test-integration:
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     postgres:
+  #       image: postgres:15
+  #       env:
+  #         POSTGRES_USER: postgres
+  #         POSTGRES_PASSWORD: postgres
+  #         POSTGRES_DB: createrington_db
+  #       ports:
+  #         - 5432:5432
+  #       options: >-
+  #         --health-cmd "pg_isready -U postgres"
+  #         --health-interval 10s
+  #         --health-timeout 5s
+  #         --health-retries 5
+  #   env:
+  #     DB_HOST: localhost
+  #     DB_PORT: "5432"
+  #     DB_USER: postgres
+  #     DB_PASSWORD: postgres
+  #     DB_DATABASE: createrington_db
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Setup
+  #       uses: ./.gitea/actions/setup
+
+  #     - name: Generate code
+  #       run: pnpm generate:ci
+
+  #     - name: Run migrations
+  #       run: pnpm --filter @createrington/server db:migrate
+
+  #     - name: Run server integration tests
+  #       run: pnpm --filter @createrington/server test:integration
+
   audit:
     runs-on: ubuntu-latest
     steps:
