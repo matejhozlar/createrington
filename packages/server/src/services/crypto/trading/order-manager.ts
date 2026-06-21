@@ -86,6 +86,30 @@ export async function placeOrder(
     throw new BadRequestError("Target price must be positive");
   }
 
+  const currentPrice = Number(token.price);
+  const target = Number(targetPrice);
+
+  if (type === "limit_buy" && target >= currentPrice) {
+    throw new BadRequestError(
+      `Limit buy price ($${target}) must be below current price ($${currentPrice})`,
+    );
+  }
+  if (type === "limit_sell" && target <= currentPrice) {
+    throw new BadRequestError(
+      `Limit sell price ($${target}) must be above current price ($${currentPrice})`,
+    );
+  }
+  if (type === "stop_loss" && target >= currentPrice) {
+    throw new BadRequestError(
+      `Stop-loss price ($${target}) must be below current price ($${currentPrice})`,
+    );
+  }
+  if (type === "take_profit" && target <= currentPrice) {
+    throw new BadRequestError(
+      `Take-profit price ($${target}) must be above current price ($${currentPrice})`,
+    );
+  }
+
   const pendingCount = await Q.crypto.order.count({
     playerMinecraftUuid: playerUuid,
     status: "pending",
@@ -104,41 +128,21 @@ export async function placeOrder(
 
   let reservedBalance = "0";
   let reservedTokens = 0n;
+  let totalReserve = 0;
 
   if (type === "limit_buy") {
-    // Reserve balance: amount × targetPrice + estimated fee
-    const lifetimeCount = await getLifetimeTradeCount(playerUuid);
-    const rawCost = Number(amount) * Number(targetPrice);
-    const fee = calculateFee(rawCost, token.category, lifetimeCount);
-    const totalReserve = rawCost + fee;
-    reservedBalance = totalReserve.toFixed(8);
-
-    await R.balanceRepo.deduct(
-      { minecraftUuid: playerUuid },
-      totalReserve,
-      `Crypto order: reserve for limit buy ${Number(amount)} ${token.symbol} @ $${targetPrice}`,
-      BalanceTransactionType.CRYPTO_BUY,
-      {
-        tokenId: token.id,
-        tokenSymbol: token.symbol,
-        orderType: type,
-        reserved: true,
-      },
-    );
-
     if (amount > token.availableSupply) {
-      // Refund and throw: not enough supply
-      await R.balanceRepo.add(
-        { minecraftUuid: playerUuid },
-        totalReserve,
-        `Crypto order: refund, insufficient supply for ${token.symbol}`,
-        BalanceTransactionType.CRYPTO_BUY,
-        { refund: true },
-      );
       throw new ConflictError(
         `Insufficient supply: only ${token.availableSupply} ${token.symbol} available`,
       );
     }
+
+    // Reserve balance: amount × targetPrice + estimated fee
+    const lifetimeCount = await getLifetimeTradeCount(playerUuid);
+    const rawCost = Number(amount) * Number(targetPrice);
+    const fee = calculateFee(rawCost, token.category, lifetimeCount);
+    totalReserve = rawCost + fee;
+    reservedBalance = totalReserve.toFixed(8);
   } else {
     // limit_sell, stop_loss, take_profit: reserve tokens
     reservedTokens = amount;
@@ -167,39 +171,33 @@ export async function placeOrder(
     }
   }
 
-  const currentPrice = Number(token.price);
-  const target = Number(targetPrice);
+  const order = await db.inTransaction(async (tx) => {
+    if (type === "limit_buy") {
+      await R.balanceRepo.deduct(
+        { minecraftUuid: playerUuid },
+        totalReserve,
+        `Crypto order: reserve for limit buy ${Number(amount)} ${token.symbol} @ $${targetPrice}`,
+        BalanceTransactionType.CRYPTO_BUY,
+        {
+          tokenId: token.id,
+          tokenSymbol: token.symbol,
+          orderType: type,
+          reserved: true,
+        },
+        tx,
+      );
+    }
 
-  if (type === "limit_buy" && target >= currentPrice) {
-    throw new BadRequestError(
-      `Limit buy price ($${target}) must be below current price ($${currentPrice})`,
-    );
-  }
-  if (type === "limit_sell" && target <= currentPrice) {
-    throw new BadRequestError(
-      `Limit sell price ($${target}) must be above current price ($${currentPrice})`,
-    );
-  }
-  if (type === "stop_loss" && target >= currentPrice) {
-    throw new BadRequestError(
-      `Stop-loss price ($${target}) must be below current price ($${currentPrice})`,
-    );
-  }
-  if (type === "take_profit" && target <= currentPrice) {
-    throw new BadRequestError(
-      `Take-profit price ($${target}) must be above current price ($${currentPrice})`,
-    );
-  }
-
-  const order = await Q.crypto.order.createAndReturn({
-    playerMinecraftUuid: playerUuid,
-    tokenId: token.id,
-    type,
-    amount,
-    targetPrice,
-    reservedBalance,
-    reservedTokens,
-    expiresAt,
+    return tx.crypto.order.createAndReturn({
+      playerMinecraftUuid: playerUuid,
+      tokenId: token.id,
+      type,
+      amount,
+      targetPrice,
+      reservedBalance,
+      reservedTokens,
+      expiresAt,
+    });
   });
 
   return {
