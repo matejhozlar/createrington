@@ -35,8 +35,10 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
     const results = [];
 
     for (const uuid of playerUuids) {
+      let playerUsername = "Unknown";
       try {
         const player = await Q.player.get({ minecraftUuid: uuid });
+        playerUsername = player.minecraftUsername;
 
         const newBalance =
           amount >= 0
@@ -57,14 +59,14 @@ export class PlayerBalanceRepository extends BasePlayerRepository {
 
         results.push({
           playerUuid: uuid,
-          playerUsername: player.minecraftUsername,
+          playerUsername,
           success: true,
           newBalance,
         });
       } catch (error) {
         results.push({
           playerUuid: uuid,
-          playerUsername: "Unknown",
+          playerUsername,
           success: false,
           error: error instanceof Error ? error.message : "Unknown error",
         });
