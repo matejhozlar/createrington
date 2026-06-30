@@ -163,6 +163,17 @@
   }
 }
 
+/* iOS Safari auto-zooms when focusing a form control whose font-size is below
+   16px. Enforce 16px on touch devices to suppress it. Unlayered so it wins
+   over Tailwind text-size utilities; scoped to touch so desktop sizing stays. */
+@media (hover: none) and (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* ============================================================================
    Render pages: shared background grid for OG-image renders
    ============================================================================ */

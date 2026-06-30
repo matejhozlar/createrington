@@ -108,6 +108,7 @@ export function ChatHeader({
               variant="ghost"
               onClick={onToggleExpand}
               aria-label={expanded ? "Collapse" : "Expand"}
+              className="hidden sm:inline-flex"
             >
               {expanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
             </Button>
