@@ -58,10 +58,12 @@ export function ChatPanel({
   return (
     <div
       className={cn(
-        "fixed right-5 bottom-20 z-[9999] flex max-h-[calc(100vh-7rem)] w-96 max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
+        "fixed z-[9999] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
         "animate-in fade-in slide-in-from-bottom-4 duration-200",
-        expanded && "h-[calc(100vh-7rem)] w-[32rem] max-w-[calc(100vw-2.5rem)]",
-        !expanded && "h-[32rem]",
+        "inset-x-2 top-2 bottom-2",
+        "sm:inset-x-auto sm:top-auto sm:right-5 sm:bottom-20 sm:max-h-[calc(100vh-7rem)] sm:w-96 sm:max-w-[calc(100vw-2.5rem)]",
+        expanded && "sm:h-[calc(100vh-7rem)] sm:w-[32rem]",
+        !expanded && "sm:h-[32rem]",
       )}
     >
       <ChatHeader

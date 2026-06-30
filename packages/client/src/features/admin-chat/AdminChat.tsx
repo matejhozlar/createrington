@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/auth";
 import { useAdminChat } from "@/contexts/admin-chat";
 import { ChatPanel } from "./components/ChatPanel";
@@ -47,11 +48,13 @@ export function AdminChat(): React.JSX.Element | null {
           navigate={navigate}
         />
       )}
-      <ChatToggle
-        open={drawerOpen}
-        unread={unread}
-        onToggle={() => (drawerOpen ? closeDrawer() : openDrawer())}
-      />
+      <div className={cn(drawerOpen && "hidden sm:block")}>
+        <ChatToggle
+          open={drawerOpen}
+          unread={unread}
+          onToggle={() => (drawerOpen ? closeDrawer() : openDrawer())}
+        />
+      </div>
     </div>
   );
 }
