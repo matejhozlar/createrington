@@ -1,5 +1,6 @@
 import type { Pool, PoolClient } from "pg";
 import { CryptoOrderBaseQueries } from "@/generated/db/crypto_order.queries";
+import type { CryptoOrder } from "@createrington/shared/db/crypto_order.types";
 
 /**
  * Custom queries for crypto_order table
@@ -13,13 +14,16 @@ export class CryptoOrderQueries extends CryptoOrderBaseQueries {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<CryptoOrder[]> {
-  //   const result = await this.db.query<CryptoOrder>(
-  //     `SELECT * FROM crypto_order WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /**
+   * Locks an order row FOR UPDATE and returns it (or null if it does not exist).
+   * Must be called inside a transaction so the lock serializes fill, cancel, and
+   * expire against each other for the same order.
+   */
+  async lockForUpdate(id: number): Promise<CryptoOrder | null> {
+    const rows = await this.raw(
+      "SELECT * FROM crypto_order WHERE id = $1 FOR UPDATE",
+      [id],
+    );
+    return rows[0] ?? null;
+  }
 }

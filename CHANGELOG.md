@@ -1,3 +1,29 @@
+## v1.30.1 (2026-06-30)
+
+### @createrington/server (1.30.0 → 1.30.1)
+- [fix] Fix crypto order lifecycle races by locking order rows with `SELECT FOR UPDATE` during fill, cancel, and expire operations, preventing concurrent mutations from double-spending reserved balances or tokens
+- [fix] Fix sell-side double-spend on triggered orders by checking holding amount under the transaction lock before executing, rejecting fills when holdings are insufficient
+- [fix] Fix crypto order placement reserving balance before validating supply and price constraints, causing leaked balance deductions on rejected orders; validation now runs first and the reservation is wrapped in the order-creation transaction
+- [fix] Fix market sell allowing tokens reserved by pending sell orders to be sold again by subtracting reserved amounts from the available-to-sell total
+- [fix] Fix `BalanceUtils.formatWithCommas` using `maximumSignificantDigits` instead of `minimumFractionDigits`, which produced inconsistent decimal precision in formatted currency values
+- [fix] Fix balance history ordering by `created_at` (non-unique) instead of the serial `id` column, causing indeterminate row order for transactions written in the same tick
+- [fix] Fix admin `bulkAdjust` bypassing the `adminGrant`/`adminDeduct` balance repository methods with inline raw transaction logic, so bulk operations now follow the same code path as single adjustments
+- [fix] Fix admin `bulkAdjust` reporting "Unknown" as the player username on failure rows by resolving the username before the try/catch that performs the balance mutation
+- [fix] Fix admin `bulkAdjust` accepting zero as a valid amount by adding an explicit zero-amount guard in the tRPC route
+- [fix] Fix trade cooldown arming on failed trades by splitting `checkRateLimit` into a read-only check and a separate `recordTradeCooldown` called only after the transaction commits
+- [refactor] Extract `updateTreasury`, `getLifetimeTradeCount`, and `getReservedTokens` from the order manager and trade executor into dedicated modules (`treasury.ts`, `lifetime-trades.ts`, `reservations.ts`), deduplicating the two copies of each function
+- [refactor] Extract `pickWeightedWinner` from `LotteryService` into a pure standalone module for testability
+- [refactor] Break `db/utils` circular import by moving `isAdminDb` to a dedicated `db/utils/admin.ts` file with its own import of `Q`
+- [chore] Add money-critical test coverage: integration tests for the balance repository (`adminGrant`, `adminDeduct`, `transfer`, concurrent `FOR UPDATE` locking) and player balance queries (`bulkAdjust` deltas, zero-amount rejection, failure-row usernames), plus unit tests for `BalanceUtils.formatWithCommas` precision and `pickWeightedWinner` distribution
+- [chore] Add CI integration test job definition (currently commented out) with a Postgres service container for running DB-backed tests
+- [chore] Clear pnpm audit advisories via dependency overrides (`undici` ^6.27.0, `dompurify` ^3.4.11) and direct bumps (`multer` ^2.2.0)
+
+### @createrington/client (0.2.38 → 0.2.39)
+- [fix] Fix admin chat widget overlapping page content on mobile by making the chat panel full-screen on small viewports and hiding the toggle button while the drawer is open
+- [fix] Fix admin chat expand/collapse button showing on mobile where the panel is already full-screen by hiding it below the `sm` breakpoint
+- [fix] Fix inactivity management page header overflowing on mobile by stacking the title and action buttons vertically on small screens
+- [fix] Fix iOS Safari auto-zooming on form input focus by enforcing a 16px minimum font size on inputs, textareas, and selects for touch devices
+
 ## v1.30.0 (2026-06-05)
 
 ### @createrington/server (1.29.0 → 1.30.0)

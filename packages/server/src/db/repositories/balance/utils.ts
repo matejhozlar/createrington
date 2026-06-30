@@ -65,8 +65,8 @@ export class BalanceUtils {
   static formatWithCommas(amount: bigint, decimals: number = 3): string {
     const value = this.fromStorage(amount);
     return value.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
-      maximumSignificantDigits: decimals,
     });
   }
 

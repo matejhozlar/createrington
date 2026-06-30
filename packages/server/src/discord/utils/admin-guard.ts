@@ -1,6 +1,6 @@
 import { type ChatInputCommandInteraction, type GuildMember } from "discord.js";
 import { replyError } from "@/discord/utils/interaction-reply";
-import { isAdminDb } from "@/db/utils";
+import { isAdminDb } from "@/db/utils/admin";
 import { RoleManager } from "./roles/role-manager";
 import { Discord } from "../constants";
 
