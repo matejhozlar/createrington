@@ -232,9 +232,9 @@ export function InactivityManagement() {
 
       <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
         {/* Title + Actions */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-semibold">Inactivity Management</h1>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Tooltip>
               <TooltipTrigger asChild>
                 <span>
