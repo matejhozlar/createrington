@@ -11,6 +11,13 @@ const waitlistCreateLimit = createRateLimit({
   key: (ctx) => ctx.ip || "anon",
 });
 
+const waitlistCreateGlobalLimit = createRateLimit({
+  name: "public.waitlists.create.global",
+  limit: 30,
+  windowMs: 60 * 60 * 1000,
+  key: () => "global",
+});
+
 /** Public waitlists router: check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
@@ -24,6 +31,7 @@ export const waitlistsRouter = router({
 
   create: publicProcedure
     .use(waitlistCreateLimit)
+    .use(waitlistCreateGlobalLimit)
     .meta({
       description:
         "Registers a new waitlist entry. In open mode (under player limit), auto-accepts and emails a Discord invite URL. In waitlist mode, requires Discord name + email and goes to pending.",
