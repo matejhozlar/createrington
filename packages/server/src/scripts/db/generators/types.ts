@@ -1,4 +1,4 @@
-import type { TableInfo, EnumTypeInfo } from "../types";
+import type { TableInfo, ColumnInfo, EnumTypeInfo } from "../types";
 import { snakeToPascal, snakeToCamel } from "../utils/naming";
 import { pgTypeToTsType, getNumericComment } from "../utils/type-mapping";
 
@@ -508,25 +508,25 @@ function partitionCreateFields(table: TableInfo) {
 }
 
 /**
- * Extracts identifier field names in camelCase from table metadata
+ * Extracts identifier field groups in camelCase from table metadata
  *
- * Identifies all fields that can uniquely identify a row in the table,
- * including primary keys and unique columns. Returns field names in
- * camelCase format for use in generated query classes.
+ * Each group is a set of fields that uniquely identifies a row only when
+ * ALL of them are provided together. Mirrors the members of the generated
+ * Identifier union type.
  *
  * @param table - Table metadata with column information
- * @returns Array of camelCase field names that are valid identifiers
+ * @returns Array of camelCase field-name groups that are valid identifiers
  *
  * @remarks
- * Identifier sources (in order):
- * 1. Primary key columns (may be composite)
- * 2. Unique constraint columns (excluding PKs)
- * 3. Fallback to ['id'] if no identifiers found
+ * Group sources (in order):
+ * 1. Primary key columns as one group (may be composite)
+ * 2. Composite unique index/constraint groups
+ * 3. Single-column uniques, one group each (excluding PKs)
+ * 4. Fallback to [['id']] if no identifiers found
  *
  * Used by:
- * - Base query class VALID_IDENTIFIER_FIELDS set
+ * - Base query class IDENTIFIER_GROUPS
  * - extractIdentifier() method validation
- * - Type-safe identifier filtering
  *
  * @example
  * ```typescript
@@ -534,32 +534,43 @@ function partitionCreateFields(table: TableInfo) {
  *   columns: [
  *     { columnName: 'id', isPrimaryKey: true },
  *     { columnName: 'email', isUnique: true },
- *     { columnName: 'username', isUnique: true },
- *     { columnName: 'name', isUnique: false }
- *   ]
+ *   ],
+ *   compositeUniques: [['channel_id', 'message_id']],
  * };
- * const identifiers = extractIdentifierFieldNames(table);
- * // Returns: ['id', 'email', 'username']
+ * const groups = extractIdentifierGroups(table);
+ * // Returns: [['id'], ['channelId', 'messageId'], ['email']]
  *
  * // Used in generated code:
- * // protected readonly VALID_IDENTIFIER_FIELDS = new Set(['id', 'email', 'username']);
+ * // protected readonly IDENTIFIER_GROUPS = [['id'], ['channelId', 'messageId'], ['email']];
  * ```
  */
-export function extractIdentifierFieldNames(table: TableInfo): string[] {
-  const fields: string[] = [];
+export function extractIdentifierGroups(table: TableInfo): string[][] {
+  const groups: string[][] = [];
 
-  // Add primary key(s) - may be composite
+  // Primary key columns form a single group (may be composite)
   const pkColumns = table.columns.filter((c) => c.isPrimaryKey);
-  fields.push(...pkColumns.map((col) => snakeToCamel(col.columnName)));
+  if (pkColumns.length > 0) {
+    groups.push(pkColumns.map((col) => snakeToCamel(col.columnName)));
+  }
 
-  // Add unique columns (excluding those already in PK)
+  // Composite unique groups, skipping any whose columns are not all present
+  // so the runtime groups never accept what the generated union forbids
+  const columnNames = new Set(table.columns.map((c) => c.columnName));
+  for (const group of table.compositeUniques) {
+    if (!group.every((name) => columnNames.has(name))) continue;
+    groups.push(group.map((name) => snakeToCamel(name)));
+  }
+
+  // Single-column uniques (excluding those already in PK)
   const uniqueColumns = table.columns.filter(
     (c) => c.isUnique && !c.isPrimaryKey,
   );
-  fields.push(...uniqueColumns.map((col) => snakeToCamel(col.columnName)));
+  for (const col of uniqueColumns) {
+    groups.push([snakeToCamel(col.columnName)]);
+  }
 
   // Fallback to 'id' if no identifiers found (shouldn't happen in well-designed schemas)
-  return fields.length > 0 ? fields : ["id"];
+  return groups.length > 0 ? groups : [["id"]];
 }
 
 /**
@@ -576,11 +587,13 @@ export function extractIdentifierFieldNames(table: TableInfo): string[] {
  * @remarks
  * Union structure:
  * - Primary key object (may contain multiple fields for composite keys)
- * - Individual unique column objects (one per unique constraint)
+ * - Composite unique index/constraint objects (all columns of the group together)
+ * - Individual single-column unique objects
  * - Fallback to { id: number } if no constraints defined
  *
  * Query flexibility:
  * - Supports composite primary keys: { userId: 1, roleId: 2 }
+ * - Supports composite uniques: { channelId: '1', messageId: '2' }
  * - Supports unique columns: { email: 'user@example.com' }
  * - Type-safe: Only valid identifier combinations accepted
  *
@@ -609,10 +622,8 @@ function generateIdentifierType(
 ): string {
   const identifiers: string[] = [];
 
-  // Add primary key combination as a single object type
-  const pkColumns = table.columns.filter((c) => c.isPrimaryKey);
-  if (pkColumns.length > 0) {
-    const fields = pkColumns.map((col) => {
+  const renderGroup = (columns: ColumnInfo[]): string => {
+    const fields = columns.map((col) => {
       const type = pgTypeToTsType(
         col.udtName,
         false,
@@ -622,21 +633,31 @@ function generateIdentifierType(
       );
       return `${snakeToCamel(col.columnName)}: ${type}`;
     });
-    identifiers.push(`{ ${fields.join("; ")} }`);
+    return `{ ${fields.join("; ")} }`;
+  };
+
+  // Add primary key combination as a single object type
+  const pkColumns = table.columns.filter((c) => c.isPrimaryKey);
+  if (pkColumns.length > 0) {
+    identifiers.push(renderGroup(pkColumns));
   }
 
-  // Add each unique column as a separate identifier option
+  // Add each composite unique group as a single object type
+  const columnsByName = new Map(table.columns.map((c) => [c.columnName, c]));
+  for (const group of table.compositeUniques) {
+    const groupColumns = group
+      .map((name) => columnsByName.get(name))
+      .filter((col): col is ColumnInfo => col !== undefined);
+    if (groupColumns.length !== group.length) continue;
+    identifiers.push(renderGroup(groupColumns));
+  }
+
+  // Add each single-column unique as a separate identifier option
   const uniqueColumns = table.columns.filter(
     (c) => c.isUnique && !c.isPrimaryKey,
   );
   for (const col of uniqueColumns) {
-    const type = pgTypeToTsType(
-      col.udtName,
-      false,
-      col.numericPrecision,
-      col.numericScale,
-    );
-    identifiers.push(`{ ${snakeToCamel(col.columnName)}: ${type} }`);
+    identifiers.push(renderGroup([col]));
   }
 
   // Fallback if no identifiers found (shouldn't happen in practice)

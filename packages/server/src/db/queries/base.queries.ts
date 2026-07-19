@@ -8,6 +8,7 @@ import { QueryBuilder } from "./query-builder";
  * Base class for database query operations
  *
  * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
+ * - Single-row methods accept a minimal identifier or a full entity; every recognized identifier field is ANDed in the WHERE clause, so a stale identifier value fails with NotFound instead of matching another row
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
@@ -30,7 +31,7 @@ export abstract class BaseQueries<
   /* eslint-enable @typescript-eslint/no-explicit-any */
   protected abstract readonly table: string;
   protected readonly COLUMN_MAP?: Record<string, string>;
-  protected readonly VALID_IDENTIFIER_FIELDS?: Set<string>;
+  protected readonly IDENTIFIER_GROUPS?: ReadonlyArray<readonly string[]>;
   protected readonly AUTO_SET_UPDATED_AT: boolean = false;
 
   /**
@@ -181,23 +182,27 @@ export abstract class BaseQueries<
 
   /**
    * Extracts a valid identifier from an object that may contain extra fields
-   * Picks the first matching unique identifier field with a non-null value
    *
-   * This allows passing full entities to methods like get(), update(), delete(), etc.
-   * The Identifier type union determines which fields are tried
+   * Filters the object down to known identifier fields and requires them to
+   * cover at least one complete identifier group (primary key, composite
+   * unique, or single-column unique). All provided identifier fields are kept
+   * and ANDed in the WHERE clause, so a full entity still resolves to exactly
+   * one row while a partial composite (e.g. one column of a two-column unique
+   * index) is rejected instead of silently matching multiple rows.
    *
    * @param obj - Object that may contain identifier fields plus extra data
-   * @returns Valid identifier object with only the necessary field(s)
+   * @returns Identifier object containing all recognized identifier fields
+   * @throws Error if the provided fields do not cover any identifier group
    *
    * @example
    * // PlayerIdentifier = { minecraftUuid: string } | { discordId: string }
    * extractIdentifier(player)
-   * // returns { minecraftUuid: "..." } if player.minecraftUuid exists
+   * // Returns { minecraftUuid: "...", discordId: "..." }
    *
    * @example
-   * // Explicit identifier still works
-   * extractIdentifier({ discordId: "123" })
-   * // Returns { discordId: "123" }
+   * // Composite unique group (channelId + messageId)
+   * extractIdentifier({ channelId: "1", messageId: "2" }) // OK
+   * extractIdentifier({ channelId: "1" }) // throws: incomplete group
    */
   protected extractIdentifier(
     obj: Record<string, unknown>,
@@ -206,41 +211,49 @@ export abstract class BaseQueries<
       (key) => obj[key] !== undefined && obj[key] !== null,
     );
 
+    const groups = this.IDENTIFIER_GROUPS;
+    if (!groups || groups.length === 0) {
+      if (availableKeys.length === 0) {
+        throw new Error(
+          `No valid identifier field found for ${this.table}. Provide a non-null identifier field.`,
+        );
+      }
+      const result: Record<string, unknown> = {};
+      for (const key of availableKeys) result[key] = obj[key];
+      return result as NonNullable<TConfig["Identifier"]>;
+    }
+
     // Filter early so an unspread user object can't smuggle arbitrary keys
     // into the WHERE clause via getColumnMapping.
-    const validKeys = this.VALID_IDENTIFIER_FIELDS
-      ? availableKeys.filter((key) => this.VALID_IDENTIFIER_FIELDS!.has(key))
-      : availableKeys;
+    const knownFields = new Set(groups.flat());
+    const validKeys = availableKeys.filter((key) => knownFields.has(key));
+
+    const expected = groups
+      .map((group) => (group.length > 1 ? `(${group.join(" + ")})` : group[0]))
+      .join(", ");
 
     if (validKeys.length === 0) {
       throw new Error(
         `No valid identifier field found for ${this.table}. ` +
-          (this.VALID_IDENTIFIER_FIELDS
-            ? `Expected one of: ${Array.from(this.VALID_IDENTIFIER_FIELDS).join(", ")}`
-            : "Provide a non-null identifier field."),
+          `Expected one of: ${expected}`,
       );
     }
 
-    // 1-2 valid keys: treat as composite or single-field identifier
-    if (validKeys.length <= 2) {
-      const result: Record<string, unknown> = {};
-      for (const key of validKeys) result[key] = obj[key];
-      return result as NonNullable<TConfig["Identifier"]>;
+    const validKeySet = new Set(validKeys);
+    const coversGroup = groups.some((group) =>
+      group.every((field) => validKeySet.has(field)),
+    );
+
+    if (!coversGroup) {
+      throw new Error(
+        `Identifier fields (${validKeys.join(", ")}) do not form a complete ` +
+          `identifier for ${this.table}. Expected one of: ${expected}`,
+      );
     }
 
-    // 3+ valid keys: pick the first one that resolves to a usable column
-    for (const key of validKeys) {
-      try {
-        this.getColumnName(key);
-        const testIdentifier = { [key]: obj[key] };
-        this.getColumnMapping(testIdentifier);
-        return testIdentifier as NonNullable<TConfig["Identifier"]>;
-      } catch {
-        // try next
-      }
-    }
-
-    throw new Error(`No usable identifier field found for ${this.table}`);
+    const result: Record<string, unknown> = {};
+    for (const key of validKeys) result[key] = obj[key];
+    return result as NonNullable<TConfig["Identifier"]>;
   }
   /**
    * Maps an update object to an array of column-value pairs
@@ -518,9 +531,9 @@ export abstract class BaseQueries<
    * await Q.player.get({ discordId: "123" })
    *
    * @example
-   * // Pass full entity
-   * await Q.player.get(player) // Uses player.minecraftUuid
-   * await Q.player.balance.get(player) // Uses player.id (maps to playerId)
+   * // Pass full entity (matches on all identifier fields)
+   * await Q.player.get(player)
+   * await Q.player.balance.get(player) // Uses player.minecraftUuid
    *
    * @example
    * // With field projection
@@ -706,7 +719,7 @@ export abstract class BaseQueries<
    * @throws Error if no entity is found with the specified identifier
    *
    * @example
-   * await Q.player.delete(player) // Uses player.minecraftUuid
+   * await Q.player.delete(player) // Matches on all identifier fields
    */
   async delete(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
