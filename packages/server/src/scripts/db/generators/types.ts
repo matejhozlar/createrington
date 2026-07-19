@@ -553,8 +553,11 @@ export function extractIdentifierGroups(table: TableInfo): string[][] {
     groups.push(pkColumns.map((col) => snakeToCamel(col.columnName)));
   }
 
-  // Composite unique groups
+  // Composite unique groups, skipping any whose columns are not all present
+  // so the runtime groups never accept what the generated union forbids
+  const columnNames = new Set(table.columns.map((c) => c.columnName));
   for (const group of table.compositeUniques) {
+    if (!group.every((name) => columnNames.has(name))) continue;
     groups.push(group.map((name) => snakeToCamel(name)));
   }
 

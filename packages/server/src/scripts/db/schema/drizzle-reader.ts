@@ -109,12 +109,17 @@ function extractTables(): TableInfo[] {
     // A unique group identifies a row only as a whole: single-column groups
     // mark the column unique, multi-column groups are kept together so they
     // never degrade into per-column identifiers.
+    const seenCompositeKeys = new Set<string>();
     const addUniqueGroup = (groupColumns: string[]) => {
       if (groupColumns.length === 1) {
         uniqueColumnNames.add(groupColumns[0]);
-      } else if (groupColumns.length > 1) {
-        compositeUniques.push(groupColumns);
+        return;
       }
+      if (groupColumns.length === 0) return;
+      const key = [...groupColumns].sort().join(",");
+      if (seenCompositeKeys.has(key)) return;
+      seenCompositeKeys.add(key);
+      compositeUniques.push(groupColumns);
     };
 
     // Composite primary keys from primaryKey({...}) calls
@@ -122,6 +127,11 @@ function extractTables(): TableInfo[] {
       for (const col of pk.columns) {
         pkColumnNames.add(col.name);
       }
+    }
+
+    // A unique group duplicating the composite PK adds no new identifier
+    if (pkColumnNames.size > 0) {
+      seenCompositeKeys.add([...pkColumnNames].sort().join(","));
     }
 
     // Composite unique constraints from unique({...}) calls

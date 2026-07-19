@@ -8,6 +8,7 @@ import { QueryBuilder } from "./query-builder";
  * Base class for database query operations
  *
  * - Provides typed CRUD operations (find, get, create, update, delete) with automatic camelCase/snake_case conversion
+ * - Single-row methods accept a minimal identifier or a full entity; every recognized identifier field is ANDed in the WHERE clause, so a stale identifier value fails with NotFound instead of matching another row
  * - Supports filter operators ($eq, $ne, $gt, $lt, $in, $between, etc.) for composable WHERE clauses
  * - Fluent query builder via .where().orderBy().limit().all() chain
  * - Singleton child registry (WeakMap per pool) for hierarchical Q.player.balance style access
@@ -530,9 +531,9 @@ export abstract class BaseQueries<
    * await Q.player.get({ discordId: "123" })
    *
    * @example
-   * // Pass full entity
-   * await Q.player.get(player) // Uses player.minecraftUuid
-   * await Q.player.balance.get(player) // Uses player.id (maps to playerId)
+   * // Pass full entity (matches on all identifier fields)
+   * await Q.player.get(player)
+   * await Q.player.balance.get(player) // Uses player.minecraftUuid
    *
    * @example
    * // With field projection
@@ -718,7 +719,7 @@ export abstract class BaseQueries<
    * @throws Error if no entity is found with the specified identifier
    *
    * @example
-   * await Q.player.delete(player) // Uses player.minecraftUuid
+   * await Q.player.delete(player) // Matches on all identifier fields
    */
   async delete(
     identifier: NonNullable<TConfig["Identifier"]> | TConfig["Entity"],
