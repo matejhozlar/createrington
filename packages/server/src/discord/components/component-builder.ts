@@ -150,8 +150,7 @@ export function buildComponentsV2(data: ComponentsData): TopLevelComponent[] {
 }
 
 type AnyComponentNode =
-  | ComponentNode
-  | ComponentContainer["components"][number];
+  ComponentNode | ComponentContainer["components"][number];
 
 function measure(node: AnyComponentNode): { count: number; text: number } {
   switch (node.type) {

@@ -6,11 +6,7 @@ import type {
 } from "@createrington/shared/socket";
 
 export type ConnectionState =
-  | "disconnected"
-  | "connecting"
-  | "connected"
-  | "reconnecting"
-  | "error";
+  "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
 
 export interface WebSocketStats {
   /** When connection was established */

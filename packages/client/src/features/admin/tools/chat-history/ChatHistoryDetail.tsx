@@ -17,29 +17,30 @@ export function ChatHistoryDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!Number.isFinite(numericId)) {
-      setError("Invalid session id");
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchChatMessages(numericId);
-      setMessages(data.messages);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to load transcript",
-      );
-    } finally {
-      setLoading(false);
-    }
+  const invalidId = !Number.isFinite(numericId);
+
+  const load = useCallback(() => {
+    return fetchChatMessages(numericId)
+      .then((data) => {
+        setMessages(data.messages);
+        setError(null);
+      })
+      .catch((error: unknown) => {
+        setError(
+          error instanceof Error ? error.message : "Failed to load transcript",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, [numericId]);
 
   useEffect(() => {
+    if (invalidId) return;
     void load();
-  }, [load]);
+  }, [invalidId, load]);
+
+  const shownError = invalidId ? "Invalid session id" : error;
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -71,20 +72,25 @@ export function ChatHistoryDetail() {
           </div>
         </div>
 
-        {loading ? (
+        {loading && !invalidId ? (
           <div className="flex items-center justify-center py-10">
             <Loading mode="inline" size="medium" />
           </div>
-        ) : error ? (
+        ) : shownError ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
-            <p className="text-destructive">{error}</p>
-            <Button
-              variant="outline"
-              onClick={() => void load()}
-              className="mt-2"
-            >
-              Try Again
-            </Button>
+            <p className="text-destructive">{shownError}</p>
+            {!invalidId && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setLoading(true);
+                  void load();
+                }}
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            )}
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">

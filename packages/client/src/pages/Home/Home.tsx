@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "react-router-dom";
@@ -38,7 +38,7 @@ import { Loading } from "@/components/loading-spinner";
 export function Home() {
   const { user } = useAuth();
 
-  const autoplayPlugin = useRef(
+  const [autoplayPlugin] = useState(() =>
     Autoplay({ delay: 5000, stopOnInteraction: false }),
   );
 
@@ -258,7 +258,7 @@ export function Home() {
       <section className="relative w-full overflow-hidden">
         <Carousel
           opts={{ loop: true }}
-          plugins={[Fade(), autoplayPlugin.current]}
+          plugins={[Fade(), autoplayPlugin]}
           className="absolute inset-0 h-full"
         >
           <CarouselContent className="h-full ml-0">

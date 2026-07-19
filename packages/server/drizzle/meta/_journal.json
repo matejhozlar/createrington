@@ -246,6 +246,13 @@
       "when": 1780656996792,
       "tag": "0034_tricky_blue_marvel",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1784456348089,
+      "tag": "0035_mixed_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

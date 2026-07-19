@@ -29,7 +29,6 @@ export const ticket = pgTable(
     metadata: jsonb("metadata").default({}),
   },
   (table) => [
-    index("idx_ticket_channel").on(table.channelId),
     index("idx_ticket_creator").on(table.creatorDiscordId),
     index("idx_ticket_status").on(table.status),
     index("idx_ticket_type").on(table.type),

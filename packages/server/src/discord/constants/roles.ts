@@ -53,9 +53,9 @@ const DiscordRoles = Object.fromEntries(
     value,
   ]),
 ) as {
-  [K in keyof typeof roles as ToScreamingSnakeCase<
-    K & string
-  >]: (typeof roles)[K];
+  [
+    K in keyof typeof roles as ToScreamingSnakeCase<K & string>
+  ]: (typeof roles)[K];
 };
 
 /**

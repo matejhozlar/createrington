@@ -117,11 +117,13 @@ function SidebarProvider({
   }, [toggleSidebar]);
 
   // Close the sidebar on mobile after navigation
-  React.useEffect(() => {
+  const [prevPathname, setPrevPathname] = React.useState(location.pathname);
+  if (prevPathname !== location.pathname) {
+    setPrevPathname(location.pathname);
     if (isMobile) {
       setOpenMobile(false);
     }
-  }, [location.pathname, isMobile]);
+  }
 
   // We add a state so that we can do data-state="expanded" or "collapsed".
   // This makes it easier to style the sidebar with Tailwind classes.

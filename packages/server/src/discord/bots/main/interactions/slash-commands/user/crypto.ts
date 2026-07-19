@@ -418,10 +418,7 @@ async function handleLeaderboard(
 ): Promise<void> {
   const type =
     (interaction.options.getString("type") as
-      | "networth"
-      | "pnl"
-      | "volume"
-      | null) ?? "networth";
+      "networth" | "pnl" | "volume" | null) ?? "networth";
 
   const entries = await getLeaderboard(type, 10);
 
@@ -617,8 +614,7 @@ async function handleAlert(
         .toUpperCase();
       const price = interaction.options.getNumber("price", true);
       const direction = interaction.options.getString("direction", true) as
-        | "above"
-        | "below";
+        "above" | "below";
 
       const token = await Q.crypto.token.find({ symbol });
 

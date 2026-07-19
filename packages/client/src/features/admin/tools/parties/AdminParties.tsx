@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { trpc } from "@/lib/trpc";
@@ -45,7 +45,7 @@ const DEFAULT_FILTERS: PartyFilters = {
 export function AdminParties() {
   const toast = useToastActions();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialExpandedPartyId = useRef(searchParams.get("partyId"));
+  const [initialExpandedPartyId] = useState(() => searchParams.get("partyId"));
 
   useEffect(() => {
     if (searchParams.has("partyId")) {
@@ -268,7 +268,7 @@ export function AdminParties() {
               onSoloPageChange={setSoloPage}
               soloSort={soloSort}
               onSoloSortChange={handleSoloSortChange}
-              initialExpandedPartyId={initialExpandedPartyId.current}
+              initialExpandedPartyId={initialExpandedPartyId}
             />
           </>
         )}

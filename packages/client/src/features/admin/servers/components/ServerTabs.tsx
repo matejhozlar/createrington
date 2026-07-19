@@ -2,10 +2,7 @@ import { Eye, Clock, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ServerTabType =
-  | "overview"
-  | "management"
-  | "sessions"
-  | "analytics";
+  "overview" | "management" | "sessions" | "analytics";
 
 interface ServerTabsProps {
   activeTab: ServerTabType;

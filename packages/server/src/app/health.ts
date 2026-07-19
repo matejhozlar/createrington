@@ -67,8 +67,7 @@ async function checkDatabase(): Promise<DatabaseComponent> {
 
 function checkDiscordBot(
   serviceKey:
-    | typeof Services.DISCORD_MAIN_BOT
-    | typeof Services.DISCORD_WEB_BOT,
+    typeof Services.DISCORD_MAIN_BOT | typeof Services.DISCORD_WEB_BOT,
 ): DiscordBotComponent {
   try {
     const bot = getServiceSync(serviceKey);

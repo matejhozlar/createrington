@@ -84,31 +84,34 @@ interface ServerStatusSingleProps {
 const MAINTENANCE_VISIBLE_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 function useIsWithinWindow(schedule: ScheduledMaintenance | null): boolean {
-  const [within, setWithin] = React.useState(() => {
-    if (!schedule || schedule.status !== "scheduled") return false;
-    return (
-      new Date(schedule.scheduledAt).getTime() - Date.now() <=
-      MAINTENANCE_VISIBLE_MS
-    );
-  });
+  const scheduledAtMs =
+    schedule && schedule.status === "scheduled"
+      ? new Date(schedule.scheduledAt).getTime()
+      : null;
+
+  const [within, setWithin] = React.useState(
+    () =>
+      scheduledAtMs !== null &&
+      scheduledAtMs - Date.now() <= MAINTENANCE_VISIBLE_MS,
+  );
 
   React.useEffect(() => {
-    if (!schedule || schedule.status !== "scheduled") {
-      setWithin(false);
-      return;
-    }
+    if (scheduledAtMs === null) return;
 
-    const check = () => {
-      const remaining = new Date(schedule.scheduledAt).getTime() - Date.now();
-      setWithin(remaining <= MAINTENANCE_VISIBLE_MS);
-    };
+    const check = () =>
+      setWithin(scheduledAtMs - Date.now() <= MAINTENANCE_VISIBLE_MS);
 
-    check();
+    // Deferred seed: keeps `within` fresh when the schedule changes without
+    // waiting a full minute for the interval tick.
+    const seed = setTimeout(check, 0);
     const id = setInterval(check, 60_000); // recheck every minute
-    return () => clearInterval(id);
-  }, [schedule]);
+    return () => {
+      clearTimeout(seed);
+      clearInterval(id);
+    };
+  }, [scheduledAtMs]);
 
-  return within;
+  return scheduledAtMs !== null && within;
 }
 
 function ServerStatusSingle({ server, isCollapsed }: ServerStatusSingleProps) {

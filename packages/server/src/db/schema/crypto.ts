@@ -85,7 +85,6 @@ export const cryptoHolding = pgTable(
       table.playerMinecraftUuid,
       table.tokenId,
     ),
-    index("idx_crypto_holding_player").on(table.playerMinecraftUuid),
     index("idx_crypto_holding_token").on(table.tokenId),
     check("chk_crypto_holding_amount", sql`${table.amount} >= 0`),
   ],
@@ -122,7 +121,9 @@ export const cryptoTransaction = pgTable(
       .default(sql`0`),
     totalCost: numeric("total_cost", { precision: 20, scale: 8 }).notNull(),
     realizedPnl: numeric("realized_pnl", { precision: 20, scale: 8 }),
-    orderId: integer("order_id").references(() => cryptoOrder.id),
+    orderId: integer("order_id").references(() => cryptoOrder.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -133,6 +134,9 @@ export const cryptoTransaction = pgTable(
       table.tokenId,
       table.createdAt.desc(),
     ),
+    index("idx_crypto_transaction_order")
+      .on(table.orderId)
+      .where(sql`order_id IS NOT NULL`),
   ],
 );
 
