@@ -225,14 +225,7 @@ export const accountRouter = router({
           },
           reason: "Account deleted by user",
           beforeDelete: async (tx) => {
-            const tickets = await tx.ticket.findAll({
-              creatorDiscordId: discordId,
-            });
-            if (tickets.length === 0) return;
-
-            const ticketIds = tickets.map((t) => t.id);
-            await tx.ticket.action.deleteAll({ ticketId: { $in: ticketIds } });
-            await tx.ticket.deleteAll({ id: { $in: ticketIds } });
+            await tx.ticket.deleteAll({ creatorDiscordId: discordId });
           },
         },
       );
