@@ -67,6 +67,10 @@ export class RoomManager {
     return SubscriptionType.CRYPTO_MARKET;
   }
 
+  /**
+   * Get the owner-only room for a user; joined from the verified JWT at
+   * connection time, never reachable via subscribe requests
+   */
   static getUserRoom(minecraftUuid: string): string {
     return `${RoomType.USER}:${minecraftUuid}`;
   }
