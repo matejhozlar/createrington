@@ -1,7 +1,7 @@
 ## v1.30.2 (2026-07-19)
 
 ### @createrington/server (1.30.1 → 1.30.2)
-- [security] Strip sensitive fields from public player endpoints: Discord ID, logout coordinates, position, health, and IP address are no longer exposed through public tRPC queries or server status player info
+- [security] Strip sensitive fields from public player endpoints: Discord ID and logout coordinates are no longer exposed through public tRPC queries, and position, health, and IP address are removed from server status player info as a defensive guard (these fields were never populated by the backend but are now explicitly excluded to prevent future leakage)
 - [security] Deliver crypto order fills and price alerts via per-user websocket rooms instead of broadcasting to the shared market room, preventing players from observing other players' order events
 - [security] Bind OAuth state parameter to the initiating browser via an httpOnly cookie, preventing cross-browser CSRF replay on the OAuth callback
 - [security] Restrict ticket delete and reopen Discord buttons to staff-only, preventing non-staff ticket creators from deleting or reopening tickets
