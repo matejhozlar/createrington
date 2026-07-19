@@ -8,7 +8,6 @@ import { BalanceTransactionType } from "@/db/repositories/balance";
 import {
   BadRequestError,
   ConflictError,
-  ForbiddenError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { cryptoSetting } from "../settings/accessor";
@@ -221,11 +220,8 @@ export async function cancelOrder(
   await db.inTransaction(async (tx) => {
     const order = await tx.crypto.order.lockForUpdate(orderId);
 
-    if (!order) {
+    if (!order || order.playerMinecraftUuid !== playerUuid) {
       throw new NotFoundError(`Order ${orderId} not found`);
-    }
-    if (order.playerMinecraftUuid !== playerUuid) {
-      throw new ForbiddenError("Order does not belong to this player");
     }
     if (order.status !== "pending") {
       throw new ConflictError(
