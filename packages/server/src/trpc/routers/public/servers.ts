@@ -16,14 +16,7 @@ export interface PlayerInfo {
     displayName?: string;
     gamemode?: string;
     dimension?: string;
-    position?: {
-      x: number;
-      y: number;
-      z: number;
-    };
-    health?: number;
     experienceLevel?: number;
-    ipAddress?: string;
   };
 }
 
@@ -58,10 +51,7 @@ function mapSessionToPlayerInfo(
           displayName: session.metadata.displayName,
           gamemode: session.metadata.gamemode,
           dimension: session.metadata.dimension,
-          position: session.metadata.position,
-          health: session.metadata.health,
           experienceLevel: session.metadata.experienceLevel,
-          ipAddress: session.metadata.ipAddress,
         }
       : undefined,
   };

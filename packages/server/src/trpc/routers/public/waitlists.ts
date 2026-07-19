@@ -11,6 +11,22 @@ const waitlistCreateLimit = createRateLimit({
   key: (ctx) => ctx.ip || "anon",
 });
 
+const INVITE_GLOBAL_LIMIT = 30;
+const INVITE_GLOBAL_WINDOW_MS = 60 * 60 * 1000;
+let inviteBucket = { count: 0, resetAt: 0 };
+
+function consumeGlobalInviteSlot(): boolean {
+  const now = Date.now();
+  if (inviteBucket.resetAt <= now) {
+    inviteBucket = { count: 0, resetAt: now + INVITE_GLOBAL_WINDOW_MS };
+  }
+  if (inviteBucket.count >= INVITE_GLOBAL_LIMIT) {
+    return false;
+  }
+  inviteBucket.count += 1;
+  return true;
+}
+
 /** Public waitlists router: check server capacity mode and register for waitlist. */
 export const waitlistsRouter = router({
   status: publicProcedure
@@ -75,6 +91,15 @@ export const waitlistsRouter = router({
           logger.info(`Waitlist duplicate discord name attempt`);
           return alreadyRegistered;
         }
+      }
+
+      if (hasCapacity && !consumeGlobalInviteSlot()) {
+        logger.warn(
+          "[waitlist] global invite cap reached, rejecting open-mode signup",
+        );
+        throw trpcError.tooManyRequests(
+          "Too many signups right now. Please try again later.",
+        );
       }
 
       const result = await waitlistRepo.register({

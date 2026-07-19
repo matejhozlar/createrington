@@ -68,8 +68,9 @@ export function getCooldownExpiresAt(
 /**
  * Enforces a per-token trade cooldown per player (matches old system's 3-minute per-token cooldown).
  *
- * Read-only: it never starts a new cooldown. The cooldown is only armed by
- * `recordTradeCooldown` after a trade commits, so a failed trade does not lock
+ * Arms the cooldown immediately so concurrent requests cannot race past the
+ * check while a trade is still committing. Returns a disarm callback the
+ * caller must invoke when the trade fails, so a failed trade does not lock
  * the player out.
  *
  * @private
@@ -78,11 +79,11 @@ export function getCooldownExpiresAt(
  * @param tokenSymbol - Token symbol for error messages
  * @throws Error if the player is still on cooldown for this token
  */
-function checkRateLimit(
+function armRateLimit(
   playerUuid: string,
   tokenId: number,
   tokenSymbol: string,
-): void {
+): () => void {
   const now = Date.now();
   const key = `${playerUuid}:${tokenId}`;
   const lastTradeTime = cooldownMap.get(key);
@@ -96,10 +97,21 @@ function checkRateLimit(
       `Trade cooldown: wait ${remainingSeconds}s before trading ${tokenSymbol} again`,
     );
   }
+
+  cooldownMap.set(key, now);
+  return () => {
+    if (cooldownMap.get(key) === now) {
+      if (lastTradeTime === undefined) {
+        cooldownMap.delete(key);
+      } else {
+        cooldownMap.set(key, lastTradeTime);
+      }
+    }
+  };
 }
 
 /**
- * Arms the per-token cooldown for a player after a trade has committed.
+ * Refreshes the per-token cooldown to the commit timestamp after a trade succeeds.
  *
  * @private
  * @param playerUuid - Minecraft UUID of the player
@@ -245,146 +257,154 @@ export async function executeBuy(
     throw new BadRequestError("Amount must be positive");
   }
 
-  checkRateLimit(playerUuid, token.id, token.symbol);
+  const disarmCooldown = armRateLimit(playerUuid, token.id, token.symbol);
 
-  // Pre-fetch data that doesn't need to be inside the transaction
-  const [lifetimeCount, hasVeteran] = await Promise.all([
-    getLifetimeTradeCount(playerUuid),
-    hasMarketVeteranAchievement(playerUuid),
-  ]);
+  let tradeResult: TradeResult;
+  try {
+    // Pre-fetch data that doesn't need to be inside the transaction
+    const [lifetimeCount, hasVeteran] = await Promise.all([
+      getLifetimeTradeCount(playerUuid),
+      hasMarketVeteranAchievement(playerUuid),
+    ]);
 
-  const tradeResult = await db.inTransaction(async (tx) => {
-    const freshToken = await lockAndFetchToken(tx, token.id);
+    tradeResult = await db.inTransaction(async (tx) => {
+      const freshToken = await lockAndFetchToken(tx, token.id);
 
-    if (amount > freshToken.availableSupply) {
-      throw new ConflictError(
-        `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
-      );
-    }
-
-    // IPO allocation enforcement (within transaction for atomicity)
-    if (isInIpo(freshToken)) {
-      const maxAllocation = BigInt(
-        Math.floor(
-          Number(freshToken.totalSupply) *
-            cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
-        ),
-      );
-
-      const existingHolding = await tx.crypto.holding
-        .where({ playerMinecraftUuid: playerUuid, tokenId: freshToken.id })
-        .first();
-
-      const currentHeld = existingHolding?.amount ?? 0n;
-      if (currentHeld + amount > maxAllocation) {
-        const remaining = maxAllocation - currentHeld;
+      if (amount > freshToken.availableSupply) {
         throw new ConflictError(
-          `IPO allocation limit: you can buy at most ${remaining} more ${freshToken.symbol} (max ${maxAllocation} per player)`,
+          `Insufficient supply: only ${freshToken.availableSupply} ${freshToken.symbol} available`,
         );
       }
-    }
 
-    // During IPO, use the fixed IPO price instead of the current market price
-    const price = isInIpo(freshToken)
-      ? Number(freshToken.ipoPrice)
-      : Number(freshToken.price);
-    const amountNum = Number(amount);
-    const rawCost = price * amountNum;
-    const feeAmount = calculateFee(
-      rawCost,
-      freshToken.category,
-      lifetimeCount,
-      hasVeteran,
-    );
-    // Round to 3 decimal places to match the balance system's precision
-    const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
+      // IPO allocation enforcement (within transaction for atomicity)
+      if (isInIpo(freshToken)) {
+        const maxAllocation = BigInt(
+          Math.floor(
+            Number(freshToken.totalSupply) *
+              cryptoSetting("IPO_MAX_ALLOCATION_PERCENT"),
+          ),
+        );
 
-    // Deduct balance (joins this transaction via txOverride)
-    await R.balanceRepo.deduct(
-      { minecraftUuid: playerUuid },
-      totalCost,
-      `Crypto buy: ${amountNum} ${freshToken.symbol} @ $${price}`,
-      BalanceTransactionType.CRYPTO_BUY,
-      {
-        tokenId: freshToken.id,
-        tokenSymbol: freshToken.symbol,
-        amount: amountNum,
-        price,
-        fee: feeAmount,
-      },
-      tx,
-    );
+        const existingHolding = await tx.crypto.holding
+          .where({ playerMinecraftUuid: playerUuid, tokenId: freshToken.id })
+          .first();
 
-    // Update supply atomically (using fresh data under lock)
-    await tx.crypto.token.update(
-      { id: freshToken.id },
-      { availableSupply: freshToken.availableSupply - amount },
-    );
+        const currentHeld = existingHolding?.amount ?? 0n;
+        if (currentHeld + amount > maxAllocation) {
+          const remaining = maxAllocation - currentHeld;
+          throw new ConflictError(
+            `IPO allocation limit: you can buy at most ${remaining} more ${freshToken.symbol} (max ${maxAllocation} per player)`,
+          );
+        }
+      }
 
-    const priceStr = price.toFixed(8);
-
-    const holding = await tx.crypto.holding
-      .where({
-        playerMinecraftUuid: playerUuid,
-        tokenId: freshToken.id,
-      })
-      .first();
-
-    if (holding) {
-      await tx.crypto.holding.update(
-        { id: holding.id },
-        {
-          amount: holding.amount + amount,
-          totalCostBasis: (Number(holding.totalCostBasis) + rawCost).toFixed(8),
-          updatedAt: new Date(),
-        },
+      // During IPO, use the fixed IPO price instead of the current market price
+      const price = isInIpo(freshToken)
+        ? Number(freshToken.ipoPrice)
+        : Number(freshToken.price);
+      const amountNum = Number(amount);
+      const rawCost = price * amountNum;
+      const feeAmount = calculateFee(
+        rawCost,
+        freshToken.category,
+        lifetimeCount,
+        hasVeteran,
       );
-    } else {
-      await tx.crypto.holding.create({
+      // Round to 3 decimal places to match the balance system's precision
+      const totalCost = Math.round((rawCost + feeAmount) * 1000) / 1000;
+
+      // Deduct balance (joins this transaction via txOverride)
+      await R.balanceRepo.deduct(
+        { minecraftUuid: playerUuid },
+        totalCost,
+        `Crypto buy: ${amountNum} ${freshToken.symbol} @ $${price}`,
+        BalanceTransactionType.CRYPTO_BUY,
+        {
+          tokenId: freshToken.id,
+          tokenSymbol: freshToken.symbol,
+          amount: amountNum,
+          price,
+          fee: feeAmount,
+        },
+        tx,
+      );
+
+      // Update supply atomically (using fresh data under lock)
+      await tx.crypto.token.update(
+        { id: freshToken.id },
+        { availableSupply: freshToken.availableSupply - amount },
+      );
+
+      const priceStr = price.toFixed(8);
+
+      const holding = await tx.crypto.holding
+        .where({
+          playerMinecraftUuid: playerUuid,
+          tokenId: freshToken.id,
+        })
+        .first();
+
+      if (holding) {
+        await tx.crypto.holding.update(
+          { id: holding.id },
+          {
+            amount: holding.amount + amount,
+            totalCostBasis: (Number(holding.totalCostBasis) + rawCost).toFixed(
+              8,
+            ),
+            updatedAt: new Date(),
+          },
+        );
+      } else {
+        await tx.crypto.holding.create({
+          playerMinecraftUuid: playerUuid,
+          tokenId: freshToken.id,
+          amount,
+          totalCostBasis: rawCost.toFixed(8),
+        });
+      }
+
+      // Record cost basis lot for FIFO P&L tracking on future sells
+      await recordCostBasisLot(
+        playerUuid,
+        freshToken.id,
+        amount,
+        priceStr,
+        tx.crypto,
+      );
+
+      const txResult = await tx.crypto.transaction.createAndReturn({
         playerMinecraftUuid: playerUuid,
         tokenId: freshToken.id,
+        type: "buy",
+        trigger: "market",
         amount,
-        totalCostBasis: rawCost.toFixed(8),
+        priceAtExecution: priceStr,
+        feeAmount: feeAmount.toFixed(8),
+        totalCost: totalCost.toFixed(8),
       });
-    }
 
-    // Record cost basis lot for FIFO P&L tracking on future sells
-    await recordCostBasisLot(
-      playerUuid,
-      freshToken.id,
-      amount,
-      priceStr,
-      tx.crypto,
-    );
+      if (feeAmount > 0) {
+        await updateTreasury(feeAmount, freshToken.category, tx.crypto);
+      }
 
-    const txResult = await tx.crypto.transaction.createAndReturn({
-      playerMinecraftUuid: playerUuid,
-      tokenId: freshToken.id,
-      type: "buy",
-      trigger: "market",
-      amount,
-      priceAtExecution: priceStr,
-      feeAmount: feeAmount.toFixed(8),
-      totalCost: totalCost.toFixed(8),
+      return {
+        transactionId: txResult.id,
+        tokenId: freshToken.id,
+        symbol: freshToken.symbol,
+        type: "buy" as const,
+        amount,
+        priceAtExecution: priceStr,
+        feeAmount,
+        totalCost,
+      };
     });
+  } catch (error) {
+    disarmCooldown();
+    throw error;
+  }
 
-    if (feeAmount > 0) {
-      await updateTreasury(feeAmount, freshToken.category, tx.crypto);
-    }
-
-    return {
-      transactionId: txResult.id,
-      tokenId: freshToken.id,
-      symbol: freshToken.symbol,
-      type: "buy" as const,
-      amount,
-      priceAtExecution: priceStr,
-      feeAmount,
-      totalCost,
-    };
-  });
-
-  // Arm the cooldown only now that the trade has committed
+  // Refresh the cooldown to the commit timestamp
   recordTradeCooldown(playerUuid, token.id);
 
   // Fire-and-forget side effects (outside transaction)
@@ -430,131 +450,137 @@ export async function executeSell(
     throw new BadRequestError("Amount must be positive");
   }
 
-  checkRateLimit(playerUuid, token.id, token.symbol);
+  const disarmCooldown = armRateLimit(playerUuid, token.id, token.symbol);
 
-  // Pre-fetch data that doesn't need to be inside the transaction
-  const [lifetimeCount, hasVeteran] = await Promise.all([
-    getLifetimeTradeCount(playerUuid),
-    hasMarketVeteranAchievement(playerUuid),
-  ]);
+  let tradeResult: TradeResult;
+  try {
+    // Pre-fetch data that doesn't need to be inside the transaction
+    const [lifetimeCount, hasVeteran] = await Promise.all([
+      getLifetimeTradeCount(playerUuid),
+      hasMarketVeteranAchievement(playerUuid),
+    ]);
 
-  const tradeResult = await db.inTransaction(async (tx) => {
-    const freshToken = await lockAndFetchToken(tx, token.id);
+    tradeResult = await db.inTransaction(async (tx) => {
+      const freshToken = await lockAndFetchToken(tx, token.id);
 
-    // Verify holdings within the transaction
-    const holding = await tx.crypto.holding
-      .where({
+      // Verify holdings within the transaction
+      const holding = await tx.crypto.holding
+        .where({
+          playerMinecraftUuid: playerUuid,
+          tokenId: freshToken.id,
+        })
+        .first();
+
+      // Tokens backing pending sell orders are reserved and cannot be market-sold
+      const reservedTokens = await getReservedTokens(
+        playerUuid,
+        freshToken.id,
+        tx.crypto,
+      );
+      const availableToSell = (holding?.amount ?? 0n) - reservedTokens;
+
+      if (!holding || availableToSell < amount) {
+        throw new ConflictError(
+          reservedTokens > 0n
+            ? `Insufficient unreserved holdings: ${availableToSell > 0n ? availableToSell : 0n} ${freshToken.symbol} available (${reservedTokens} reserved in pending sell orders)`
+            : `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
+        );
+      }
+
+      const price = Number(freshToken.price);
+      const amountNum = Number(amount);
+      const rawRevenue = price * amountNum;
+      const feeAmount = calculateFee(
+        rawRevenue,
+        freshToken.category,
+        lifetimeCount,
+        hasVeteran,
+      );
+      // Round to 3 decimal places to match the balance system's precision
+      const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
+
+      // Credit balance (joins this transaction via txOverride)
+      await R.balanceRepo.add(
+        { minecraftUuid: playerUuid },
+        netRevenue,
+        `Crypto sell: ${amountNum} ${freshToken.symbol} @ $${price}`,
+        BalanceTransactionType.CRYPTO_SELL,
+        {
+          tokenId: freshToken.id,
+          tokenSymbol: freshToken.symbol,
+          amount: amountNum,
+          price,
+          fee: feeAmount,
+        },
+        tx,
+      );
+
+      // Return tokens to supply atomically (using fresh data under lock)
+      await tx.crypto.token.update(
+        { id: freshToken.id },
+        { availableSupply: freshToken.availableSupply + amount },
+      );
+
+      // Consume cost basis lots FIFO and calculate realized P&L
+      const costBasisConsumed = await consumeCostBasis(
+        playerUuid,
+        freshToken.id,
+        amount,
+        tx.crypto,
+      );
+      const realizedPnl = rawRevenue - costBasisConsumed;
+
+      const newAmount = holding.amount - amount;
+      if (newAmount === 0n) {
+        // Holding fully liquidated: delete the row
+        await tx.crypto.holding.delete({ id: holding.id });
+      } else {
+        // Reduce cost basis by the FIFO-consumed amount
+        await tx.crypto.holding.update(
+          { id: holding.id },
+          {
+            amount: newAmount,
+            totalCostBasis: (
+              Number(holding.totalCostBasis) - costBasisConsumed
+            ).toFixed(8),
+            updatedAt: new Date(),
+          },
+        );
+      }
+
+      const txResult = await tx.crypto.transaction.createAndReturn({
         playerMinecraftUuid: playerUuid,
         tokenId: freshToken.id,
-      })
-      .first();
+        type: "sell",
+        trigger: "market",
+        amount,
+        priceAtExecution: freshToken.price,
+        feeAmount: feeAmount.toFixed(8),
+        totalCost: netRevenue.toFixed(8),
+        realizedPnl: realizedPnl.toFixed(8),
+      });
 
-    // Tokens backing pending sell orders are reserved and cannot be market-sold
-    const reservedTokens = await getReservedTokens(
-      playerUuid,
-      freshToken.id,
-      tx.crypto,
-    );
-    const availableToSell = (holding?.amount ?? 0n) - reservedTokens;
+      if (feeAmount > 0) {
+        await updateTreasury(feeAmount, freshToken.category, tx.crypto);
+      }
 
-    if (!holding || availableToSell < amount) {
-      throw new ConflictError(
-        reservedTokens > 0n
-          ? `Insufficient unreserved holdings: ${availableToSell > 0n ? availableToSell : 0n} ${freshToken.symbol} available (${reservedTokens} reserved in pending sell orders)`
-          : `Insufficient holdings: you have ${holding?.amount ?? 0n} ${freshToken.symbol}`,
-      );
-    }
-
-    const price = Number(freshToken.price);
-    const amountNum = Number(amount);
-    const rawRevenue = price * amountNum;
-    const feeAmount = calculateFee(
-      rawRevenue,
-      freshToken.category,
-      lifetimeCount,
-      hasVeteran,
-    );
-    // Round to 3 decimal places to match the balance system's precision
-    const netRevenue = Math.round((rawRevenue - feeAmount) * 1000) / 1000;
-
-    // Credit balance (joins this transaction via txOverride)
-    await R.balanceRepo.add(
-      { minecraftUuid: playerUuid },
-      netRevenue,
-      `Crypto sell: ${amountNum} ${freshToken.symbol} @ $${price}`,
-      BalanceTransactionType.CRYPTO_SELL,
-      {
+      return {
+        transactionId: txResult.id,
         tokenId: freshToken.id,
-        tokenSymbol: freshToken.symbol,
-        amount: amountNum,
-        price,
-        fee: feeAmount,
-      },
-      tx,
-    );
-
-    // Return tokens to supply atomically (using fresh data under lock)
-    await tx.crypto.token.update(
-      { id: freshToken.id },
-      { availableSupply: freshToken.availableSupply + amount },
-    );
-
-    // Consume cost basis lots FIFO and calculate realized P&L
-    const costBasisConsumed = await consumeCostBasis(
-      playerUuid,
-      freshToken.id,
-      amount,
-      tx.crypto,
-    );
-    const realizedPnl = rawRevenue - costBasisConsumed;
-
-    const newAmount = holding.amount - amount;
-    if (newAmount === 0n) {
-      // Holding fully liquidated: delete the row
-      await tx.crypto.holding.delete({ id: holding.id });
-    } else {
-      // Reduce cost basis by the FIFO-consumed amount
-      await tx.crypto.holding.update(
-        { id: holding.id },
-        {
-          amount: newAmount,
-          totalCostBasis: (
-            Number(holding.totalCostBasis) - costBasisConsumed
-          ).toFixed(8),
-          updatedAt: new Date(),
-        },
-      );
-    }
-
-    const txResult = await tx.crypto.transaction.createAndReturn({
-      playerMinecraftUuid: playerUuid,
-      tokenId: freshToken.id,
-      type: "sell",
-      trigger: "market",
-      amount,
-      priceAtExecution: freshToken.price,
-      feeAmount: feeAmount.toFixed(8),
-      totalCost: netRevenue.toFixed(8),
-      realizedPnl: realizedPnl.toFixed(8),
+        symbol: freshToken.symbol,
+        type: "sell" as const,
+        amount,
+        priceAtExecution: freshToken.price,
+        feeAmount,
+        totalCost: netRevenue,
+      };
     });
+  } catch (error) {
+    disarmCooldown();
+    throw error;
+  }
 
-    if (feeAmount > 0) {
-      await updateTreasury(feeAmount, freshToken.category, tx.crypto);
-    }
-
-    return {
-      transactionId: txResult.id,
-      tokenId: freshToken.id,
-      symbol: freshToken.symbol,
-      type: "sell" as const,
-      amount,
-      priceAtExecution: freshToken.price,
-      feeAmount,
-      totalCost: netRevenue,
-    };
-  });
-
-  // Arm the cooldown only now that the trade has committed
+  // Refresh the cooldown to the commit timestamp
   recordTradeCooldown(playerUuid, token.id);
 
   // Fire-and-forget side effects (outside transaction)
