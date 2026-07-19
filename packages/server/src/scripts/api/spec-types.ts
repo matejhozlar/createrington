@@ -9,11 +9,7 @@
 
 /** Primitive types that map directly to Java types */
 export type PrimitiveFieldType =
-  | "string"
-  | "int"
-  | "long"
-  | "double"
-  | "boolean";
+  "string" | "int" | "long" | "double" | "boolean";
 
 /** Array type, maps to List<T> in Java */
 export interface ArrayFieldType {

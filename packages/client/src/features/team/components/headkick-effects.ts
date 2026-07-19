@@ -3,13 +3,7 @@ import { PlayerAnimation } from "skinview3d";
 
 type HeadKickPhase = "vanish" | "head-fall" | "wait-kick" | "bounce" | "gone";
 type KickPhase =
-  | "turn"
-  | "walk"
-  | "wind-up"
-  | "kick"
-  | "recover"
-  | "retreat"
-  | "done";
+  "turn" | "walk" | "wind-up" | "kick" | "recover" | "retreat" | "done";
 
 const VANISH_DURATION = 0.4;
 const HEAD_FALL_DURATION = 0.5;

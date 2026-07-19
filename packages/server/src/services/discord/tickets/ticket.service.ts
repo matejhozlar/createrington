@@ -483,8 +483,7 @@ export class TicketService {
     const ticket = await Q.ticket.get({ id: ticketId });
 
     const transcriptPath = ticket.metadata?.transcriptPath as
-      | string
-      | undefined;
+      string | undefined;
 
     if (!transcriptPath) {
       throw new Error("No transcript found for this ticket");

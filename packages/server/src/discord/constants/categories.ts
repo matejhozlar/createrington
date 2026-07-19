@@ -53,9 +53,9 @@ export const DiscordCategories = Object.fromEntries(
     value,
   ]),
 ) as {
-  [K in keyof typeof categories as ToScreamingSnakeCase<
-    K & string
-  >]: (typeof categories)[K];
+  [
+    K in keyof typeof categories as ToScreamingSnakeCase<K & string>
+  ]: (typeof categories)[K];
 };
 
 /**

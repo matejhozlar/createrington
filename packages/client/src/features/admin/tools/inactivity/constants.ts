@@ -2,11 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { AlertTriangle, CheckCircle2, Clock, UserX } from "lucide-react";
 
 export type WarningStatusFilter =
-  | "all"
-  | "active"
-  | "expired"
-  | "resolved"
-  | "removed";
+  "all" | "active" | "expired" | "resolved" | "removed";
 
 export const STATUS_FILTER_OPTIONS: {
   value: WarningStatusFilter;
