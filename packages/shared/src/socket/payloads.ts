@@ -162,3 +162,11 @@ export interface CryptoOrderUpdatePayload {
   filledPrice?: string;
   filledAt?: string;
 }
+
+export interface CryptoPriceAlertPayload {
+  type: "price_alert";
+  tokenSymbol: string;
+  direction: "above" | "below";
+  targetPrice: string;
+  currentPrice: string;
+}

@@ -67,6 +67,10 @@ export class RoomManager {
     return SubscriptionType.CRYPTO_MARKET;
   }
 
+  static getUserRoom(minecraftUuid: string): string {
+    return `${RoomType.USER}:${minecraftUuid}`;
+  }
+
   /**
    * Get appropriate room based on subscription type and server ID
    *
