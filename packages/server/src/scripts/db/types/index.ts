@@ -54,6 +54,15 @@ export interface TableInfo {
 
   /** Array of all columns in this table with their complete metadata */
   columns: ColumnInfo[];
+
+  /**
+   * Multi-column unique constraint/index groups (snake_case column names)
+   *
+   * Each group uniquely identifies a row only when ALL of its columns are
+   * provided together. Single-column uniques are tracked via ColumnInfo.isUnique
+   * instead. Partial unique indexes are excluded (they do not identify rows).
+   */
+  compositeUniques: string[][];
 }
 
 /**
