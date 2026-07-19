@@ -61,6 +61,7 @@ export const playersRouter = router({
     }),
 
   resolveUsername: publicProcedure
+    .use(playersReadLimit)
     .meta({
       description:
         "Resolves a Minecraft UUID to a username. Checks the local player table first, then falls back to Mojang's session server. Returns { username: null } when the UUID has no Mojang profile (e.g. fake-player UUIDs).",
