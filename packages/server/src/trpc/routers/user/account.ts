@@ -215,18 +215,6 @@ export const accountRouter = router({
       const player = await Q.player.find({ discordId });
       if (!player) throw trpcError.notFound("Player not found");
 
-      // Delete tickets (creator_discord_id is plain text, no FK cascade)
-      const tickets = await Q.ticket.findAll({ creatorDiscordId: discordId });
-      for (const ticket of tickets) {
-        const actions = await Q.ticket.action.findAll({
-          ticketId: ticket.id,
-        });
-        for (const action of actions) {
-          await Q.ticket.action.delete({ id: action.id });
-        }
-        await Q.ticket.delete({ id: ticket.id });
-      }
-
       await playerDeletionService.delete(
         { discordId },
         {
@@ -236,6 +224,9 @@ export const accountRouter = router({
             username: player.minecraftUsername,
           },
           reason: "Account deleted by user",
+          beforeDelete: async (tx) => {
+            await tx.ticket.deleteAll({ creatorDiscordId: discordId });
+          },
         },
       );
 
