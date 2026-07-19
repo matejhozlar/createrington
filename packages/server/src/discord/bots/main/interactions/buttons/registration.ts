@@ -1,4 +1,5 @@
 import { EmbedPresets } from "@/discord/embeds";
+import { Discord } from "@/discord/constants";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
 import {
   type ButtonInteraction,
@@ -65,6 +66,17 @@ export async function execute(interaction: ButtonInteraction): Promise<void> {
 
       const guildChannel = channel as GuildChannel & { name: string };
       const channelName = guildChannel.name;
+
+      if (guildChannel.parentId !== Discord.Categories.VERIFICATION) {
+        logger.warn(
+          `User ${interaction.user.tag} clicked registration close outside the verification category (channel: ${channelName})`,
+        );
+        await interaction.reply({
+          content: "❌ This button only works in a registration channel",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
 
       const deleteEmbed = EmbedPresets.channelDeletion();
 
