@@ -36,6 +36,14 @@ function deriveRole(currentRole: AuthRole, isAdmin: boolean): AuthRole {
 const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
+const STATE_COOKIE_NAME = "oauth_state";
+const stateCookieOptions = {
+  httpOnly: true,
+  secure: config.envMode.isProd,
+  sameSite: "lax",
+  path: "/api/auth",
+} as const;
+
 /**
  * Account-data categories surfaced on the consent screen, as labels only (the
  * actual values are never echoed back to the browser). A subset of the
@@ -60,7 +68,7 @@ export class AuthController {
    *
    * Returns Discord OAuth authorization URL
    */
-  static async getAuthUrl(req: Request, res: Response): Promise<void> {
+  static async getAuthUrl(_req: Request, res: Response): Promise<void> {
     const state = crypto.randomBytes(32).toString("hex");
 
     pendingStates.set(state, Date.now() + STATE_TTL_MS);
@@ -71,6 +79,11 @@ export class AuthController {
     }
 
     const authUrl = discordOAuth.generateAuthUrl(state);
+
+    res.cookie(STATE_COOKIE_NAME, state, {
+      ...stateCookieOptions,
+      maxAge: STATE_TTL_MS,
+    });
 
     res.json({
       success: true,
@@ -98,11 +111,16 @@ export class AuthController {
       throw new BadRequestError("Authorization code is required");
     }
 
-    if (!state || !pendingStates.has(state)) {
+    if (!state || req.cookies?.[STATE_COOKIE_NAME] !== state) {
+      throw new BadRequestError("Invalid or expired state parameter");
+    }
+
+    if (!pendingStates.has(state)) {
       throw new BadRequestError("Invalid or expired state parameter");
     }
     const expiry = pendingStates.get(state)!;
     pendingStates.delete(state); // One-time use
+    res.clearCookie(STATE_COOKIE_NAME, stateCookieOptions);
     if (expiry < Date.now()) {
       throw new BadRequestError("Invalid or expired state parameter");
     }

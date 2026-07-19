@@ -1,5 +1,5 @@
 import type { TableInfo, TableStructure } from "../types";
-import { extractIdentifierFieldNames } from "./types";
+import { extractIdentifierGroups } from "./types";
 
 /**
  * Base query class generator with child accessor patterns
@@ -36,9 +36,9 @@ import { extractIdentifierFieldNames } from "./types";
  * - Enables hierarchical access: `db.user.profiles.sessions.findAll()`
  *
  * Identifier validation:
- * - VALID_IDENTIFIER_FIELDS set contains primary key and unique columns
+ * - IDENTIFIER_GROUPS lists field combinations that uniquely identify a row
  * - Used by extractIdentifier to filter full entities to identifiers
- * - Prevents passing full entities where identifiers are expected
+ * - Composite groups are only valid when all their fields are provided
  *
  * @example
  * ```typescript
@@ -64,11 +64,11 @@ export function generateBaseQueries(
 ): string {
   const { className, tableName, children } = structure;
 
-  // Extract identifier fields (primary keys and unique columns)
-  const identifierFields = extractIdentifierFieldNames(table);
-  const identifierFieldsSet = `new Set([${identifierFields
-    .map((f) => `'${f}'`)
-    .join(", ")}])`;
+  // Extract identifier groups (primary key, composite uniques, single uniques)
+  const identifierGroups = extractIdentifierGroups(table);
+  const identifierGroupsLiteral = `[${identifierGroups
+    .map((group) => `[${group.map((f) => `'${f}'`).join(", ")}]`)
+    .join(", ")}]`;
   const hasUpdatedAt = table.columns.some(
     (col) => col.columnName === "updated_at",
   );
@@ -104,13 +104,13 @@ export class ${className}BaseQueries extends BaseQueries<{
   protected readonly table = "${tableName}";
   
   /**
-   * Valid identifier fields for this table
-   * 
-   * Used by extractIdentifier to filter full entities to identifiers only,
-   * skipping non-identifier fields when passed complete entities.
-   * Includes primary key columns and columns with unique constraints.
+   * Field combinations that uniquely identify a row in this table
+   *
+   * Each group is only a valid identifier when ALL of its fields are provided.
+   * Used by extractIdentifier to filter full entities to identifiers only and
+   * to reject partial composite identifiers.
    */
-  protected readonly VALID_IDENTIFIER_FIELDS = ${identifierFieldsSet};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}
+  protected readonly IDENTIFIER_GROUPS = ${identifierGroupsLiteral};${hasUpdatedAt ? `\n  protected readonly AUTO_SET_UPDATED_AT = true;` : ""}
 
   constructor(db: Pool | PoolClient) {
     super(db);

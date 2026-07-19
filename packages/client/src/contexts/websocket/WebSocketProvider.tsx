@@ -19,6 +19,8 @@ import type {
   WebSocketContextType,
 } from "./types";
 import { WebSocketContext } from "./context";
+import { useAuth } from "@/contexts/auth";
+import { getAccessToken } from "@/services/auth/token-manager";
 
 interface WebSocketProviderProps {
   children: React.ReactNode;
@@ -41,6 +43,8 @@ export function WebSocketProvider({
   children,
   config = {},
 }: WebSocketProviderProps) {
+  const { user, loading: authLoading } = useAuth();
+
   // Socket instance (in state for context value)
   const [socket, setSocket] = useState<Socket | null>(null);
 
@@ -210,6 +214,10 @@ export function WebSocketProvider({
       transports: config.transports || ["websocket", "polling"],
       reconnection: false, // We handle reconnection manually
       timeout: config.timeout || 10000,
+      auth: (cb) => {
+        const token = getAccessToken();
+        cb(token ? { token } : {});
+      },
     });
 
     setSocket(newSocket);
@@ -426,16 +434,32 @@ export function WebSocketProvider({
     [socket],
   );
 
-  // Auto-connect on mount if enabled
   useEffect(() => {
-    if (config.autoConnect !== false) {
+    if (config.autoConnect !== false && !authLoading) {
       connectRef.current?.();
     }
 
     return () => {
       disconnectRef.current?.();
     };
-  }, [config.autoConnect]); // Only run once on mount/unmount
+  }, [config.autoConnect, authLoading]);
+
+  const lastIdentityRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (authLoading) return;
+
+    const identity = user?.discordId ?? null;
+    if (lastIdentityRef.current === undefined) {
+      lastIdentityRef.current = identity;
+      return;
+    }
+    if (lastIdentityRef.current === identity) return;
+    lastIdentityRef.current = identity;
+
+    if (config.autoConnect === false) return;
+    disconnectRef.current?.();
+    connectRef.current?.();
+  }, [authLoading, user?.discordId, config.autoConnect]);
 
   // Health check interval
   useEffect(() => {
@@ -491,6 +515,5 @@ export function WebSocketProvider({
     ],
   );
 
-  // eslint-disable-next-line react-hooks/refs -- False positive: value contains state/callbacks, not refs
   return React.createElement(WebSocketContext.Provider, { value }, children);
 }

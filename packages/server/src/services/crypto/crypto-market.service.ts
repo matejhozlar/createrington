@@ -33,6 +33,10 @@ import { getService } from "@/services";
 import { Services } from "../container";
 import type { WebSocketService } from "../websocket";
 import { SocketEvent } from "@createrington/shared/socket";
+import type {
+  CryptoOrderUpdatePayload,
+  CryptoPriceAlertPayload,
+} from "@createrington/shared/socket";
 import { RoomManager } from "../websocket/room-manager";
 import type { CryptoToken } from "@createrington/shared/db/crypto_token.types";
 import {
@@ -581,16 +585,17 @@ export class CryptoMarketService {
         `Order ${result.orderId} filled: ${result.type} ${result.amount} ${result.symbol} @ $${result.filledPrice}`,
       );
 
+      const payload: CryptoOrderUpdatePayload = {
+        orderId: result.orderId,
+        status: "filled",
+        filledPrice: result.filledPrice,
+        filledAt: new Date().toISOString(),
+      };
+
       this.wsService.broadcastToRoom(
-        RoomManager.getCryptoMarketRoom(),
+        RoomManager.getUserRoom(result.playerUuid),
         SocketEvent.UPDATE_CRYPTO_ORDER,
-        {
-          orderId: result.orderId,
-          playerUuid: result.playerUuid,
-          status: "filled" as const,
-          filledPrice: result.filledPrice,
-          filledAt: new Date().toISOString(),
-        },
+        payload,
       );
     }
   }
@@ -667,17 +672,18 @@ export class CryptoMarketService {
       );
 
       if (this.wsService) {
+        const payload: CryptoPriceAlertPayload = {
+          type: "price_alert",
+          tokenSymbol: alert.tokenSymbol,
+          direction: alert.direction,
+          targetPrice: alert.targetPrice,
+          currentPrice: alert.currentPrice,
+        };
+
         this.wsService.broadcastToRoom(
-          RoomManager.getCryptoMarketRoom(),
+          RoomManager.getUserRoom(alert.playerUuid),
           SocketEvent.CRYPTO_NEWS,
-          {
-            type: "price_alert",
-            playerUuid: alert.playerUuid,
-            tokenSymbol: alert.tokenSymbol,
-            direction: alert.direction,
-            targetPrice: alert.targetPrice,
-            currentPrice: alert.currentPrice,
-          },
+          payload,
         );
       }
     }

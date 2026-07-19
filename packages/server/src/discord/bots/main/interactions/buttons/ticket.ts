@@ -24,6 +24,7 @@ import { getService, Services } from "@/services";
 async function authorizeTicketAction(
   interaction: ButtonInteraction,
   ticketId: number,
+  opts: { staffOnly?: boolean } = {},
 ): Promise<{ creatorDiscordId: string } | null> {
   const ticket = await Q.ticket.find({ id: ticketId });
   if (!ticket) {
@@ -31,7 +32,7 @@ async function authorizeTicketAction(
     return null;
   }
 
-  if (interaction.user.id === ticket.creatorDiscordId) {
+  if (!opts.staffOnly && interaction.user.id === ticket.creatorDiscordId) {
     return ticket;
   }
 
@@ -375,7 +376,10 @@ async function handleReopen(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+  if (
+    !(await authorizeTicketAction(interaction, ticketId, { staffOnly: true }))
+  )
+    return;
 
   const ticketService = await getService(Services.TICKET_SERVICE);
   await ticketService.reopenTicket(ticketId, interaction.user.id);
@@ -396,7 +400,10 @@ async function handleDelete(
   interaction: ButtonInteraction,
   ticketId: number,
 ): Promise<void> {
-  if (!(await authorizeTicketAction(interaction, ticketId))) return;
+  if (
+    !(await authorizeTicketAction(interaction, ticketId, { staffOnly: true }))
+  )
+    return;
 
   try {
     const ticketService = await getService(Services.TICKET_SERVICE);

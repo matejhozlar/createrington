@@ -10,14 +10,34 @@ import {
 } from "@/trpc/utils";
 import { getMojangUsername } from "@/utils/mojang-profile";
 import { mcUuid } from "@/utils/zod-schemas";
-import type { PlayerFilters } from "@createrington/shared/db";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
+import type { Player, PlayerFilters } from "@createrington/shared/db";
+
+const playersReadLimit = createRateLimit({
+  name: "public.players.read",
+  limit: 60,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.ip || "anon",
+});
+
+function toPublicPlayer(player: Player) {
+  return {
+    minecraftUuid: player.minecraftUuid,
+    minecraftUsername: player.minecraftUsername,
+    online: player.online,
+    lastSeen: player.lastSeen,
+    createdAt: player.createdAt,
+    currentServerId: player.currentServerId,
+  };
+}
 
 /** Public players router: lookup, list, and count players without auth. */
 export const playersRouter = router({
   get: publicProcedure
+    .use(playersReadLimit)
     .meta({
       description:
-        "Looks up a single player by Discord ID, Minecraft UUID, or Minecraft username. Returns the full player record or NOT_FOUND",
+        "Looks up a single player by Minecraft UUID or Minecraft username. Returns a public player record or NOT_FOUND",
     })
     .input(
       z.object({
@@ -26,16 +46,22 @@ export const playersRouter = router({
     )
     .query(async ({ input }) => {
       const identifier = parsePlayerId(input.id);
+      if ("discordId" in identifier) {
+        throw trpcError.badRequest(
+          "Lookup by Discord ID is not supported. Use a Minecraft UUID or username.",
+        );
+      }
 
       const player = await Q.player.find(identifier);
       if (!player) {
         throw trpcError.notFound(`Player with ID ${input.id} not found`);
       }
 
-      return player;
+      return toPublicPlayer(player);
     }),
 
   resolveUsername: publicProcedure
+    .use(playersReadLimit)
     .meta({
       description:
         "Resolves a Minecraft UUID to a username. Checks the local player table first, then falls back to Mojang's session server. Returns { username: null } when the UUID has no Mojang profile (e.g. fake-player UUIDs).",
@@ -51,13 +77,13 @@ export const playersRouter = router({
     }),
 
   list: publicProcedure
+    .use(playersReadLimit)
     .meta({
       description:
-        "Returns a paginated list of players with optional filters (discordId, minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata",
+        "Returns a paginated list of players with optional filters (minecraftUuid, minecraftUsername, online) and sorting. Response includes players array and pagination metadata",
     })
     .input(
       z.object({
-        discordId: z.string().optional(),
         minecraftUuid: z.string().optional(),
         minecraftUsername: z.string().optional(),
         online: z
@@ -74,7 +100,6 @@ export const playersRouter = router({
     )
     .query(async ({ input }) => {
       const filters: PlayerFilters = {};
-      if (input.discordId) filters.discordId = input.discordId;
       if (input.minecraftUuid) filters.minecraftUuid = input.minecraftUuid;
       if (input.minecraftUsername) {
         filters.minecraftUsername = {
@@ -94,7 +119,7 @@ export const playersRouter = router({
       ]);
 
       return {
-        players,
+        players: players.map(toPublicPlayer),
         pagination: buildPagination(input.page, input.limit, total),
       };
     }),

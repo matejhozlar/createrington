@@ -19,11 +19,7 @@ interface ActiveWarning {
 }
 
 export type WarningStatus =
-  | "all"
-  | "active"
-  | "expired"
-  | "resolved"
-  | "removed";
+  "all" | "active" | "expired" | "resolved" | "removed";
 
 /**
  * Warning row joined with player data (nullable when the player record

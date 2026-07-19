@@ -48,11 +48,7 @@ interface ChunkDetail {
 }
 
 export type ChunkSortField =
-  | "dimension"
-  | "x"
-  | "z"
-  | "forceloadable"
-  | "active";
+  "dimension" | "x" | "z" | "forceloadable" | "active";
 export type ChunkSortDirection = "asc" | "desc";
 export type ChunkSortState = {
   field: ChunkSortField;

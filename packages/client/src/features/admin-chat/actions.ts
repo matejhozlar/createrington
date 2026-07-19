@@ -48,10 +48,7 @@ export interface NavigateAction {
 }
 
 export type AdminChatAction =
-  | HighlightAction
-  | InsertEmbedAction
-  | InsertComponentsAction
-  | NavigateAction;
+  HighlightAction | InsertEmbedAction | InsertComponentsAction | NavigateAction;
 
 /**
  * Server-persisted action record: matches the ChatAction Prisma row shape

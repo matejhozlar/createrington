@@ -55,22 +55,30 @@ export function AdminChatHistory() {
   const [error, setError] = useState<string | null>(null);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
 
-  const loadFirstPage = useCallback(async () => {
+  const loadFirstPage = useCallback(() => {
+    return fetchChatSessions({ limit: 25 })
+      .then((page) => {
+        setSessions(page.sessions);
+        setNextCursor(page.nextCursor);
+        setError(null);
+        setLoadMoreError(null);
+      })
+      .catch((error: unknown) => {
+        setError(
+          error instanceof Error ? error.message : "Failed to load sessions",
+        );
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const reload = useCallback(() => {
     setLoading(true);
     setError(null);
     setLoadMoreError(null);
-    try {
-      const page = await fetchChatSessions({ limit: 25 });
-      setSessions(page.sessions);
-      setNextCursor(page.nextCursor);
-    } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Failed to load sessions",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    void loadFirstPage();
+  }, [loadFirstPage]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -110,7 +118,7 @@ export function AdminChatHistory() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => void loadFirstPage()}
+            onClick={reload}
             disabled={loading}
             title="Refresh"
           >
@@ -125,11 +133,7 @@ export function AdminChatHistory() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-center">
             <p className="text-destructive">{error}</p>
-            <Button
-              variant="outline"
-              onClick={() => void loadFirstPage()}
-              className="mt-2"
-            >
+            <Button variant="outline" onClick={reload} className="mt-2">
               Try Again
             </Button>
           </div>

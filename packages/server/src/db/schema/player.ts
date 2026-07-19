@@ -46,12 +46,7 @@ export const player = pgTable(
     logoutZ: integer("logout_z"),
     logoutDimension: text("logout_dimension"),
   },
-  (table) => [
-    index("idx_player_discord_id").on(table.discordId),
-    index("idx_player_minecraft_uuid").on(table.minecraftUuid),
-    index("idx_player_minecraft_username").on(table.minecraftUsername),
-    index("idx_player_last_seen").on(table.lastSeen),
-  ],
+  (table) => [index("idx_player_last_seen").on(table.lastSeen)],
 );
 
 // --- lottery_participant ---
@@ -137,7 +132,6 @@ export const playerBalance = pgTable(
   },
   (table) => [
     check("chk_balance_non_negative", sql`${table.balance} >= 0`),
-    index("idx_player_balance_uuid").on(table.minecraftUuid),
     index("idx_player_balance_amount").on(table.balance.desc()),
   ],
 );
@@ -399,7 +393,6 @@ export const playerSession = pgTable(
       "chk_session_end_after_start",
       sql`${table.sessionEnd} IS NULL OR ${table.sessionEnd} >= ${table.sessionStart}`,
     ),
-    index("idx_player_session_player").on(table.playerMinecraftUuid),
     index("idx_player_session_server").on(table.serverId),
     index("idx_player_session_start").on(table.sessionStart),
     uniqueIndex("idx_player_session_active")
@@ -529,12 +522,7 @@ export const rewardClaim = pgTable(
       table.rewardType,
       table.claimPeriodKey,
     ),
-    index("idx_reward_claim_player").on(table.playerMinecraftUuid),
     index("idx_reward_claim_type").on(table.rewardType),
     index("idx_reward_claim_claimed_at").on(table.claimedAt),
-    index("idx_reward_claim_player_type").on(
-      table.playerMinecraftUuid,
-      table.rewardType,
-    ),
   ],
 );

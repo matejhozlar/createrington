@@ -1,3 +1,26 @@
+## v1.30.2 (2026-07-19)
+
+### @createrington/server (1.30.1 → 1.30.2)
+- [security] Strip sensitive fields from public player endpoints: Discord ID and logout coordinates are no longer exposed through public tRPC queries, and position, health, and IP address are removed from server status player info as a defensive guard (these fields were never populated by the backend but are now explicitly excluded to prevent future leakage)
+- [security] Deliver crypto order fills and price alerts via per-user websocket rooms instead of broadcasting to the shared market room, preventing players from observing other players' order events
+- [security] Bind OAuth state parameter to the initiating browser via an httpOnly cookie, preventing cross-browser CSRF replay on the OAuth callback
+- [security] Restrict ticket delete and reopen Discord buttons to staff-only, preventing non-staff ticket creators from deleting or reopening tickets
+- [security] Restrict registration close button to channels in the verification category, preventing misuse in unrelated channels
+- [security] Add global rate limit (60/min per IP) to public player lookup endpoints and a global invite cap to waitlist open-mode signups
+- [fix] Close crypto trade cooldown race by arming the cooldown on request entry instead of after the transaction commits, with automatic rollback on failure so a failed trade does not lock the player out
+- [fix] Return uniform "not found" from order cancel when the order belongs to a different player, preventing order-existence enumeration
+- [fix] Run account deletion ticket cascade inside the deletion transaction so ticket cleanup is atomic; rely on FK cascade for ticket actions instead of manual per-row deletion
+- [fix] Treat composite unique columns as grouped identifiers in the Q system: partial composite keys are now rejected with an explicit error instead of silently matching multiple rows
+- [chore] Drop duplicate database indexes on player, player_balance, player_session, ticket, reward_claim, crypto_holding, and waitlist_entry tables; add a filtered index on crypto_transaction.order_id
+- [chore] Add unit tests for extractIdentifier with composite identifier groups
+- [chore] Migrate to pnpm 11 and Node.js 22 in CI
+
+### @createrington/client (0.2.39 → 0.2.40)
+- [refactor] Fix react-hooks v7.1 lint errors across providers and components: replace async useCallback/useEffect patterns with promise chains, eliminate stale closure refs with proper state, and use useSyncExternalStore for carousel scroll state
+
+### @createrington/shared (1.2.0 → 1.2.1)
+- [add] Add per-user websocket room type and typed CryptoPriceAlertPayload for private crypto event delivery
+
 ## v1.30.1 (2026-06-30)
 
 ### @createrington/server (1.30.0 → 1.30.1)

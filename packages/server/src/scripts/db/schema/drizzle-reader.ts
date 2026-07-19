@@ -104,6 +104,23 @@ function extractTables(): TableInfo[] {
     // Build sets of PK and unique columns from table-level constraints
     const pkColumnNames = new Set<string>();
     const uniqueColumnNames = new Set<string>();
+    const compositeUniques: string[][] = [];
+
+    // A unique group identifies a row only as a whole: single-column groups
+    // mark the column unique, multi-column groups are kept together so they
+    // never degrade into per-column identifiers.
+    const seenCompositeKeys = new Set<string>();
+    const addUniqueGroup = (groupColumns: string[]) => {
+      if (groupColumns.length === 1) {
+        uniqueColumnNames.add(groupColumns[0]);
+        return;
+      }
+      if (groupColumns.length === 0) return;
+      const key = [...groupColumns].sort().join(",");
+      if (seenCompositeKeys.has(key)) return;
+      seenCompositeKeys.add(key);
+      compositeUniques.push(groupColumns);
+    };
 
     // Composite primary keys from primaryKey({...}) calls
     for (const pk of config.primaryKeys) {
@@ -112,25 +129,33 @@ function extractTables(): TableInfo[] {
       }
     }
 
+    // A unique group duplicating the composite PK adds no new identifier
+    if (pkColumnNames.size > 0) {
+      seenCompositeKeys.add([...pkColumnNames].sort().join(","));
+    }
+
     // Composite unique constraints from unique({...}) calls
     for (const uq of config.uniqueConstraints) {
-      for (const col of uq.columns) {
-        uniqueColumnNames.add(col.name);
-      }
+      addUniqueGroup(uq.columns.map((col) => col.name));
     }
 
     // Unique indexes from uniqueIndex() calls
     for (const idx of config.indexes) {
-      if ((idx as any).config?.unique) {
-        const idxColumns = (idx as any).config?.columns;
-        if (Array.isArray(idxColumns)) {
-          for (const col of idxColumns) {
-            if (col?.name) {
-              uniqueColumnNames.add(col.name);
-            }
-          }
-        }
-      }
+      const idxConfig = (idx as any).config;
+      if (!idxConfig?.unique) continue;
+
+      // Partial unique indexes only enforce uniqueness on a row subset,
+      // so their columns cannot identify arbitrary rows
+      if (idxConfig.where) continue;
+
+      const idxColumns = idxConfig.columns;
+      if (!Array.isArray(idxColumns)) continue;
+
+      const names = idxColumns.map((col: any) => col?.name);
+      // Indexes over SQL expressions have no plain column set to identify by
+      if (names.some((name: unknown) => typeof name !== "string")) continue;
+
+      addUniqueGroup(names as string[]);
     }
 
     // Process each column
@@ -139,7 +164,7 @@ function extractTables(): TableInfo[] {
       columns.push(columnInfo);
     }
 
-    tables.push({ tableName: config.name, columns });
+    tables.push({ tableName: config.name, columns, compositeUniques });
   }
 
   return tables;

@@ -2,7 +2,6 @@ import {
   type ChangeEvent,
   type ReactNode,
   type RefObject,
-  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -325,9 +324,11 @@ export function ColorPicker({ value, onChange }: ColorPickerProps) {
   const colorsQuery = trpc.admin.embeds.colors.useQuery();
   const colors = colorsQuery.data ?? [];
 
-  useEffect(() => {
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
     setHex(numberToHex6(value));
-  }, [value]);
+  }
 
   function onHexChange(next: string) {
     const clean = next.replace("#", "").toUpperCase().slice(0, 6);
