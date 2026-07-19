@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,12 +67,15 @@ export function MaintenanceToggle({
   const [estimatedMinutes, setEstimatedMinutes] = useState(30);
   const utils = trpc.useUtils();
 
-  // Compute min datetime for the input (1 minute from now, recalculated when dialog opens)
-  const minDatetime = useMemo(
-    () => new Date(Date.now() + 60000).toISOString().slice(0, 16),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dialogOpen],
-  );
+  // Min datetime for the input (1 minute from now, recomputed when the dialog opens)
+  const [minDatetime, setMinDatetime] = useState("");
+
+  const handleScheduleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setMinDatetime(new Date(Date.now() + 60000).toISOString().slice(0, 16));
+    }
+    setDialogOpen(open);
+  };
 
   const { data: status } = trpc.admin.servers.maintenanceStatus.useQuery(
     { serverId },
@@ -289,7 +292,7 @@ export function MaintenanceToggle({
         </div>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={dialogOpen} onOpenChange={handleScheduleDialogOpenChange}>
         <DialogTrigger asChild>
           <Button variant="outline" size="sm">
             Enable

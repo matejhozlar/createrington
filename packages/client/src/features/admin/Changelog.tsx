@@ -237,12 +237,7 @@ export function Changelog() {
   );
   const [search, setSearch] = useState("");
   const [activeVersion, setActiveVersion] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!activeVersion && sections.length > 0) {
-      setActiveVersion(sections[0].version);
-    }
-  }, [sections, activeVersion]);
+  const currentVersion = activeVersion ?? sections[0]?.version ?? null;
 
   const versionRefs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => {
@@ -334,7 +329,7 @@ export function Changelog() {
         <div className="grid gap-12 min-[920px]:grid-cols-[220px_minmax(0,1fr)]">
           <VersionRail
             sections={sections}
-            activeVersion={activeVersion}
+            activeVersion={currentVersion}
             onSelect={setActiveVersion}
           />
 

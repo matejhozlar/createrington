@@ -55,44 +55,44 @@ export function ServerDataProvider({
 
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  const loadInitialData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const loadInitialData = useCallback(() => {
+    return requestInitialData(undefined, {
+      includeMessages: false,
+    })
+      .then((data) => {
+        setError(null);
 
-      const data = await requestInitialData(undefined, {
-        includeMessages: false,
+        if (data && "servers" in data) {
+          const serverMap = new Map<number, ServerStatus>();
+
+          data.servers.forEach((server: ServerStatus) => {
+            // Filter by serverIds if provided
+            if (!serverIds || serverIds.includes(server.serverId)) {
+              serverMap.set(server.serverId, {
+                ...server,
+                lastUpdate:
+                  typeof server.lastUpdate === "string"
+                    ? new Date(server.lastUpdate)
+                    : server.lastUpdate,
+              });
+            }
+          });
+
+          setServers(serverMap);
+        }
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV)
+          console.error("Failed to load initial server data:", error);
+        setError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to load server data"),
+        );
+      })
+      .finally(() => {
+        setLoading(false);
       });
-
-      if (data && "servers" in data) {
-        const serverMap = new Map<number, ServerStatus>();
-
-        data.servers.forEach((server: ServerStatus) => {
-          // Filter by serverIds if provided
-          if (!serverIds || serverIds.includes(server.serverId)) {
-            serverMap.set(server.serverId, {
-              ...server,
-              lastUpdate:
-                typeof server.lastUpdate === "string"
-                  ? new Date(server.lastUpdate)
-                  : server.lastUpdate,
-            });
-          }
-        });
-
-        setServers(serverMap);
-      }
-    } catch (error) {
-      if (import.meta.env.DEV)
-        console.error("Failed to load initial server data:", error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to load server data"),
-      );
-    } finally {
-      setLoading(false);
-    }
   }, [requestInitialData, serverIds]);
 
   const handleServerStatusUpdate = useCallback(
@@ -126,8 +126,8 @@ export function ServerDataProvider({
     [serverIds],
   );
 
-  const subscribeToUpdates = useCallback(async () => {
-    try {
+  const subscribeToUpdates = useCallback(() => {
+    const subscribeAll = async () => {
       if (serverIds) {
         // Subscribe to specific servers
         for (const serverId of serverIds) {
@@ -137,17 +137,21 @@ export function ServerDataProvider({
         // Subscribe to all servers
         await subscribe("server:status" as SubscriptionType);
       }
+    };
 
-      setIsSubscribed(true);
-    } catch (error) {
-      if (import.meta.env.DEV)
-        console.error("Failed to subscribe to server updates:", error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to subscribe to updates"),
-      );
-    }
+    return subscribeAll()
+      .then(() => {
+        setIsSubscribed(true);
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV)
+          console.error("Failed to subscribe to server updates:", error);
+        setError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to subscribe to updates"),
+        );
+      });
   }, [subscribe, serverIds]);
 
   const unsubscribeFromUpdates = useCallback(async () => {
@@ -194,6 +198,8 @@ export function ServerDataProvider({
   );
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     await loadInitialData();
   }, [loadInitialData]);
 

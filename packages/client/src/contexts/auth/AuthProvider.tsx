@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import type { User, AuthContextType } from "./types";
 import { AuthContext } from "./context";
 import {
@@ -21,9 +21,11 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const logoutRef = useRef<(() => Promise<void>) | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const urlError = new URLSearchParams(window.location.search).get("error");
+    if (!urlError) return null;
+    return AUTH_ERROR_MESSAGES[urlError] ?? AUTH_ERROR_MESSAGES.auth_failed;
+  });
 
   const login = useCallback(async () => {
     try {
@@ -56,57 +58,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const handleCallback = useCallback(async (code: string, state?: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Verify state parameter for CSRF protection
-      const savedState = sessionStorage.getItem("oauth_state");
-      if (state && savedState && state !== savedState) {
-        sessionStorage.removeItem("oauth_state");
-        window.location.href = "/?error=state_mismatch";
-        return;
-      }
-
-      const response = await fetch("/api/auth/discord/callback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ code, state }),
-      });
-
-      const data = await response.json();
-
-      if (data.success && data.data?.accessToken) {
-        // Access token lives in memory only: refresh token stays in an httpOnly cookie.
-        setAccessToken(data.data.accessToken);
-        setUser(data.data.user);
-
-        sessionStorage.removeItem("oauth_state");
-        const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
-        sessionStorage.removeItem("oauth_redirect");
-
-        // Clean up pre-refresh-cookie migration: old auth_token in localStorage.
-        localStorage.removeItem("auth_token");
-
-        window.location.href = redirectPath;
-        return;
-      }
-
-      // The error toast is shown on the next page load by the URL-error
-      // effect below, since this redirect unloads the current document.
-      const reason =
-        data.error?.code === "UNVERIFIED" ? "unverified" : "auth_failed";
-      window.location.href = `/?error=${reason}`;
-    } catch (error) {
-      if (import.meta.env.DEV) console.error("Callback error:", error);
-      window.location.href = "/?error=auth_failed";
-    } finally {
-      setLoading(false);
+  const handleCallback = useCallback((code: string, state?: string) => {
+    // Verify state parameter for CSRF protection
+    const savedState = sessionStorage.getItem("oauth_state");
+    if (state && savedState && state !== savedState) {
+      sessionStorage.removeItem("oauth_state");
+      window.location.href = "/?error=state_mismatch";
+      return;
     }
+
+    fetch("/api/auth/discord/callback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ code, state }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success && data.data?.accessToken) {
+          // Access token lives in memory only: refresh token stays in an httpOnly cookie.
+          setAccessToken(data.data.accessToken);
+          setUser(data.data.user);
+
+          sessionStorage.removeItem("oauth_state");
+          const redirectPath = sessionStorage.getItem("oauth_redirect") || "/";
+          sessionStorage.removeItem("oauth_redirect");
+
+          // Clean up pre-refresh-cookie migration: old auth_token in localStorage.
+          localStorage.removeItem("auth_token");
+
+          window.location.href = redirectPath;
+          return;
+        }
+
+        // The error toast is shown on the next page load by the URL-error
+        // effect below, since this redirect unloads the current document.
+        const reason =
+          data.error?.code === "UNVERIFIED" ? "unverified" : "auth_failed";
+        window.location.href = `/?error=${reason}`;
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV) console.error("Callback error:", error);
+        window.location.href = "/?error=auth_failed";
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   const logout = useCallback(async () => {
@@ -124,8 +123,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setError(null);
     }
   }, []);
-
-  logoutRef.current = logout;
 
   const logoutAll = useCallback(async () => {
     try {
@@ -150,25 +147,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * Silently refresh the access token using the httpOnly refresh cookie.
    * On mount, this replaces the old getCurrentUser() + localStorage approach.
    */
-  const silentRefresh = useCallback(async () => {
-    try {
-      const result = await refreshAccessToken();
-
-      if (result) {
-        setUser({
-          ...result.user,
-          minecraftUsername: result.user.minecraftUsername,
-        } as User);
-      } else {
-        // No valid refresh cookie: user is logged out
+  const silentRefresh = useCallback(() => {
+    return refreshAccessToken()
+      .then((result) => {
+        if (result) {
+          setUser({
+            ...result.user,
+            minecraftUsername: result.user.minecraftUsername,
+          } as User);
+        } else {
+          // No valid refresh cookie: user is logged out
+          setAccessToken(null);
+          setUser(null);
+        }
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV) console.error("Silent refresh error:", error);
         setAccessToken(null);
         setUser(null);
-      }
-    } catch (error) {
-      if (import.meta.env.DEV) console.error("Silent refresh error:", error);
-      setAccessToken(null);
-      setUser(null);
-    }
+      });
   }, []);
 
   // On mount: handle OAuth callback if present in the URL, otherwise silent refresh.
@@ -181,7 +178,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (urlError) {
       const message =
         AUTH_ERROR_MESSAGES[urlError] ?? AUTH_ERROR_MESSAGES.auth_failed;
-      setError(message);
 
       if (urlError === "unverified") {
         toast.error("You're not registered yet", {
@@ -228,13 +224,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Listen for session-expired events dispatched by the API client / tRPC.
   useEffect(() => {
     const handleSessionExpired = () => {
-      logoutRef.current?.();
+      void logout();
     };
 
     window.addEventListener("auth:session-expired", handleSessionExpired);
     return () =>
       window.removeEventListener("auth:session-expired", handleSessionExpired);
-  }, []);
+  }, [logout]);
 
   const value: AuthContextType = {
     user,

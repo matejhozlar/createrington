@@ -60,44 +60,49 @@ export function PlayerDataProvider({
   const [recentJoins, setRecentJoins] = useState<PlayerData[]>([]);
   const [recentLeaves, setRecentLeaves] = useState<PlayerData[]>([]);
 
-  const loadInitialData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // Reference time for session-duration stats, captured whenever player data
+  // changes so the stats memo stays pure (no Date.now() during render).
+  const [playersUpdatedAt, setPlayersUpdatedAt] = useState(0);
 
-      const data = await requestInitialData(undefined, {
-        includeMessages: false,
+  const loadInitialData = useCallback(() => {
+    return requestInitialData(undefined, {
+      includeMessages: false,
+    })
+      .then((data) => {
+        setError(null);
+
+        if (data && "players" in data) {
+          const playerMap = new Map<string, PlayerData>();
+
+          data.players.forEach((player: PlayerData) => {
+            // Filter by serverIds if provided
+            if (!serverIds || serverIds.includes(player.serverId)) {
+              playerMap.set(player.uuid, {
+                ...player,
+                sessionStart:
+                  typeof player.sessionStart === "string"
+                    ? new Date(player.sessionStart)
+                    : player.sessionStart,
+              });
+            }
+          });
+
+          setPlayers(playerMap);
+          setPlayersUpdatedAt(Date.now());
+        }
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV)
+          console.error("Failed to load initial player data:", error);
+        setError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to load player data"),
+        );
+      })
+      .finally(() => {
+        setLoading(false);
       });
-
-      if (data && "players" in data) {
-        const playerMap = new Map<string, PlayerData>();
-
-        data.players.forEach((player: PlayerData) => {
-          // Filter by serverIds if provided
-          if (!serverIds || serverIds.includes(player.serverId)) {
-            playerMap.set(player.uuid, {
-              ...player,
-              sessionStart:
-                typeof player.sessionStart === "string"
-                  ? new Date(player.sessionStart)
-                  : player.sessionStart,
-            });
-          }
-        });
-
-        setPlayers(playerMap);
-      }
-    } catch (error) {
-      if (import.meta.env.DEV)
-        console.error("Failed to load initial player data:", error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to load player data"),
-      );
-    } finally {
-      setLoading(false);
-    }
   }, [requestInitialData, serverIds]);
 
   const handlePlayersUpdate = useCallback(
@@ -106,6 +111,8 @@ export function PlayerDataProvider({
       if (serverIds && !serverIds.includes(payload.serverId)) {
         return;
       }
+
+      setPlayersUpdatedAt(Date.now());
 
       switch (payload.type) {
         case "join":
@@ -180,8 +187,8 @@ export function PlayerDataProvider({
     [serverIds],
   );
 
-  const subscribeToUpdates = useCallback(async () => {
-    try {
+  const subscribeToUpdates = useCallback(() => {
+    const subscribeAll = async () => {
       if (serverIds) {
         // Subscribe to specific servers
         for (const serverId of serverIds) {
@@ -191,17 +198,21 @@ export function PlayerDataProvider({
         // Subscribe to all servers
         await subscribe("players" as SubscriptionType);
       }
+    };
 
-      setIsSubscribed(true);
-    } catch (error) {
-      if (import.meta.env.DEV)
-        console.error("Failed to subscribe to player updates:", error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to subscribe to updates"),
-      );
-    }
+    return subscribeAll()
+      .then(() => {
+        setIsSubscribed(true);
+      })
+      .catch((error: unknown) => {
+        if (import.meta.env.DEV)
+          console.error("Failed to subscribe to player updates:", error);
+        setError(
+          error instanceof Error
+            ? error
+            : new Error("Failed to subscribe to updates"),
+        );
+      });
   }, [subscribe, serverIds]);
 
   const unsubscribeFromUpdates = useCallback(async () => {
@@ -267,6 +278,8 @@ export function PlayerDataProvider({
   );
 
   const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     await loadInitialData();
   }, [loadInitialData]);
 
@@ -288,7 +301,7 @@ export function PlayerDataProvider({
     );
 
     // Calculate average session duration
-    const now = Date.now();
+    const now = playersUpdatedAt;
     const totalSessionTime = allPlayers.reduce((sum, player) => {
       const sessionStart =
         player.sessionStart instanceof Date
@@ -307,7 +320,7 @@ export function PlayerDataProvider({
       recentJoins: recentJoins.length,
       recentLeaves: recentLeaves.length,
     };
-  }, [players, recentJoins, recentLeaves]);
+  }, [players, playersUpdatedAt, recentJoins, recentLeaves]);
 
   useEffect(() => {
     if (isConnected) {

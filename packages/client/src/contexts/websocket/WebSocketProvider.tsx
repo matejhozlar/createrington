@@ -491,6 +491,5 @@ export function WebSocketProvider({
     ],
   );
 
-  // eslint-disable-next-line react-hooks/refs -- False positive: value contains state/callbacks, not refs
   return React.createElement(WebSocketContext.Provider, { value }, children);
 }
