@@ -68,6 +68,14 @@ export class RoomManager {
   }
 
   /**
+   * Get the owner-only room for a user; joined from the verified JWT at
+   * connection time, never reachable via subscribe requests
+   */
+  static getUserRoom(minecraftUuid: string): string {
+    return `${RoomType.USER}:${minecraftUuid}`;
+  }
+
+  /**
    * Get appropriate room based on subscription type and server ID
    *
    * @param type - Subscription type

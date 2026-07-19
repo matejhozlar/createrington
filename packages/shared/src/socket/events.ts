@@ -26,7 +26,7 @@ export enum SocketEvent {
   UPDATE_CRYPTO_ORDER = "update:crypto:order",
   // Broadcast when a significant market event occurs (crash, listing, etc.)
   CRYPTO_MARKET_EVENT = "crypto:market:event",
-  // Broadcast when a new news-feed entry is published
+  // Sent to the owning player when one of their price alerts triggers
   CRYPTO_NEWS = "crypto:news",
 
   // Acknowledgments
@@ -52,4 +52,5 @@ export enum SubscriptionType {
 export enum RoomType {
   GLOBAL = "global",
   SERVER = "server",
+  USER = "user",
 }

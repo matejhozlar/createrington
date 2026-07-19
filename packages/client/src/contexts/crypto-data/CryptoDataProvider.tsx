@@ -118,10 +118,7 @@ export function CryptoDataProvider({
     if (!isConnected || !user) return;
 
     const unsub = on("update:crypto:order", (data) => {
-      const payload = data as CryptoOrderUpdatePayload & {
-        playerUuid?: string;
-      };
-      if (payload.playerUuid !== user.minecraftUuid) return;
+      const payload = data as CryptoOrderUpdatePayload;
 
       toast.success(
         `Order #${payload.orderId} ${payload.status}${payload.filledPrice ? ` at $${Number(payload.filledPrice).toFixed(4)}` : ""}`,

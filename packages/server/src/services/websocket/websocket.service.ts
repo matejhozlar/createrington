@@ -46,7 +46,8 @@ function getSocketClientIp(socket: Socket): string {
  * initial state snapshots on demand, and bridges domain events from
  * `MessageCacheService` and each `PlaytimeService` into room broadcasts. The handshake
  * applies a per-IP connection cap (with nginx X-Real-IP awareness) and accepts an
- * optional Bearer token so future per-user rooms can read `socket.data.user`; invalid
+ * optional Bearer token; authenticated sockets auto-join a private per-user room used
+ * for owner-only events (order fills, price alerts), while invalid
  * tokens degrade to anonymous rather than reject. Per-socket event budgets prevent
  * one tab from starving others on the same client. Construction wires the HTTP server
  * and connection handlers; `initialize()` must be called with both dependency
@@ -93,7 +94,7 @@ export class WebSocketService {
 
       // Optional auth: unauthenticated sockets are allowed (public data),
       // but when the client passes a Bearer-style token via handshake.auth,
-      // verify it so future per-user rooms can read socket.data.user.
+      // verify it so the connection handler can join the per-user room.
       const token =
         typeof socket.handshake.auth?.token === "string"
           ? socket.handshake.auth.token
@@ -152,6 +153,11 @@ export class WebSocketService {
       logger.info(`Client connected: ${socket.id}`);
 
       this.clientSockets.set(socket.id, new Set());
+
+      const user: JWTPayload | undefined = socket.data.user;
+      if (user?.minecraftUuid) {
+        void socket.join(RoomManager.getUserRoom(user.minecraftUuid));
+      }
 
       socket.on(
         SocketEvent.SUBSCRIBE,
