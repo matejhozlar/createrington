@@ -42,14 +42,21 @@ interface ProjectLinks {
 export function ModDetailDialog({
   voteModId,
   onOpenChange,
+  admin = false,
 }: {
   voteModId: number | null;
   onOpenChange: (open: boolean) => void;
+  admin?: boolean;
 }) {
-  const detailQuery = trpc.user.votes.getMod.useQuery(
+  const userQuery = trpc.user.votes.getMod.useQuery(
     { voteModId: voteModId! },
-    { enabled: voteModId !== null },
+    { enabled: voteModId !== null && !admin },
   );
+  const adminQuery = trpc.admin.votes.getMod.useQuery(
+    { voteModId: voteModId! },
+    { enabled: voteModId !== null && admin },
+  );
+  const detailQuery = admin ? adminQuery : userQuery;
 
   const data = detailQuery.data;
   const project = data?.project;

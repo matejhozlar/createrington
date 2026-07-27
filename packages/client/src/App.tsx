@@ -228,6 +228,14 @@ const AdminStructurePacks = lazyNamed(
   () => import("./features/admin/structure-packs/AdminStructurePacks"),
   "AdminStructurePacks",
 );
+const AdminVoting = lazyNamed(
+  () => import("./features/admin/voting/AdminVoting"),
+  "AdminVoting",
+);
+const AdminVoteDetail = lazyNamed(
+  () => import("./features/admin/voting/vote-admin-detail/AdminVoteDetail"),
+  "AdminVoteDetail",
+);
 const StructurePackDetail = lazyNamed(
   () =>
     import("./features/admin/structure-packs/structure-pack-detail/StructurePackDetail"),
@@ -518,6 +526,11 @@ function AppContent() {
                       <Route
                         path="tools/structure-packs/:id"
                         element={<StructurePackDetail />}
+                      />
+                      <Route path="tools/voting" element={<AdminVoting />} />
+                      <Route
+                        path="tools/voting/:id"
+                        element={<AdminVoteDetail />}
                       />
                       <Route path="tools" element={<AdminTools />} />
                       <Route path="tools/faq" element={<AdminFaq />} />

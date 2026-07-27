@@ -28,6 +28,7 @@ import {
   Terminal,
   Timer,
   Users,
+  Vote,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -89,6 +90,13 @@ const TOOL_SECTIONS: ToolSection[] = [
         description: "Manage weekly rotating mod collections from CurseForge.",
         icon: Blocks,
         href: "/admin/tools/structure-packs",
+      },
+      {
+        title: "Modpack Voting",
+        description:
+          "Community mod submissions: review, approve, and manage bans.",
+        icon: Vote,
+        href: "/admin/tools/voting",
       },
       {
         title: "Crypto Market",

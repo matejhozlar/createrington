@@ -18,7 +18,6 @@ import {
   getModpackModIds,
   searchMods,
   type CurseForgeProjectData,
-  type CurseForgeSearchResult,
 } from "@/services/curseforge";
 import { ingestProject } from "@/services/curseforge/ingest";
 
@@ -55,7 +54,13 @@ export interface VoteModEntry {
   note?: string;
 }
 
-export interface VoteProjectSearchResult extends CurseForgeSearchResult {
+export interface VoteProjectSearchResult {
+  id: number;
+  name: string;
+  slug: string;
+  url: string;
+  thumbnailUrl?: string;
+  inModpack: boolean;
   banned: boolean;
   claimed: boolean;
 }
