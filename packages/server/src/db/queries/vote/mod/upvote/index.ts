@@ -13,13 +13,26 @@ export class VoteModUpvoteQueries extends VoteModUpvoteBaseQueries {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<VoteModUpvote[]> {
-  //   const result = await this.db.query<VoteModUpvote>(
-  //     `SELECT * FROM vote_mod_upvote WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /** Upvote counts per vote_mod id, missing ids mean zero. */
+  async countGroupedByMod(
+    voteModIds: number[],
+  ): Promise<Record<number, number>> {
+    if (voteModIds.length === 0) return {};
+
+    const query = `
+      SELECT vote_mod_id, COUNT(*)::int AS upvote_count
+      FROM ${this.table}
+      WHERE vote_mod_id = ANY($1)
+      GROUP BY vote_mod_id`;
+    const result = await this.runQuery<{
+      vote_mod_id: number;
+      upvote_count: number;
+    }>("count upvotes grouped by mod", query, [voteModIds]);
+
+    const counts: Record<number, number> = {};
+    for (const row of result.rows) {
+      counts[row.vote_mod_id] = row.upvote_count;
+    }
+    return counts;
+  }
 }

@@ -68,10 +68,49 @@ export interface CurseForgeModFile {
   displayName: string;
   fileName: string;
   downloadUrl: string | null;
+  fileDate: string;
   fileLength: number;
   releaseType: number;
   gameVersions: string[];
+  hashes: Array<{ value: string; algo: number }>;
   dependencies: Array<{ modId: number; relationType: number }>;
+}
+
+export interface CurseForgeProjectData {
+  id: number;
+  classId: number;
+  slug: string;
+  name: string;
+  summary: string;
+  websiteUrl: string;
+  wikiUrl: string | null;
+  issuesUrl: string | null;
+  sourceUrl: string | null;
+  logoUrl: string | null;
+  thumbnailUrl: string | null;
+  authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
+  categories: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    iconUrl?: string;
+  }>;
+  screenshots: Array<{ title: string; thumbnailUrl: string; url: string }>;
+  downloadCount: number;
+  gamePopularityRank: number | null;
+  isAvailable: boolean;
+  status: number;
+  allowModDistribution: boolean | null;
+  dateCreated: string;
+  dateModified: string;
+  dateReleased: string;
+  latestFilesIndexes: Array<{
+    gameVersion: string;
+    fileId: number;
+    filename: string;
+    releaseType: number;
+    modLoader: number | null;
+  }>;
 }
 
 export interface ResolvedDependency {
@@ -185,9 +224,11 @@ export async function getModFiles(
       displayName: string;
       fileName: string;
       downloadUrl: string | null;
+      fileDate: string;
       fileLength: number;
       releaseType: number;
       gameVersions: string[];
+      hashes?: Array<{ value: string; algo: number }>;
       dependencies?: Array<{ modId: number; relationType: number }>;
     }>;
   };
@@ -197,13 +238,163 @@ export async function getModFiles(
     displayName: f.displayName,
     fileName: f.fileName,
     downloadUrl: f.downloadUrl,
+    fileDate: f.fileDate,
     fileLength: f.fileLength,
     releaseType: f.releaseType,
     gameVersions: f.gameVersions,
+    hashes: f.hashes ?? [],
     dependencies: (f.dependencies ?? []).filter(
       (d) => d.relationType === 2 || d.relationType === 3,
     ),
   }));
+}
+
+interface RawCurseForgeMod {
+  id: number;
+  classId: number;
+  slug: string;
+  name: string;
+  summary: string;
+  links: {
+    websiteUrl: string;
+    wikiUrl?: string;
+    issuesUrl?: string;
+    sourceUrl?: string;
+  };
+  logo?: { url: string; thumbnailUrl: string };
+  authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
+  categories: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    iconUrl?: string;
+  }>;
+  screenshots?: Array<{ title: string; thumbnailUrl: string; url: string }>;
+  downloadCount: number;
+  gamePopularityRank?: number;
+  isAvailable: boolean;
+  status: number;
+  allowModDistribution?: boolean | null;
+  dateCreated: string;
+  dateModified: string;
+  dateReleased: string;
+  latestFilesIndexes?: Array<{
+    gameVersion: string;
+    fileId: number;
+    filename: string;
+    releaseType: number;
+    modLoader?: number;
+  }>;
+}
+
+function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
+  return {
+    id: raw.id,
+    classId: raw.classId,
+    slug: raw.slug,
+    name: raw.name,
+    summary: raw.summary,
+    websiteUrl: raw.links.websiteUrl,
+    wikiUrl: raw.links.wikiUrl || null,
+    issuesUrl: raw.links.issuesUrl || null,
+    sourceUrl: raw.links.sourceUrl || null,
+    logoUrl: raw.logo?.url ?? null,
+    thumbnailUrl: raw.logo?.thumbnailUrl ?? null,
+    authors: raw.authors,
+    categories: raw.categories,
+    screenshots: raw.screenshots ?? [],
+    downloadCount: raw.downloadCount,
+    gamePopularityRank: raw.gamePopularityRank ?? null,
+    isAvailable: raw.isAvailable,
+    status: raw.status,
+    allowModDistribution: raw.allowModDistribution ?? null,
+    dateCreated: raw.dateCreated,
+    dateModified: raw.dateModified,
+    dateReleased: raw.dateReleased,
+    latestFilesIndexes: (raw.latestFilesIndexes ?? []).map((idx) => ({
+      gameVersion: idx.gameVersion,
+      fileId: idx.fileId,
+      filename: idx.filename,
+      releaseType: idx.releaseType,
+      modLoader: idx.modLoader ?? null,
+    })),
+  };
+}
+
+/**
+ * Fetch full metadata for a single CurseForge project
+ *
+ * @param projectId - CurseForge project ID
+ * @returns Structured project data including authors, categories, screenshots, and file indexes
+ */
+export async function getMod(
+  projectId: number,
+): Promise<CurseForgeProjectData> {
+  ensureApiKey();
+
+  const res = await fetch(`${CURSEFORGE_API}/v1/mods/${projectId}`, {
+    headers: cfHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge getMod failed (${res.status}): ${text}`);
+  }
+
+  const body = (await res.json()) as { data: RawCurseForgeMod };
+  return mapProject(body.data);
+}
+
+/**
+ * Fetch full metadata for multiple CurseForge projects in one batch request
+ *
+ * @param projectIds - CurseForge project IDs
+ * @returns Structured project data for every ID the API resolved
+ */
+export async function getMods(
+  projectIds: number[],
+): Promise<CurseForgeProjectData[]> {
+  ensureApiKey();
+  if (projectIds.length === 0) return [];
+
+  const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
+    method: "POST",
+    headers: { ...cfHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ modIds: projectIds }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
+  }
+
+  const body = (await res.json()) as { data: RawCurseForgeMod[] };
+  return body.data.map(mapProject);
+}
+
+/**
+ * Fetch the full HTML project description for a CurseForge project
+ *
+ * The returned HTML is author-controlled and unsafe to render as-is,
+ * sanitize before storing or serving.
+ *
+ * @param projectId - CurseForge project ID
+ * @returns Raw description HTML
+ */
+export async function getModDescription(projectId: number): Promise<string> {
+  ensureApiKey();
+
+  const res = await fetch(
+    `${CURSEFORGE_API}/v1/mods/${projectId}/description`,
+    { headers: cfHeaders() },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `CurseForge getModDescription failed (${res.status}): ${text}`,
+    );
+  }
+
+  const body = (await res.json()) as { data: string };
+  return body.data;
 }
 
 /**

@@ -13,13 +13,26 @@ export class VoteSubmissionUpvoteQueries extends VoteSubmissionUpvoteBaseQueries
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<VoteSubmissionUpvote[]> {
-  //   const result = await this.db.query<VoteSubmissionUpvote>(
-  //     `SELECT * FROM vote_submission_upvote WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /** Upvote counts per submission id, missing ids mean zero. */
+  async countGroupedBySubmission(
+    submissionIds: number[],
+  ): Promise<Record<number, number>> {
+    if (submissionIds.length === 0) return {};
+
+    const query = `
+      SELECT submission_id, COUNT(*)::int AS upvote_count
+      FROM ${this.table}
+      WHERE submission_id = ANY($1)
+      GROUP BY submission_id`;
+    const result = await this.runQuery<{
+      submission_id: number;
+      upvote_count: number;
+    }>("count upvotes grouped by submission", query, [submissionIds]);
+
+    const counts: Record<number, number> = {};
+    for (const row of result.rows) {
+      counts[row.submission_id] = row.upvote_count;
+    }
+    return counts;
+  }
 }
