@@ -120,6 +120,11 @@ const StructurePacks = lazyNamed(
   () => import("./features/structure-packs/StructurePacks"),
   "StructurePacks",
 );
+const Voting = lazyNamed(() => import("./features/voting/Voting"), "Voting");
+const VoteDetail = lazyNamed(
+  () => import("./features/voting/vote-detail/VoteDetail"),
+  "VoteDetail",
+);
 
 // Server pages
 const ServerDetail = lazyNamed(
@@ -455,6 +460,22 @@ function AppContent() {
             }
           />
           <Route path="/structure-packs" element={<StructurePacks />} />
+          <Route
+            path="/voting"
+            element={
+              <ProtectedRoute promptLogin>
+                <Voting />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/voting/:slug"
+            element={
+              <ProtectedRoute promptLogin>
+                <VoteDetail />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Server Routes */}
           <Route

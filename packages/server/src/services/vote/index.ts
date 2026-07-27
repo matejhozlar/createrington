@@ -41,6 +41,7 @@ export type VoteProjectSummary = Pick<
 export interface VoteModListItem extends VoteMod {
   project: VoteProjectSummary;
   upvoteCount: number;
+  submitterName: string | null;
 }
 
 export interface VoteSubmissionDetail {
@@ -617,11 +618,16 @@ export class VoteService {
     if (mods.length === 0) return [];
 
     const projectIds = [...new Set(mods.map((m) => m.curseforgeProjectId))];
-    const [projects, upvoteCounts] = await Promise.all([
+    const submitterIds = [...new Set(mods.map((m) => m.submittedBy))];
+    const [projects, upvoteCounts, submitters] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: projectIds } }),
       Q.vote.mod.upvote.countGroupedByMod(mods.map((m) => m.id)),
+      Q.player.findAll({ discordId: { $in: submitterIds } }),
     ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
+    const nameByDiscordId = new Map(
+      submitters.map((p) => [p.discordId, p.minecraftUsername]),
+    );
 
     return mods.flatMap((mod) => {
       const project = byId.get(mod.curseforgeProjectId);
@@ -631,6 +637,7 @@ export class VoteService {
           ...mod,
           project: this.toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
+          submitterName: nameByDiscordId.get(mod.submittedBy) ?? null,
         },
       ];
     });
