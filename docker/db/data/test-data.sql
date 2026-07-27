@@ -1421,11 +1421,12 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
 INSERT INTO feature_flag (name, enabled, description) VALUES
   ('voting', true, 'Community voting tab');
 
--- Season 3 modpack vote (id = 1), open for submissions
+-- Season 3 modpack vote (id = 1), open for submissions. Fresh vote: no base
+-- modpack, so submissions are validated only against this vote's own content.
 INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_submission, created_by) VALUES
   ('Createrington Season 3 Modpack', 'season-3-modpack',
    'Submit and vote on mods for the season 3 modpack.',
-   'open', '1.21.1', 6, 6, 1316177, 5, '818819241666281503');
+   'open', '1.21.1', 6, 6, NULL, 5, '818819241666281503');
 
 -- CurseForge metadata snapshots (real project IDs, approximate stats)
 INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, game_popularity_rank, date_released, allow_mod_distribution) VALUES

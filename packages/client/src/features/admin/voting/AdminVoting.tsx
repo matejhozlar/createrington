@@ -376,7 +376,7 @@ export function AdminVoting() {
                 <Input
                   id="vote-basepack"
                   type="number"
-                  placeholder="1316177"
+                  placeholder="Leave empty for a fresh vote"
                   value={basePackId}
                   onChange={(e) => setBasePackId(e.target.value)}
                 />

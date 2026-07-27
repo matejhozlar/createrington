@@ -180,7 +180,7 @@ export function AddModsDialog({
                       variant="outline"
                       className="border-green-500/50 text-xs text-green-400"
                     >
-                      In modpack
+                      In base pack
                     </Badge>
                   )}
                   {alreadySelected && (
