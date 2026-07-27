@@ -937,7 +937,11 @@ export class VoteService {
       fileId: index.fileId,
       fileName: index.filename,
       fileDate: file ? new Date(file.fileDate) : null,
-      fileLength: file?.fileLength ?? null,
+      // CurseForge reports int64 sizes; the column is int4
+      fileLength:
+        file?.fileLength != null
+          ? Math.min(file.fileLength, 2_147_483_647)
+          : null,
       fileReleaseType: index.releaseType,
       fileGameVersions: file?.gameVersions ?? [vote.gameVersion],
       fileHashes: hashes,

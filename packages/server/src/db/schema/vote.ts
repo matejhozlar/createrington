@@ -124,6 +124,7 @@ export const voteMod = pgTable(
     index("idx_vote_mod_submission").on(table.submissionId),
     index("idx_vote_mod_status").on(table.status),
     index("idx_vote_mod_submitter").on(table.submittedBy),
+    index("idx_vote_mod_project").on(table.curseforgeProjectId),
     // A project is claimed only while pending or approved; declined and
     // rejected rows stay for history and may be resubmitted by anyone
     uniqueIndex("idx_vote_mod_claim_unique")

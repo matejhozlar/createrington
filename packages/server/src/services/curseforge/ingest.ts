@@ -11,6 +11,9 @@ import {
 } from "./index";
 import { sanitizeDescription } from "./sanitize";
 
+// CurseForge reports int64 counters; the column is int4
+const INT4_MAX = 2_147_483_647;
+
 function toCreate(
   data: CurseForgeProjectData,
   descriptionHtml?: string,
@@ -40,7 +43,7 @@ function toCreate(
     },
     ...(descriptionHtml !== undefined ? { descriptionHtml } : {}),
     screenshots: data.screenshots,
-    downloadCount: data.downloadCount,
+    downloadCount: Math.min(data.downloadCount, INT4_MAX),
     gamePopularityRank: data.gamePopularityRank,
     dateCreated: new Date(data.dateCreated),
     dateModified: new Date(data.dateModified),
