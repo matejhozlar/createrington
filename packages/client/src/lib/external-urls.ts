@@ -5,8 +5,10 @@ export const CONTACT_EMAIL = "admin@createrington.com";
 
 const MC_HEADS_BASE = "https://mc-heads.net";
 
-export function mcHeadsAvatar(uuid: string): string {
-  return `${MC_HEADS_BASE}/avatar/${uuid}`;
+export function mcHeadsAvatar(uuid: string, size?: number): string {
+  return size === undefined
+    ? `${MC_HEADS_BASE}/avatar/${uuid}`
+    : `${MC_HEADS_BASE}/avatar/${uuid}/${size}`;
 }
 
 export function mcHeadsBody(uuid: string): string {
