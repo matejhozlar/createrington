@@ -13,13 +13,25 @@ export class VoteQueries extends VoteBaseQueries {
     super(db);
   }
 
-  // Add custom query methods here
-  // Example:
-  // async findByCustomCriteria(criteria: CustomType): Promise<Vote[]> {
-  //   const result = await this.db.query<Vote>(
-  //     `SELECT * FROM vote WHERE ...`,
-  //     [criteria]
-  //   );
-  //   return result.rows;
-  // }
+  /** Distinct discord ids of everyone who submitted or upvoted in a vote. */
+  async participantDiscordIds(voteId: number): Promise<string[]> {
+    const query = `
+      SELECT discord_id FROM vote_submission WHERE vote_id = $1
+      UNION
+      SELECT vmu.discord_id
+      FROM vote_mod_upvote vmu
+      JOIN vote_mod vm ON vm.id = vmu.vote_mod_id
+      WHERE vm.vote_id = $1
+      UNION
+      SELECT vsu.discord_id
+      FROM vote_submission_upvote vsu
+      JOIN vote_submission vs ON vs.id = vsu.submission_id
+      WHERE vs.vote_id = $1`;
+    const result = await this.runQuery<{ discord_id: string }>(
+      "vote participant discord ids",
+      query,
+      [voteId],
+    );
+    return result.rows.map((row) => row.discord_id);
+  }
 }

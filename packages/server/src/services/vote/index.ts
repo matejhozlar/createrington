@@ -55,6 +55,29 @@ export interface VoteModEntry {
   note?: string;
 }
 
+export interface VoteParticipantSample {
+  minecraftUuid: string;
+  minecraftUsername: string;
+}
+
+export interface VoteTopMod {
+  voteModId: number;
+  name: string;
+  primaryAuthor: string | null;
+  upvoteCount: number;
+  thumbnailUrl: string | null;
+}
+
+export interface VoteSummary {
+  approvedModCount: number;
+  pendingModCount: number;
+  participantCount: number;
+  participantSample: VoteParticipantSample[];
+  topMods: VoteTopMod[];
+}
+
+export type VoteListItem = Vote & { summary: VoteSummary | null };
+
 export interface VoteProjectSearchResult {
   id: number;
   name: string;
@@ -111,11 +134,18 @@ function slugify(name: string): string {
  * cache; validation guards run against the live API at submit time.
  */
 export class VoteService {
-  /** Votes users may see (open and closed, not drafts or archived). */
-  async listVisibleVotes(): Promise<Vote[]> {
-    return Q.vote.findAll(
+  /** Votes users may see (open and closed), with stats for open ones. */
+  async listVisibleVotes(): Promise<VoteListItem[]> {
+    const votes = await Q.vote.findAll(
       { status: { $in: ["open", "closed"] } },
       { orderBy: "createdAt", orderDirection: "desc" },
+    );
+    return Promise.all(
+      votes.map(async (vote) => ({
+        ...vote,
+        summary:
+          vote.status === "open" ? await this.getVoteSummary(vote.id) : null,
+      })),
     );
   }
 
@@ -732,6 +762,44 @@ export class VoteService {
         project: project ? this.toProjectSummary(project) : null,
       };
     });
+  }
+
+  private async getVoteSummary(voteId: number): Promise<VoteSummary> {
+    const [approvedModCount, pendingModCount, participantIds, mods] =
+      await Promise.all([
+        Q.vote.mod.count({ voteId, status: "approved" }),
+        Q.vote.mod.count({ voteId, status: "pending" }),
+        Q.vote.participantDiscordIds(voteId),
+        this.getVoteMods(voteId),
+      ]);
+
+    const participants =
+      participantIds.length > 0
+        ? await Q.player.findAll({ discordId: { $in: participantIds } })
+        : [];
+    const participantSample = participants.slice(0, 5).map((player) => ({
+      minecraftUuid: player.minecraftUuid,
+      minecraftUsername: player.minecraftUsername,
+    }));
+
+    const topMods = [...mods]
+      .sort((a, b) => b.upvoteCount - a.upvoteCount)
+      .slice(0, 3)
+      .map((mod) => ({
+        voteModId: mod.id,
+        name: mod.project.name,
+        primaryAuthor: mod.project.primaryAuthor,
+        upvoteCount: mod.upvoteCount,
+        thumbnailUrl: mod.project.thumbnailUrl,
+      }));
+
+    return {
+      approvedModCount,
+      pendingModCount,
+      participantCount: participantIds.length,
+      participantSample,
+      topMods,
+    };
   }
 
   private async findActiveSubmission(
