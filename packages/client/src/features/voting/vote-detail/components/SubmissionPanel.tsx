@@ -63,8 +63,12 @@ export function SubmissionPanel({
               <div>
                 <CardTitle className="text-base">Your submission</CardTitle>
                 <CardDescription>
-                  {submission.mods.length} of {vote.maxModsPerSubmission} mods,
-                  editable until reviewed
+                  {
+                    submission.mods.filter(
+                      (m) => m.status === "pending" || m.status === "approved",
+                    ).length
+                  }{" "}
+                  of {vote.maxModsPerSubmission} mods, editable until reviewed
                 </CardDescription>
               </div>
               <div className="flex gap-2">

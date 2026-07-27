@@ -39,6 +39,10 @@ interface ProjectLinks {
   source?: string | null;
 }
 
+function isHttpUrl(url: string | null | undefined): url is string {
+  return !!url && /^https?:\/\//i.test(url);
+}
+
 export function ModDetailDialog({
   voteModId,
   onOpenChange,
@@ -62,8 +66,9 @@ export function ModDetailDialog({
   const project = data?.project;
   const categories = (project?.categories ??
     []) as unknown as ProjectCategory[];
-  const screenshots = (project?.screenshots ??
-    []) as unknown as ProjectScreenshot[];
+  const screenshots = (
+    (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
+  ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
   const links = (project?.links ?? {}) as unknown as ProjectLinks;
   const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
 
@@ -72,7 +77,7 @@ export function ModDetailDialog({
     { label: "Wiki", href: links.wiki, icon: Globe },
     { label: "Issues", href: links.issues, icon: Bug },
     { label: "Source", href: links.source, icon: Code2 },
-  ].filter((l) => !!l.href);
+  ].filter((l) => isHttpUrl(l.href));
 
   return (
     <Dialog open={voteModId !== null} onOpenChange={onOpenChange}>

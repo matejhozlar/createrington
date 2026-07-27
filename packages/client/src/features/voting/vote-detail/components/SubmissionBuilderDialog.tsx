@@ -57,8 +57,10 @@ export function SubmissionBuilderDialog({
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
+  // Only approved mods occupy slots; declined and rejected ones free theirs up
   const lockedCount = useMemo(
-    () => (submission?.mods ?? []).filter((m) => m.status !== "pending").length,
+    () =>
+      (submission?.mods ?? []).filter((m) => m.status === "approved").length,
     [submission],
   );
   const maxEditable = vote.maxModsPerSubmission - lockedCount;
@@ -293,7 +295,7 @@ export function SubmissionBuilderDialog({
         <DialogFooter className="items-center gap-2 sm:justify-between">
           <span className="text-xs text-muted-foreground">
             {entries.length + lockedCount}/{vote.maxModsPerSubmission} mods
-            {lockedCount > 0 && ` (${lockedCount} already reviewed)`}
+            {lockedCount > 0 && ` (${lockedCount} approved)`}
           </span>
           <Button
             onClick={handleSave}
