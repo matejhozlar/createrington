@@ -108,3 +108,36 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
   "active",
   "closed",
 ]);
+
+export const voteStatusEnum = pgEnum("vote_status", [
+  "draft",
+  "open",
+  "closed",
+  "archived",
+]);
+
+export const voteSubmissionStatusEnum = pgEnum("vote_submission_status", [
+  "active",
+  "closed",
+]);
+
+// declined = soft (resubmittable), rejected = permanently banned via vote_mod_ban
+export const voteModStatusEnum = pgEnum("vote_mod_status", [
+  "pending",
+  "approved",
+  "declined",
+  "rejected",
+]);
+
+export const voteModSourceEnum = pgEnum("vote_mod_source", ["user", "admin"]);
+
+export const votePollStatusEnum = pgEnum("vote_poll_status", [
+  "open",
+  "closed",
+]);
+
+// per_mod = one yes/no ballot per mod in the poll, bundle = one ballot for the whole poll
+export const votePollGranularityEnum = pgEnum("vote_poll_granularity", [
+  "per_mod",
+  "bundle",
+]);

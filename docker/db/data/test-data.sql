@@ -1414,6 +1414,45 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
   -- Herobrine (qualified solo, no party)
   (1, '550e8400-e29b-41d4-a716-446655440004'::uuid, NOW() - INTERVAL '6 hours', true,  NOW() - INTERVAL '5 minutes');
 
+-- ============================================================================
+-- VOTING SYSTEM
+-- ============================================================================
+
+INSERT INTO feature_flag (name, enabled, description) VALUES
+  ('voting', true, 'Community voting tab');
+
+-- Season 3 modpack vote (id = 1), open for submissions
+INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_submission, created_by) VALUES
+  ('Createrington Season 3 Modpack', 'season-3-modpack',
+   'Submit and vote on mods for the season 3 modpack.',
+   'open', '1.21.1', 6, 6, 1316177, 5, '818819241666281503');
+
+-- CurseForge metadata snapshots (real project IDs, approximate stats)
+INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, game_popularity_rank, date_released, allow_mod_distribution) VALUES
+  (328085, 6, 'create', 'Create', 'Aesthetic Technology that empowers the Player',
+   'https://media.forgecdn.net/avatars/thumbnails/1065/184/256/256/638598725500886388.png',
+   'https://www.curseforge.com/minecraft/mc-mods/create', 'simibubi', 200779345, 61, NOW() - INTERVAL '90 days', true),
+  (238222, 6, 'jei', 'Just Enough Items (JEI)', 'JEI is an item and recipe viewing mod', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/jei', 'mezz', 320000000, 15, NOW() - INTERVAL '30 days', true),
+  (324717, 6, 'jade', 'Jade', 'Shows information about what you are looking at', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, 45, NOW() - INTERVAL '14 days', true);
+
+-- Mumbo's active submission (id = 1) with two pending mods
+INSERT INTO vote_submission (vote_id, discord_id, status) VALUES
+  (1, '123456789012345686', 'active');
+
+-- vote_mod id 1: admin-added, pre-approved. ids 2-3: Mumbo's pending mods
+INSERT INTO vote_mod (vote_id, curseforge_project_id, submission_id, source, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
+  (1, 328085, NULL, 'admin', '818819241666281503', 'approved', NULL, '818819241666281503', NOW() - INTERVAL '2 days', 7963363, 'create-1.21.1-6.0.10.jar'),
+  (1, 238222, 1, 'user', '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NULL, NULL, NULL, NULL),
+  (1, 324717, 1, 'user', '123456789012345686', 'pending', 'Shows what block you are looking at', NULL, NULL, NULL, NULL);
+
+-- Grian upvotes Mumbo's submission and the JEI entry
+INSERT INTO vote_submission_upvote (submission_id, discord_id) VALUES
+  (1, '123456789012345687');
+INSERT INTO vote_mod_upvote (vote_mod_id, discord_id) VALUES
+  (2, '123456789012345687');
+
 -- Show some sample stats
 SELECT
     p.minecraft_username,

@@ -5,12 +5,28 @@ import path from "node:path";
 import JSZip from "jszip";
 import config from "@/config";
 
-const CURSEFORGE_API = "https://api.curseforge.com";
-const MINECRAFT_GAME_ID = 432;
-const NEOFORGE_LOADER_TYPE = 6;
-const DEFAULT_GAME_VERSION = "1.21.1";
-const MODPACK_PROJECT_ID = 1316177;
-const MODPACK_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+// CurseForge API vocabulary
+export const CURSEFORGE_MINECRAFT_GAME_ID = 432;
+
+export const CurseForgeClass = {
+  mods: 6,
+  modpacks: 4471,
+} as const;
+
+export const CurseForgeLoader = {
+  forge: 1,
+  fabric: 4,
+  quilt: 5,
+  neoforge: 6,
+} as const;
+
+const CURSEFORGE_API = config.curseforge.apiBaseUrl;
+const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
+const MOD_CLASS_ID: number = CurseForgeClass.mods;
+const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
+const DEFAULT_GAME_VERSION: string = config.curseforge.defaultGameVersion;
+const MODPACK_PROJECT_ID: number = config.curseforge.modpackProjectId;
+const MODPACK_CACHE_TTL = config.curseforge.modpackCacheTtlMs;
 
 /** Returns the auth and accept headers required for every CurseForge API request */
 function cfHeaders(): Record<string, string> {
@@ -25,6 +41,17 @@ function ensureApiKey(): void {
   if (!config.curseforge.apiKey) {
     throw new Error("CurseForge API key not configured");
   }
+}
+
+export interface CurseForgeTarget {
+  gameVersion?: string;
+  modLoaderType?: number;
+}
+
+export interface CurseForgeSearchOptions extends CurseForgeTarget {
+  classId?: number;
+  /** Modpack used for the inModpack annotation; null skips the check entirely */
+  packProjectId?: number | null;
 }
 
 export interface CurseForgeSearchResult {
@@ -57,17 +84,27 @@ export interface ResolvedDependency {
 }
 
 /**
- * Search CurseForge mods by name, filtered to NeoForge mods for the default game version
+ * Search CurseForge projects by name, filtered by class, loader, and game version
  *
- * @param query - Search string to filter mods by name
+ * Defaults target the current server setup (NeoForge mods for the default game version).
+ *
+ * @param query - Search string to filter projects by name
  * @param pageSize - Maximum number of results to return (default: 50)
- * @returns List of matching mods, each annotated with whether it is already in the modpack
+ * @returns List of matching projects, each annotated with whether it is already in the modpack
  */
 export async function searchMods(
   query: string,
   pageSize = 50,
+  options: CurseForgeSearchOptions = {},
 ): Promise<CurseForgeSearchResult[]> {
   ensureApiKey();
+
+  const {
+    gameVersion = DEFAULT_GAME_VERSION,
+    modLoaderType = NEOFORGE_LOADER_TYPE,
+    classId = MOD_CLASS_ID,
+    packProjectId = MODPACK_PROJECT_ID,
+  } = options;
 
   const url = new URL(`${CURSEFORGE_API}/v1/mods/search`);
   url.searchParams.set("gameId", String(MINECRAFT_GAME_ID));
@@ -75,9 +112,9 @@ export async function searchMods(
   url.searchParams.set("pageSize", String(pageSize));
   url.searchParams.set("sortField", "2"); // popularity
   url.searchParams.set("sortOrder", "desc");
-  url.searchParams.set("classId", "6"); // mods only
-  url.searchParams.set("modLoaderType", String(NEOFORGE_LOADER_TYPE));
-  url.searchParams.set("gameVersion", DEFAULT_GAME_VERSION);
+  url.searchParams.set("classId", String(classId));
+  url.searchParams.set("modLoaderType", String(modLoaderType));
+  url.searchParams.set("gameVersion", gameVersion);
 
   const res = await fetch(url.toString(), { headers: cfHeaders() });
   if (!res.ok) {
@@ -97,7 +134,10 @@ export async function searchMods(
 
   let modpackModIds: Set<number>;
   try {
-    modpackModIds = await getModpackModIds();
+    modpackModIds =
+      packProjectId === null
+        ? new Set<number>()
+        : await getModpackModIds(packProjectId);
   } catch {
     modpackModIds = new Set();
   }
@@ -113,23 +153,25 @@ export async function searchMods(
 }
 
 /**
- * Fetch the available files for a mod, filtered by game version and NeoForge loader
+ * Fetch the available files for a mod, filtered by game version and mod loader
  *
- * Only required (relationType 2) and optional (relationType 3) dependencies are included.
+ * Only optional (relationType 2) and required (relationType 3) dependencies are included.
  *
  * @param modId - CurseForge project ID of the mod
  * @param gameVersion - Minecraft version to filter files by (default: 1.21.1)
+ * @param modLoaderType - CurseForge loader type to filter files by (default: NeoForge)
  * @returns List of mod files with their metadata and filtered dependencies
  */
 export async function getModFiles(
   modId: number,
   gameVersion = DEFAULT_GAME_VERSION,
+  modLoaderType = NEOFORGE_LOADER_TYPE,
 ): Promise<CurseForgeModFile[]> {
   ensureApiKey();
 
   const url = new URL(`${CURSEFORGE_API}/v1/mods/${modId}/files`);
   url.searchParams.set("gameVersion", gameVersion);
-  url.searchParams.set("modLoaderType", String(NEOFORGE_LOADER_TYPE));
+  url.searchParams.set("modLoaderType", String(modLoaderType));
 
   const res = await fetch(url.toString(), { headers: cfHeaders() });
   if (!res.ok) {
@@ -196,19 +238,26 @@ export async function getModFileDownloadUrl(
  * Resolve a list of dependency mod IDs to their display info and best compatible file
  *
  * Checks whether each dependency is already present in the given pack mod set.
- * Best file selection prefers NeoForge + default game version, falling back to
+ * Best file selection prefers the target loader + game version, falling back to
  * game version alone when no loader-specific file is available.
  *
  * @param modIds - CurseForge project IDs to resolve
  * @param packModIds - Set of mod IDs already present in the modpack
+ * @param target - Game version and loader to select best files for (defaults to server setup)
  * @returns Resolved dependency info including name, thumbnail, pack membership, and best file
  */
 export async function resolveDependencies(
   modIds: number[],
   packModIds: Set<number>,
+  target: CurseForgeTarget = {},
 ): Promise<ResolvedDependency[]> {
   ensureApiKey();
   if (modIds.length === 0) return [];
+
+  const {
+    gameVersion = DEFAULT_GAME_VERSION,
+    modLoaderType = NEOFORGE_LOADER_TYPE,
+  } = target;
 
   const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
     method: "POST",
@@ -239,13 +288,10 @@ export async function resolveDependencies(
     const indexes = mod.latestFilesIndexes;
     let bestIndex = indexes.find(
       (idx) =>
-        idx.gameVersion === DEFAULT_GAME_VERSION &&
-        idx.modLoader === NEOFORGE_LOADER_TYPE,
+        idx.gameVersion === gameVersion && idx.modLoader === modLoaderType,
     );
     if (!bestIndex) {
-      bestIndex = indexes.find(
-        (idx) => idx.gameVersion === DEFAULT_GAME_VERSION,
-      );
+      bestIndex = indexes.find((idx) => idx.gameVersion === gameVersion);
     }
 
     return {
@@ -264,7 +310,7 @@ export async function resolveDependencies(
 /**
  * Fetch dependency info for multiple mod files in a single batch request
  *
- * Only required (relationType 2) and optional (relationType 3) dependencies are returned.
+ * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
  *
  * @param fileIds - CurseForge file IDs to look up
  * @returns Per-file records containing the owning mod ID and its filtered dependencies
@@ -308,25 +354,32 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   }));
 }
 
-let modpackCache: { modIds: Set<number>; fetchedAt: number } | null = null;
+const modpackCache = new Map<
+  number,
+  { modIds: Set<number>; fetchedAt: number }
+>();
 
 /**
- * Returns the set of CurseForge mod project IDs present in the latest published modpack
+ * Returns the set of CurseForge mod project IDs present in a modpack's latest published file
  *
  * Downloads the modpack zip, parses `manifest.json`, and caches the result for 1 hour.
  * Prefers the server pack file when available, falling back to the client pack.
  *
+ * @param packProjectId - CurseForge project ID of the modpack (default: current server pack)
  * @returns Set of CurseForge project IDs included in the modpack
  */
-export async function getModpackModIds(): Promise<Set<number>> {
-  if (modpackCache && Date.now() - modpackCache.fetchedAt < MODPACK_CACHE_TTL) {
-    return modpackCache.modIds;
+export async function getModpackModIds(
+  packProjectId = MODPACK_PROJECT_ID,
+): Promise<Set<number>> {
+  const cached = modpackCache.get(packProjectId);
+  if (cached && Date.now() - cached.fetchedAt < MODPACK_CACHE_TTL) {
+    return cached.modIds;
   }
 
   ensureApiKey();
 
   const filesRes = await fetch(
-    `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files?pageSize=1`,
+    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
     { headers: cfHeaders() },
   );
   if (!filesRes.ok) {
@@ -343,7 +396,7 @@ export async function getModpackModIds(): Promise<Set<number>> {
   const fileId = latestFile.serverPackFileId ?? latestFile.id;
 
   const dlRes = await fetch(
-    `${CURSEFORGE_API}/v1/mods/${MODPACK_PROJECT_ID}/files/${fileId}/download-url`,
+    `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
     { headers: cfHeaders() },
   );
   if (!dlRes.ok) {
@@ -366,7 +419,7 @@ export async function getModpackModIds(): Promise<Set<number>> {
   };
 
   const modIds = new Set(manifest.files.map((f) => f.projectID));
-  modpackCache = { modIds, fetchedAt: Date.now() };
+  modpackCache.set(packProjectId, { modIds, fetchedAt: Date.now() });
 
   logger.info(
     `Cached modpack mod list: ${modIds.size} mods from file ${fileId}`,
