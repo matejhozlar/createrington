@@ -265,7 +265,7 @@ export abstract class BaseQueries<
   protected getUpdateMapping(updates: Partial<NonNullable<TConfig["Update"]>>) {
     return Object.entries(updates).map(([key, value]) => ({
       column: this.getColumnName(key),
-      value,
+      value: this.serializeWriteValue(value),
     }));
   }
 
@@ -278,8 +278,12 @@ export abstract class BaseQueries<
   protected getCreateMapping(data: NonNullable<TConfig["Create"]>) {
     return Object.entries(data).map(([key, value]) => ({
       column: this.getColumnName(key),
-      value,
+      value: this.serializeWriteValue(value),
     }));
+  }
+
+  private serializeWriteValue(value: unknown): unknown {
+    return Array.isArray(value) ? JSON.stringify(value) : value;
   }
 
   /**
