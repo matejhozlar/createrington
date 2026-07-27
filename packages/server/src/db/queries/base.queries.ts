@@ -1,6 +1,7 @@
 import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
 import { createNotFoundError } from "../utils/query-helpers";
+import { translateDbError } from "../utils/errors";
 import type { FilterValue } from "@createrington/shared/db/base.types";
 import { QueryBuilder } from "./query-builder";
 
@@ -648,7 +649,7 @@ export abstract class BaseQueries<
       }
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -705,7 +706,7 @@ export abstract class BaseQueries<
       return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -1098,7 +1099,7 @@ export abstract class BaseQueries<
       return result.rowCount || 0;
     } catch (error) {
       logger.error(`Failed to update ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -1207,7 +1208,7 @@ export abstract class BaseQueries<
       await this.db.query(query, values);
     } catch (error) {
       logger.error(`Failed to create ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -1236,7 +1237,7 @@ export abstract class BaseQueries<
       return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to create ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 
@@ -1290,7 +1291,7 @@ export abstract class BaseQueries<
       return this.mapRowToEntity(result.rows[0]);
     } catch (error) {
       logger.error(`Failed to upsert ${this.table}:`, error);
-      throw error;
+      throw translateDbError(error);
     }
   }
 

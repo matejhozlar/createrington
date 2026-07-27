@@ -398,7 +398,7 @@ export class VoteService {
     const existing = await Q.vote.mod.upvote.find({ voteModId, discordId });
     let upvoted: boolean;
     if (existing) {
-      await Q.vote.mod.upvote.delete({ id: existing.id });
+      await Q.vote.mod.upvote.deleteAll({ id: existing.id });
       upvoted = false;
     } else {
       try {
@@ -433,7 +433,7 @@ export class VoteService {
     });
     let upvoted: boolean;
     if (existing) {
-      await Q.vote.submission.upvote.delete({ id: existing.id });
+      await Q.vote.submission.upvote.deleteAll({ id: existing.id });
       upvoted = false;
     } else {
       try {
@@ -504,17 +504,24 @@ export class VoteService {
       throw new ConflictError(`A vote with slug "${slug}" already exists`);
     }
 
-    return Q.vote.createAndReturn({
-      name: input.name,
-      slug,
-      description: input.description ?? null,
-      gameVersion: input.gameVersion,
-      modLoaderType: input.modLoaderType,
-      classId: input.classId ?? CurseForgeClass.mods,
-      baseModpackProjectId: input.baseModpackProjectId ?? null,
-      maxModsPerSubmission: input.maxModsPerSubmission ?? 5,
-      createdBy: adminId,
-    });
+    try {
+      return await Q.vote.createAndReturn({
+        name: input.name,
+        slug,
+        description: input.description ?? null,
+        gameVersion: input.gameVersion,
+        modLoaderType: input.modLoaderType,
+        classId: input.classId ?? CurseForgeClass.mods,
+        baseModpackProjectId: input.baseModpackProjectId ?? null,
+        maxModsPerSubmission: input.maxModsPerSubmission ?? 5,
+        createdBy: adminId,
+      });
+    } catch (error) {
+      if (error instanceof ConstraintViolationError) {
+        throw new ConflictError(`A vote with slug "${slug}" already exists`);
+      }
+      throw error;
+    }
   }
 
   /** Update vote fields, including lifecycle status. */
