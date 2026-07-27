@@ -93,8 +93,15 @@ export async function ingestProject(
 
   let descriptionHtml: string | undefined;
   if (withDescription) {
-    const raw = await getModDescription(projectId).catch(() => "");
-    descriptionHtml = raw ? sanitizeDescription(raw) : "";
+    try {
+      const raw = await getModDescription(projectId);
+      descriptionHtml = raw ? sanitizeDescription(raw) : "";
+    } catch (error) {
+      logger.warn(
+        `Description fetch failed for CurseForge project #${projectId}, keeping cached value`,
+        error,
+      );
+    }
   }
 
   const updateFields =
