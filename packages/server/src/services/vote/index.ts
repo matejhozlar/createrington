@@ -381,6 +381,107 @@ export class VoteService {
     });
   }
 
+  /** Toggle the caller's upvote on a visible mod in an open vote. */
+  async toggleModUpvote(
+    voteModId: number,
+    discordId: string,
+  ): Promise<{ upvoted: boolean; upvoteCount: number }> {
+    const mod = await Q.vote.mod.find({ id: voteModId });
+    if (!mod || !USER_VISIBLE_MOD_STATUSES.includes(mod.status)) {
+      throw new NotFoundError(`Mod #${voteModId} not found`);
+    }
+    await this.getOpenVote(mod.voteId);
+    if (mod.submittedBy === discordId) {
+      throw new BadRequestError("You cannot upvote your own suggestion");
+    }
+
+    const existing = await Q.vote.mod.upvote.find({ voteModId, discordId });
+    let upvoted: boolean;
+    if (existing) {
+      await Q.vote.mod.upvote.delete({ id: existing.id });
+      upvoted = false;
+    } else {
+      try {
+        await Q.vote.mod.upvote.create({ voteModId, discordId });
+      } catch (error) {
+        if (!(error instanceof ConstraintViolationError)) throw error;
+      }
+      upvoted = true;
+    }
+
+    const upvoteCount = await Q.vote.mod.upvote.count({ voteModId });
+    return { upvoted, upvoteCount };
+  }
+
+  /** Toggle the caller's upvote on another player's active submission. */
+  async toggleSubmissionUpvote(
+    submissionId: number,
+    discordId: string,
+  ): Promise<{ upvoted: boolean; upvoteCount: number }> {
+    const submission = await Q.vote.submission.find({ id: submissionId });
+    if (!submission || submission.status !== "active") {
+      throw new NotFoundError(`Submission #${submissionId} not found`);
+    }
+    await this.getOpenVote(submission.voteId);
+    if (submission.discordId === discordId) {
+      throw new BadRequestError("You cannot upvote your own submission");
+    }
+
+    const existing = await Q.vote.submission.upvote.find({
+      submissionId,
+      discordId,
+    });
+    let upvoted: boolean;
+    if (existing) {
+      await Q.vote.submission.upvote.delete({ id: existing.id });
+      upvoted = false;
+    } else {
+      try {
+        await Q.vote.submission.upvote.create({ submissionId, discordId });
+      } catch (error) {
+        if (!(error instanceof ConstraintViolationError)) throw error;
+      }
+      upvoted = true;
+    }
+
+    const upvoteCount = await Q.vote.submission.upvote.count({ submissionId });
+    return { upvoted, upvoteCount };
+  }
+
+  /** IDs of the mods and submissions in a vote the caller has upvoted. */
+  async getMyUpvotes(
+    voteId: number,
+    discordId: string,
+  ): Promise<{ modIds: number[]; submissionIds: number[] }> {
+    const mods = await Q.vote.mod.findAll({ voteId }, { select: ["id"] });
+    const modIds = mods.map((m) => m.id);
+    const modUpvotes =
+      modIds.length > 0
+        ? await Q.vote.mod.upvote.findAll({
+            discordId,
+            voteModId: { $in: modIds },
+          })
+        : [];
+
+    const submissions = await Q.vote.submission.findAll(
+      { voteId },
+      { select: ["id"] },
+    );
+    const submissionIds = submissions.map((s) => s.id);
+    const submissionUpvotes =
+      submissionIds.length > 0
+        ? await Q.vote.submission.upvote.findAll({
+            discordId,
+            submissionId: { $in: submissionIds },
+          })
+        : [];
+
+    return {
+      modIds: modUpvotes.map((u) => u.voteModId),
+      submissionIds: submissionUpvotes.map((u) => u.submissionId),
+    };
+  }
+
   /** Create a vote campaign. */
   async createVote(
     input: {

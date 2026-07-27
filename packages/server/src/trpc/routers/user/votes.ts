@@ -90,6 +90,45 @@ export const userVotesRouter = router({
       }
     }),
 
+  myUpvotes: votingProcedure
+    .meta({ description: "IDs of mods and submissions you have upvoted" })
+    .input(z.object({ voteId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      try {
+        return await voteService.getMyUpvotes(input.voteId, ctx.user.discordId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  upvoteMod: votingProcedure
+    .meta({ description: "Toggle your upvote on a mod" })
+    .input(z.object({ voteModId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await voteService.toggleModUpvote(
+          input.voteModId,
+          ctx.user.discordId,
+        );
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  upvoteSubmission: votingProcedure
+    .meta({ description: "Toggle your upvote on a submission" })
+    .input(z.object({ submissionId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await voteService.toggleSubmissionUpvote(
+          input.submissionId,
+          ctx.user.discordId,
+        );
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   createSubmission: votingProcedure
     .meta({ description: "Create your submission for a vote" })
     .input(

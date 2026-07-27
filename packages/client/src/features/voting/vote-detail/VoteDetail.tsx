@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
+import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
@@ -14,12 +15,31 @@ import { SubmissionPanel } from "./components/SubmissionPanel";
 export function VoteDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
+  const toast = useToastActions();
+  const utils = trpc.useUtils();
   const [openModId, setOpenModId] = useState<number | null>(null);
 
   const voteQuery = trpc.user.votes.get.useQuery(
     { slug: slug! },
     { enabled: !!slug, retry: false },
   );
+
+  const voteId = voteQuery.data?.vote.id;
+  const myUpvotesQuery = trpc.user.votes.myUpvotes.useQuery(
+    { voteId: voteId! },
+    { enabled: voteId !== undefined },
+  );
+  const upvotedModIds = new Set(myUpvotesQuery.data?.modIds ?? []);
+
+  const upvoteMutation = trpc.user.votes.upvoteMod.useMutation({
+    onSuccess: () => {
+      if (voteId !== undefined) {
+        utils.user.votes.myUpvotes.invalidate({ voteId });
+      }
+      utils.user.votes.get.invalidate({ slug: slug! });
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   if (voteQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
@@ -100,6 +120,9 @@ export function VoteDetail() {
                   key={mod.id}
                   mod={mod}
                   onClick={() => setOpenModId(mod.id)}
+                  upvoted={upvotedModIds.has(mod.id)}
+                  canUpvote={isOpen && mod.submittedBy !== user?.discordId}
+                  onUpvote={() => upvoteMutation.mutate({ voteModId: mod.id })}
                 />
               ))}
             </div>
@@ -120,6 +143,9 @@ export function VoteDetail() {
                   key={mod.id}
                   mod={mod}
                   onClick={() => setOpenModId(mod.id)}
+                  upvoted={upvotedModIds.has(mod.id)}
+                  canUpvote={isOpen && mod.submittedBy !== user?.discordId}
+                  onUpvote={() => upvoteMutation.mutate({ voteModId: mod.id })}
                 />
               ))}
             </div>

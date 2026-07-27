@@ -19,9 +19,18 @@ interface ModCardProps {
     };
   };
   onClick: () => void;
+  upvoted: boolean;
+  canUpvote: boolean;
+  onUpvote: () => void;
 }
 
-export function ModCard({ mod, onClick }: ModCardProps) {
+export function ModCard({
+  mod,
+  onClick,
+  upvoted,
+  canUpvote,
+  onUpvote,
+}: ModCardProps) {
   const status = MOD_STATUS_STYLES[mod.status];
 
   return (
@@ -60,12 +69,21 @@ export function ModCard({ mod, onClick }: ModCardProps) {
             <Download className="size-3" />
             {formatDownloads(mod.project.downloadCount)}
           </span>
-          {mod.upvoteCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <Heart className="size-3" />
-              {mod.upvoteCount}
-            </span>
-          )}
+          <button
+            type="button"
+            disabled={!canUpvote}
+            onClick={(e) => {
+              e.stopPropagation();
+              onUpvote();
+            }}
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors ${
+              upvoted ? "text-red-400" : ""
+            } ${canUpvote ? "cursor-pointer hover:bg-accent hover:text-red-400" : ""}`}
+            aria-label={upvoted ? "Remove upvote" : "Upvote"}
+          >
+            <Heart className={`size-3 ${upvoted ? "fill-current" : ""}`} />
+            {mod.upvoteCount}
+          </button>
           {mod.status !== "approved" && status && (
             <Badge variant="outline" className={`text-xs ${status.className}`}>
               {status.label}
