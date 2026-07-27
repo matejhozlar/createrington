@@ -2,7 +2,16 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor } from "@/trpc/utils";
-import { featureFlagService } from "@/services/feature-flag";
+import {
+  featureFlagService,
+  FeatureFlags,
+  type FeatureFlagName,
+} from "@/services/feature-flag";
+
+const flagNames = Object.values(FeatureFlags) as [
+  FeatureFlagName,
+  ...FeatureFlagName[],
+];
 
 export const adminFeaturesRouter = router({
   list: adminProcedure
@@ -13,7 +22,7 @@ export const adminFeaturesRouter = router({
     .meta({ description: "Enable or disable a feature flag" })
     .input(
       z.object({
-        name: z.string().trim().min(1).max(64),
+        name: z.enum(flagNames),
         enabled: z.boolean(),
         description: z.string().trim().max(200).optional(),
       }),

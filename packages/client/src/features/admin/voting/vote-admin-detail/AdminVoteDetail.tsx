@@ -70,7 +70,7 @@ export function AdminVoteDetail() {
   const votesQuery = trpc.admin.votes.list.useQuery();
   const vote = votesQuery.data?.find((v) => v.id === voteId);
 
-  const modsQuery = trpc.admin.votes.mods.useQuery(
+  const modsQuery = trpc.admin.votes.listMods.useQuery(
     { voteId },
     { enabled: Number.isFinite(voteId) },
   );
@@ -87,7 +87,9 @@ export function AdminVoteDetail() {
   const [rejectReason, setRejectReason] = useState("");
 
   const invalidate = () => {
-    utils.admin.votes.mods.invalidate({ voteId });
+    utils.admin.votes.listMods.invalidate({ voteId });
+    utils.admin.votes.getMod.invalidate();
+    utils.admin.votes.searchProjects.invalidate({ voteId });
     utils.admin.votes.listBans.invalidate();
     utils.user.votes.get.invalidate();
   };

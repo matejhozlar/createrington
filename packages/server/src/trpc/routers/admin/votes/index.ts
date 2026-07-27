@@ -25,7 +25,16 @@ export const adminVotesRouter = router({
     .input(
       z.object({
         name: z.string().trim().min(1).max(120),
-        slug: z.string().trim().min(1).max(120).optional(),
+        slug: z
+          .string()
+          .trim()
+          .min(1)
+          .max(100)
+          .regex(
+            /^[a-z0-9-]+$/,
+            "Slug may only contain lowercase letters, numbers, and hyphens",
+          )
+          .optional(),
         description: z.string().trim().max(2000).optional(),
         gameVersion: z.string().trim().min(1).max(20),
         modLoaderType: z.number().int().min(0),
@@ -67,7 +76,7 @@ export const adminVotesRouter = router({
       }
     }),
 
-  mods: adminProcedure
+  listMods: adminProcedure
     .meta({ description: "List every mod in a vote, all statuses" })
     .input(z.object({ voteId: z.number().int().positive() }))
     .query(async ({ input }) => {

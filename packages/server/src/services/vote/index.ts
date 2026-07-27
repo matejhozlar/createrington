@@ -14,6 +14,7 @@ import type {
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
+  getMod,
   getModFiles,
   getModpackModIds,
   searchMods,
@@ -69,6 +70,13 @@ export type VoteReviewAction = "approve" | "decline" | "reject";
 
 const USER_VISIBLE_MOD_STATUSES: VoteModStatus[] = ["pending", "approved"];
 
+const VOTE_STATUS_TRANSITIONS: Record<Vote["status"], Vote["status"][]> = {
+  draft: ["open"],
+  open: ["closed"],
+  closed: ["open", "archived"],
+  archived: ["closed"],
+};
+
 interface PreparedEntry {
   projectId: number;
   note: string | null;
@@ -92,7 +100,9 @@ function slugify(name: string): string {
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 100)
+    .replace(/-+$/, "");
 }
 
 /**
@@ -504,6 +514,10 @@ export class VoteService {
       throw new ConflictError(`A vote with slug "${slug}" already exists`);
     }
 
+    if (input.baseModpackProjectId) {
+      await this.assertBaseModpack(input.baseModpackProjectId);
+    }
+
     try {
       return await Q.vote.createAndReturn({
         name: input.name,
@@ -538,7 +552,37 @@ export class VoteService {
       maxModsPerSubmission: number;
     }>,
   ): Promise<Vote> {
-    await this.getVote(voteId);
+    const vote = await this.getVote(voteId);
+
+    if (
+      patch.status &&
+      patch.status !== vote.status &&
+      !VOTE_STATUS_TRANSITIONS[vote.status].includes(patch.status)
+    ) {
+      throw new BadRequestError(
+        `A ${vote.status} vote cannot move to ${patch.status}`,
+      );
+    }
+
+    const targetChanged =
+      (patch.gameVersion !== undefined &&
+        patch.gameVersion !== vote.gameVersion) ||
+      (patch.modLoaderType !== undefined &&
+        patch.modLoaderType !== vote.modLoaderType) ||
+      (patch.classId !== undefined && patch.classId !== vote.classId);
+    if (targetChanged && (await Q.vote.mod.count({ voteId })) > 0) {
+      throw new BadRequestError(
+        "Cannot change the game version, mod loader, or project type of a vote that already has mods",
+      );
+    }
+
+    if (
+      patch.baseModpackProjectId != null &&
+      patch.baseModpackProjectId !== vote.baseModpackProjectId
+    ) {
+      await this.assertBaseModpack(patch.baseModpackProjectId);
+    }
+
     return Q.vote.updateAndReturn({ id: voteId }, patch);
   }
 
@@ -552,21 +596,27 @@ export class VoteService {
     const mod = await Q.vote.mod.find({ id: voteModId });
     if (!mod) throw new NotFoundError(`Mod #${voteModId} not found`);
 
-    if (mod.status === "rejected") {
-      const ban = await Q.vote.mod.ban.find({
-        curseforgeProjectId: mod.curseforgeProjectId,
-      });
-      if (ban) {
-        throw new BadRequestError(
-          "This mod is rejected and banned, remove the ban first",
-        );
-      }
+    const ban = await Q.vote.mod.ban.find({
+      curseforgeProjectId: mod.curseforgeProjectId,
+    });
+    if (ban && action !== "reject") {
+      throw new BadRequestError("This project is banned, remove the ban first");
     }
 
     try {
       return await db.inTransaction(async (tx) => {
         if (action === "reject") {
           await this.applyBan(tx, mod.curseforgeProjectId, adminId, reason);
+          if (mod.status === "declined") {
+            await tx.vote.mod.update(
+              { id: voteModId },
+              {
+                status: "rejected",
+                reviewedBy: adminId,
+                reviewedAt: new Date(),
+              },
+            );
+          }
           return tx.vote.mod.get({ id: voteModId });
         }
 
@@ -818,8 +868,10 @@ export class VoteService {
       try {
         basePackIds = await getModpackModIds(vote.baseModpackProjectId);
       } catch (error) {
-        logger.warn("Base modpack check skipped, manifest fetch failed", error);
-        basePackIds = new Set();
+        logger.warn("Base modpack manifest fetch failed", error);
+        throw new BadRequestError(
+          "Could not check against the base modpack right now, please try again",
+        );
       }
       const inPack = projectIds.filter((id) => basePackIds.has(id));
       if (inPack.length > 0) {
@@ -981,6 +1033,22 @@ export class VoteService {
       await tx.vote.submission.update(
         { id: submissionId },
         { status: "closed" },
+      );
+    }
+  }
+
+  private async assertBaseModpack(projectId: number): Promise<void> {
+    let data: CurseForgeProjectData;
+    try {
+      data = await getMod(projectId);
+    } catch {
+      throw new BadRequestError(
+        `Could not resolve CurseForge project #${projectId}`,
+      );
+    }
+    if (data.classId !== CurseForgeClass.modpacks) {
+      throw new BadRequestError(
+        `"${data.name}" is not a modpack on CurseForge`,
       );
     }
   }

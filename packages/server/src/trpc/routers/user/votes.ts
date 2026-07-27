@@ -13,6 +13,27 @@ const requireVotingEnabled = middleware(async ({ next }) => {
 
 const votingProcedure = userProcedure.use(requireVotingEnabled);
 
+function redactMod<T extends { reviewedBy: string | null }>(
+  mod: T,
+): Omit<T, "reviewedBy"> {
+  const { reviewedBy: _reviewedBy, ...rest } = mod;
+  return rest;
+}
+
+function redactSubmission<
+  T extends { mods: Array<{ reviewedBy: string | null }> },
+>(
+  detail: T,
+): Omit<T, "mods"> & { mods: Omit<T["mods"][number], "reviewedBy">[] } {
+  return {
+    ...detail,
+    mods: detail.mods.map((m) => redactMod(m)) as Omit<
+      T["mods"][number],
+      "reviewedBy"
+    >[],
+  };
+}
+
 const submissionEntries = z
   .array(
     z.object({
@@ -41,7 +62,7 @@ export const userVotesRouter = router({
       try {
         const vote = await voteService.getVisibleVoteBySlug(input.slug);
         const mods = await voteService.getVoteMods(vote.id);
-        return { vote, mods };
+        return { vote, mods: mods.map((m) => redactMod(m)) };
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -52,7 +73,8 @@ export const userVotesRouter = router({
     .input(z.object({ voteModId: z.number().int().positive() }))
     .query(async ({ input }) => {
       try {
-        return await voteService.getModDetail(input.voteModId);
+        const detail = await voteService.getModDetail(input.voteModId);
+        return { ...detail, mod: redactMod(detail.mod) };
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -81,10 +103,11 @@ export const userVotesRouter = router({
     .input(z.object({ voteId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       try {
-        return await voteService.getActiveSubmission(
+        const detail = await voteService.getActiveSubmission(
           input.voteId,
           ctx.user.discordId,
         );
+        return detail ? redactSubmission(detail) : null;
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -139,10 +162,12 @@ export const userVotesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await voteService.createSubmission(
-          input.voteId,
-          ctx.user.discordId,
-          input.mods,
+        return redactSubmission(
+          await voteService.createSubmission(
+            input.voteId,
+            ctx.user.discordId,
+            input.mods,
+          ),
         );
       } catch (error) {
         rethrowTrpc(error);
@@ -159,10 +184,12 @@ export const userVotesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await voteService.updateSubmission(
-          input.voteId,
-          ctx.user.discordId,
-          input.mods,
+        return redactSubmission(
+          await voteService.updateSubmission(
+            input.voteId,
+            ctx.user.discordId,
+            input.mods,
+          ),
         );
       } catch (error) {
         rethrowTrpc(error);
