@@ -1,5 +1,5 @@
 {
-  "id": "7383b4f3-7ad0-4dff-8492-7713f4c9704e",
+  "id": "cbd3658e-5b8f-49b2-99f6-e019cca6ef28",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -1760,12 +1760,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "logo_url": {
-          "name": "logo_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "thumbnail_url": {
           "name": "thumbnail_url",
           "type": "text",
@@ -1784,32 +1778,12 @@
           "primaryKey": false,
           "notNull": false
         },
-        "authors": {
-          "name": "authors",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "categories": {
           "name": "categories",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
           "default": "'[]'::jsonb"
-        },
-        "links": {
-          "name": "links",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "description_html": {
-          "name": "description_html",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "screenshots": {
           "name": "screenshots",
@@ -1824,18 +1798,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "game_popularity_rank": {
-          "name": "game_popularity_rank",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "date_created": {
-          "name": "date_created",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         },
         "date_modified": {
           "name": "date_modified",
@@ -1861,12 +1823,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
-        },
-        "cf_status": {
-          "name": "cf_status",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "refreshed_at": {
           "name": "refreshed_at",
@@ -7365,37 +7321,11 @@
           "primaryKey": false,
           "notNull": false
         },
-        "file_date": {
-          "name": "file_date",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "file_length": {
-          "name": "file_length",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "file_release_type": {
           "name": "file_release_type",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
-        },
-        "file_game_versions": {
-          "name": "file_game_versions",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "file_hashes": {
-          "name": "file_hashes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
         },
         "created_at": {
           "name": "created_at",
@@ -7463,6 +7393,21 @@
           "columns": [
             {
               "expression": "submitted_by",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_vote_mod_project": {
+          "name": "idx_vote_mod_project",
+          "columns": [
+            {
+              "expression": "curseforge_project_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

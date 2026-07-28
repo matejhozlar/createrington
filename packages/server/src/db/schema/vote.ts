@@ -5,7 +5,6 @@ import {
   text,
   timestamp,
   boolean,
-  jsonb,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -79,8 +78,9 @@ export const voteSubmission = pgTable(
 );
 
 // --- vote_mod ---
-// A CurseForge project inside a vote. File columns snapshot the concrete file
-// chosen for the vote's game version and loader at submit time.
+// A CurseForge project inside a vote. File columns record which file satisfied
+// the vote's game version and loader at submit time; a pack build re-resolves
+// files fresh rather than trusting this snapshot.
 
 export const voteMod = pgTable(
   "vote_mod",
@@ -103,15 +103,7 @@ export const voteMod = pgTable(
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
     fileId: integer("file_id"),
     fileName: text("file_name"),
-    fileDate: timestamp("file_date", { withTimezone: true }),
-    fileLength: integer("file_length"),
     fileReleaseType: integer("file_release_type"),
-    fileGameVersions: jsonb("file_game_versions")
-      .notNull()
-      .default(sql`'[]'::jsonb`),
-    fileHashes: jsonb("file_hashes")
-      .notNull()
-      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

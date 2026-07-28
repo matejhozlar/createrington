@@ -1,15 +1,7 @@
-import {
-  Bug,
-  Calendar,
-  Code2,
-  Download,
-  ExternalLink,
-  Globe,
-  Heart,
-  TrendingUp,
-} from "lucide-react";
+import { Calendar, Download, ExternalLink, Heart } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -18,7 +10,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { formatDate, formatDownloads, MOD_STATUS_STYLES } from "../../format";
 
 interface ProjectCategory {
@@ -30,13 +21,6 @@ interface ProjectScreenshot {
   title: string;
   thumbnailUrl: string;
   url: string;
-}
-
-interface ProjectLinks {
-  website?: string | null;
-  wiki?: string | null;
-  issues?: string | null;
-  source?: string | null;
 }
 
 function isHttpUrl(url: string | null | undefined): url is string {
@@ -69,15 +53,7 @@ export function ModDetailDialog({
   const screenshots = (
     (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
   ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
-  const links = (project?.links ?? {}) as unknown as ProjectLinks;
   const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
-
-  const linkEntries = [
-    { label: "CurseForge", href: links.website, icon: ExternalLink },
-    { label: "Wiki", href: links.wiki, icon: Globe },
-    { label: "Issues", href: links.issues, icon: Bug },
-    { label: "Source", href: links.source, icon: Code2 },
-  ].filter((l) => isHttpUrl(l.href));
 
   return (
     <Dialog open={voteModId !== null} onOpenChange={onOpenChange}>
@@ -128,20 +104,11 @@ export function ModDetailDialog({
               </div>
             </DialogHeader>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-3 gap-3">
               <Stat
                 icon={Download}
                 label="Downloads"
                 value={formatDownloads(project.downloadCount)}
-              />
-              <Stat
-                icon={TrendingUp}
-                label="Popularity"
-                value={
-                  project.gamePopularityRank
-                    ? `#${project.gamePopularityRank}`
-                    : "n/a"
-                }
               />
               <Stat
                 icon={Calendar}
@@ -154,23 +121,6 @@ export function ModDetailDialog({
                 value={String(data.upvoteCount)}
               />
             </div>
-
-            {linkEntries.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {linkEntries.map(({ label, href, icon: Icon }) => (
-                  <a
-                    key={label}
-                    href={href!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  >
-                    <Icon className="size-3" />
-                    {label}
-                  </a>
-                ))}
-              </div>
-            )}
 
             {data.mod.note && (
               <div className="rounded-lg border bg-accent/30 p-3 text-sm">
@@ -199,15 +149,17 @@ export function ModDetailDialog({
               </div>
             )}
 
-            {project.descriptionHtml && (
-              <>
-                <Separator />
-                <div
-                  className="max-w-none text-sm leading-relaxed [&_a]:text-primary [&_a]:underline-offset-2 hover:[&_a]:underline [&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_code]:rounded [&_code]:bg-accent [&_code]:px-1 [&_h1]:text-lg [&_h1]:font-semibold [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold [&_img]:my-2 [&_img]:h-auto [&_img]:max-w-full [&_img]:rounded-lg [&_li]:ml-4 [&_ol]:list-decimal [&_p]:my-2 [&_table]:w-full [&_td]:border [&_td]:p-1.5 [&_th]:border [&_th]:p-1.5 [&_ul]:list-disc"
-                  // Sanitized server-side at ingest with a strict allowlist
-                  dangerouslySetInnerHTML={{ __html: project.descriptionHtml }}
-                />
-              </>
+            {isHttpUrl(project.websiteUrl) && (
+              <Button variant="outline" className="w-full" asChild>
+                <a
+                  href={project.websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="size-4" />
+                  View full description on CurseForge
+                </a>
+              </Button>
             )}
           </>
         )}

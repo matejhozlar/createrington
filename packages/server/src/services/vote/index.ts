@@ -15,7 +15,6 @@ import type {
 import {
   CurseForgeClass,
   getMod,
-  getModFiles,
   getModpackModIds,
   searchMods,
   type CurseForgeProjectData,
@@ -33,7 +32,6 @@ export type VoteProjectSummary = Pick<
   | "primaryAuthor"
   | "categories"
   | "downloadCount"
-  | "gamePopularityRank"
   | "dateReleased"
   | "allowModDistribution"
 >;
@@ -105,18 +103,10 @@ interface PreparedEntry {
   note: string | null;
   fileId: number | null;
   fileName: string | null;
-  fileDate: Date | null;
-  fileLength: number | null;
   fileReleaseType: number | null;
-  fileGameVersions: string[];
-  fileHashes: Record<string, string>;
 }
 
 type TxQueries = Parameters<Parameters<typeof db.inTransaction>[0]>[0];
-
-function jsonb<T>(value: T): Record<string, never> {
-  return value as unknown as Record<string, never>;
-}
 
 function slugify(name: string): string {
   return name
@@ -716,7 +706,7 @@ export class VoteService {
     const cached = await Q.curseforge.project.find({ id: projectId });
     if (!cached) {
       try {
-        await ingestProject(projectId, { withDescription: false });
+        await ingestProject(projectId);
       } catch {
         throw new BadRequestError(
           `Could not resolve CurseForge project #${projectId}`,
@@ -885,7 +875,6 @@ export class VoteService {
       primaryAuthor: project.primaryAuthor,
       categories: project.categories,
       downloadCount: project.downloadCount,
-      gamePopularityRank: project.gamePopularityRank,
       dateReleased: project.dateReleased,
       allowModDistribution: project.allowModDistribution,
     };
@@ -961,17 +950,17 @@ export class VoteService {
       prepared.push({
         projectId: entry.projectId,
         note: entry.note ?? null,
-        ...(await this.snapshotFile(vote, data)),
+        ...this.snapshotFile(vote, data),
       });
     }
     return prepared;
   }
 
   /** Pick the latest compatible file for the vote's game version and loader. */
-  private async snapshotFile(
+  private snapshotFile(
     vote: Vote,
     data: CurseForgeProjectData,
-  ): Promise<Omit<PreparedEntry, "projectId" | "note">> {
+  ): Omit<PreparedEntry, "projectId" | "note"> {
     let index = data.latestFilesIndexes.find(
       (idx) =>
         idx.gameVersion === vote.gameVersion &&
@@ -988,31 +977,10 @@ export class VoteService {
       );
     }
 
-    const files = await getModFiles(
-      data.id,
-      vote.gameVersion,
-      vote.modLoaderType,
-    ).catch(() => []);
-    const file = files.find((f) => f.id === index.fileId);
-
-    const hashes: Record<string, string> = {};
-    for (const hash of file?.hashes ?? []) {
-      if (hash.algo === 1) hashes.sha1 = hash.value;
-      if (hash.algo === 2) hashes.md5 = hash.value;
-    }
-
     return {
       fileId: index.fileId,
       fileName: index.filename,
-      fileDate: file ? new Date(file.fileDate) : null,
-      // CurseForge reports int64 sizes; the column is int4
-      fileLength:
-        file?.fileLength != null
-          ? Math.min(file.fileLength, 2_147_483_647)
-          : null,
       fileReleaseType: index.releaseType,
-      fileGameVersions: file?.gameVersions ?? [vote.gameVersion],
-      fileHashes: hashes,
     };
   }
 
@@ -1040,11 +1008,7 @@ export class VoteService {
       reviewedAt: options.reviewedBy ? new Date() : null,
       fileId: entry.fileId,
       fileName: entry.fileName,
-      fileDate: entry.fileDate,
-      fileLength: entry.fileLength,
       fileReleaseType: entry.fileReleaseType,
-      fileGameVersions: jsonb(entry.fileGameVersions),
-      fileHashes: jsonb(entry.fileHashes),
     });
   }
 

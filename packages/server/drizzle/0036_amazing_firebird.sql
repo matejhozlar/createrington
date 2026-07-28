@@ -10,23 +10,16 @@ CREATE TABLE "curseforge_project" (
 	"slug" text NOT NULL,
 	"name" text NOT NULL,
 	"summary" text,
-	"logo_url" text,
 	"thumbnail_url" text,
 	"website_url" text,
 	"primary_author" text,
-	"authors" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"categories" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"links" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"description_html" text,
 	"screenshots" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"download_count" integer DEFAULT 0 NOT NULL,
-	"game_popularity_rank" integer,
-	"date_created" timestamp with time zone,
 	"date_modified" timestamp with time zone,
 	"date_released" timestamp with time zone,
 	"allow_mod_distribution" boolean,
 	"is_available" boolean DEFAULT true NOT NULL,
-	"cf_status" integer,
 	"refreshed_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -70,11 +63,7 @@ CREATE TABLE "vote_mod" (
 	"reviewed_at" timestamp with time zone,
 	"file_id" integer,
 	"file_name" text,
-	"file_date" timestamp with time zone,
-	"file_length" integer,
 	"file_release_type" integer,
-	"file_game_versions" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"file_hashes" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -161,6 +150,7 @@ CREATE INDEX "idx_vote_mod_vote" ON "vote_mod" USING btree ("vote_id");--> state
 CREATE INDEX "idx_vote_mod_submission" ON "vote_mod" USING btree ("submission_id");--> statement-breakpoint
 CREATE INDEX "idx_vote_mod_status" ON "vote_mod" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "idx_vote_mod_submitter" ON "vote_mod" USING btree ("submitted_by");--> statement-breakpoint
+CREATE INDEX "idx_vote_mod_project" ON "vote_mod" USING btree ("curseforge_project_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_vote_mod_claim_unique" ON "vote_mod" USING btree ("vote_id","curseforge_project_id") WHERE "vote_mod"."status" IN ('pending', 'approved');--> statement-breakpoint
 CREATE INDEX "idx_vote_mod_upvote_player" ON "vote_mod_upvote" USING btree ("discord_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_vote_mod_upvote_unique" ON "vote_mod_upvote" USING btree ("vote_mod_id","discord_id");--> statement-breakpoint

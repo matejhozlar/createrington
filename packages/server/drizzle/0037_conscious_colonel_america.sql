@@ -1,1 +1,0 @@
-CREATE INDEX "idx_vote_mod_project" ON "vote_mod" USING btree ("curseforge_project_id");

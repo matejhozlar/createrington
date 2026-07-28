@@ -83,10 +83,6 @@ export interface CurseForgeProjectData {
   name: string;
   summary: string;
   websiteUrl: string;
-  wikiUrl: string | null;
-  issuesUrl: string | null;
-  sourceUrl: string | null;
-  logoUrl: string | null;
   thumbnailUrl: string | null;
   authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
   categories: Array<{
@@ -97,11 +93,8 @@ export interface CurseForgeProjectData {
   }>;
   screenshots: Array<{ title: string; thumbnailUrl: string; url: string }>;
   downloadCount: number;
-  gamePopularityRank: number | null;
   isAvailable: boolean;
-  status: number;
   allowModDistribution: boolean | null;
-  dateCreated: string;
   dateModified: string;
   dateReleased: string;
   latestFilesIndexes: Array<{
@@ -255,13 +248,8 @@ interface RawCurseForgeMod {
   slug: string;
   name: string;
   summary: string;
-  links: {
-    websiteUrl: string;
-    wikiUrl?: string;
-    issuesUrl?: string;
-    sourceUrl?: string;
-  };
-  logo?: { url: string; thumbnailUrl: string };
+  links: { websiteUrl: string };
+  logo?: { thumbnailUrl: string };
   authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
   categories: Array<{
     id: number;
@@ -271,11 +259,8 @@ interface RawCurseForgeMod {
   }>;
   screenshots?: Array<{ title: string; thumbnailUrl: string; url: string }>;
   downloadCount: number;
-  gamePopularityRank?: number;
   isAvailable: boolean;
-  status: number;
   allowModDistribution?: boolean | null;
-  dateCreated: string;
   dateModified: string;
   dateReleased: string;
   latestFilesIndexes?: Array<{
@@ -295,20 +280,13 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
     name: raw.name,
     summary: raw.summary,
     websiteUrl: raw.links.websiteUrl,
-    wikiUrl: raw.links.wikiUrl || null,
-    issuesUrl: raw.links.issuesUrl || null,
-    sourceUrl: raw.links.sourceUrl || null,
-    logoUrl: raw.logo?.url ?? null,
     thumbnailUrl: raw.logo?.thumbnailUrl ?? null,
     authors: raw.authors,
     categories: raw.categories,
     screenshots: raw.screenshots ?? [],
     downloadCount: raw.downloadCount,
-    gamePopularityRank: raw.gamePopularityRank ?? null,
     isAvailable: raw.isAvailable,
-    status: raw.status,
     allowModDistribution: raw.allowModDistribution ?? null,
-    dateCreated: raw.dateCreated,
     dateModified: raw.dateModified,
     dateReleased: raw.dateReleased,
     latestFilesIndexes: (raw.latestFilesIndexes ?? []).map((idx) => ({
@@ -368,33 +346,6 @@ export async function getMods(
 
   const body = (await res.json()) as { data: RawCurseForgeMod[] };
   return body.data.map(mapProject);
-}
-
-/**
- * Fetch the full HTML project description for a CurseForge project
- *
- * The returned HTML is author-controlled and unsafe to render as-is,
- * sanitize before storing or serving.
- *
- * @param projectId - CurseForge project ID
- * @returns Raw description HTML
- */
-export async function getModDescription(projectId: number): Promise<string> {
-  ensureApiKey();
-
-  const res = await fetch(
-    `${CURSEFORGE_API}/v1/mods/${projectId}/description`,
-    { headers: cfHeaders() },
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `CurseForge getModDescription failed (${res.status}): ${text}`,
-    );
-  }
-
-  const body = (await res.json()) as { data: string };
-  return body.data;
 }
 
 /**

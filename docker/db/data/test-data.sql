@@ -1429,14 +1429,14 @@ INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type
    'open', '1.21.1', 6, 6, NULL, 5, '818819241666281503');
 
 -- CurseForge metadata snapshots (real project IDs, approximate stats)
-INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, game_popularity_rank, date_released, allow_mod_distribution) VALUES
+INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, date_modified, date_released, allow_mod_distribution) VALUES
   (328085, 6, 'create', 'Create', 'Aesthetic Technology that empowers the Player',
    'https://media.forgecdn.net/avatars/thumbnails/1065/184/256/256/638598725500886388.png',
-   'https://www.curseforge.com/minecraft/mc-mods/create', 'simibubi', 200779345, 61, NOW() - INTERVAL '90 days', true),
+   'https://www.curseforge.com/minecraft/mc-mods/create', 'simibubi', 200779345, NOW() - INTERVAL '90 days', NOW() - INTERVAL '90 days', true),
   (238222, 6, 'jei', 'Just Enough Items (JEI)', 'JEI is an item and recipe viewing mod', NULL,
-   'https://www.curseforge.com/minecraft/mc-mods/jei', 'mezz', 320000000, 15, NOW() - INTERVAL '30 days', true),
+   'https://www.curseforge.com/minecraft/mc-mods/jei', 'mezz', 320000000, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days', true),
   (324717, 6, 'jade', 'Jade', 'Shows information about what you are looking at', NULL,
-   'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, 45, NOW() - INTERVAL '14 days', true);
+   'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', true);
 
 -- Mumbo's active submission (id = 1) with two pending mods
 INSERT INTO vote_submission (vote_id, discord_id, status) VALUES
