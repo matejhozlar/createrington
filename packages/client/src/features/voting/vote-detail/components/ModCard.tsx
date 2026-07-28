@@ -1,7 +1,7 @@
 import { Download, Heart, Shield, User } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { formatDownloads, MOD_STATUS_STYLES } from "../../format";
+import { formatDownloads, modCredit, MOD_STATUS_STYLES } from "../../format";
 
 interface ModCardProps {
   mod: {
@@ -32,6 +32,7 @@ export function ModCard({
   onUpvote,
 }: ModCardProps) {
   const status = MOD_STATUS_STYLES[mod.status];
+  const credit = modCredit(mod.source, mod.submitterName);
 
   return (
     <Card
@@ -92,20 +93,13 @@ export function ModCard({
         </div>
 
         <div className="flex items-center gap-1.5 border-t pt-2 text-xs text-muted-foreground">
-          {mod.source === "admin" ? (
-            <>
-              <Shield className="size-3 text-primary" />
-              Added by the team
-            </>
+          {credit.isAdmin ? (
+            <Shield className="size-3 text-primary" />
           ) : (
-            <>
-              <User className="size-3" />
-              Suggested by{" "}
-              <span className="font-medium text-foreground">
-                {mod.submitterName ?? "a player"}
-              </span>
-            </>
+            <User className="size-3" />
           )}
+          {credit.verb}{" "}
+          <span className="font-medium text-foreground">{credit.name}</span>
         </div>
       </CardContent>
     </Card>

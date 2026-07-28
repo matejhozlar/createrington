@@ -1,4 +1,11 @@
-import { Calendar, Download, ExternalLink, Heart } from "lucide-react";
+import {
+  Calendar,
+  Download,
+  ExternalLink,
+  Heart,
+  Shield,
+  User,
+} from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +17,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDate, formatDownloads, MOD_STATUS_STYLES } from "../../format";
+import {
+  formatDate,
+  formatDownloads,
+  modCredit,
+  MOD_STATUS_STYLES,
+} from "../../format";
 
 interface ProjectCategory {
   name: string;
@@ -54,6 +66,10 @@ export function ModDetailDialog({
     (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
   ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
   const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
+  const credit = modCredit(
+    data?.mod.source ?? "user",
+    data?.mod.submitterName ?? null,
+  );
 
   return (
     <Dialog open={voteModId !== null} onOpenChange={onOpenChange}>
@@ -99,6 +115,17 @@ export function ModDetailDialog({
                         {c.name}
                       </Badge>
                     ))}
+                  </div>
+                  <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
+                    {credit.isAdmin ? (
+                      <Shield className="size-3 text-primary" />
+                    ) : (
+                      <User className="size-3" />
+                    )}
+                    {credit.verb}{" "}
+                    <span className="font-medium text-foreground">
+                      {credit.name}
+                    </span>
                   </div>
                 </div>
               </div>

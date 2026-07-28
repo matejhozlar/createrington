@@ -182,7 +182,7 @@ export class VoteService {
     voteModId: number,
     options: { includeHidden?: boolean } = {},
   ): Promise<{
-    mod: VoteMod;
+    mod: VoteMod & { submitterName: string | null };
     project: CurseforgeProject;
     upvoteCount: number;
   }> {
@@ -197,11 +197,16 @@ export class VoteService {
     if (!options.includeHidden) {
       this.assertUserVisible(await this.getVote(mod.voteId));
     }
-    const project = await Q.curseforge.project.get({
-      id: mod.curseforgeProjectId,
-    });
-    const upvoteCount = await Q.vote.mod.upvote.count({ voteModId });
-    return { mod, project, upvoteCount };
+    const [project, upvoteCount, submitter] = await Promise.all([
+      Q.curseforge.project.get({ id: mod.curseforgeProjectId }),
+      Q.vote.mod.upvote.count({ voteModId }),
+      Q.player.find({ discordId: mod.submittedBy }),
+    ]);
+    return {
+      mod: { ...mod, submitterName: submitter?.minecraftUsername ?? null },
+      project,
+      upvoteCount,
+    };
   }
 
   /** CurseForge search scoped to the vote's target, annotated with submit guards. */

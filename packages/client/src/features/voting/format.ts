@@ -25,6 +25,15 @@ export function formatDate(value: string | Date | null): string {
   });
 }
 
+export function modCredit(source: string, submitterName: string | null) {
+  const isAdmin = source === "admin";
+  return {
+    isAdmin,
+    verb: isAdmin ? "Added by" : "Suggested by",
+    name: submitterName ?? (isAdmin ? "an admin" : "a player"),
+  };
+}
+
 export const MOD_STATUS_STYLES: Record<
   string,
   { label: string; className: string }
