@@ -78,11 +78,14 @@ export function AdminVoting() {
   const [gameVersion, setGameVersion] = useState("");
   const [loaderType, setLoaderType] = useState("6");
   const [maxMods, setMaxMods] = useState("5");
+  const [maxUpvotes, setMaxUpvotes] = useState("5");
+  const [closesAt, setClosesAt] = useState("");
+  const [forumChannelId, setForumChannelId] = useState("");
   const [basePackId, setBasePackId] = useState("");
 
   const createMutation = trpc.admin.votes.create.useMutation({
     onSuccess: (vote) => {
-      toast.success(`Vote "${vote.name}" created as draft`);
+      toast.success(`Workshop "${vote.name}" created as draft`);
       utils.admin.votes.list.invalidate();
       setCreateOpen(false);
       navigate(`/admin/tools/voting/${vote.id}`);
@@ -127,6 +130,9 @@ export function AdminVoting() {
       gameVersion: gameVersion.trim(),
       modLoaderType: Number(loaderType),
       maxModsPerUser: Number(maxMods) || 5,
+      maxUpvotesPerUser: Number(maxUpvotes) || 5,
+      closesAt: closesAt ? new Date(closesAt) : undefined,
+      discordForumChannelId: forumChannelId.trim() || undefined,
       baseModpackProjectId: basePackId.trim() ? Number(basePackId) : undefined,
     });
   };
@@ -370,6 +376,28 @@ export function AdminVoting() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="vote-max-upvotes">Upvotes per player</Label>
+                <Input
+                  id="vote-max-upvotes"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={maxUpvotes}
+                  onChange={(e) => setMaxUpvotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="vote-closes">Closes at (optional)</Label>
+                <Input
+                  id="vote-closes"
+                  type="datetime-local"
+                  value={closesAt}
+                  onChange={(e) => setClosesAt(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="vote-basepack">
                   Base modpack ID (optional)
                 </Label>
@@ -381,6 +409,17 @@ export function AdminVoting() {
                   onChange={(e) => setBasePackId(e.target.value)}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vote-forum">
+                Discord forum channel ID (optional)
+              </Label>
+              <Input
+                id="vote-forum"
+                placeholder="Forum for per-suggestion discussion threads"
+                value={forumChannelId}
+                onChange={(e) => setForumChannelId(e.target.value)}
+              />
             </div>
           </div>
           <DialogFooter>

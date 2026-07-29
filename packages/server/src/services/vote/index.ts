@@ -396,6 +396,7 @@ export class VoteService {
       maxModsPerUser?: number;
       maxUpvotesPerUser?: number;
       closesAt?: Date | null;
+      discordForumChannelId?: string | null;
     },
     adminId: string,
   ): Promise<Vote> {
@@ -423,6 +424,7 @@ export class VoteService {
         maxModsPerUser: input.maxModsPerUser ?? 5,
         maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
         closesAt: input.closesAt ?? null,
+        discordForumChannelId: input.discordForumChannelId ?? null,
         createdBy: adminId,
       });
     } catch (error) {
@@ -447,6 +449,7 @@ export class VoteService {
       maxModsPerUser: number;
       maxUpvotesPerUser: number;
       closesAt: Date | null;
+      discordForumChannelId: string | null;
     }>,
   ): Promise<Vote> {
     const vote = await this.getVote(voteId);

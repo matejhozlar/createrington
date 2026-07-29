@@ -1,5 +1,5 @@
 {
-  "id": "1bfe4dc5-d281-46ed-a015-5aacfda2cbf1",
+  "id": "e612a825-1dd6-4da2-b6d8-5bdb15fdc29c",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -7201,6 +7201,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "discord_forum_channel_id": {
+          "name": "discord_forum_channel_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_by": {
           "name": "created_by",
           "type": "text",
@@ -7331,6 +7337,12 @@
         "file_release_type": {
           "name": "file_release_type",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discord_thread_id": {
+          "name": "discord_thread_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },

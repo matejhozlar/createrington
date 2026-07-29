@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LOADER_NAMES } from "@/features/voting/format";
+import { LOADER_NAMES, toDatetimeLocalInput } from "@/features/voting/format";
 
 interface VoteSettings {
   id: number;
@@ -28,6 +28,9 @@ interface VoteSettings {
   gameVersion: string;
   modLoaderType: number;
   maxModsPerUser: number;
+  maxUpvotesPerUser: number;
+  closesAt: string | Date | null;
+  discordForumChannelId: string | null;
   baseModpackProjectId: number | null;
 }
 
@@ -48,6 +51,11 @@ export function VoteSettingsDialog({
   const [gameVersion, setGameVersion] = useState(vote.gameVersion);
   const [loaderType, setLoaderType] = useState(String(vote.modLoaderType));
   const [maxMods, setMaxMods] = useState(String(vote.maxModsPerUser));
+  const [maxUpvotes, setMaxUpvotes] = useState(String(vote.maxUpvotesPerUser));
+  const [closesAt, setClosesAt] = useState(toDatetimeLocalInput(vote.closesAt));
+  const [forumChannelId, setForumChannelId] = useState(
+    vote.discordForumChannelId ?? "",
+  );
   const [basePackId, setBasePackId] = useState(
     vote.baseModpackProjectId ? String(vote.baseModpackProjectId) : "",
   );
@@ -72,6 +80,9 @@ export function VoteSettingsDialog({
         gameVersion: gameVersion.trim(),
         modLoaderType: Number(loaderType),
         maxModsPerUser: Number(maxMods) || 5,
+        maxUpvotesPerUser: Number(maxUpvotes) || 5,
+        closesAt: closesAt ? new Date(closesAt) : null,
+        discordForumChannelId: forumChannelId.trim() || null,
         baseModpackProjectId: basePackId.trim() ? Number(basePackId) : null,
       },
     });
@@ -138,6 +149,28 @@ export function VoteSettingsDialog({
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="settings-max-upvotes">Upvotes per player</Label>
+              <Input
+                id="settings-max-upvotes"
+                type="number"
+                min={1}
+                max={100}
+                value={maxUpvotes}
+                onChange={(e) => setMaxUpvotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="settings-closes">Closes at (optional)</Label>
+              <Input
+                id="settings-closes"
+                type="datetime-local"
+                value={closesAt}
+                onChange={(e) => setClosesAt(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="settings-basepack">
                 Base modpack ID (optional)
               </Label>
@@ -149,9 +182,20 @@ export function VoteSettingsDialog({
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="settings-forum">
+              Discord forum channel ID (optional)
+            </Label>
+            <Input
+              id="settings-forum"
+              placeholder="Forum for per-suggestion discussion threads"
+              value={forumChannelId}
+              onChange={(e) => setForumChannelId(e.target.value)}
+            />
+          </div>
           <p className="text-xs text-muted-foreground">
             Changing the game version or loader does not revalidate mods that
-            are already in the vote.
+            are already in the workshop.
           </p>
         </div>
         <DialogFooter>

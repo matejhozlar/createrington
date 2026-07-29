@@ -15,6 +15,12 @@ const votePatch = z.object({
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
   closesAt: z.coerce.date().nullable().optional(),
+  discordForumChannelId: z
+    .string()
+    .trim()
+    .regex(/^\d{17,20}$/, "Must be a Discord channel ID")
+    .nullable()
+    .optional(),
 });
 
 export const adminVotesRouter = router({
@@ -45,6 +51,11 @@ export const adminVotesRouter = router({
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
         closesAt: z.coerce.date().optional(),
+        discordForumChannelId: z
+          .string()
+          .trim()
+          .regex(/^\d{17,20}$/, "Must be a Discord channel ID")
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

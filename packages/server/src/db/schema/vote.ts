@@ -37,6 +37,9 @@ export const vote = pgTable(
     maxModsPerUser: integer("max_mods_per_user").notNull().default(5),
     maxUpvotesPerUser: integer("max_upvotes_per_user").notNull().default(5),
     closesAt: timestamp("closes_at", { withTimezone: true }),
+    // Forum channel for per-suggestion discussion threads; null = no Discord
+    // presence for this workshop. Deliberately per-row, not entity-scrape config
+    discordForumChannelId: text("discord_forum_channel_id"),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -72,6 +75,7 @@ export const voteMod = pgTable(
     fileId: integer("file_id"),
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
+    discordThreadId: text("discord_thread_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

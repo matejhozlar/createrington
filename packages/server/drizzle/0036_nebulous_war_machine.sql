@@ -45,6 +45,7 @@ CREATE TABLE "vote" (
 	"max_mods_per_user" integer DEFAULT 5 NOT NULL,
 	"max_upvotes_per_user" integer DEFAULT 5 NOT NULL,
 	"closes_at" timestamp with time zone,
+	"discord_forum_channel_id" text,
 	"created_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -64,6 +65,7 @@ CREATE TABLE "vote_mod" (
 	"file_id" integer,
 	"file_name" text,
 	"file_release_type" integer,
+	"discord_thread_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
