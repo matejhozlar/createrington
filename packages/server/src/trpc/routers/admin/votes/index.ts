@@ -12,7 +12,7 @@ const votePatch = z.object({
   modLoaderType: z.number().int().min(0).optional(),
   classId: z.number().int().positive().optional(),
   baseModpackProjectId: z.number().int().positive().nullable().optional(),
-  maxModsPerSubmission: z.number().int().min(1).max(25).optional(),
+  maxModsPerUser: z.number().int().min(1).max(25).optional(),
 });
 
 export const adminVotesRouter = router({
@@ -40,7 +40,7 @@ export const adminVotesRouter = router({
         modLoaderType: z.number().int().min(0),
         classId: z.number().int().positive().optional(),
         baseModpackProjectId: z.number().int().positive().optional(),
-        maxModsPerSubmission: z.number().int().min(1).max(25).optional(),
+        maxModsPerUser: z.number().int().min(1).max(25).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {

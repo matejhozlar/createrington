@@ -79,6 +79,4 @@ export { VoteModUpvoteQueries } from "./vote/mod/upvote";
 export { VotePollQueries } from "./vote/poll";
 export { VotePollBallotQueries } from "./vote/poll/ballot";
 export { VotePollModQueries } from "./vote/poll/mod";
-export { VoteSubmissionQueries } from "./vote/submission";
-export { VoteSubmissionUpvoteQueries } from "./vote/submission/upvote";
 export { WaitlistEntryQueries } from "./waitlist/entry";

@@ -1,5 +1,5 @@
 {
-  "id": "cbd3658e-5b8f-49b2-99f6-e019cca6ef28",
+  "id": "90f58d4f-5bc9-4405-b237-63d65fc5b973",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -7181,8 +7181,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "max_mods_per_submission": {
-          "name": "max_mods_per_submission",
+        "max_mods_per_user": {
+          "name": "max_mods_per_user",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -7263,12 +7263,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "submission_id": {
-          "name": "submission_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "source": {
           "name": "source",
           "type": "vote_mod_source",
@@ -7348,21 +7342,6 @@
           "columns": [
             {
               "expression": "vote_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_vote_mod_submission": {
-          "name": "idx_vote_mod_submission",
-          "columns": [
-            {
-              "expression": "submission_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7466,19 +7445,6 @@
             "id"
           ],
           "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "vote_mod_submission_id_vote_submission_id_fk": {
-          "name": "vote_mod_submission_id_vote_submission_id_fk",
-          "tableFrom": "vote_mod",
-          "tableTo": "vote_submission",
-          "columnsFrom": [
-            "submission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -8038,215 +8004,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_submission": {
-      "name": "vote_submission",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "vote_id": {
-          "name": "vote_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "discord_id": {
-          "name": "discord_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "vote_submission_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_vote_submission_vote": {
-          "name": "idx_vote_submission_vote",
-          "columns": [
-            {
-              "expression": "vote_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_vote_submission_player": {
-          "name": "idx_vote_submission_player",
-          "columns": [
-            {
-              "expression": "discord_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_vote_submission_active_unique": {
-          "name": "idx_vote_submission_active_unique",
-          "columns": [
-            {
-              "expression": "vote_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "discord_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"vote_submission\".\"status\" = 'active'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "vote_submission_vote_id_vote_id_fk": {
-          "name": "vote_submission_vote_id_vote_id_fk",
-          "tableFrom": "vote_submission",
-          "tableTo": "vote",
-          "columnsFrom": [
-            "vote_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.vote_submission_upvote": {
-      "name": "vote_submission_upvote",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "submission_id": {
-          "name": "submission_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "discord_id": {
-          "name": "discord_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_vote_submission_upvote_player": {
-          "name": "idx_vote_submission_upvote_player",
-          "columns": [
-            {
-              "expression": "discord_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_vote_submission_upvote_unique": {
-          "name": "idx_vote_submission_upvote_unique",
-          "columns": [
-            {
-              "expression": "submission_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "discord_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "vote_submission_upvote_submission_id_vote_submission_id_fk": {
-          "name": "vote_submission_upvote_submission_id_vote_submission_id_fk",
-          "tableFrom": "vote_submission_upvote",
-          "tableTo": "vote_submission",
-          "columnsFrom": [
-            "submission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.waitlist_entry": {
       "name": "waitlist_entry",
       "schema": "",
@@ -8618,14 +8375,6 @@
         "open",
         "closed",
         "archived"
-      ]
-    },
-    "public.vote_submission_status": {
-      "name": "vote_submission_status",
-      "schema": "public",
-      "values": [
-        "active",
-        "closed"
       ]
     },
     "public.waitlist_status": {

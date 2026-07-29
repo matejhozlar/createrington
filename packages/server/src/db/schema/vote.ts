@@ -11,7 +11,6 @@ import {
 import { sql } from "drizzle-orm";
 import {
   voteStatusEnum,
-  voteSubmissionStatusEnum,
   voteModStatusEnum,
   voteModSourceEnum,
   votePollStatusEnum,
@@ -35,9 +34,7 @@ export const vote = pgTable(
     modLoaderType: integer("mod_loader_type").notNull(),
     classId: integer("class_id").notNull().default(6),
     baseModpackProjectId: integer("base_modpack_project_id"),
-    maxModsPerSubmission: integer("max_mods_per_submission")
-      .notNull()
-      .default(5),
+    maxModsPerUser: integer("max_mods_per_user").notNull().default(5),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -47,34 +44,6 @@ export const vote = pgTable(
       .defaultNow(),
   },
   (table) => [index("idx_vote_status").on(table.status)],
-);
-
-// --- vote_submission ---
-
-export const voteSubmission = pgTable(
-  "vote_submission",
-  {
-    id: serial("id").primaryKey(),
-    voteId: integer("vote_id")
-      .notNull()
-      .references(() => vote.id, { onDelete: "cascade" }),
-    discordId: text("discord_id").notNull(),
-    status: voteSubmissionStatusEnum("status").notNull().default("active"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_vote_submission_vote").on(table.voteId),
-    index("idx_vote_submission_player").on(table.discordId),
-    // One active submission per player per vote; closed ones are unlimited
-    uniqueIndex("idx_vote_submission_active_unique")
-      .on(table.voteId, table.discordId)
-      .where(sql`${table.status} = 'active'`),
-  ],
 );
 
 // --- vote_mod ---
@@ -92,9 +61,6 @@ export const voteMod = pgTable(
     curseforgeProjectId: integer("curseforge_project_id")
       .notNull()
       .references(() => curseforgeProject.id),
-    submissionId: integer("submission_id").references(() => voteSubmission.id, {
-      onDelete: "set null",
-    }),
     source: voteModSourceEnum("source").notNull().default("user"),
     submittedBy: text("submitted_by").notNull(),
     status: voteModStatusEnum("status").notNull().default("pending"),
@@ -113,7 +79,6 @@ export const voteMod = pgTable(
   },
   (table) => [
     index("idx_vote_mod_vote").on(table.voteId),
-    index("idx_vote_mod_submission").on(table.submissionId),
     index("idx_vote_mod_status").on(table.status),
     index("idx_vote_mod_submitter").on(table.submittedBy),
     index("idx_vote_mod_project").on(table.curseforgeProjectId),
@@ -140,29 +105,6 @@ export const voteModBan = pgTable("vote_mod_ban", {
     .notNull()
     .defaultNow(),
 });
-
-// --- vote_submission_upvote ---
-
-export const voteSubmissionUpvote = pgTable(
-  "vote_submission_upvote",
-  {
-    id: serial("id").primaryKey(),
-    submissionId: integer("submission_id")
-      .notNull()
-      .references(() => voteSubmission.id, { onDelete: "cascade" }),
-    discordId: text("discord_id").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_vote_submission_upvote_player").on(table.discordId),
-    uniqueIndex("idx_vote_submission_upvote_unique").on(
-      table.submissionId,
-      table.discordId,
-    ),
-  ],
-);
 
 // --- vote_mod_upvote ---
 

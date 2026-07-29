@@ -20,30 +20,6 @@ function redactMod<T extends { reviewedBy: string | null }>(
   return rest;
 }
 
-function redactSubmission<
-  T extends { mods: Array<{ reviewedBy: string | null }> },
->(
-  detail: T,
-): Omit<T, "mods"> & { mods: Omit<T["mods"][number], "reviewedBy">[] } {
-  return {
-    ...detail,
-    mods: detail.mods.map((m) => redactMod(m)) as Omit<
-      T["mods"][number],
-      "reviewedBy"
-    >[],
-  };
-}
-
-const submissionEntries = z
-  .array(
-    z.object({
-      projectId: z.number().int().positive(),
-      note: z.string().trim().max(500).optional(),
-    }),
-  )
-  .min(1)
-  .max(25);
-
 export const userVotesRouter = router({
   enabled: userProcedure
     .meta({ description: "Whether the voting feature is enabled" })
@@ -98,23 +74,23 @@ export const userVotesRouter = router({
       }
     }),
 
-  mySubmission: votingProcedure
-    .meta({ description: "Get your active submission for a vote" })
+  mySuggestions: votingProcedure
+    .meta({ description: "Your own suggestions in a vote, all statuses" })
     .input(z.object({ voteId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       try {
-        const detail = await voteService.getActiveSubmission(
+        const mods = await voteService.getMySuggestions(
           input.voteId,
           ctx.user.discordId,
         );
-        return detail ? redactSubmission(detail) : null;
+        return mods.map((m) => redactMod(m));
       } catch (error) {
         rethrowTrpc(error);
       }
     }),
 
   myUpvotes: votingProcedure
-    .meta({ description: "IDs of mods and submissions you have upvoted" })
+    .meta({ description: "IDs of mods you have upvoted" })
     .input(z.object({ voteId: z.number().int().positive() }))
     .query(async ({ ctx, input }) => {
       try {
@@ -138,71 +114,35 @@ export const userVotesRouter = router({
       }
     }),
 
-  upvoteSubmission: votingProcedure
-    .meta({ description: "Toggle your upvote on a submission" })
-    .input(z.object({ submissionId: z.number().int().positive() }))
+  suggestMod: votingProcedure
+    .meta({ description: "Suggest a mod, using one of your slots" })
+    .input(
+      z.object({
+        voteId: z.number().int().positive(),
+        projectId: z.number().int().positive(),
+        note: z.string().trim().max(500).optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
-        return await voteService.toggleSubmissionUpvote(
-          input.submissionId,
+        const mod = await voteService.suggestMod(
+          input.voteId,
           ctx.user.discordId,
+          { projectId: input.projectId, note: input.note },
         );
+        return redactMod(mod);
       } catch (error) {
         rethrowTrpc(error);
       }
     }),
 
-  createSubmission: votingProcedure
-    .meta({ description: "Create your submission for a vote" })
-    .input(
-      z.object({
-        voteId: z.number().int().positive(),
-        mods: submissionEntries,
-      }),
-    )
+  removeSuggestion: votingProcedure
+    .meta({ description: "Remove your own pending suggestion" })
+    .input(z.object({ voteModId: z.number().int().positive() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        return redactSubmission(
-          await voteService.createSubmission(
-            input.voteId,
-            ctx.user.discordId,
-            input.mods,
-          ),
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
-
-  updateSubmission: votingProcedure
-    .meta({ description: "Update your active submission's mod set" })
-    .input(
-      z.object({
-        voteId: z.number().int().positive(),
-        mods: submissionEntries,
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      try {
-        return redactSubmission(
-          await voteService.updateSubmission(
-            input.voteId,
-            ctx.user.discordId,
-            input.mods,
-          ),
-        );
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
-
-  withdrawSubmission: votingProcedure
-    .meta({ description: "Withdraw your active submission" })
-    .input(z.object({ voteId: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await voteService.withdrawSubmission(input.voteId, ctx.user.discordId);
-        return { withdrawn: true };
+        await voteService.removeSuggestion(input.voteModId, ctx.user.discordId);
+        return { removed: true };
       } catch (error) {
         rethrowTrpc(error);
       }

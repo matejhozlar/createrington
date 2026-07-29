@@ -126,7 +126,7 @@ export function AdminVoting() {
       description: description.trim() || undefined,
       gameVersion: gameVersion.trim(),
       modLoaderType: Number(loaderType),
-      maxModsPerSubmission: Number(maxMods) || 5,
+      maxModsPerUser: Number(maxMods) || 5,
       baseModpackProjectId: basePackId.trim() ? Number(basePackId) : undefined,
     });
   };
@@ -215,7 +215,7 @@ export function AdminVoting() {
                         {vote.gameVersion} · {loaderName(vote.modLoaderType)}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {vote.maxModsPerSubmission} mods
+                        {vote.maxModsPerUser} mods
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {formatDate(vote.createdAt)}
@@ -359,7 +359,7 @@ export function AdminVoting() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="vote-max">Mods per submission</Label>
+                <Label htmlFor="vote-max">Suggestions per player</Label>
                 <Input
                   id="vote-max"
                   type="number"

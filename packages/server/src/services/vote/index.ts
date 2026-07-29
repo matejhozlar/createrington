@@ -10,7 +10,6 @@ import type {
   Vote,
   VoteMod,
   VoteModStatus,
-  VoteSubmission,
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
@@ -40,12 +39,6 @@ export interface VoteModListItem extends VoteMod {
   project: VoteProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
-}
-
-export interface VoteSubmissionDetail {
-  submission: VoteSubmission;
-  upvoteCount: number;
-  mods: VoteModListItem[];
 }
 
 export interface VoteModEntry {
@@ -244,176 +237,67 @@ export class VoteService {
     }));
   }
 
-  /** The caller's active submission in a vote, or null. */
-  async getActiveSubmission(
+  /** The caller's own suggestions in a vote, all statuses. */
+  async getMySuggestions(
     voteId: number,
     discordId: string,
-  ): Promise<VoteSubmissionDetail | null> {
-    const submission = await this.findActiveSubmission(voteId, discordId);
-    if (!submission) return null;
-    return this.getSubmissionDetail(submission);
-  }
-
-  /** Create the caller's submission with up to the vote's per-submission cap. */
-  async createSubmission(
-    voteId: number,
-    discordId: string,
-    entries: VoteModEntry[],
-  ): Promise<VoteSubmissionDetail> {
-    const vote = await this.getOpenVote(voteId);
-    if (entries.length === 0) {
-      throw new BadRequestError("A submission needs at least one mod");
-    }
-    if (entries.length > vote.maxModsPerSubmission) {
-      throw new BadRequestError(
-        `A submission can hold at most ${vote.maxModsPerSubmission} mods`,
-      );
-    }
-
-    const existing = await this.findActiveSubmission(voteId, discordId);
-    if (existing) {
-      throw new ConflictError(
-        "You already have an active submission for this vote",
-      );
-    }
-
-    const prepared = await this.prepareEntries(vote, entries);
-
-    try {
-      const submission = await db.inTransaction(async (tx) => {
-        const created = await tx.vote.submission.createAndReturn({
-          voteId,
-          discordId,
-        });
-        for (const entry of prepared) {
-          await this.createMod(tx, vote, entry, {
-            submissionId: created.id,
-            submittedBy: discordId,
-          });
-        }
-        return created;
-      });
-      return (await this.getSubmissionDetail(submission))!;
-    } catch (error) {
-      this.mapConstraintError(error);
-    }
+  ): Promise<VoteModListItem[]> {
+    const mods = await Q.vote.mod.findAll(
+      { voteId, submittedBy: discordId, source: "user" },
+      { orderBy: "createdAt", orderDirection: "asc" },
+    );
+    return this.decorateMods(mods);
   }
 
   /**
-   * Reconcile the caller's active submission to the given mod set. Pending
-   * mods absent from the set are removed, new ones are validated and added,
-   * notes on kept pending mods are updated. Reviewed mods are untouched.
+   * Suggest a single mod, consuming one of the caller's per-vote slots.
+   * Declined and rejected suggestions do not count against the cap.
    */
-  async updateSubmission(
+  async suggestMod(
     voteId: number,
     discordId: string,
-    entries: VoteModEntry[],
-  ): Promise<VoteSubmissionDetail> {
+    entry: VoteModEntry,
+  ): Promise<VoteModListItem> {
     const vote = await this.getOpenVote(voteId);
-    const submission = await this.findActiveSubmission(voteId, discordId);
-    if (!submission) {
-      throw new NotFoundError("You have no active submission for this vote");
-    }
 
-    const current = await Q.vote.mod.findAll({ submissionId: submission.id });
-    const activeByProject = new Map(
-      current
-        .filter((m) => USER_VISIBLE_MOD_STATUSES.includes(m.status))
-        .map((m) => [m.curseforgeProjectId, m]),
-    );
-    const desired = new Map(entries.map((e) => [e.projectId, e]));
-    if (desired.size !== entries.length) {
-      throw new BadRequestError("A submission cannot contain duplicate mods");
-    }
-
-    const toRemove = [...activeByProject.values()].filter(
-      (m) => m.status === "pending" && !desired.has(m.curseforgeProjectId),
-    );
-    const toAdd = entries.filter((e) => !activeByProject.has(e.projectId));
-    const noteUpdates = entries.filter((e) => {
-      const existing = activeByProject.get(e.projectId);
-      return (
-        existing &&
-        existing.status === "pending" &&
-        (e.note ?? null) !== existing.note
-      );
+    const used = await Q.vote.mod.count({
+      voteId,
+      submittedBy: discordId,
+      source: "user",
+      status: { $in: USER_VISIBLE_MOD_STATUSES },
     });
-
-    const keptCount = activeByProject.size - toRemove.length;
-    if (keptCount + toAdd.length > vote.maxModsPerSubmission) {
+    if (used >= vote.maxModsPerUser) {
       throw new BadRequestError(
-        `A submission can hold at most ${vote.maxModsPerSubmission} mods`,
-      );
-    }
-    if (keptCount + toAdd.length === 0) {
-      throw new BadRequestError(
-        "A submission needs at least one mod, withdraw it instead",
+        `You already have ${vote.maxModsPerUser} suggestions in this vote, remove one first`,
       );
     }
 
-    const prepared = await this.prepareEntries(vote, toAdd);
+    const [prepared] = await this.prepareEntries(vote, [entry]);
 
+    let created: VoteMod;
     try {
-      await db.inTransaction(async (tx) => {
-        if (toRemove.length > 0) {
-          await tx.vote.mod.deleteAll({
-            id: { $in: toRemove.map((m) => m.id) },
-          });
-        }
-        for (const entry of prepared) {
-          await this.createMod(tx, vote, entry, {
-            submissionId: submission.id,
-            submittedBy: discordId,
-          });
-        }
-        for (const entry of noteUpdates) {
-          const existing = activeByProject.get(entry.projectId)!;
-          await tx.vote.mod.update(
-            { id: existing.id },
-            { note: entry.note ?? null },
-          );
-        }
-        await tx.vote.submission.update(
-          { id: submission.id },
-          { updatedAt: new Date() },
-        );
-      });
+      created = await db.inTransaction((tx) =>
+        this.createMod(tx, vote, prepared, { submittedBy: discordId }),
+      );
     } catch (error) {
       this.mapConstraintError(error);
     }
 
-    return (await this.getSubmissionDetail(submission))!;
+    const [item] = await this.decorateMods([created]);
+    return item;
   }
 
-  /**
-   * Withdraw the caller's active submission. Pending mods are removed;
-   * reviewed mods stay for credit and the submission closes, or is deleted
-   * entirely when nothing was reviewed yet.
-   */
-  async withdrawSubmission(voteId: number, discordId: string): Promise<void> {
-    await this.getOpenVote(voteId);
-    const submission = await this.findActiveSubmission(voteId, discordId);
-    if (!submission) {
-      throw new NotFoundError("You have no active submission for this vote");
+  /** Remove the caller's own pending suggestion, freeing a slot. */
+  async removeSuggestion(voteModId: number, discordId: string): Promise<void> {
+    const mod = await Q.vote.mod.find({ id: voteModId });
+    if (!mod || mod.submittedBy !== discordId || mod.source !== "user") {
+      throw new NotFoundError(`Suggestion #${voteModId} not found`);
     }
-
-    await db.inTransaction(async (tx) => {
-      await tx.vote.mod.deleteAll({
-        submissionId: submission.id,
-        status: "pending",
-      });
-      const remaining = await tx.vote.mod.count({
-        submissionId: submission.id,
-      });
-      if (remaining === 0) {
-        await tx.vote.submission.delete({ id: submission.id });
-      } else {
-        await tx.vote.submission.update(
-          { id: submission.id },
-          { status: "closed" },
-        );
-      }
-    });
+    await this.getOpenVote(mod.voteId);
+    if (mod.status !== "pending") {
+      throw new BadRequestError("Only pending suggestions can be removed");
+    }
+    await Q.vote.mod.delete({ id: voteModId });
   }
 
   /** Toggle the caller's upvote on a visible mod in an open vote. */
@@ -448,46 +332,11 @@ export class VoteService {
     return { upvoted, upvoteCount };
   }
 
-  /** Toggle the caller's upvote on another player's active submission. */
-  async toggleSubmissionUpvote(
-    submissionId: number,
-    discordId: string,
-  ): Promise<{ upvoted: boolean; upvoteCount: number }> {
-    const submission = await Q.vote.submission.find({ id: submissionId });
-    if (!submission || submission.status !== "active") {
-      throw new NotFoundError(`Submission #${submissionId} not found`);
-    }
-    await this.getOpenVote(submission.voteId);
-    if (submission.discordId === discordId) {
-      throw new BadRequestError("You cannot upvote your own submission");
-    }
-
-    const existing = await Q.vote.submission.upvote.find({
-      submissionId,
-      discordId,
-    });
-    let upvoted: boolean;
-    if (existing) {
-      await Q.vote.submission.upvote.deleteAll({ id: existing.id });
-      upvoted = false;
-    } else {
-      try {
-        await Q.vote.submission.upvote.create({ submissionId, discordId });
-      } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
-      }
-      upvoted = true;
-    }
-
-    const upvoteCount = await Q.vote.submission.upvote.count({ submissionId });
-    return { upvoted, upvoteCount };
-  }
-
-  /** IDs of the mods and submissions in a vote the caller has upvoted. */
+  /** IDs of the mods in a vote the caller has upvoted. */
   async getMyUpvotes(
     voteId: number,
     discordId: string,
-  ): Promise<{ modIds: number[]; submissionIds: number[] }> {
+  ): Promise<{ modIds: number[] }> {
     const mods = await Q.vote.mod.findAll({ voteId }, { select: ["id"] });
     const modIds = mods.map((m) => m.id);
     const modUpvotes =
@@ -498,23 +347,7 @@ export class VoteService {
           })
         : [];
 
-    const submissions = await Q.vote.submission.findAll(
-      { voteId },
-      { select: ["id"] },
-    );
-    const submissionIds = submissions.map((s) => s.id);
-    const submissionUpvotes =
-      submissionIds.length > 0
-        ? await Q.vote.submission.upvote.findAll({
-            discordId,
-            submissionId: { $in: submissionIds },
-          })
-        : [];
-
-    return {
-      modIds: modUpvotes.map((u) => u.voteModId),
-      submissionIds: submissionUpvotes.map((u) => u.submissionId),
-    };
+    return { modIds: modUpvotes.map((u) => u.voteModId) };
   }
 
   /** Create a vote campaign. */
@@ -527,7 +360,7 @@ export class VoteService {
       modLoaderType: number;
       classId?: number;
       baseModpackProjectId?: number | null;
-      maxModsPerSubmission?: number;
+      maxModsPerUser?: number;
     },
     adminId: string,
   ): Promise<Vote> {
@@ -552,7 +385,7 @@ export class VoteService {
         modLoaderType: input.modLoaderType,
         classId: input.classId ?? CurseForgeClass.mods,
         baseModpackProjectId: input.baseModpackProjectId ?? null,
-        maxModsPerSubmission: input.maxModsPerSubmission ?? 5,
+        maxModsPerUser: input.maxModsPerUser ?? 5,
         createdBy: adminId,
       });
     } catch (error) {
@@ -574,7 +407,7 @@ export class VoteService {
       modLoaderType: number;
       classId: number;
       baseModpackProjectId: number | null;
-      maxModsPerSubmission: number;
+      maxModsPerUser: number;
     }>,
   ): Promise<Vote> {
     const vote = await this.getVote(voteId);
@@ -645,7 +478,7 @@ export class VoteService {
           return tx.vote.mod.get({ id: voteModId });
         }
 
-        const updated = await tx.vote.mod.updateAndReturn(
+        return tx.vote.mod.updateAndReturn(
           { id: voteModId },
           {
             status: action === "approve" ? "approved" : "declined",
@@ -653,10 +486,6 @@ export class VoteService {
             reviewedAt: new Date(),
           },
         );
-        if (mod.submissionId) {
-          await this.closeSubmissionIfSettled(tx, mod.submissionId);
-        }
-        return updated;
       });
     } catch (error) {
       this.mapConstraintError(error);
@@ -682,7 +511,6 @@ export class VoteService {
       await db.inTransaction(async (tx) => {
         for (const entry of prepared) {
           await this.createMod(tx, vote, entry, {
-            submissionId: null,
             submittedBy: adminId,
             source: "admin",
             status: "approved",
@@ -797,17 +625,6 @@ export class VoteService {
     };
   }
 
-  private async findActiveSubmission(
-    voteId: number,
-    discordId: string,
-  ): Promise<VoteSubmission | null> {
-    const [submission] = await Q.vote.submission.findAll(
-      { voteId, discordId, status: "active" },
-      { limit: 1 },
-    );
-    return submission ?? null;
-  }
-
   private assertUserVisible(vote: Vote): void {
     if (vote.status === "draft" || vote.status === "archived") {
       throw new NotFoundError(`Vote #${vote.id} not found`);
@@ -820,24 +637,6 @@ export class VoteService {
       throw new BadRequestError("This vote is not open for submissions");
     }
     return vote;
-  }
-
-  private async getSubmissionDetail(
-    submission: VoteSubmission,
-  ): Promise<VoteSubmissionDetail> {
-    const fresh = await Q.vote.submission.get({ id: submission.id });
-    const mods = await Q.vote.mod.findAll(
-      { submissionId: submission.id },
-      { orderBy: "createdAt", orderDirection: "asc" },
-    );
-    const counts = await Q.vote.submission.upvote.countGroupedBySubmission([
-      submission.id,
-    ]);
-    return {
-      submission: fresh,
-      upvoteCount: counts[submission.id] ?? 0,
-      mods: await this.decorateMods(mods),
-    };
   }
 
   private async decorateMods(mods: VoteMod[]): Promise<VoteModListItem[]> {
@@ -897,7 +696,7 @@ export class VoteService {
 
     const projectIds = entries.map((e) => e.projectId);
     if (new Set(projectIds).size !== projectIds.length) {
-      throw new BadRequestError("A submission cannot contain duplicate mods");
+      throw new BadRequestError("The request contains duplicate mods");
     }
 
     const [bans, claims] = await Promise.all([
@@ -921,7 +720,7 @@ export class VoteService {
         claims.map((c) => c.curseforgeProjectId),
       );
       throw new ConflictError(
-        `Already in this vote or another submission: ${labels.join(", ")}`,
+        `Already suggested in this vote: ${labels.join(", ")}`,
       );
     }
 
@@ -994,17 +793,15 @@ export class VoteService {
     vote: Vote,
     entry: PreparedEntry,
     options: {
-      submissionId: number | null;
       submittedBy: string;
       source?: VoteMod["source"];
       status?: VoteModStatus;
       reviewedBy?: string;
     },
-  ): Promise<void> {
-    await tx.vote.mod.create({
+  ): Promise<VoteMod> {
+    return tx.vote.mod.createAndReturn({
       voteId: vote.id,
       curseforgeProjectId: entry.projectId,
-      submissionId: options.submissionId,
       source: options.source ?? "user",
       submittedBy: options.submittedBy,
       status: options.status ?? "pending",
@@ -1035,12 +832,6 @@ export class VoteService {
       });
     }
 
-    const affected = await tx.vote.mod.findAll({
-      curseforgeProjectId: projectId,
-      status: { $in: USER_VISIBLE_MOD_STATUSES },
-    });
-    if (affected.length === 0) return;
-
     await tx.vote.mod.updateAll(
       { status: "rejected", reviewedBy: adminId, reviewedAt: new Date() },
       {
@@ -1048,34 +839,6 @@ export class VoteService {
         status: { $in: USER_VISIBLE_MOD_STATUSES },
       },
     );
-
-    const submissionIds = [
-      ...new Set(
-        affected
-          .map((m) => m.submissionId)
-          .filter((id): id is number => id !== null),
-      ),
-    ];
-    for (const submissionId of submissionIds) {
-      await this.closeSubmissionIfSettled(tx, submissionId);
-    }
-  }
-
-  /** Close a submission once none of its mods are pending, freeing the slot. */
-  private async closeSubmissionIfSettled(
-    tx: TxQueries,
-    submissionId: number,
-  ): Promise<void> {
-    const pending = await tx.vote.mod.count({
-      submissionId,
-      status: "pending",
-    });
-    if (pending === 0) {
-      await tx.vote.submission.update(
-        { id: submissionId },
-        { status: "closed" },
-      );
-    }
   }
 
   private async assertBaseModpack(projectId: number): Promise<void> {

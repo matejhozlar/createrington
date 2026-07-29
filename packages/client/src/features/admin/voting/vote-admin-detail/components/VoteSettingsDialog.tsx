@@ -27,7 +27,7 @@ interface VoteSettings {
   description: string | null;
   gameVersion: string;
   modLoaderType: number;
-  maxModsPerSubmission: number;
+  maxModsPerUser: number;
   baseModpackProjectId: number | null;
 }
 
@@ -47,7 +47,7 @@ export function VoteSettingsDialog({
   const [description, setDescription] = useState(vote.description ?? "");
   const [gameVersion, setGameVersion] = useState(vote.gameVersion);
   const [loaderType, setLoaderType] = useState(String(vote.modLoaderType));
-  const [maxMods, setMaxMods] = useState(String(vote.maxModsPerSubmission));
+  const [maxMods, setMaxMods] = useState(String(vote.maxModsPerUser));
   const [basePackId, setBasePackId] = useState(
     vote.baseModpackProjectId ? String(vote.baseModpackProjectId) : "",
   );
@@ -71,7 +71,7 @@ export function VoteSettingsDialog({
         description: description.trim() || null,
         gameVersion: gameVersion.trim(),
         modLoaderType: Number(loaderType),
-        maxModsPerSubmission: Number(maxMods) || 5,
+        maxModsPerUser: Number(maxMods) || 5,
         baseModpackProjectId: basePackId.trim() ? Number(basePackId) : null,
       },
     });
@@ -127,7 +127,7 @@ export function VoteSettingsDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="settings-max">Mods per submission</Label>
+              <Label htmlFor="settings-max">Suggestions per player</Label>
               <Input
                 id="settings-max"
                 type="number"

@@ -10,7 +10,7 @@ import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { ModCard } from "./components/ModCard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
-import { SubmissionPanel } from "./components/SubmissionPanel";
+import { SuggestionPanel } from "./components/SuggestionPanel";
 
 export function VoteDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -100,7 +100,7 @@ export function VoteDetail() {
           </div>
         </div>
 
-        {user && isOpen && <SubmissionPanel vote={vote} />}
+        {user && isOpen && <SuggestionPanel vote={vote} />}
 
         <section className="space-y-4">
           <div className="flex items-baseline gap-3">

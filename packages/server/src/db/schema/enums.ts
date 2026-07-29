@@ -116,11 +116,6 @@ export const voteStatusEnum = pgEnum("vote_status", [
   "archived",
 ]);
 
-export const voteSubmissionStatusEnum = pgEnum("vote_submission_status", [
-  "active",
-  "closed",
-]);
-
 // declined = soft (resubmittable), rejected = permanently banned via vote_mod_ban
 export const voteModStatusEnum = pgEnum("vote_mod_status", [
   "pending",
