@@ -207,6 +207,20 @@ export const adminVotesRouter = router({
       }
     }),
 
+  dependencyReport: adminProcedure
+    .meta({
+      description:
+        "Dependency-pulled mods and optional dependencies for a vote",
+    })
+    .input(z.object({ voteId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      try {
+        return await voteService.getDependencyReport(input.voteId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   listForumChannels: adminProcedure
     .meta({ description: "Forum channels available for workshop threads" })
     .query(() => listForumChannels()),

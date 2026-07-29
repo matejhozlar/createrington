@@ -26,6 +26,11 @@ import {
   assertForumChannel,
   discordThreadUrl,
 } from "./discord";
+import {
+  OPTIONAL_DEPENDENCY,
+  promoteRequiredDependencies,
+  resolveModDependencies,
+} from "./dependencies";
 
 export type VoteProjectSummary = Pick<
   CurseforgeProject,
@@ -42,11 +47,38 @@ export type VoteProjectSummary = Pick<
   | "allowModDistribution"
 >;
 
+export interface VoteModDependencyInfo {
+  curseforgeProjectId: number;
+  relationType: number;
+  name: string | null;
+  slug: string | null;
+  thumbnailUrl: string | null;
+  banned: boolean;
+}
+
 export interface VoteModListItem extends VoteMod {
   project: VoteProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
   discordThreadUrl: string | null;
+  dependencies: VoteModDependencyInfo[];
+}
+
+export interface VoteDependencyReport {
+  pulled: Array<
+    VoteModListItem & {
+      pulledBy: { voteModId: number; name: string } | null;
+    }
+  >;
+  optional: Array<{
+    curseforgeProjectId: number;
+    name: string | null;
+    slug: string | null;
+    thumbnailUrl: string | null;
+    banned: boolean;
+    inVote: boolean;
+    wantedBy: Array<{ voteModId: number; name: string }>;
+  }>;
 }
 
 export interface VoteModEntry {
@@ -186,6 +218,7 @@ export class VoteService {
     mod: VoteMod & {
       submitterName: string | null;
       discordThreadUrl: string | null;
+      dependencies: VoteModDependencyInfo[];
     };
     project: CurseforgeProject;
     upvoteCount: number;
@@ -201,11 +234,13 @@ export class VoteService {
     if (!options.includeHidden) {
       this.assertUserVisible(await this.getVote(mod.voteId));
     }
-    const [project, upvoteCount, submitter] = await Promise.all([
+    const [project, upvoteCount, submitter, depRows] = await Promise.all([
       Q.curseforge.project.get({ id: mod.curseforgeProjectId }),
       Q.vote.mod.upvote.count({ voteModId }),
       Q.player.find({ discordId: mod.submittedBy }),
+      Q.vote.mod.dependency.findAll({ voteModId }),
     ]);
+    const depsByMod = await this.buildDependencyInfo(depRows);
     return {
       mod: {
         ...mod,
@@ -213,6 +248,7 @@ export class VoteService {
         discordThreadUrl: mod.discordThreadId
           ? discordThreadUrl(mod.discordThreadId)
           : null,
+        dependencies: depsByMod.get(mod.id) ?? [],
       },
       project,
       upvoteCount,
@@ -302,6 +338,7 @@ export class VoteService {
 
     const [item] = await this.decorateMods([created]);
     if (item) void announceSuggestion(vote, item);
+    void resolveModDependencies(vote, [created]);
     return item;
   }
 
@@ -582,6 +619,10 @@ export class VoteService {
           action === "approve" ? "approved" : "declined",
           reason,
         );
+        if (action === "approve") {
+          const vote = await this.getVote(updated.voteId);
+          await promoteRequiredDependencies(vote, updated, adminId);
+        }
       }
       return updated;
     } catch (error) {
@@ -628,6 +669,11 @@ export class VoteService {
     for (const item of items) {
       void announceSuggestion(vote, item);
     }
+    void resolveModDependencies(vote, mods).then(async () => {
+      for (const mod of mods) {
+        await promoteRequiredDependencies(vote, mod, adminId);
+      }
+    });
     return items;
   }
 
@@ -692,6 +738,90 @@ export class VoteService {
         project: project ? this.toProjectSummary(project) : null,
       };
     });
+  }
+
+  /** Dependency-pulled mods and aggregated optional deps, for the admin report. */
+  async getDependencyReport(voteId: number): Promise<VoteDependencyReport> {
+    await this.getVote(voteId);
+    const mods = await Q.vote.mod.findAll({ voteId });
+    const byId = new Map(mods.map((m) => [m.id, m]));
+    const projects =
+      mods.length > 0
+        ? await Q.curseforge.project.findAll({
+            id: { $in: [...new Set(mods.map((m) => m.curseforgeProjectId))] },
+          })
+        : [];
+    const projectById = new Map(projects.map((p) => [p.id, p]));
+    const modName = (mod: VoteMod) =>
+      projectById.get(mod.curseforgeProjectId)?.name ??
+      `#${mod.curseforgeProjectId}`;
+
+    const pulledItems = await this.decorateMods(
+      mods.filter((m) => m.source === "dependency"),
+    );
+    const pulled = pulledItems.map((item) => {
+      const puller = item.pulledByVoteModId
+        ? byId.get(item.pulledByVoteModId)
+        : undefined;
+      return {
+        ...item,
+        pulledBy: puller
+          ? { voteModId: puller.id, name: modName(puller) }
+          : null,
+      };
+    });
+
+    const liveMods = mods.filter((m) =>
+      USER_VISIBLE_MOD_STATUSES.includes(m.status),
+    );
+    const optionalRows =
+      liveMods.length > 0
+        ? await Q.vote.mod.dependency.findAll({
+            voteModId: { $in: liveMods.map((m) => m.id) },
+            relationType: OPTIONAL_DEPENDENCY,
+          })
+        : [];
+    const claimedProjectIds = new Set(
+      liveMods.map((m) => m.curseforgeProjectId),
+    );
+    const optionalIds = [
+      ...new Set(optionalRows.map((d) => d.curseforgeProjectId)),
+    ];
+    const [optionalProjects, optionalBans] = await Promise.all([
+      optionalIds.length > 0
+        ? Q.curseforge.project.findAll({ id: { $in: optionalIds } })
+        : Promise.resolve([]),
+      optionalIds.length > 0
+        ? Q.vote.mod.ban.findAll({
+            curseforgeProjectId: { $in: optionalIds },
+          })
+        : Promise.resolve([]),
+    ]);
+    const optionalProjectById = new Map(optionalProjects.map((p) => [p.id, p]));
+    const optionalBannedIds = new Set(
+      optionalBans.map((b) => b.curseforgeProjectId),
+    );
+
+    const optional = optionalIds
+      .map((id) => {
+        const project = optionalProjectById.get(id);
+        return {
+          curseforgeProjectId: id,
+          name: project?.name ?? null,
+          slug: project?.slug ?? null,
+          thumbnailUrl: project?.thumbnailUrl ?? null,
+          banned: optionalBannedIds.has(id),
+          inVote: claimedProjectIds.has(id),
+          wantedBy: optionalRows
+            .filter((d) => d.curseforgeProjectId === id)
+            .map((d) => byId.get(d.voteModId))
+            .filter((m): m is VoteMod => m !== undefined)
+            .map((m) => ({ voteModId: m.id, name: modName(m) })),
+        };
+      })
+      .sort((a, b) => b.wantedBy.length - a.wantedBy.length);
+
+    return { pulled, optional };
   }
 
   /** Bans for the public "ruled out" list; never exposes who banned. */
@@ -769,15 +899,19 @@ export class VoteService {
 
     const projectIds = [...new Set(mods.map((m) => m.curseforgeProjectId))];
     const submitterIds = [...new Set(mods.map((m) => m.submittedBy))];
-    const [projects, upvoteCounts, submitters] = await Promise.all([
+    const [projects, upvoteCounts, submitters, depRows] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: projectIds } }),
       Q.vote.mod.upvote.countGroupedByMod(mods.map((m) => m.id)),
       Q.player.findAll({ discordId: { $in: submitterIds } }),
+      Q.vote.mod.dependency.findAll({
+        voteModId: { $in: mods.map((m) => m.id) },
+      }),
     ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
     const nameByDiscordId = new Map(
       submitters.map((p) => [p.discordId, p.minecraftUsername]),
     );
+    const depsByMod = await this.buildDependencyInfo(depRows);
 
     return mods.flatMap((mod) => {
       const project = byId.get(mod.curseforgeProjectId);
@@ -791,9 +925,45 @@ export class VoteService {
           discordThreadUrl: mod.discordThreadId
             ? discordThreadUrl(mod.discordThreadId)
             : null,
+          dependencies: depsByMod.get(mod.id) ?? [],
         },
       ];
     });
+  }
+
+  private async buildDependencyInfo(
+    depRows: Awaited<ReturnType<typeof Q.vote.mod.dependency.findAll>>,
+  ): Promise<Map<number, VoteModDependencyInfo[]>> {
+    const byMod = new Map<number, VoteModDependencyInfo[]>();
+    if (depRows.length === 0) return byMod;
+
+    const depProjectIds = [
+      ...new Set(depRows.map((d) => d.curseforgeProjectId)),
+    ];
+    const [depProjects, depBans] = await Promise.all([
+      Q.curseforge.project.findAll({ id: { $in: depProjectIds } }),
+      Q.vote.mod.ban.findAll({
+        curseforgeProjectId: { $in: depProjectIds },
+      }),
+    ]);
+    const projectById = new Map(depProjects.map((p) => [p.id, p]));
+    const bannedIds = new Set(depBans.map((b) => b.curseforgeProjectId));
+
+    for (const dep of depRows) {
+      const project = projectById.get(dep.curseforgeProjectId);
+      const info: VoteModDependencyInfo = {
+        curseforgeProjectId: dep.curseforgeProjectId,
+        relationType: dep.relationType,
+        name: project?.name ?? null,
+        slug: project?.slug ?? null,
+        thumbnailUrl: project?.thumbnailUrl ?? null,
+        banned: bannedIds.has(dep.curseforgeProjectId),
+      };
+      const list = byMod.get(dep.voteModId) ?? [];
+      list.push(info);
+      byMod.set(dep.voteModId, list);
+    }
+    return byMod;
   }
 
   private toProjectSummary(project: CurseforgeProject): VoteProjectSummary {

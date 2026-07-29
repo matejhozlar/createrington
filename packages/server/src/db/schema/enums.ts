@@ -124,7 +124,12 @@ export const voteModStatusEnum = pgEnum("vote_mod_status", [
   "rejected",
 ]);
 
-export const voteModSourceEnum = pgEnum("vote_mod_source", ["user", "admin"]);
+// dependency = auto-promoted required dependency of an approved mod
+export const voteModSourceEnum = pgEnum("vote_mod_source", [
+  "user",
+  "admin",
+  "dependency",
+]);
 
 export const votePollStatusEnum = pgEnum("vote_poll_status", [
   "open",

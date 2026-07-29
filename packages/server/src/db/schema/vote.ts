@@ -76,6 +76,10 @@ export const voteMod = pgTable(
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
     discordThreadId: text("discord_thread_id"),
+    // Provenance for source = 'dependency' rows: the approved mod that pulled
+    // this one in. Plain integer, not an FK: the generator does not handle
+    // self-referencing foreign keys
+    pulledByVoteModId: integer("pulled_by_vote_mod_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -93,6 +97,35 @@ export const voteMod = pgTable(
     uniqueIndex("idx_vote_mod_claim_unique")
       .on(table.voteId, table.curseforgeProjectId)
       .where(sql`${table.status} IN ('pending', 'approved')`),
+  ],
+);
+
+// --- vote_mod_dependency ---
+// Resolved CurseForge dependencies of a suggestion's chosen file, refreshed
+// lazily in the background. relationType: 2 = optional, 3 = required.
+// Deps satisfied by the base modpack are not stored.
+
+export const voteModDependency = pgTable(
+  "vote_mod_dependency",
+  {
+    id: serial("id").primaryKey(),
+    voteModId: integer("vote_mod_id")
+      .notNull()
+      .references(() => voteMod.id, { onDelete: "cascade" }),
+    curseforgeProjectId: integer("curseforge_project_id")
+      .notNull()
+      .references(() => curseforgeProject.id),
+    relationType: integer("relation_type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_vote_mod_dependency_mod").on(table.voteModId),
+    uniqueIndex("idx_vote_mod_dependency_unique").on(
+      table.voteModId,
+      table.curseforgeProjectId,
+    ),
   ],
 );
 

@@ -1,11 +1,16 @@
 import { Q } from "@/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
+import {
+  promoteRequiredDependencies,
+  resolveModDependencies,
+} from "./dependencies";
 
 /**
- * Daily refresh of the cached CurseForge snapshots for every project sitting
- * in an open workshop, so names, thumbnails, and download counts do not go
- * stale between suggest time and review. Runs once on startup, then every
- * 24 hours; overlapping runs are skipped.
+ * Daily sweep over open workshops: refreshes the cached CurseForge snapshots
+ * (names, thumbnails, download counts), re-resolves each live mod's
+ * dependencies, and heals any missed required-dependency promotions for
+ * approved mods. Runs once on startup, then every 24 hours; overlapping runs
+ * are skipped.
  */
 export class VoteProjectRefreshService {
   private intervalId?: NodeJS.Timeout;
@@ -29,23 +34,32 @@ export class VoteProjectRefreshService {
     );
   }
 
-  /** Refreshes snapshots for every project in an open workshop. */
+  /** Refreshes snapshots, dependencies, and missed promotions for open workshops. */
   async refresh(): Promise<number> {
     if (this.running) return 0;
     this.running = true;
     try {
-      const openVotes = await Q.vote.findAll(
-        { status: "open" },
-        { select: ["id"] },
-      );
+      const openVotes = await Q.vote.findAll({ status: "open" });
       if (openVotes.length === 0) return 0;
 
-      const mods = await Q.vote.mod.findAll(
-        { voteId: { $in: openVotes.map((vote) => vote.id) } },
-        { select: ["curseforgeProjectId"] },
-      );
-      const ids = [...new Set(mods.map((mod) => mod.curseforgeProjectId))];
-      const refreshed = await refreshProjects(ids);
+      let refreshed = 0;
+      for (const vote of openVotes) {
+        const mods = await Q.vote.mod.findAll({
+          voteId: vote.id,
+          status: { $in: ["pending", "approved"] },
+        });
+        const ids = [...new Set(mods.map((mod) => mod.curseforgeProjectId))];
+        refreshed += await refreshProjects(ids);
+
+        await resolveModDependencies(vote, mods);
+        for (const mod of mods.filter((m) => m.status === "approved")) {
+          await promoteRequiredDependencies(
+            vote,
+            mod,
+            mod.reviewedBy ?? vote.createdBy,
+          );
+        }
+      }
       if (refreshed > 0) {
         logger.info(`Refreshed ${refreshed} workshop project snapshots`);
       }

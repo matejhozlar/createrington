@@ -1,5 +1,5 @@
 {
-  "id": "e612a825-1dd6-4da2-b6d8-5bdb15fdc29c",
+  "id": "4edacc58-aa68-4345-99aa-6da6a61fc85e",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -7346,6 +7346,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "pulled_by_vote_mod_id": {
+          "name": "pulled_by_vote_mod_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -7541,6 +7547,114 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vote_mod_dependency": {
+      "name": "vote_mod_dependency",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "vote_mod_id": {
+          "name": "vote_mod_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "curseforge_project_id": {
+          "name": "curseforge_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "relation_type": {
+          "name": "relation_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_vote_mod_dependency_mod": {
+          "name": "idx_vote_mod_dependency_mod",
+          "columns": [
+            {
+              "expression": "vote_mod_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_vote_mod_dependency_unique": {
+          "name": "idx_vote_mod_dependency_unique",
+          "columns": [
+            {
+              "expression": "vote_mod_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "curseforge_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vote_mod_dependency_vote_mod_id_vote_mod_id_fk": {
+          "name": "vote_mod_dependency_vote_mod_id_vote_mod_id_fk",
+          "tableFrom": "vote_mod_dependency",
+          "tableTo": "vote_mod",
+          "columnsFrom": [
+            "vote_mod_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "vote_mod_dependency_curseforge_project_id_curseforge_project_id_fk": {
+          "name": "vote_mod_dependency_curseforge_project_id_curseforge_project_id_fk",
+          "tableFrom": "vote_mod_dependency",
+          "tableTo": "curseforge_project",
+          "columnsFrom": [
+            "curseforge_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -8363,7 +8477,8 @@
       "schema": "public",
       "values": [
         "user",
-        "admin"
+        "admin",
+        "dependency"
       ]
     },
     "public.vote_mod_status": {

@@ -1,4 +1,4 @@
-CREATE TYPE "public"."vote_mod_source" AS ENUM('user', 'admin');--> statement-breakpoint
+CREATE TYPE "public"."vote_mod_source" AS ENUM('user', 'admin', 'dependency');--> statement-breakpoint
 CREATE TYPE "public"."vote_mod_status" AS ENUM('pending', 'approved', 'declined', 'rejected');--> statement-breakpoint
 CREATE TYPE "public"."vote_poll_granularity" AS ENUM('per_mod', 'bundle');--> statement-breakpoint
 CREATE TYPE "public"."vote_poll_status" AS ENUM('open', 'closed');--> statement-breakpoint
@@ -66,6 +66,7 @@ CREATE TABLE "vote_mod" (
 	"file_name" text,
 	"file_release_type" integer,
 	"discord_thread_id" text,
+	"pulled_by_vote_mod_id" integer,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -77,6 +78,14 @@ CREATE TABLE "vote_mod_ban" (
 	"banned_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "vote_mod_ban_curseforge_project_id_unique" UNIQUE("curseforge_project_id")
+);
+--> statement-breakpoint
+CREATE TABLE "vote_mod_dependency" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"vote_mod_id" integer NOT NULL,
+	"curseforge_project_id" integer NOT NULL,
+	"relation_type" integer NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "vote_mod_upvote" (
@@ -120,6 +129,8 @@ CREATE TABLE "vote_poll_mod" (
 ALTER TABLE "vote_mod" ADD CONSTRAINT "vote_mod_vote_id_vote_id_fk" FOREIGN KEY ("vote_id") REFERENCES "public"."vote"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vote_mod" ADD CONSTRAINT "vote_mod_curseforge_project_id_curseforge_project_id_fk" FOREIGN KEY ("curseforge_project_id") REFERENCES "public"."curseforge_project"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vote_mod_ban" ADD CONSTRAINT "vote_mod_ban_curseforge_project_id_curseforge_project_id_fk" FOREIGN KEY ("curseforge_project_id") REFERENCES "public"."curseforge_project"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vote_mod_dependency" ADD CONSTRAINT "vote_mod_dependency_vote_mod_id_vote_mod_id_fk" FOREIGN KEY ("vote_mod_id") REFERENCES "public"."vote_mod"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "vote_mod_dependency" ADD CONSTRAINT "vote_mod_dependency_curseforge_project_id_curseforge_project_id_fk" FOREIGN KEY ("curseforge_project_id") REFERENCES "public"."curseforge_project"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vote_mod_upvote" ADD CONSTRAINT "vote_mod_upvote_vote_mod_id_vote_mod_id_fk" FOREIGN KEY ("vote_mod_id") REFERENCES "public"."vote_mod"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vote_poll" ADD CONSTRAINT "vote_poll_vote_id_vote_id_fk" FOREIGN KEY ("vote_id") REFERENCES "public"."vote"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vote_poll_ballot" ADD CONSTRAINT "vote_poll_ballot_poll_id_vote_poll_id_fk" FOREIGN KEY ("poll_id") REFERENCES "public"."vote_poll"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -134,6 +145,8 @@ CREATE INDEX "idx_vote_mod_status" ON "vote_mod" USING btree ("status");--> stat
 CREATE INDEX "idx_vote_mod_submitter" ON "vote_mod" USING btree ("submitted_by");--> statement-breakpoint
 CREATE INDEX "idx_vote_mod_project" ON "vote_mod" USING btree ("curseforge_project_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_vote_mod_claim_unique" ON "vote_mod" USING btree ("vote_id","curseforge_project_id") WHERE "vote_mod"."status" IN ('pending', 'approved');--> statement-breakpoint
+CREATE INDEX "idx_vote_mod_dependency_mod" ON "vote_mod_dependency" USING btree ("vote_mod_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_vote_mod_dependency_unique" ON "vote_mod_dependency" USING btree ("vote_mod_id","curseforge_project_id");--> statement-breakpoint
 CREATE INDEX "idx_vote_mod_upvote_player" ON "vote_mod_upvote" USING btree ("discord_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_vote_mod_upvote_unique" ON "vote_mod_upvote" USING btree ("vote_mod_id","discord_id");--> statement-breakpoint
 CREATE INDEX "idx_vote_poll_vote" ON "vote_poll" USING btree ("vote_id");--> statement-breakpoint
