@@ -3,6 +3,7 @@ import {
   Download,
   ExternalLink,
   Heart,
+  MessageSquare,
   Shield,
   User,
 } from "lucide-react";
@@ -185,6 +186,19 @@ export function ModDetailDialog({
                 >
                   <ExternalLink className="size-4" />
                   View full description on CurseForge
+                </a>
+              </Button>
+            )}
+
+            {data.mod.discordThreadUrl && (
+              <Button variant="outline" className="w-full" asChild>
+                <a
+                  href={data.mod.discordThreadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageSquare className="size-4" />
+                  Discuss on Discord
                 </a>
               </Button>
             )}

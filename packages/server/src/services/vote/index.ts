@@ -19,6 +19,13 @@ import {
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { ingestProject } from "@/services/curseforge/ingest";
+import {
+  announceReview,
+  announceSuggestion,
+  announceWithdrawal,
+  assertForumChannel,
+  discordThreadUrl,
+} from "./discord";
 
 export type VoteProjectSummary = Pick<
   CurseforgeProject,
@@ -39,6 +46,7 @@ export interface VoteModListItem extends VoteMod {
   project: VoteProjectSummary;
   upvoteCount: number;
   submitterName: string | null;
+  discordThreadUrl: string | null;
 }
 
 export interface VoteModEntry {
@@ -175,7 +183,10 @@ export class VoteService {
     voteModId: number,
     options: { includeHidden?: boolean } = {},
   ): Promise<{
-    mod: VoteMod & { submitterName: string | null };
+    mod: VoteMod & {
+      submitterName: string | null;
+      discordThreadUrl: string | null;
+    };
     project: CurseforgeProject;
     upvoteCount: number;
   }> {
@@ -196,7 +207,13 @@ export class VoteService {
       Q.player.find({ discordId: mod.submittedBy }),
     ]);
     return {
-      mod: { ...mod, submitterName: submitter?.minecraftUsername ?? null },
+      mod: {
+        ...mod,
+        submitterName: submitter?.minecraftUsername ?? null,
+        discordThreadUrl: mod.discordThreadId
+          ? discordThreadUrl(mod.discordThreadId)
+          : null,
+      },
       project,
       upvoteCount,
     };
@@ -284,6 +301,7 @@ export class VoteService {
     }
 
     const [item] = await this.decorateMods([created]);
+    if (item) void announceSuggestion(vote, item);
     return item;
   }
 
@@ -298,6 +316,7 @@ export class VoteService {
       throw new BadRequestError("Only pending suggestions can be removed");
     }
     await Q.vote.mod.delete({ id: voteModId });
+    void announceWithdrawal(mod);
   }
 
   /**
@@ -411,6 +430,9 @@ export class VoteService {
     if (input.baseModpackProjectId) {
       await this.assertBaseModpack(input.baseModpackProjectId);
     }
+    if (input.discordForumChannelId) {
+      await assertForumChannel(input.discordForumChannelId);
+    }
 
     try {
       return await Q.vote.createAndReturn({
@@ -483,6 +505,13 @@ export class VoteService {
       await this.assertBaseModpack(patch.baseModpackProjectId);
     }
 
+    if (
+      patch.discordForumChannelId &&
+      patch.discordForumChannelId !== vote.discordForumChannelId
+    ) {
+      await assertForumChannel(patch.discordForumChannelId);
+    }
+
     return Q.vote.updateAndReturn({ id: voteId }, patch);
   }
 
@@ -507,9 +536,14 @@ export class VoteService {
     }
 
     try {
-      return await db.inTransaction(async (tx) => {
+      const { updated, banned } = await db.inTransaction(async (tx) => {
         if (action === "reject") {
-          await this.applyBan(tx, mod.curseforgeProjectId, adminId, reason);
+          const affected = await this.applyBan(
+            tx,
+            mod.curseforgeProjectId,
+            adminId,
+            reason,
+          );
           if (mod.status === "declined") {
             await tx.vote.mod.update(
               { id: voteModId },
@@ -519,11 +553,15 @@ export class VoteService {
                 reviewedAt: new Date(),
               },
             );
+            affected.push(mod);
           }
-          return tx.vote.mod.get({ id: voteModId });
+          return {
+            updated: await tx.vote.mod.get({ id: voteModId }),
+            banned: affected,
+          };
         }
 
-        return tx.vote.mod.updateAndReturn(
+        const result = await tx.vote.mod.updateAndReturn(
           { id: voteModId },
           {
             status: action === "approve" ? "approved" : "declined",
@@ -531,7 +569,21 @@ export class VoteService {
             reviewedAt: new Date(),
           },
         );
+        return { updated: result, banned: [] as VoteMod[] };
       });
+
+      if (action === "reject") {
+        for (const affected of banned) {
+          void announceReview(affected, "rejected", reason);
+        }
+      } else {
+        void announceReview(
+          updated,
+          action === "approve" ? "approved" : "declined",
+          reason,
+        );
+      }
+      return updated;
     } catch (error) {
       this.mapConstraintError(error);
     }
@@ -572,7 +624,11 @@ export class VoteService {
       curseforgeProjectId: { $in: projectIds },
       status: "approved",
     });
-    return this.decorateMods(mods);
+    const items = await this.decorateMods(mods);
+    for (const item of items) {
+      void announceSuggestion(vote, item);
+    }
+    return items;
   }
 
   /** Globally ban a project and reject every live instance of it. */
@@ -595,9 +651,12 @@ export class VoteService {
       }
     }
 
-    await db.inTransaction(async (tx) => {
-      await this.applyBan(tx, projectId, adminId, reason);
-    });
+    const affected = await db.inTransaction((tx) =>
+      this.applyBan(tx, projectId, adminId, reason),
+    );
+    for (const mod of affected) {
+      void announceReview(mod, "rejected", reason);
+    }
   }
 
   /** Lift a global ban. Rejected mod rows stay but become reviewable again. */
@@ -729,6 +788,9 @@ export class VoteService {
           project: this.toProjectSummary(project),
           upvoteCount: upvoteCounts[mod.id] ?? 0,
           submitterName: nameByDiscordId.get(mod.submittedBy) ?? null,
+          discordThreadUrl: mod.discordThreadId
+            ? discordThreadUrl(mod.discordThreadId)
+            : null,
         },
       ];
     });
@@ -880,13 +942,16 @@ export class VoteService {
     });
   }
 
-  /** Upsert the ban row and reject every pending or approved instance. */
+  /**
+   * Upsert the ban row and reject every pending or approved instance.
+   * Returns the rows that were live before the sweep.
+   */
   private async applyBan(
     tx: TxQueries,
     projectId: number,
     adminId: string,
     reason?: string,
-  ): Promise<void> {
+  ): Promise<VoteMod[]> {
     const existing = await tx.vote.mod.ban.find({
       curseforgeProjectId: projectId,
     });
@@ -898,13 +963,20 @@ export class VoteService {
       });
     }
 
-    await tx.vote.mod.updateAll(
-      { status: "rejected", reviewedBy: adminId, reviewedAt: new Date() },
-      {
-        curseforgeProjectId: projectId,
-        status: { $in: USER_VISIBLE_MOD_STATUSES },
-      },
-    );
+    const affected = await tx.vote.mod.findAll({
+      curseforgeProjectId: projectId,
+      status: { $in: USER_VISIBLE_MOD_STATUSES },
+    });
+    if (affected.length > 0) {
+      await tx.vote.mod.updateAll(
+        { status: "rejected", reviewedBy: adminId, reviewedAt: new Date() },
+        {
+          curseforgeProjectId: projectId,
+          status: { $in: USER_VISIBLE_MOD_STATUSES },
+        },
+      );
+    }
+    return affected;
   }
 
   private async assertBaseModpack(projectId: number): Promise<void> {
