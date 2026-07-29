@@ -469,7 +469,7 @@ function AppContent() {
           />
           <Route path="/structure-packs" element={<StructurePacks />} />
           <Route
-            path="/voting"
+            path="/workshop"
             element={
               <ProtectedRoute promptLogin>
                 <Voting />
@@ -477,7 +477,7 @@ function AppContent() {
             }
           />
           <Route
-            path="/voting/:slug"
+            path="/workshop/:slug"
             element={
               <ProtectedRoute promptLogin>
                 <VoteDetail />

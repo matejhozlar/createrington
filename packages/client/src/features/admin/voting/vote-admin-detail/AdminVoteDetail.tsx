@@ -164,7 +164,7 @@ export function AdminVoteDetail() {
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
           { label: "Tools", href: "/admin/tools" },
-          { label: "Voting", href: "/admin/tools/voting" },
+          { label: "Workshop", href: "/admin/tools/voting" },
           { label: vote.name },
         ]}
       >

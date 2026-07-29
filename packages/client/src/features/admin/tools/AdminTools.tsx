@@ -92,9 +92,9 @@ const TOOL_SECTIONS: ToolSection[] = [
         href: "/admin/tools/structure-packs",
       },
       {
-        title: "Modpack Voting",
+        title: "Workshop",
         description:
-          "Community mod submissions: review, approve, and manage bans.",
+          "Community mod suggestions: review, approve, and manage bans.",
         icon: Vote,
         href: "/admin/tools/voting",
       },

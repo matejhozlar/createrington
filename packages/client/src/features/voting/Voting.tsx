@@ -42,7 +42,7 @@ export function Voting() {
       <header className="relative px-5 pb-10 pt-18 md:px-8">
         <div className="mx-auto max-w-7xl">
           <h1 className="text-4xl font-semibold text-shadow-[0_2px_8px_rgb(0_0_0/0.5)] md:text-5xl lg:text-6xl">
-            Voting
+            Workshop
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.5)] md:text-xl lg:text-2xl">
             Suggest mods, back your favorites, and decide together what ships in
@@ -54,7 +54,7 @@ export function Voting() {
       <section className="relative px-5 pb-16 pt-2 md:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-12">
           <div>
-            <h2 className="mb-4 text-3xl font-semibold">Active vote</h2>
+            <h2 className="mb-4 text-3xl font-semibold">Active workshop</h2>
             {votesQuery.isLoading ? (
               <Skeleton className="h-80 w-full rounded-xl" />
             ) : openVotes.length === 0 ? (
@@ -114,7 +114,7 @@ function ActiveVoteCard({ vote }: { vote: VoteListItem }) {
               }
             />
             <div>
-              <div className={STAT_LABEL_CLASS}>Players voting</div>
+              <div className={STAT_LABEL_CLASS}>Participants</div>
               <div className="mt-1.5 flex items-center gap-2.5">
                 <span className="font-mono text-[22px] leading-7 font-semibold">
                   {summary.participantCount}
@@ -140,7 +140,7 @@ function ActiveVoteCard({ vote }: { vote: VoteListItem }) {
 
         <div className="mt-1 flex flex-wrap items-center gap-4">
           <Button size="lg" asChild>
-            <Link to={`/voting/${vote.slug}`}>Suggest &amp; upvote mods</Link>
+            <Link to={`/workshop/${vote.slug}`}>Suggest &amp; upvote mods</Link>
           </Button>
         </div>
       </div>
@@ -188,7 +188,7 @@ function ActiveVoteCard({ vote }: { vote: VoteListItem }) {
           </p>
         )}
         <Link
-          to={`/voting/${vote.slug}`}
+          to={`/workshop/${vote.slug}`}
           className="mt-auto inline-flex items-center gap-1 text-[13px] font-medium text-primary transition hover:brightness-110"
         >
           See all {suggestionCount}{" "}
@@ -228,10 +228,10 @@ function EmptyState() {
       <div className="flex size-12 items-center justify-center rounded-lg bg-[var(--primary-glow)]">
         <VoteIcon className="size-[22px] text-primary" />
       </div>
-      <div className="text-lg font-semibold">No votes running right now</div>
+      <div className="text-lg font-semibold">No workshops open right now</div>
       <p className="max-w-[400px] text-sm leading-[22px] text-muted-foreground">
-        When the next vote opens, it&apos;ll show up here. Keep an eye on the
-        Discord announcements.
+        When the next workshop opens, it&apos;ll show up here. Keep an eye on
+        the Discord announcements.
       </p>
     </div>
   );
@@ -240,10 +240,10 @@ function EmptyState() {
 function EarlierVotes({ votes }: { votes: VoteListItem[] }) {
   return (
     <div>
-      <h2 className="mb-4 text-3xl font-semibold">Earlier votes</h2>
+      <h2 className="mb-4 text-3xl font-semibold">Earlier workshops</h2>
       <div className="flex flex-col gap-3">
         {votes.map((vote) => (
-          <Link key={vote.id} to={`/voting/${vote.slug}`} className="block">
+          <Link key={vote.id} to={`/workshop/${vote.slug}`} className="block">
             <Card className="flex-row items-center gap-4 px-6 py-[18px] transition-colors hover:border-primary/40">
               <span className="text-[15px] font-semibold">{vote.name}</span>
               <span className="rounded-full border border-zinc-500/50 bg-zinc-500/10 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-zinc-400">

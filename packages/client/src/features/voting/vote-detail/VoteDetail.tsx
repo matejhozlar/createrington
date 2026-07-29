@@ -67,11 +67,11 @@ export function VoteDetail() {
       <div className="mx-auto max-w-6xl space-y-8">
         <div>
           <Link
-            to="/voting"
+            to="/workshop"
             className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" />
-            All votes
+            All workshops
           </Link>
 
           <div className="space-y-3">

@@ -126,8 +126,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ...(votingEnabled
         ? [
             {
-              title: "Voting",
-              url: "/voting",
+              title: "Workshop",
+              url: "/workshop",
               icon: StarIcon,
               badge: "New",
               badgeClassName: "bg-blue-500/90 text-white",

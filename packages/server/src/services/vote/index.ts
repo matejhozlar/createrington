@@ -141,7 +141,7 @@ export class VoteService {
   async getVisibleVoteBySlug(slug: string): Promise<Vote> {
     const vote = await Q.vote.find({ slug });
     if (!vote || vote.status === "draft" || vote.status === "archived") {
-      throw new NotFoundError(`Vote "${slug}" not found`);
+      throw new NotFoundError(`Workshop "${slug}" not found`);
     }
     return vote;
   }
@@ -268,7 +268,7 @@ export class VoteService {
     });
     if (used >= vote.maxModsPerUser) {
       throw new BadRequestError(
-        `You already have ${vote.maxModsPerUser} suggestions in this vote, remove one first`,
+        `You already have ${vote.maxModsPerUser} suggestions in this workshop, remove one first`,
       );
     }
 
@@ -697,7 +697,7 @@ export class VoteService {
   private async getOpenVote(voteId: number): Promise<Vote> {
     const vote = await this.getVote(voteId);
     if (vote.status !== "open") {
-      throw new BadRequestError("This vote is not open for submissions");
+      throw new BadRequestError("This workshop is not open for suggestions");
     }
     return vote;
   }
@@ -783,7 +783,7 @@ export class VoteService {
         claims.map((c) => c.curseforgeProjectId),
       );
       throw new ConflictError(
-        `Already suggested in this vote: ${labels.join(", ")}`,
+        `Already suggested in this workshop: ${labels.join(", ")}`,
       );
     }
 

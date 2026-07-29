@@ -6,7 +6,7 @@ import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
 const requireVotingEnabled = middleware(async ({ next }) => {
   if (!(await featureFlagService.isEnabled(FeatureFlags.voting))) {
-    throw trpcError.forbidden("Voting is currently disabled");
+    throw trpcError.forbidden("The workshop is currently disabled");
   }
   return next();
 });

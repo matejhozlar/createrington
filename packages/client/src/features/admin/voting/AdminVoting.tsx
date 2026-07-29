@@ -65,7 +65,7 @@ export function AdminVoting() {
 
   const setFlagMutation = trpc.admin.features.set.useMutation({
     onSuccess: (flag) => {
-      toast.success(`Voting ${flag.enabled ? "enabled" : "disabled"}`);
+      toast.success(`Workshop ${flag.enabled ? "enabled" : "disabled"}`);
       utils.admin.features.list.invalidate();
       utils.user.votes.enabled.invalidate();
     },
@@ -137,7 +137,7 @@ export function AdminVoting() {
         trail={[
           { label: "Admin", href: "/admin/dashboard" },
           { label: "Tools", href: "/admin/tools" },
-          { label: "Voting" },
+          { label: "Workshop" },
         ]}
       >
         <div className="ml-auto flex items-center gap-2">
@@ -155,7 +155,7 @@ export function AdminVoting() {
               setFlagMutation.mutate({
                 name: "voting",
                 enabled: checked,
-                description: "Community voting tab",
+                description: "Workshop tab",
               })
             }
           />
