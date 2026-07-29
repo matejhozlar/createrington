@@ -1423,10 +1423,10 @@ INSERT INTO feature_flag (name, enabled, description) VALUES
 
 -- Season 3 modpack vote (id = 1), open for suggestions. Fresh vote: no base
 -- modpack, so suggestions are validated only against this vote's own content.
-INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_user, created_by) VALUES
+INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_user, closes_at, created_by) VALUES
   ('Createrington Season 3 Modpack', 'season-3-modpack',
    'Submit and vote on mods for the season 3 modpack.',
-   'open', '1.21.1', 6, 6, NULL, 5, '818819241666281503');
+   'open', '1.21.1', 6, 6, NULL, 5, NOW() + INTERVAL '14 days', '818819241666281503');
 
 -- CurseForge metadata snapshots (real project IDs, approximate stats)
 INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, date_modified, date_released, allow_mod_distribution) VALUES

@@ -43,6 +43,8 @@ CREATE TABLE "vote" (
 	"class_id" integer DEFAULT 6 NOT NULL,
 	"base_modpack_project_id" integer,
 	"max_mods_per_user" integer DEFAULT 5 NOT NULL,
+	"max_upvotes_per_user" integer DEFAULT 5 NOT NULL,
+	"closes_at" timestamp with time zone,
 	"created_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,

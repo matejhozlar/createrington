@@ -35,4 +35,19 @@ export class VoteModUpvoteQueries extends VoteModUpvoteBaseQueries {
     }
     return counts;
   }
+
+  /** Number of the player's upvotes on still-pending mods in a vote. */
+  async countPendingByUser(voteId: number, discordId: string): Promise<number> {
+    const query = `
+      SELECT COUNT(*)::int AS used
+      FROM ${this.table} vmu
+      JOIN vote_mod vm ON vm.id = vmu.vote_mod_id
+      WHERE vm.vote_id = $1 AND vmu.discord_id = $2 AND vm.status = 'pending'`;
+    const result = await this.runQuery<{ used: number }>(
+      "count pending upvotes by user",
+      query,
+      [voteId, discordId],
+    );
+    return result.rows[0]?.used ?? 0;
+  }
 }

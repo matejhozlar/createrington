@@ -35,6 +35,8 @@ export const vote = pgTable(
     classId: integer("class_id").notNull().default(6),
     baseModpackProjectId: integer("base_modpack_project_id"),
     maxModsPerUser: integer("max_mods_per_user").notNull().default(5),
+    maxUpvotesPerUser: integer("max_upvotes_per_user").notNull().default(5),
+    closesAt: timestamp("closes_at", { withTimezone: true }),
     createdBy: text("created_by").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

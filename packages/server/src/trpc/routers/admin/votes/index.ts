@@ -13,6 +13,8 @@ const votePatch = z.object({
   classId: z.number().int().positive().optional(),
   baseModpackProjectId: z.number().int().positive().nullable().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
+  maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
+  closesAt: z.coerce.date().nullable().optional(),
 });
 
 export const adminVotesRouter = router({
@@ -41,6 +43,8 @@ export const adminVotesRouter = router({
         classId: z.number().int().positive().optional(),
         baseModpackProjectId: z.number().int().positive().optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
+        maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
+        closesAt: z.coerce.date().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -124,11 +128,21 @@ export const adminVotesRouter = router({
         "Review a mod: approve, decline (resubmittable), or reject (global ban)",
     })
     .input(
-      z.object({
-        voteModId: z.number().int().positive(),
-        action: z.enum(["approve", "decline", "reject"]),
-        reason: z.string().trim().max(500).optional(),
-      }),
+      z
+        .object({
+          voteModId: z.number().int().positive(),
+          action: z.enum(["approve", "decline", "reject"]),
+          reason: z.string().trim().max(500).optional(),
+        })
+        .superRefine((data, ctx) => {
+          if (data.action === "reject" && (data.reason?.length ?? 0) < 5) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ["reason"],
+              message: "Rejecting requires a reason of at least 5 characters",
+            });
+          }
+        }),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -190,7 +204,7 @@ export const adminVotesRouter = router({
     .input(
       z.object({
         projectId: z.number().int().positive(),
-        reason: z.string().trim().max(500).optional(),
+        reason: z.string().trim().min(5).max(500),
       }),
     )
     .mutation(async ({ ctx, input }) => {

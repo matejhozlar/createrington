@@ -1,5 +1,5 @@
 {
-  "id": "90f58d4f-5bc9-4405-b237-63d65fc5b973",
+  "id": "1bfe4dc5-d281-46ed-a015-5aacfda2cbf1",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -7187,6 +7187,19 @@
           "primaryKey": false,
           "notNull": true,
           "default": 5
+        },
+        "max_upvotes_per_user": {
+          "name": "max_upvotes_per_user",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 5
+        },
+        "closes_at": {
+          "name": "closes_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_by": {
           "name": "created_by",

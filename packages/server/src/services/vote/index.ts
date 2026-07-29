@@ -300,16 +300,24 @@ export class VoteService {
     await Q.vote.mod.delete({ id: voteModId });
   }
 
-  /** Toggle the caller's upvote on a visible mod in an open vote. */
+  /**
+   * Toggle the caller's upvote on a visible mod in an open vote. Upvotes on
+   * pending mods draw from the per-vote budget; a review refunds them. Upvotes
+   * on approved mods are free likes.
+   */
   async toggleModUpvote(
     voteModId: number,
     discordId: string,
-  ): Promise<{ upvoted: boolean; upvoteCount: number }> {
+  ): Promise<{
+    upvoted: boolean;
+    upvoteCount: number;
+    votesRemaining: number;
+  }> {
     const mod = await Q.vote.mod.find({ id: voteModId });
     if (!mod || !USER_VISIBLE_MOD_STATUSES.includes(mod.status)) {
       throw new NotFoundError(`Mod #${voteModId} not found`);
     }
-    await this.getOpenVote(mod.voteId);
+    const vote = await this.getOpenVote(mod.voteId);
     if (mod.submittedBy === discordId) {
       throw new BadRequestError("You cannot upvote your own suggestion");
     }
@@ -320,6 +328,17 @@ export class VoteService {
       await Q.vote.mod.upvote.deleteAll({ id: existing.id });
       upvoted = false;
     } else {
+      if (mod.status === "pending") {
+        const used = await Q.vote.mod.upvote.countPendingByUser(
+          vote.id,
+          discordId,
+        );
+        if (used >= vote.maxUpvotesPerUser) {
+          throw new BadRequestError(
+            `You have used all ${vote.maxUpvotesPerUser} of your votes, remove one or wait for a review`,
+          );
+        }
+      }
       try {
         await Q.vote.mod.upvote.create({ voteModId, discordId });
       } catch (error) {
@@ -328,26 +347,40 @@ export class VoteService {
       upvoted = true;
     }
 
-    const upvoteCount = await Q.vote.mod.upvote.count({ voteModId });
-    return { upvoted, upvoteCount };
+    const [upvoteCount, used] = await Promise.all([
+      Q.vote.mod.upvote.count({ voteModId }),
+      Q.vote.mod.upvote.countPendingByUser(vote.id, discordId),
+    ]);
+    return {
+      upvoted,
+      upvoteCount,
+      votesRemaining: Math.max(0, vote.maxUpvotesPerUser - used),
+    };
   }
 
-  /** IDs of the mods in a vote the caller has upvoted. */
+  /** IDs of the mods in a vote the caller has upvoted, plus their vote budget. */
   async getMyUpvotes(
     voteId: number,
     discordId: string,
-  ): Promise<{ modIds: number[] }> {
+  ): Promise<{ modIds: number[]; maxUpvotes: number; votesRemaining: number }> {
+    const vote = await this.getVote(voteId);
     const mods = await Q.vote.mod.findAll({ voteId }, { select: ["id"] });
     const modIds = mods.map((m) => m.id);
-    const modUpvotes =
+    const [modUpvotes, used] = await Promise.all([
       modIds.length > 0
-        ? await Q.vote.mod.upvote.findAll({
+        ? Q.vote.mod.upvote.findAll({
             discordId,
             voteModId: { $in: modIds },
           })
-        : [];
+        : Promise.resolve([]),
+      Q.vote.mod.upvote.countPendingByUser(voteId, discordId),
+    ]);
 
-    return { modIds: modUpvotes.map((u) => u.voteModId) };
+    return {
+      modIds: modUpvotes.map((u) => u.voteModId),
+      maxUpvotes: vote.maxUpvotesPerUser,
+      votesRemaining: Math.max(0, vote.maxUpvotesPerUser - used),
+    };
   }
 
   /** Create a vote campaign. */
@@ -361,6 +394,8 @@ export class VoteService {
       classId?: number;
       baseModpackProjectId?: number | null;
       maxModsPerUser?: number;
+      maxUpvotesPerUser?: number;
+      closesAt?: Date | null;
     },
     adminId: string,
   ): Promise<Vote> {
@@ -386,6 +421,8 @@ export class VoteService {
         classId: input.classId ?? CurseForgeClass.mods,
         baseModpackProjectId: input.baseModpackProjectId ?? null,
         maxModsPerUser: input.maxModsPerUser ?? 5,
+        maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
+        closesAt: input.closesAt ?? null,
         createdBy: adminId,
       });
     } catch (error) {
@@ -408,6 +445,8 @@ export class VoteService {
       classId: number;
       baseModpackProjectId: number | null;
       maxModsPerUser: number;
+      maxUpvotesPerUser: number;
+      closesAt: Date | null;
     }>,
   ): Promise<Vote> {
     const vote = await this.getVote(voteId);
@@ -451,6 +490,9 @@ export class VoteService {
     adminId: string,
     reason?: string,
   ): Promise<VoteMod> {
+    if (action === "reject" && !reason?.trim()) {
+      throw new BadRequestError("A reason is required to reject a mod");
+    }
     const mod = await Q.vote.mod.find({ id: voteModId });
     if (!mod) throw new NotFoundError(`Mod #${voteModId} not found`);
 
@@ -534,8 +576,11 @@ export class VoteService {
   async banProject(
     projectId: number,
     adminId: string,
-    reason?: string,
+    reason: string,
   ): Promise<void> {
+    if (!reason.trim()) {
+      throw new BadRequestError("A reason is required to ban a project");
+    }
     const cached = await Q.curseforge.project.find({ id: projectId });
     if (!cached) {
       try {
@@ -585,6 +630,24 @@ export class VoteService {
         project: project ? this.toProjectSummary(project) : null,
       };
     });
+  }
+
+  /** Bans for the public "ruled out" list; never exposes who banned. */
+  async listPublicBans(): Promise<
+    Array<{
+      curseforgeProjectId: number;
+      reason: string | null;
+      createdAt: Date;
+      project: VoteProjectSummary | null;
+    }>
+  > {
+    const bans = await this.listBans();
+    return bans.map(({ ban, project }) => ({
+      curseforgeProjectId: ban.curseforgeProjectId,
+      reason: ban.reason,
+      createdAt: ban.createdAt,
+      project,
+    }));
   }
 
   private async getVoteSummary(voteId: number): Promise<VoteSummary> {

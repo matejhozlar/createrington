@@ -426,10 +426,10 @@ export function AdminVoteDetail() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="reject-reason">Reason (optional)</Label>
+            <Label htmlFor="reject-reason">Reason</Label>
             <Input
               id="reject-reason"
-              placeholder="Why is this mod banned?"
+              placeholder="Why is this mod banned? Shown to players."
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
             />
@@ -442,10 +442,12 @@ export function AdminVoteDetail() {
                 reviewMutation.mutate({
                   voteModId: displayRejectTarget.voteModId,
                   action: "reject",
-                  reason: rejectReason.trim() || undefined,
+                  reason: rejectReason.trim(),
                 })
               }
-              disabled={reviewMutation.isPending}
+              disabled={
+                reviewMutation.isPending || rejectReason.trim().length < 5
+              }
             >
               {reviewMutation.isPending && (
                 <Loader2 className="size-4 animate-spin" />

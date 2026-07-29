@@ -120,7 +120,11 @@ export const userVotesRouter = router({
       z.object({
         voteId: z.number().int().positive(),
         projectId: z.number().int().positive(),
-        note: z.string().trim().max(500).optional(),
+        note: z
+          .string()
+          .trim()
+          .min(10, "Add a short sentence on why this mod belongs in the pack")
+          .max(500),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -147,4 +151,8 @@ export const userVotesRouter = router({
         rethrowTrpc(error);
       }
     }),
+
+  listBans: votingProcedure
+    .meta({ description: "Projects ruled out by the team, with reasons" })
+    .query(() => voteService.listPublicBans()),
 });

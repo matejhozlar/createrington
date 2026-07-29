@@ -416,10 +416,10 @@ export function AdminVoting() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ban-reason">Reason (optional)</Label>
+              <Label htmlFor="ban-reason">Reason</Label>
               <Input
                 id="ban-reason"
-                placeholder="Why is this mod banned?"
+                placeholder="Why is this mod banned? Shown to players."
                 value={banReason}
                 onChange={(e) => setBanReason(e.target.value)}
               />
@@ -435,10 +435,14 @@ export function AdminVoting() {
               onClick={() =>
                 banMutation.mutate({
                   projectId: Number(banProjectId),
-                  reason: banReason.trim() || undefined,
+                  reason: banReason.trim(),
                 })
               }
-              disabled={banMutation.isPending || !banProjectId.trim()}
+              disabled={
+                banMutation.isPending ||
+                !banProjectId.trim() ||
+                banReason.trim().length < 5
+              }
             >
               {banMutation.isPending && (
                 <Loader2 className="size-4 animate-spin" />

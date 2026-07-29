@@ -24,6 +24,8 @@ export function SuggestionPanel({
   const toast = useToastActions();
   const utils = trpc.useUtils();
   const [searchQuery, setSearchQuery] = useState("");
+  const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [note, setNote] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 400);
 
   const suggestionsQuery = trpc.user.votes.mySuggestions.useQuery({
@@ -49,10 +51,18 @@ export function SuggestionPanel({
   const suggestMutation = trpc.user.votes.suggestMod.useMutation({
     onSuccess: (mod) => {
       toast.success(`"${mod.project.name}" suggested, awaiting review`);
+      setNoteFor(null);
+      setNote("");
       invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const noteReady = note.trim().length >= 10;
+  const confirmSuggest = (projectId: number) => {
+    if (!noteReady || suggestMutation.isPending) return;
+    suggestMutation.mutate({ voteId: vote.id, projectId, note: note.trim() });
+  };
 
   const removeMutation = trpc.user.votes.removeSuggestion.useMutation({
     onSuccess: () => {
@@ -167,71 +177,102 @@ export function SuggestionPanel({
                 const suggesting =
                   suggestMutation.isPending &&
                   suggestMutation.variables?.projectId === result.id;
+                const noteOpen = noteFor === result.id;
                 return (
                   <div
                     key={result.id}
-                    className={`flex items-center gap-3 rounded-md border p-2.5 ${
+                    className={`rounded-md border ${
                       blocked ? "opacity-50" : ""
                     }`}
                   >
-                    {result.thumbnailUrl && (
-                      <img
-                        src={result.thumbnailUrl}
-                        alt=""
-                        className="size-9 rounded"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">
-                        {result.name}
+                    <div className="flex items-center gap-3 p-2.5">
+                      {result.thumbnailUrl && (
+                        <img
+                          src={result.thumbnailUrl}
+                          alt=""
+                          className="size-9 rounded"
+                        />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">
+                          {result.name}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {result.slug}
+                        </div>
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {result.slug}
+                      <div className="flex shrink-0 items-center gap-1">
+                        {result.banned && (
+                          <Badge
+                            variant="outline"
+                            className="border-red-500/50 text-xs text-red-400"
+                          >
+                            Rejected
+                          </Badge>
+                        )}
+                        {result.claimed && !result.banned && (
+                          <Badge variant="secondary" className="text-xs">
+                            Already suggested
+                          </Badge>
+                        )}
+                        {result.inModpack && (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500/50 text-xs text-green-400"
+                          >
+                            In base pack
+                          </Badge>
+                        )}
+                        {!blocked && !noteOpen && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={suggestMutation.isPending}
+                            onClick={() => {
+                              setNoteFor(result.id);
+                              setNote("");
+                            }}
+                          >
+                            <Plus className="size-3.5" />
+                            Suggest
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      {result.banned && (
-                        <Badge
-                          variant="outline"
-                          className="border-red-500/50 text-xs text-red-400"
-                        >
-                          Rejected
-                        </Badge>
-                      )}
-                      {result.claimed && !result.banned && (
-                        <Badge variant="secondary" className="text-xs">
-                          Already suggested
-                        </Badge>
-                      )}
-                      {result.inModpack && (
-                        <Badge
-                          variant="outline"
-                          className="border-green-500/50 text-xs text-green-400"
-                        >
-                          In base pack
-                        </Badge>
-                      )}
-                      {!blocked && (
+                    {noteOpen && (
+                      <div className="flex items-center gap-2 border-t p-2.5">
+                        <Input
+                          autoFocus
+                          className="h-8 flex-1 text-xs"
+                          placeholder="Why this one? What does it add to the pack?"
+                          maxLength={500}
+                          value={note}
+                          onChange={(e) => setNote(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") confirmSuggest(result.id);
+                          }}
+                        />
                         <Button
                           size="sm"
-                          variant="outline"
-                          disabled={suggestMutation.isPending}
-                          onClick={() =>
-                            suggestMutation.mutate({
-                              voteId: vote.id,
-                              projectId: result.id,
-                            })
-                          }
+                          disabled={!noteReady || suggestMutation.isPending}
+                          onClick={() => confirmSuggest(result.id)}
                         >
                           {suggesting ? (
                             <Loader2 className="size-3.5 animate-spin" />
                           ) : (
-                            <Plus className="size-3.5" />
+                            "Suggest"
                           )}
-                          Suggest
                         </Button>
-                      )}
-                    </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-8 shrink-0"
+                          onClick={() => setNoteFor(null)}
+                        >
+                          <X className="size-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
