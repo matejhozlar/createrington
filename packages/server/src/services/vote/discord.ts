@@ -2,6 +2,7 @@ import { ChannelType, type ForumChannel } from "discord.js";
 import config from "@/config";
 import { getService, Services } from "@/services";
 import { BadRequestError } from "@/app/middleware/error-handler";
+import { Discord } from "@/discord/constants";
 import { Q } from "@/db";
 import type {
   CurseforgeProject,
@@ -12,7 +13,6 @@ import type {
 
 interface SuggestionAnnouncement extends VoteMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
-  submitterName: string | null;
 }
 
 const STATUS_TAG_NAMES: Record<VoteModStatus, string> = {
@@ -104,13 +104,16 @@ export async function announceSuggestion(
     const note = mod.note ? `: ${mod.note}` : "";
     const lines = [
       `**${mod.project.name}**${author}`,
-      `${verb} by **${mod.submitterName ?? "a player"}**${note}`,
+      `${verb} by ${Discord.Users.mention(mod.submittedBy)}${note}`,
     ];
     if (mod.project.websiteUrl) lines.push(mod.project.websiteUrl);
 
     const thread = await forum.threads.create({
       name: mod.project.name.slice(0, 100),
-      message: { content: lines.join("\n") },
+      message: {
+        content: lines.join("\n"),
+        allowedMentions: { users: [mod.submittedBy] },
+      },
       appliedTags: tagId ? [tagId] : [],
       reason: `Workshop suggestion #${mod.id}`,
     });
