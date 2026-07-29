@@ -31,6 +31,7 @@ export function SuggestionPanel({
   const suggestionsQuery = trpc.user.votes.mySuggestions.useQuery({
     voteId: vote.id,
   });
+  const bansQuery = trpc.user.votes.listBans.useQuery();
   const suggestions = suggestionsQuery.data ?? [];
   const usedSlots = suggestions.filter(
     (m) => m.status === "pending" || m.status === "approved",
@@ -286,6 +287,38 @@ export function SuggestionPanel({
             </div>
           )}
         </div>
+
+        {(bansQuery.data?.length ?? 0) > 0 && (
+          <div className="space-y-2 border-t pt-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Ruled out by the team
+            </div>
+            <div className="space-y-1.5">
+              {bansQuery.data?.map((ban) => (
+                <div
+                  key={ban.curseforgeProjectId}
+                  className="flex items-center gap-2.5 text-xs"
+                >
+                  {ban.project?.thumbnailUrl ? (
+                    <img
+                      src={ban.project.thumbnailUrl}
+                      alt=""
+                      className="size-6 rounded"
+                    />
+                  ) : (
+                    <div className="size-6 rounded bg-accent" />
+                  )}
+                  <span className="shrink-0 font-medium">
+                    {ban.project?.name ?? `Project #${ban.curseforgeProjectId}`}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                    {ban.reason ?? "No reason given"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -74,6 +74,10 @@ export function AdminVoteDetail() {
     { voteId },
     { enabled: Number.isFinite(voteId) },
   );
+  const depReportQuery = trpc.admin.votes.dependencyReport.useQuery(
+    { voteId },
+    { enabled: Number.isFinite(voteId) },
+  );
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [detailModId, setDetailModId] = useState<number | null>(null);
@@ -91,6 +95,7 @@ export function AdminVoteDetail() {
     utils.admin.votes.getMod.invalidate();
     utils.admin.votes.searchProjects.invalidate({ voteId });
     utils.admin.votes.listBans.invalidate();
+    utils.admin.votes.dependencyReport.invalidate({ voteId });
     utils.user.votes.get.invalidate();
   };
 
@@ -384,6 +389,94 @@ export function AdminVoteDetail() {
             )}
           </CardContent>
         </Card>
+
+        {depReportQuery.data && (
+          <Card>
+            <CardContent className="space-y-5 pt-6">
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">
+                  Pulled in as dependencies
+                </h3>
+                {depReportQuery.data.pulled.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">None yet.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {depReportQuery.data.pulled.map((mod) => (
+                      <div
+                        key={mod.id}
+                        className="flex items-center gap-2.5 text-sm"
+                      >
+                        {mod.project.thumbnailUrl ? (
+                          <img
+                            src={mod.project.thumbnailUrl}
+                            alt=""
+                            className="size-7 rounded"
+                          />
+                        ) : (
+                          <div className="size-7 rounded bg-accent" />
+                        )}
+                        <span className="font-medium">{mod.project.name}</span>
+                        {mod.pulledBy && (
+                          <span className="text-muted-foreground">
+                            pulled by {mod.pulledBy.name}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">
+                  Optional dependencies
+                </h3>
+                {depReportQuery.data.optional.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    None detected.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {depReportQuery.data.optional.map((dep) => (
+                      <div
+                        key={dep.curseforgeProjectId}
+                        className="flex items-center gap-2.5 text-sm"
+                      >
+                        {dep.thumbnailUrl ? (
+                          <img
+                            src={dep.thumbnailUrl}
+                            alt=""
+                            className="size-7 rounded"
+                          />
+                        ) : (
+                          <div className="size-7 rounded bg-accent" />
+                        )}
+                        <span className="font-medium">
+                          {dep.name ?? `Project #${dep.curseforgeProjectId}`}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                          wanted by {dep.wantedBy.map((w) => w.name).join(", ")}
+                        </span>
+                        {dep.inVote && (
+                          <Badge variant="secondary" className="text-xs">
+                            In the workshop
+                          </Badge>
+                        )}
+                        {dep.banned && (
+                          <Badge
+                            variant="outline"
+                            className="border-red-500/50 text-xs text-red-400"
+                          >
+                            Ruled out
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <ModDetailDialog

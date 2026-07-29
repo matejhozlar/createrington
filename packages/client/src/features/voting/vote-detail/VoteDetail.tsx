@@ -7,7 +7,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
-import { loaderName } from "../format";
+import { formatDate, loaderName } from "../format";
 import { ModCard } from "./components/ModCard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 import { SuggestionPanel } from "./components/SuggestionPanel";
@@ -97,6 +97,21 @@ export function VoteDetail() {
               <Badge variant="outline">{vote.gameVersion}</Badge>
               <Badge variant="outline">{loaderName(vote.modLoaderType)}</Badge>
             </div>
+            {isOpen && vote.closesAt && (
+              <p className="text-sm text-muted-foreground">
+                Suggestions close {formatDate(vote.closesAt)}
+              </p>
+            )}
+            {user && isOpen && myUpvotesQuery.data && (
+              <p className="text-sm text-muted-foreground">
+                You have{" "}
+                <span className="font-semibold text-foreground">
+                  {myUpvotesQuery.data.votesRemaining} of{" "}
+                  {myUpvotesQuery.data.maxUpvotes}
+                </span>{" "}
+                votes left for pending suggestions.
+              </p>
+            )}
           </div>
         </div>
 

@@ -157,6 +157,49 @@ export function ModDetailDialog({
               </div>
             )}
 
+            {data.mod.dependencies.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Dependencies</div>
+                <div className="space-y-1.5">
+                  {data.mod.dependencies.map((dep) => (
+                    <div
+                      key={dep.curseforgeProjectId}
+                      className="flex items-center gap-2.5 rounded-lg border p-2 text-sm"
+                    >
+                      {dep.thumbnailUrl ? (
+                        <img
+                          src={dep.thumbnailUrl}
+                          alt=""
+                          className="size-7 rounded"
+                        />
+                      ) : (
+                        <div className="size-7 rounded bg-accent" />
+                      )}
+                      <span className="min-w-0 flex-1 truncate">
+                        {dep.name ?? `Project #${dep.curseforgeProjectId}`}
+                      </span>
+                      <Badge
+                        variant={
+                          dep.relationType === 3 ? "outline" : "secondary"
+                        }
+                        className="text-xs"
+                      >
+                        {dep.relationType === 3 ? "Required" : "Optional"}
+                      </Badge>
+                      {dep.banned && (
+                        <Badge
+                          variant="outline"
+                          className="border-red-500/50 text-xs text-red-400"
+                        >
+                          Ruled out
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {screenshots.length > 0 && (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {screenshots.slice(0, 6).map((shot) => (

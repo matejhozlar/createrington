@@ -33,6 +33,9 @@ export function formatDate(value: string | Date | null): string {
 }
 
 export function modCredit(source: string, submitterName: string | null) {
+  if (source === "dependency") {
+    return { isAdmin: true, verb: "Pulled in as a", name: "dependency" };
+  }
   const isAdmin = source === "admin";
   return {
     isAdmin,
