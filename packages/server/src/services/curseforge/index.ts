@@ -21,6 +21,10 @@ export const CurseForgeLoader = {
 } as const;
 
 const CURSEFORGE_API = config.curseforge.apiBaseUrl;
+// CloudFront has been seen holding requests ~90s before returning a 504;
+// without timeouts those calls stack up behind a single stuck mutation
+const CF_FETCH_TIMEOUT_MS = 15_000;
+const CF_DOWNLOAD_TIMEOUT_MS = 120_000;
 const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
 const MOD_CLASS_ID: number = CurseForgeClass.mods;
 const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
@@ -148,7 +152,10 @@ export async function searchMods(
   url.searchParams.set("modLoaderType", String(modLoaderType));
   url.searchParams.set("gameVersion", gameVersion);
 
-  const res = await fetch(url.toString(), { headers: cfHeaders() });
+  const res = await fetch(url.toString(), {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge search failed (${res.status}): ${text}`);
@@ -205,7 +212,10 @@ export async function getModFiles(
   url.searchParams.set("gameVersion", gameVersion);
   url.searchParams.set("modLoaderType", String(modLoaderType));
 
-  const res = await fetch(url.toString(), { headers: cfHeaders() });
+  const res = await fetch(url.toString(), {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CurseForge getModFiles failed (${res.status}): ${text}`);
@@ -312,6 +322,7 @@ export async function getMod(
 
   const res = await fetch(`${CURSEFORGE_API}/v1/mods/${projectId}`, {
     headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -338,6 +349,7 @@ export async function getMods(
     method: "POST",
     headers: { ...cfHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({ modIds: projectIds }),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -363,7 +375,7 @@ export async function getModFileDownloadUrl(
 
   const res = await fetch(
     `${CURSEFORGE_API}/v1/mods/${modId}/files/${fileId}/download-url`,
-    { headers: cfHeaders() },
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -405,6 +417,7 @@ export async function resolveDependencies(
     method: "POST",
     headers: { ...cfHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({ modIds }),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -471,6 +484,7 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
     method: "POST",
     headers: { ...cfHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify({ fileIds }),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -522,7 +536,7 @@ export async function getModpackModIds(
 
   const filesRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${packProjectId}/files?pageSize=1`,
-    { headers: cfHeaders() },
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!filesRes.ok) {
     throw new Error(`Failed to fetch modpack files (${filesRes.status})`);
@@ -539,14 +553,16 @@ export async function getModpackModIds(
 
   const dlRes = await fetch(
     `${CURSEFORGE_API}/v1/mods/${packProjectId}/files/${fileId}/download-url`,
-    { headers: cfHeaders() },
+    { headers: cfHeaders(), signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS) },
   );
   if (!dlRes.ok) {
     throw new Error(`Failed to get modpack download URL (${dlRes.status})`);
   }
   const { data: downloadUrl } = (await dlRes.json()) as { data: string };
 
-  const zipRes = await fetch(downloadUrl);
+  const zipRes = await fetch(downloadUrl, {
+    signal: AbortSignal.timeout(CF_DOWNLOAD_TIMEOUT_MS),
+  });
   if (!zipRes.ok) {
     throw new Error(`Failed to download modpack zip (${zipRes.status})`);
   }
@@ -590,7 +606,9 @@ export async function downloadModFile(
   const destPath = path.join(destDir, fileName);
   await fs.promises.mkdir(destDir, { recursive: true });
 
-  const res = await fetch(downloadUrl);
+  const res = await fetch(downloadUrl, {
+    signal: AbortSignal.timeout(CF_DOWNLOAD_TIMEOUT_MS),
+  });
   if (!res.ok || !res.body) {
     throw new Error(
       `CurseForge download failed (${res.status}) for mod ${modId} file ${fileId}`,
