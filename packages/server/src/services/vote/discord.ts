@@ -15,12 +15,18 @@ interface SuggestionAnnouncement extends VoteMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
 }
 
-const STATUS_TAGS: Record<VoteModStatus, { name: string; emoji: string }> = {
+const STATUS_TAGS = {
   pending: { name: "Suggested", emoji: "💡" },
   approved: { name: "In the pack", emoji: "✅" },
-  declined: { name: "Rejected", emoji: "❌" },
   rejected: { name: "Banned", emoji: "🚫" },
-};
+} as const;
+
+function tagNameFor(status: VoteModStatus): string | null {
+  if (status === "pending" || status === "approved" || status === "rejected") {
+    return STATUS_TAGS[status].name;
+  }
+  return null;
+}
 
 export function discordThreadUrl(threadId: string): string {
   return `https://discord.com/channels/${config.discord.guild.id}/${threadId}`;
@@ -87,6 +93,18 @@ async function ensureStatusTags(
   return new Map(tags.map((tag) => [tag.name, tag.id]));
 }
 
+async function removeThread(threadId: string): Promise<void> {
+  const bot = await getService(Services.DISCORD_MAIN_BOT);
+  const thread = await bot.channels.fetch(threadId).catch(() => null);
+  if (!thread?.isThread()) return;
+  try {
+    await thread.delete();
+  } catch (error) {
+    logger.warn(`Could not delete thread ${threadId}, archiving: ${error}`);
+    await thread.setArchived(true).catch(() => {});
+  }
+}
+
 /** Create the suggestion's discussion thread and store its id on the mod row. */
 export async function announceSuggestion(
   vote: Vote,
@@ -98,7 +116,8 @@ export async function announceSuggestion(
     if (!forum) return;
 
     const tags = await ensureStatusTags(forum);
-    const tagId = tags.get(STATUS_TAGS[mod.status].name);
+    const tagName = tagNameFor(mod.status);
+    const tagId = tagName ? tags.get(tagName) : undefined;
 
     const author = mod.project.primaryAuthor
       ? ` by ${mod.project.primaryAuthor}`
@@ -128,7 +147,11 @@ export async function announceSuggestion(
   }
 }
 
-/** Post the review outcome into the suggestion's thread and update its tag. */
+/**
+ * Reflect a review outcome on the suggestion's thread. Approvals post and
+ * retag, bans post the reason and archive the thread as a record, declines
+ * delete the thread entirely so the forum only holds live suggestions.
+ */
 export async function announceReview(
   mod: VoteMod,
   status: "approved" | "declined" | "rejected",
@@ -136,43 +159,67 @@ export async function announceReview(
 ): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
+    if (status === "declined") {
+      await removeThread(mod.discordThreadId);
+      await Q.vote.mod.update({ id: mod.id }, { discordThreadId: null });
+      return;
+    }
+
     const bot = await getService(Services.DISCORD_MAIN_BOT);
     const thread = await bot.channels
       .fetch(mod.discordThreadId)
       .catch(() => null);
-    if (!thread?.isThread()) return;
+    if (!thread?.isThread()) {
+      await Q.vote.mod.update({ id: mod.id }, { discordThreadId: null });
+      return;
+    }
     if (thread.archived) await thread.setArchived(false);
 
     if (thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
-      const tagId = tags.get(STATUS_TAGS[status].name);
+      const tagName = tagNameFor(status);
+      const tagId = tagName ? tags.get(tagName) : undefined;
       if (tagId) await thread.setAppliedTags([tagId]);
     }
 
     const content =
       status === "approved"
         ? "✅ **In the pack!** The team approved this suggestion."
-        : status === "declined"
-          ? `**Not this time.**${reason ? ` ${reason}` : ""} The slot is free again.`
-          : `🚫 **Ruled out by the team.**${reason ? ` ${reason}` : ""}`;
+        : `🚫 **Banned by the team.**${reason ? ` ${reason}` : ""}`;
     await thread.send(content);
+    if (status === "rejected") await thread.setArchived(true);
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
 }
 
-/** Note the withdrawal in the suggestion's thread and archive it. */
+/** Delete the withdrawn suggestion's thread. */
 export async function announceWithdrawal(mod: VoteMod): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
-    const bot = await getService(Services.DISCORD_MAIN_BOT);
-    const thread = await bot.channels
-      .fetch(mod.discordThreadId)
-      .catch(() => null);
-    if (!thread?.isThread() || thread.archived) return;
-    await thread.send("Withdrawn by the suggester.");
-    await thread.setArchived(true);
+    await removeThread(mod.discordThreadId);
   } catch (error) {
-    logger.warn(`Failed to archive withdrawn suggestion #${mod.id}: ${error}`);
+    logger.warn(
+      `Failed to remove withdrawn suggestion thread #${mod.id}: ${error}`,
+    );
+  }
+}
+
+/** Clears stored thread ids whose Discord thread no longer exists. */
+export async function clearDanglingThreadIds(mods: VoteMod[]): Promise<void> {
+  const withThread = mods.filter((mod) => mod.discordThreadId);
+  if (withThread.length === 0) return;
+  try {
+    const bot = await getService(Services.DISCORD_MAIN_BOT);
+    for (const mod of withThread) {
+      const thread = await bot.channels
+        .fetch(mod.discordThreadId!)
+        .catch(() => null);
+      if (!thread?.isThread()) {
+        await Q.vote.mod.update({ id: mod.id }, { discordThreadId: null });
+      }
+    }
+  } catch (error) {
+    logger.warn(`Workshop thread id cleanup failed: ${error}`);
   }
 }

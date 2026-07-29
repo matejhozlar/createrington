@@ -4,6 +4,7 @@ import {
   promoteRequiredDependencies,
   resolveModDependencies,
 } from "./dependencies";
+import { clearDanglingThreadIds } from "./discord";
 
 /**
  * Daily sweep over open workshops: refreshes the cached CurseForge snapshots
@@ -59,6 +60,7 @@ export class VoteProjectRefreshService {
             mod.reviewedBy ?? vote.createdBy,
           );
         }
+        await clearDanglingThreadIds(mods);
       }
       if (refreshed > 0) {
         logger.info(`Refreshed ${refreshed} workshop project snapshots`);
