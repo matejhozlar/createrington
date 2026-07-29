@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc } from "@/trpc/utils";
 import { voteService } from "@/services/vote";
+import { listForumChannels } from "@/services/vote/discord";
 
 const votePatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -205,6 +206,10 @@ export const adminVotesRouter = router({
         rethrowTrpc(error);
       }
     }),
+
+  listForumChannels: adminProcedure
+    .meta({ description: "Forum channels available for workshop threads" })
+    .query(() => listForumChannels()),
 
   listBans: adminProcedure
     .meta({ description: "List globally banned projects" })

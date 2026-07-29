@@ -26,6 +26,19 @@ export function discordThreadUrl(threadId: string): string {
   return `https://discord.com/channels/${config.discord.guild.id}/${threadId}`;
 }
 
+/** Forum channels in the guild, for the admin channel picker. */
+export async function listForumChannels(): Promise<
+  Array<{ id: string; name: string }>
+> {
+  const bot = await getService(Services.DISCORD_MAIN_BOT);
+  const guild = await bot.guilds.fetch(config.discord.guild.id);
+  const channels = await guild.channels.fetch();
+  return [...channels.values()]
+    .filter((channel) => channel?.type === ChannelType.GuildForum)
+    .map((channel) => ({ id: channel!.id, name: channel!.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** Throws unless the id resolves to a forum channel the bot can see. */
 export async function assertForumChannel(channelId: string): Promise<void> {
   const bot = await getService(Services.DISCORD_MAIN_BOT);
