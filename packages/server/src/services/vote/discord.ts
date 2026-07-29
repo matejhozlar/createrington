@@ -15,11 +15,11 @@ interface SuggestionAnnouncement extends VoteMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
 }
 
-const STATUS_TAG_NAMES: Record<VoteModStatus, string> = {
-  pending: "Suggested",
-  approved: "In the pack",
-  declined: "Not this time",
-  rejected: "Ruled out",
+const STATUS_TAGS: Record<VoteModStatus, { name: string; emoji: string }> = {
+  pending: { name: "Suggested", emoji: "💡" },
+  approved: { name: "In the pack", emoji: "✅" },
+  declined: { name: "Rejected", emoji: "❌" },
+  rejected: { name: "Banned", emoji: "🚫" },
 };
 
 export function discordThreadUrl(threadId: string): string {
@@ -65,16 +65,19 @@ async function getForum(channelId: string): Promise<ForumChannel | null> {
 async function ensureStatusTags(
   forum: ForumChannel,
 ): Promise<Map<string, string>> {
-  const wanted = Object.values(STATUS_TAG_NAMES);
+  const wanted = Object.values(STATUS_TAGS);
   let tags = forum.availableTags;
   const missing = wanted.filter(
-    (name) => !tags.some((tag) => tag.name === name),
+    (tag) => !tags.some((existing) => existing.name === tag.name),
   );
   if (missing.length > 0) {
     try {
       const updated = await forum.setAvailableTags([
         ...forum.availableTags,
-        ...missing.map((name) => ({ name })),
+        ...missing.map((tag) => ({
+          name: tag.name,
+          emoji: { id: null, name: tag.emoji },
+        })),
       ]);
       tags = updated.availableTags;
     } catch (error) {
@@ -95,7 +98,7 @@ export async function announceSuggestion(
     if (!forum) return;
 
     const tags = await ensureStatusTags(forum);
-    const tagId = tags.get(STATUS_TAG_NAMES[mod.status]);
+    const tagId = tags.get(STATUS_TAGS[mod.status].name);
 
     const author = mod.project.primaryAuthor
       ? ` by ${mod.project.primaryAuthor}`
@@ -142,7 +145,7 @@ export async function announceReview(
 
     if (thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
-      const tagId = tags.get(STATUS_TAG_NAMES[status]);
+      const tagId = tags.get(STATUS_TAGS[status].name);
       if (tagId) await thread.setAppliedTags([tagId]);
     }
 
