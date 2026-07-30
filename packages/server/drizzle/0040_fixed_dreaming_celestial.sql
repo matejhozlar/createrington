@@ -1,1 +1,0 @@
-ALTER TABLE "vote" DROP COLUMN "closes_at";

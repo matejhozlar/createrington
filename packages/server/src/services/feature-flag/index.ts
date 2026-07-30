@@ -2,7 +2,7 @@ import { Q } from "@/db";
 import type { FeatureFlag } from "@createrington/shared/db";
 
 export const FeatureFlags = {
-  voting: "voting",
+  workshop: "workshop",
 } as const;
 
 export type FeatureFlagName = (typeof FeatureFlags)[keyof typeof FeatureFlags];

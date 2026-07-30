@@ -109,7 +109,7 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
   "closed",
 ]);
 
-export const voteStatusEnum = pgEnum("vote_status", [
+export const workshopStatusEnum = pgEnum("workshop_status", [
   "draft",
   "open",
   "closed",
@@ -117,33 +117,31 @@ export const voteStatusEnum = pgEnum("vote_status", [
 ]);
 
 // rejected rows persist per workshop with a reason; re-review can approve them
-export const voteModStatusEnum = pgEnum("vote_mod_status", [
+export const workshopModStatusEnum = pgEnum("workshop_mod_status", [
   "pending",
   "approved",
   "rejected",
 ]);
 
-export const voteModRejectReasonEnum = pgEnum("vote_mod_reject_reason", [
-  "on_hold",
-  "incompatible",
-  "covered_by_other_mod",
-  "not_a_good_fit",
-]);
+export const workshopModRejectReasonEnum = pgEnum(
+  "workshop_mod_reject_reason",
+  ["on_hold", "incompatible", "covered_by_other_mod", "not_a_good_fit"],
+);
 
 // dependency = auto-promoted required dependency of an approved mod
-export const voteModSourceEnum = pgEnum("vote_mod_source", [
+export const workshopModSourceEnum = pgEnum("workshop_mod_source", [
   "user",
   "admin",
   "dependency",
 ]);
 
-export const votePollStatusEnum = pgEnum("vote_poll_status", [
+export const workshopPollStatusEnum = pgEnum("workshop_poll_status", [
   "open",
   "closed",
 ]);
 
 // per_mod = one yes/no ballot per mod in the poll, bundle = one ballot for the whole poll
-export const votePollGranularityEnum = pgEnum("vote_poll_granularity", [
+export const workshopPollGranularityEnum = pgEnum("workshop_poll_granularity", [
   "per_mod",
   "bundle",
 ]);

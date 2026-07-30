@@ -257,36 +257,8 @@
     {
       "idx": 36,
       "version": "7",
-      "when": 1785352601714,
-      "tag": "0036_sweet_ultimatum",
-      "breakpoints": true
-    },
-    {
-      "idx": 37,
-      "version": "7",
-      "when": 1785441850329,
-      "tag": "0037_lovely_stature",
-      "breakpoints": true
-    },
-    {
-      "idx": 38,
-      "version": "7",
-      "when": 1785444676807,
-      "tag": "0038_wandering_santa_claus",
-      "breakpoints": true
-    },
-    {
-      "idx": 39,
-      "version": "7",
-      "when": 1785446761597,
-      "tag": "0039_open_praxagora",
-      "breakpoints": true
-    },
-    {
-      "idx": 40,
-      "version": "7",
-      "when": 1785448379868,
-      "tag": "0040_fixed_dreaming_celestial",
+      "when": 1785449021681,
+      "tag": "0036_great_doorman",
       "breakpoints": true
     }
   ]

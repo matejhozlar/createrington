@@ -19,7 +19,7 @@ import { adminServersRouter } from "./servers";
 import { waitlistsRouter } from "./waitlists";
 import { adminStructurePacksRouter } from "./structure-packs";
 import { adminPartiesRouter } from "./parties";
-import { adminVotesRouter } from "./votes";
+import { adminWorkshopsRouter } from "./workshops";
 import { adminFeaturesRouter } from "./features";
 import { refetchDiscordEntities } from "@/services/discord/entities/refetch";
 
@@ -58,6 +58,6 @@ export const adminRouter = router({
   prompts: adminPromptsRouter,
   servers: adminServersRouter,
   structurePacks: adminStructurePacksRouter,
-  votes: adminVotesRouter,
+  workshops: adminWorkshopsRouter,
   waitlists: waitlistsRouter,
 });

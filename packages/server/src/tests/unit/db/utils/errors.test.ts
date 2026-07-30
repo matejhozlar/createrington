@@ -101,13 +101,15 @@ describe("ConstraintViolationError", () => {
 describe("translateDbError", () => {
   it("wraps pg unique violations in ConstraintViolationError", () => {
     const pgError = Object.assign(
-      new Error('duplicate key value violates unique constraint "vote_slug"'),
-      { code: "23505", constraint: "vote_slug" },
+      new Error(
+        'duplicate key value violates unique constraint "workshop_slug"',
+      ),
+      { code: "23505", constraint: "workshop_slug" },
     );
     const result = translateDbError(pgError);
     expect(result).toBeInstanceOf(ConstraintViolationError);
     const wrapped = result as ConstraintViolationError;
-    expect(wrapped.constraint).toBe("vote_slug");
+    expect(wrapped.constraint).toBe("workshop_slug");
     expect(wrapped.code).toBe("23505");
     expect(wrapped.cause).toBe(pgError);
   });

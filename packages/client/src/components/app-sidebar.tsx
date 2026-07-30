@@ -62,10 +62,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
-  const votingEnabledQuery = trpc.user.votes.enabled.useQuery(undefined, {
+  const workshopEnabledQuery = trpc.user.workshops.enabled.useQuery(undefined, {
     enabled: !!user,
   });
-  const votingEnabled = !!user && (votingEnabledQuery.data?.enabled ?? false);
+  const workshopEnabled =
+    !!user && (workshopEnabledQuery.data?.enabled ?? false);
 
   const data = {
     ownerNav: [
@@ -123,7 +124,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/structure-packs",
         icon: BoxIcon,
       },
-      ...(votingEnabled
+      ...(workshopEnabled
         ? [
             {
               title: "Workshop",

@@ -972,7 +972,7 @@ INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, amount
 ('550e8400-e29b-41d4-a716-446655440001', 'weekly_playtime', NOW() - INTERVAL '3 days', 15000, '{"hours_played":28,"week":"2026-W05"}'),
 ('550e8400-e29b-41d4-a716-446655440007', 'weekly_playtime', NOW() - INTERVAL '3 days', 10000, '{"hours_played":18,"week":"2026-W05"}'),
 
--- Voting rewards
+-- Vote rewards
 ('550e8400-e29b-41d4-a716-446655440001', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
 ('550e8400-e29b-41d4-a716-446655440002', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
 ('550e8400-e29b-41d4-a716-446655440005', 'vote', NOW() - INTERVAL '2 days', 500, '{"site":"minecraft-server-list"}'),
@@ -1419,11 +1419,11 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
 -- ============================================================================
 
 INSERT INTO feature_flag (name, enabled, description) VALUES
-  ('voting', true, 'Workshop tab');
+  ('workshop', true, 'Workshop tab');
 
--- Season 3 modpack vote (id = 1), open for suggestions. Fresh vote: no base
--- modpack, so suggestions are validated only against this vote's own content.
-INSERT INTO vote (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_user, discord_forum_channel_id, created_by) VALUES
+-- Season 3 modpack workshop (id = 1), open for suggestions. Fresh workshop: no base
+-- modpack, so suggestions are validated only against this workshop's own content.
+INSERT INTO workshop (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_user, discord_forum_channel_id, created_by) VALUES
   ('Createrington Season 3 Modpack', 'season-3-modpack',
    'Suggest and upvote mods for the season 3 modpack.',
    'open', '1.21.1', 6, 6, NULL, 5, '1483504809859481712', '818819241666281503');
@@ -1438,14 +1438,14 @@ INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url
   (324717, 6, 'jade', 'Jade', 'Shows information about what you are looking at', NULL,
    'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', true);
 
--- vote_mod id 1: admin-added, pre-approved. ids 2-3: Mumbo's pending suggestions
-INSERT INTO vote_mod (vote_id, curseforge_project_id, source, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
+-- workshop_mod id 1: admin-added, pre-approved. ids 2-3: Mumbo's pending suggestions
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, source, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
   (1, 328085, 'admin', '818819241666281503', 'approved', NULL, '818819241666281503', NOW() - INTERVAL '2 days', 7963363, 'create-1.21.1-6.0.10.jar'),
   (1, 238222, 'user', '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NULL, NULL, NULL, NULL),
   (1, 324717, 'user', '123456789012345686', 'pending', 'Shows what block you are looking at', NULL, NULL, NULL, NULL);
 
 -- Grian upvotes the JEI entry
-INSERT INTO vote_mod_upvote (vote_mod_id, discord_id) VALUES
+INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
   (2, '123456789012345687');
 
 -- Show some sample stats

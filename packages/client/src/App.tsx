@@ -120,10 +120,13 @@ const StructurePacks = lazyNamed(
   () => import("./features/structure-packs/StructurePacks"),
   "StructurePacks",
 );
-const Voting = lazyNamed(() => import("./features/voting/Voting"), "Voting");
-const VoteDetail = lazyNamed(
-  () => import("./features/voting/vote-detail/VoteDetail"),
-  "VoteDetail",
+const Workshop = lazyNamed(
+  () => import("./features/workshop/Workshop"),
+  "Workshop",
+);
+const WorkshopDetail = lazyNamed(
+  () => import("./features/workshop/workshop-detail/WorkshopDetail"),
+  "WorkshopDetail",
 );
 
 // Server pages
@@ -228,13 +231,14 @@ const AdminStructurePacks = lazyNamed(
   () => import("./features/admin/structure-packs/AdminStructurePacks"),
   "AdminStructurePacks",
 );
-const AdminVoting = lazyNamed(
-  () => import("./features/admin/voting/AdminVoting"),
-  "AdminVoting",
+const AdminWorkshop = lazyNamed(
+  () => import("./features/admin/workshop/AdminWorkshop"),
+  "AdminWorkshop",
 );
-const AdminVoteDetail = lazyNamed(
-  () => import("./features/admin/voting/vote-admin-detail/AdminVoteDetail"),
-  "AdminVoteDetail",
+const AdminWorkshopDetail = lazyNamed(
+  () =>
+    import("./features/admin/workshop/workshop-admin-detail/AdminWorkshopDetail"),
+  "AdminWorkshopDetail",
 );
 const StructurePackDetail = lazyNamed(
   () =>
@@ -472,7 +476,7 @@ function AppContent() {
             path="/workshop"
             element={
               <ProtectedRoute promptLogin>
-                <Voting />
+                <Workshop />
               </ProtectedRoute>
             }
           />
@@ -480,7 +484,7 @@ function AppContent() {
             path="/workshop/:slug"
             element={
               <ProtectedRoute promptLogin>
-                <VoteDetail />
+                <WorkshopDetail />
               </ProtectedRoute>
             }
           />
@@ -527,10 +531,13 @@ function AppContent() {
                         path="tools/structure-packs/:id"
                         element={<StructurePackDetail />}
                       />
-                      <Route path="tools/voting" element={<AdminVoting />} />
                       <Route
-                        path="tools/voting/:id"
-                        element={<AdminVoteDetail />}
+                        path="tools/workshop"
+                        element={<AdminWorkshop />}
+                      />
+                      <Route
+                        path="tools/workshop/:id"
+                        element={<AdminWorkshopDetail />}
                       />
                       <Route path="tools" element={<AdminTools />} />
                       <Route path="tools/faq" element={<AdminFaq />} />

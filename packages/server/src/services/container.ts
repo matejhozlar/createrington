@@ -28,7 +28,7 @@ import type { DonationService } from "./donation/donation.service";
 import type { StructurePackRotationService } from "./structure-pack/rotation";
 import type { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
 import type { PlayerPromptService } from "./player-prompt";
-import type { VoteProjectRefreshService } from "./vote/refresh.service";
+import type { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 
 /**
  * Service lifecycle states
@@ -427,7 +427,7 @@ export const Services = {
   STRUCTURE_PACK_ROTATION: "structurePack.rotationService",
   WAITLIST_CLEANUP_SERVICE: "waitlist.cleanupService",
   PLAYER_PROMPT_SERVICE: "player.promptService",
-  VOTE_PROJECT_REFRESH: "vote.projectRefreshService",
+  WORKSHOP_PROJECT_REFRESH: "workshop.projectRefreshService",
 } as const;
 
 export type ServiceKey = (typeof Services)[keyof typeof Services];
@@ -468,5 +468,5 @@ export interface ServiceTypeMap {
   [Services.STRUCTURE_PACK_ROTATION]: StructurePackRotationService;
   [Services.WAITLIST_CLEANUP_SERVICE]: WaitlistCleanupService;
   [Services.PLAYER_PROMPT_SERVICE]: PlayerPromptService;
-  [Services.VOTE_PROJECT_REFRESH]: VoteProjectRefreshService;
+  [Services.WORKSHOP_PROJECT_REFRESH]: WorkshopProjectRefreshService;
 }

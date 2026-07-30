@@ -73,7 +73,7 @@ export async function ingestProject(
 
 /**
  * Batch-refresh cached snapshots for many projects. Intended for periodic
- * refresh of the projects in active votes.
+ * refresh of the projects in active workshops.
  */
 export async function refreshProjects(projectIds: number[]): Promise<number> {
   if (projectIds.length === 0) return 0;

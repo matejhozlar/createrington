@@ -1,5 +1,5 @@
 {
-  "id": "4edacc58-aa68-4345-99aa-6da6a61fc85e",
+  "id": "68d9b2e1-8d48-4cee-99c8-9c94f0c13e3c",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -7120,8 +7120,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote": {
-      "name": "vote",
+    "public.workshop": {
+      "name": "workshop",
       "schema": "",
       "columns": {
         "id": {
@@ -7150,7 +7150,7 @@
         },
         "status": {
           "name": "status",
-          "type": "vote_status",
+          "type": "workshop_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -7195,12 +7195,6 @@
           "notNull": true,
           "default": 5
         },
-        "closes_at": {
-          "name": "closes_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
         "discord_forum_channel_id": {
           "name": "discord_forum_channel_id",
           "type": "text",
@@ -7229,8 +7223,8 @@
         }
       },
       "indexes": {
-        "idx_vote_status": {
-          "name": "idx_vote_status",
+        "idx_workshop_status": {
+          "name": "idx_workshop_status",
           "columns": [
             {
               "expression": "status",
@@ -7248,8 +7242,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "vote_slug_unique": {
-          "name": "vote_slug_unique",
+        "workshop_slug_unique": {
+          "name": "workshop_slug_unique",
           "nullsNotDistinct": false,
           "columns": [
             "slug"
@@ -7260,8 +7254,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_mod": {
-      "name": "vote_mod",
+    "public.workshop_mod": {
+      "name": "workshop_mod",
       "schema": "",
       "columns": {
         "id": {
@@ -7270,8 +7264,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "vote_id": {
-          "name": "vote_id",
+        "workshop_id": {
+          "name": "workshop_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -7284,7 +7278,7 @@
         },
         "source": {
           "name": "source",
-          "type": "vote_mod_source",
+          "type": "workshop_mod_source",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -7298,7 +7292,7 @@
         },
         "status": {
           "name": "status",
-          "type": "vote_mod_status",
+          "type": "workshop_mod_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -7319,6 +7313,19 @@
         "reviewed_at": {
           "name": "reviewed_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reject_reason": {
+          "name": "reject_reason",
+          "type": "workshop_mod_reject_reason",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reject_note": {
+          "name": "reject_note",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -7346,12 +7353,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "pulled_by_vote_mod_id": {
-          "name": "pulled_by_vote_mod_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -7368,11 +7369,11 @@
         }
       },
       "indexes": {
-        "idx_vote_mod_vote": {
-          "name": "idx_vote_mod_vote",
+        "idx_workshop_mod_workshop": {
+          "name": "idx_workshop_mod_workshop",
           "columns": [
             {
-              "expression": "vote_id",
+              "expression": "workshop_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7383,8 +7384,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_status": {
-          "name": "idx_vote_mod_status",
+        "idx_workshop_mod_status": {
+          "name": "idx_workshop_mod_status",
           "columns": [
             {
               "expression": "status",
@@ -7398,8 +7399,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_submitter": {
-          "name": "idx_vote_mod_submitter",
+        "idx_workshop_mod_submitter": {
+          "name": "idx_workshop_mod_submitter",
           "columns": [
             {
               "expression": "submitted_by",
@@ -7413,8 +7414,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_project": {
-          "name": "idx_vote_mod_project",
+        "idx_workshop_mod_project": {
+          "name": "idx_workshop_mod_project",
           "columns": [
             {
               "expression": "curseforge_project_id",
@@ -7428,11 +7429,11 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_claim_unique": {
-          "name": "idx_vote_mod_claim_unique",
+        "idx_workshop_mod_claim_unique": {
+          "name": "idx_workshop_mod_claim_unique",
           "columns": [
             {
-              "expression": "vote_id",
+              "expression": "workshop_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7445,19 +7446,18 @@
             }
           ],
           "isUnique": true,
-          "where": "\"vote_mod\".\"status\" IN ('pending', 'approved')",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "vote_mod_vote_id_vote_id_fk": {
-          "name": "vote_mod_vote_id_vote_id_fk",
-          "tableFrom": "vote_mod",
-          "tableTo": "vote",
+        "workshop_mod_workshop_id_workshop_id_fk": {
+          "name": "workshop_mod_workshop_id_workshop_id_fk",
+          "tableFrom": "workshop_mod",
+          "tableTo": "workshop",
           "columnsFrom": [
-            "vote_id"
+            "workshop_id"
           ],
           "columnsTo": [
             "id"
@@ -7465,9 +7465,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "vote_mod_curseforge_project_id_curseforge_project_id_fk": {
-          "name": "vote_mod_curseforge_project_id_curseforge_project_id_fk",
-          "tableFrom": "vote_mod",
+        "workshop_mod_curseforge_project_id_curseforge_project_id_fk": {
+          "name": "workshop_mod_curseforge_project_id_curseforge_project_id_fk",
+          "tableFrom": "workshop_mod",
           "tableTo": "curseforge_project",
           "columnsFrom": [
             "curseforge_project_id"
@@ -7485,8 +7485,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_mod_ban": {
-      "name": "vote_mod_ban",
+    "public.workshop_mod_dependency": {
+      "name": "workshop_mod_dependency",
       "schema": "",
       "columns": {
         "id": {
@@ -7495,74 +7495,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "curseforge_project_id": {
-          "name": "curseforge_project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "banned_by": {
-          "name": "banned_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "vote_mod_ban_curseforge_project_id_curseforge_project_id_fk": {
-          "name": "vote_mod_ban_curseforge_project_id_curseforge_project_id_fk",
-          "tableFrom": "vote_mod_ban",
-          "tableTo": "curseforge_project",
-          "columnsFrom": [
-            "curseforge_project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "vote_mod_ban_curseforge_project_id_unique": {
-          "name": "vote_mod_ban_curseforge_project_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "curseforge_project_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.vote_mod_dependency": {
-      "name": "vote_mod_dependency",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "vote_mod_id": {
-          "name": "vote_mod_id",
+        "workshop_mod_id": {
+          "name": "workshop_mod_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -7588,11 +7522,11 @@
         }
       },
       "indexes": {
-        "idx_vote_mod_dependency_mod": {
-          "name": "idx_vote_mod_dependency_mod",
+        "idx_workshop_mod_dependency_mod": {
+          "name": "idx_workshop_mod_dependency_mod",
           "columns": [
             {
-              "expression": "vote_mod_id",
+              "expression": "workshop_mod_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7603,11 +7537,11 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_dependency_unique": {
-          "name": "idx_vote_mod_dependency_unique",
+        "idx_workshop_mod_dependency_unique": {
+          "name": "idx_workshop_mod_dependency_unique",
           "columns": [
             {
-              "expression": "vote_mod_id",
+              "expression": "workshop_mod_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7626,12 +7560,12 @@
         }
       },
       "foreignKeys": {
-        "vote_mod_dependency_vote_mod_id_vote_mod_id_fk": {
-          "name": "vote_mod_dependency_vote_mod_id_vote_mod_id_fk",
-          "tableFrom": "vote_mod_dependency",
-          "tableTo": "vote_mod",
+        "workshop_mod_dependency_workshop_mod_id_workshop_mod_id_fk": {
+          "name": "workshop_mod_dependency_workshop_mod_id_workshop_mod_id_fk",
+          "tableFrom": "workshop_mod_dependency",
+          "tableTo": "workshop_mod",
           "columnsFrom": [
-            "vote_mod_id"
+            "workshop_mod_id"
           ],
           "columnsTo": [
             "id"
@@ -7639,9 +7573,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "vote_mod_dependency_curseforge_project_id_curseforge_project_id_fk": {
-          "name": "vote_mod_dependency_curseforge_project_id_curseforge_project_id_fk",
-          "tableFrom": "vote_mod_dependency",
+        "workshop_mod_dependency_curseforge_project_id_curseforge_project_id_fk": {
+          "name": "workshop_mod_dependency_curseforge_project_id_curseforge_project_id_fk",
+          "tableFrom": "workshop_mod_dependency",
           "tableTo": "curseforge_project",
           "columnsFrom": [
             "curseforge_project_id"
@@ -7659,8 +7593,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_mod_upvote": {
-      "name": "vote_mod_upvote",
+    "public.workshop_mod_upvote": {
+      "name": "workshop_mod_upvote",
       "schema": "",
       "columns": {
         "id": {
@@ -7669,8 +7603,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "vote_mod_id": {
-          "name": "vote_mod_id",
+        "workshop_mod_id": {
+          "name": "workshop_mod_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -7690,8 +7624,8 @@
         }
       },
       "indexes": {
-        "idx_vote_mod_upvote_player": {
-          "name": "idx_vote_mod_upvote_player",
+        "idx_workshop_mod_upvote_player": {
+          "name": "idx_workshop_mod_upvote_player",
           "columns": [
             {
               "expression": "discord_id",
@@ -7705,11 +7639,11 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_mod_upvote_unique": {
-          "name": "idx_vote_mod_upvote_unique",
+        "idx_workshop_mod_upvote_unique": {
+          "name": "idx_workshop_mod_upvote_unique",
           "columns": [
             {
-              "expression": "vote_mod_id",
+              "expression": "workshop_mod_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7728,12 +7662,12 @@
         }
       },
       "foreignKeys": {
-        "vote_mod_upvote_vote_mod_id_vote_mod_id_fk": {
-          "name": "vote_mod_upvote_vote_mod_id_vote_mod_id_fk",
-          "tableFrom": "vote_mod_upvote",
-          "tableTo": "vote_mod",
+        "workshop_mod_upvote_workshop_mod_id_workshop_mod_id_fk": {
+          "name": "workshop_mod_upvote_workshop_mod_id_workshop_mod_id_fk",
+          "tableFrom": "workshop_mod_upvote",
+          "tableTo": "workshop_mod",
           "columnsFrom": [
-            "vote_mod_id"
+            "workshop_mod_id"
           ],
           "columnsTo": [
             "id"
@@ -7748,8 +7682,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_poll": {
-      "name": "vote_poll",
+    "public.workshop_poll": {
+      "name": "workshop_poll",
       "schema": "",
       "columns": {
         "id": {
@@ -7758,8 +7692,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "vote_id": {
-          "name": "vote_id",
+        "workshop_id": {
+          "name": "workshop_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -7772,14 +7706,14 @@
         },
         "granularity": {
           "name": "granularity",
-          "type": "vote_poll_granularity",
+          "type": "workshop_poll_granularity",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
         },
         "status": {
           "name": "status",
-          "type": "vote_poll_status",
+          "type": "workshop_poll_status",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
@@ -7831,11 +7765,11 @@
         }
       },
       "indexes": {
-        "idx_vote_poll_vote": {
-          "name": "idx_vote_poll_vote",
+        "idx_workshop_poll_workshop": {
+          "name": "idx_workshop_poll_workshop",
           "columns": [
             {
-              "expression": "vote_id",
+              "expression": "workshop_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7846,8 +7780,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_poll_status": {
-          "name": "idx_vote_poll_status",
+        "idx_workshop_poll_status": {
+          "name": "idx_workshop_poll_status",
           "columns": [
             {
               "expression": "status",
@@ -7861,8 +7795,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_poll_ends": {
-          "name": "idx_vote_poll_ends",
+        "idx_workshop_poll_ends": {
+          "name": "idx_workshop_poll_ends",
           "columns": [
             {
               "expression": "ends_at",
@@ -7878,12 +7812,12 @@
         }
       },
       "foreignKeys": {
-        "vote_poll_vote_id_vote_id_fk": {
-          "name": "vote_poll_vote_id_vote_id_fk",
-          "tableFrom": "vote_poll",
-          "tableTo": "vote",
+        "workshop_poll_workshop_id_workshop_id_fk": {
+          "name": "workshop_poll_workshop_id_workshop_id_fk",
+          "tableFrom": "workshop_poll",
+          "tableTo": "workshop",
           "columnsFrom": [
-            "vote_id"
+            "workshop_id"
           ],
           "columnsTo": [
             "id"
@@ -7898,8 +7832,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_poll_ballot": {
-      "name": "vote_poll_ballot",
+    "public.workshop_poll_ballot": {
+      "name": "workshop_poll_ballot",
       "schema": "",
       "columns": {
         "id": {
@@ -7948,8 +7882,8 @@
         }
       },
       "indexes": {
-        "idx_vote_poll_ballot_poll": {
-          "name": "idx_vote_poll_ballot_poll",
+        "idx_workshop_poll_ballot_poll": {
+          "name": "idx_workshop_poll_ballot_poll",
           "columns": [
             {
               "expression": "poll_id",
@@ -7963,8 +7897,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_poll_ballot_player": {
-          "name": "idx_vote_poll_ballot_player",
+        "idx_workshop_poll_ballot_player": {
+          "name": "idx_workshop_poll_ballot_player",
           "columns": [
             {
               "expression": "discord_id",
@@ -7978,8 +7912,8 @@
           "method": "btree",
           "with": {}
         },
-        "idx_vote_poll_ballot_mod_unique": {
-          "name": "idx_vote_poll_ballot_mod_unique",
+        "idx_workshop_poll_ballot_mod_unique": {
+          "name": "idx_workshop_poll_ballot_mod_unique",
           "columns": [
             {
               "expression": "poll_id",
@@ -8001,13 +7935,13 @@
             }
           ],
           "isUnique": true,
-          "where": "\"vote_poll_ballot\".\"poll_mod_id\" IS NOT NULL",
+          "where": "\"workshop_poll_ballot\".\"poll_mod_id\" IS NOT NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "idx_vote_poll_ballot_bundle_unique": {
-          "name": "idx_vote_poll_ballot_bundle_unique",
+        "idx_workshop_poll_ballot_bundle_unique": {
+          "name": "idx_workshop_poll_ballot_bundle_unique",
           "columns": [
             {
               "expression": "poll_id",
@@ -8023,17 +7957,17 @@
             }
           ],
           "isUnique": true,
-          "where": "\"vote_poll_ballot\".\"poll_mod_id\" IS NULL",
+          "where": "\"workshop_poll_ballot\".\"poll_mod_id\" IS NULL",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "vote_poll_ballot_poll_id_vote_poll_id_fk": {
-          "name": "vote_poll_ballot_poll_id_vote_poll_id_fk",
-          "tableFrom": "vote_poll_ballot",
-          "tableTo": "vote_poll",
+        "workshop_poll_ballot_poll_id_workshop_poll_id_fk": {
+          "name": "workshop_poll_ballot_poll_id_workshop_poll_id_fk",
+          "tableFrom": "workshop_poll_ballot",
+          "tableTo": "workshop_poll",
           "columnsFrom": [
             "poll_id"
           ],
@@ -8043,10 +7977,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "vote_poll_ballot_poll_mod_id_vote_poll_mod_id_fk": {
-          "name": "vote_poll_ballot_poll_mod_id_vote_poll_mod_id_fk",
-          "tableFrom": "vote_poll_ballot",
-          "tableTo": "vote_poll_mod",
+        "workshop_poll_ballot_poll_mod_id_workshop_poll_mod_id_fk": {
+          "name": "workshop_poll_ballot_poll_mod_id_workshop_poll_mod_id_fk",
+          "tableFrom": "workshop_poll_ballot",
+          "tableTo": "workshop_poll_mod",
           "columnsFrom": [
             "poll_mod_id"
           ],
@@ -8063,8 +7997,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.vote_poll_mod": {
-      "name": "vote_poll_mod",
+    "public.workshop_poll_mod": {
+      "name": "workshop_poll_mod",
       "schema": "",
       "columns": {
         "id": {
@@ -8079,16 +8013,16 @@
           "primaryKey": false,
           "notNull": true
         },
-        "vote_mod_id": {
-          "name": "vote_mod_id",
+        "workshop_mod_id": {
+          "name": "workshop_mod_id",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         }
       },
       "indexes": {
-        "idx_vote_poll_mod_unique": {
-          "name": "idx_vote_poll_mod_unique",
+        "idx_workshop_poll_mod_unique": {
+          "name": "idx_workshop_poll_mod_unique",
           "columns": [
             {
               "expression": "poll_id",
@@ -8097,7 +8031,7 @@
               "nulls": "last"
             },
             {
-              "expression": "vote_mod_id",
+              "expression": "workshop_mod_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8110,10 +8044,10 @@
         }
       },
       "foreignKeys": {
-        "vote_poll_mod_poll_id_vote_poll_id_fk": {
-          "name": "vote_poll_mod_poll_id_vote_poll_id_fk",
-          "tableFrom": "vote_poll_mod",
-          "tableTo": "vote_poll",
+        "workshop_poll_mod_poll_id_workshop_poll_id_fk": {
+          "name": "workshop_poll_mod_poll_id_workshop_poll_id_fk",
+          "tableFrom": "workshop_poll_mod",
+          "tableTo": "workshop_poll",
           "columnsFrom": [
             "poll_id"
           ],
@@ -8123,12 +8057,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "vote_poll_mod_vote_mod_id_vote_mod_id_fk": {
-          "name": "vote_poll_mod_vote_mod_id_vote_mod_id_fk",
-          "tableFrom": "vote_poll_mod",
-          "tableTo": "vote_mod",
+        "workshop_poll_mod_workshop_mod_id_workshop_mod_id_fk": {
+          "name": "workshop_poll_mod_workshop_mod_id_workshop_mod_id_fk",
+          "tableFrom": "workshop_poll_mod",
+          "tableTo": "workshop_mod",
           "columnsFrom": [
-            "vote_mod_id"
+            "workshop_mod_id"
           ],
           "columnsTo": [
             "id"
@@ -8472,51 +8406,6 @@
         "report"
       ]
     },
-    "public.vote_mod_source": {
-      "name": "vote_mod_source",
-      "schema": "public",
-      "values": [
-        "user",
-        "admin",
-        "dependency"
-      ]
-    },
-    "public.vote_mod_status": {
-      "name": "vote_mod_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "approved",
-        "declined",
-        "rejected"
-      ]
-    },
-    "public.vote_poll_granularity": {
-      "name": "vote_poll_granularity",
-      "schema": "public",
-      "values": [
-        "per_mod",
-        "bundle"
-      ]
-    },
-    "public.vote_poll_status": {
-      "name": "vote_poll_status",
-      "schema": "public",
-      "values": [
-        "open",
-        "closed"
-      ]
-    },
-    "public.vote_status": {
-      "name": "vote_status",
-      "schema": "public",
-      "values": [
-        "draft",
-        "open",
-        "closed",
-        "archived"
-      ]
-    },
     "public.waitlist_status": {
       "name": "waitlist_status",
       "schema": "public",
@@ -8526,6 +8415,60 @@
         "accepted",
         "declined",
         "completed"
+      ]
+    },
+    "public.workshop_mod_reject_reason": {
+      "name": "workshop_mod_reject_reason",
+      "schema": "public",
+      "values": [
+        "on_hold",
+        "incompatible",
+        "covered_by_other_mod",
+        "not_a_good_fit"
+      ]
+    },
+    "public.workshop_mod_source": {
+      "name": "workshop_mod_source",
+      "schema": "public",
+      "values": [
+        "user",
+        "admin",
+        "dependency"
+      ]
+    },
+    "public.workshop_mod_status": {
+      "name": "workshop_mod_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "rejected"
+      ]
+    },
+    "public.workshop_poll_granularity": {
+      "name": "workshop_poll_granularity",
+      "schema": "public",
+      "values": [
+        "per_mod",
+        "bundle"
+      ]
+    },
+    "public.workshop_poll_status": {
+      "name": "workshop_poll_status",
+      "schema": "public",
+      "values": [
+        "open",
+        "closed"
+      ]
+    },
+    "public.workshop_status": {
+      "name": "workshop_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "open",
+        "closed",
+        "archived"
       ]
     }
   },

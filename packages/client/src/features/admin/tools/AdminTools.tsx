@@ -28,7 +28,7 @@ import {
   Terminal,
   Timer,
   Users,
-  Vote,
+  Vote as WorkshopIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -94,9 +94,9 @@ const TOOL_SECTIONS: ToolSection[] = [
       {
         title: "Workshop",
         description:
-          "Community mod suggestions: review, approve, and manage bans.",
-        icon: Vote,
-        href: "/admin/tools/voting",
+          "Community mod suggestions: review, approve, and rule out mods.",
+        icon: WorkshopIcon,
+        href: "/admin/tools/workshop",
       },
       {
         title: "Crypto Market",

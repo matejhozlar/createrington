@@ -1,1 +1,0 @@
-ALTER TABLE "vote_mod" DROP COLUMN "pulled_by_vote_mod_id";
