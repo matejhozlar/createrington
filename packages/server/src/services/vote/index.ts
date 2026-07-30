@@ -22,6 +22,7 @@ import { ingestProject } from "@/services/curseforge/ingest";
 import {
   announceReview,
   announceSuggestion,
+  announceUnban,
   announceWithdrawal,
   assertForumChannel,
   discordThreadUrl,
@@ -705,13 +706,22 @@ export class VoteService {
     }
   }
 
-  /** Lift a global ban. Rejected mod rows stay but become reviewable again. */
+  /**
+   * Lift a global ban. Rejected mod rows stay but become reviewable again;
+   * their ban record threads are removed.
+   */
   async unbanProject(projectId: number): Promise<void> {
     const ban = await Q.vote.mod.ban.find({ curseforgeProjectId: projectId });
     if (!ban) {
       throw new NotFoundError(`Project #${projectId} is not banned`);
     }
     await Q.vote.mod.ban.delete({ id: ban.id });
+
+    const rejected = await Q.vote.mod.findAll({
+      curseforgeProjectId: projectId,
+      status: "rejected",
+    });
+    void announceUnban(rejected);
   }
 
   /** All bans with cached project info for display. */
