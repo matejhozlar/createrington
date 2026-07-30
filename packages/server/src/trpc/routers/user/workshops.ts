@@ -4,6 +4,8 @@ import { trpcError, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
+const id = () => z.number().int().positive().max(2147483647);
+
 const requireWorkshopEnabled = middleware(async ({ next }) => {
   if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) {
     throw trpcError.forbidden("The workshop is currently disabled");
@@ -48,7 +50,7 @@ export const userWorkshopsRouter = router({
 
   getMod: workshopProcedure
     .meta({ description: "Get a mod with its full project detail" })
-    .input(z.object({ workshopModId: z.number().int().positive() }))
+    .input(z.object({ workshopModId: id() }))
     .query(async ({ input }) => {
       try {
         const detail = await workshopService.getModDetail(input.workshopModId);
@@ -62,7 +64,7 @@ export const userWorkshopsRouter = router({
     .meta({ description: "Search CurseForge for submittable projects" })
     .input(
       z.object({
-        workshopId: z.number().int().positive(),
+        workshopId: id(),
         query: z.string().trim().min(2).max(100),
       }),
     )
@@ -82,7 +84,7 @@ export const userWorkshopsRouter = router({
 
   mySuggestions: workshopProcedure
     .meta({ description: "Your own suggestions in a workshop, all statuses" })
-    .input(z.object({ workshopId: z.number().int().positive() }))
+    .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
       try {
         const mods = await workshopService.getMySuggestions(
@@ -97,7 +99,7 @@ export const userWorkshopsRouter = router({
 
   myUpvotes: workshopProcedure
     .meta({ description: "IDs of mods you have upvoted" })
-    .input(z.object({ workshopId: z.number().int().positive() }))
+    .input(z.object({ workshopId: id() }))
     .query(async ({ ctx, input }) => {
       try {
         return await workshopService.getMyUpvotes(
@@ -111,7 +113,7 @@ export const userWorkshopsRouter = router({
 
   upvoteMod: workshopProcedure
     .meta({ description: "Toggle your upvote on a mod" })
-    .input(z.object({ workshopModId: z.number().int().positive() }))
+    .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
         return await workshopService.toggleModUpvote(
@@ -127,8 +129,8 @@ export const userWorkshopsRouter = router({
     .meta({ description: "Suggest a mod, using one of your slots" })
     .input(
       z.object({
-        workshopId: z.number().int().positive(),
-        projectId: z.number().int().positive(),
+        workshopId: id(),
+        projectId: id(),
         note: z
           .string()
           .trim()
@@ -151,7 +153,7 @@ export const userWorkshopsRouter = router({
 
   removeSuggestion: workshopProcedure
     .meta({ description: "Remove your own pending suggestion" })
-    .input(z.object({ workshopModId: z.number().int().positive() }))
+    .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
       try {
         await workshopService.removeSuggestion(
@@ -166,7 +168,7 @@ export const userWorkshopsRouter = router({
 
   listRejected: workshopProcedure
     .meta({ description: "Mods ruled out of a workshop, with reasons" })
-    .input(z.object({ workshopId: z.number().int().positive() }))
+    .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
         const mods = await workshopService.getRejectedMods(input.workshopId);

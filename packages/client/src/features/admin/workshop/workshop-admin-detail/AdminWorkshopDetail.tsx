@@ -57,13 +57,13 @@ import {
   REJECT_REASON_LABELS,
   formatDate,
 } from "@/features/workshop/format";
+import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
-type RejectReason = keyof typeof REJECT_REASON_LABELS &
-  ("on_hold" | "incompatible" | "covered_by_other_mod" | "not_a_good_fit");
+type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
 const WORKSHOP_STATUSES = ["draft", "open", "closed", "archived"] as const;
 

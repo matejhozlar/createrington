@@ -111,17 +111,23 @@ async function ensureStatusTags(
     (tag) => !tags.some((existing) => existing.name === tag.name),
   );
   if (missing.length > 0) {
-    try {
-      const updated = await forum.setAvailableTags([
-        ...forum.availableTags,
-        ...missing.map((tag) => ({
-          name: tag.name,
-          emoji: { id: null, name: tag.emoji },
-        })),
-      ]);
-      tags = updated.availableTags;
-    } catch (error) {
-      logger.warn(`Could not create workshop forum tags: ${error}`);
+    if (forum.availableTags.length + missing.length > 20) {
+      logger.warn(
+        `Forum ${forum.id} is at Discord's 20-tag cap, workshop tags skipped`,
+      );
+    } else {
+      try {
+        const updated = await forum.setAvailableTags([
+          ...forum.availableTags,
+          ...missing.map((tag) => ({
+            name: tag.name,
+            emoji: { id: null, name: tag.emoji },
+          })),
+        ]);
+        tags = updated.availableTags;
+      } catch (error) {
+        logger.warn(`Could not create workshop forum tags: ${error}`);
+      }
     }
   }
   return new Map(tags.map((tag) => [tag.name, tag.id]));
@@ -168,7 +174,13 @@ export async function announceSuggestion(
   workshop: Workshop,
   mod: SuggestionAnnouncement,
 ): Promise<void> {
-  if (!workshop.discordForumChannelId || mod.discordThreadId) return;
+  if (
+    workshop.status !== "open" ||
+    !workshop.discordForumChannelId ||
+    mod.discordThreadId
+  ) {
+    return;
+  }
   try {
     const forum = await getForum(workshop.discordForumChannelId);
     if (!forum) return;
@@ -207,6 +219,14 @@ export async function announceSuggestion(
     );
     if (linked === 0) {
       await thread.delete().catch(() => {});
+      return;
+    }
+    const fresh = await Q.workshop.mod.find({ id: mod.id });
+    if (fresh && fresh.status !== mod.status && fresh.status !== "pending") {
+      await announceReview(
+        fresh,
+        fresh.status === "approved" ? "approved" : "rejected",
+      );
     }
   } catch (error) {
     logger.warn(
@@ -243,7 +263,11 @@ export async function announceReview(
     if (tagName && thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
       const tagId = tags.get(tagName);
-      if (tagId) await thread.setAppliedTags([tagId]);
+      if (tagId) {
+        const managed = new Set(tags.values());
+        const kept = thread.appliedTags.filter((id) => !managed.has(id));
+        await thread.setAppliedTags([tagId, ...kept].slice(0, 5));
+      }
     }
 
     const content =
@@ -263,9 +287,12 @@ export async function announcePulledDependencies(
   mod: WorkshopMod,
   names: string[],
 ): Promise<void> {
-  if (!mod.discordThreadId || names.length === 0) return;
+  if (names.length === 0) return;
   try {
-    const lookup = await fetchThread(mod.discordThreadId);
+    const fresh = await Q.workshop.mod.find({ id: mod.id });
+    const threadId = fresh?.discordThreadId ?? mod.discordThreadId;
+    if (!threadId) return;
+    const lookup = await fetchThread(threadId);
     if (lookup.state !== "found") return;
     await lookup.thread.send(
       `📦 Pulls in required dependencies: ${names.join(", ")}`,

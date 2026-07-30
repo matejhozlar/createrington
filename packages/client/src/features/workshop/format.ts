@@ -1,3 +1,5 @@
+import type { WorkshopModRejectReason } from "@createrington/shared/db";
+
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",
   4: "Fabric",
@@ -55,7 +57,7 @@ export const MOD_STATUS_STYLES: Record<
   },
 };
 
-export const REJECT_REASON_LABELS: Record<string, string> = {
+export const REJECT_REASON_LABELS: Record<WorkshopModRejectReason, string> = {
   on_hold: "On hold",
   incompatible: "Incompatible",
   covered_by_other_mod: "Covered by another mod",

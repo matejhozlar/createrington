@@ -1,4 +1,4 @@
-import { Q } from "@/db";
+import { db, Q } from "@/db";
 import { ConstraintViolationError } from "@/db/utils/errors";
 import type { Workshop, WorkshopMod } from "@createrington/shared/db";
 import {
@@ -8,7 +8,7 @@ import {
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
-import { announcePulledDependencies, announceRemoval } from "./discord";
+import { announcePulledDependencies } from "./discord";
 
 export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
@@ -66,14 +66,16 @@ export async function resolveModDependencies(
       const deps = (depsByFile.get(mod.fileId!) ?? []).filter(
         (dep) => !basePackIds.has(dep.modId) && cachedIds.has(dep.modId),
       );
-      await Q.workshop.mod.dependency.deleteAll({ workshopModId: mod.id });
-      for (const dep of deps) {
-        await Q.workshop.mod.dependency.create({
-          workshopModId: mod.id,
-          curseforgeProjectId: dep.modId,
-          relationType: dep.relationType,
-        });
-      }
+      await db.inTransaction(async (tx) => {
+        await tx.workshop.mod.dependency.deleteAll({ workshopModId: mod.id });
+        for (const dep of deps) {
+          await tx.workshop.mod.dependency.create({
+            workshopModId: mod.id,
+            curseforgeProjectId: dep.modId,
+            relationType: dep.relationType,
+          });
+        }
+      });
     }
   } catch (error) {
     logger.warn(`Dependency resolution failed: ${error}`);
@@ -82,9 +84,8 @@ export async function resolveModDependencies(
 
 /**
  * Auto-add the missing required dependencies of an approved mod as approved
- * 'dependency'-sourced entries, recording which mod pulled them in. Banned,
- * claimed, and incompatible dependencies are skipped with a warning.
- * Never throws.
+ * 'dependency'-sourced entries. Rejected, claimed, and incompatible
+ * dependencies are skipped with a warning. Never throws.
  */
 export async function promoteRequiredDependencies(
   workshop: Workshop,
@@ -215,9 +216,6 @@ export async function pruneOrphanedDependencies(
       await Q.workshop.mod.deleteAll({
         id: { $in: orphans.map((mod) => mod.id) },
       });
-      for (const orphan of orphans) {
-        void announceRemoval(orphan);
-      }
       logger.info(
         `Pruned ${orphans.length} orphaned dependencies from workshop #${workshopId}`,
       );

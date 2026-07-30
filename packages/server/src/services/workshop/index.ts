@@ -239,11 +239,7 @@ export class WorkshopService {
     upvoteCount: number;
   }> {
     const mod = await Q.workshop.mod.find({ id: workshopModId });
-    if (
-      !mod ||
-      (!options.includeHidden &&
-        !USER_VISIBLE_MOD_STATUSES.includes(mod.status))
-    ) {
+    if (!mod) {
       throw new NotFoundError(`Mod #${workshopModId} not found`);
     }
     if (!options.includeHidden) {
@@ -314,6 +310,7 @@ export class WorkshopService {
     workshopId: number,
     discordId: string,
   ): Promise<WorkshopModListItem[]> {
+    this.assertUserVisible(await this.getWorkshop(workshopId));
     const mods = await Q.workshop.mod.findAll(
       { workshopId, submittedBy: discordId, source: "user" },
       { orderBy: "createdAt", orderDirection: "asc" },
@@ -323,7 +320,7 @@ export class WorkshopService {
 
   /**
    * Suggest a single mod, consuming one of the caller's per-workshop slots.
-   * Declined and rejected suggestions do not count against the cap.
+   * Only pending suggestions count against the cap.
    */
   async suggestMod(
     workshopId: number,
@@ -374,7 +371,13 @@ export class WorkshopService {
     if (mod.status !== "pending") {
       throw new BadRequestError("Only pending suggestions can be removed");
     }
-    await Q.workshop.mod.delete({ id: workshopModId });
+    const removed = await Q.workshop.mod.deleteAll({
+      id: workshopModId,
+      status: "pending",
+    });
+    if (removed === 0) {
+      throw new BadRequestError("Only pending suggestions can be removed");
+    }
     void announceRemoval(mod);
   }
 
@@ -445,6 +448,7 @@ export class WorkshopService {
     discordId: string,
   ): Promise<{ modIds: number[]; maxUpvotes: number; votesRemaining: number }> {
     const workshop = await this.getWorkshop(workshopId);
+    this.assertUserVisible(workshop);
     const mods = await Q.workshop.mod.findAll(
       { workshopId },
       { select: ["id"] },
@@ -556,10 +560,12 @@ export class WorkshopService {
         patch.gameVersion !== workshop.gameVersion) ||
       (patch.modLoaderType !== undefined &&
         patch.modLoaderType !== workshop.modLoaderType) ||
-      (patch.classId !== undefined && patch.classId !== workshop.classId);
+      (patch.classId !== undefined && patch.classId !== workshop.classId) ||
+      (patch.baseModpackProjectId !== undefined &&
+        patch.baseModpackProjectId !== workshop.baseModpackProjectId);
     if (targetChanged && (await Q.workshop.mod.count({ workshopId })) > 0) {
       throw new BadRequestError(
-        "Cannot change the game version, mod loader, or project type of a workshop that already has mods",
+        "Cannot change the game version, mod loader, project type, or base modpack of a workshop that already has mods",
       );
     }
 
@@ -595,9 +601,14 @@ export class WorkshopService {
     }
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
+    if (action === "approve" && mod.status === "approved") return mod;
 
-    const updated = await Q.workshop.mod.updateAndReturn(
-      { id: workshopModId },
+    const workshop = await this.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError("Cannot review mods in an archived workshop");
+    }
+
+    const changed = await Q.workshop.mod.updateAll(
       action === "approve"
         ? {
             status: "approved",
@@ -613,14 +624,20 @@ export class WorkshopService {
             reviewedBy: adminId,
             reviewedAt: new Date(),
           },
+      { id: workshopModId, status: mod.status },
     );
+    if (changed === 0) {
+      throw new ConflictError(
+        "This mod was just reviewed by someone else, refresh and try again",
+      );
+    }
+    const updated = await Q.workshop.mod.get({ id: workshopModId });
 
     void announceReview(
       updated,
       action === "approve" ? "approved" : "rejected",
     );
     if (action === "approve") {
-      const workshop = await this.getWorkshop(updated.workshopId);
       await promoteRequiredDependencies(workshop, updated, adminId);
     } else if (mod.status === "approved") {
       await pruneOrphanedDependencies(mod.workshopId);
@@ -664,14 +681,15 @@ export class WorkshopService {
       status: "approved",
     });
     const items = await this.decorateMods(mods);
-    for (const item of items) {
-      void announceSuggestion(workshop, item);
-    }
-    void resolveModDependencies(workshop, mods).then(async () => {
+    void (async () => {
+      for (const item of items) {
+        await announceSuggestion(workshop, item);
+      }
+      await resolveModDependencies(workshop, mods);
       for (const mod of mods) {
         await promoteRequiredDependencies(workshop, mod, adminId);
       }
-    });
+    })();
     return items;
   }
 
@@ -823,6 +841,7 @@ export class WorkshopService {
 
   private async getOpenWorkshop(workshopId: number): Promise<Workshop> {
     const workshop = await this.getWorkshop(workshopId);
+    this.assertUserVisible(workshop);
     if (workshop.status !== "open") {
       throw new BadRequestError("This workshop is not open for suggestions");
     }
@@ -1080,7 +1099,7 @@ export class WorkshopService {
   private mapConstraintError(error: unknown): never {
     if (error instanceof ConstraintViolationError) {
       throw new ConflictError(
-        "Someone else changed this workshop at the same time, refresh and try again",
+        "Already suggested or ruled out in this workshop, refresh and try again",
       );
     }
     throw error;

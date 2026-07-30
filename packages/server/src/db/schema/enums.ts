@@ -1,4 +1,5 @@
 import { pgEnum } from "drizzle-orm/pg-core";
+import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
 
 export const banTypeEnum = pgEnum("ban_type", ["temporary", "permanent"]);
 
@@ -125,7 +126,7 @@ export const workshopModStatusEnum = pgEnum("workshop_mod_status", [
 
 export const workshopModRejectReasonEnum = pgEnum(
   "workshop_mod_reject_reason",
-  ["on_hold", "incompatible", "covered_by_other_mod", "not_a_good_fit"],
+  WORKSHOP_MOD_REJECT_REASONS,
 );
 
 // dependency = auto-promoted required dependency of an approved mod

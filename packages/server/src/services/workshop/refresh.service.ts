@@ -50,27 +50,33 @@ export class WorkshopProjectRefreshService {
 
       let refreshed = 0;
       for (const workshop of workshops) {
-        const mods = await Q.workshop.mod.findAll({ workshopId: workshop.id });
-        if (workshop.status === "open") {
-          const liveMods = mods.filter(
-            (mod) => mod.status === "pending" || mod.status === "approved",
-          );
-          const ids = [
-            ...new Set(liveMods.map((mod) => mod.curseforgeProjectId)),
-          ];
-          refreshed += await refreshProjects(ids);
-
-          await resolveModDependencies(workshop, liveMods);
-          for (const mod of liveMods.filter((m) => m.status === "approved")) {
-            await promoteRequiredDependencies(
-              workshop,
-              mod,
-              mod.reviewedBy ?? workshop.createdBy,
+        try {
+          const mods = await Q.workshop.mod.findAll({
+            workshopId: workshop.id,
+          });
+          if (workshop.status === "open") {
+            const liveMods = mods.filter(
+              (mod) => mod.status === "pending" || mod.status === "approved",
             );
+            const ids = [
+              ...new Set(liveMods.map((mod) => mod.curseforgeProjectId)),
+            ];
+            refreshed += await refreshProjects(ids);
+
+            await resolveModDependencies(workshop, liveMods);
+            for (const mod of liveMods.filter((m) => m.status === "approved")) {
+              await promoteRequiredDependencies(
+                workshop,
+                mod,
+                mod.reviewedBy ?? workshop.createdBy,
+              );
+            }
           }
+          await pruneOrphanedDependencies(workshop.id);
+          await healThreads(workshop, mods);
+        } catch (error) {
+          logger.error(`Refresh failed for workshop #${workshop.id}:`, error);
         }
-        await pruneOrphanedDependencies(workshop.id);
-        await healThreads(workshop, mods);
       }
       if (refreshed > 0) {
         logger.info(`Refreshed ${refreshed} workshop project snapshots`);

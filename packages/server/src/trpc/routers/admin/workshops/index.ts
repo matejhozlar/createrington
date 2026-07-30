@@ -4,6 +4,9 @@ import { Q } from "@/db";
 import { auditActor, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
 import { listForumChannels } from "@/services/workshop/discord";
+import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
+
+const id = () => z.number().int().positive().max(2147483647);
 
 const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -11,8 +14,8 @@ const workshopPatch = z.object({
   status: z.enum(["draft", "open", "closed", "archived"]).optional(),
   gameVersion: z.string().trim().min(1).max(20).optional(),
   modLoaderType: z.number().int().min(0).optional(),
-  classId: z.number().int().positive().optional(),
-  baseModpackProjectId: z.number().int().positive().nullable().optional(),
+  classId: id().optional(),
+  baseModpackProjectId: id().nullable().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
   discordForumChannelId: z
@@ -46,8 +49,8 @@ export const adminWorkshopsRouter = router({
         description: z.string().trim().max(2000).optional(),
         gameVersion: z.string().trim().min(1).max(20),
         modLoaderType: z.number().int().min(0),
-        classId: z.number().int().positive().optional(),
-        baseModpackProjectId: z.number().int().positive().optional(),
+        classId: id().optional(),
+        baseModpackProjectId: id().optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
         discordForumChannelId: z
@@ -79,7 +82,7 @@ export const adminWorkshopsRouter = router({
     .meta({ description: "Update a workshop's settings or lifecycle status" })
     .input(
       z.object({
-        workshopId: z.number().int().positive(),
+        workshopId: id(),
         patch: workshopPatch,
       }),
     )
@@ -103,7 +106,7 @@ export const adminWorkshopsRouter = router({
 
   listMods: adminProcedure
     .meta({ description: "List every mod in a workshop, all statuses" })
-    .input(z.object({ workshopId: z.number().int().positive() }))
+    .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
         return await workshopService.getWorkshopMods(input.workshopId, {
@@ -116,7 +119,7 @@ export const adminWorkshopsRouter = router({
 
   getMod: adminProcedure
     .meta({ description: "Get a mod with its full project detail" })
-    .input(z.object({ workshopModId: z.number().int().positive() }))
+    .input(z.object({ workshopModId: id() }))
     .query(async ({ input }) => {
       try {
         return await workshopService.getModDetail(input.workshopModId, {
@@ -133,7 +136,7 @@ export const adminWorkshopsRouter = router({
     })
     .input(
       z.object({
-        workshopId: z.number().int().positive(),
+        workshopId: id(),
         query: z.string().trim().min(2).max(100),
       }),
     )
@@ -156,16 +159,9 @@ export const adminWorkshopsRouter = router({
     .input(
       z
         .object({
-          workshopModId: z.number().int().positive(),
+          workshopModId: id(),
           action: z.enum(["approve", "reject"]),
-          reason: z
-            .enum([
-              "on_hold",
-              "incompatible",
-              "covered_by_other_mod",
-              "not_a_good_fit",
-            ])
-            .optional(),
+          reason: z.enum(WORKSHOP_MOD_REJECT_REASONS).optional(),
           note: z.string().trim().max(500).optional(),
         })
         .superRefine((data, ctx) => {
@@ -208,8 +204,8 @@ export const adminWorkshopsRouter = router({
     })
     .input(
       z.object({
-        workshopId: z.number().int().positive(),
-        projectIds: z.array(z.number().int().positive()).min(1).max(20),
+        workshopId: id(),
+        projectIds: z.array(id()).min(1).max(20),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -239,7 +235,7 @@ export const adminWorkshopsRouter = router({
       description:
         "Dependency-pulled mods and optional dependencies for a workshop",
     })
-    .input(z.object({ workshopId: z.number().int().positive() }))
+    .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
         return await workshopService.getDependencyReport(input.workshopId);
