@@ -57,7 +57,7 @@ import { MOD_STATUS_STYLES, formatDate } from "@/features/voting/format";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { VoteSettingsDialog } from "./components/VoteSettingsDialog";
 
-type StatusFilter = "all" | "pending" | "approved" | "declined" | "rejected";
+type StatusFilter = "all" | "pending" | "approved" | "declined";
 
 const VOTE_STATUSES = ["draft", "open", "closed", "archived"] as const;
 
@@ -106,7 +106,7 @@ export function AdminVoteDetail() {
           ? "approved"
           : variables.action === "decline"
             ? "declined"
-            : "rejected and banned";
+            : "banned and removed";
       toast.success(`Mod ${verb}`);
       invalidate();
       setRejectTarget(null);
@@ -132,7 +132,6 @@ export function AdminVoteDetail() {
       pending: 0,
       approved: 0,
       declined: 0,
-      rejected: 0,
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
     return c;
@@ -211,23 +210,23 @@ export function AdminVoteDetail() {
 
       <div className="mx-auto w-full max-w-[1100px] flex flex-1 flex-col gap-4 px-4 pb-6">
         <div className="flex flex-wrap gap-2">
-          {(
-            ["all", "pending", "approved", "declined", "rejected"] as const
-          ).map((status) => (
-            <Button
-              key={status}
-              variant={statusFilter === status ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setStatusFilter(status)}
-            >
-              {status === "all"
-                ? "All"
-                : status.charAt(0).toUpperCase() + status.slice(1)}
-              <Badge variant="outline" className="ml-1.5 text-xs">
-                {counts[status] ?? 0}
-              </Badge>
-            </Button>
-          ))}
+          {(["all", "pending", "approved", "declined"] as const).map(
+            (status) => (
+              <Button
+                key={status}
+                variant={statusFilter === status ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setStatusFilter(status)}
+              >
+                {status === "all"
+                  ? "All"
+                  : status.charAt(0).toUpperCase() + status.slice(1)}
+                <Badge variant="outline" className="ml-1.5 text-xs">
+                  {counts[status] ?? 0}
+                </Badge>
+              </Button>
+            ),
+          )}
         </div>
 
         <Card>
@@ -336,20 +335,19 @@ export function AdminVoteDetail() {
                                 View details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {mod.status !== "approved" &&
-                                mod.status !== "rejected" && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      reviewMutation.mutate({
-                                        voteModId: mod.id,
-                                        action: "approve",
-                                      })
-                                    }
-                                  >
-                                    <Check className="size-4 text-green-500" />
-                                    Approve
-                                  </DropdownMenuItem>
-                                )}
+                              {mod.status !== "approved" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      voteModId: mod.id,
+                                      action: "approve",
+                                    })
+                                  }
+                                >
+                                  <Check className="size-4 text-green-500" />
+                                  Approve
+                                </DropdownMenuItem>
+                              )}
                               {(mod.status === "pending" ||
                                 mod.status === "approved") && (
                                 <DropdownMenuItem
@@ -364,20 +362,18 @@ export function AdminVoteDetail() {
                                   Decline
                                 </DropdownMenuItem>
                               )}
-                              {mod.status !== "rejected" && (
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() =>
-                                    setRejectTarget({
-                                      voteModId: mod.id,
-                                      name: mod.project.name,
-                                    })
-                                  }
-                                >
-                                  <Ban className="size-4" />
-                                  Reject &amp; ban
-                                </DropdownMenuItem>
-                              )}
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() =>
+                                  setRejectTarget({
+                                    voteModId: mod.id,
+                                    name: mod.project.name,
+                                  })
+                                }
+                              >
+                                <Ban className="size-4" />
+                                Reject &amp; ban
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>
@@ -513,9 +509,9 @@ export function AdminVoteDetail() {
           <DialogHeader>
             <DialogTitle>Reject {displayRejectTarget?.name}?</DialogTitle>
             <DialogDescription>
-              Rejecting bans this project from every current and future vote.
-              Any other pending or approved entries of it are rejected too.
-              Prefer Decline for a soft no.
+              Rejecting bans this project from every current and future vote and
+              removes every entry of it, including this one. Prefer Decline for
+              a soft no.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">

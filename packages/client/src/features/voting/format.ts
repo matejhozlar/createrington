@@ -60,8 +60,4 @@ export const MOD_STATUS_STYLES: Record<
     label: "Declined",
     className: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
   },
-  rejected: {
-    label: "Rejected",
-    className: "border-red-500/50 bg-red-500/10 text-red-400",
-  },
 };

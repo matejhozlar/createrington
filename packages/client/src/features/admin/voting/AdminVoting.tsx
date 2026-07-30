@@ -464,8 +464,8 @@ export function AdminVoting() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Banning rejects every pending or approved instance of this project
-              across all votes and blocks future submissions.
+              Banning removes every instance of this project across all votes
+              and blocks future submissions.
             </p>
           </div>
           <DialogFooter>
@@ -502,8 +502,7 @@ export function AdminVoting() {
               Unban {displayUnbanTarget?.name}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Players will be able to submit this project again. Previously
-              rejected entries stay rejected but become reviewable.
+              Players will be able to submit this project again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

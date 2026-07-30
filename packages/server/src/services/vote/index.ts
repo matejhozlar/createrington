@@ -20,10 +20,9 @@ import {
 } from "@/services/curseforge";
 import { ingestProject } from "@/services/curseforge/ingest";
 import {
+  announceRemoval,
   announceReview,
   announceSuggestion,
-  announceUnban,
-  announceWithdrawal,
   assertForumChannel,
   discordThreadUrl,
 } from "./discord";
@@ -354,7 +353,7 @@ export class VoteService {
       throw new BadRequestError("Only pending suggestions can be removed");
     }
     await Q.vote.mod.delete({ id: voteModId });
-    void announceWithdrawal(mod);
+    void announceRemoval(mod);
   }
 
   /**
@@ -553,7 +552,10 @@ export class VoteService {
     return Q.vote.updateAndReturn({ id: voteId }, patch);
   }
 
-  /** Review a pending or previously reviewed mod: approve, decline, or reject (global ban). */
+  /**
+   * Review a mod: approve, decline (resubmittable), or reject (global ban
+   * that deletes every instance of the project from all votes).
+   */
   async reviewMod(
     voteModId: number,
     action: VoteReviewAction,
@@ -574,56 +576,34 @@ export class VoteService {
     }
 
     try {
-      const { updated, banned } = await db.inTransaction(async (tx) => {
-        if (action === "reject") {
-          const affected = await this.applyBan(
-            tx,
-            mod.curseforgeProjectId,
-            adminId,
-            reason,
-          );
-          if (mod.status === "declined") {
-            await tx.vote.mod.update(
-              { id: voteModId },
-              {
-                status: "rejected",
-                reviewedBy: adminId,
-                reviewedAt: new Date(),
-              },
-            );
-            affected.push(mod);
-          }
-          return {
-            updated: await tx.vote.mod.get({ id: voteModId }),
-            banned: affected,
-          };
+      if (action === "reject") {
+        const banned = await db.inTransaction((tx) =>
+          this.applyBan(tx, mod.curseforgeProjectId, adminId, reason),
+        );
+        for (const affected of banned) {
+          void announceRemoval(affected);
         }
+        return mod;
+      }
 
-        const result = await tx.vote.mod.updateAndReturn(
+      const updated = await db.inTransaction((tx) =>
+        tx.vote.mod.updateAndReturn(
           { id: voteModId },
           {
             status: action === "approve" ? "approved" : "declined",
             reviewedBy: adminId,
             reviewedAt: new Date(),
           },
-        );
-        return { updated: result, banned: [] as VoteMod[] };
-      });
+        ),
+      );
 
-      if (action === "reject") {
-        for (const affected of banned) {
-          void announceReview(affected, "rejected", reason);
-        }
-      } else {
-        void announceReview(
-          updated,
-          action === "approve" ? "approved" : "declined",
-          reason,
-        );
-        if (action === "approve") {
-          const vote = await this.getVote(updated.voteId);
-          await promoteRequiredDependencies(vote, updated, adminId);
-        }
+      void announceReview(
+        updated,
+        action === "approve" ? "approved" : "declined",
+      );
+      if (action === "approve") {
+        const vote = await this.getVote(updated.voteId);
+        await promoteRequiredDependencies(vote, updated, adminId);
       }
       return updated;
     } catch (error) {
@@ -678,7 +658,7 @@ export class VoteService {
     return items;
   }
 
-  /** Globally ban a project and reject every live instance of it. */
+  /** Globally ban a project and delete every instance of it from all votes. */
   async banProject(
     projectId: number,
     adminId: string,
@@ -702,26 +682,17 @@ export class VoteService {
       this.applyBan(tx, projectId, adminId, reason),
     );
     for (const mod of affected) {
-      void announceReview(mod, "rejected", reason);
+      void announceRemoval(mod);
     }
   }
 
-  /**
-   * Lift a global ban. Rejected mod rows stay but become reviewable again;
-   * their ban record threads are removed.
-   */
+  /** Lift a global ban so the project can be suggested again. */
   async unbanProject(projectId: number): Promise<void> {
     const ban = await Q.vote.mod.ban.find({ curseforgeProjectId: projectId });
     if (!ban) {
       throw new NotFoundError(`Project #${projectId} is not banned`);
     }
     await Q.vote.mod.ban.delete({ id: ban.id });
-
-    const rejected = await Q.vote.mod.findAll({
-      curseforgeProjectId: projectId,
-      status: "rejected",
-    });
-    void announceUnban(rejected);
   }
 
   /** All bans with cached project info for display. */
@@ -1020,7 +991,7 @@ export class VoteService {
         bans.map((b) => b.curseforgeProjectId),
       );
       throw new BadRequestError(
-        `Rejected mods cannot be submitted: ${labels.join(", ")}`,
+        `Banned mods cannot be submitted: ${labels.join(", ")}`,
       );
     }
     if (claims.length > 0) {
@@ -1123,8 +1094,8 @@ export class VoteService {
   }
 
   /**
-   * Upsert the ban row and reject every pending or approved instance.
-   * Returns the rows that were live before the sweep.
+   * Upsert the ban row and delete every instance of the project across all
+   * votes. Returns the deleted rows.
    */
   private async applyBan(
     tx: TxQueries,
@@ -1145,16 +1116,9 @@ export class VoteService {
 
     const affected = await tx.vote.mod.findAll({
       curseforgeProjectId: projectId,
-      status: { $in: USER_VISIBLE_MOD_STATUSES },
     });
     if (affected.length > 0) {
-      await tx.vote.mod.updateAll(
-        { status: "rejected", reviewedBy: adminId, reviewedAt: new Date() },
-        {
-          curseforgeProjectId: projectId,
-          status: { $in: USER_VISIBLE_MOD_STATUSES },
-        },
-      );
+      await tx.vote.mod.deleteAll({ curseforgeProjectId: projectId });
     }
     return affected;
   }

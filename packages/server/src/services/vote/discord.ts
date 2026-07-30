@@ -24,7 +24,6 @@ interface SuggestionAnnouncement extends VoteMod {
 const STATUS_TAGS = {
   pending: { name: "Suggested", emoji: "💡" },
   approved: { name: "In the pack", emoji: "✅" },
-  rejected: { name: "Banned", emoji: "🚫" },
 } as const;
 
 const LIVE_MOD_STATUSES: VoteModStatus[] = ["pending", "approved"];
@@ -35,7 +34,7 @@ type ThreadLookup =
   | { state: "unavailable" };
 
 function tagNameFor(status: VoteModStatus): string | null {
-  if (status === "pending" || status === "approved" || status === "rejected") {
+  if (status === "pending" || status === "approved") {
     return STATUS_TAGS[status].name;
   }
   return null;
@@ -196,13 +195,12 @@ export async function announceSuggestion(
 
 /**
  * Reflect a review outcome on the suggestion's thread. Approvals post and
- * retag, bans post the reason and archive the thread as a record, declines
- * delete the thread entirely so the forum only holds live suggestions.
+ * retag, declines delete the thread entirely so the forum only holds live
+ * suggestions.
  */
 export async function announceReview(
   mod: VoteMod,
-  status: "approved" | "declined" | "rejected",
-  reason?: string | null,
+  status: "approved" | "declined",
 ): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
@@ -224,45 +222,25 @@ export async function announceReview(
 
     if (thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
-      const tagName = tagNameFor(status);
-      const tagId = tagName ? tags.get(tagName) : undefined;
+      const tagId = tags.get(STATUS_TAGS.approved.name);
       if (tagId) await thread.setAppliedTags([tagId]);
     }
 
-    const content =
-      status === "approved"
-        ? "✅ **In the pack!** The team approved this suggestion."
-        : `🚫 **Banned by the team.**${reason ? ` ${reason}` : ""}`;
-    await thread.send(content);
-    if (status === "rejected") await thread.setArchived(true);
+    await thread.send("✅ **In the pack!** The team approved this suggestion.");
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
 }
 
-/** Delete the withdrawn suggestion's thread. */
-export async function announceWithdrawal(mod: VoteMod): Promise<void> {
+/** Delete the thread of a withdrawn or banned suggestion. */
+export async function announceRemoval(mod: VoteMod): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
     await removeThread(mod.discordThreadId);
   } catch (error) {
     logger.warn(
-      `Failed to remove withdrawn suggestion thread #${mod.id}: ${error}`,
+      `Failed to remove suggestion thread for mod #${mod.id}: ${error}`,
     );
-  }
-}
-
-/** Delete the ban record threads of a project's rejected mods after an unban. */
-export async function announceUnban(mods: VoteMod[]): Promise<void> {
-  for (const mod of mods) {
-    if (!mod.discordThreadId) continue;
-    try {
-      if (await removeThread(mod.discordThreadId)) {
-        await clearThreadId(mod.id);
-      }
-    } catch (error) {
-      logger.warn(`Failed to remove unbanned mod thread #${mod.id}: ${error}`);
-    }
   }
 }
 
