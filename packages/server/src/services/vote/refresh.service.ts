@@ -2,6 +2,7 @@ import { Q } from "@/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
 import {
   promoteRequiredDependencies,
+  pruneOrphanedDependencies,
   resolveModDependencies,
 } from "./dependencies";
 import { healThreads } from "./discord";
@@ -10,9 +11,10 @@ import { healThreads } from "./discord";
  * Daily sweep over open and closed workshops. For open ones it refreshes the
  * cached CurseForge snapshots (names, thumbnails, download counts),
  * re-resolves each live mod's dependencies, and heals any missed
- * required-dependency promotions for approved mods. For both it reconciles
- * Discord forum threads with the stored thread ids. Runs once on startup,
- * then every 24 hours; overlapping runs are skipped.
+ * required-dependency promotions for approved mods. For both it prunes
+ * orphaned dependency rows and reconciles Discord forum threads with the
+ * stored thread ids. Runs once on startup, then every 24 hours; overlapping
+ * runs are skipped.
  */
 export class VoteProjectRefreshService {
   private intervalId?: NodeJS.Timeout;
@@ -67,6 +69,7 @@ export class VoteProjectRefreshService {
             );
           }
         }
+        await pruneOrphanedDependencies(vote.id);
         await healThreads(vote, mods);
       }
       if (refreshed > 0) {

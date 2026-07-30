@@ -412,9 +412,10 @@ export function AdminVoteDetail() {
                           <div className="size-7 rounded bg-accent" />
                         )}
                         <span className="font-medium">{mod.project.name}</span>
-                        {mod.pulledBy && (
+                        {mod.requiredBy.length > 0 && (
                           <span className="text-muted-foreground">
-                            pulled by {mod.pulledBy.name}
+                            required by{" "}
+                            {mod.requiredBy.map((m) => m.name).join(", ")}
                           </span>
                         )}
                       </div>

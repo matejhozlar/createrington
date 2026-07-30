@@ -8,6 +8,7 @@ import {
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { refreshProjects } from "@/services/curseforge/ingest";
+import { announcePulledDependencies, announceRemoval } from "./discord";
 
 export const OPTIONAL_DEPENDENCY = 2;
 export const REQUIRED_DEPENDENCY = 3;
@@ -157,7 +158,6 @@ export async function promoteRequiredDependencies(
           fileId: file.fileId,
           fileName: file.filename,
           fileReleaseType: file.releaseType,
-          pulledByVoteModId: mod.id,
         });
         created.push(row);
       } catch (error) {
@@ -169,9 +169,60 @@ export async function promoteRequiredDependencies(
         `Pulled ${created.length} required dependencies into vote #${vote.id}`,
       );
       await resolveModDependencies(vote, created);
+      const nameById = new Map(projects.map((data) => [data.id, data.name]));
+      void announcePulledDependencies(
+        mod,
+        created.map(
+          (row) =>
+            nameById.get(row.curseforgeProjectId) ??
+            `#${row.curseforgeProjectId}`,
+        ),
+      );
     }
   } catch (error) {
     logger.warn(`Dependency promotion failed for mod #${mod.id}: ${error}`);
+  }
+}
+
+/**
+ * Delete dependency-sourced rows that no approved mod requires anymore,
+ * following chains until stable. Never throws.
+ */
+export async function pruneOrphanedDependencies(voteId: number): Promise<void> {
+  try {
+    for (;;) {
+      const mods = await Q.vote.mod.findAll({ voteId });
+      const approvedIds = mods
+        .filter((mod) => mod.status === "approved")
+        .map((mod) => mod.id);
+      const required =
+        approvedIds.length > 0
+          ? await Q.vote.mod.dependency.findAll({
+              voteModId: { $in: approvedIds },
+              relationType: REQUIRED_DEPENDENCY,
+            })
+          : [];
+      const requiredProjectIds = new Set(
+        required.map((dep) => dep.curseforgeProjectId),
+      );
+
+      const orphans = mods.filter(
+        (mod) =>
+          mod.source === "dependency" &&
+          !requiredProjectIds.has(mod.curseforgeProjectId),
+      );
+      if (orphans.length === 0) return;
+
+      await Q.vote.mod.deleteAll({ id: { $in: orphans.map((mod) => mod.id) } });
+      for (const orphan of orphans) {
+        void announceRemoval(orphan);
+      }
+      logger.info(
+        `Pruned ${orphans.length} orphaned dependencies from vote #${voteId}`,
+      );
+    }
+  } catch (error) {
+    logger.warn(`Dependency pruning failed for vote #${voteId}: ${error}`);
   }
 }
 

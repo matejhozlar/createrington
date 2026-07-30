@@ -76,10 +76,6 @@ export const voteMod = pgTable(
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
     discordThreadId: text("discord_thread_id"),
-    // Provenance for source = 'dependency' rows: the approved mod that pulled
-    // this one in. Plain integer, not an FK: the generator does not handle
-    // self-referencing foreign keys
-    pulledByVoteModId: integer("pulled_by_vote_mod_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

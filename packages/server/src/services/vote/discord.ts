@@ -232,6 +232,25 @@ export async function announceReview(
   }
 }
 
+/** Note the auto-pulled required dependencies in the approved mod's thread. */
+export async function announcePulledDependencies(
+  mod: VoteMod,
+  names: string[],
+): Promise<void> {
+  if (!mod.discordThreadId || names.length === 0) return;
+  try {
+    const lookup = await fetchThread(mod.discordThreadId);
+    if (lookup.state !== "found") return;
+    await lookup.thread.send(
+      `📦 Pulls in required dependencies: ${names.join(", ")}`,
+    );
+  } catch (error) {
+    logger.warn(
+      `Failed to note pulled dependencies for mod #${mod.id}: ${error}`,
+    );
+  }
+}
+
 /** Delete the thread of a withdrawn or banned suggestion. */
 export async function announceRemoval(mod: VoteMod): Promise<void> {
   if (!mod.discordThreadId) return;

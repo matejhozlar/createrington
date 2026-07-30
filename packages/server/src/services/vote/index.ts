@@ -28,7 +28,9 @@ import {
 } from "./discord";
 import {
   OPTIONAL_DEPENDENCY,
+  REQUIRED_DEPENDENCY,
   promoteRequiredDependencies,
+  pruneOrphanedDependencies,
   resolveModDependencies,
 } from "./dependencies";
 
@@ -67,7 +69,7 @@ export interface VoteModListItem extends VoteMod {
 export interface VoteDependencyReport {
   pulled: Array<
     VoteModListItem & {
-      pulledBy: { voteModId: number; name: string } | null;
+      requiredBy: Array<{ voteModId: number; name: string }>;
     }
   >;
   optional: Array<{
@@ -583,6 +585,9 @@ export class VoteService {
         for (const affected of banned) {
           void announceRemoval(affected);
         }
+        for (const voteId of new Set(banned.map((m) => m.voteId))) {
+          await pruneOrphanedDependencies(voteId);
+        }
         return mod;
       }
 
@@ -604,6 +609,8 @@ export class VoteService {
       if (action === "approve") {
         const vote = await this.getVote(updated.voteId);
         await promoteRequiredDependencies(vote, updated, adminId);
+      } else if (mod.status === "approved") {
+        await pruneOrphanedDependencies(mod.voteId);
       }
       return updated;
     } catch (error) {
@@ -684,6 +691,9 @@ export class VoteService {
     for (const mod of affected) {
       void announceRemoval(mod);
     }
+    for (const voteId of new Set(affected.map((mod) => mod.voteId))) {
+      await pruneOrphanedDependencies(voteId);
+    }
   }
 
   /** Lift a global ban so the project can be suggested again. */
@@ -737,31 +747,39 @@ export class VoteService {
       projectById.get(mod.curseforgeProjectId)?.name ??
       `#${mod.curseforgeProjectId}`;
 
-    const pulledItems = await this.decorateMods(
-      mods.filter((m) => m.source === "dependency"),
-    );
-    const pulled = pulledItems.map((item) => {
-      const puller = item.pulledByVoteModId
-        ? byId.get(item.pulledByVoteModId)
-        : undefined;
-      return {
-        ...item,
-        pulledBy: puller
-          ? { voteModId: puller.id, name: modName(puller) }
-          : null,
-      };
-    });
-
     const liveMods = mods.filter((m) =>
       USER_VISIBLE_MOD_STATUSES.includes(m.status),
     );
-    const optionalRows =
+    const depRows =
       liveMods.length > 0
         ? await Q.vote.mod.dependency.findAll({
             voteModId: { $in: liveMods.map((m) => m.id) },
-            relationType: OPTIONAL_DEPENDENCY,
           })
         : [];
+
+    const approvedModIds = new Set(
+      mods.filter((m) => m.status === "approved").map((m) => m.id),
+    );
+    const requiredRows = depRows.filter(
+      (d) =>
+        d.relationType === REQUIRED_DEPENDENCY &&
+        approvedModIds.has(d.voteModId),
+    );
+    const pulledItems = await this.decorateMods(
+      mods.filter((m) => m.source === "dependency"),
+    );
+    const pulled = pulledItems.map((item) => ({
+      ...item,
+      requiredBy: requiredRows
+        .filter((d) => d.curseforgeProjectId === item.curseforgeProjectId)
+        .map((d) => byId.get(d.voteModId))
+        .filter((m): m is VoteMod => m !== undefined)
+        .map((m) => ({ voteModId: m.id, name: modName(m) })),
+    }));
+
+    const optionalRows = depRows.filter(
+      (d) => d.relationType === OPTIONAL_DEPENDENCY,
+    );
     const claimedProjectIds = new Set(
       liveMods.map((m) => m.curseforgeProjectId),
     );

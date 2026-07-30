@@ -267,6 +267,13 @@
       "when": 1785441850329,
       "tag": "0037_lovely_stature",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785444676807,
+      "tag": "0038_wandering_santa_claus",
+      "breakpoints": true
     }
   ]
 }
