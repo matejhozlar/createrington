@@ -16,13 +16,6 @@ export function formatDownloads(count: number): string {
   return String(count);
 }
 
-export function toDatetimeLocalInput(value: string | Date | null): string {
-  if (!value) return "";
-  const d = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 export function formatDate(value: string | Date | null): string {
   if (!value) return "Unknown";
   return new Date(value).toLocaleDateString(undefined, {

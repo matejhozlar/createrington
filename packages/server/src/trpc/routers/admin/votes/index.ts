@@ -15,7 +15,6 @@ const votePatch = z.object({
   baseModpackProjectId: z.number().int().positive().nullable().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-  closesAt: z.coerce.date().nullable().optional(),
   discordForumChannelId: z
     .string()
     .trim()
@@ -51,7 +50,6 @@ export const adminVotesRouter = router({
         baseModpackProjectId: z.number().int().positive().optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
-        closesAt: z.coerce.date().optional(),
         discordForumChannelId: z
           .string()
           .trim()

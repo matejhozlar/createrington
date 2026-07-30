@@ -37,7 +37,6 @@ export const vote = pgTable(
     baseModpackProjectId: integer("base_modpack_project_id"),
     maxModsPerUser: integer("max_mods_per_user").notNull().default(5),
     maxUpvotesPerUser: integer("max_upvotes_per_user").notNull().default(5),
-    closesAt: timestamp("closes_at", { withTimezone: true }),
     // Forum channel for per-suggestion discussion threads; null = no Discord
     // presence for this workshop. Deliberately per-row, not entity-scrape config
     discordForumChannelId: text("discord_forum_channel_id"),

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { LOADER_NAMES, toDatetimeLocalInput } from "@/features/voting/format";
+import { LOADER_NAMES } from "@/features/voting/format";
 
 interface VoteSettings {
   id: number;
@@ -29,7 +29,6 @@ interface VoteSettings {
   modLoaderType: number;
   maxModsPerUser: number;
   maxUpvotesPerUser: number;
-  closesAt: string | Date | null;
   discordForumChannelId: string | null;
   baseModpackProjectId: number | null;
 }
@@ -52,7 +51,6 @@ export function VoteSettingsDialog({
   const [loaderType, setLoaderType] = useState(String(vote.modLoaderType));
   const [maxMods, setMaxMods] = useState(String(vote.maxModsPerUser));
   const [maxUpvotes, setMaxUpvotes] = useState(String(vote.maxUpvotesPerUser));
-  const [closesAt, setClosesAt] = useState(toDatetimeLocalInput(vote.closesAt));
   const [forumChannelId, setForumChannelId] = useState(
     vote.discordForumChannelId ?? "",
   );
@@ -81,7 +79,6 @@ export function VoteSettingsDialog({
         modLoaderType: Number(loaderType),
         maxModsPerUser: Number(maxMods) || 5,
         maxUpvotesPerUser: Number(maxUpvotes) || 5,
-        closesAt: closesAt ? new Date(closesAt) : null,
         discordForumChannelId: forumChannelId.trim() || null,
         baseModpackProjectId: basePackId.trim() ? Number(basePackId) : null,
       },
@@ -160,27 +157,16 @@ export function VoteSettingsDialog({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="settings-closes">Closes at (optional)</Label>
-              <Input
-                id="settings-closes"
-                type="datetime-local"
-                value={closesAt}
-                onChange={(e) => setClosesAt(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="settings-basepack">
-                Base modpack ID (optional)
-              </Label>
-              <Input
-                id="settings-basepack"
-                type="number"
-                value={basePackId}
-                onChange={(e) => setBasePackId(e.target.value)}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="settings-basepack">
+              Base modpack ID (optional)
+            </Label>
+            <Input
+              id="settings-basepack"
+              type="number"
+              value={basePackId}
+              onChange={(e) => setBasePackId(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="settings-forum">

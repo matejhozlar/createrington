@@ -281,6 +281,13 @@
       "when": 1785446761597,
       "tag": "0039_open_praxagora",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785448379868,
+      "tag": "0040_fixed_dreaming_celestial",
+      "breakpoints": true
     }
   ]
 }

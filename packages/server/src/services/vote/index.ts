@@ -458,7 +458,6 @@ export class VoteService {
       baseModpackProjectId?: number | null;
       maxModsPerUser?: number;
       maxUpvotesPerUser?: number;
-      closesAt?: Date | null;
       discordForumChannelId?: string | null;
     },
     adminId: string,
@@ -489,7 +488,6 @@ export class VoteService {
         baseModpackProjectId: input.baseModpackProjectId ?? null,
         maxModsPerUser: input.maxModsPerUser ?? 5,
         maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
-        closesAt: input.closesAt ?? null,
         discordForumChannelId: input.discordForumChannelId ?? null,
         createdBy: adminId,
       });
@@ -514,7 +512,6 @@ export class VoteService {
       baseModpackProjectId: number | null;
       maxModsPerUser: number;
       maxUpvotesPerUser: number;
-      closesAt: Date | null;
       discordForumChannelId: string | null;
     }>,
   ): Promise<Vote> {
