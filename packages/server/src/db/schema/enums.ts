@@ -116,11 +116,18 @@ export const voteStatusEnum = pgEnum("vote_status", [
   "archived",
 ]);
 
-// declined = soft (resubmittable); banning deletes rows, vote_mod_ban is the record
+// rejected rows persist per workshop with a reason; re-review can approve them
 export const voteModStatusEnum = pgEnum("vote_mod_status", [
   "pending",
   "approved",
-  "declined",
+  "rejected",
+]);
+
+export const voteModRejectReasonEnum = pgEnum("vote_mod_reject_reason", [
+  "on_hold",
+  "incompatible",
+  "covered_by_other_mod",
+  "not_a_good_fit",
 ]);
 
 // dependency = auto-promoted required dependency of an approved mod

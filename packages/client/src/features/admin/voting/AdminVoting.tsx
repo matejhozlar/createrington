@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, ChevronRight, Loader2, Plus } from "lucide-react";
+import { ChevronRight, Loader2, Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,16 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,7 +48,6 @@ export function AdminVoting() {
   const utils = trpc.useUtils();
 
   const votesQuery = trpc.admin.votes.list.useQuery();
-  const bansQuery = trpc.admin.votes.listBans.useQuery();
   const flagsQuery = trpc.admin.features.list.useQuery();
   const votingFlag = flagsQuery.data?.find((f) => f.name === "voting");
 
@@ -89,36 +77,6 @@ export function AdminVoting() {
       utils.admin.votes.list.invalidate();
       setCreateOpen(false);
       navigate(`/admin/tools/voting/${vote.id}`);
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const [banOpen, setBanOpen] = useState(false);
-  const [banProjectId, setBanProjectId] = useState("");
-  const [banReason, setBanReason] = useState("");
-
-  const banMutation = trpc.admin.votes.banProject.useMutation({
-    onSuccess: () => {
-      toast.success("Project banned");
-      utils.admin.votes.listBans.invalidate();
-      setBanOpen(false);
-      setBanProjectId("");
-      setBanReason("");
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const [unbanTarget, setUnbanTarget] = useState<{
-    projectId: number;
-    name: string;
-  } | null>(null);
-  const displayUnbanTarget = useStickyValue(unbanTarget);
-
-  const unbanMutation = trpc.admin.votes.unbanProject.useMutation({
-    onSuccess: () => {
-      toast.success("Ban lifted");
-      utils.admin.votes.listBans.invalidate();
-      setUnbanTarget(null);
     },
     onError: (err) => toast.error(err.message),
   });
@@ -228,81 +186,6 @@ export function AdminVoting() {
                       </TableCell>
                       <TableCell>
                         <ChevronRight className="size-4 text-muted-foreground" />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Banned projects</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setBanOpen(true)}
-            >
-              <Ban className="size-4" />
-              Ban project
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {bansQuery.isLoading ? (
-              <Skeleton className="h-20 w-full" />
-            ) : (bansQuery.data?.length ?? 0) === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                No banned projects.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Project</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Banned</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {bansQuery.data?.map(({ ban, project }) => (
-                    <TableRow key={ban.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {project?.thumbnailUrl && (
-                            <img
-                              src={project.thumbnailUrl}
-                              alt=""
-                              className="size-7 rounded"
-                            />
-                          )}
-                          <span className="font-medium">
-                            {project?.name ?? `#${ban.curseforgeProjectId}`}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[280px] truncate text-sm text-muted-foreground">
-                        {ban.reason ?? "No reason given"}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(ban.createdAt)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            setUnbanTarget({
-                              projectId: ban.curseforgeProjectId,
-                              name:
-                                project?.name ?? `#${ban.curseforgeProjectId}`,
-                            })
-                          }
-                        >
-                          Unban
-                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -437,93 +320,6 @@ export function AdminVoting() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Dialog open={banOpen} onOpenChange={setBanOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ban a CurseForge project</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="ban-project">CurseForge project ID</Label>
-              <Input
-                id="ban-project"
-                type="number"
-                placeholder="328085"
-                value={banProjectId}
-                onChange={(e) => setBanProjectId(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ban-reason">Reason</Label>
-              <Input
-                id="ban-reason"
-                placeholder="Why is this mod banned? Shown to players."
-                value={banReason}
-                onChange={(e) => setBanReason(e.target.value)}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Banning removes every instance of this project across all votes
-              and blocks future submissions.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              onClick={() =>
-                banMutation.mutate({
-                  projectId: Number(banProjectId),
-                  reason: banReason.trim(),
-                })
-              }
-              disabled={
-                banMutation.isPending ||
-                !banProjectId.trim() ||
-                banReason.trim().length < 5
-              }
-            >
-              {banMutation.isPending && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-              Ban project
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog
-        open={unbanTarget !== null}
-        onOpenChange={(open) => !open && setUnbanTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Unban {displayUnbanTarget?.name}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Players will be able to submit this project again.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                displayUnbanTarget &&
-                unbanMutation.mutate({
-                  projectId: displayUnbanTarget.projectId,
-                })
-              }
-            >
-              {unbanMutation.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "Unban"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

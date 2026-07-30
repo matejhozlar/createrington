@@ -186,12 +186,12 @@ export function ModDetailDialog({
                       >
                         {dep.relationType === 3 ? "Required" : "Optional"}
                       </Badge>
-                      {dep.banned && (
+                      {dep.rejected && (
                         <Badge
                           variant="outline"
                           className="border-red-500/50 text-xs text-red-400"
                         >
-                          Ruled out
+                          Rejected
                         </Badge>
                       )}
                     </div>

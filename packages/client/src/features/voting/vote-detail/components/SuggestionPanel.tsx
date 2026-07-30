@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MOD_STATUS_STYLES } from "../../format";
+import { MOD_STATUS_STYLES, REJECT_REASON_LABELS } from "../../format";
 
 export function SuggestionPanel({
   vote,
@@ -31,11 +31,11 @@ export function SuggestionPanel({
   const suggestionsQuery = trpc.user.votes.mySuggestions.useQuery({
     voteId: vote.id,
   });
-  const bansQuery = trpc.user.votes.listBans.useQuery();
+  const rejectedQuery = trpc.user.votes.listRejected.useQuery({
+    voteId: vote.id,
+  });
   const suggestions = suggestionsQuery.data ?? [];
-  const usedSlots = suggestions.filter(
-    (m) => m.status === "pending" || m.status === "approved",
-  ).length;
+  const usedSlots = suggestions.filter((m) => m.status === "pending").length;
   const isFull = usedSlots >= vote.maxModsPerUser;
 
   const searchResults = trpc.user.votes.searchProjects.useQuery(
@@ -83,7 +83,7 @@ export function SuggestionPanel({
         <CardTitle className="text-base">Your suggestions</CardTitle>
         <CardDescription>
           {usedSlots} of {vote.maxModsPerUser} slots used. Every suggestion is
-          reviewed by the team; declined ones free their slot up.
+          reviewed by the team; reviewed ones free their slot up.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -112,10 +112,17 @@ export function SuggestionPanel({
                     <div className="truncate text-sm font-medium">
                       {mod.project.name}
                     </div>
-                    {mod.note && (
+                    {mod.status === "rejected" && mod.rejectReason ? (
                       <div className="truncate text-xs text-muted-foreground">
-                        {mod.note}
+                        {REJECT_REASON_LABELS[mod.rejectReason]}
+                        {mod.rejectNote && ` - ${mod.rejectNote}`}
                       </div>
+                    ) : (
+                      mod.note && (
+                        <div className="truncate text-xs text-muted-foreground">
+                          {mod.note}
+                        </div>
+                      )
                     )}
                   </div>
                   {status && (
@@ -174,7 +181,7 @@ export function SuggestionPanel({
               )}
               {searchResults.data?.map((result) => {
                 const blocked =
-                  result.banned || result.claimed || result.inModpack;
+                  result.rejected || result.claimed || result.inModpack;
                 const suggesting =
                   suggestMutation.isPending &&
                   suggestMutation.variables?.projectId === result.id;
@@ -203,7 +210,7 @@ export function SuggestionPanel({
                         </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-1">
-                        {result.banned && (
+                        {result.rejected && (
                           <Badge
                             variant="outline"
                             className="border-red-500/50 text-xs text-red-400"
@@ -211,7 +218,7 @@ export function SuggestionPanel({
                             Rejected
                           </Badge>
                         )}
-                        {result.claimed && !result.banned && (
+                        {result.claimed && !result.rejected && (
                           <Badge variant="secondary" className="text-xs">
                             Already suggested
                           </Badge>
@@ -288,20 +295,17 @@ export function SuggestionPanel({
           )}
         </div>
 
-        {(bansQuery.data?.length ?? 0) > 0 && (
+        {(rejectedQuery.data?.length ?? 0) > 0 && (
           <div className="space-y-2 border-t pt-4">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Ruled out by the team
             </div>
             <div className="space-y-1.5">
-              {bansQuery.data?.map((ban) => (
-                <div
-                  key={ban.curseforgeProjectId}
-                  className="flex items-center gap-2.5 text-xs"
-                >
-                  {ban.project?.thumbnailUrl ? (
+              {rejectedQuery.data?.map((mod) => (
+                <div key={mod.id} className="flex items-center gap-2.5 text-xs">
+                  {mod.project.thumbnailUrl ? (
                     <img
-                      src={ban.project.thumbnailUrl}
+                      src={mod.project.thumbnailUrl}
                       alt=""
                       className="size-6 rounded"
                     />
@@ -309,10 +313,13 @@ export function SuggestionPanel({
                     <div className="size-6 rounded bg-accent" />
                   )}
                   <span className="shrink-0 font-medium">
-                    {ban.project?.name ?? `Project #${ban.curseforgeProjectId}`}
+                    {mod.project.name}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                    {ban.reason ?? "No reason given"}
+                    {mod.rejectReason
+                      ? REJECT_REASON_LABELS[mod.rejectReason]
+                      : "No reason given"}
+                    {mod.rejectNote && ` - ${mod.rejectNote}`}
                   </span>
                 </div>
               ))}

@@ -56,8 +56,15 @@ export const MOD_STATUS_STYLES: Record<
     label: "Pending review",
     className: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
   },
-  declined: {
-    label: "Declined",
-    className: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
+  rejected: {
+    label: "Rejected",
+    className: "border-red-500/50 bg-red-500/10 text-red-400",
   },
+};
+
+export const REJECT_REASON_LABELS: Record<string, string> = {
+  on_hold: "On hold",
+  incompatible: "Incompatible",
+  covered_by_other_mod: "Covered by another mod",
+  not_a_good_fit: "Not a good fit",
 };

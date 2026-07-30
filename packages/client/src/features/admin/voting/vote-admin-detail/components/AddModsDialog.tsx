@@ -124,7 +124,7 @@ export function AddModsDialog({
           {searchResults.data?.map((result) => {
             const alreadySelected = selected.some((p) => p.id === result.id);
             const blocked =
-              result.banned ||
+              result.rejected ||
               result.claimed ||
               result.inModpack ||
               alreadySelected;
@@ -162,15 +162,15 @@ export function AddModsDialog({
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  {result.banned && (
+                  {result.rejected && (
                     <Badge
                       variant="outline"
                       className="border-red-500/50 text-xs text-red-400"
                     >
-                      Banned
+                      Rejected
                     </Badge>
                   )}
-                  {result.claimed && !result.banned && (
+                  {result.claimed && !result.rejected && (
                     <Badge variant="secondary" className="text-xs">
                       In vote
                     </Badge>

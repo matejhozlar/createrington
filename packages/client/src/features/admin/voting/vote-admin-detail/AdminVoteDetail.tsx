@@ -10,7 +10,6 @@ import {
   PackagePlus,
   Settings2,
   Shield,
-  X,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -53,11 +52,18 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/voting/vote-detail/components/ModDetailDialog";
-import { MOD_STATUS_STYLES, formatDate } from "@/features/voting/format";
+import {
+  MOD_STATUS_STYLES,
+  REJECT_REASON_LABELS,
+  formatDate,
+} from "@/features/voting/format";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { VoteSettingsDialog } from "./components/VoteSettingsDialog";
 
-type StatusFilter = "all" | "pending" | "approved" | "declined";
+type StatusFilter = "all" | "pending" | "approved" | "rejected";
+
+type RejectReason = keyof typeof REJECT_REASON_LABELS &
+  ("on_hold" | "incompatible" | "covered_by_other_mod" | "not_a_good_fit");
 
 const VOTE_STATUSES = ["draft", "open", "closed", "archived"] as const;
 
@@ -88,29 +94,27 @@ export function AdminVoteDetail() {
     name: string;
   } | null>(null);
   const displayRejectTarget = useStickyValue(rejectTarget);
-  const [rejectReason, setRejectReason] = useState("");
+  const [rejectReason, setRejectReason] = useState<RejectReason | "">("");
+  const [rejectNote, setRejectNote] = useState("");
 
   const invalidate = () => {
     utils.admin.votes.listMods.invalidate({ voteId });
     utils.admin.votes.getMod.invalidate();
     utils.admin.votes.searchProjects.invalidate({ voteId });
-    utils.admin.votes.listBans.invalidate();
     utils.admin.votes.dependencyReport.invalidate({ voteId });
     utils.user.votes.get.invalidate();
+    utils.user.votes.listRejected.invalidate({ voteId });
   };
 
   const reviewMutation = trpc.admin.votes.reviewMod.useMutation({
     onSuccess: (_mod, variables) => {
-      const verb =
-        variables.action === "approve"
-          ? "approved"
-          : variables.action === "decline"
-            ? "declined"
-            : "banned and removed";
-      toast.success(`Mod ${verb}`);
+      toast.success(
+        `Mod ${variables.action === "approve" ? "approved" : "rejected"}`,
+      );
       invalidate();
       setRejectTarget(null);
       setRejectReason("");
+      setRejectNote("");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -131,7 +135,7 @@ export function AdminVoteDetail() {
       all: mods.length,
       pending: 0,
       approved: 0,
-      declined: 0,
+      rejected: 0,
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
     return c;
@@ -210,7 +214,7 @@ export function AdminVoteDetail() {
 
       <div className="mx-auto w-full max-w-[1100px] flex flex-1 flex-col gap-4 px-4 pb-6">
         <div className="flex flex-wrap gap-2">
-          {(["all", "pending", "approved", "declined"] as const).map(
+          {(["all", "pending", "approved", "rejected"] as const).map(
             (status) => (
               <Button
                 key={status}
@@ -348,20 +352,6 @@ export function AdminVoteDetail() {
                                   Approve
                                 </DropdownMenuItem>
                               )}
-                              {(mod.status === "pending" ||
-                                mod.status === "approved") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    reviewMutation.mutate({
-                                      voteModId: mod.id,
-                                      action: "decline",
-                                    })
-                                  }
-                                >
-                                  <X className="size-4 text-yellow-500" />
-                                  Decline
-                                </DropdownMenuItem>
-                              )}
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onClick={() =>
@@ -372,7 +362,7 @@ export function AdminVoteDetail() {
                                 }
                               >
                                 <Ban className="size-4" />
-                                Reject &amp; ban
+                                Reject
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -458,12 +448,12 @@ export function AdminVoteDetail() {
                             In the workshop
                           </Badge>
                         )}
-                        {dep.banned && (
+                        {dep.rejected && (
                           <Badge
                             variant="outline"
                             className="border-red-500/50 text-xs text-red-400"
                           >
-                            Ruled out
+                            Rejected
                           </Badge>
                         )}
                       </div>
@@ -503,6 +493,7 @@ export function AdminVoteDetail() {
           if (!open) {
             setRejectTarget(null);
             setRejectReason("");
+            setRejectNote("");
           }
         }}
       >
@@ -510,19 +501,43 @@ export function AdminVoteDetail() {
           <DialogHeader>
             <DialogTitle>Reject {displayRejectTarget?.name}?</DialogTitle>
             <DialogDescription>
-              Rejecting bans this project from every current and future vote and
-              removes every entry of it, including this one. Prefer Decline for
-              a soft no.
+              Rejecting rules this mod out of this workshop. The entry stays
+              visible with the reason, and you can re-review it later.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label htmlFor="reject-reason">Reason</Label>
-            <Input
-              id="reject-reason"
-              placeholder="Why is this mod banned? Shown to players."
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-            />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Reason</Label>
+              <Select
+                value={rejectReason}
+                onValueChange={(value) =>
+                  setRejectReason(value as RejectReason)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a reason" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(REJECT_REASON_LABELS).map(
+                    ([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="reject-note">Note (optional)</Label>
+              <Input
+                id="reject-note"
+                placeholder="Extra context, shown to players."
+                maxLength={500}
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -532,17 +547,16 @@ export function AdminVoteDetail() {
                 reviewMutation.mutate({
                   voteModId: displayRejectTarget.voteModId,
                   action: "reject",
-                  reason: rejectReason.trim(),
+                  reason: rejectReason === "" ? undefined : rejectReason,
+                  note: rejectNote.trim() || undefined,
                 })
               }
-              disabled={
-                reviewMutation.isPending || rejectReason.trim().length < 5
-              }
+              disabled={reviewMutation.isPending || !rejectReason}
             >
               {reviewMutation.isPending && (
                 <Loader2 className="size-4 animate-spin" />
               )}
-              Reject &amp; ban
+              Reject
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -9,6 +9,7 @@ import type {
   CurseforgeProject,
   Vote,
   VoteMod,
+  VoteModRejectReason,
   VoteModStatus,
 } from "@createrington/shared/db";
 import {
@@ -55,7 +56,7 @@ export interface VoteModDependencyInfo {
   name: string | null;
   slug: string | null;
   thumbnailUrl: string | null;
-  banned: boolean;
+  rejected: boolean;
 }
 
 export interface VoteModListItem extends VoteMod {
@@ -77,7 +78,7 @@ export interface VoteDependencyReport {
     name: string | null;
     slug: string | null;
     thumbnailUrl: string | null;
-    banned: boolean;
+    rejected: boolean;
     inVote: boolean;
     wantedBy: Array<{ voteModId: number; name: string }>;
   }>;
@@ -118,11 +119,11 @@ export interface VoteProjectSearchResult {
   url: string;
   thumbnailUrl?: string;
   inModpack: boolean;
-  banned: boolean;
+  rejected: boolean;
   claimed: boolean;
 }
 
-export type VoteReviewAction = "approve" | "decline" | "reject";
+export type VoteReviewAction = "approve" | "reject";
 
 const USER_VISIBLE_MOD_STATUSES: VoteModStatus[] = ["pending", "approved"];
 
@@ -154,9 +155,9 @@ function slugify(name: string): string {
 }
 
 /**
- * Community modpack voting: user submissions, admin curation, and the global
- * rejection list. All CurseForge lookups go through the project snapshot
- * cache; validation guards run against the live API at submit time.
+ * Community modpack voting: user submissions, admin curation, and
+ * per-workshop rejections. All CurseForge lookups go through the project
+ * snapshot cache; validation guards run against the live API at submit time.
  */
 export class VoteService {
   /** Votes users may see (open and closed), with stats for open ones. */
@@ -242,7 +243,7 @@ export class VoteService {
       Q.player.find({ discordId: mod.submittedBy }),
       Q.vote.mod.dependency.findAll({ voteModId }),
     ]);
-    const depsByMod = await this.buildDependencyInfo(depRows);
+    const depsByMod = await this.buildDependencyInfo(mod.voteId, depRows);
     return {
       mod: {
         ...mod,
@@ -274,20 +275,24 @@ export class VoteService {
     if (results.length === 0) return [];
 
     const ids = results.map((r) => r.id);
-    const [bans, claims] = await Promise.all([
-      Q.vote.mod.ban.findAll({ curseforgeProjectId: { $in: ids } }),
-      Q.vote.mod.findAll({
-        voteId: vote.id,
-        curseforgeProjectId: { $in: ids },
-        status: { $in: USER_VISIBLE_MOD_STATUSES },
-      }),
-    ]);
-    const bannedIds = new Set(bans.map((b) => b.curseforgeProjectId));
-    const claimedIds = new Set(claims.map((c) => c.curseforgeProjectId));
+    const claims = await Q.vote.mod.findAll({
+      voteId: vote.id,
+      curseforgeProjectId: { $in: ids },
+    });
+    const rejectedIds = new Set(
+      claims
+        .filter((c) => c.status === "rejected")
+        .map((c) => c.curseforgeProjectId),
+    );
+    const claimedIds = new Set(
+      claims
+        .filter((c) => c.status !== "rejected")
+        .map((c) => c.curseforgeProjectId),
+    );
 
     return results.map((r) => ({
       ...r,
-      banned: bannedIds.has(r.id),
+      rejected: rejectedIds.has(r.id),
       claimed: claimedIds.has(r.id),
     }));
   }
@@ -319,11 +324,11 @@ export class VoteService {
       voteId,
       submittedBy: discordId,
       source: "user",
-      status: { $in: USER_VISIBLE_MOD_STATUSES },
+      status: "pending",
     });
     if (used >= vote.maxModsPerUser) {
       throw new BadRequestError(
-        `You already have ${vote.maxModsPerUser} suggestions in this workshop, remove one first`,
+        `You already have ${vote.maxModsPerUser} pending suggestions in this workshop, remove one or wait for a review`,
       );
     }
 
@@ -555,67 +560,51 @@ export class VoteService {
   }
 
   /**
-   * Review a mod: approve, decline (resubmittable), or reject (global ban
-   * that deletes every instance of the project from all votes).
+   * Review a mod: approve it into the pack, or reject it for this workshop
+   * with a reason. Rejected rows persist and can be re-reviewed.
    */
   async reviewMod(
     voteModId: number,
     action: VoteReviewAction,
     adminId: string,
-    reason?: string,
+    options: { reason?: VoteModRejectReason; note?: string } = {},
   ): Promise<VoteMod> {
-    if (action === "reject" && !reason?.trim()) {
+    if (action === "reject" && !options.reason) {
       throw new BadRequestError("A reason is required to reject a mod");
     }
     const mod = await Q.vote.mod.find({ id: voteModId });
     if (!mod) throw new NotFoundError(`Mod #${voteModId} not found`);
 
-    const ban = await Q.vote.mod.ban.find({
-      curseforgeProjectId: mod.curseforgeProjectId,
-    });
-    if (ban && action !== "reject") {
-      throw new BadRequestError("This project is banned, remove the ban first");
-    }
-
-    try {
-      if (action === "reject") {
-        const banned = await db.inTransaction((tx) =>
-          this.applyBan(tx, mod.curseforgeProjectId, adminId, reason),
-        );
-        for (const affected of banned) {
-          void announceRemoval(affected);
-        }
-        for (const voteId of new Set(banned.map((m) => m.voteId))) {
-          await pruneOrphanedDependencies(voteId);
-        }
-        return mod;
-      }
-
-      const updated = await db.inTransaction((tx) =>
-        tx.vote.mod.updateAndReturn(
-          { id: voteModId },
-          {
-            status: action === "approve" ? "approved" : "declined",
+    const updated = await Q.vote.mod.updateAndReturn(
+      { id: voteModId },
+      action === "approve"
+        ? {
+            status: "approved",
+            rejectReason: null,
+            rejectNote: null,
+            reviewedBy: adminId,
+            reviewedAt: new Date(),
+          }
+        : {
+            status: "rejected",
+            rejectReason: options.reason,
+            rejectNote: options.note?.trim() || null,
             reviewedBy: adminId,
             reviewedAt: new Date(),
           },
-        ),
-      );
+    );
 
-      void announceReview(
-        updated,
-        action === "approve" ? "approved" : "declined",
-      );
-      if (action === "approve") {
-        const vote = await this.getVote(updated.voteId);
-        await promoteRequiredDependencies(vote, updated, adminId);
-      } else if (mod.status === "approved") {
-        await pruneOrphanedDependencies(mod.voteId);
-      }
-      return updated;
-    } catch (error) {
-      this.mapConstraintError(error);
+    void announceReview(
+      updated,
+      action === "approve" ? "approved" : "rejected",
+    );
+    if (action === "approve") {
+      const vote = await this.getVote(updated.voteId);
+      await promoteRequiredDependencies(vote, updated, adminId);
+    } else if (mod.status === "approved") {
+      await pruneOrphanedDependencies(mod.voteId);
     }
+    return updated;
   }
 
   /** Add mods directly to a vote as approved, bypassing user review. */
@@ -665,70 +654,14 @@ export class VoteService {
     return items;
   }
 
-  /** Globally ban a project and delete every instance of it from all votes. */
-  async banProject(
-    projectId: number,
-    adminId: string,
-    reason: string,
-  ): Promise<void> {
-    if (!reason.trim()) {
-      throw new BadRequestError("A reason is required to ban a project");
-    }
-    const cached = await Q.curseforge.project.find({ id: projectId });
-    if (!cached) {
-      try {
-        await ingestProject(projectId);
-      } catch {
-        throw new BadRequestError(
-          `Could not resolve CurseForge project #${projectId}`,
-        );
-      }
-    }
-
-    const affected = await db.inTransaction((tx) =>
-      this.applyBan(tx, projectId, adminId, reason),
+  /** Rejected mods in a user-visible vote, for the public ruled-out list. */
+  async getRejectedMods(voteId: number): Promise<VoteModListItem[]> {
+    this.assertUserVisible(await this.getVote(voteId));
+    const mods = await Q.vote.mod.findAll(
+      { voteId, status: "rejected" },
+      { orderBy: "reviewedAt", orderDirection: "desc" },
     );
-    for (const mod of affected) {
-      void announceRemoval(mod);
-    }
-    for (const voteId of new Set(affected.map((mod) => mod.voteId))) {
-      await pruneOrphanedDependencies(voteId);
-    }
-  }
-
-  /** Lift a global ban so the project can be suggested again. */
-  async unbanProject(projectId: number): Promise<void> {
-    const ban = await Q.vote.mod.ban.find({ curseforgeProjectId: projectId });
-    if (!ban) {
-      throw new NotFoundError(`Project #${projectId} is not banned`);
-    }
-    await Q.vote.mod.ban.delete({ id: ban.id });
-  }
-
-  /** All bans with cached project info for display. */
-  async listBans(): Promise<
-    Array<{
-      ban: Awaited<ReturnType<typeof Q.vote.mod.ban.findAll>>[number];
-      project: VoteProjectSummary | null;
-    }>
-  > {
-    const bans = await Q.vote.mod.ban.findAll(
-      {},
-      { orderBy: "createdAt", orderDirection: "desc" },
-    );
-    if (bans.length === 0) return [];
-
-    const projects = await Q.curseforge.project.findAll({
-      id: { $in: bans.map((b) => b.curseforgeProjectId) },
-    });
-    const byId = new Map(projects.map((p) => [p.id, p]));
-    return bans.map((ban) => {
-      const project = byId.get(ban.curseforgeProjectId);
-      return {
-        ban,
-        project: project ? this.toProjectSummary(project) : null,
-      };
-    });
+    return this.decorateMods(mods);
   }
 
   /** Dependency-pulled mods and aggregated optional deps, for the admin report. */
@@ -786,19 +719,15 @@ export class VoteService {
     const optionalIds = [
       ...new Set(optionalRows.map((d) => d.curseforgeProjectId)),
     ];
-    const [optionalProjects, optionalBans] = await Promise.all([
+    const optionalProjects =
       optionalIds.length > 0
-        ? Q.curseforge.project.findAll({ id: { $in: optionalIds } })
-        : Promise.resolve([]),
-      optionalIds.length > 0
-        ? Q.vote.mod.ban.findAll({
-            curseforgeProjectId: { $in: optionalIds },
-          })
-        : Promise.resolve([]),
-    ]);
+        ? await Q.curseforge.project.findAll({ id: { $in: optionalIds } })
+        : [];
     const optionalProjectById = new Map(optionalProjects.map((p) => [p.id, p]));
-    const optionalBannedIds = new Set(
-      optionalBans.map((b) => b.curseforgeProjectId),
+    const rejectedProjectIds = new Set(
+      mods
+        .filter((m) => m.status === "rejected")
+        .map((m) => m.curseforgeProjectId),
     );
 
     const optional = optionalIds
@@ -809,7 +738,7 @@ export class VoteService {
           name: project?.name ?? null,
           slug: project?.slug ?? null,
           thumbnailUrl: project?.thumbnailUrl ?? null,
-          banned: optionalBannedIds.has(id),
+          rejected: rejectedProjectIds.has(id),
           inVote: claimedProjectIds.has(id),
           wantedBy: optionalRows
             .filter((d) => d.curseforgeProjectId === id)
@@ -821,24 +750,6 @@ export class VoteService {
       .sort((a, b) => b.wantedBy.length - a.wantedBy.length);
 
     return { pulled, optional };
-  }
-
-  /** Bans for the public "ruled out" list; never exposes who banned. */
-  async listPublicBans(): Promise<
-    Array<{
-      curseforgeProjectId: number;
-      reason: string | null;
-      createdAt: Date;
-      project: VoteProjectSummary | null;
-    }>
-  > {
-    const bans = await this.listBans();
-    return bans.map(({ ban, project }) => ({
-      curseforgeProjectId: ban.curseforgeProjectId,
-      reason: ban.reason,
-      createdAt: ban.createdAt,
-      project,
-    }));
   }
 
   private async getVoteSummary(voteId: number): Promise<VoteSummary> {
@@ -910,7 +821,7 @@ export class VoteService {
     const nameByDiscordId = new Map(
       submitters.map((p) => [p.discordId, p.minecraftUsername]),
     );
-    const depsByMod = await this.buildDependencyInfo(depRows);
+    const depsByMod = await this.buildDependencyInfo(mods[0].voteId, depRows);
 
     return mods.flatMap((mod) => {
       const project = byId.get(mod.curseforgeProjectId);
@@ -931,6 +842,7 @@ export class VoteService {
   }
 
   private async buildDependencyInfo(
+    voteId: number,
     depRows: Awaited<ReturnType<typeof Q.vote.mod.dependency.findAll>>,
   ): Promise<Map<number, VoteModDependencyInfo[]>> {
     const byMod = new Map<number, VoteModDependencyInfo[]>();
@@ -939,14 +851,16 @@ export class VoteService {
     const depProjectIds = [
       ...new Set(depRows.map((d) => d.curseforgeProjectId)),
     ];
-    const [depProjects, depBans] = await Promise.all([
+    const [depProjects, rejectedRows] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: depProjectIds } }),
-      Q.vote.mod.ban.findAll({
+      Q.vote.mod.findAll({
+        voteId,
+        status: "rejected",
         curseforgeProjectId: { $in: depProjectIds },
       }),
     ]);
     const projectById = new Map(depProjects.map((p) => [p.id, p]));
-    const bannedIds = new Set(depBans.map((b) => b.curseforgeProjectId));
+    const rejectedIds = new Set(rejectedRows.map((r) => r.curseforgeProjectId));
 
     for (const dep of depRows) {
       const project = projectById.get(dep.curseforgeProjectId);
@@ -956,7 +870,7 @@ export class VoteService {
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,
-        banned: bannedIds.has(dep.curseforgeProjectId),
+        rejected: rejectedIds.has(dep.curseforgeProjectId),
       };
       const list = byMod.get(dep.voteModId) ?? [];
       list.push(info);
@@ -996,20 +910,17 @@ export class VoteService {
       throw new BadRequestError("The request contains duplicate mods");
     }
 
-    const [bans, claims] = await Promise.all([
-      Q.vote.mod.ban.findAll({ curseforgeProjectId: { $in: projectIds } }),
-      Q.vote.mod.findAll({
-        voteId: vote.id,
-        curseforgeProjectId: { $in: projectIds },
-        status: { $in: USER_VISIBLE_MOD_STATUSES },
-      }),
-    ]);
-    if (bans.length > 0) {
+    const claims = await Q.vote.mod.findAll({
+      voteId: vote.id,
+      curseforgeProjectId: { $in: projectIds },
+    });
+    const rejectedClaims = claims.filter((c) => c.status === "rejected");
+    if (rejectedClaims.length > 0) {
       const labels = await this.projectLabels(
-        bans.map((b) => b.curseforgeProjectId),
+        rejectedClaims.map((c) => c.curseforgeProjectId),
       );
       throw new BadRequestError(
-        `Banned mods cannot be submitted: ${labels.join(", ")}`,
+        `Rejected in this workshop: ${labels.join(", ")}`,
       );
     }
     if (claims.length > 0) {
@@ -1109,36 +1020,6 @@ export class VoteService {
       fileName: entry.fileName,
       fileReleaseType: entry.fileReleaseType,
     });
-  }
-
-  /**
-   * Upsert the ban row and delete every instance of the project across all
-   * votes. Returns the deleted rows.
-   */
-  private async applyBan(
-    tx: TxQueries,
-    projectId: number,
-    adminId: string,
-    reason?: string,
-  ): Promise<VoteMod[]> {
-    const existing = await tx.vote.mod.ban.find({
-      curseforgeProjectId: projectId,
-    });
-    if (!existing) {
-      await tx.vote.mod.ban.create({
-        curseforgeProjectId: projectId,
-        bannedBy: adminId,
-        reason: reason ?? null,
-      });
-    }
-
-    const affected = await tx.vote.mod.findAll({
-      curseforgeProjectId: projectId,
-    });
-    if (affected.length > 0) {
-      await tx.vote.mod.deleteAll({ curseforgeProjectId: projectId });
-    }
-    return affected;
   }
 
   private async assertBaseModpack(projectId: number): Promise<void> {

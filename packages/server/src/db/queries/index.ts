@@ -74,7 +74,6 @@ export { TicketQueries } from "./ticket";
 export { TicketActionQueries } from "./ticket/action";
 export { VoteQueries } from "./vote";
 export { VoteModQueries } from "./vote/mod";
-export { VoteModBanQueries } from "./vote/mod/ban";
 export { VoteModDependencyQueries } from "./vote/mod/dependency";
 export { VoteModUpvoteQueries } from "./vote/mod/upvote";
 export { VotePollQueries } from "./vote/poll";

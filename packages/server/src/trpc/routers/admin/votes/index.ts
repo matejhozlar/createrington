@@ -137,21 +137,29 @@ export const adminVotesRouter = router({
   reviewMod: adminProcedure
     .meta({
       description:
-        "Review a mod: approve, decline (resubmittable), or reject (global ban)",
+        "Review a mod: approve, or reject for this workshop with a reason",
     })
     .input(
       z
         .object({
           voteModId: z.number().int().positive(),
-          action: z.enum(["approve", "decline", "reject"]),
-          reason: z.string().trim().max(500).optional(),
+          action: z.enum(["approve", "reject"]),
+          reason: z
+            .enum([
+              "on_hold",
+              "incompatible",
+              "covered_by_other_mod",
+              "not_a_good_fit",
+            ])
+            .optional(),
+          note: z.string().trim().max(500).optional(),
         })
         .superRefine((data, ctx) => {
-          if (data.action === "reject" && (data.reason?.length ?? 0) < 5) {
+          if (data.action === "reject" && !data.reason) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ["reason"],
-              message: "Rejecting requires a reason of at least 5 characters",
+              message: "Rejecting requires a reason",
             });
           }
         }),
@@ -162,13 +170,13 @@ export const adminVotesRouter = router({
           input.voteModId,
           input.action,
           ctx.user.discordId,
-          input.reason,
+          { reason: input.reason, note: input.note },
         );
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),
           actionType: `vote_mod_${input.action}`,
           description: `Reviewed vote mod #${input.voteModId}: ${input.action}`,
-          reason: input.reason,
+          reason: [input.reason, input.note].filter(Boolean).join(": "),
           metadata: {
             voteModId: input.voteModId,
             curseforgeProjectId: mod.curseforgeProjectId,
@@ -224,54 +232,4 @@ export const adminVotesRouter = router({
   listForumChannels: adminProcedure
     .meta({ description: "Forum channels available for workshop threads" })
     .query(() => listForumChannels()),
-
-  listBans: adminProcedure
-    .meta({ description: "List globally banned projects" })
-    .query(() => voteService.listBans()),
-
-  banProject: adminProcedure
-    .meta({ description: "Globally ban a CurseForge project from voting" })
-    .input(
-      z.object({
-        projectId: z.number().int().positive(),
-        reason: z.string().trim().min(5).max(500),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await voteService.banProject(
-          input.projectId,
-          ctx.user.discordId,
-          input.reason,
-        );
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "vote_project_ban",
-          description: `Banned CurseForge project #${input.projectId} from voting`,
-          reason: input.reason,
-          metadata: { projectId: input.projectId },
-        });
-        return { banned: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
-
-  unbanProject: adminProcedure
-    .meta({ description: "Lift a global project ban" })
-    .input(z.object({ projectId: z.number().int().positive() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        await voteService.unbanProject(input.projectId);
-        await Q.admin.log.action.logAction({
-          ...auditActor(ctx),
-          actionType: "vote_project_unban",
-          description: `Unbanned CurseForge project #${input.projectId}`,
-          metadata: { projectId: input.projectId },
-        });
-        return { unbanned: true };
-      } catch (error) {
-        rethrowTrpc(error);
-      }
-    }),
 });

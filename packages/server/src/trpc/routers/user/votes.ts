@@ -152,7 +152,15 @@ export const userVotesRouter = router({
       }
     }),
 
-  listBans: votingProcedure
-    .meta({ description: "Projects ruled out by the team, with reasons" })
-    .query(() => voteService.listPublicBans()),
+  listRejected: votingProcedure
+    .meta({ description: "Mods ruled out of a workshop, with reasons" })
+    .input(z.object({ voteId: z.number().int().positive() }))
+    .query(async ({ input }) => {
+      try {
+        const mods = await voteService.getRejectedMods(input.voteId);
+        return mods.map((m) => redactMod(m));
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
 });

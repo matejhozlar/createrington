@@ -106,27 +106,23 @@ export async function promoteRequiredDependencies(
     if (deps.length === 0) return;
 
     const depIds = deps.map((dep) => dep.curseforgeProjectId);
-    const [bans, claims] = await Promise.all([
-      Q.vote.mod.ban.findAll({ curseforgeProjectId: { $in: depIds } }),
-      Q.vote.mod.findAll({
-        voteId: vote.id,
-        curseforgeProjectId: { $in: depIds },
-        status: { $in: ["pending", "approved"] },
-      }),
-    ]);
-    const bannedIds = new Set(bans.map((ban) => ban.curseforgeProjectId));
-    const claimedIds = new Set(
-      claims.map((claim) => claim.curseforgeProjectId),
+    const existing = await Q.vote.mod.findAll({
+      voteId: vote.id,
+      curseforgeProjectId: { $in: depIds },
+    });
+    const rejectedIds = new Set(
+      existing
+        .filter((row) => row.status === "rejected")
+        .map((row) => row.curseforgeProjectId),
     );
-    for (const id of bannedIds) {
+    const claimedIds = new Set(existing.map((row) => row.curseforgeProjectId));
+    for (const id of rejectedIds) {
       logger.warn(
-        `Required dependency #${id} of vote mod #${mod.id} is banned and cannot ship`,
+        `Required dependency #${id} of vote mod #${mod.id} is rejected in this workshop and cannot ship`,
       );
     }
 
-    const missing = depIds.filter(
-      (id) => !bannedIds.has(id) && !claimedIds.has(id),
-    );
+    const missing = depIds.filter((id) => !claimedIds.has(id));
     if (missing.length === 0) return;
 
     const projects = await getMods(missing);
@@ -209,6 +205,7 @@ export async function pruneOrphanedDependencies(voteId: number): Promise<void> {
       const orphans = mods.filter(
         (mod) =>
           mod.source === "dependency" &&
+          mod.status === "approved" &&
           !requiredProjectIds.has(mod.curseforgeProjectId),
       );
       if (orphans.length === 0) return;

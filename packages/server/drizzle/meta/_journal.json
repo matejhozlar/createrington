@@ -274,6 +274,13 @@
       "when": 1785444676807,
       "tag": "0038_wandering_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785446761597,
+      "tag": "0039_open_praxagora",
+      "breakpoints": true
     }
   ]
 }

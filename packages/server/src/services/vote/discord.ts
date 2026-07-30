@@ -14,6 +14,7 @@ import type {
   CurseforgeProject,
   Vote,
   VoteMod,
+  VoteModRejectReason,
   VoteModStatus,
 } from "@createrington/shared/db";
 
@@ -25,6 +26,24 @@ const STATUS_TAGS = {
   pending: { name: "Suggested", emoji: "💡" },
   approved: { name: "In the pack", emoji: "✅" },
 } as const;
+
+const REJECT_REASON_TAGS: Record<
+  VoteModRejectReason,
+  { name: string; emoji: string; label: string }
+> = {
+  on_hold: { name: "On hold", emoji: "⏸️", label: "On hold" },
+  incompatible: { name: "Incompatible", emoji: "⚠️", label: "Incompatible" },
+  covered_by_other_mod: {
+    name: "Already covered",
+    emoji: "🔁",
+    label: "Already covered by another mod",
+  },
+  not_a_good_fit: {
+    name: "Not a good fit",
+    emoji: "🚫",
+    label: "Not a good fit for this pack",
+  },
+};
 
 const LIVE_MOD_STATUSES: VoteModStatus[] = ["pending", "approved"];
 
@@ -83,7 +102,10 @@ async function getForum(channelId: string): Promise<ForumChannel | null> {
 async function ensureStatusTags(
   forum: ForumChannel,
 ): Promise<Map<string, string>> {
-  const wanted = Object.values(STATUS_TAGS);
+  const wanted = [
+    ...Object.values(STATUS_TAGS),
+    ...Object.values(REJECT_REASON_TAGS),
+  ];
   let tags = forum.availableTags;
   const missing = wanted.filter(
     (tag) => !tags.some((existing) => existing.name === tag.name),
@@ -194,23 +216,15 @@ export async function announceSuggestion(
 }
 
 /**
- * Reflect a review outcome on the suggestion's thread. Approvals post and
- * retag, declines delete the thread entirely so the forum only holds live
- * suggestions.
+ * Reflect a review outcome on the suggestion's thread: post the result and
+ * retag with either the approved tag or the rejection reason's tag.
  */
 export async function announceReview(
   mod: VoteMod,
-  status: "approved" | "declined",
+  status: "approved" | "rejected",
 ): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
-    if (status === "declined") {
-      if (await removeThread(mod.discordThreadId)) {
-        await clearThreadId(mod.id);
-      }
-      return;
-    }
-
     const lookup = await fetchThread(mod.discordThreadId);
     if (lookup.state === "unavailable") return;
     if (lookup.state === "gone") {
@@ -220,13 +234,25 @@ export async function announceReview(
     const { thread } = lookup;
     if (thread.archived) await thread.setArchived(false);
 
-    if (thread.parent?.type === ChannelType.GuildForum) {
+    const reasonTag = mod.rejectReason
+      ? REJECT_REASON_TAGS[mod.rejectReason]
+      : null;
+    const tagName =
+      status === "approved" ? STATUS_TAGS.approved.name : reasonTag?.name;
+
+    if (tagName && thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
-      const tagId = tags.get(STATUS_TAGS.approved.name);
+      const tagId = tags.get(tagName);
       if (tagId) await thread.setAppliedTags([tagId]);
     }
 
-    await thread.send("✅ **In the pack!** The team approved this suggestion.");
+    const content =
+      status === "approved"
+        ? "✅ **In the pack!** The team approved this suggestion."
+        : `${reasonTag?.emoji ?? "🚫"} **${reasonTag?.label ?? "Rejected"}.**${
+            mod.rejectNote ? ` ${mod.rejectNote}` : ""
+          }`;
+    await thread.send(content);
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
@@ -251,7 +277,7 @@ export async function announcePulledDependencies(
   }
 }
 
-/** Delete the thread of a withdrawn or banned suggestion. */
+/** Delete the withdrawn suggestion's thread. */
 export async function announceRemoval(mod: VoteMod): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
@@ -265,19 +291,13 @@ export async function announceRemoval(mod: VoteMod): Promise<void> {
 
 /**
  * Reconcile a vote's stored thread ids with Discord: forget ids whose threads
- * were deleted, retry thread deletions that previously failed, and recreate
- * missing threads for live suggestions while the vote is open.
+ * were deleted and recreate missing threads for live suggestions while the
+ * vote is open.
  */
 export async function healThreads(vote: Vote, mods: VoteMod[]): Promise<void> {
   for (const mod of mods) {
     if (!mod.discordThreadId) continue;
     try {
-      if (mod.status === "declined") {
-        if (await removeThread(mod.discordThreadId)) {
-          await clearThreadId(mod.id);
-        }
-        continue;
-      }
       const lookup = await fetchThread(mod.discordThreadId);
       if (lookup.state === "gone") await clearThreadId(mod.id);
     } catch (error) {

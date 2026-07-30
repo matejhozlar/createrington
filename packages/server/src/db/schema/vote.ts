@@ -12,6 +12,7 @@ import { sql } from "drizzle-orm";
 import {
   voteStatusEnum,
   voteModStatusEnum,
+  voteModRejectReasonEnum,
   voteModSourceEnum,
   votePollStatusEnum,
   votePollGranularityEnum,
@@ -72,6 +73,8 @@ export const voteMod = pgTable(
     note: text("note"),
     reviewedBy: text("reviewed_by"),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    rejectReason: voteModRejectReasonEnum("reject_reason"),
+    rejectNote: text("reject_note"),
     fileId: integer("file_id"),
     fileName: text("file_name"),
     fileReleaseType: integer("file_release_type"),
@@ -88,11 +91,10 @@ export const voteMod = pgTable(
     index("idx_vote_mod_status").on(table.status),
     index("idx_vote_mod_submitter").on(table.submittedBy),
     index("idx_vote_mod_project").on(table.curseforgeProjectId),
-    // A project is claimed only while pending or approved; declined rows
-    // stay for history and may be resubmitted by anyone
-    uniqueIndex("idx_vote_mod_claim_unique")
-      .on(table.voteId, table.curseforgeProjectId)
-      .where(sql`${table.status} IN ('pending', 'approved')`),
+    uniqueIndex("idx_vote_mod_claim_unique").on(
+      table.voteId,
+      table.curseforgeProjectId,
+    ),
   ],
 );
 
@@ -124,22 +126,6 @@ export const voteModDependency = pgTable(
     ),
   ],
 );
-
-// --- vote_mod_ban ---
-// Global permanent rejection list, survives across votes. Un-ban by deleting.
-
-export const voteModBan = pgTable("vote_mod_ban", {
-  id: serial("id").primaryKey(),
-  curseforgeProjectId: integer("curseforge_project_id")
-    .notNull()
-    .unique()
-    .references(() => curseforgeProject.id),
-  reason: text("reason"),
-  bannedBy: text("banned_by").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
 
 // --- vote_mod_upvote ---
 
