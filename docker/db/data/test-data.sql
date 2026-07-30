@@ -695,7 +695,7 @@ INSERT INTO public.player_ban (
   NOW() - INTERVAL '10 minutes',
   NOW() + INTERVAL '6 hours',
   false,
-  2,
+  1,
   '{"case_id":"BAN-1003","warnings":3}'::jsonb
 );
 
@@ -754,8 +754,15 @@ INSERT INTO public.player_ban (
 
 -- ---------------------------------------------------------------------------
 -- Permanent bans (expires_at MUST be NULL)
--- NOTE: With your current table, these UUIDs can be totally arbitrary.
+-- player_minecraft_uuid is a FK, so the alt accounts carrying these bans are
+-- seeded here first
 -- ---------------------------------------------------------------------------
+INSERT INTO player (minecraft_uuid, minecraft_username, discord_id, online, last_seen, created_at, current_server_id) VALUES
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'GrieferAlt1', '111111111111119901', false, NOW() - INTERVAL '60 days', NOW() - INTERVAL '90 days', NULL),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'ChargebackKid', '111111111111119902', false, NOW() - INTERVAL '91 days', NOW() - INTERVAL '120 days', NULL),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'BotRaidUser', '111111111111119903', false, NOW() - INTERVAL '15 days', NOW() - INTERVAL '30 days', NULL),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'CompromisedAcct', '111111111111119904', false, NOW() - INTERVAL '44 days', NOW() - INTERVAL '100 days', NULL);
+
 INSERT INTO public.player_ban (
   player_minecraft_uuid,
   ban_type,
@@ -959,28 +966,28 @@ INSERT INTO player_minecraft_stats (minecraft_uuid, server_id, stats, data_versi
 -- REWARD CLAIMS
 -- ============================================================================
 
-INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, amount, metadata) VALUES
+INSERT INTO reward_claim (player_minecraft_uuid, reward_type, claimed_at, claim_period_key, amount, metadata) VALUES
 -- Daily login rewards
-('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":45}'),
-('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '2 days', 1000, '{"streak":44}'),
-('550e8400-e29b-41d4-a716-446655440001', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":12}'),
-('550e8400-e29b-41d4-a716-446655440002', 'daily_login', NOW() - INTERVAL '1 day', 1000, '{"streak":8}'),
-('550e8400-e29b-41d4-a716-446655440003', 'daily_login', NOW() - INTERVAL '2 days', 1000, '{"streak":30}'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":45}'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 'daily_login', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":44}'),
+('550e8400-e29b-41d4-a716-446655440001', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":12}'),
+('550e8400-e29b-41d4-a716-446655440002', 'daily_login', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 1000, '{"streak":8}'),
+('550e8400-e29b-41d4-a716-446655440003', 'daily_login', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 1000, '{"streak":30}'),
 
 -- Weekly playtime rewards
-('091b900c-4174-478c-900c-a0fe5a31a329', 'weekly_playtime', NOW() - INTERVAL '3 days', 25000, '{"hours_played":42,"week":"2026-W05"}'),
-('550e8400-e29b-41d4-a716-446655440001', 'weekly_playtime', NOW() - INTERVAL '3 days', 15000, '{"hours_played":28,"week":"2026-W05"}'),
-('550e8400-e29b-41d4-a716-446655440007', 'weekly_playtime', NOW() - INTERVAL '3 days', 10000, '{"hours_played":18,"week":"2026-W05"}'),
+('091b900c-4174-478c-900c-a0fe5a31a329', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 25000, '{"hours_played":42,"week":"2026-W05"}'),
+('550e8400-e29b-41d4-a716-446655440001', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 15000, '{"hours_played":28,"week":"2026-W05"}'),
+('550e8400-e29b-41d4-a716-446655440007', 'weekly_playtime', NOW() - INTERVAL '3 days', '2026-W05', 10000, '{"hours_played":18,"week":"2026-W05"}'),
 
 -- Vote rewards
-('550e8400-e29b-41d4-a716-446655440001', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
-('550e8400-e29b-41d4-a716-446655440002', 'vote', NOW() - INTERVAL '1 day', 500, '{"site":"minecraft-server-list"}'),
-('550e8400-e29b-41d4-a716-446655440005', 'vote', NOW() - INTERVAL '2 days', 500, '{"site":"minecraft-server-list"}'),
+('550e8400-e29b-41d4-a716-446655440001', 'vote', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
+('550e8400-e29b-41d4-a716-446655440002', 'vote', NOW() - INTERVAL '1 day', to_char((NOW() - INTERVAL '1 day')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
+('550e8400-e29b-41d4-a716-446655440005', 'vote', NOW() - INTERVAL '2 days', to_char((NOW() - INTERVAL '2 days')::date, 'YYYY-MM-DD'), 500, '{"site":"minecraft-server-list"}'),
 
 -- Event participation
-('550e8400-e29b-41d4-a716-446655440007', 'event', NOW() - INTERVAL '10 days', 50000, '{"event":"winter_games_2026","placement":1}'),
-('550e8400-e29b-41d4-a716-446655440001', 'event', NOW() - INTERVAL '10 days', 25000, '{"event":"winter_games_2026","placement":2}'),
-('550e8400-e29b-41d4-a716-446655440002', 'event', NOW() - INTERVAL '10 days', 10000, '{"event":"winter_games_2026","placement":3}');
+('550e8400-e29b-41d4-a716-446655440007', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 50000, '{"event":"winter_games_2026","placement":1}'),
+('550e8400-e29b-41d4-a716-446655440001', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 25000, '{"event":"winter_games_2026","placement":2}'),
+('550e8400-e29b-41d4-a716-446655440002', 'event', NOW() - INTERVAL '10 days', 'winter_games_2026', 10000, '{"event":"winter_games_2026","placement":3}');
 
 
 -- ============================================================================
