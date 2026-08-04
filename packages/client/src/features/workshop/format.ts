@@ -27,6 +27,32 @@ export function formatDate(value: string | Date | null): string {
   });
 }
 
+export function agoLabel(value: string | Date): string {
+  const days = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000),
+  );
+  return days === 0 ? "today" : `${days}d ago`;
+}
+
+export function modInitials(name: string): string {
+  const letters = name
+    .split(/\s+/)
+    .map((word) => word.replace(/[^a-z0-9]/gi, "").charAt(0))
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  return letters || "?";
+}
+
+export function projectCategories(categories: unknown): string[] {
+  if (!Array.isArray(categories)) return [];
+  return categories.flatMap((category) =>
+    typeof category?.name === "string" ? [category.name as string] : [],
+  );
+}
+
 export function modCredit(source: string, submitterName: string | null) {
   if (source === "dependency") {
     return { isAdmin: true, verb: "Pulled in as a", name: "dependency" };

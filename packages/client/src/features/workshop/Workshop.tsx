@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mcHeadsAvatar } from "@/lib/external-urls";
-import { formatDate, loaderName } from "./format";
+import { formatDate, loaderName, modInitials } from "./format";
 
 const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
 
@@ -275,15 +275,4 @@ function EarlierWorkshops({ workshops }: { workshops: WorkshopListItem[] }) {
       </div>
     </div>
   );
-}
-
-function modInitials(name: string): string {
-  const letters = name
-    .split(/\s+/)
-    .map((word) => word.replace(/[^a-z0-9]/gi, "").charAt(0))
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-  return letters || "?";
 }

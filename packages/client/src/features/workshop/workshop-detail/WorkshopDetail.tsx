@@ -1,45 +1,154 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { AlignJustify, ArrowLeft, LayoutGrid, Search } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
-import { loaderName } from "../format";
-import { ModCard } from "./components/ModCard";
+import { loaderName, modInitials, projectCategories } from "../format";
+import {
+  Leaderboard,
+  type RaceItem,
+  type RaceMod,
+} from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 import { SuggestionPanel } from "./components/SuggestionPanel";
+
+const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
+const WORDMARK_IMAGE = "/assets/createrington-woodmark.png";
+const PAGE_SIZE = 10;
+const VIEW_STORAGE_KEY = "workshop-detail-view";
+
+type SortMode = "top" | "new" | "votes";
+type ViewMode = "list" | "grid";
+
+function byRace(a: RaceMod, b: RaceMod): number {
+  return (
+    b.upvoteCount - a.upvoteCount ||
+    new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+    a.id - b.id
+  );
+}
 
 export function WorkshopDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const toast = useToastActions();
   const utils = trpc.useUtils();
+
   const [openModId, setOpenModId] = useState<number | null>(null);
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sortMode, setSortMode] = useState<SortMode>("top");
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const [view, setView] = useState<ViewMode>(() =>
+    localStorage.getItem(VIEW_STORAGE_KEY) === "grid" ? "grid" : "list",
+  );
+
+  const query = searchQuery.trim().toLowerCase();
+  const searching = query.length > 0;
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
     { enabled: !!slug, retry: false },
   );
-
   const workshopId = workshopQuery.data?.workshop.id;
+
   const myUpvotesQuery = trpc.user.workshops.myUpvotes.useQuery(
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
-  const upvotedModIds = new Set(myUpvotesQuery.data?.modIds ?? []);
+  const rejectedQuery = trpc.user.workshops.listRejected.useQuery(
+    { workshopId: workshopId! },
+    { enabled: workshopId !== undefined && searching },
+  );
 
   const upvoteMutation = trpc.user.workshops.upvoteMod.useMutation({
-    onSuccess: () => {
+    onMutate: async ({ workshopModId }) => {
+      if (!slug || workshopId === undefined) return;
+      await Promise.all([
+        utils.user.workshops.get.cancel({ slug }),
+        utils.user.workshops.myUpvotes.cancel({ workshopId }),
+      ]);
+      const previousGet = utils.user.workshops.get.getData({ slug });
+      const previousUpvotes = utils.user.workshops.myUpvotes.getData({
+        workshopId,
+      });
+      const removing = previousUpvotes?.modIds.includes(workshopModId) ?? false;
+      utils.user.workshops.get.setData(
+        { slug },
+        (data) =>
+          data && {
+            ...data,
+            mods: data.mods.map((mod) =>
+              mod.id === workshopModId
+                ? {
+                    ...mod,
+                    upvoteCount: Math.max(
+                      0,
+                      mod.upvoteCount + (removing ? -1 : 1),
+                    ),
+                  }
+                : mod,
+            ),
+          },
+      );
+      utils.user.workshops.myUpvotes.setData(
+        { workshopId },
+        (data) =>
+          data && {
+            ...data,
+            modIds: removing
+              ? data.modIds.filter((id) => id !== workshopModId)
+              : [...data.modIds, workshopModId],
+          },
+      );
+      return { previousGet, previousUpvotes };
+    },
+    onError: (error, _input, context) => {
+      if (slug && context?.previousGet) {
+        utils.user.workshops.get.setData({ slug }, context.previousGet);
+      }
+      if (workshopId !== undefined && context?.previousUpvotes) {
+        utils.user.workshops.myUpvotes.setData(
+          { workshopId },
+          context.previousUpvotes,
+        );
+      }
+      toast.error(error.message);
+    },
+    onSettled: () => {
+      if (slug) utils.user.workshops.get.invalidate({ slug });
       if (workshopId !== undefined) {
         utils.user.workshops.myUpvotes.invalidate({ workshopId });
       }
-      utils.user.workshops.get.invalidate({ slug: slug! });
     },
-    onError: (err) => toast.error(err.message),
   });
+
+  const changeView = (next: ViewMode) => {
+    localStorage.setItem(VIEW_STORAGE_KEY, next);
+    setView(next);
+  };
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
@@ -49,8 +158,8 @@ export function WorkshopDetail() {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-24 w-full rounded-xl" />
           <Skeleton className="h-48 w-full rounded-xl" />
+          <Skeleton className="h-16 w-full rounded-xl" />
           <Skeleton className="h-96 w-full rounded-xl" />
         </div>
       </div>
@@ -58,123 +167,327 @@ export function WorkshopDetail() {
   }
 
   const { workshop, mods } = workshopQuery.data;
-  const approved = mods.filter((m) => m.status === "approved");
-  const pending = mods.filter((m) => m.status === "pending");
   const isOpen = workshop.status === "open";
+  const upvotedIds = new Set(myUpvotesQuery.data?.modIds ?? []);
+
+  const approved = mods.filter((mod) => mod.status === "approved");
+  const pending = mods.filter((mod) => mod.status === "pending");
+  const ranked = [...pending].sort(byRace);
+  const rankById = new Map(ranked.map((mod, index) => [mod.id, index + 1]));
+  const maxRaceCount = Math.max(1, ...ranked.map((mod) => mod.upvoteCount));
+
+  const categories = [
+    ...new Set(
+      mods.flatMap((mod) => projectCategories(mod.project.categories)),
+    ),
+  ].sort();
+
+  let visible: RaceMod[] = searching
+    ? [...mods, ...(rejectedQuery.data ?? [])].sort(byRace)
+    : ranked;
+  if (sortMode === "new") {
+    visible = [...visible].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() ||
+        b.id - a.id,
+    );
+  }
+  if (sortMode === "votes") {
+    visible = visible.filter((mod) => upvotedIds.has(mod.id));
+  }
+  if (category !== "all") {
+    visible = visible.filter((mod) =>
+      projectCategories(mod.project.categories).includes(category),
+    );
+  }
+  if (searching) {
+    visible = visible.filter((mod) =>
+      `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.submitterName ?? ""}`
+        .toLowerCase()
+        .includes(query),
+    );
+  }
+
+  const filtering = searching || sortMode === "votes" || category !== "all";
+  const shown = filtering ? visible.length : shownCount;
+  const remaining = visible.length - shown;
+
+  const items: RaceItem[] = visible.slice(0, shown).map((mod) => ({
+    mod,
+    rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
+    barPct:
+      mod.status === "pending"
+        ? Math.round((mod.upvoteCount / maxRaceCount) * 92)
+        : 0,
+    upvoted: upvotedIds.has(mod.id),
+    canUpvote:
+      isOpen && mod.status === "pending" && mod.submittedBy !== user?.discordId,
+    ownSuggestion: mod.submittedBy === user?.discordId,
+  }));
+
+  const budget = myUpvotesQuery.data;
+  const votesLeft = budget
+    ? Math.max(
+        0,
+        budget.maxUpvotes -
+          pending.filter((mod) => upvotedIds.has(mod.id)).length,
+      )
+    : null;
 
   return (
-    <div className="px-5 py-10 md:px-8">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <div>
-          <Link
-            to="/workshop"
-            className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="size-4" />
-            All workshops
-          </Link>
+    <div className="relative min-h-screen">
+      <div className="absolute inset-x-0 top-0 h-[340px] overflow-hidden">
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          className="h-full w-full object-cover grayscale-50"
+        />
+        <div className="absolute inset-0 bg-black/30" />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(to top, var(--background) 0%, oklch(from var(--background) l c h / 0.85) 45%, oklch(from var(--background) l c h / 0.4) 100%)",
+          }}
+        />
+      </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-bold">{workshop.name}</h1>
-              <Badge
-                variant="outline"
-                className={
-                  isOpen
-                    ? "border-green-500/50 bg-green-500/10 text-green-400"
-                    : "border-zinc-500/50 bg-zinc-500/10 text-zinc-400"
-                }
-              >
-                {isOpen ? "Open" : "Closed"}
-              </Badge>
-            </div>
-            {workshop.description && (
-              <p className="max-w-3xl text-muted-foreground">
-                {workshop.description}
-              </p>
-            )}
-            <div className="flex gap-2">
+      <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
+        <Link
+          to="/workshop"
+          className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-[15px]" />
+          Back
+        </Link>
+
+        <header className="mt-5 flex flex-wrap items-center justify-between gap-6">
+          <div className="max-w-[620px] min-w-0">
+            <div className="flex flex-wrap items-center gap-3.5">
+              <h1 className="text-[38px] leading-[42px] font-bold text-shadow-[0_2px_8px_rgb(0_0_0/0.4)]">
+                {workshop.name}
+              </h1>
               <Badge variant="outline">{workshop.gameVersion}</Badge>
               <Badge variant="outline">
                 {loaderName(workshop.modLoaderType)}
               </Badge>
             </div>
-            {user && isOpen && myUpvotesQuery.data && (
-              <p className="text-sm text-muted-foreground">
-                You have{" "}
-                <span className="font-semibold text-foreground">
-                  {myUpvotesQuery.data.votesRemaining} of{" "}
-                  {myUpvotesQuery.data.maxUpvotes}
-                </span>{" "}
-                workshops left for pending suggestions.
+            {workshop.description && (
+              <p className="mt-3 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
+                {workshop.description}
               </p>
             )}
+            <div className="mt-5">
+              {isOpen ? (
+                <Button size="lg" onClick={() => setSuggestOpen(true)}>
+                  Suggest mods
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  This workshop is closed for suggestions.
+                </p>
+              )}
+            </div>
           </div>
-        </div>
+          <img
+            src={WORDMARK_IMAGE}
+            alt="Createrington"
+            className="hidden w-[280px] drop-shadow-[0_6px_14px_rgb(0_0_0/0.55)] md:block"
+          />
+        </header>
 
-        {user && isOpen && <SuggestionPanel workshop={workshop} />}
+        <main className="mt-10 flex flex-col gap-6">
+          {approved.length > 0 && <ApprovedStrip mods={approved} />}
 
-        <section className="space-y-4">
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-lg font-semibold">In the pack</h2>
-            <span className="text-sm text-muted-foreground">
-              {approved.length} mod{approved.length !== 1 && "s"}
-            </span>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="text-2xl leading-[30px] font-semibold">
+              {searching ? "Suggestions" : "Top suggested mods"}
+            </h2>
+            {isOpen && budget && votesLeft !== null && (
+              <span className="text-[13px] text-muted-foreground">
+                <span className="font-semibold text-foreground">
+                  {votesLeft}
+                </span>{" "}
+                of {budget.maxUpvotes} votes left
+              </span>
+            )}
           </div>
-          {approved.length === 0 ? (
-            <p className="rounded-xl border border-dashed py-10 text-center text-sm text-muted-foreground">
-              Nothing approved yet, be the first to suggest something!
-            </p>
+
+          <div className="-mt-2 flex flex-wrap items-center gap-2.5">
+            <div className="relative max-w-[420px] min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search all suggestions..."
+                className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
+              />
+            </div>
+            <span className="flex-1" />
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((name) => (
+                  <SelectItem key={name} value={name}>
+                    {name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={sortMode}
+              onValueChange={(value) => setSortMode(value as SortMode)}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="top">Most upvoted</SelectItem>
+                <SelectItem value="new">Newest first</SelectItem>
+                <SelectItem value="votes">My votes</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-border">
+              <ViewButton
+                active={view === "list"}
+                label="List view"
+                onClick={() => changeView("list")}
+              >
+                <AlignJustify className="size-4" />
+              </ViewButton>
+              <ViewButton
+                active={view === "grid"}
+                label="Grid view"
+                onClick={() => changeView("grid")}
+              >
+                <LayoutGrid className="size-4" />
+              </ViewButton>
+            </div>
+          </div>
+
+          {items.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
+              {filtering
+                ? "No suggestions match your search."
+                : "No suggestions yet, be the first to suggest a mod!"}
+            </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {approved.map((mod) => (
-                <ModCard
-                  key={mod.id}
-                  mod={mod}
-                  onClick={() => setOpenModId(mod.id)}
-                  upvoted={upvotedModIds.has(mod.id)}
-                  canUpvote={isOpen && mod.submittedBy !== user?.discordId}
-                  onUpvote={() =>
-                    upvoteMutation.mutate({ workshopModId: mod.id })
-                  }
-                />
-              ))}
+            <Leaderboard
+              items={items}
+              view={view}
+              onOpen={setOpenModId}
+              onUpvote={(workshopModId) =>
+                upvoteMutation.mutate({ workshopModId })
+              }
+            />
+          )}
+
+          {remaining > 0 && (
+            <div className="-mt-1 flex justify-center">
+              <Button
+                variant="secondary"
+                onClick={() => setShownCount(shown + PAGE_SIZE)}
+              >
+                Show {Math.min(remaining, PAGE_SIZE)} more
+              </Button>
             </div>
           )}
-        </section>
-
-        {pending.length > 0 && (
-          <section className="space-y-4">
-            <div className="flex items-baseline gap-3">
-              <h2 className="text-lg font-semibold">Awaiting review</h2>
-              <span className="text-sm text-muted-foreground">
-                {pending.length} suggestion{pending.length !== 1 && "s"}
-              </span>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {pending.map((mod) => (
-                <ModCard
-                  key={mod.id}
-                  mod={mod}
-                  onClick={() => setOpenModId(mod.id)}
-                  upvoted={upvotedModIds.has(mod.id)}
-                  canUpvote={isOpen && mod.submittedBy !== user?.discordId}
-                  onUpvote={() =>
-                    upvoteMutation.mutate({ workshopModId: mod.id })
-                  }
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        <ModDetailDialog
-          workshopModId={openModId}
-          onOpenChange={(open) => {
-            if (!open) setOpenModId(null);
-          }}
-        />
+        </main>
       </div>
+
+      <Sheet open={suggestOpen} onOpenChange={setSuggestOpen}>
+        <SheetContent className="w-full sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Suggest mods</SheetTitle>
+            <SheetDescription>
+              Search CurseForge and use one of your suggestion slots. Every
+              suggestion is reviewed by the team.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <SuggestionPanel workshop={workshop} />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <ModDetailDialog
+        workshopModId={openModId}
+        onOpenChange={(open) => {
+          if (!open) setOpenModId(null);
+        }}
+      />
     </div>
+  );
+}
+
+function ApprovedStrip({ mods }: { mods: RaceMod[] }) {
+  const shown = mods.slice(0, 4);
+  const extra = mods.length - shown.length;
+  return (
+    <div className="flex items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5">
+      <span className="text-[13px] font-semibold whitespace-nowrap">
+        Already in the pack
+      </span>
+      <span className="flex items-center gap-1.5">
+        {shown.map((mod) =>
+          mod.project.thumbnailUrl ? (
+            <img
+              key={mod.id}
+              src={mod.project.thumbnailUrl}
+              alt={mod.project.name}
+              title={mod.project.name}
+              width={32}
+              height={32}
+              className="size-8 rounded-lg object-cover"
+            />
+          ) : (
+            <span
+              key={mod.id}
+              title={mod.project.name}
+              className="flex size-8 items-center justify-center rounded-lg bg-secondary text-[10px] font-semibold text-muted-foreground"
+            >
+              {modInitials(mod.project.name)}
+            </span>
+          ),
+        )}
+        {extra > 0 && (
+          <span className="flex size-8 items-center justify-center rounded-lg bg-secondary text-[10px] font-semibold text-muted-foreground">
+            +{extra}
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function ViewButton({
+  active,
+  label,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        "flex w-10 cursor-pointer items-center justify-center transition-colors",
+        active
+          ? "bg-[var(--primary-glow)] text-primary"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
