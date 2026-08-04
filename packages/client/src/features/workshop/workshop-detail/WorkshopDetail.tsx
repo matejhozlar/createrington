@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlignJustify, ArrowLeft, LayoutGrid, Search } from "lucide-react";
-import { trpc } from "@/lib/trpc";
+import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ const VIEW_STORAGE_KEY = "workshop-detail-view";
 
 type SortMode = "top" | "new" | "votes";
 type ViewMode = "list" | "grid";
+type PackMod = RouterOutput["user"]["workshops"]["pack"][number];
 
 function byRace(a: RaceMod, b: RaceMod): number {
   return (
@@ -209,6 +210,23 @@ export function WorkshopDetail() {
       `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.submitterName ?? ""}`
         .toLowerCase()
         .includes(query),
+    );
+  }
+
+  // Suggestion-origin members already surface via their approved suggestion row
+  let packMatches =
+    searching && sortMode !== "votes"
+      ? packMods.filter(
+          (row) =>
+            row.origin !== "suggestion" &&
+            `${row.project.name} ${row.project.primaryAuthor ?? ""}`
+              .toLowerCase()
+              .includes(query),
+        )
+      : [];
+  if (category !== "all") {
+    packMatches = packMatches.filter((row) =>
+      projectCategories(row.project.categories).includes(category),
     );
   }
 
@@ -399,6 +417,8 @@ export function WorkshopDetail() {
               </Button>
             </div>
           )}
+
+          {packMatches.length > 0 && <PackSearchResults mods={packMatches} />}
         </main>
       </div>
 
@@ -423,6 +443,80 @@ export function WorkshopDetail() {
           if (!open) setOpenModId(null);
         }}
       />
+    </div>
+  );
+}
+
+function packCredit(row: PackMod): string {
+  if (row.origin === "admin") {
+    return `Added by ${row.addedByName ?? "an admin"}`;
+  }
+  if (row.origin === "dependency") {
+    return row.requiredBy.length > 0
+      ? `Required by ${row.requiredBy.map((r) => r.name).join(", ")}`
+      : "Required dependency";
+  }
+  return row.liveInVersion
+    ? `Added with ${row.liveInVersion}`
+    : "Shipped with the pack";
+}
+
+function PackSearchResults({ mods }: { mods: PackMod[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold text-muted-foreground">
+        Already in the pack
+      </h3>
+      {mods.map((row) => (
+        <a
+          key={row.id}
+          href={row.project.websiteUrl ?? undefined}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40"
+        >
+          {row.project.thumbnailUrl ? (
+            <img
+              src={row.project.thumbnailUrl}
+              alt=""
+              loading="lazy"
+              className="size-9 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-muted-foreground">
+              {modInitials(row.project.name)}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">
+              {row.project.name}
+              {row.project.primaryAuthor && (
+                <span className="ml-1.5 font-normal text-muted-foreground">
+                  by {row.project.primaryAuthor}
+                </span>
+              )}
+            </div>
+            <div className="truncate text-xs text-muted-foreground">
+              {packCredit(row)}
+            </div>
+          </div>
+          {row.liveAt ? (
+            <Badge
+              variant="outline"
+              className="shrink-0 border-green-500/50 bg-green-500/10 text-green-400"
+            >
+              Live
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="shrink-0 border-sky-500/50 bg-sky-500/10 text-sky-400"
+            >
+              Coming next update
+            </Badge>
+          )}
+        </a>
+      ))}
     </div>
   );
 }
