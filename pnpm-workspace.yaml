@@ -50,3 +50,6 @@ packageExtensions:
     peerDependenciesMeta:
       zod:
         optional: true
+
+minimumReleaseAgeExclude:
+  - createrington-skin-api@2.7.0

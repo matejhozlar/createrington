@@ -31,7 +31,7 @@
     "@trpc/react-query": "^11.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "createrington-skin-api": "^2.1.0",
+    "createrington-skin-api": "^2.7.0",
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-fade": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
