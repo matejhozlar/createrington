@@ -65,7 +65,14 @@ export function ModDetailDialog({
   const screenshots = (
     (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
   ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
-  const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
+  const status = data
+    ? data.mod.live
+      ? {
+          label: "Live",
+          className: "border-green-500/50 bg-green-500/10 text-green-400",
+        }
+      : MOD_STATUS_STYLES[data.mod.status]
+    : null;
   const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (

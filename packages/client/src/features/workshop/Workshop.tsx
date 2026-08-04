@@ -83,9 +83,7 @@ export function Workshop() {
 
 function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
   const summary = workshop.summary;
-  const suggestionCount = summary
-    ? summary.approvedModCount + summary.pendingModCount
-    : 0;
+  const suggestionCount = summary?.suggestionCount ?? 0;
 
   return (
     <Card className="grid gap-0 overflow-hidden py-0 lg:grid-cols-[minmax(0,1fr)_360px]">

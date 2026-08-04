@@ -107,6 +107,7 @@ export interface WorkshopTopMod {
 export interface WorkshopSummary {
   approvedModCount: number;
   pendingModCount: number;
+  suggestionCount: number;
   participantCount: number;
   participantSample: WorkshopParticipantSample[];
   topMods: WorkshopTopMod[];
@@ -901,6 +902,7 @@ export class WorkshopService {
     return {
       approvedModCount,
       pendingModCount,
+      suggestionCount: mods.length,
       participantCount: participantIds.length,
       participantSample,
       topMods,
