@@ -282,12 +282,22 @@ function HeartOrBadge({
 }) {
   const { mod } = item;
   if (mod.status === "approved") {
-    return (
+    return mod.live ? (
       <Badge
         variant="outline"
         className="relative shrink-0 border-green-500/50 bg-green-500/10 text-green-400"
+        title={
+          mod.liveInVersion ? `Live since ${mod.liveInVersion}` : undefined
+        }
       >
-        In the pack
+        Live
+      </Badge>
+    ) : (
+      <Badge
+        variant="outline"
+        className="relative shrink-0 border-sky-500/50 bg-sky-500/10 text-sky-400"
+      >
+        Approved
       </Badge>
     );
   }

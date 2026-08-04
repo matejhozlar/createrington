@@ -82,6 +82,10 @@ export function WorkshopDetail() {
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined && searching },
   );
+  const packQuery = trpc.user.workshops.pack.useQuery(
+    { workshopId: workshopId! },
+    { enabled: workshopId !== undefined },
+  );
 
   const upvoteMutation = trpc.user.workshops.upvoteMod.useMutation({
     onMutate: async ({ workshopModId }) => {
@@ -170,7 +174,7 @@ export function WorkshopDetail() {
   const isOpen = workshop.status === "open";
   const upvotedIds = new Set(myUpvotesQuery.data?.modIds ?? []);
 
-  const approved = mods.filter((mod) => mod.status === "approved");
+  const packMods = packQuery.data ?? [];
   const pending = mods.filter((mod) => mod.status === "pending");
   const ranked = [...pending].sort(byRace);
   const rankById = new Map(ranked.map((mod, index) => [mod.id, index + 1]));
@@ -297,7 +301,7 @@ export function WorkshopDetail() {
         </header>
 
         <main className="mt-10 flex flex-col gap-6">
-          {approved.length > 0 && <ApprovedStrip mods={approved} />}
+          {packMods.length > 0 && <ApprovedStrip mods={packMods} />}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-2xl leading-[30px] font-semibold">
@@ -423,7 +427,14 @@ export function WorkshopDetail() {
   );
 }
 
-function ApprovedStrip({ mods }: { mods: RaceMod[] }) {
+function ApprovedStrip({
+  mods,
+}: {
+  mods: Array<{
+    id: number;
+    project: { name: string; thumbnailUrl: string | null };
+  }>;
+}) {
   const shown = mods.slice(0, 4);
   const extra = mods.length - shown.length;
   return (

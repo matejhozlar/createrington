@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
   PackagePlus,
   Settings2,
-  Shield,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
@@ -67,6 +66,13 @@ type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
 const WORKSHOP_STATUSES = ["draft", "open", "closed", "archived"] as const;
 
+const ORIGIN_LABELS: Record<string, string> = {
+  suggestion: "Suggestion",
+  admin: "Admin add",
+  dependency: "Dependency",
+  import: "Pack import",
+};
+
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
   const workshopId = Number(id);
@@ -81,6 +87,14 @@ export function AdminWorkshopDetail() {
     { enabled: Number.isFinite(workshopId) },
   );
   const depReportQuery = trpc.admin.workshops.dependencyReport.useQuery(
+    { workshopId },
+    { enabled: Number.isFinite(workshopId) },
+  );
+  const packModsQuery = trpc.admin.workshops.listPackMods.useQuery(
+    { workshopId },
+    { enabled: Number.isFinite(workshopId) },
+  );
+  const attentionQuery = trpc.admin.workshops.attention.useQuery(
     { workshopId },
     { enabled: Number.isFinite(workshopId) },
   );
@@ -102,9 +116,28 @@ export function AdminWorkshopDetail() {
     utils.admin.workshops.getMod.invalidate();
     utils.admin.workshops.searchProjects.invalidate({ workshopId });
     utils.admin.workshops.dependencyReport.invalidate({ workshopId });
+    utils.admin.workshops.listPackMods.invalidate({ workshopId });
+    utils.admin.workshops.attention.invalidate({ workshopId });
     utils.user.workshops.get.invalidate();
     utils.user.workshops.listRejected.invalidate({ workshopId });
+    utils.user.workshops.pack.invalidate({ workshopId });
   };
+
+  const removePackModMutation = trpc.admin.modpacks.removeMod.useMutation({
+    onSuccess: () => {
+      toast.success("Removed from the pack");
+      invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
+    onSuccess: () => {
+      toast.success("Checked against the published pack");
+      invalidate();
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (_mod, variables) => {
@@ -290,9 +323,6 @@ export function AdminWorkshopDetail() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5 text-sm">
-                            {mod.source === "admin" && (
-                              <Shield className="size-3 text-primary" />
-                            )}
                             {mod.submitterName ?? mod.submittedBy}
                           </div>
                         </TableCell>
@@ -370,6 +400,155 @@ export function AdminWorkshopDetail() {
                       </TableRow>
                     );
                   })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {(attentionQuery.data?.length ?? 0) > 0 && (
+          <Card className="border-amber-500/40">
+            <CardContent className="space-y-2 pt-6">
+              <h3 className="text-sm font-semibold">Needs attention</h3>
+              {attentionQuery.data!.map((item) => (
+                <div
+                  key={`${item.type}-${item.curseforgeProjectId}`}
+                  className="text-sm text-muted-foreground"
+                >
+                  <span className="font-medium text-foreground">
+                    {item.name}
+                  </span>{" "}
+                  {item.type === "dropped_from_pack" &&
+                    "was live but is missing from the latest published pack."}
+                  {item.type === "shipped_unreviewed" &&
+                    "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester."}
+                  {item.type === "shipped_rejected" &&
+                    "shipped in the pack but is rejected in this workshop."}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Modpack members</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={reconcileMutation.isPending || !workshop}
+                onClick={() =>
+                  workshop &&
+                  reconcileMutation.mutate({ modpackId: workshop.modpackId })
+                }
+              >
+                {reconcileMutation.isPending && (
+                  <Loader2 className="size-4 animate-spin" />
+                )}
+                Check published pack
+              </Button>
+            </div>
+            {packModsQuery.isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (packModsQuery.data?.length ?? 0) === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Nothing in the pack yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mod</TableHead>
+                    <TableHead>Origin</TableHead>
+                    <TableHead>Credit</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {packModsQuery.data?.map((row) => (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {row.project.thumbnailUrl && (
+                            <img
+                              src={row.project.thumbnailUrl}
+                              alt=""
+                              className="size-8 rounded"
+                            />
+                          )}
+                          <div>
+                            <div className="font-medium">
+                              {row.project.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {row.project.slug}
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {ORIGIN_LABELS[row.origin] ?? row.origin}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {row.origin === "suggestion" &&
+                          `suggested by ${row.suggestedByName ?? "a player"}`}
+                        {row.origin === "admin" &&
+                          `added by ${row.addedByName ?? row.addedBy ?? "an admin"}`}
+                        {row.origin === "dependency" &&
+                          (row.requiredBy.length > 0
+                            ? `required by ${row.requiredBy.map((r) => r.name).join(", ")}`
+                            : "required dependency")}
+                        {row.origin === "import" &&
+                          (row.liveInVersion
+                            ? `added with ${row.liveInVersion}`
+                            : "from the published pack")}
+                      </TableCell>
+                      <TableCell>
+                        {row.liveAt ? (
+                          <Badge
+                            variant="outline"
+                            className="border-green-500/50 bg-green-500/10 text-xs text-green-400"
+                          >
+                            {row.liveInVersion
+                              ? `Live · ${row.liveInVersion}`
+                              : "Live"}
+                          </Badge>
+                        ) : row.droppedFromManifestAt ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-500/50 bg-amber-500/10 text-xs text-amber-400"
+                          >
+                            Missing from pack
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-sky-500/50 bg-sky-500/10 text-xs text-sky-400"
+                          >
+                            Coming next update
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {row.origin !== "suggestion" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={removePackModMutation.isPending}
+                            onClick={() =>
+                              removePackModMutation.mutate({
+                                modpackModId: row.id,
+                              })
+                            }
+                          >
+                            Remove
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             )}

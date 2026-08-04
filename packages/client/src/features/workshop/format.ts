@@ -53,16 +53,8 @@ export function projectCategories(categories: unknown): string[] {
   );
 }
 
-export function modCredit(source: string, submitterName: string | null) {
-  if (source === "dependency") {
-    return { isAdmin: true, verb: "Pulled in as a", name: "dependency" };
-  }
-  const isAdmin = source === "admin";
-  return {
-    isAdmin,
-    verb: isAdmin ? "Added by" : "Suggested by",
-    name: submitterName ?? (isAdmin ? "an admin" : "a player"),
-  };
+export function modCredit(submitterName: string | null) {
+  return { verb: "Suggested by", name: submitterName ?? "a player" };
 }
 
 export const MOD_STATUS_STYLES: Record<

@@ -73,6 +73,15 @@ export function AdminWorkshop() {
   const [maxUpvotes, setMaxUpvotes] = useState("5");
   const [forumChannelId, setForumChannelId] = useState("");
   const [basePackId, setBasePackId] = useState("");
+  const [modpackSel, setModpackSel] = useState("new");
+  const [modpackName, setModpackName] = useState("");
+
+  const modpacksQuery = trpc.admin.modpacks.list.useQuery();
+
+  const createModpackMutation = trpc.admin.modpacks.create.useMutation({
+    onSuccess: () => utils.admin.modpacks.list.invalidate(),
+    onError: (err) => toast.error(err.message),
+  });
 
   const createMutation = trpc.admin.workshops.create.useMutation({
     onSuccess: (workshop) => {
@@ -84,12 +93,26 @@ export function AdminWorkshop() {
     onError: (err) => toast.error(err.message),
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    let modpackId: number;
+    if (modpackSel === "new") {
+      try {
+        const modpack = await createModpackMutation.mutateAsync({
+          name: modpackName.trim(),
+        });
+        modpackId = modpack.id;
+      } catch {
+        return;
+      }
+    } else {
+      modpackId = Number(modpackSel);
+    }
     createMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
       gameVersion: gameVersion.trim(),
       modLoaderType: Number(loaderType),
+      modpackId,
       maxModsPerUser: Number(maxMods) || 5,
       maxUpvotesPerUser: Number(maxUpvotes) || 5,
       discordForumChannelId: forumChannelId.trim() || undefined,
@@ -225,6 +248,33 @@ export function AdminWorkshop() {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            <div className="space-y-2">
+              <Label>Modpack this workshop feeds</Label>
+              <Select value={modpackSel} onValueChange={setModpackSel}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="new">Create a new modpack</SelectItem>
+                  {modpacksQuery.data?.map((modpack) => (
+                    <SelectItem key={modpack.id} value={String(modpack.id)}>
+                      {modpack.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {modpackSel === "new" && (
+              <div className="space-y-2">
+                <Label htmlFor="workshop-modpack-name">Modpack name</Label>
+                <Input
+                  id="workshop-modpack-name"
+                  placeholder="Createrington Season 3"
+                  value={modpackName}
+                  onChange={(e) => setModpackName(e.target.value)}
+                />
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="workshop-version">Game version</Label>
@@ -303,7 +353,11 @@ export function AdminWorkshop() {
             <Button
               onClick={handleCreate}
               disabled={
-                createMutation.isPending || !name.trim() || !gameVersion.trim()
+                createMutation.isPending ||
+                createModpackMutation.isPending ||
+                !name.trim() ||
+                !gameVersion.trim() ||
+                (modpackSel === "new" && !modpackName.trim())
               }
             >
               {createMutation.isPending && (

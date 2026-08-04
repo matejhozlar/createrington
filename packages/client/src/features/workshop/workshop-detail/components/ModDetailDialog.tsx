@@ -4,7 +4,6 @@ import {
   ExternalLink,
   Heart,
   MessageSquare,
-  Shield,
   User,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -67,10 +66,7 @@ export function ModDetailDialog({
     (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
   ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
   const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
-  const credit = modCredit(
-    data?.mod.source ?? "user",
-    data?.mod.submitterName ?? null,
-  );
+  const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (
     <Dialog open={workshopModId !== null} onOpenChange={onOpenChange}>
@@ -118,11 +114,7 @@ export function ModDetailDialog({
                     ))}
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-                    {credit.isAdmin ? (
-                      <Shield className="size-3 text-primary" />
-                    ) : (
-                      <User className="size-3" />
-                    )}
+                    <User className="size-3" />
                     {credit.verb}{" "}
                     <span className="font-medium text-foreground">
                       {credit.name}
