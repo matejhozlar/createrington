@@ -1,3 +1,13 @@
+## v1.30.3 (2026-08-04)
+
+### @createrington/server (1.30.2 → 1.30.3)
+- [remove] Remove unused trpc-ui dev panel: the `/panel` route and `trpc-ui` dev dependency are deleted, as the interactive tRPC testing UI was no longer in use
+- [chore] Bump createrington-skin-api from ^2.1.0 to ^2.7.0
+- [chore] Bump audit overrides for undici, brace-expansion, postcss, ip-address, and tar to clear pnpm audit advisories; add auditConfig ignore for the react-router RSC-mode CSRF advisory (unused in this project, fix requires react-router 8 + React 19)
+
+### @createrington/client (0.2.40 → 0.2.41)
+- [chore] Bump createrington-skin-api from ^2.1.0 to ^2.7.0
+
 ## v1.30.2 (2026-07-19)
 
 ### @createrington/server (1.30.1 → 1.30.2)
