@@ -512,7 +512,7 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
               variant="outline"
               className="shrink-0 border-sky-500/50 bg-sky-500/10 text-sky-400"
             >
-              Coming next update
+              Approved
             </Badge>
           )}
         </a>
