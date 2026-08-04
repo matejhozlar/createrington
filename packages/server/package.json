@@ -80,7 +80,6 @@
     "eslint-plugin-prettier": "^5.5.5",
     "globals": "^16.5.0",
     "ora": "^9.0.0",
-    "trpc-ui": "npm:trpc-ui-zod4@^1.1.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
