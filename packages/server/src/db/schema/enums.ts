@@ -129,11 +129,14 @@ export const workshopModRejectReasonEnum = pgEnum(
   WORKSHOP_MOD_REJECT_REASONS,
 );
 
-// dependency = auto-promoted required dependency of an approved mod
-export const workshopModSourceEnum = pgEnum("workshop_mod_source", [
-  "user",
+// How a mod entered the modpack: an approved suggestion, a direct admin add,
+// an auto-promoted required dependency, or an unknown mod found in the
+// published pack manifest
+export const modpackModOriginEnum = pgEnum("modpack_mod_origin", [
+  "suggestion",
   "admin",
   "dependency",
+  "import",
 ]);
 
 export const workshopPollStatusEnum = pgEnum("workshop_poll_status", [

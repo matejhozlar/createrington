@@ -18,7 +18,7 @@ export class WorkshopQueries extends WorkshopBaseQueries {
     const query = `
       SELECT submitted_by AS discord_id
       FROM workshop_mod
-      WHERE workshop_id = $1 AND source = 'user'
+      WHERE workshop_id = $1
       UNION
       SELECT vmu.discord_id
       FROM workshop_mod_upvote vmu

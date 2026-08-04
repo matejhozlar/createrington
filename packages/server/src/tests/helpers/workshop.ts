@@ -1,6 +1,10 @@
 import { Q } from "@/db";
 import type { CurseForgeProjectData } from "@/services/curseforge";
 import type {
+  Modpack,
+  ModpackCreate,
+  ModpackMod,
+  ModpackModCreate,
   Workshop,
   WorkshopCreate,
   WorkshopMod,
@@ -12,6 +16,7 @@ export const MOD_LOADER_TYPE = 6;
 
 export interface WorkshopTestContext {
   workshopIds: number[];
+  modpackIds: number[];
   projectIds: number[];
   nextProjectId: number;
   nextSlug: number;
@@ -22,16 +27,31 @@ export function createWorkshopTestContext(
 ): WorkshopTestContext {
   return {
     workshopIds: [],
+    modpackIds: [],
     projectIds: [],
     nextProjectId: projectIdBase,
     nextSlug: 0,
   };
 }
 
+export async function seedModpack(
+  ctx: WorkshopTestContext,
+  overrides: Partial<ModpackCreate> = {},
+): Promise<Modpack> {
+  const modpack = await Q.modpack.createAndReturn({
+    name: "Vitest Modpack",
+    createdBy: "999900000000000000",
+    ...overrides,
+  });
+  ctx.modpackIds.push(modpack.id);
+  return modpack;
+}
+
 export async function seedWorkshop(
   ctx: WorkshopTestContext,
   overrides: Partial<WorkshopCreate> = {},
 ): Promise<Workshop> {
+  const modpackId = overrides.modpackId ?? (await seedModpack(ctx)).id;
   const workshop = await Q.workshop.createAndReturn({
     name: "Vitest Workshop",
     slug: `vitest-workshop-${Date.now()}-${ctx.nextSlug++}`,
@@ -40,6 +60,7 @@ export async function seedWorkshop(
     modLoaderType: MOD_LOADER_TYPE,
     createdBy: "999900000000000000",
     ...overrides,
+    modpackId,
   });
   ctx.workshopIds.push(workshop.id);
   return workshop;
@@ -75,13 +96,31 @@ export async function seedMod(
   });
 }
 
-export async function seedRequiredDependency(
-  workshopModId: number,
-  curseforgeProjectId: number,
-): Promise<void> {
-  await Q.workshop.mod.dependency.create({
-    workshopModId,
+export async function seedPackMod(
+  ctx: WorkshopTestContext,
+  workshop: Workshop,
+  overrides: Partial<ModpackModCreate> = {},
+): Promise<ModpackMod> {
+  const curseforgeProjectId =
+    overrides.curseforgeProjectId ?? (await seedProject(ctx));
+  return Q.modpack.mod.createAndReturn({
+    modpackId: workshop.modpackId,
+    origin: "admin",
+    addedBy: "999900000000000000",
+    ...overrides,
     curseforgeProjectId,
+  });
+}
+
+export async function seedRequiredDependency(
+  workshop: Workshop,
+  curseforgeProjectId: number,
+  dependsOnProjectId: number,
+): Promise<void> {
+  await Q.workshop.project.dependency.create({
+    workshopId: workshop.id,
+    curseforgeProjectId,
+    dependsOnProjectId,
     relationType: 3,
   });
 }
@@ -92,10 +131,14 @@ export async function cleanupWorkshopTestContext(
   if (ctx.workshopIds.length > 0) {
     await Q.workshop.deleteAll({ id: { $in: ctx.workshopIds } });
   }
+  if (ctx.modpackIds.length > 0) {
+    await Q.modpack.deleteAll({ id: { $in: ctx.modpackIds } });
+  }
   if (ctx.projectIds.length > 0) {
     await Q.curseforge.project.deleteAll({ id: { $in: ctx.projectIds } });
   }
   ctx.workshopIds.length = 0;
+  ctx.modpackIds.length = 0;
   ctx.projectIds.length = 0;
 }
 

@@ -3,6 +3,7 @@ import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
+import { modpackService } from "@/services/modpack";
 import { listForumChannels } from "@/services/workshop/discord";
 import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
 
@@ -16,6 +17,7 @@ const workshopPatch = z.object({
   modLoaderType: z.number().int().min(0).optional(),
   classId: id().optional(),
   baseModpackProjectId: id().nullable().optional(),
+  modpackId: id().optional(),
   maxModsPerUser: z.number().int().min(1).max(25).optional(),
   maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
   discordForumChannelId: z
@@ -51,6 +53,7 @@ export const adminWorkshopsRouter = router({
         modLoaderType: z.number().int().min(0),
         classId: id().optional(),
         baseModpackProjectId: id().optional(),
+        modpackId: id(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
         discordForumChannelId: z
@@ -247,4 +250,30 @@ export const adminWorkshopsRouter = router({
   listForumChannels: adminProcedure
     .meta({ description: "Forum channels available for workshop threads" })
     .query(() => listForumChannels()),
+
+  listPackMods: adminProcedure
+    .meta({ description: "Members of the workshop's modpack" })
+    .input(z.object({ workshopId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await workshopService.getPackMods(input.workshopId);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
+  attention: adminProcedure
+    .meta({
+      description:
+        "Contradictions between the workshop and the published pack that need an admin decision",
+    })
+    .input(z.object({ workshopId: id() }))
+    .query(async ({ input }) => {
+      try {
+        const workshop = await workshopService.getWorkshop(input.workshopId);
+        return await modpackService.getWorkshopAttention(workshop);
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
 });

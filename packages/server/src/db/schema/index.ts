@@ -8,6 +8,7 @@ export * from "./donation";
 export * from "./faq";
 export * from "./feature-flag";
 export * from "./leaderboard";
+export * from "./modpack";
 export * from "./player";
 export * from "./player-prompt";
 export * from "./server";

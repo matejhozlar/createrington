@@ -7,10 +7,12 @@ import {
 import { ConstraintViolationError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
+  ModpackMod,
   Workshop,
   WorkshopMod,
   WorkshopModRejectReason,
   WorkshopModStatus,
+  WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
@@ -20,6 +22,7 @@ import {
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { ingestProject } from "@/services/curseforge/ingest";
+import { modpackService, type ModpackModListItem } from "@/services/modpack";
 import {
   announceRemoval,
   announceReview,
@@ -29,10 +32,10 @@ import {
 } from "./discord";
 import {
   OPTIONAL_DEPENDENCY,
-  REQUIRED_DEPENDENCY,
   promoteRequiredDependencies,
   pruneOrphanedDependencies,
-  resolveModDependencies,
+  pruneStaleDependencyEdges,
+  resolveProjectDependencies,
 } from "./dependencies";
 
 export type WorkshopProjectSummary = Pick<
@@ -65,14 +68,12 @@ export interface WorkshopModListItem extends WorkshopMod {
   submitterName: string | null;
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
+  live: boolean;
+  liveInVersion: string | null;
 }
 
 export interface WorkshopDependencyReport {
-  pulled: Array<
-    WorkshopModListItem & {
-      requiredBy: Array<{ workshopModId: number; name: string }>;
-    }
-  >;
+  pulled: ModpackModListItem[];
   optional: Array<{
     curseforgeProjectId: number;
     name: string | null;
@@ -80,7 +81,7 @@ export interface WorkshopDependencyReport {
     thumbnailUrl: string | null;
     rejected: boolean;
     inWorkshop: boolean;
-    wantedBy: Array<{ workshopModId: number; name: string }>;
+    wantedBy: Array<{ curseforgeProjectId: number; name: string }>;
   }>;
 }
 
@@ -174,7 +175,7 @@ export class WorkshopService {
         ...workshop,
         summary:
           workshop.status === "open"
-            ? await this.getWorkshopSummary(workshop.id)
+            ? await this.getWorkshopSummary(workshop)
             : null,
       })),
     );
@@ -208,11 +209,12 @@ export class WorkshopService {
     return workshop;
   }
 
-  /** Mods in a workshop with project summaries and upvote counts. */
+  /** Suggestions in a workshop with project summaries and upvote counts. */
   async getWorkshopMods(
     workshopId: number,
     options: { includeHidden?: boolean } = {},
   ): Promise<WorkshopModListItem[]> {
+    const workshop = await this.getWorkshop(workshopId);
     const mods = await Q.workshop.mod.findAll(
       {
         workshopId,
@@ -222,7 +224,17 @@ export class WorkshopService {
       },
       { orderBy: "createdAt", orderDirection: "desc" },
     );
-    return this.decorateMods(mods);
+    return this.decorateMods(workshop, mods);
+  }
+
+  /** Members of the workshop's modpack, for the pack page. */
+  async getPackMods(
+    workshopId: number,
+    options: { userVisible?: boolean } = {},
+  ): Promise<ModpackModListItem[]> {
+    const workshop = await this.getWorkshop(workshopId);
+    if (options.userVisible) this.assertUserVisible(workshop);
+    return modpackService.getPackMods(workshop.modpackId);
   }
 
   /** A single mod with the full cached project detail (description included). */
@@ -234,6 +246,8 @@ export class WorkshopService {
       submitterName: string | null;
       discordThreadUrl: string | null;
       dependencies: WorkshopModDependencyInfo[];
+      live: boolean;
+      liveInVersion: string | null;
     };
     project: CurseforgeProject;
     upvoteCount: number;
@@ -242,16 +256,28 @@ export class WorkshopService {
     if (!mod) {
       throw new NotFoundError(`Mod #${workshopModId} not found`);
     }
+    const workshop = await this.getWorkshop(mod.workshopId);
     if (!options.includeHidden) {
-      this.assertUserVisible(await this.getWorkshop(mod.workshopId));
+      this.assertUserVisible(workshop);
     }
-    const [project, upvoteCount, submitter, depRows] = await Promise.all([
-      Q.curseforge.project.get({ id: mod.curseforgeProjectId }),
-      Q.workshop.mod.upvote.count({ workshopModId }),
-      Q.player.find({ discordId: mod.submittedBy }),
-      Q.workshop.mod.dependency.findAll({ workshopModId }),
-    ]);
-    const depsByMod = await this.buildDependencyInfo(mod.workshopId, depRows);
+    const [project, upvoteCount, submitter, depRows, packRow] =
+      await Promise.all([
+        Q.curseforge.project.get({ id: mod.curseforgeProjectId }),
+        Q.workshop.mod.upvote.count({ workshopModId }),
+        Q.player.find({ discordId: mod.submittedBy }),
+        Q.workshop.project.dependency.findAll({
+          workshopId: mod.workshopId,
+          curseforgeProjectId: mod.curseforgeProjectId,
+        }),
+        Q.modpack.mod.find({
+          modpackId: workshop.modpackId,
+          curseforgeProjectId: mod.curseforgeProjectId,
+        }),
+      ]);
+    const depsByProject = await this.buildDependencyInfo(
+      mod.workshopId,
+      depRows,
+    );
     return {
       mod: {
         ...mod,
@@ -259,7 +285,9 @@ export class WorkshopService {
         discordThreadUrl: mod.discordThreadId
           ? discordThreadUrl(mod.discordThreadId)
           : null,
-        dependencies: depsByMod.get(mod.id) ?? [],
+        dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
+        live: packRow?.liveAt != null,
+        liveInVersion: packRow?.liveInVersion ?? null,
       },
       project,
       upvoteCount,
@@ -283,20 +311,27 @@ export class WorkshopService {
     if (results.length === 0) return [];
 
     const ids = results.map((r) => r.id);
-    const claims = await Q.workshop.mod.findAll({
-      workshopId: workshop.id,
-      curseforgeProjectId: { $in: ids },
-    });
+    const [claims, packClaims] = await Promise.all([
+      Q.workshop.mod.findAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: { $in: ids },
+      }),
+      Q.modpack.mod.findAll({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: { $in: ids },
+      }),
+    ]);
     const rejectedIds = new Set(
       claims
         .filter((c) => c.status === "rejected")
         .map((c) => c.curseforgeProjectId),
     );
-    const claimedIds = new Set(
-      claims
+    const claimedIds = new Set([
+      ...claims
         .filter((c) => c.status !== "rejected")
         .map((c) => c.curseforgeProjectId),
-    );
+      ...packClaims.map((c) => c.curseforgeProjectId),
+    ]);
 
     return results.map((r) => ({
       ...r,
@@ -310,12 +345,13 @@ export class WorkshopService {
     workshopId: number,
     discordId: string,
   ): Promise<WorkshopModListItem[]> {
-    this.assertUserVisible(await this.getWorkshop(workshopId));
+    const workshop = await this.getWorkshop(workshopId);
+    this.assertUserVisible(workshop);
     const mods = await Q.workshop.mod.findAll(
-      { workshopId, submittedBy: discordId, source: "user" },
+      { workshopId, submittedBy: discordId },
       { orderBy: "createdAt", orderDirection: "asc" },
     );
-    return this.decorateMods(mods);
+    return this.decorateMods(workshop, mods);
   }
 
   /**
@@ -332,7 +368,6 @@ export class WorkshopService {
     const used = await Q.workshop.mod.count({
       workshopId,
       submittedBy: discordId,
-      source: "user",
       status: "pending",
     });
     if (used >= workshop.maxModsPerUser) {
@@ -352,9 +387,9 @@ export class WorkshopService {
       this.mapConstraintError(error);
     }
 
-    const [item] = await this.decorateMods([created]);
+    const [item] = await this.decorateMods(workshop, [created]);
     if (item) void announceSuggestion(workshop, item);
-    void resolveModDependencies(workshop, [created]);
+    void resolveProjectDependencies(workshop, [created]);
     return item;
   }
 
@@ -364,7 +399,7 @@ export class WorkshopService {
     discordId: string,
   ): Promise<void> {
     const mod = await Q.workshop.mod.find({ id: workshopModId });
-    if (!mod || mod.submittedBy !== discordId || mod.source !== "user") {
+    if (!mod || mod.submittedBy !== discordId) {
       throw new NotFoundError(`Suggestion #${workshopModId} not found`);
     }
     await this.getOpenWorkshop(mod.workshopId);
@@ -471,7 +506,7 @@ export class WorkshopService {
     };
   }
 
-  /** Create a workshop campaign. */
+  /** Create a workshop campaign feeding an existing modpack. */
   async createWorkshop(
     input: {
       name: string;
@@ -481,6 +516,7 @@ export class WorkshopService {
       modLoaderType: number;
       classId?: number;
       baseModpackProjectId?: number | null;
+      modpackId: number;
       maxModsPerUser?: number;
       maxUpvotesPerUser?: number;
       discordForumChannelId?: string | null;
@@ -496,6 +532,7 @@ export class WorkshopService {
       throw new ConflictError(`A workshop with slug "${slug}" already exists`);
     }
 
+    await modpackService.getModpack(input.modpackId);
     if (input.baseModpackProjectId) {
       await this.assertBaseModpack(input.baseModpackProjectId);
     }
@@ -512,6 +549,7 @@ export class WorkshopService {
         modLoaderType: input.modLoaderType,
         classId: input.classId ?? CurseForgeClass.mods,
         baseModpackProjectId: input.baseModpackProjectId ?? null,
+        modpackId: input.modpackId,
         maxModsPerUser: input.maxModsPerUser ?? 5,
         maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
         discordForumChannelId: input.discordForumChannelId ?? null,
@@ -538,6 +576,7 @@ export class WorkshopService {
       modLoaderType: number;
       classId: number;
       baseModpackProjectId: number | null;
+      modpackId: number;
       maxModsPerUser: number;
       maxUpvotesPerUser: number;
       discordForumChannelId: string | null;
@@ -562,13 +601,20 @@ export class WorkshopService {
         patch.modLoaderType !== workshop.modLoaderType) ||
       (patch.classId !== undefined && patch.classId !== workshop.classId) ||
       (patch.baseModpackProjectId !== undefined &&
-        patch.baseModpackProjectId !== workshop.baseModpackProjectId);
+        patch.baseModpackProjectId !== workshop.baseModpackProjectId) ||
+      (patch.modpackId !== undefined && patch.modpackId !== workshop.modpackId);
     if (targetChanged && (await Q.workshop.mod.count({ workshopId })) > 0) {
       throw new BadRequestError(
-        "Cannot change the game version, mod loader, project type, or base modpack of a workshop that already has mods",
+        "Cannot change the game version, mod loader, project type, base modpack, or modpack of a workshop that already has mods",
       );
     }
 
+    if (
+      patch.modpackId !== undefined &&
+      patch.modpackId !== workshop.modpackId
+    ) {
+      await modpackService.getModpack(patch.modpackId);
+    }
     if (
       patch.baseModpackProjectId != null &&
       patch.baseModpackProjectId !== workshop.baseModpackProjectId
@@ -638,19 +684,62 @@ export class WorkshopService {
       action === "approve" ? "approved" : "rejected",
     );
     if (action === "approve") {
-      await promoteRequiredDependencies(workshop, updated, adminId);
+      const packRow = await this.ensurePackRow(workshop, updated);
+      if (packRow) {
+        await promoteRequiredDependencies(workshop, packRow, adminId);
+      }
     } else if (mod.status === "approved") {
-      await pruneOrphanedDependencies(mod.workshopId);
+      await Q.modpack.mod.deleteAll({
+        modpackId: workshop.modpackId,
+        workshopModId: updated.id,
+      });
+      await pruneOrphanedDependencies(workshop.modpackId);
+      await pruneStaleDependencyEdges(workshop);
     }
     return updated;
   }
 
-  /** Add mods directly to a workshop as approved, bypassing user review. */
+  /**
+   * Create the approved suggestion's modpack row, or claim an existing row
+   * for the same project (a manifest import that arrived first).
+   */
+  private async ensurePackRow(
+    workshop: Workshop,
+    mod: WorkshopMod,
+  ): Promise<ModpackMod | null> {
+    try {
+      return await Q.modpack.mod.createAndReturn({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: mod.curseforgeProjectId,
+        origin: "suggestion",
+        workshopModId: mod.id,
+        addedBy: null,
+        fileId: mod.fileId,
+        fileName: mod.fileName,
+        fileReleaseType: mod.fileReleaseType,
+      });
+    } catch (error) {
+      if (!(error instanceof ConstraintViolationError)) throw error;
+      await Q.modpack.mod.updateAll(
+        { origin: "suggestion", workshopModId: mod.id, addedBy: null },
+        {
+          modpackId: workshop.modpackId,
+          curseforgeProjectId: mod.curseforgeProjectId,
+        },
+      );
+      return Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      });
+    }
+  }
+
+  /** Add mods directly to the workshop's modpack, bypassing the suggestion funnel. */
   async addModsAsAdmin(
     workshopId: number,
     projectIds: number[],
     adminId: string,
-  ): Promise<WorkshopModListItem[]> {
+  ): Promise<ModpackModListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
     if (workshop.status === "archived") {
       throw new BadRequestError("Cannot add mods to an archived workshop");
@@ -663,11 +752,15 @@ export class WorkshopService {
     try {
       await db.inTransaction(async (tx) => {
         for (const entry of prepared) {
-          await this.createMod(tx, workshop, entry, {
-            submittedBy: adminId,
-            source: "admin",
-            status: "approved",
-            reviewedBy: adminId,
+          await tx.modpack.mod.create({
+            modpackId: workshop.modpackId,
+            curseforgeProjectId: entry.projectId,
+            origin: "admin",
+            workshopModId: null,
+            addedBy: adminId,
+            fileId: entry.fileId,
+            fileName: entry.fileName,
+            fileReleaseType: entry.fileReleaseType,
           });
         }
       });
@@ -675,117 +768,96 @@ export class WorkshopService {
       this.mapConstraintError(error);
     }
 
-    const mods = await Q.workshop.mod.findAll({
-      workshopId,
+    const rows = await Q.modpack.mod.findAll({
+      modpackId: workshop.modpackId,
       curseforgeProjectId: { $in: projectIds },
-      status: "approved",
     });
-    const items = await this.decorateMods(mods);
     void (async () => {
-      for (const item of items) {
-        await announceSuggestion(workshop, item);
-      }
-      await resolveModDependencies(workshop, mods);
-      for (const mod of mods) {
-        await promoteRequiredDependencies(workshop, mod, adminId);
+      await resolveProjectDependencies(workshop, rows);
+      for (const row of rows) {
+        await promoteRequiredDependencies(workshop, row, adminId);
       }
     })();
-    return items;
+    return modpackService.decoratePackMods(workshop.modpackId, rows);
   }
 
   /** Rejected mods in a user-visible workshop, for the public ruled-out list. */
   async getRejectedMods(workshopId: number): Promise<WorkshopModListItem[]> {
-    this.assertUserVisible(await this.getWorkshop(workshopId));
+    const workshop = await this.getWorkshop(workshopId);
+    this.assertUserVisible(workshop);
     const mods = await Q.workshop.mod.findAll(
       { workshopId, status: "rejected" },
       { orderBy: "reviewedAt", orderDirection: "desc" },
     );
-    return this.decorateMods(mods);
+    return this.decorateMods(workshop, mods);
   }
 
-  /** Dependency-pulled mods and aggregated optional deps, for the admin report. */
+  /** Dependency-pulled pack mods and aggregated optional deps, for the admin report. */
   async getDependencyReport(
     workshopId: number,
   ): Promise<WorkshopDependencyReport> {
-    await this.getWorkshop(workshopId);
-    const mods = await Q.workshop.mod.findAll({ workshopId });
-    const byId = new Map(mods.map((m) => [m.id, m]));
+    const workshop = await this.getWorkshop(workshopId);
+    const [packRows, suggestions, edges] = await Promise.all([
+      Q.modpack.mod.findAll({ modpackId: workshop.modpackId }),
+      Q.workshop.mod.findAll({ workshopId }),
+      Q.workshop.project.dependency.findAll({ workshopId }),
+    ]);
+
+    const pulled = await modpackService.decoratePackMods(
+      workshop.modpackId,
+      packRows.filter((row) => row.origin === "dependency"),
+    );
+
+    const subjectProjectIds = new Set([
+      ...packRows.map((row) => row.curseforgeProjectId),
+      ...suggestions
+        .filter((m) => USER_VISIBLE_MOD_STATUSES.includes(m.status))
+        .map((m) => m.curseforgeProjectId),
+    ]);
+    const optionalRows = edges.filter(
+      (edge) =>
+        edge.relationType === OPTIONAL_DEPENDENCY &&
+        subjectProjectIds.has(edge.curseforgeProjectId),
+    );
+
+    const optionalIds = [
+      ...new Set(optionalRows.map((edge) => edge.dependsOnProjectId)),
+    ];
+    const namedIds = [
+      ...new Set([
+        ...optionalIds,
+        ...optionalRows.map((edge) => edge.curseforgeProjectId),
+      ]),
+    ];
     const projects =
-      mods.length > 0
-        ? await Q.curseforge.project.findAll({
-            id: { $in: [...new Set(mods.map((m) => m.curseforgeProjectId))] },
-          })
+      namedIds.length > 0
+        ? await Q.curseforge.project.findAll({ id: { $in: namedIds } })
         : [];
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    const modName = (mod: WorkshopMod) =>
-      projectById.get(mod.curseforgeProjectId)?.name ??
-      `#${mod.curseforgeProjectId}`;
-
-    const liveMods = mods.filter((m) =>
-      USER_VISIBLE_MOD_STATUSES.includes(m.status),
-    );
-    const depRows =
-      liveMods.length > 0
-        ? await Q.workshop.mod.dependency.findAll({
-            workshopModId: { $in: liveMods.map((m) => m.id) },
-          })
-        : [];
-
-    const approvedModIds = new Set(
-      mods.filter((m) => m.status === "approved").map((m) => m.id),
-    );
-    const requiredRows = depRows.filter(
-      (d) =>
-        d.relationType === REQUIRED_DEPENDENCY &&
-        approvedModIds.has(d.workshopModId),
-    );
-    const pulledItems = await this.decorateMods(
-      mods.filter((m) => m.source === "dependency"),
-    );
-    const pulled = pulledItems.map((item) => ({
-      ...item,
-      requiredBy: requiredRows
-        .filter((d) => d.curseforgeProjectId === item.curseforgeProjectId)
-        .map((d) => byId.get(d.workshopModId))
-        .filter((m): m is WorkshopMod => m !== undefined)
-        .map((m) => ({ workshopModId: m.id, name: modName(m) })),
-    }));
-
-    const optionalRows = depRows.filter(
-      (d) => d.relationType === OPTIONAL_DEPENDENCY,
-    );
-    const claimedProjectIds = new Set(
-      liveMods.map((m) => m.curseforgeProjectId),
-    );
-    const optionalIds = [
-      ...new Set(optionalRows.map((d) => d.curseforgeProjectId)),
-    ];
-    const optionalProjects =
-      optionalIds.length > 0
-        ? await Q.curseforge.project.findAll({ id: { $in: optionalIds } })
-        : [];
-    const optionalProjectById = new Map(optionalProjects.map((p) => [p.id, p]));
     const rejectedProjectIds = new Set(
-      mods
+      suggestions
         .filter((m) => m.status === "rejected")
         .map((m) => m.curseforgeProjectId),
     );
 
     const optional = optionalIds
       .map((id) => {
-        const project = optionalProjectById.get(id);
+        const project = projectById.get(id);
         return {
           curseforgeProjectId: id,
           name: project?.name ?? null,
           slug: project?.slug ?? null,
           thumbnailUrl: project?.thumbnailUrl ?? null,
           rejected: rejectedProjectIds.has(id),
-          inWorkshop: claimedProjectIds.has(id),
+          inWorkshop: subjectProjectIds.has(id),
           wantedBy: optionalRows
-            .filter((d) => d.curseforgeProjectId === id)
-            .map((d) => byId.get(d.workshopModId))
-            .filter((m): m is WorkshopMod => m !== undefined)
-            .map((m) => ({ workshopModId: m.id, name: modName(m) })),
+            .filter((edge) => edge.dependsOnProjectId === id)
+            .map((edge) => ({
+              curseforgeProjectId: edge.curseforgeProjectId,
+              name:
+                projectById.get(edge.curseforgeProjectId)?.name ??
+                `#${edge.curseforgeProjectId}`,
+            })),
         };
       })
       .sort((a, b) => b.wantedBy.length - a.wantedBy.length);
@@ -794,11 +866,12 @@ export class WorkshopService {
   }
 
   private async getWorkshopSummary(
-    workshopId: number,
+    workshop: Workshop,
   ): Promise<WorkshopSummary> {
+    const workshopId = workshop.id;
     const [approvedModCount, pendingModCount, participantIds, mods] =
       await Promise.all([
-        Q.workshop.mod.count({ workshopId, status: "approved" }),
+        Q.modpack.mod.count({ modpackId: workshop.modpackId }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
         Q.workshop.participantDiscordIds(workshopId),
         this.getWorkshopMods(workshopId),
@@ -849,32 +922,40 @@ export class WorkshopService {
   }
 
   private async decorateMods(
+    workshop: Workshop,
     mods: WorkshopMod[],
   ): Promise<WorkshopModListItem[]> {
     if (mods.length === 0) return [];
 
     const projectIds = [...new Set(mods.map((m) => m.curseforgeProjectId))];
     const submitterIds = [...new Set(mods.map((m) => m.submittedBy))];
-    const [projects, upvoteCounts, submitters, depRows] = await Promise.all([
-      Q.curseforge.project.findAll({ id: { $in: projectIds } }),
-      Q.workshop.mod.upvote.countGroupedByMod(mods.map((m) => m.id)),
-      Q.player.findAll({ discordId: { $in: submitterIds } }),
-      Q.workshop.mod.dependency.findAll({
-        workshopModId: { $in: mods.map((m) => m.id) },
-      }),
-    ]);
+    const [projects, upvoteCounts, submitters, depRows, packRows] =
+      await Promise.all([
+        Q.curseforge.project.findAll({ id: { $in: projectIds } }),
+        Q.workshop.mod.upvote.countGroupedByMod(mods.map((m) => m.id)),
+        Q.player.findAll({ discordId: { $in: submitterIds } }),
+        Q.workshop.project.dependency.findAll({
+          workshopId: workshop.id,
+          curseforgeProjectId: { $in: projectIds },
+        }),
+        Q.modpack.mod.findAll({
+          modpackId: workshop.modpackId,
+          curseforgeProjectId: { $in: projectIds },
+        }),
+      ]);
     const byId = new Map(projects.map((p) => [p.id, p]));
     const nameByDiscordId = new Map(
       submitters.map((p) => [p.discordId, p.minecraftUsername]),
     );
-    const depsByMod = await this.buildDependencyInfo(
-      mods[0].workshopId,
-      depRows,
+    const packByProjectId = new Map(
+      packRows.map((row) => [row.curseforgeProjectId, row]),
     );
+    const depsByProject = await this.buildDependencyInfo(workshop.id, depRows);
 
     return mods.flatMap((mod) => {
       const project = byId.get(mod.curseforgeProjectId);
       if (!project) return [];
+      const packRow = packByProjectId.get(mod.curseforgeProjectId);
       return [
         {
           ...mod,
@@ -884,7 +965,9 @@ export class WorkshopService {
           discordThreadUrl: mod.discordThreadId
             ? discordThreadUrl(mod.discordThreadId)
             : null,
-          dependencies: depsByMod.get(mod.id) ?? [],
+          dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
+          live: packRow?.liveAt != null,
+          liveInVersion: packRow?.liveInVersion ?? null,
         },
       ];
     });
@@ -892,13 +975,13 @@ export class WorkshopService {
 
   private async buildDependencyInfo(
     workshopId: number,
-    depRows: Awaited<ReturnType<typeof Q.workshop.mod.dependency.findAll>>,
+    depRows: WorkshopProjectDependency[],
   ): Promise<Map<number, WorkshopModDependencyInfo[]>> {
-    const byMod = new Map<number, WorkshopModDependencyInfo[]>();
-    if (depRows.length === 0) return byMod;
+    const byProject = new Map<number, WorkshopModDependencyInfo[]>();
+    if (depRows.length === 0) return byProject;
 
     const depProjectIds = [
-      ...new Set(depRows.map((d) => d.curseforgeProjectId)),
+      ...new Set(depRows.map((d) => d.dependsOnProjectId)),
     ];
     const [depProjects, rejectedRows] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: depProjectIds } }),
@@ -912,20 +995,20 @@ export class WorkshopService {
     const rejectedIds = new Set(rejectedRows.map((r) => r.curseforgeProjectId));
 
     for (const dep of depRows) {
-      const project = projectById.get(dep.curseforgeProjectId);
+      const project = projectById.get(dep.dependsOnProjectId);
       const info: WorkshopModDependencyInfo = {
-        curseforgeProjectId: dep.curseforgeProjectId,
+        curseforgeProjectId: dep.dependsOnProjectId,
         relationType: dep.relationType,
         name: project?.name ?? null,
         slug: project?.slug ?? null,
         thumbnailUrl: project?.thumbnailUrl ?? null,
-        rejected: rejectedIds.has(dep.curseforgeProjectId),
+        rejected: rejectedIds.has(dep.dependsOnProjectId),
       };
-      const list = byMod.get(dep.workshopModId) ?? [];
+      const list = byProject.get(dep.curseforgeProjectId) ?? [];
       list.push(info);
-      byMod.set(dep.workshopModId, list);
+      byProject.set(dep.curseforgeProjectId, list);
     }
-    return byMod;
+    return byProject;
   }
 
   private toProjectSummary(project: CurseforgeProject): WorkshopProjectSummary {
@@ -959,10 +1042,16 @@ export class WorkshopService {
       throw new BadRequestError("The request contains duplicate mods");
     }
 
-    const claims = await Q.workshop.mod.findAll({
-      workshopId: workshop.id,
-      curseforgeProjectId: { $in: projectIds },
-    });
+    const [claims, packClaims] = await Promise.all([
+      Q.workshop.mod.findAll({
+        workshopId: workshop.id,
+        curseforgeProjectId: { $in: projectIds },
+      }),
+      Q.modpack.mod.findAll({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: { $in: projectIds },
+      }),
+    ]);
     const rejectedClaims = claims.filter((c) => c.status === "rejected");
     if (rejectedClaims.length > 0) {
       const labels = await this.projectLabels(
@@ -979,6 +1068,12 @@ export class WorkshopService {
       throw new ConflictError(
         `Already suggested in this workshop: ${labels.join(", ")}`,
       );
+    }
+    if (packClaims.length > 0) {
+      const labels = await this.projectLabels(
+        packClaims.map((c) => c.curseforgeProjectId),
+      );
+      throw new ConflictError(`Already in the pack: ${labels.join(", ")}`);
     }
 
     if (workshop.baseModpackProjectId) {
@@ -1049,22 +1144,16 @@ export class WorkshopService {
     tx: TxQueries,
     workshop: Workshop,
     entry: PreparedEntry,
-    options: {
-      submittedBy: string;
-      source?: WorkshopMod["source"];
-      status?: WorkshopModStatus;
-      reviewedBy?: string;
-    },
+    options: { submittedBy: string },
   ): Promise<WorkshopMod> {
     return tx.workshop.mod.createAndReturn({
       workshopId: workshop.id,
       curseforgeProjectId: entry.projectId,
-      source: options.source ?? "user",
       submittedBy: options.submittedBy,
-      status: options.status ?? "pending",
+      status: "pending",
       note: entry.note,
-      reviewedBy: options.reviewedBy ?? null,
-      reviewedAt: options.reviewedBy ? new Date() : null,
+      reviewedBy: null,
+      reviewedAt: null,
       fileId: entry.fileId,
       fileName: entry.fileName,
       fileReleaseType: entry.fileReleaseType,

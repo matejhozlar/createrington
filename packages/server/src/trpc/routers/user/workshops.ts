@@ -177,4 +177,20 @@ export const userWorkshopsRouter = router({
         rethrowTrpc(error);
       }
     }),
+
+  pack: workshopProcedure
+    .meta({
+      description:
+        "The workshop's modpack members with origin, credit, and live state",
+    })
+    .input(z.object({ workshopId: id() }))
+    .query(async ({ input }) => {
+      try {
+        return await workshopService.getPackMods(input.workshopId, {
+          userVisible: true,
+        });
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
 });

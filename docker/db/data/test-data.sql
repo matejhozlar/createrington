@@ -1428,12 +1428,18 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
 INSERT INTO feature_flag (name, enabled, description) VALUES
   ('workshop', true, 'Workshop tab');
 
--- Season 3 modpack workshop (id = 1), open for suggestions. Fresh workshop: no base
--- modpack, so suggestions are validated only against this workshop's own content.
-INSERT INTO workshop (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, max_mods_per_user, discord_forum_channel_id, created_by) VALUES
+-- The season 3 modpack (id = 1): not published on CurseForge yet, so nothing
+-- is live. Runs on the main server once published.
+INSERT INTO modpack (name, description, curseforge_project_id, server_id, created_by) VALUES
+  ('Createrington Season 3', 'The season 3 modpack, assembled from workshop suggestions.', NULL, 1, '818819241666281503');
+
+-- Season 3 modpack workshop (id = 1), open for suggestions, feeding modpack 1.
+-- Fresh workshop: no base modpack, so suggestions are validated only against
+-- this workshop's own content.
+INSERT INTO workshop (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, modpack_id, max_mods_per_user, discord_forum_channel_id, created_by) VALUES
   ('Createrington Season 3 Modpack', 'season-3-modpack',
    'Suggest and upvote mods for the season 3 modpack.',
-   'open', '1.21.1', 6, 6, NULL, 5, '1483504809859481712', '818819241666281503');
+   'open', '1.21.1', 6, 6, NULL, 1, 5, '1483504809859481712', '818819241666281503');
 
 -- CurseForge metadata snapshots (real project IDs, approximate stats)
 INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, date_modified, date_released, allow_mod_distribution) VALUES
@@ -1445,15 +1451,19 @@ INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url
   (324717, 6, 'jade', 'Jade', 'Shows information about what you are looking at', NULL,
    'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', true);
 
--- workshop_mod id 1: admin-added, pre-approved. ids 2-3: Mumbo's pending suggestions
-INSERT INTO workshop_mod (workshop_id, curseforge_project_id, source, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
-  (1, 328085, 'admin', '818819241666281503', 'approved', NULL, '818819241666281503', NOW() - INTERVAL '2 days', 7963363, 'create-1.21.1-6.0.10.jar'),
-  (1, 238222, 'user', '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NULL, NULL, NULL, NULL),
-  (1, 324717, 'user', '123456789012345686', 'pending', 'Shows what block you are looking at', NULL, NULL, NULL, NULL);
+-- workshop_mod ids 1-2: Mumbo's pending suggestions
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
+  (1, 238222, '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NULL, NULL, NULL, NULL),
+  (1, 324717, '123456789012345686', 'pending', 'Shows what block you are looking at', NULL, NULL, NULL, NULL);
 
 -- Grian upvotes the JEI entry
 INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
-  (2, '123456789012345687');
+  (1, '123456789012345687');
+
+-- Create is already slated for the pack via a direct admin add; nothing is
+-- live yet because the season 3 pack has no published CurseForge project
+INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name) VALUES
+  (1, 328085, 'admin', NULL, '818819241666281503', 7963363, 'create-1.21.1-6.0.10.jar');
 
 -- Show some sample stats
 SELECT

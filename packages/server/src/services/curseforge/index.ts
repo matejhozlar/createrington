@@ -510,26 +510,28 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   }));
 }
 
+export interface ModpackManifest {
+  version: string | null;
+  modIds: Set<number>;
+}
+
 const modpackCache = new Map<
   number,
-  { modIds: Set<number>; fetchedAt: number }
+  { manifest: ModpackManifest; fetchedAt: number }
 >();
 
 /**
- * Returns the set of CurseForge mod project IDs present in a modpack's latest published file
+ * Returns the pack version and mod project IDs of a modpack's latest published file
  *
  * Downloads the modpack zip, parses `manifest.json`, and caches the result for 1 hour.
  * Prefers the server pack file when available, falling back to the client pack.
- *
- * @param packProjectId - CurseForge project ID of the modpack (default: current server pack)
- * @returns Set of CurseForge project IDs included in the modpack
  */
-export async function getModpackModIds(
+export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
-): Promise<Set<number>> {
+): Promise<ModpackManifest> {
   const cached = modpackCache.get(packProjectId);
   if (cached && Date.now() - cached.fetchedAt < MODPACK_CACHE_TTL) {
-    return cached.modIds;
+    return cached.manifest;
   }
 
   ensureApiKey();
@@ -573,17 +575,28 @@ export async function getModpackModIds(
   if (!manifestFile) throw new Error("No manifest.json in modpack");
 
   const manifest = JSON.parse(await manifestFile.async("text")) as {
+    version?: string;
     files: Array<{ projectID: number }>;
   };
 
-  const modIds = new Set(manifest.files.map((f) => f.projectID));
-  modpackCache.set(packProjectId, { modIds, fetchedAt: Date.now() });
+  const result: ModpackManifest = {
+    version: manifest.version ?? null,
+    modIds: new Set(manifest.files.map((f) => f.projectID)),
+  };
+  modpackCache.set(packProjectId, { manifest: result, fetchedAt: Date.now() });
 
   logger.info(
-    `Cached modpack mod list: ${modIds.size} mods from file ${fileId}`,
+    `Cached modpack mod list: ${result.modIds.size} mods from file ${fileId}`,
   );
 
-  return modIds;
+  return result;
+}
+
+/** The set of mod project IDs in a modpack's latest published file. */
+export async function getModpackModIds(
+  packProjectId = MODPACK_PROJECT_ID,
+): Promise<Set<number>> {
+  return (await getModpackManifest(packProjectId)).modIds;
 }
 
 /**

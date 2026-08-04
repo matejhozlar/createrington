@@ -13,11 +13,11 @@ import {
   workshopStatusEnum,
   workshopModStatusEnum,
   workshopModRejectReasonEnum,
-  workshopModSourceEnum,
   workshopPollStatusEnum,
   workshopPollGranularityEnum,
 } from "./enums";
 import { curseforgeProject } from "./curseforge";
+import { modpack } from "./modpack";
 
 // --- workshop ---
 // A workshop campaign (e.g. season modpack selection). classId scopes what kind
@@ -35,6 +35,9 @@ export const workshop = pgTable(
     modLoaderType: integer("mod_loader_type").notNull(),
     classId: integer("class_id").notNull().default(6),
     baseModpackProjectId: integer("base_modpack_project_id"),
+    modpackId: integer("modpack_id")
+      .notNull()
+      .references(() => modpack.id),
     maxModsPerUser: integer("max_mods_per_user").notNull().default(5),
     maxUpvotesPerUser: integer("max_upvotes_per_user").notNull().default(5),
     // Forum channel for per-suggestion discussion threads; null = no Discord
@@ -52,9 +55,11 @@ export const workshop = pgTable(
 );
 
 // --- workshop_mod ---
-// A CurseForge project inside a workshop. File columns record which file satisfied
-// the workshop's game version and loader at submit time; a pack build re-resolves
-// files fresh rather than trusting this snapshot.
+// A community suggestion: someone's pitch for a mod, with votes, a discussion
+// thread, and a review outcome. Pack membership lives in modpack_mod;
+// approving a suggestion creates a modpack row linked back to it. File columns
+// record which file satisfied the workshop's target at submit time; a pack
+// build re-resolves files fresh rather than trusting this snapshot.
 
 export const workshopMod = pgTable(
   "workshop_mod",
@@ -66,7 +71,6 @@ export const workshopMod = pgTable(
     curseforgeProjectId: integer("curseforge_project_id")
       .notNull()
       .references(() => curseforgeProject.id),
-    source: workshopModSourceEnum("source").notNull().default("user"),
     submittedBy: text("submitted_by").notNull(),
     status: workshopModStatusEnum("status").notNull().default("pending"),
     note: text("note"),
@@ -97,19 +101,23 @@ export const workshopMod = pgTable(
   ],
 );
 
-// --- workshop_mod_dependency ---
-// Resolved CurseForge dependencies of a suggestion's chosen file, refreshed
-// lazily in the background. relationType: 2 = optional, 3 = required.
-// Deps satisfied by the base modpack are not stored.
+// --- workshop_project_dependency ---
+// Resolved CurseForge dependencies of a project's chosen file within a
+// workshop, keyed by project so suggestions and pack mods share one cache.
+// relationType: 2 = optional, 3 = required. Deps satisfied by the base
+// modpack are not stored.
 
-export const workshopModDependency = pgTable(
-  "workshop_mod_dependency",
+export const workshopProjectDependency = pgTable(
+  "workshop_project_dependency",
   {
     id: serial("id").primaryKey(),
-    workshopModId: integer("workshop_mod_id")
+    workshopId: integer("workshop_id")
       .notNull()
-      .references(() => workshopMod.id, { onDelete: "cascade" }),
+      .references(() => workshop.id, { onDelete: "cascade" }),
     curseforgeProjectId: integer("curseforge_project_id")
+      .notNull()
+      .references(() => curseforgeProject.id),
+    dependsOnProjectId: integer("depends_on_project_id")
       .notNull()
       .references(() => curseforgeProject.id),
     relationType: integer("relation_type").notNull(),
@@ -118,10 +126,15 @@ export const workshopModDependency = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_workshop_mod_dependency_mod").on(table.workshopModId),
-    uniqueIndex("idx_workshop_mod_dependency_unique").on(
-      table.workshopModId,
+    index("idx_workshop_project_dependency_workshop").on(table.workshopId),
+    index("idx_workshop_project_dependency_target").on(
+      table.workshopId,
+      table.dependsOnProjectId,
+    ),
+    uniqueIndex("idx_workshop_project_dependency_unique").on(
+      table.workshopId,
       table.curseforgeProjectId,
+      table.dependsOnProjectId,
     ),
   ],
 );

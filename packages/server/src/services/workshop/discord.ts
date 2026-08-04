@@ -192,11 +192,10 @@ export async function announceSuggestion(
     const author = mod.project.primaryAuthor
       ? ` by ${mod.project.primaryAuthor}`
       : "";
-    const verb = mod.source === "admin" ? "Added" : "Suggested";
     const note = mod.note ? `: ${mod.note}` : "";
     const lines = [
       `**${mod.project.name}**${author}`,
-      `${verb} by ${Discord.Users.mention(mod.submittedBy)}${note}`,
+      `Suggested by ${Discord.Users.mention(mod.submittedBy)}${note}`,
     ];
     if (mod.project.websiteUrl) lines.push(mod.project.websiteUrl);
 
@@ -337,10 +336,7 @@ export async function healThreads(
 
   if (workshop.status !== "open" || !workshop.discordForumChannelId) return;
   const missing = mods.filter(
-    (mod) =>
-      !mod.discordThreadId &&
-      mod.source !== "dependency" &&
-      LIVE_MOD_STATUSES.includes(mod.status),
+    (mod) => !mod.discordThreadId && LIVE_MOD_STATUSES.includes(mod.status),
   );
   if (missing.length === 0) return;
 

@@ -1,5 +1,5 @@
 {
-  "id": "68d9b2e1-8d48-4cee-99c8-9c94f0c13e3c",
+  "id": "d79e69f0-7544-4108-83f2-08301e4c9f3a",
   "prevId": "56ffc040-1ba3-4798-966b-d96acd6ad13c",
   "version": "7",
   "dialect": "postgresql",
@@ -3113,6 +3113,278 @@
           ]
         }
       },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.modpack": {
+      "name": "modpack",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "curseforge_project_id": {
+          "name": "curseforge_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "server_id": {
+          "name": "server_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_modpack_project_unique": {
+          "name": "idx_modpack_project_unique",
+          "columns": [
+            {
+              "expression": "curseforge_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "modpack_server_id_server_id_fk": {
+          "name": "modpack_server_id_server_id_fk",
+          "tableFrom": "modpack",
+          "tableTo": "server",
+          "columnsFrom": [
+            "server_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.modpack_mod": {
+      "name": "modpack_mod",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "modpack_id": {
+          "name": "modpack_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "curseforge_project_id": {
+          "name": "curseforge_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "modpack_mod_origin",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workshop_mod_id": {
+          "name": "workshop_mod_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "file_release_type": {
+          "name": "file_release_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "live_at": {
+          "name": "live_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "live_in_version": {
+          "name": "live_in_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dropped_from_manifest_at": {
+          "name": "dropped_from_manifest_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_modpack_mod_modpack": {
+          "name": "idx_modpack_mod_modpack",
+          "columns": [
+            {
+              "expression": "modpack_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_modpack_mod_suggestion": {
+          "name": "idx_modpack_mod_suggestion",
+          "columns": [
+            {
+              "expression": "workshop_mod_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_modpack_mod_unique": {
+          "name": "idx_modpack_mod_unique",
+          "columns": [
+            {
+              "expression": "modpack_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "curseforge_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "modpack_mod_modpack_id_modpack_id_fk": {
+          "name": "modpack_mod_modpack_id_modpack_id_fk",
+          "tableFrom": "modpack_mod",
+          "tableTo": "modpack",
+          "columnsFrom": [
+            "modpack_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "modpack_mod_curseforge_project_id_curseforge_project_id_fk": {
+          "name": "modpack_mod_curseforge_project_id_curseforge_project_id_fk",
+          "tableFrom": "modpack_mod",
+          "tableTo": "curseforge_project",
+          "columnsFrom": [
+            "curseforge_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -7181,6 +7453,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "modpack_id": {
+          "name": "modpack_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
         "max_mods_per_user": {
           "name": "max_mods_per_user",
           "type": "integer",
@@ -7239,7 +7517,21 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "workshop_modpack_id_modpack_id_fk": {
+          "name": "workshop_modpack_id_modpack_id_fk",
+          "tableFrom": "workshop",
+          "tableTo": "modpack",
+          "columnsFrom": [
+            "modpack_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "workshop_slug_unique": {
@@ -7275,14 +7567,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "workshop_mod_source",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'user'"
         },
         "submitted_by": {
           "name": "submitted_by",
@@ -7468,114 +7752,6 @@
         "workshop_mod_curseforge_project_id_curseforge_project_id_fk": {
           "name": "workshop_mod_curseforge_project_id_curseforge_project_id_fk",
           "tableFrom": "workshop_mod",
-          "tableTo": "curseforge_project",
-          "columnsFrom": [
-            "curseforge_project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.workshop_mod_dependency": {
-      "name": "workshop_mod_dependency",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "workshop_mod_id": {
-          "name": "workshop_mod_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "curseforge_project_id": {
-          "name": "curseforge_project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "relation_type": {
-          "name": "relation_type",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "idx_workshop_mod_dependency_mod": {
-          "name": "idx_workshop_mod_dependency_mod",
-          "columns": [
-            {
-              "expression": "workshop_mod_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_workshop_mod_dependency_unique": {
-          "name": "idx_workshop_mod_dependency_unique",
-          "columns": [
-            {
-              "expression": "workshop_mod_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "curseforge_project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "workshop_mod_dependency_workshop_mod_id_workshop_mod_id_fk": {
-          "name": "workshop_mod_dependency_workshop_mod_id_workshop_mod_id_fk",
-          "tableFrom": "workshop_mod_dependency",
-          "tableTo": "workshop_mod",
-          "columnsFrom": [
-            "workshop_mod_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "workshop_mod_dependency_curseforge_project_id_curseforge_project_id_fk": {
-          "name": "workshop_mod_dependency_curseforge_project_id_curseforge_project_id_fk",
-          "tableFrom": "workshop_mod_dependency",
           "tableTo": "curseforge_project",
           "columnsFrom": [
             "curseforge_project_id"
@@ -8077,6 +8253,160 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.workshop_project_dependency": {
+      "name": "workshop_project_dependency",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "workshop_id": {
+          "name": "workshop_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "curseforge_project_id": {
+          "name": "curseforge_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "depends_on_project_id": {
+          "name": "depends_on_project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "relation_type": {
+          "name": "relation_type",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_workshop_project_dependency_workshop": {
+          "name": "idx_workshop_project_dependency_workshop",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_workshop_project_dependency_target": {
+          "name": "idx_workshop_project_dependency_target",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "depends_on_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_workshop_project_dependency_unique": {
+          "name": "idx_workshop_project_dependency_unique",
+          "columns": [
+            {
+              "expression": "workshop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "curseforge_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "depends_on_project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "workshop_project_dependency_workshop_id_workshop_id_fk": {
+          "name": "workshop_project_dependency_workshop_id_workshop_id_fk",
+          "tableFrom": "workshop_project_dependency",
+          "tableTo": "workshop",
+          "columnsFrom": [
+            "workshop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "workshop_project_dependency_curseforge_project_id_curseforge_project_id_fk": {
+          "name": "workshop_project_dependency_curseforge_project_id_curseforge_project_id_fk",
+          "tableFrom": "workshop_project_dependency",
+          "tableTo": "curseforge_project",
+          "columnsFrom": [
+            "curseforge_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "workshop_project_dependency_depends_on_project_id_curseforge_project_id_fk": {
+          "name": "workshop_project_dependency_depends_on_project_id_curseforge_project_id_fk",
+          "tableFrom": "workshop_project_dependency",
+          "tableTo": "curseforge_project",
+          "columnsFrom": [
+            "depends_on_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.waitlist_entry": {
       "name": "waitlist_entry",
       "schema": "",
@@ -8366,6 +8696,16 @@
         "monthly"
       ]
     },
+    "public.modpack_mod_origin": {
+      "name": "modpack_mod_origin",
+      "schema": "public",
+      "values": [
+        "suggestion",
+        "admin",
+        "dependency",
+        "import"
+      ]
+    },
     "public.player_prompt_status": {
       "name": "player_prompt_status",
       "schema": "public",
@@ -8425,15 +8765,6 @@
         "incompatible",
         "covered_by_other_mod",
         "not_a_good_fit"
-      ]
-    },
-    "public.workshop_mod_source": {
-      "name": "workshop_mod_source",
-      "schema": "public",
-      "values": [
-        "user",
-        "admin",
-        "dependency"
       ]
     },
     "public.workshop_mod_status": {
