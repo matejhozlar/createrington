@@ -22,7 +22,8 @@ import {
   type CurseForgeProjectData,
 } from "@/services/curseforge";
 import { ingestProject } from "@/services/curseforge/ingest";
-import { modpackService, type ModpackModListItem } from "@/services/modpack";
+import { modpackService } from "@/services/modpack";
+import type { ModpackModListItem } from "@/services/modpack";
 import {
   announceRemoval,
   announceReview,
