@@ -58,7 +58,7 @@ export function WorkshopSuggest() {
   const packExtra = packMods.length - packShown.length;
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-[260px] overflow-hidden">
         <img
           src={HERO_IMAGE}

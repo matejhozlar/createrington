@@ -249,7 +249,7 @@ export function WorkshopDetail() {
     : null;
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-[340px] overflow-hidden">
         <img
           src={HERO_IMAGE}
