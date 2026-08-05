@@ -225,7 +225,7 @@ export function AdminWorkshop() {
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
+        <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>New workshop</DialogTitle>
           </DialogHeader>

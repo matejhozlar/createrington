@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
-import { mcHeadsAvatar } from "@/lib/external-urls";
+import { PlayerLabel } from "@/components/player-label";
 import {
   agoLabel,
   modInitials,
@@ -114,7 +114,7 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
           />
         </div>
       </div>
-      <div className="relative mr-1 flex items-center gap-3.5">
+      <div className="relative mr-1 hidden items-center gap-3.5 sm:flex">
         <SocialLinks mod={mod} />
       </div>
       <HeartOrBadge item={item} onUpvote={onUpvote} />
@@ -198,16 +198,12 @@ function DotSeparated({ parts }: { parts: ReactNode[] }) {
 function submitterPart(mod: RaceMod): ReactNode {
   if (!mod.submitterName) return null;
   return (
-    <span key="submitter" className="flex min-w-0 items-center gap-1.5">
-      <img
-        src={mcHeadsAvatar(mod.submitterName, 16)}
-        alt=""
-        width={16}
-        height={16}
-        className="rounded-xs [image-rendering:pixelated]"
-      />
-      <span className="truncate">{mod.submitterName}</span>
-    </span>
+    <PlayerLabel
+      key="submitter"
+      name={mod.submitterName}
+      playerId={mod.submittedBy}
+      size={16}
+    />
   );
 }
 

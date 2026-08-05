@@ -66,7 +66,10 @@ export function AddModsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent
+        className="max-h-[85vh] max-w-2xl overflow-y-auto"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle>Add mods to the pack</DialogTitle>
           <DialogDescription>

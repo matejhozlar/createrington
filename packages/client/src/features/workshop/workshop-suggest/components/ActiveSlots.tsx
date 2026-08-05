@@ -70,7 +70,7 @@ export function ActiveSlots({
                 thumbnailUrl={mod.project.thumbnailUrl}
                 className="size-8 rounded-lg text-[11px]"
               />
-              <span className="shrink-0 text-[13.5px] font-semibold whitespace-nowrap">
+              <span className="min-w-0 truncate text-[13.5px] font-semibold">
                 {mod.project.name}
               </span>
               {mod.note && (

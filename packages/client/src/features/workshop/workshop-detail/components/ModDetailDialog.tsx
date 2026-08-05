@@ -10,6 +10,13 @@ import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PlayerLabel } from "@/components/player-label";
 import {
   formatDate,
   formatDownloads,
@@ -77,7 +85,10 @@ export function ModDetailDialog({
 
   return (
     <Dialog open={workshopModId !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
+      <DialogContent
+        className="max-h-[85vh] max-w-3xl overflow-y-auto"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         {detailQuery.isLoading || !data || !project ? (
           <div className="space-y-4">
             <Skeleton className="h-16 w-full" />
@@ -121,11 +132,24 @@ export function ModDetailDialog({
                     ))}
                   </div>
                   <div className="flex items-center gap-1.5 pt-1 text-xs text-muted-foreground">
-                    <User className="size-3" />
-                    {credit.verb}{" "}
-                    <span className="font-medium text-foreground">
-                      {credit.name}
-                    </span>
+                    {data.mod.submitterName ? (
+                      <>
+                        {credit.verb}{" "}
+                        <PlayerLabel
+                          name={data.mod.submitterName}
+                          playerId={data.mod.submittedBy}
+                          size={16}
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <User className="size-3" />
+                        {credit.verb}{" "}
+                        <span className="font-medium text-foreground">
+                          {credit.name}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -199,24 +223,43 @@ export function ModDetailDialog({
               </div>
             )}
 
-            {screenshots.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {screenshots.slice(0, 6).map((shot) => (
-                  <a
-                    key={shot.url}
-                    href={shot.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <img
-                      src={shot.thumbnailUrl}
-                      alt={shot.title}
-                      className="aspect-video w-full rounded-lg object-cover transition-opacity hover:opacity-80"
-                      loading="lazy"
-                    />
-                  </a>
-                ))}
-              </div>
+            {screenshots.length === 1 && (
+              <a
+                href={screenshots[0].url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src={screenshots[0].url}
+                  alt={screenshots[0].title}
+                  className="aspect-video w-full rounded-lg object-cover transition-opacity hover:opacity-80"
+                  loading="lazy"
+                />
+              </a>
+            )}
+            {screenshots.length > 1 && (
+              <Carousel className="w-full">
+                <CarouselContent>
+                  {screenshots.map((shot) => (
+                    <CarouselItem key={shot.url}>
+                      <a
+                        href={shot.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <img
+                          src={shot.url}
+                          alt={shot.title}
+                          className="aspect-video w-full rounded-lg object-cover"
+                          loading="lazy"
+                        />
+                      </a>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <CarouselPrevious className="left-2" />
+                <CarouselNext className="right-2" />
+              </Carousel>
             )}
 
             {isHttpUrl(project.websiteUrl) && (

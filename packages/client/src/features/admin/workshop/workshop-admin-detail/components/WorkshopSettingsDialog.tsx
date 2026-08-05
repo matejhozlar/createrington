@@ -89,7 +89,7 @@ export function WorkshopSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Workshop settings</DialogTitle>
         </DialogHeader>

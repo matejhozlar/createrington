@@ -161,7 +161,7 @@ export function SuggestionHistory() {
             setShownCount(PAGE_SIZE);
           }}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -178,7 +178,7 @@ export function SuggestionHistory() {
             setShownCount(PAGE_SIZE);
           }}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full sm:w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -223,11 +223,12 @@ export function SuggestionHistory() {
                   </div>
                 )}
               </div>
-              <div className="mr-1 flex shrink-0 items-center gap-3.5">
+              <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
                 <SocialLinks mod={mod} iconClass="size-5" />
               </div>
               <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                {mod.workshopName} · {dateLine(mod)}
+                <span className="hidden md:inline">{mod.workshopName} · </span>
+                {dateLine(mod)}
               </span>
               <span className="flex min-w-[82px] shrink-0 justify-end">
                 <StatusBadge mod={mod} />

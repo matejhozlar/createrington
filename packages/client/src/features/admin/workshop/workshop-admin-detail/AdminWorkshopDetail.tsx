@@ -49,6 +49,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PlayerLabel } from "@/components/player-label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import {
@@ -322,9 +323,11 @@ export function AdminWorkshopDetail() {
                           </button>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5 text-sm">
-                            {mod.submitterName ?? mod.submittedBy}
-                          </div>
+                          <PlayerLabel
+                            name={mod.submitterName ?? mod.submittedBy}
+                            playerId={mod.submittedBy}
+                            size={20}
+                          />
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                           {mod.note ?? ""}
@@ -493,9 +496,30 @@ export function AdminWorkshopDetail() {
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {row.origin === "suggestion" &&
-                          `suggested by ${row.suggestedByName ?? "a player"}`}
+                          (row.suggestedByName ? (
+                            <span className="flex items-center gap-1">
+                              suggested by{" "}
+                              <PlayerLabel
+                                name={row.suggestedByName}
+                                size={16}
+                              />
+                            </span>
+                          ) : (
+                            "suggested by a player"
+                          ))}
                         {row.origin === "admin" &&
-                          `added by ${row.addedByName ?? row.addedBy ?? "an admin"}`}
+                          (row.addedByName ? (
+                            <span className="flex items-center gap-1">
+                              added by{" "}
+                              <PlayerLabel
+                                name={row.addedByName}
+                                playerId={row.addedBy}
+                                size={16}
+                              />
+                            </span>
+                          ) : (
+                            `added by ${row.addedBy ?? "an admin"}`
+                          ))}
                         {row.origin === "dependency" &&
                           (row.requiredBy.length > 0
                             ? `required by ${row.requiredBy.map((r) => r.name).join(", ")}`
@@ -676,7 +700,7 @@ export function AdminWorkshopDetail() {
           }
         }}
       >
-        <DialogContent>
+        <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
           <DialogHeader>
             <DialogTitle>Reject {displayRejectTarget?.name}?</DialogTitle>
             <DialogDescription>

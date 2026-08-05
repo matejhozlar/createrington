@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
+import { PlayerLabel } from "@/components/player-label";
 import { loaderName, modInitials, projectCategories } from "../format";
 import { ViewToggle } from "../components/ViewToggle";
 import {
@@ -327,7 +328,7 @@ export function WorkshopDetail() {
           </div>
 
           <div className="-mt-2 flex flex-wrap items-center gap-2.5">
-            <div className="relative max-w-[420px] min-w-[200px] flex-1">
+            <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
@@ -336,9 +337,9 @@ export function WorkshopDetail() {
                 className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
               />
             </div>
-            <span className="flex-1" />
+            <span className="hidden flex-1 sm:block" />
             <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-[150px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -354,7 +355,7 @@ export function WorkshopDetail() {
               value={sortMode}
               onValueChange={(value) => setSortMode(value as SortMode)}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -419,9 +420,16 @@ export function WorkshopDetail() {
   );
 }
 
-function packCredit(row: PackMod): string {
+function packCredit(row: PackMod): ReactNode {
   if (row.origin === "admin") {
-    return `Added by ${row.addedByName ?? "an admin"}`;
+    return row.addedByName ? (
+      <>
+        Added by{" "}
+        <PlayerLabel name={row.addedByName} playerId={row.addedBy} size={16} />
+      </>
+    ) : (
+      "Added by an admin"
+    );
   }
   if (row.origin === "dependency") {
     return row.requiredBy.length > 0
@@ -440,12 +448,13 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
         Already in the pack
       </h3>
       {mods.map((row) => (
-        <a
+        <div
           key={row.id}
-          href={row.project.websiteUrl ?? undefined}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40"
+          onClick={() =>
+            row.project.websiteUrl &&
+            window.open(row.project.websiteUrl, "_blank", "noreferrer")
+          }
+          className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40"
         >
           {row.project.thumbnailUrl ? (
             <img
@@ -468,7 +477,7 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
                 </span>
               )}
             </div>
-            <div className="truncate text-xs text-muted-foreground">
+            <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
               {packCredit(row)}
             </div>
           </div>
@@ -487,7 +496,7 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
               Approved
             </Badge>
           )}
-        </a>
+        </div>
       ))}
     </div>
   );
