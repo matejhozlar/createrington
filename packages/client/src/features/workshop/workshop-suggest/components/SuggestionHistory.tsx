@@ -1,0 +1,288 @@
+import { useState } from "react";
+import { trpc, type RouterOutput } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DiscordIcon } from "@/components/icons/discord";
+import { CurseForgeIcon } from "@/components/icons/curseforge";
+import { ProjectThumb } from "../../components/ProjectThumb";
+import { ViewToggle, type ViewMode } from "../../components/ViewToggle";
+import { formatDate, REJECT_REASON_LABELS } from "../../format";
+
+type HistoryItem =
+  RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
+
+type StatusFilter = "all" | "pending" | "approved" | "rejected";
+type SortMode = "new" | "old" | "updated";
+
+const PAGE_SIZE = 10;
+const VIEW_STORAGE_KEY = "workshop-suggest-history-view";
+
+function secondaryLine(mod: HistoryItem): string {
+  if (mod.status === "rejected") {
+    const label = mod.rejectReason
+      ? REJECT_REASON_LABELS[mod.rejectReason]
+      : "Ruled out";
+    return mod.rejectNote ? `${label} — ${mod.rejectNote}` : label;
+  }
+  return mod.note ? `“${mod.note}”` : "";
+}
+
+function StatusBadge({ mod }: { mod: HistoryItem }) {
+  if (mod.status === "pending") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-primary/50 bg-primary/10 text-primary"
+      >
+        In review
+      </Badge>
+    );
+  }
+  if (mod.status === "approved") {
+    return mod.live ? (
+      <Badge
+        variant="outline"
+        className="border-green-500/50 bg-green-500/10 text-green-400"
+        title={
+          mod.liveInVersion ? `Live since ${mod.liveInVersion}` : undefined
+        }
+      >
+        Live
+      </Badge>
+    ) : (
+      <Badge
+        variant="outline"
+        className="border-sky-500/50 bg-sky-500/10 text-sky-400"
+      >
+        Approved
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="border-red-500/50 bg-red-500/10 text-red-400"
+    >
+      {mod.rejectReason ? REJECT_REASON_LABELS[mod.rejectReason] : "Ruled out"}
+    </Badge>
+  );
+}
+
+function SocialLinks({
+  mod,
+  iconClass,
+}: {
+  mod: HistoryItem;
+  iconClass: string;
+}) {
+  const linkClass =
+    "text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100";
+  return (
+    <>
+      {mod.discordThreadUrl && (
+        <a
+          href={mod.discordThreadUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Discuss on Discord"
+          title="Discuss on Discord"
+          className={cn(linkClass, "hover:text-[#5865F2]")}
+        >
+          <DiscordIcon className={iconClass} />
+        </a>
+      )}
+      {mod.project.websiteUrl && (
+        <a
+          href={mod.project.websiteUrl}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="View on CurseForge"
+          title="View on CurseForge"
+          className={cn(linkClass, "hover:text-[#F16436]")}
+        >
+          <CurseForgeIcon className={iconClass} />
+        </a>
+      )}
+    </>
+  );
+}
+
+export function SuggestionHistory() {
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("new");
+  const [shownCount, setShownCount] = useState(PAGE_SIZE);
+  const [view, setView] = useState<ViewMode>(() =>
+    localStorage.getItem(VIEW_STORAGE_KEY) === "grid" ? "grid" : "list",
+  );
+
+  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
+
+  const changeView = (next: ViewMode) => {
+    localStorage.setItem(VIEW_STORAGE_KEY, next);
+    setView(next);
+  };
+
+  const history = historyQuery.data ?? [];
+  let visible =
+    status === "all" ? history : history.filter((m) => m.status === status);
+  const sortKey = (mod: HistoryItem) =>
+    new Date(sortMode === "updated" ? mod.updatedAt : mod.createdAt).getTime();
+  visible = [...visible].sort((a, b) =>
+    sortMode === "old"
+      ? sortKey(a) - sortKey(b) || a.id - b.id
+      : sortKey(b) - sortKey(a) || b.id - a.id,
+  );
+  const remaining = visible.length - shownCount;
+  const shown = visible.slice(0, shownCount);
+
+  const dateLine = (mod: HistoryItem) =>
+    sortMode === "updated"
+      ? `updated ${formatDate(mod.updatedAt)}`
+      : formatDate(mod.createdAt);
+
+  return (
+    <section>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h2 className="text-[22px] leading-7 font-semibold">My suggestions</h2>
+        <span className="flex-1" />
+        <Select
+          value={status}
+          onValueChange={(value) => {
+            setStatus(value as StatusFilter);
+            setShownCount(PAGE_SIZE);
+          }}
+        >
+          <SelectTrigger className="w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="pending">In review</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="rejected">Ruled out</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select
+          value={sortMode}
+          onValueChange={(value) => {
+            setSortMode(value as SortMode);
+            setShownCount(PAGE_SIZE);
+          }}
+        >
+          <SelectTrigger className="w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="new">Newest first</SelectItem>
+            <SelectItem value="old">Oldest first</SelectItem>
+            <SelectItem value="updated">Last updated</SelectItem>
+          </SelectContent>
+        </Select>
+        <ViewToggle view={view} onChange={changeView} />
+      </div>
+      <p className="mt-1.5 text-[13px] text-muted-foreground">
+        Everything you've suggested across workshops, including ruled-out ones.
+      </p>
+
+      {historyQuery.isLoading ? (
+        <Skeleton className="mt-4 h-32 w-full rounded-xl" />
+      ) : shown.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
+          {history.length === 0
+            ? "You haven't suggested anything yet."
+            : "No suggestions match this filter."}
+        </div>
+      ) : view === "list" ? (
+        <div className="mt-4 flex flex-col gap-2">
+          {shown.map((mod) => (
+            <div
+              key={mod.id}
+              className="group flex items-center gap-3.5 rounded-xl border border-border bg-card px-4 py-3"
+            >
+              <ProjectThumb
+                name={mod.project.name}
+                thumbnailUrl={mod.project.thumbnailUrl}
+                className="size-9 rounded-[9px] text-xs"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold">
+                  {mod.project.name}
+                </div>
+                {secondaryLine(mod) && (
+                  <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {secondaryLine(mod)}
+                  </div>
+                )}
+              </div>
+              <div className="mr-1 flex shrink-0 items-center gap-3.5">
+                <SocialLinks mod={mod} iconClass="size-5" />
+              </div>
+              <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                {mod.workshopName} · {dateLine(mod)}
+              </span>
+              <span className="flex min-w-[82px] shrink-0 justify-end">
+                <StatusBadge mod={mod} />
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2.5">
+          {shown.map((mod) => (
+            <div
+              key={mod.id}
+              className="group flex flex-col gap-2.5 rounded-xl border border-border bg-card p-4"
+            >
+              <div className="flex items-center gap-2.5">
+                <ProjectThumb
+                  name={mod.project.name}
+                  thumbnailUrl={mod.project.thumbnailUrl}
+                  className="size-10 rounded-[9px] text-xs"
+                />
+                <span className="flex-1" />
+                <StatusBadge mod={mod} />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">
+                  {mod.project.name}
+                </div>
+                {secondaryLine(mod) && (
+                  <div className="mt-1 line-clamp-2 text-xs leading-[17px] text-muted-foreground">
+                    {secondaryLine(mod)}
+                  </div>
+                )}
+              </div>
+              <div className="mt-auto flex items-center gap-3">
+                <SocialLinks mod={mod} iconClass="size-[18px]" />
+                <span className="flex-1" />
+                <span className="text-xs whitespace-nowrap text-muted-foreground">
+                  {mod.workshopName} · {dateLine(mod)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {remaining > 0 && (
+        <div className="mt-4 flex justify-center">
+          <Button
+            variant="secondary"
+            onClick={() => setShownCount(shownCount + PAGE_SIZE)}
+          >
+            Show {Math.min(remaining, PAGE_SIZE)} more
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}

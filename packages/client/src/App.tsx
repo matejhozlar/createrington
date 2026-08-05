@@ -128,6 +128,10 @@ const WorkshopDetail = lazyNamed(
   () => import("./features/workshop/workshop-detail/WorkshopDetail"),
   "WorkshopDetail",
 );
+const WorkshopSuggest = lazyNamed(
+  () => import("./features/workshop/workshop-suggest/WorkshopSuggest"),
+  "WorkshopSuggest",
+);
 
 // Server pages
 const ServerDetail = lazyNamed(
@@ -485,6 +489,14 @@ function AppContent() {
             element={
               <ProtectedRoute promptLogin>
                 <WorkshopDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workshop/:slug/suggest"
+            element={
+              <ProtectedRoute promptLogin>
+                <WorkshopSuggest />
               </ProtectedRoute>
             }
           />

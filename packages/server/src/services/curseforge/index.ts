@@ -64,6 +64,9 @@ export interface CurseForgeSearchResult {
   slug: string;
   url: string;
   thumbnailUrl?: string;
+  summary: string | null;
+  primaryAuthor: string | null;
+  downloadCount: number;
   inModpack: boolean;
 }
 
@@ -166,6 +169,9 @@ export async function searchMods(
       id: number;
       name: string;
       slug: string;
+      summary?: string;
+      authors?: Array<{ name: string }>;
+      downloadCount?: number;
       links: { websiteUrl: string };
       logo?: { thumbnailUrl: string };
     }>;
@@ -187,6 +193,9 @@ export async function searchMods(
     slug: m.slug,
     url: m.links.websiteUrl,
     thumbnailUrl: m.logo?.thumbnailUrl,
+    summary: m.summary ?? null,
+    primaryAuthor: m.authors?.[0]?.name ?? null,
+    downloadCount: m.downloadCount ?? 0,
     inModpack: modpackModIds.has(m.id),
   }));
 }

@@ -97,6 +97,19 @@ export const userWorkshopsRouter = router({
       }
     }),
 
+  mySuggestionHistory: workshopProcedure
+    .meta({ description: "Your suggestions across all visible workshops" })
+    .query(async ({ ctx }) => {
+      try {
+        const mods = await workshopService.getMySuggestionHistory(
+          ctx.user.discordId,
+        );
+        return mods.map((m) => redactMod(m));
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
+
   myUpvotes: workshopProcedure
     .meta({ description: "IDs of mods you have upvoted" })
     .input(z.object({ workshopId: id() }))

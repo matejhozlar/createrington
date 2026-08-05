@@ -73,6 +73,11 @@ export interface WorkshopModListItem extends WorkshopMod {
   liveInVersion: string | null;
 }
 
+export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
+  workshopName: string;
+  workshopSlug: string;
+};
+
 export interface WorkshopDependencyReport {
   pulled: ModpackModListItem[];
   optional: Array<{
@@ -121,6 +126,9 @@ export interface WorkshopProjectSearchResult {
   slug: string;
   url: string;
   thumbnailUrl?: string;
+  summary: string | null;
+  primaryAuthor: string | null;
+  downloadCount: number;
   inModpack: boolean;
   rejected: boolean;
   claimed: boolean;
@@ -354,6 +362,46 @@ export class WorkshopService {
       { orderBy: "createdAt", orderDirection: "asc" },
     );
     return this.decorateMods(workshop, mods);
+  }
+
+  /** The caller's suggestions across all user-visible workshops, newest first. */
+  async getMySuggestionHistory(
+    discordId: string,
+  ): Promise<WorkshopSuggestionHistoryItem[]> {
+    const workshops = await Q.workshop.findAll({
+      status: { $in: ["open", "closed"] },
+    });
+    if (workshops.length === 0) return [];
+    const mods = await Q.workshop.mod.findAll({
+      submittedBy: discordId,
+      workshopId: { $in: workshops.map((w) => w.id) },
+    });
+    const byWorkshop = new Map<number, WorkshopMod[]>();
+    for (const mod of mods) {
+      const list = byWorkshop.get(mod.workshopId) ?? [];
+      list.push(mod);
+      byWorkshop.set(mod.workshopId, list);
+    }
+    const decorated = await Promise.all(
+      workshops.flatMap((workshop) => {
+        const own = byWorkshop.get(workshop.id);
+        if (!own) return [];
+        return [
+          this.decorateMods(workshop, own).then((items) =>
+            items.map((item) => ({
+              ...item,
+              workshopName: workshop.name,
+              workshopSlug: workshop.slug,
+            })),
+          ),
+        ];
+      }),
+    );
+    return decorated
+      .flat()
+      .sort(
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id - a.id,
+      );
   }
 
   /**

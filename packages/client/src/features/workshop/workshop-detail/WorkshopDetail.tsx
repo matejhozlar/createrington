@@ -1,10 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlignJustify, ArrowLeft, LayoutGrid, Search } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,23 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
 import { loaderName, modInitials, projectCategories } from "../format";
+import { ViewToggle } from "../components/ViewToggle";
 import {
   Leaderboard,
   type RaceItem,
   type RaceMod,
 } from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
-import { SuggestionPanel } from "./components/SuggestionPanel";
 
 const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
 const WORDMARK_IMAGE = "/assets/createrington-woodmark.png";
@@ -57,7 +49,6 @@ export function WorkshopDetail() {
   const utils = trpc.useUtils();
 
   const [openModId, setOpenModId] = useState<number | null>(null);
-  const [suggestOpen, setSuggestOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("top");
@@ -301,8 +292,8 @@ export function WorkshopDetail() {
             )}
             <div className="mt-5">
               {isOpen ? (
-                <Button size="lg" onClick={() => setSuggestOpen(true)}>
-                  Suggest mods
+                <Button size="lg" asChild>
+                  <Link to={`/workshop/${slug}/suggest`}>Suggest mods</Link>
                 </Button>
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -372,22 +363,7 @@ export function WorkshopDetail() {
                 <SelectItem value="votes">My votes</SelectItem>
               </SelectContent>
             </Select>
-            <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-border">
-              <ViewButton
-                active={view === "list"}
-                label="List view"
-                onClick={() => changeView("list")}
-              >
-                <AlignJustify className="size-4" />
-              </ViewButton>
-              <ViewButton
-                active={view === "grid"}
-                label="Grid view"
-                onClick={() => changeView("grid")}
-              >
-                <LayoutGrid className="size-4" />
-              </ViewButton>
-            </div>
+            <ViewToggle view={view} onChange={changeView} />
           </div>
 
           {items.length === 0 ? (
@@ -395,6 +371,17 @@ export function WorkshopDetail() {
               {filtering
                 ? "No suggestions match your search."
                 : "No suggestions yet, be the first to suggest a mod!"}
+              {searching && isOpen && (
+                <>
+                  {" "}
+                  <Link
+                    to={`/workshop/${slug}/suggest?q=${encodeURIComponent(searchQuery.trim())}`}
+                    className="text-primary hover:underline"
+                  >
+                    Suggest it yourself
+                  </Link>
+                </>
+              )}
             </div>
           ) : (
             <Leaderboard
@@ -421,21 +408,6 @@ export function WorkshopDetail() {
           {packMatches.length > 0 && <PackSearchResults mods={packMatches} />}
         </main>
       </div>
-
-      <Sheet open={suggestOpen} onOpenChange={setSuggestOpen}>
-        <SheetContent className="w-full sm:max-w-xl">
-          <SheetHeader>
-            <SheetTitle>Suggest mods</SheetTitle>
-            <SheetDescription>
-              Search CurseForge and use one of your suggestion slots. Every
-              suggestion is reviewed by the team.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 overflow-y-auto px-4 pb-4">
-            <SuggestionPanel workshop={workshop} />
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <ModDetailDialog
         workshopModId={openModId}
@@ -565,34 +537,5 @@ function ApprovedStrip({
         )}
       </span>
     </div>
-  );
-}
-
-function ViewButton({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "flex w-10 cursor-pointer items-center justify-center transition-colors",
-        active
-          ? "bg-[var(--primary-glow)] text-primary"
-          : "text-muted-foreground hover:text-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }

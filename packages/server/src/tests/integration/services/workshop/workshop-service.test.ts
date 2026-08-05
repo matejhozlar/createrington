@@ -436,3 +436,37 @@ describe("WorkshopService.getMySuggestions", () => {
     );
   });
 });
+
+describe("WorkshopService.getMySuggestionHistory", () => {
+  it("returns the caller's rows across visible workshops, newest first", async () => {
+    const first = await seedWorkshop(ctx);
+    const second = await seedWorkshop(ctx, { status: "closed" });
+    const older = await seedMod(ctx, first, { submittedBy: USER_A });
+    const newer = await seedMod(ctx, second, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "incompatible",
+    });
+    await seedMod(ctx, first, { submittedBy: USER_B });
+
+    const rows = await workshopService.getMySuggestionHistory(USER_A);
+
+    expect(rows.map((row) => row.id)).toEqual([newer.id, older.id]);
+    expect(rows[0]).toMatchObject({
+      workshopName: second.name,
+      workshopSlug: second.slug,
+      status: "rejected",
+    });
+  });
+
+  it("excludes suggestions in draft and archived workshops", async () => {
+    const visible = await seedWorkshop(ctx);
+    const draft = await seedWorkshop(ctx, { status: "draft" });
+    const kept = await seedMod(ctx, visible, { submittedBy: USER_A });
+    await seedMod(ctx, draft, { submittedBy: USER_A });
+
+    const rows = await workshopService.getMySuggestionHistory(USER_A);
+
+    expect(rows.map((row) => row.id)).toEqual([kept.id]);
+  });
+});
