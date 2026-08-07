@@ -235,7 +235,7 @@ export class ModpackService {
         try {
           manifest = await getModpackManifest(modpack.curseforgeProjectId);
         } catch (error) {
-          logger.warn(`Modpack #${modpackId} manifest fetch failed: ${error}`);
+          logger.warn(`Modpack #${modpackId} manifest fetch failed:`, error);
         }
         if (manifest) {
           await this.applyManifest(modpack, workshops, manifest);
@@ -244,7 +244,7 @@ export class ModpackService {
 
       await pruneOrphanedDependencies(modpackId);
     } catch (error) {
-      logger.warn(`Modpack #${modpackId} reconcile failed: ${error}`);
+      logger.warn(`Modpack #${modpackId} reconcile failed:`, error);
     }
   }
 
@@ -324,10 +324,10 @@ export class ModpackService {
     const suggestionIds = rows
       .map((row) => row.workshopModId)
       .filter((id): id is number => id !== null);
-    const workshops = await Q.workshop.findAll(
-      { modpackId },
-      { select: ["id"] },
-    );
+    const [workshops, memberRows] = await Promise.all([
+      Q.workshop.findAll({ modpackId }, { select: ["id"] }),
+      Q.modpack.mod.findAll({ modpackId }, { select: ["curseforgeProjectId"] }),
+    ]);
 
     const [projects, suggestions, upvoteCounts, edges] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: projectIds } }),
@@ -347,10 +347,24 @@ export class ModpackService {
     ]);
 
     const projectById = new Map(projects.map((p) => [p.id, p]));
-    const suggestionById = new Map(suggestions.map((s) => [s.id, s]));
+    // Requirement context spans the whole pack, not just the rows being
+    // decorated, so a partial decorate (e.g. the dependency report) still
+    // credits the members that require a pulled dependency
     const memberProjectIds = new Set(
-      rows.map((row) => row.curseforgeProjectId),
+      memberRows.map((row) => row.curseforgeProjectId),
     );
+    const subjectIds = [
+      ...new Set(edges.map((edge) => edge.curseforgeProjectId)),
+    ].filter((id) => !projectById.has(id));
+    if (subjectIds.length > 0) {
+      const subjectProjects = await Q.curseforge.project.findAll({
+        id: { $in: subjectIds },
+      });
+      for (const project of subjectProjects) {
+        projectById.set(project.id, project);
+      }
+    }
+    const suggestionById = new Map(suggestions.map((s) => [s.id, s]));
 
     const discordIds = [
       ...new Set([
