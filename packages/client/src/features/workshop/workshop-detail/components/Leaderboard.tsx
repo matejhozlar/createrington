@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type KeyboardEvent, type ReactNode } from "react";
 import { Heart } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -75,12 +75,27 @@ interface RaceItemProps {
   onUpvote: (workshopModId: number) => void;
 }
 
+function openOnActivate(onActivate: () => void) {
+  return {
+    role: "button" as const,
+    tabIndex: 0,
+    onClick: onActivate,
+    onKeyDown: (event: KeyboardEvent) => {
+      if (event.target !== event.currentTarget) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onActivate();
+      }
+    },
+  };
+}
+
 function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
   const { mod } = item;
   return (
     <div
-      className="group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-3.5 transition-colors hover:border-primary/40"
-      onClick={() => onOpen(mod.id)}
+      className="group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-xl border border-border bg-card px-5 py-3.5 transition-colors hover:border-primary/40 focus-visible:border-primary/40"
+      {...openOnActivate(() => onOpen(mod.id))}
     >
       <div
         className={cn(
@@ -135,8 +150,8 @@ function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
   const category = projectCategories(mod.project.categories)[0] ?? null;
   return (
     <div
-      className="group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-[18px] pb-5 transition-colors hover:border-primary/40"
-      onClick={() => onOpen(mod.id)}
+      className="group relative flex cursor-pointer flex-col gap-3 overflow-hidden rounded-xl border border-border bg-card p-[18px] pb-5 transition-colors hover:border-primary/40 focus-visible:border-primary/40"
+      {...openOnActivate(() => onOpen(mod.id))}
     >
       <div
         className={cn(

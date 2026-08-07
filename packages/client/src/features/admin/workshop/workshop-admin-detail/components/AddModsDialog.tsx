@@ -141,13 +141,14 @@ export function AddModsDialog({
               result.inModpack ||
               alreadySelected;
             return (
-              <div
+              <button
                 key={result.id}
-                className={`flex items-center gap-3 rounded-md border p-2.5 ${
+                type="button"
+                disabled={blocked}
+                className={`flex w-full items-center gap-3 rounded-md border p-2.5 text-left ${
                   blocked ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
                 }`}
                 onClick={() => {
-                  if (blocked) return;
                   if (selected.length >= MAX_MODS_PER_ADD) {
                     toast.error(
                       `You can add up to ${MAX_MODS_PER_ADD} mods at a time`,
@@ -208,7 +209,7 @@ export function AddModsDialog({
                     <Plus className="size-4 text-muted-foreground" />
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
           {debouncedSearch.length >= 2 &&
