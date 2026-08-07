@@ -142,6 +142,57 @@ describe("pruneOrphanedDependencies", () => {
     expect(await Q.modpack.mod.find({ id: rowC.id })).toBeNull();
   });
 
+  it("collects a dependency cycle once nothing outside it requires it", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectB = await seedProject(ctx);
+    const projectC = await seedProject(ctx);
+    const rowA = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
+    const rowB = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: projectB,
+      origin: "dependency",
+      addedBy: ADMIN,
+    });
+    const rowC = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: projectC,
+      origin: "dependency",
+      addedBy: ADMIN,
+    });
+    await seedRequiredDependency(workshop, rowA.curseforgeProjectId, projectB);
+    await seedRequiredDependency(workshop, projectB, projectC);
+    await seedRequiredDependency(workshop, projectC, projectB);
+
+    await Q.modpack.mod.delete({ id: rowA.id });
+    await pruneOrphanedDependencies(workshop.modpackId);
+
+    expect(await Q.modpack.mod.find({ id: rowB.id })).toBeNull();
+    expect(await Q.modpack.mod.find({ id: rowC.id })).toBeNull();
+  });
+
+  it("keeps a cycle that is still reachable from a non-dependency member", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectB = await seedProject(ctx);
+    const projectC = await seedProject(ctx);
+    const rowA = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
+    const rowB = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: projectB,
+      origin: "dependency",
+      addedBy: ADMIN,
+    });
+    const rowC = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: projectC,
+      origin: "dependency",
+      addedBy: ADMIN,
+    });
+    await seedRequiredDependency(workshop, rowA.curseforgeProjectId, projectB);
+    await seedRequiredDependency(workshop, projectB, projectC);
+    await seedRequiredDependency(workshop, projectC, projectB);
+
+    await pruneOrphanedDependencies(workshop.modpackId);
+
+    expect(await Q.modpack.mod.find({ id: rowB.id })).not.toBeNull();
+    expect(await Q.modpack.mod.find({ id: rowC.id })).not.toBeNull();
+  });
+
   it("never touches admin, suggestion, or live dependency rows", async () => {
     const workshop = await seedWorkshop(ctx);
     const adminRow = await seedPackMod(ctx, workshop, { addedBy: ADMIN });

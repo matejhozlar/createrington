@@ -427,6 +427,122 @@ describe("WorkshopService.toggleModUpvote", () => {
   });
 });
 
+describe("WorkshopService.addModsAsAdmin", () => {
+  it("creates admin-origin pack rows with the snapshot file", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectA = await seedProject(ctx);
+    const projectB = await seedProject(ctx);
+
+    const rows = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectA, projectB],
+      ADMIN,
+    );
+
+    expect(rows).toHaveLength(2);
+    const rowA = rows.find((row) => row.curseforgeProjectId === projectA);
+    expect(rowA).toMatchObject({
+      origin: "admin",
+      addedBy: ADMIN,
+      workshopModId: null,
+      fileId: projectA + 1,
+    });
+    expect(rowA!.project.id).toBe(projectA);
+  });
+
+  it("rejects the whole batch when a project is already in the pack", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const existing = await seedPackMod(ctx, workshop);
+    const fresh = await seedProject(ctx);
+
+    await expect(
+      workshopService.addModsAsAdmin(
+        workshop.id,
+        [existing.curseforgeProjectId, fresh],
+        ADMIN,
+      ),
+    ).rejects.toThrow(ConflictError);
+
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      1,
+    );
+  });
+
+  it("throws on an archived workshop", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const projectId = await seedProject(ctx);
+
+    await expect(
+      workshopService.addModsAsAdmin(workshop.id, [projectId], ADMIN),
+    ).rejects.toThrow("Cannot add mods to an archived workshop");
+  });
+});
+
+describe("WorkshopService.getDependencyReport", () => {
+  it("lists dependency-origin rows as pulled and aggregates optional deps", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
+    const depProjectId = await seedProject(ctx);
+    const depRow = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      origin: "dependency",
+      addedBy: ADMIN,
+    });
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    const optionalProjectId = await seedProject(ctx, "Vitest Optional");
+    await Q.workshop.project.dependency.create({
+      workshopId: workshop.id,
+      curseforgeProjectId: member.curseforgeProjectId,
+      dependsOnProjectId: optionalProjectId,
+      relationType: 2,
+    });
+
+    const report = await workshopService.getDependencyReport(workshop.id);
+
+    expect(report.pulled.map((row) => row.id)).toEqual([depRow.id]);
+    expect(
+      report.pulled[0].requiredBy.map((r) => r.curseforgeProjectId),
+    ).toEqual([member.curseforgeProjectId]);
+    expect(report.optional).toHaveLength(1);
+    expect(report.optional[0]).toMatchObject({
+      curseforgeProjectId: optionalProjectId,
+      name: "Vitest Optional",
+      rejected: false,
+      inWorkshop: false,
+    });
+    expect(
+      report.optional[0].wantedBy.map((w) => w.curseforgeProjectId),
+    ).toEqual([member.curseforgeProjectId]);
+  });
+
+  it("flags optional deps that were rejected in the workshop", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
+    const optionalProjectId = await seedProject(ctx);
+    await Q.workshop.project.dependency.create({
+      workshopId: workshop.id,
+      curseforgeProjectId: member.curseforgeProjectId,
+      dependsOnProjectId: optionalProjectId,
+      relationType: 2,
+    });
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: optionalProjectId,
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "incompatible",
+    });
+
+    const report = await workshopService.getDependencyReport(workshop.id);
+
+    expect(report.optional).toHaveLength(1);
+    expect(report.optional[0].rejected).toBe(true);
+  });
+});
+
 describe("WorkshopService.getRejectedMods", () => {
   it("returns rejected rows for an open workshop", async () => {
     const workshop = await seedWorkshop(ctx);
