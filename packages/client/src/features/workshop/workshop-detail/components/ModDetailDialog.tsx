@@ -75,10 +75,7 @@ export function ModDetailDialog({
   ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
   const status = data
     ? data.mod.live
-      ? {
-          label: "Live",
-          className: "border-green-500/50 bg-green-500/10 text-green-400",
-        }
+      ? MOD_STATUS_STYLES.live
       : MOD_STATUS_STYLES[data.mod.status]
     : null;
   const credit = modCredit(data?.mod.submitterName ?? null);
@@ -227,9 +224,9 @@ export function ModDetailDialog({
                       {dep.rejected && (
                         <Badge
                           variant="outline"
-                          className="border-red-500/50 text-xs text-red-400"
+                          className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
                         >
-                          Rejected
+                          {MOD_STATUS_STYLES.rejected.label}
                         </Badge>
                       )}
                     </div>

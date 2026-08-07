@@ -28,7 +28,7 @@ import {
   Terminal,
   Timer,
   Users,
-  Vote as WorkshopIcon,
+  Hammer as WorkshopIcon,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";

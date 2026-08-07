@@ -3,7 +3,7 @@ import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import {
   Select,
   SelectContent,
@@ -15,7 +15,11 @@ import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import { ViewToggle, type ViewMode } from "../../components/ViewToggle";
-import { formatDate, REJECT_REASON_LABELS } from "../../format";
+import {
+  MOD_STATUS_STYLES,
+  REJECT_REASON_LABELS,
+  formatDate,
+} from "../../format";
 
 type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
@@ -37,42 +41,25 @@ function secondaryLine(mod: HistoryItem): string {
 }
 
 function StatusBadge({ mod }: { mod: HistoryItem }) {
-  if (mod.status === "pending") {
-    return (
-      <Badge
-        variant="outline"
-        className="border-primary/50 bg-primary/10 text-primary"
-      >
-        In review
-      </Badge>
-    );
-  }
-  if (mod.status === "approved") {
-    return mod.live ? (
-      <Badge
-        variant="outline"
-        className="border-green-500/50 bg-green-500/10 text-green-400"
-        title={
-          mod.liveInVersion ? `Live since ${mod.liveInVersion}` : undefined
-        }
-      >
-        Live
-      </Badge>
-    ) : (
-      <Badge
-        variant="outline"
-        className="border-sky-500/50 bg-sky-500/10 text-sky-400"
-      >
-        Approved
-      </Badge>
-    );
-  }
+  const style =
+    mod.status === "approved" && mod.live
+      ? MOD_STATUS_STYLES.live
+      : MOD_STATUS_STYLES[mod.status];
+  const label =
+    mod.status === "rejected" && mod.rejectReason
+      ? REJECT_REASON_LABELS[mod.rejectReason]
+      : style.label;
   return (
     <Badge
       variant="outline"
-      className="border-red-500/50 bg-red-500/10 text-red-400"
+      className={style.className}
+      title={
+        mod.live && mod.liveInVersion
+          ? `Live since ${mod.liveInVersion}`
+          : undefined
+      }
     >
-      {mod.rejectReason ? REJECT_REASON_LABELS[mod.rejectReason] : "Ruled out"}
+      {label}
     </Badge>
   );
 }
@@ -92,7 +79,7 @@ function SocialLinks({
         <a
           href={mod.discordThreadUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           aria-label="Discuss on Discord"
           title="Discuss on Discord"
           className={cn(linkClass, "hover:text-[#5865F2]")}
@@ -104,7 +91,7 @@ function SocialLinks({
         <a
           href={mod.project.websiteUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           aria-label="View on CurseForge"
           title="View on CurseForge"
           className={cn(linkClass, "hover:text-[#F16436]")}
@@ -194,7 +181,11 @@ export function SuggestionHistory() {
       </p>
 
       {historyQuery.isLoading ? (
-        <Skeleton className="mt-4 h-32 w-full rounded-xl" />
+        <Loading
+          size="medium"
+          className="py-12"
+          text="Loading suggestions..."
+        />
       ) : shown.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
           {history.length === 0

@@ -102,7 +102,7 @@ export function WorkshopSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
-          <DialogTitle>Workshop settings</DialogTitle>
+          <DialogTitle>Workshop Settings</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -125,7 +125,7 @@ export function WorkshopSettingsDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="settings-version">Game version</Label>
+              <Label htmlFor="settings-version">Game Version</Label>
               <Input
                 id="settings-version"
                 maxLength={20}
@@ -134,7 +134,7 @@ export function WorkshopSettingsDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Mod loader</Label>
+              <Label>Mod Loader</Label>
               <Select value={loaderType} onValueChange={setLoaderType}>
                 <SelectTrigger>
                   <SelectValue />
@@ -151,7 +151,7 @@ export function WorkshopSettingsDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="settings-max">Suggestions per player</Label>
+              <Label htmlFor="settings-max">Suggestions per Player</Label>
               <Input
                 id="settings-max"
                 type="number"
@@ -162,7 +162,7 @@ export function WorkshopSettingsDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="settings-max-upvotes">Upvotes per player</Label>
+              <Label htmlFor="settings-max-upvotes">Upvotes per Player</Label>
               <Input
                 id="settings-max-upvotes"
                 type="number"
@@ -175,7 +175,7 @@ export function WorkshopSettingsDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="settings-basepack">
-              Base modpack ID (optional)
+              Base Modpack ID (Optional)
             </Label>
             <Input
               id="settings-basepack"
@@ -186,7 +186,7 @@ export function WorkshopSettingsDialog({
           </div>
           <div className="space-y-2">
             <Label htmlFor="settings-forum">
-              Discord forum channel ID (optional)
+              Discord Forum Channel ID (Optional)
             </Label>
             <Input
               id="settings-forum"

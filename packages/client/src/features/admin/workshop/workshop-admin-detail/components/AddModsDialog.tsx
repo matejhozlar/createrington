@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 
 interface SelectedProject {
   id: number;
@@ -73,7 +74,7 @@ export function AddModsDialog({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add mods to the pack</DialogTitle>
+          <DialogTitle>Add Mods to the Pack</DialogTitle>
           <DialogDescription>
             Mods added here skip review and land directly as approved.
           </DialogDescription>
@@ -181,9 +182,9 @@ export function AddModsDialog({
                   {result.rejected && (
                     <Badge
                       variant="outline"
-                      className="border-red-500/50 text-xs text-red-400"
+                      className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
                     >
-                      Rejected
+                      {MOD_STATUS_STYLES.rejected.label}
                     </Badge>
                   )}
                   {result.claimed && !result.rejected && (
@@ -194,7 +195,7 @@ export function AddModsDialog({
                   {result.inModpack && (
                     <Badge
                       variant="outline"
-                      className="border-green-500/50 text-xs text-green-400"
+                      className={`text-xs ${MOD_STATUS_STYLES.live.className}`}
                     >
                       In base pack
                     </Badge>
@@ -233,7 +234,7 @@ export function AddModsDialog({
             {addMutation.isPending && (
               <Loader2 className="size-4 animate-spin" />
             )}
-            Add {selected.length > 0 ? `${selected.length} ` : ""}as approved
+            Add {selected.length > 0 ? `${selected.length} ` : ""}as Approved
           </Button>
         </DialogFooter>
       </DialogContent>

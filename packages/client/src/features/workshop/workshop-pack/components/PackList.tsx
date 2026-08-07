@@ -125,7 +125,7 @@ function CurseForgeLink({ url }: { url: string | null }) {
     <a
       href={url}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       aria-label="View on CurseForge"
       title="View on CurseForge"
       className="shrink-0 text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100 hover:text-[#F16436]"

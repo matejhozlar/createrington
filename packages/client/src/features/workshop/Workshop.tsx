@@ -1,13 +1,19 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, Heart, Vote as WorkshopIcon } from "lucide-react";
+import { ChevronRight, Hammer as WorkshopIcon, Heart } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { QueryErrorState } from "./components/QueryErrorState";
-import { formatDate, loaderName, modInitials } from "./format";
+import {
+  WORKSHOP_STATUS_STYLES,
+  formatDate,
+  loaderName,
+  modInitials,
+} from "./format";
 
 const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
 
@@ -61,7 +67,11 @@ export function Workshop() {
           <div>
             <h2 className="mb-4 text-3xl font-semibold">Active workshop</h2>
             {workshopsQuery.isLoading ? (
-              <Skeleton className="h-80 w-full rounded-xl" />
+              <Loading
+                size="large"
+                className="py-24"
+                text="Loading workshops..."
+              />
             ) : workshopsQuery.error ? (
               <QueryErrorState
                 message={workshopsQuery.error.message}
@@ -264,8 +274,13 @@ function EarlierWorkshops({ workshops }: { workshops: WorkshopListItem[] }) {
           >
             <Card className="flex-row items-center gap-4 px-6 py-[18px] transition-colors hover:border-primary/40">
               <span className="text-[15px] font-semibold">{workshop.name}</span>
-              <span className="rounded-full border border-zinc-500/50 bg-zinc-500/10 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-zinc-400">
-                Closed
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+                  WORKSHOP_STATUS_STYLES.closed.className,
+                )}
+              >
+                {WORKSHOP_STATUS_STYLES.closed.label}
               </span>
               <span className="flex-1" />
               <span className="text-[13px] text-muted-foreground">

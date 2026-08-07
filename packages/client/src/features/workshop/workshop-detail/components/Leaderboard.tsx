@@ -7,6 +7,7 @@ import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { PlayerLabel } from "@/components/player-label";
 import {
+  MOD_STATUS_STYLES,
   agoLabel,
   modInitials,
   projectCategories,
@@ -243,7 +244,7 @@ function SocialLinks({ mod }: { mod: RaceMod }) {
         <a
           href={mod.discordThreadUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           aria-label="Discuss on Discord"
           title="Discuss on Discord"
           onClick={(event) => event.stopPropagation()}
@@ -256,7 +257,7 @@ function SocialLinks({ mod }: { mod: RaceMod }) {
         <a
           href={mod.project.websiteUrl}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           aria-label="View on CurseForge"
           title="View on CurseForge"
           onClick={(event) => event.stopPropagation()}
@@ -278,22 +279,20 @@ function HeartOrBadge({
 }) {
   const { mod } = item;
   if (mod.status === "approved") {
-    return mod.live ? (
+    const style = mod.live
+      ? MOD_STATUS_STYLES.live
+      : MOD_STATUS_STYLES.approved;
+    return (
       <Badge
         variant="outline"
-        className="relative shrink-0 border-green-500/50 bg-green-500/10 text-green-400"
+        className={cn("relative shrink-0", style.className)}
         title={
-          mod.liveInVersion ? `Live since ${mod.liveInVersion}` : undefined
+          mod.live && mod.liveInVersion
+            ? `Live since ${mod.liveInVersion}`
+            : undefined
         }
       >
-        Live
-      </Badge>
-    ) : (
-      <Badge
-        variant="outline"
-        className="relative shrink-0 border-sky-500/50 bg-sky-500/10 text-sky-400"
-      >
-        Approved
+        {style.label}
       </Badge>
     );
   }
@@ -301,11 +300,14 @@ function HeartOrBadge({
     return (
       <Badge
         variant="outline"
-        className="relative shrink-0 border-red-500/50 bg-red-500/10 text-red-400"
+        className={cn(
+          "relative shrink-0",
+          MOD_STATUS_STYLES.rejected.className,
+        )}
       >
         {mod.rejectReason
           ? REJECT_REASON_LABELS[mod.rejectReason]
-          : "Ruled out"}
+          : MOD_STATUS_STYLES.rejected.label}
       </Badge>
     );
   }

@@ -4,6 +4,7 @@ import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProjectThumb } from "../../components/ProjectThumb";
+import { MOD_STATUS_STYLES } from "../../format";
 
 type Suggestion = RouterOutput["user"]["workshops"]["mySuggestions"][number];
 
@@ -81,9 +82,9 @@ export function ActiveSlots({
               <span className="ml-auto flex shrink-0 items-center gap-2">
                 <Badge
                   variant="outline"
-                  className="border-primary/50 bg-primary/10 text-primary"
+                  className={MOD_STATUS_STYLES.pending.className}
                 >
-                  In review
+                  {MOD_STATUS_STYLES.pending.label}
                 </Badge>
                 {isOpen && (
                   <Button

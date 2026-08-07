@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { loaderName, projectCategories } from "../format";
@@ -77,13 +77,7 @@ export function WorkshopPack() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-96 w-full rounded-xl" />
-        </div>
-      </div>
+      <Loading size="large" className="py-32" text="Loading the pack..." />
     );
   }
 
@@ -173,7 +167,7 @@ export function WorkshopPack() {
                   <a
                     href={modpack.curseforgeUrl}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                   >
                     <CurseForgeIcon className="size-4" />
                     Get the pack on CurseForge
@@ -191,10 +185,7 @@ export function WorkshopPack() {
 
         <main className="mt-10 flex flex-col gap-6">
           {packQuery.isLoading ? (
-            <>
-              <Skeleton className="h-16 w-full rounded-xl" />
-              <Skeleton className="h-96 w-full rounded-xl" />
-            </>
+            <Loading size="medium" className="py-16" text="Loading mods..." />
           ) : packQuery.error ? (
             <QueryErrorState
               message={packQuery.error.message}
@@ -213,7 +204,10 @@ export function WorkshopPack() {
                   <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
                   <Input
                     value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setShownCount(PAGE_SIZE);
+                    }}
                     placeholder="Search the pack..."
                     className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
                   />
@@ -221,7 +215,10 @@ export function WorkshopPack() {
                 <span className="hidden flex-1 sm:block" />
                 <Select
                   value={source}
-                  onValueChange={(value) => setSource(value as SourceFilter)}
+                  onValueChange={(value) => {
+                    setSource(value as SourceFilter);
+                    setShownCount(PAGE_SIZE);
+                  }}
                 >
                   <SelectTrigger className="w-full sm:w-44">
                     <SelectValue />
@@ -232,7 +229,13 @@ export function WorkshopPack() {
                     <SelectItem value="base">Base pack</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={category} onValueChange={setCategory}>
+                <Select
+                  value={category}
+                  onValueChange={(value) => {
+                    setCategory(value);
+                    setShownCount(PAGE_SIZE);
+                  }}
+                >
                   <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue />
                   </SelectTrigger>

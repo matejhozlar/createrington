@@ -13,6 +13,16 @@ import {
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { useStickyValue } from "@/hooks/use-sticky-value";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,13 +58,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import { PlayerLabel } from "@/components/player-label";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
+  WORKSHOP_STATUS_STYLES,
   formatDate,
 } from "@/features/workshop/format";
 import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
@@ -69,9 +80,9 @@ const WORKSHOP_STATUSES = ["draft", "open", "closed", "archived"] as const;
 
 const ORIGIN_LABELS: Record<string, string> = {
   suggestion: "Suggestion",
-  admin: "Admin add",
+  admin: "Admin Add",
   dependency: "Dependency",
-  import: "Pack import",
+  import: "Pack Import",
 };
 
 export function AdminWorkshopDetail() {
@@ -109,6 +120,11 @@ export function AdminWorkshopDetail() {
     name: string;
   } | null>(null);
   const displayRejectTarget = useStickyValue(rejectTarget);
+  const [removeTarget, setRemoveTarget] = useState<{
+    modpackModId: number;
+    name: string;
+  } | null>(null);
+  const displayRemoveTarget = useStickyValue(removeTarget);
   const [rejectReason, setRejectReason] = useState<RejectReason | "">("");
   const [rejectNote, setRejectNote] = useState("");
 
@@ -185,9 +201,8 @@ export function AdminWorkshopDetail() {
 
   if (workshopsQuery.isLoading) {
     return (
-      <div className="flex flex-1 flex-col gap-4 p-4">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className="flex flex-1 items-center justify-center">
+        <Loading size="medium" text="Loading workshop..." />
       </div>
     );
   }
@@ -239,7 +254,7 @@ export function AdminWorkshopDetail() {
             <SelectContent>
               {WORKSHOP_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s}
+                  {WORKSHOP_STATUS_STYLES[s]?.label ?? s}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -254,7 +269,7 @@ export function AdminWorkshopDetail() {
           </Button>
           <Button size="sm" onClick={() => setAddOpen(true)}>
             <PackagePlus className="size-4" />
-            Add mods
+            Add Mods
           </Button>
         </div>
       </AdminPageHeader>
@@ -269,9 +284,7 @@ export function AdminWorkshopDetail() {
                 size="sm"
                 onClick={() => setStatusFilter(status)}
               >
-                {status === "all"
-                  ? "All"
-                  : status.charAt(0).toUpperCase() + status.slice(1)}
+                {status === "all" ? "All" : MOD_STATUS_STYLES[status].label}
                 <Badge variant="outline" className="ml-1.5 text-xs">
                   {counts[status] ?? 0}
                 </Badge>
@@ -283,7 +296,9 @@ export function AdminWorkshopDetail() {
         <Card>
           <CardContent className="pt-6">
             {modsQuery.isLoading ? (
-              <Skeleton className="h-48 w-full" />
+              <div className="flex items-center justify-center py-12">
+                <Loading size="medium" text="Loading mods..." />
+              </div>
             ) : filtered.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
                 No mods
@@ -382,7 +397,7 @@ export function AdminWorkshopDetail() {
                                 onClick={() => setDetailModId(mod.id)}
                               >
                                 <Eye className="size-4" />
-                                View details
+                                View Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {mod.status !== "approved" && (
@@ -425,7 +440,7 @@ export function AdminWorkshopDetail() {
         {(attentionQuery.data?.length ?? 0) > 0 && (
           <Card className="border-amber-500/40">
             <CardContent className="space-y-2 pt-6">
-              <h3 className="text-sm font-semibold">Needs attention</h3>
+              <h3 className="text-sm font-semibold">Needs Attention</h3>
               {attentionQuery.data!.map((item) => (
                 <div
                   key={`${item.type}-${item.curseforgeProjectId}`}
@@ -449,7 +464,7 @@ export function AdminWorkshopDetail() {
         <Card>
           <CardContent className="pt-6">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Modpack members</h3>
+              <h3 className="text-sm font-semibold">Modpack Members</h3>
               <Button
                 variant="outline"
                 size="sm"
@@ -462,11 +477,13 @@ export function AdminWorkshopDetail() {
                 {reconcileMutation.isPending && (
                   <Loader2 className="size-4 animate-spin" />
                 )}
-                Check published pack
+                Check Published Pack
               </Button>
             </div>
             {packModsQuery.isLoading ? (
-              <Skeleton className="h-24 w-full" />
+              <div className="flex items-center justify-center py-8">
+                <Loading size="medium" text="Loading pack members..." />
+              </div>
             ) : (packModsQuery.data?.length ?? 0) === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Nothing in the pack yet.
@@ -546,7 +563,7 @@ export function AdminWorkshopDetail() {
                         {row.liveAt ? (
                           <Badge
                             variant="outline"
-                            className="border-green-500/50 bg-green-500/10 text-xs text-green-400"
+                            className={`text-xs ${MOD_STATUS_STYLES.live.className}`}
                           >
                             {row.liveInVersion
                               ? `Live · ${row.liveInVersion}`
@@ -555,14 +572,14 @@ export function AdminWorkshopDetail() {
                         ) : row.droppedFromManifestAt ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/50 bg-amber-500/10 text-xs text-amber-400"
+                            className="border-amber-500/20 bg-amber-500/10 text-xs text-amber-400"
                           >
                             Missing from pack
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-sky-500/50 bg-sky-500/10 text-xs text-sky-400"
+                            className={`text-xs ${MOD_STATUS_STYLES.approved.className}`}
                           >
                             Coming next update
                           </Badge>
@@ -575,8 +592,9 @@ export function AdminWorkshopDetail() {
                             size="sm"
                             disabled={removePackModMutation.isPending}
                             onClick={() =>
-                              removePackModMutation.mutate({
+                              setRemoveTarget({
                                 modpackModId: row.id,
+                                name: row.project.name,
                               })
                             }
                           >
@@ -597,7 +615,7 @@ export function AdminWorkshopDetail() {
             <CardContent className="space-y-5 pt-6">
               <div>
                 <h3 className="mb-2 text-sm font-semibold">
-                  Pulled in as dependencies
+                  Pulled in as Dependencies
                 </h3>
                 {depReportQuery.data.pulled.length === 0 ? (
                   <p className="text-sm text-muted-foreground">None yet.</p>
@@ -631,7 +649,7 @@ export function AdminWorkshopDetail() {
               </div>
               <div>
                 <h3 className="mb-2 text-sm font-semibold">
-                  Optional dependencies
+                  Optional Dependencies
                 </h3>
                 {depReportQuery.data.optional.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -667,9 +685,9 @@ export function AdminWorkshopDetail() {
                         {dep.rejected && (
                           <Badge
                             variant="outline"
-                            className="border-red-500/50 text-xs text-red-400"
+                            className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
                           >
-                            Rejected
+                            {MOD_STATUS_STYLES.rejected.label}
                           </Badge>
                         )}
                       </div>
@@ -681,6 +699,41 @@ export function AdminWorkshopDetail() {
           </Card>
         )}
       </div>
+
+      <AlertDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove &quot;{displayRemoveTarget?.name}&quot; from the pack?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The mod will be dropped from the next pack build. You can add it
+              back later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={removePackModMutation.isPending}
+              onClick={() => {
+                if (removeTarget) {
+                  removePackModMutation.mutate({
+                    modpackModId: removeTarget.modpackModId,
+                  });
+                }
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ModDetailDialog
         workshopModId={detailModId}
@@ -745,7 +798,7 @@ export function AdminWorkshopDetail() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="reject-note">Note (optional)</Label>
+              <Label htmlFor="reject-note">Note (Optional)</Label>
               <Input
                 id="reject-note"
                 placeholder="Extra context, shown to players."

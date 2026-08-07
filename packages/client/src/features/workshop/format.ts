@@ -61,17 +61,43 @@ export const MOD_STATUS_STYLES: Record<
   string,
   { label: string; className: string }
 > = {
+  pending: {
+    label: "In review",
+    className: "border-primary/20 bg-primary/10 text-primary",
+  },
   approved: {
     label: "Approved",
-    className: "border-green-500/50 bg-green-500/10 text-green-400",
-  },
-  pending: {
-    label: "Pending review",
-    className: "border-yellow-500/50 bg-yellow-500/10 text-yellow-400",
+    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
   },
   rejected: {
-    label: "Rejected",
-    className: "border-red-500/50 bg-red-500/10 text-red-400",
+    label: "Ruled out",
+    className: "border-red-500/20 bg-red-500/10 text-red-400",
+  },
+  live: {
+    label: "Live",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
+  },
+};
+
+export const WORKSHOP_STATUS_STYLES: Record<
+  string,
+  { label: string; className: string }
+> = {
+  draft: {
+    label: "Draft",
+    className: "border-yellow-500/20 bg-yellow-500/10 text-yellow-400",
+  },
+  open: {
+    label: "Open",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
+  },
+  closed: {
+    label: "Closed",
+    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+  },
+  archived: {
+    label: "Archived",
+    className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
 };
 

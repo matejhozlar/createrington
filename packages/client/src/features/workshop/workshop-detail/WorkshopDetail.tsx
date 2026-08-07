@@ -14,10 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { PlayerLabel } from "@/components/player-label";
-import { loaderName, modInitials, projectCategories } from "../format";
+import {
+  MOD_STATUS_STYLES,
+  loaderName,
+  modInitials,
+  projectCategories,
+} from "../format";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import {
@@ -167,13 +172,7 @@ export function WorkshopDetail() {
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
     return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-96 w-full rounded-xl" />
-        </div>
-      </div>
+      <Loading size="large" className="py-32" text="Loading workshop..." />
     );
   }
 
@@ -348,13 +347,22 @@ export function WorkshopDetail() {
               <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
+                onChange={(event) => {
+                  setSearchQuery(event.target.value);
+                  setShownCount(PAGE_SIZE);
+                }}
                 placeholder="Search all suggestions..."
                 className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
               />
             </div>
             <span className="hidden flex-1 sm:block" />
-            <Select value={category} onValueChange={setCategory}>
+            <Select
+              value={category}
+              onValueChange={(value) => {
+                setCategory(value);
+                setShownCount(PAGE_SIZE);
+              }}
+            >
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue />
               </SelectTrigger>
@@ -369,7 +377,10 @@ export function WorkshopDetail() {
             </Select>
             <Select
               value={sortMode}
-              onValueChange={(value) => setSortMode(value as SortMode)}
+              onValueChange={(value) => {
+                setSortMode(value as SortMode);
+                setShownCount(PAGE_SIZE);
+              }}
             >
               <SelectTrigger className="w-full sm:w-44">
                 <SelectValue />
@@ -500,16 +511,16 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
           {row.liveAt ? (
             <Badge
               variant="outline"
-              className="shrink-0 border-green-500/50 bg-green-500/10 text-green-400"
+              className={`shrink-0 ${MOD_STATUS_STYLES.live.className}`}
             >
-              Live
+              {MOD_STATUS_STYLES.live.label}
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="shrink-0 border-sky-500/50 bg-sky-500/10 text-sky-400"
+              className={`shrink-0 ${MOD_STATUS_STYLES.approved.className}`}
             >
-              Approved
+              {MOD_STATUS_STYLES.approved.label}
             </Badge>
           )}
         </div>

@@ -2,7 +2,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { ProjectThumb } from "../components/ProjectThumb";
@@ -55,13 +55,7 @@ export function WorkshopSuggest() {
     suggestionsQuery.isLoading
   ) {
     return (
-      <div className="px-5 py-10 md:px-8">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <Skeleton className="h-16 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
-        </div>
-      </div>
+      <Loading size="large" className="py-32" text="Loading workshop..." />
     );
   }
 
