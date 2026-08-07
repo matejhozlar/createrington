@@ -78,6 +78,15 @@ export type WorkshopSuggestionHistoryItem = WorkshopModListItem & {
   workshopSlug: string;
 };
 
+export interface WorkshopPackView {
+  modpack: {
+    name: string;
+    description: string | null;
+    curseforgeUrl: string | null;
+  };
+  mods: ModpackModListItem[];
+}
+
 export interface WorkshopDependencyReport {
   pulled: ModpackModListItem[];
   optional: Array<{
@@ -237,14 +246,32 @@ export class WorkshopService {
     return this.decorateMods(workshop, mods);
   }
 
-  /** Members of the workshop's modpack, for the pack page. */
-  async getPackMods(
+  /** Members of the workshop's modpack, for the admin members card. */
+  async getPackMods(workshopId: number): Promise<ModpackModListItem[]> {
+    const workshop = await this.getWorkshop(workshopId);
+    return modpackService.getPackMods(workshop.modpackId);
+  }
+
+  /** The workshop's modpack with its members, for the pack page. */
+  async getPack(
     workshopId: number,
     options: { userVisible?: boolean } = {},
-  ): Promise<ModpackModListItem[]> {
+  ): Promise<WorkshopPackView> {
     const workshop = await this.getWorkshop(workshopId);
     if (options.userVisible) this.assertUserVisible(workshop);
-    return modpackService.getPackMods(workshop.modpackId);
+    const modpack = await modpackService.getModpack(workshop.modpackId);
+    const [mods, curseforgeUrl] = await Promise.all([
+      modpackService.getPackMods(modpack.id),
+      modpackService.getPackCurseforgeUrl(modpack),
+    ]);
+    return {
+      modpack: {
+        name: modpack.name,
+        description: modpack.description,
+        curseforgeUrl,
+      },
+      mods,
+    };
   }
 
   /** A single mod with the full cached project detail (description included). */

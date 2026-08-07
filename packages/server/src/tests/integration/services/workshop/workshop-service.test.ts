@@ -51,6 +51,7 @@ import { ingestProject } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
+  seedModpack,
   seedWorkshop,
   seedProject,
   seedMod,
@@ -468,5 +469,55 @@ describe("WorkshopService.getMySuggestionHistory", () => {
     const rows = await workshopService.getMySuggestionHistory(USER_A);
 
     expect(rows.map((row) => row.id)).toEqual([kept.id]);
+  });
+});
+
+describe("WorkshopService.getPack", () => {
+  it("returns the modpack with members and a null url when unpublished", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+
+    const pack = await workshopService.getPack(workshop.id);
+
+    expect(pack.modpack).toEqual({
+      name: "Vitest Modpack",
+      description: null,
+      curseforgeUrl: null,
+    });
+    expect(pack.mods.map((row) => row.id)).toEqual([member.id]);
+    expect(pack.mods[0].project.id).toBe(member.curseforgeProjectId);
+  });
+
+  it("resolves the pack's CurseForge url from the cached project", async () => {
+    const packProjectId = ctx.nextProjectId++;
+    ctx.projectIds.push(packProjectId);
+    await Q.curseforge.project.create({
+      id: packProjectId,
+      classId: 4471,
+      slug: `vitest-pack-${packProjectId}`,
+      name: "Vitest Pack",
+      websiteUrl: "https://www.curseforge.com/minecraft/modpacks/vitest-pack",
+    });
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: packProjectId,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+
+    const pack = await workshopService.getPack(workshop.id);
+
+    expect(pack.modpack.curseforgeUrl).toBe(
+      "https://www.curseforge.com/minecraft/modpacks/vitest-pack",
+    );
+  });
+
+  it("hides packs of draft workshops from users but not admins", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "draft" });
+
+    await expect(
+      workshopService.getPack(workshop.id, { userVisible: true }),
+    ).rejects.toThrow(NotFoundError);
+    await expect(workshopService.getPack(workshop.id)).resolves.toMatchObject({
+      mods: [],
+    });
   });
 });

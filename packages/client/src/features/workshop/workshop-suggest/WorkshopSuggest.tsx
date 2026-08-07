@@ -1,5 +1,5 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -50,7 +50,7 @@ export function WorkshopSuggest() {
   const { workshop } = workshopQuery.data;
   const isOpen = workshop.status === "open";
   const suggestions = suggestionsQuery.data ?? [];
-  const packMods = packQuery.data ?? [];
+  const packMods = packQuery.data?.mods ?? [];
   const packProjectIds = new Set(
     packMods.map((row) => row.curseforgeProjectId),
   );
@@ -95,8 +95,11 @@ export function WorkshopSuggest() {
           </p>
         </header>
 
-        <Link to={`/workshop/${slug}`} className="mt-7 block text-inherit">
-          <div className="flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5 transition-colors hover:border-primary/40">
+        <div className="mt-7 flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5 transition-colors hover:border-primary/40">
+          <Link
+            to={`/workshop/${slug}`}
+            className="flex flex-wrap items-center gap-3.5 text-inherit"
+          >
             <span className="text-[13px] font-semibold whitespace-nowrap">
               {workshop.name}
             </span>
@@ -104,6 +107,12 @@ export function WorkshopSuggest() {
             <Badge variant="outline">
               {loaderName(workshop.modLoaderType)}
             </Badge>
+          </Link>
+          <span className="flex-1" />
+          <Link
+            to={`/workshop/${slug}/pack`}
+            className="flex flex-wrap items-center gap-3.5 text-inherit"
+          >
             {packMods.length > 0 && (
               <span className="flex items-center gap-1.5">
                 {packShown.map((mod) => (
@@ -121,8 +130,12 @@ export function WorkshopSuggest() {
                 )}
               </span>
             )}
-          </div>
-        </Link>
+            <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
+              Browse the full pack
+              <ArrowRight className="size-[15px]" />
+            </span>
+          </Link>
+        </div>
 
         <main className="mt-11 flex flex-col gap-12">
           {isOpen ? (

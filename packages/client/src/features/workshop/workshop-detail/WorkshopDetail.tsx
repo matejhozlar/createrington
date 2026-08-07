@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
@@ -33,7 +33,7 @@ const VIEW_STORAGE_KEY = "workshop-detail-view";
 
 type SortMode = "top" | "new" | "votes";
 type ViewMode = "list" | "grid";
-type PackMod = RouterOutput["user"]["workshops"]["pack"][number];
+type PackMod = RouterOutput["user"]["workshops"]["pack"]["mods"][number];
 
 function byRace(a: RaceMod, b: RaceMod): number {
   return (
@@ -167,7 +167,7 @@ export function WorkshopDetail() {
   const isOpen = workshop.status === "open";
   const upvotedIds = new Set(myUpvotesQuery.data?.modIds ?? []);
 
-  const packMods = packQuery.data ?? [];
+  const packMods = packQuery.data?.mods ?? [];
   const pending = mods.filter((mod) => mod.status === "pending");
   const ranked = [...pending].sort(byRace);
   const rankById = new Map(ranked.map((mod, index) => [mod.id, index + 1]));
@@ -311,7 +311,9 @@ export function WorkshopDetail() {
         </header>
 
         <main className="mt-10 flex flex-col gap-6">
-          {packMods.length > 0 && <ApprovedStrip mods={packMods} />}
+          {packMods.length > 0 && (
+            <ApprovedStrip slug={slug!} mods={packMods} />
+          )}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
             <h2 className="text-2xl leading-[30px] font-semibold">
@@ -503,8 +505,10 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
 }
 
 function ApprovedStrip({
+  slug,
   mods,
 }: {
+  slug: string;
   mods: Array<{
     id: number;
     project: { name: string; thumbnailUrl: string | null };
@@ -513,7 +517,10 @@ function ApprovedStrip({
   const shown = mods.slice(0, 4);
   const extra = mods.length - shown.length;
   return (
-    <div className="flex items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5">
+    <Link
+      to={`/workshop/${slug}/pack`}
+      className="flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5 text-inherit transition-colors hover:border-primary/40"
+    >
       <span className="text-[13px] font-semibold whitespace-nowrap">
         Already in the pack
       </span>
@@ -545,6 +552,11 @@ function ApprovedStrip({
           </span>
         )}
       </span>
-    </div>
+      <span className="flex-1" />
+      <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
+        Browse the full pack
+        <ArrowRight className="size-[15px]" />
+      </span>
+    </Link>
   );
 }

@@ -194,12 +194,12 @@ export const userWorkshopsRouter = router({
   pack: workshopProcedure
     .meta({
       description:
-        "The workshop's modpack members with origin, credit, and live state",
+        "The workshop's modpack with its members' origin, credit, and live state",
     })
     .input(z.object({ workshopId: id() }))
     .query(async ({ input }) => {
       try {
-        return await workshopService.getPackMods(input.workshopId, {
+        return await workshopService.getPack(input.workshopId, {
           userVisible: true,
         });
       } catch (error) {

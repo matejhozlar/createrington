@@ -181,6 +181,25 @@ export class ModpackService {
     return this.decoratePackMods(modpackId, rows);
   }
 
+  /** The published pack's CurseForge page URL, when a project is linked. */
+  async getPackCurseforgeUrl(modpack: Modpack): Promise<string | null> {
+    if (!modpack.curseforgeProjectId) return null;
+    let cached = await Q.curseforge.project.find({
+      id: modpack.curseforgeProjectId,
+    });
+    if (!cached) {
+      try {
+        await refreshProjects([modpack.curseforgeProjectId]);
+      } catch {
+        return null;
+      }
+      cached = await Q.curseforge.project.find({
+        id: modpack.curseforgeProjectId,
+      });
+    }
+    return cached?.websiteUrl ?? null;
+  }
+
   /**
    * Remove a directly-added member (admin, dependency, or import origin).
    * Suggestion-origin members are removed by rejecting their suggestion.
