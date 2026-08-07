@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { DiscordIcon } from "@/components/icons/discord";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
+import { isHttpUrl } from "../format";
 
 const LINK_CLASS =
   "text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100";
@@ -31,7 +32,7 @@ export function SocialLinks({
           <DiscordIcon className={iconClass} />
         </a>
       )}
-      {websiteUrl && (
+      {isHttpUrl(websiteUrl) && (
         <a
           href={websiteUrl}
           target="_blank"

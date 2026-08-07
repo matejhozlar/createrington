@@ -29,6 +29,7 @@ import { ProjectThumb } from "../../components/ProjectThumb";
 import {
   formatDate,
   formatDownloads,
+  isHttpUrl,
   modCredit,
   MOD_STATUS_STYLES,
 } from "../../format";
@@ -44,10 +45,6 @@ interface ProjectScreenshot {
 }
 
 const REQUIRED_DEPENDENCY = 3;
-
-function isHttpUrl(url: string | null | undefined): url is string {
-  return !!url && /^https?:\/\//i.test(url);
-}
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];

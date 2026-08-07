@@ -27,6 +27,10 @@ export function formatDate(value: string | Date | null): string {
   });
 }
 
+export function isHttpUrl(url: string | null | undefined): url is string {
+  return !!url && /^https?:\/\//i.test(url);
+}
+
 export function modInitials(name: string): string {
   const letters = name
     .split(/\s+/)

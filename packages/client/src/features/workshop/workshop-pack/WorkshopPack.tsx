@@ -17,18 +17,16 @@ import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useViewMode } from "../hooks/use-view-mode";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
 
-const VIEW_STORAGE_KEY = "workshop-pack-view";
-
 const FALLBACK_DESCRIPTION =
   "Everything running on the server right now — the base pack plus every mod players have voted in.";
 
 type SourceFilter = "all" | "voted" | "base";
-type ViewMode = "list" | "grid";
 
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
@@ -37,9 +35,7 @@ export function WorkshopPack() {
   const [source, setSource] = useState<SourceFilter>("all");
   const [category, setCategory] = useState("all");
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
-  const [view, setView] = useState<ViewMode>(() =>
-    localStorage.getItem(VIEW_STORAGE_KEY) === "grid" ? "grid" : "list",
-  );
+  const [view, changeView] = useViewMode("workshop-pack-view");
 
   const workshopQuery = trpc.user.workshops.get.useQuery(
     { slug: slug! },
@@ -51,11 +47,6 @@ export function WorkshopPack() {
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
-
-  const changeView = (next: ViewMode) => {
-    localStorage.setItem(VIEW_STORAGE_KEY, next);
-    setView(next);
-  };
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
