@@ -25,6 +25,16 @@ const CURSEFORGE_API = config.curseforge.apiBaseUrl;
 // without timeouts those calls stack up behind a single stuck mutation
 const CF_FETCH_TIMEOUT_MS = 15_000;
 const CF_DOWNLOAD_TIMEOUT_MS = 120_000;
+// The batch endpoints reject oversized id lists in the request body
+const CF_BATCH_SIZE = 100;
+
+function toBatches<T>(items: T[]): T[][] {
+  const batches: T[][] = [];
+  for (let i = 0; i < items.length; i += CF_BATCH_SIZE) {
+    batches.push(items.slice(i, i + CF_BATCH_SIZE));
+  }
+  return batches;
+}
 const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
 const MOD_CLASS_ID: number = CurseForgeClass.mods;
 const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
@@ -125,11 +135,8 @@ export interface ResolvedDependency {
 /**
  * Search CurseForge projects by name, filtered by class, loader, and game version
  *
- * Defaults target the current server setup (NeoForge mods for the default game version).
- *
- * @param query - Search string to filter projects by name
- * @param pageSize - Maximum number of results to return (default: 50)
- * @returns List of matching projects, each annotated with whether it is already in the modpack
+ * Defaults target the current server setup (NeoForge mods for the default game
+ * version). Results are annotated with whether they are already in the modpack.
  */
 export async function searchMods(
   query: string,
@@ -204,11 +211,6 @@ export async function searchMods(
  * Fetch the available files for a mod, filtered by game version and mod loader
  *
  * Only optional (relationType 2) and required (relationType 3) dependencies are included.
- *
- * @param modId - CurseForge project ID of the mod
- * @param gameVersion - Minecraft version to filter files by (default: 1.21.1)
- * @param modLoaderType - CurseForge loader type to filter files by (default: NeoForge)
- * @returns List of mod files with their metadata and filtered dependencies
  */
 export async function getModFiles(
   modId: number,
@@ -319,10 +321,8 @@ function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
 }
 
 /**
- * Fetch full metadata for a single CurseForge project
- *
- * @param projectId - CurseForge project ID
- * @returns Structured project data including authors, categories, screenshots, and file indexes
+ * Fetch full metadata for a single CurseForge project, including authors,
+ * categories, screenshots, and file indexes
  */
 export async function getMod(
   projectId: number,
@@ -343,10 +343,8 @@ export async function getMod(
 }
 
 /**
- * Fetch full metadata for multiple CurseForge projects in one batch request
- *
- * @param projectIds - CurseForge project IDs
- * @returns Structured project data for every ID the API resolved
+ * Fetch full metadata for multiple CurseForge projects in batched requests,
+ * returning data for every ID the API resolved
  */
 export async function getMods(
   projectIds: number[],
@@ -354,28 +352,26 @@ export async function getMods(
   ensureApiKey();
   if (projectIds.length === 0) return [];
 
-  const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
-    method: "POST",
-    headers: { ...cfHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ modIds: projectIds }),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
-  }
+  const results: CurseForgeProjectData[] = [];
+  for (const batch of toBatches(projectIds)) {
+    const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ modIds: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
+    }
 
-  const body = (await res.json()) as { data: RawCurseForgeMod[] };
-  return body.data.map(mapProject);
+    const body = (await res.json()) as { data: RawCurseForgeMod[] };
+    results.push(...body.data.map(mapProject));
+  }
+  return results;
 }
 
-/**
- * Fetch the direct download URL for a specific mod file
- *
- * @param modId - CurseForge project ID of the mod
- * @param fileId - CurseForge file ID to get the download URL for
- * @returns Direct download URL string
- */
+/** Fetch the direct download URL for a specific mod file */
 export async function getModFileDownloadUrl(
   modId: number,
   fileId: number,
@@ -403,11 +399,6 @@ export async function getModFileDownloadUrl(
  * Checks whether each dependency is already present in the given pack mod set.
  * Best file selection prefers the target loader + game version, falling back to
  * game version alone when no loader-specific file is available.
- *
- * @param modIds - CurseForge project IDs to resolve
- * @param packModIds - Set of mod IDs already present in the modpack
- * @param target - Game version and loader to select best files for (defaults to server setup)
- * @returns Resolved dependency info including name, thumbnail, pack membership, and best file
  */
 export async function resolveDependencies(
   modIds: number[],
@@ -472,12 +463,9 @@ export async function resolveDependencies(
 }
 
 /**
- * Fetch dependency info for multiple mod files in a single batch request
+ * Fetch per-file dependency info for multiple mod files in batched requests
  *
  * Only optional (relationType 2) and required (relationType 3) dependencies are returned.
- *
- * @param fileIds - CurseForge file IDs to look up
- * @returns Per-file records containing the owning mod ID and its filtered dependencies
  */
 export async function getFilesDependencies(fileIds: number[]): Promise<
   Array<{
@@ -489,34 +477,44 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
   ensureApiKey();
   if (fileIds.length === 0) return [];
 
-  const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
-    method: "POST",
-    headers: { ...cfHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ fileIds }),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(
-      `Failed to fetch file dependencies (${res.status}): ${text}`,
+  const results: Array<{
+    fileId: number;
+    modId: number;
+    dependencies: Array<{ modId: number; relationType: number }>;
+  }> = [];
+  for (const batch of toBatches(fileIds)) {
+    const res = await fetch(`${CURSEFORGE_API}/v1/mods/files`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ fileIds: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Failed to fetch file dependencies (${res.status}): ${text}`,
+      );
+    }
+
+    const body = (await res.json()) as {
+      data: Array<{
+        id: number;
+        modId: number;
+        dependencies?: Array<{ modId: number; relationType: number }>;
+      }>;
+    };
+
+    results.push(
+      ...body.data.map((f) => ({
+        fileId: f.id,
+        modId: f.modId,
+        dependencies: (f.dependencies ?? []).filter(
+          (d) => d.relationType === 2 || d.relationType === 3,
+        ),
+      })),
     );
   }
-
-  const body = (await res.json()) as {
-    data: Array<{
-      id: number;
-      modId: number;
-      dependencies?: Array<{ modId: number; relationType: number }>;
-    }>;
-  };
-
-  return body.data.map((f) => ({
-    fileId: f.id,
-    modId: f.modId,
-    dependencies: (f.dependencies ?? []).filter(
-      (d) => d.relationType === 2 || d.relationType === 3,
-    ),
-  }));
+  return results;
 }
 
 export interface ModpackManifest {
@@ -609,13 +607,8 @@ export async function getModpackModIds(
 }
 
 /**
- * Download a mod file from CurseForge and save it to disk using a stream pipeline
- *
- * @param modId - CurseForge project ID of the mod
- * @param fileId - CurseForge file ID to download
- * @param destDir - Directory to write the file into (created if it does not exist)
- * @param fileName - Name to give the saved file
- * @returns Absolute path to the downloaded file
+ * Download a mod file from CurseForge into the given directory using a stream
+ * pipeline, returning the saved file's absolute path
  */
 export async function downloadModFile(
   modId: number,
