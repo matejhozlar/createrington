@@ -43,9 +43,9 @@ export class WorkshopModUpvoteQueries extends WorkshopModUpvoteBaseQueries {
   ): Promise<number> {
     const query = `
       SELECT COUNT(*)::int AS used
-      FROM ${this.table} vmu
-      JOIN workshop_mod vm ON vm.id = vmu.workshop_mod_id
-      WHERE vm.workshop_id = $1 AND vmu.discord_id = $2 AND vm.status = 'pending'`;
+      FROM ${this.table} wmu
+      JOIN workshop_mod wm ON wm.id = wmu.workshop_mod_id
+      WHERE wm.workshop_id = $1 AND wmu.discord_id = $2 AND wm.status = 'pending'`;
     const result = await this.runQuery<{ used: number }>(
       "count pending upvotes by user",
       query,

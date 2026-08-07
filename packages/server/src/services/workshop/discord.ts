@@ -324,7 +324,10 @@ export async function healThreads(
     if (!mod.discordThreadId) continue;
     try {
       const lookup = await fetchThread(mod.discordThreadId);
-      if (lookup.state === "gone") await clearThreadId(mod.id);
+      if (lookup.state === "gone") {
+        await clearThreadId(mod.id);
+        mod.discordThreadId = null;
+      }
     } catch (error) {
       logger.warn(`Workshop thread heal failed for mod #${mod.id}: ${error}`);
     }

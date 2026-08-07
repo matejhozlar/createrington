@@ -10,6 +10,7 @@ import type {
   Modpack,
   ModpackMod,
   Workshop,
+  WorkshopMod,
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
@@ -266,14 +267,17 @@ export class ModpackService {
       }
     }
 
-    const suggestions = manifest
-      ? await Q.workshop.mod.findAll({ workshopId: workshop.id })
-      : [];
-    const shipped = suggestions.filter(
-      (mod) =>
-        manifest!.modIds.has(mod.curseforgeProjectId) &&
-        mod.status !== "approved",
-    );
+    let shipped: WorkshopMod[] = [];
+    if (manifest) {
+      const { modIds } = manifest;
+      const suggestions = await Q.workshop.mod.findAll({
+        workshopId: workshop.id,
+      });
+      shipped = suggestions.filter(
+        (mod) =>
+          modIds.has(mod.curseforgeProjectId) && mod.status !== "approved",
+      );
+    }
 
     const projectIds = [
       ...new Set([

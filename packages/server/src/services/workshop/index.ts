@@ -432,31 +432,26 @@ export class WorkshopService {
     entry: WorkshopModEntry,
   ): Promise<WorkshopModListItem> {
     const workshop = await this.getOpenWorkshop(workshopId);
-
-    const used = await Q.workshop.mod.count({
-      workshopId,
-      submittedBy: discordId,
-      status: "pending",
-    });
-    if (used >= workshop.maxModsPerUser) {
-      throw new BadRequestError(
-        `You already have ${workshop.maxModsPerUser} pending suggestions in this workshop, remove one or wait for a review`,
-      );
-    }
+    await this.assertSuggestionSlot(Q, workshop, discordId);
 
     const [prepared] = await this.prepareEntries(workshop, [entry]);
 
     let created: WorkshopMod;
     try {
-      created = await db.inTransaction((tx) =>
-        this.createMod(tx, workshop, prepared, { submittedBy: discordId }),
-      );
+      created = await db.inTransaction(async (tx) => {
+        await tx.workshop.lockUserBudget(workshop.id, discordId);
+        await this.assertSuggestionSlot(tx, workshop, discordId);
+        return this.createMod(tx, workshop, prepared, {
+          submittedBy: discordId,
+        });
+      });
     } catch (error) {
       this.mapConstraintError(error);
     }
 
     const [item] = await this.decorateMods(workshop, [created]);
-    if (item) void announceSuggestion(workshop, item);
+    if (!item) throw new NotFoundError(`Mod #${created.id} not found`);
+    void announceSuggestion(workshop, item);
     void resolveProjectDependencies(workshop, [created]);
     return item;
   }
@@ -515,19 +510,22 @@ export class WorkshopService {
       await Q.workshop.mod.upvote.deleteAll({ id: existing.id });
       upvoted = false;
     } else {
-      if (mod.status === "pending") {
-        const used = await Q.workshop.mod.upvote.countPendingByUser(
-          workshop.id,
-          discordId,
-        );
-        if (used >= workshop.maxUpvotesPerUser) {
-          throw new BadRequestError(
-            `You have used all ${workshop.maxUpvotesPerUser} of your votes, remove one or wait for a review`,
-          );
-        }
-      }
       try {
-        await Q.workshop.mod.upvote.create({ workshopModId, discordId });
+        await db.inTransaction(async (tx) => {
+          if (mod.status === "pending") {
+            await tx.workshop.lockUserBudget(workshop.id, discordId);
+            const used = await tx.workshop.mod.upvote.countPendingByUser(
+              workshop.id,
+              discordId,
+            );
+            if (used >= workshop.maxUpvotesPerUser) {
+              throw new BadRequestError(
+                `You have used all ${workshop.maxUpvotesPerUser} of your votes, remove one or wait for a review`,
+              );
+            }
+          }
+          await tx.workshop.mod.upvote.create({ workshopModId, discordId });
+        });
       } catch (error) {
         if (!(error instanceof ConstraintViolationError)) throw error;
       }
@@ -973,6 +971,23 @@ export class WorkshopService {
       participantSample,
       topMods,
     };
+  }
+
+  private async assertSuggestionSlot(
+    queries: Pick<TxQueries, "workshop">,
+    workshop: Workshop,
+    discordId: string,
+  ): Promise<void> {
+    const used = await queries.workshop.mod.count({
+      workshopId: workshop.id,
+      submittedBy: discordId,
+      status: "pending",
+    });
+    if (used >= workshop.maxModsPerUser) {
+      throw new BadRequestError(
+        `You already have ${workshop.maxModsPerUser} pending suggestions in this workshop, remove one or wait for a review`,
+      );
+    }
   }
 
   private assertUserVisible(workshop: Workshop): void {
