@@ -38,6 +38,7 @@ import {
   formatDate,
   loaderName,
 } from "@/features/workshop/format";
+import { workshopFormError } from "./validation";
 
 const WORKSHOP_STATUS_STYLES: Record<string, string> = {
   draft: "border-zinc-500/50 bg-zinc-500/10 text-zinc-400",
@@ -94,6 +95,16 @@ export function AdminWorkshop() {
   });
 
   const handleCreate = async () => {
+    const validationError = workshopFormError({
+      maxMods,
+      maxUpvotes,
+      basePackId,
+      forumChannelId,
+    });
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     let modpackId: number;
     if (modpackSel === "new") {
       try {
@@ -101,6 +112,7 @@ export function AdminWorkshop() {
           name: modpackName.trim(),
         });
         modpackId = modpack.id;
+        setModpackSel(String(modpack.id));
       } catch {
         return;
       }
@@ -113,8 +125,8 @@ export function AdminWorkshop() {
       gameVersion: gameVersion.trim(),
       modLoaderType: Number(loaderType),
       modpackId,
-      maxModsPerUser: Number(maxMods) || 5,
-      maxUpvotesPerUser: Number(maxUpvotes) || 5,
+      maxModsPerUser: Number(maxMods),
+      maxUpvotesPerUser: Number(maxUpvotes),
       discordForumChannelId: forumChannelId.trim() || undefined,
       baseModpackProjectId: basePackId.trim() ? Number(basePackId) : undefined,
     });
@@ -163,6 +175,18 @@ export function AdminWorkshop() {
           <CardContent>
             {workshopsQuery.isLoading ? (
               <Skeleton className="h-32 w-full" />
+            ) : workshopsQuery.error ? (
+              <div className="flex flex-col items-center gap-4 py-8 text-center">
+                <p className="text-sm text-destructive">
+                  {workshopsQuery.error.message}
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => workshopsQuery.refetch()}
+                >
+                  Try Again
+                </Button>
+              </div>
             ) : (workshopsQuery.data?.length ?? 0) === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No workshops yet, create the first one.
@@ -235,6 +259,7 @@ export function AdminWorkshop() {
               <Input
                 id="workshop-name"
                 placeholder="Createrington Season 3 Modpack"
+                maxLength={120}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -244,6 +269,7 @@ export function AdminWorkshop() {
               <Input
                 id="workshop-desc"
                 placeholder="What is this workshop about?"
+                maxLength={2000}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -281,6 +307,7 @@ export function AdminWorkshop() {
                 <Input
                   id="workshop-version"
                   placeholder="1.21.1"
+                  maxLength={20}
                   value={gameVersion}
                   onChange={(e) => setGameVersion(e.target.value)}
                 />

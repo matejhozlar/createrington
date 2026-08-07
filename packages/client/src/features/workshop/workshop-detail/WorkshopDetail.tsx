@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
 import { PlayerLabel } from "@/components/player-label";
 import { loaderName, modInitials, projectCategories } from "../format";
+import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import {
   Leaderboard,
@@ -149,6 +150,19 @@ export function WorkshopDetail() {
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
+  }
+
+  if (workshopQuery.error) {
+    return (
+      <div className="px-5 py-10 md:px-8">
+        <div className="mx-auto max-w-6xl">
+          <QueryErrorState
+            message={workshopQuery.error.message}
+            onRetry={() => workshopQuery.refetch()}
+          />
+        </div>
+      </div>
+    );
   }
 
   if (workshopQuery.isLoading || !workshopQuery.data) {

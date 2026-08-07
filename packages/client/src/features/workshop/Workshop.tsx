@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { mcHeadsAvatar } from "@/lib/external-urls";
+import { QueryErrorState } from "./components/QueryErrorState";
 import { formatDate, loaderName, modInitials } from "./format";
 
 const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
@@ -61,6 +62,11 @@ export function Workshop() {
             <h2 className="mb-4 text-3xl font-semibold">Active workshop</h2>
             {workshopsQuery.isLoading ? (
               <Skeleton className="h-80 w-full rounded-xl" />
+            ) : workshopsQuery.error ? (
+              <QueryErrorState
+                message={workshopsQuery.error.message}
+                onRetry={() => workshopsQuery.refetch()}
+              />
             ) : openWorkshops.length === 0 ? (
               <EmptyState />
             ) : (

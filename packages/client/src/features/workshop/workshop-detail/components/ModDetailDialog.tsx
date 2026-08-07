@@ -89,7 +89,22 @@ export function ModDetailDialog({
         className="max-h-[85vh] max-w-3xl overflow-y-auto"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
-        {detailQuery.isLoading || !data || !project ? (
+        {detailQuery.error ? (
+          <div className="flex flex-col items-center gap-4 py-10 text-center">
+            <p className="text-sm text-destructive">
+              {detailQuery.error.message}
+            </p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (admin) adminQuery.refetch();
+                else userQuery.refetch();
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+        ) : detailQuery.isLoading || !data || !project ? (
           <div className="space-y-4">
             <Skeleton className="h-16 w-full" />
             <Skeleton className="h-40 w-full" />

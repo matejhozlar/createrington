@@ -16,6 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { loaderName, projectCategories } from "../format";
+import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { PackList } from "./components/PackList";
 
@@ -59,6 +60,19 @@ export function WorkshopPack() {
 
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
+  }
+
+  if (workshopQuery.error) {
+    return (
+      <div className="px-5 py-10 md:px-8">
+        <div className="mx-auto max-w-6xl">
+          <QueryErrorState
+            message={workshopQuery.error.message}
+            onRetry={() => workshopQuery.refetch()}
+          />
+        </div>
+      </div>
+    );
   }
 
   if (workshopQuery.isLoading || !workshopQuery.data) {
@@ -176,71 +190,85 @@ export function WorkshopPack() {
         </header>
 
         <main className="mt-10 flex flex-col gap-6">
-          <h2 className="text-2xl leading-[30px] font-semibold">
-            {filtering
-              ? `${visible.length} ${visible.length === 1 ? "mod" : "mods"}`
-              : `All ${mods.length} ${mods.length === 1 ? "mod" : "mods"}`}
-          </h2>
-
-          <div className="-mt-2 flex flex-wrap items-center gap-2.5">
-            <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search the pack..."
-                className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
-              />
-            </div>
-            <span className="hidden flex-1 sm:block" />
-            <Select
-              value={source}
-              onValueChange={(value) => setSource(value as SourceFilter)}
-            >
-              <SelectTrigger className="w-full sm:w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All sources</SelectItem>
-                <SelectItem value="voted">Voted in by players</SelectItem>
-                <SelectItem value="base">Base pack</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ViewToggle view={view} onChange={changeView} />
-          </div>
-
-          {visible.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
-              {filtering
-                ? "No mods match your search."
-                : "Nothing in the pack yet."}
-            </div>
+          {packQuery.isLoading ? (
+            <>
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-96 w-full rounded-xl" />
+            </>
+          ) : packQuery.error ? (
+            <QueryErrorState
+              message={packQuery.error.message}
+              onRetry={() => packQuery.refetch()}
+            />
           ) : (
-            <PackList mods={visible.slice(0, shown)} view={view} />
-          )}
+            <>
+              <h2 className="text-2xl leading-[30px] font-semibold">
+                {filtering
+                  ? `${visible.length} ${visible.length === 1 ? "mod" : "mods"}`
+                  : `All ${mods.length} ${mods.length === 1 ? "mod" : "mods"}`}
+              </h2>
 
-          {remaining > 0 && (
-            <div className="-mt-1 flex justify-center">
-              <Button
-                variant="secondary"
-                onClick={() => setShownCount(shown + PAGE_SIZE)}
-              >
-                Show {Math.min(remaining, PAGE_SIZE)} more
-              </Button>
-            </div>
+              <div className="-mt-2 flex flex-wrap items-center gap-2.5">
+                <div className="relative w-full min-w-0 flex-none sm:max-w-[420px] sm:min-w-[200px] sm:flex-1">
+                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-[15px] -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search the pack..."
+                    className="h-9 rounded-lg bg-white/[0.03] pl-8 text-[13px]"
+                  />
+                </div>
+                <span className="hidden flex-1 sm:block" />
+                <Select
+                  value={source}
+                  onValueChange={(value) => setSource(value as SourceFilter)}
+                >
+                  <SelectTrigger className="w-full sm:w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All sources</SelectItem>
+                    <SelectItem value="voted">Voted in by players</SelectItem>
+                    <SelectItem value="base">Base pack</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {categories.map((name) => (
+                      <SelectItem key={name} value={name}>
+                        {name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <ViewToggle view={view} onChange={changeView} />
+              </div>
+
+              {visible.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
+                  {filtering
+                    ? "No mods match your search."
+                    : "Nothing in the pack yet."}
+                </div>
+              ) : (
+                <PackList mods={visible.slice(0, shown)} view={view} />
+              )}
+
+              {remaining > 0 && (
+                <div className="-mt-1 flex justify-center">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShownCount(shown + PAGE_SIZE)}
+                  >
+                    Show {Math.min(remaining, PAGE_SIZE)} more
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

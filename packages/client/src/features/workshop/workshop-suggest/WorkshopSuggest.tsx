@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { ProjectThumb } from "../components/ProjectThumb";
+import { QueryErrorState } from "../components/QueryErrorState";
 import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
 import { SuggestionHistory } from "./components/SuggestionHistory";
@@ -35,7 +36,24 @@ export function WorkshopSuggest() {
     return <NotFound />;
   }
 
-  if (workshopQuery.isLoading || !workshopQuery.data) {
+  if (workshopQuery.error) {
+    return (
+      <div className="px-5 py-10 md:px-8">
+        <div className="mx-auto max-w-6xl">
+          <QueryErrorState
+            message={workshopQuery.error.message}
+            onRetry={() => workshopQuery.refetch()}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (
+    workshopQuery.isLoading ||
+    !workshopQuery.data ||
+    suggestionsQuery.isLoading
+  ) {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl space-y-6">

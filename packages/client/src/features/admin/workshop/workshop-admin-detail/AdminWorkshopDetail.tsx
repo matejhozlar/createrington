@@ -192,6 +192,19 @@ export function AdminWorkshopDetail() {
     );
   }
 
+  if (workshopsQuery.error) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+        <p className="text-sm text-destructive">
+          {workshopsQuery.error.message}
+        </p>
+        <Button variant="outline" onClick={() => workshopsQuery.refetch()}>
+          Try Again
+        </Button>
+      </div>
+    );
+  }
+
   if (!workshop) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">

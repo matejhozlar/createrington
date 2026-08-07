@@ -21,6 +21,8 @@ interface SelectedProject {
   thumbnailUrl: string | null;
 }
 
+const MAX_MODS_PER_ADD = 20;
+
 export function AddModsDialog({
   open,
   onOpenChange,
@@ -36,7 +38,7 @@ export function AddModsDialog({
 
   const [selected, setSelected] = useState<SelectedProject[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const debouncedSearch = useDebouncedValue(searchQuery, 400);
+  const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
   const searchResults = trpc.admin.workshops.searchProjects.useQuery(
     { workshopId, query: debouncedSearch },
@@ -124,6 +126,11 @@ export function AddModsDialog({
               Searching...
             </p>
           )}
+          {searchResults.error && (
+            <p className="py-4 text-center text-sm text-destructive">
+              Search failed. Try again in a moment.
+            </p>
+          )}
           {searchResults.data?.map((result) => {
             const alreadySelected = selected.some((p) => p.id === result.id);
             const blocked =
@@ -137,8 +144,14 @@ export function AddModsDialog({
                 className={`flex items-center gap-3 rounded-md border p-2.5 ${
                   blocked ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
                 }`}
-                onClick={() =>
-                  !blocked &&
+                onClick={() => {
+                  if (blocked) return;
+                  if (selected.length >= MAX_MODS_PER_ADD) {
+                    toast.error(
+                      `You can add up to ${MAX_MODS_PER_ADD} mods at a time`,
+                    );
+                    return;
+                  }
                   setSelected((prev) => [
                     ...prev,
                     {
@@ -146,8 +159,8 @@ export function AddModsDialog({
                       name: result.name,
                       thumbnailUrl: result.thumbnailUrl ?? null,
                     },
-                  ])
-                }
+                  ]);
+                }}
               >
                 {result.thumbnailUrl && (
                   <img

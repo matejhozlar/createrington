@@ -68,8 +68,8 @@ export function ModSearch({
     if (packProjectIds.has(result.id) || result.inModpack) {
       return "Already in the pack";
     }
-    if (ownProjectIds.has(result.id)) return "In your suggestions";
     if (result.rejected) return "Ruled out by the team";
+    if (ownProjectIds.has(result.id)) return "In your suggestions";
     if (result.claimed) return "Already suggested";
     return null;
   };
@@ -97,6 +97,11 @@ export function ModSearch({
             {searchResults.isLoading && (
               <p className="px-4 py-7 text-center text-[13px] text-muted-foreground">
                 Searching...
+              </p>
+            )}
+            {searchResults.error && (
+              <p className="px-4 py-7 text-center text-[13px] text-destructive">
+                Search failed. Try again in a moment.
               </p>
             )}
             {searchResults.data?.map((result) => {

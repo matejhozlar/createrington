@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LOADER_NAMES } from "@/features/workshop/format";
+import { workshopFormError } from "../../validation";
 
 interface WorkshopSettings {
   id: number;
@@ -72,6 +73,16 @@ export function WorkshopSettingsDialog({
   });
 
   const handleSave = () => {
+    const validationError = workshopFormError({
+      maxMods,
+      maxUpvotes,
+      basePackId,
+      forumChannelId,
+    });
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
     updateMutation.mutate({
       workshopId: workshop.id,
       patch: {
@@ -79,8 +90,8 @@ export function WorkshopSettingsDialog({
         description: description.trim() || null,
         gameVersion: gameVersion.trim(),
         modLoaderType: Number(loaderType),
-        maxModsPerUser: Number(maxMods) || 5,
-        maxUpvotesPerUser: Number(maxUpvotes) || 5,
+        maxModsPerUser: Number(maxMods),
+        maxUpvotesPerUser: Number(maxUpvotes),
         discordForumChannelId: forumChannelId.trim() || null,
         baseModpackProjectId: basePackId.trim() ? Number(basePackId) : null,
       },
@@ -98,6 +109,7 @@ export function WorkshopSettingsDialog({
             <Label htmlFor="settings-name">Name</Label>
             <Input
               id="settings-name"
+              maxLength={120}
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
@@ -106,6 +118,7 @@ export function WorkshopSettingsDialog({
             <Label htmlFor="settings-desc">Description</Label>
             <Input
               id="settings-desc"
+              maxLength={2000}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
@@ -115,6 +128,7 @@ export function WorkshopSettingsDialog({
               <Label htmlFor="settings-version">Game version</Label>
               <Input
                 id="settings-version"
+                maxLength={20}
                 value={gameVersion}
                 onChange={(e) => setGameVersion(e.target.value)}
               />
