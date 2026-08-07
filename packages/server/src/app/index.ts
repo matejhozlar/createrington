@@ -144,14 +144,6 @@ export function createApp(): Express {
     }),
   );
 
-  // Dev-only tRPC UI panel for interactive procedure testing
-  if (config.envMode.isDev) {
-    app.use("/panel", async (_req, res) => {
-      const { renderTrpcPanel } = await import("trpc-ui");
-      return res.send(renderTrpcPanel(appRouter, { url: "/trpc" }));
-    });
-  }
-
   // Serve client static files in production
   const clientDir = path.join(import.meta.dirname, "../../../public");
   const indexHtml = path.join(clientDir, "index.html");
