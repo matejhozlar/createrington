@@ -503,18 +503,31 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
         );
         const rowClass =
           "flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors";
-        return isHttpUrl(row.project.websiteUrl) ? (
-          <a
+        if (!isHttpUrl(row.project.websiteUrl)) {
+          return (
+            <div key={row.id} className={rowClass}>
+              {content}
+            </div>
+          );
+        }
+        // Div, not <a>: the credit's PlayerLabel can itself be a link
+        const open = () =>
+          window.open(row.project.websiteUrl!, "_blank", "noreferrer");
+        return (
+          <div
             key={row.id}
-            href={row.project.websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${rowClass} hover:border-primary/40`}
+            role="button"
+            tabIndex={0}
+            onClick={open}
+            onKeyDown={(event) => {
+              if (event.target !== event.currentTarget) return;
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                open();
+              }
+            }}
+            className={`${rowClass} cursor-pointer hover:border-primary/40 focus-visible:border-primary/40`}
           >
-            {content}
-          </a>
-        ) : (
-          <div key={row.id} className={rowClass}>
             {content}
           </div>
         );
