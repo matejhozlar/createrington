@@ -17,6 +17,13 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
   not_a_good_fit: "Not a good fit",
 };
 
+export const WORKSHOP_STATUSES = [
+  "draft",
+  "open",
+  "closed",
+  "archived",
+] as const satisfies readonly WorkshopStatus[];
+
 export const WORKSHOP_STATUS_TRANSITIONS: Record<
   WorkshopStatus,
   WorkshopStatus[]

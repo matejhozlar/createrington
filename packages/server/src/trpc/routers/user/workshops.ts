@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, userProcedure, middleware } from "@/trpc/trpc";
 import { trpcError, rethrowTrpc } from "@/trpc/utils";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
 
@@ -15,6 +16,13 @@ const requireWorkshopEnabled = middleware(async ({ next }) => {
 
 const workshopProcedure = userProcedure.use(requireWorkshopEnabled);
 
+const searchLimit = createRateLimit({
+  name: "user.workshops.searchProjects",
+  limit: 30,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.user!.discordId,
+});
+
 function redactMod<T extends { reviewedBy: string | null }>(
   mod: T,
 ): Omit<T, "reviewedBy"> {
@@ -22,8 +30,19 @@ function redactMod<T extends { reviewedBy: string | null }>(
   return rest;
 }
 
+function redactWorkshop<
+  T extends { createdBy: string; discordForumChannelId: string | null },
+>(workshop: T): Omit<T, "createdBy" | "discordForumChannelId"> {
+  const {
+    createdBy: _createdBy,
+    discordForumChannelId: _discordForumChannelId,
+    ...rest
+  } = workshop;
+  return rest;
+}
+
 export const userWorkshopsRouter = router({
-  enabled: userProcedure
+  isEnabled: userProcedure
     .meta({ description: "Whether the workshop feature is enabled" })
     .query(async () => ({
       enabled: await featureFlagService.isEnabled(FeatureFlags.workshop),
@@ -31,7 +50,10 @@ export const userWorkshopsRouter = router({
 
   list: workshopProcedure
     .meta({ description: "List open and closed workshops" })
-    .query(() => workshopService.listVisibleWorkshops()),
+    .query(async () => {
+      const workshops = await workshopService.listVisibleWorkshops();
+      return workshops.map((w) => redactWorkshop(w));
+    }),
 
   get: workshopProcedure
     .meta({ description: "Get a workshop with its visible mods by slug" })
@@ -42,7 +64,10 @@ export const userWorkshopsRouter = router({
           input.slug,
         );
         const mods = await workshopService.getWorkshopMods(workshop.id);
-        return { workshop, mods: mods.map((m) => redactMod(m)) };
+        return {
+          workshop: redactWorkshop(workshop),
+          mods: mods.map((m) => redactMod(m)),
+        };
       } catch (error) {
         rethrowTrpc(error);
       }
@@ -61,6 +86,7 @@ export const userWorkshopsRouter = router({
     }),
 
   searchProjects: workshopProcedure
+    .use(searchLimit)
     .meta({ description: "Search CurseForge for submittable projects" })
     .input(
       z.object({
@@ -191,7 +217,7 @@ export const userWorkshopsRouter = router({
       }
     }),
 
-  pack: workshopProcedure
+  getPack: workshopProcedure
     .meta({
       description:
         "The workshop's modpack with its members' origin, credit, and live state",

@@ -42,7 +42,8 @@ export const modpack = pgTable(
 // admin adds, promoted dependencies, and manifest imports land here directly.
 // liveAt set = shipped in the published pack, droppedFromManifestAt set = was
 // live but missing from the latest published version (admin attention).
-// workshopModId links the winning suggestion; kept by service code, no FK.
+// workshopModId links the winning suggestion; kept by service code, no FK, so
+// a future workshop-delete endpoint must clear these links itself.
 
 export const modpackMod = pgTable(
   "modpack_mod",

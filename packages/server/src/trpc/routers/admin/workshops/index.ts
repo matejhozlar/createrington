@@ -5,14 +5,17 @@ import { auditActor, rethrowTrpc } from "@/trpc/utils";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
 import { listForumChannels } from "@/services/workshop/discord";
-import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_STATUSES,
+} from "@createrington/shared/workshop";
 
 const id = () => z.number().int().positive().max(2147483647);
 
 const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
-  status: z.enum(["draft", "open", "closed", "archived"]).optional(),
+  status: z.enum(WORKSHOP_STATUSES).optional(),
   gameVersion: z.string().trim().min(1).max(20).optional(),
   modLoaderType: z.number().int().min(0).optional(),
   classId: id().optional(),
@@ -262,7 +265,7 @@ export const adminWorkshopsRouter = router({
       }
     }),
 
-  attention: adminProcedure
+  getAttention: adminProcedure
     .meta({
       description:
         "Contradictions between the workshop and the published pack that need an admin decision",
