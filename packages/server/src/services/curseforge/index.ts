@@ -532,7 +532,7 @@ const modpackCache = new Map<
 /**
  * Returns the pack version and mod project IDs of a modpack's latest published file
  *
- * Downloads the modpack zip, parses `manifest.json`, and caches the result for 1 hour.
+ * Downloads the modpack zip, parses `manifest.json`, and caches the result for the configured TTL.
  * Prefers the server pack file when available, falling back to the client pack.
  */
 export async function getModpackManifest(

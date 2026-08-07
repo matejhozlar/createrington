@@ -1,5 +1,6 @@
 import { Q } from "@/db";
 import { refreshProjects } from "@/services/curseforge/ingest";
+import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { modpackService } from "@/services/modpack";
 import {
   promoteRequiredDependencies,
@@ -18,7 +19,8 @@ import { healThreads } from "./discord";
  * modpack is then reconciled: missing rows for approved suggestions are
  * healed, live state is derived from the published pack's manifest, and
  * orphaned dependencies are pruned. Runs once on startup, then every 24
- * hours; overlapping runs are skipped.
+ * hours; overlapping runs are skipped and the sweep is a no-op while the
+ * workshop feature flag is off.
  */
 export class WorkshopProjectRefreshService {
   private intervalId?: NodeJS.Timeout;
@@ -45,6 +47,7 @@ export class WorkshopProjectRefreshService {
   /** Refreshes snapshots, dependencies, forum threads, and modpack live state. */
   async refresh(): Promise<number> {
     if (this.running) return 0;
+    if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) return 0;
     this.running = true;
     try {
       const workshops = await Q.workshop.findAll({

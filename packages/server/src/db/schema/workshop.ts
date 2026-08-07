@@ -34,6 +34,7 @@ export const workshop = pgTable(
     gameVersion: text("game_version").notNull(),
     modLoaderType: integer("mod_loader_type").notNull(),
     classId: integer("class_id").notNull().default(6),
+    // No FK to curseforge_project: the base pack may not be ingested yet when set
     baseModpackProjectId: integer("base_modpack_project_id"),
     modpackId: integer("modpack_id")
       .notNull()

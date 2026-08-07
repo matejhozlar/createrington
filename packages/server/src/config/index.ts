@@ -296,7 +296,7 @@ const config = {
     apiKey: env.CURSEFORGE_API_KEY,
     apiBaseUrl: "https://api.curseforge.com",
     defaultGameVersion: "1.21.1",
-    modpackProjectId: 1316177,
+    modpackProjectId: env.CURSEFORGE_MODPACK_PROJECT_ID,
     modpackCacheTtlMs: 60 * 60 * 1000,
   },
 
