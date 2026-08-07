@@ -1,17 +1,16 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
-import { ProjectThumb } from "../components/ProjectThumb";
+import { PackStrip } from "../components/PackStrip";
 import { QueryErrorState } from "../components/QueryErrorState";
+import { WorkshopHero } from "../components/WorkshopHero";
 import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
 import { SuggestionHistory } from "./components/SuggestionHistory";
-
-const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
 
 export function WorkshopSuggest() {
   const { slug } = useParams<{ slug: string }>();
@@ -66,26 +65,10 @@ export function WorkshopSuggest() {
   const packProjectIds = new Set(
     packMods.map((row) => row.curseforgeProjectId),
   );
-  const packShown = packMods.slice(0, 4);
-  const packExtra = packMods.length - packShown.length;
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-[260px] overflow-hidden">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="h-full w-full object-cover grayscale-50"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, var(--background) 0%, oklch(from var(--background) l c h / 0.85) 45%, oklch(from var(--background) l c h / 0.4) 100%)",
-          }}
-        />
-      </div>
+      <WorkshopHero className="h-[260px]" />
 
       <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
         <Link
@@ -107,47 +90,13 @@ export function WorkshopSuggest() {
           </p>
         </header>
 
-        <div className="mt-7 flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5 transition-colors hover:border-primary/40">
-          <Link
-            to={`/workshop/${slug}`}
-            className="flex flex-wrap items-center gap-3.5 text-inherit"
-          >
-            <span className="text-[13px] font-semibold whitespace-nowrap">
-              {workshop.name}
-            </span>
-            <Badge variant="outline">{workshop.gameVersion}</Badge>
-            <Badge variant="outline">
-              {loaderName(workshop.modLoaderType)}
-            </Badge>
-          </Link>
-          <span className="flex-1" />
-          <Link
-            to={`/workshop/${slug}/pack`}
-            className="flex flex-wrap items-center gap-3.5 text-inherit"
-          >
-            {packMods.length > 0 && (
-              <span className="flex items-center gap-1.5">
-                {packShown.map((mod) => (
-                  <ProjectThumb
-                    key={mod.id}
-                    name={mod.project.name}
-                    thumbnailUrl={mod.project.thumbnailUrl}
-                    className="size-8 rounded-lg text-[10px]"
-                  />
-                ))}
-                {packExtra > 0 && (
-                  <span className="flex size-8 items-center justify-center rounded-lg bg-secondary text-[10px] font-semibold text-muted-foreground">
-                    +{packExtra}
-                  </span>
-                )}
-              </span>
-            )}
-            <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
-              Browse the full pack
-              <ArrowRight className="size-[15px]" />
-            </span>
-          </Link>
-        </div>
+        <PackStrip slug={slug!} mods={packMods} className="mt-7">
+          <span className="text-[13px] font-semibold whitespace-nowrap">
+            {workshop.name}
+          </span>
+          <Badge variant="outline">{workshop.gameVersion}</Badge>
+          <Badge variant="outline">{loaderName(workshop.modLoaderType)}</Badge>
+        </PackStrip>
 
         <main className="mt-11 flex flex-col gap-12">
           {isOpen ? (

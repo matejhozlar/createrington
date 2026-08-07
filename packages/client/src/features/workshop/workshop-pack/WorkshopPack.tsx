@@ -16,13 +16,12 @@ import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { loaderName, projectCategories } from "../format";
+import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
+import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
 
-const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
-const WORDMARK_IMAGE = "/assets/createrington-woodmark.png";
-const PAGE_SIZE = 10;
 const VIEW_STORAGE_KEY = "workshop-pack-view";
 
 const FALLBACK_DESCRIPTION =
@@ -122,21 +121,7 @@ export function WorkshopPack() {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-[340px] overflow-hidden">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="h-full w-full object-cover grayscale-50"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, var(--background) 0%, oklch(from var(--background) l c h / 0.85) 45%, oklch(from var(--background) l c h / 0.4) 100%)",
-          }}
-        />
-      </div>
+      <WorkshopHero className="h-[340px]" />
 
       <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
         <Link

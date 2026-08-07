@@ -2,14 +2,13 @@ import { Fragment, type ReactNode } from "react";
 import { Heart } from "lucide-react";
 import type { RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { formatRelativeDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
-import { DiscordIcon } from "@/components/icons/discord";
-import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { PlayerLabel } from "@/components/player-label";
+import { ProjectThumb } from "../../components/ProjectThumb";
+import { SocialLinks } from "../../components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
-  agoLabel,
-  modInitials,
   projectCategories,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -96,7 +95,11 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
       >
         {item.rank !== null && `#${item.rank}`}
       </span>
-      <ModThumb mod={mod} size="row" />
+      <ProjectThumb
+        name={mod.project.name}
+        thumbnailUrl={mod.project.thumbnailUrl}
+        className="relative size-11 rounded-[10px] text-[13px]"
+      />
       <div className="relative min-w-0 flex-1">
         <div className="truncate text-[15px] font-semibold">
           {mod.project.name}
@@ -110,13 +113,17 @@ function RaceRow({ item, onOpen, onUpvote }: RaceItemProps) {
                 </span>
               ),
               submitterPart(mod),
-              <span key="age">{agoLabel(mod.createdAt)}</span>,
+              <span key="age">{formatRelativeDate(mod.createdAt)}</span>,
             ]}
           />
         </div>
       </div>
       <div className="relative mr-1 hidden items-center gap-3.5 sm:flex">
-        <SocialLinks mod={mod} />
+        <SocialLinks
+          discordThreadUrl={mod.discordThreadUrl}
+          websiteUrl={mod.project.websiteUrl}
+          className="relative"
+        />
       </div>
       <HeartOrBadge item={item} onUpvote={onUpvote} />
     </div>
@@ -139,7 +146,11 @@ function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
         style={{ width: `${item.barPct}%` }}
       />
       <div className="flex items-center gap-3">
-        <ModThumb mod={mod} size="card" />
+        <ProjectThumb
+          name={mod.project.name}
+          thumbnailUrl={mod.project.thumbnailUrl}
+          className="relative size-13 rounded-[10px] text-sm"
+        />
         <div className="min-w-0 flex-1">
           <div className="truncate text-[15px] font-semibold">
             {mod.project.name}
@@ -169,12 +180,16 @@ function RaceCard({ item, onOpen, onUpvote }: RaceItemProps) {
           parts={[
             category && <span key="category">{category}</span>,
             submitterPart(mod),
-            <span key="age">{agoLabel(mod.createdAt)}</span>,
+            <span key="age">{formatRelativeDate(mod.createdAt)}</span>,
           ]}
         />
       </div>
       <div className="mt-auto flex items-center gap-3.5">
-        <SocialLinks mod={mod} />
+        <SocialLinks
+          discordThreadUrl={mod.discordThreadUrl}
+          websiteUrl={mod.project.websiteUrl}
+          className="relative"
+        />
         <span className="flex-1" />
         <HeartOrBadge item={item} onUpvote={onUpvote} />
       </div>
@@ -205,68 +220,6 @@ function submitterPart(mod: RaceMod): ReactNode {
       playerId={mod.submittedBy}
       size={16}
     />
-  );
-}
-
-function ModThumb({ mod, size }: { mod: RaceMod; size: "row" | "card" }) {
-  const sizeClass = size === "row" ? "size-11 text-[13px]" : "size-13 text-sm";
-  if (mod.project.thumbnailUrl) {
-    return (
-      <img
-        src={mod.project.thumbnailUrl}
-        alt=""
-        loading="lazy"
-        className={cn(
-          "relative shrink-0 rounded-[10px] object-cover",
-          sizeClass,
-        )}
-      />
-    );
-  }
-  return (
-    <span
-      className={cn(
-        "relative flex shrink-0 items-center justify-center rounded-[10px] bg-secondary font-semibold text-muted-foreground",
-        sizeClass,
-      )}
-    >
-      {modInitials(mod.project.name)}
-    </span>
-  );
-}
-
-function SocialLinks({ mod }: { mod: RaceMod }) {
-  const linkClass =
-    "relative text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100";
-  return (
-    <>
-      {mod.discordThreadUrl && (
-        <a
-          href={mod.discordThreadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Discuss on Discord"
-          title="Discuss on Discord"
-          onClick={(event) => event.stopPropagation()}
-          className={cn(linkClass, "hover:text-[#5865F2]")}
-        >
-          <DiscordIcon className="size-5" />
-        </a>
-      )}
-      {mod.project.websiteUrl && (
-        <a
-          href={mod.project.websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View on CurseForge"
-          title="View on CurseForge"
-          onClick={(event) => event.stopPropagation()}
-          className={cn(linkClass, "hover:text-[#F16436]")}
-        >
-          <CurseForgeIcon className="size-5" />
-        </a>
-      )}
-    </>
   );
 }
 

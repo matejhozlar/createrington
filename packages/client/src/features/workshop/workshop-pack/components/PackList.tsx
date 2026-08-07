@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 import type { RouterOutput } from "@/lib/trpc";
-import { CurseForgeIcon } from "@/components/icons/curseforge";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "../../components/ProjectThumb";
+import { SocialLinks } from "../../components/SocialLinks";
 import { projectCategories } from "../../format";
 
 export type PackMod = RouterOutput["user"]["workshops"]["pack"]["mods"][number];
@@ -76,7 +76,7 @@ function PackRow({ mod }: { mod: PackMod }) {
           {credit}
         </span>
       )}
-      <CurseForgeLink url={mod.project.websiteUrl} />
+      <SocialLinks websiteUrl={mod.project.websiteUrl} className="shrink-0" />
     </div>
   );
 }
@@ -113,24 +113,8 @@ function PackCard({ mod }: { mod: PackMod }) {
         {category && credit && <span>·</span>}
         {credit}
         <span className="flex-1" />
-        <CurseForgeLink url={mod.project.websiteUrl} />
+        <SocialLinks websiteUrl={mod.project.websiteUrl} className="shrink-0" />
       </div>
     </div>
-  );
-}
-
-function CurseForgeLink({ url }: { url: string | null }) {
-  if (!url) return null;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="View on CurseForge"
-      title="View on CurseForge"
-      className="shrink-0 text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100 hover:text-[#F16436]"
-    >
-      <CurseForgeIcon className="size-5" />
-    </a>
   );
 }

@@ -27,14 +27,6 @@ export function formatDate(value: string | Date | null): string {
   });
 }
 
-export function agoLabel(value: string | Date): string {
-  const days = Math.max(
-    0,
-    Math.floor((Date.now() - new Date(value).getTime()) / 86_400_000),
-  );
-  return days === 0 ? "today" : `${days}d ago`;
-}
-
 export function modInitials(name: string): string {
   const letters = name
     .split(/\s+/)

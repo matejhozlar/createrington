@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/loading-spinner";
@@ -11,9 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DiscordIcon } from "@/components/icons/discord";
-import { CurseForgeIcon } from "@/components/icons/curseforge";
+import { PAGE_SIZE } from "../../constants";
 import { ProjectThumb } from "../../components/ProjectThumb";
+import { SocialLinks } from "../../components/SocialLinks";
 import { ViewToggle, type ViewMode } from "../../components/ViewToggle";
 import {
   MOD_STATUS_STYLES,
@@ -27,7 +26,6 @@ type HistoryItem =
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 type SortMode = "new" | "old" | "updated";
 
-const PAGE_SIZE = 10;
 const VIEW_STORAGE_KEY = "workshop-suggest-history-view";
 
 function secondaryLine(mod: HistoryItem): string {
@@ -61,45 +59,6 @@ function StatusBadge({ mod }: { mod: HistoryItem }) {
     >
       {label}
     </Badge>
-  );
-}
-
-function SocialLinks({
-  mod,
-  iconClass,
-}: {
-  mod: HistoryItem;
-  iconClass: string;
-}) {
-  const linkClass =
-    "text-muted-foreground opacity-35 transition-[color,opacity] group-hover:opacity-100";
-  return (
-    <>
-      {mod.discordThreadUrl && (
-        <a
-          href={mod.discordThreadUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Discuss on Discord"
-          title="Discuss on Discord"
-          className={cn(linkClass, "hover:text-[#5865F2]")}
-        >
-          <DiscordIcon className={iconClass} />
-        </a>
-      )}
-      {mod.project.websiteUrl && (
-        <a
-          href={mod.project.websiteUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View on CurseForge"
-          title="View on CurseForge"
-          className={cn(linkClass, "hover:text-[#F16436]")}
-        >
-          <CurseForgeIcon className={iconClass} />
-        </a>
-      )}
-    </>
   );
 }
 
@@ -215,7 +174,10 @@ export function SuggestionHistory() {
                 )}
               </div>
               <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
-                <SocialLinks mod={mod} iconClass="size-5" />
+                <SocialLinks
+                  discordThreadUrl={mod.discordThreadUrl}
+                  websiteUrl={mod.project.websiteUrl}
+                />
               </div>
               <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
                 <span className="hidden md:inline">{mod.workshopName} · </span>
@@ -254,7 +216,11 @@ export function SuggestionHistory() {
                 )}
               </div>
               <div className="mt-auto flex items-center gap-3">
-                <SocialLinks mod={mod} iconClass="size-[18px]" />
+                <SocialLinks
+                  discordThreadUrl={mod.discordThreadUrl}
+                  websiteUrl={mod.project.websiteUrl}
+                  iconClass="size-[18px]"
+                />
                 <span className="flex-1" />
                 <span className="text-xs whitespace-nowrap text-muted-foreground">
                   {mod.workshopName} · {dateLine(mod)}

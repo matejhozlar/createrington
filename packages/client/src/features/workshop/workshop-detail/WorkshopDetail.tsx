@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Search } from "lucide-react";
+import { ArrowLeft, Search } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
@@ -17,14 +17,13 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { PlayerLabel } from "@/components/player-label";
-import {
-  MOD_STATUS_STYLES,
-  loaderName,
-  modInitials,
-  projectCategories,
-} from "../format";
+import { MOD_STATUS_STYLES, loaderName, projectCategories } from "../format";
+import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { PackStrip } from "../components/PackStrip";
+import { ProjectThumb } from "../components/ProjectThumb";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
+import { WorkshopHero } from "../components/WorkshopHero";
 import {
   Leaderboard,
   type RaceItem,
@@ -32,9 +31,6 @@ import {
 } from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 
-const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
-const WORDMARK_IMAGE = "/assets/createrington-woodmark.png";
-const PAGE_SIZE = 10;
 const VIEW_STORAGE_KEY = "workshop-detail-view";
 
 type SortMode = "top" | "new" | "votes";
@@ -263,21 +259,7 @@ export function WorkshopDetail() {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-[340px] overflow-hidden">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="h-full w-full object-cover grayscale-50"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, var(--background) 0%, oklch(from var(--background) l c h / 0.85) 45%, oklch(from var(--background) l c h / 0.4) 100%)",
-          }}
-        />
-      </div>
+      <WorkshopHero className="h-[340px]" />
 
       <div className="relative mx-auto max-w-6xl px-5 pt-8 pb-16 md:px-8">
         <Link
@@ -325,7 +307,11 @@ export function WorkshopDetail() {
 
         <main className="mt-10 flex flex-col gap-6">
           {packMods.length > 0 && (
-            <ApprovedStrip slug={slug!} mods={packMods} />
+            <PackStrip slug={slug!} mods={packMods}>
+              <span className="text-[13px] font-semibold whitespace-nowrap">
+                Already in the pack
+              </span>
+            </PackStrip>
           )}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -483,18 +469,11 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
           }
           className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40"
         >
-          {row.project.thumbnailUrl ? (
-            <img
-              src={row.project.thumbnailUrl}
-              alt=""
-              loading="lazy"
-              className="size-9 shrink-0 rounded-lg object-cover"
-            />
-          ) : (
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold text-muted-foreground">
-              {modInitials(row.project.name)}
-            </span>
-          )}
+          <ProjectThumb
+            name={row.project.name}
+            thumbnailUrl={row.project.thumbnailUrl}
+            className="size-9 rounded-lg text-xs"
+          />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">
               {row.project.name}
@@ -526,62 +505,5 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
         </div>
       ))}
     </div>
-  );
-}
-
-function ApprovedStrip({
-  slug,
-  mods,
-}: {
-  slug: string;
-  mods: Array<{
-    id: number;
-    project: { name: string; thumbnailUrl: string | null };
-  }>;
-}) {
-  const shown = mods.slice(0, 4);
-  const extra = mods.length - shown.length;
-  return (
-    <Link
-      to={`/workshop/${slug}/pack`}
-      className="flex flex-wrap items-center gap-3.5 rounded-xl border border-border bg-accent/15 px-5 py-3.5 text-inherit transition-colors hover:border-primary/40"
-    >
-      <span className="text-[13px] font-semibold whitespace-nowrap">
-        Already in the pack
-      </span>
-      <span className="flex items-center gap-1.5">
-        {shown.map((mod) =>
-          mod.project.thumbnailUrl ? (
-            <img
-              key={mod.id}
-              src={mod.project.thumbnailUrl}
-              alt={mod.project.name}
-              title={mod.project.name}
-              width={32}
-              height={32}
-              className="size-8 rounded-lg object-cover"
-            />
-          ) : (
-            <span
-              key={mod.id}
-              title={mod.project.name}
-              className="flex size-8 items-center justify-center rounded-lg bg-secondary text-[10px] font-semibold text-muted-foreground"
-            >
-              {modInitials(mod.project.name)}
-            </span>
-          ),
-        )}
-        {extra > 0 && (
-          <span className="flex size-8 items-center justify-center rounded-lg bg-secondary text-[10px] font-semibold text-muted-foreground">
-            +{extra}
-          </span>
-        )}
-      </span>
-      <span className="flex-1" />
-      <span className="flex items-center gap-1 text-[13px] text-muted-foreground">
-        Browse the full pack
-        <ArrowRight className="size-[15px]" />
-      </span>
-    </Link>
   );
 }

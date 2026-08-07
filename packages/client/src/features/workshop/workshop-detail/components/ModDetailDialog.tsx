@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerLabel } from "@/components/player-label";
+import { ProjectThumb } from "../../components/ProjectThumb";
 import {
   formatDate,
   formatDownloads,
@@ -111,13 +112,11 @@ export function ModDetailDialog({
           <>
             <DialogHeader>
               <div className="flex items-start gap-4">
-                {project.thumbnailUrl && (
-                  <img
-                    src={project.thumbnailUrl}
-                    alt=""
-                    className="size-16 shrink-0 rounded-xl"
-                  />
-                )}
+                <ProjectThumb
+                  name={project.name}
+                  thumbnailUrl={project.thumbnailUrl}
+                  className="size-16 rounded-xl text-lg"
+                />
                 <div className="min-w-0 flex-1 space-y-1 text-left">
                   <DialogTitle className="text-xl">{project.name}</DialogTitle>
                   <DialogDescription>
@@ -201,15 +200,11 @@ export function ModDetailDialog({
                       key={dep.curseforgeProjectId}
                       className="flex items-center gap-2.5 rounded-lg border p-2 text-sm"
                     >
-                      {dep.thumbnailUrl ? (
-                        <img
-                          src={dep.thumbnailUrl}
-                          alt=""
-                          className="size-7 rounded"
-                        />
-                      ) : (
-                        <div className="size-7 rounded bg-accent" />
-                      )}
+                      <ProjectThumb
+                        name={dep.name ?? ""}
+                        thumbnailUrl={dep.thumbnailUrl}
+                        className="size-7 rounded text-[10px]"
+                      />
                       <span className="min-w-0 flex-1 truncate">
                         {dep.name ?? `Project #${dep.curseforgeProjectId}`}
                       </span>

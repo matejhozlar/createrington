@@ -60,6 +60,7 @@ import {
 } from "@/components/ui/table";
 import { Loading } from "@/components/loading-spinner";
 import { PlayerLabel } from "@/components/player-label";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import {
@@ -333,13 +334,11 @@ export function AdminWorkshopDetail() {
                             className="flex cursor-pointer items-center gap-2 text-left"
                             onClick={() => setDetailModId(mod.id)}
                           >
-                            {mod.project.thumbnailUrl && (
-                              <img
-                                src={mod.project.thumbnailUrl}
-                                alt=""
-                                className="size-8 rounded"
-                              />
-                            )}
+                            <ProjectThumb
+                              name={mod.project.name}
+                              thumbnailUrl={mod.project.thumbnailUrl}
+                              className="size-8 rounded text-[11px]"
+                            />
                             <div>
                               <div className="font-medium hover:underline">
                                 {mod.project.name}
@@ -504,13 +503,11 @@ export function AdminWorkshopDetail() {
                     <TableRow key={row.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {row.project.thumbnailUrl && (
-                            <img
-                              src={row.project.thumbnailUrl}
-                              alt=""
-                              className="size-8 rounded"
-                            />
-                          )}
+                          <ProjectThumb
+                            name={row.project.name}
+                            thumbnailUrl={row.project.thumbnailUrl}
+                            className="size-8 rounded text-[11px]"
+                          />
                           <div>
                             <div className="font-medium">
                               {row.project.name}
@@ -626,15 +623,11 @@ export function AdminWorkshopDetail() {
                         key={mod.id}
                         className="flex items-center gap-2.5 text-sm"
                       >
-                        {mod.project.thumbnailUrl ? (
-                          <img
-                            src={mod.project.thumbnailUrl}
-                            alt=""
-                            className="size-7 rounded"
-                          />
-                        ) : (
-                          <div className="size-7 rounded bg-accent" />
-                        )}
+                        <ProjectThumb
+                          name={mod.project.name}
+                          thumbnailUrl={mod.project.thumbnailUrl}
+                          className="size-7 rounded text-[10px]"
+                        />
                         <span className="font-medium">{mod.project.name}</span>
                         {mod.requiredBy.length > 0 && (
                           <span className="text-muted-foreground">
@@ -662,15 +655,11 @@ export function AdminWorkshopDetail() {
                         key={dep.curseforgeProjectId}
                         className="flex items-center gap-2.5 text-sm"
                       >
-                        {dep.thumbnailUrl ? (
-                          <img
-                            src={dep.thumbnailUrl}
-                            alt=""
-                            className="size-7 rounded"
-                          />
-                        ) : (
-                          <div className="size-7 rounded bg-accent" />
-                        )}
+                        <ProjectThumb
+                          name={dep.name ?? ""}
+                          thumbnailUrl={dep.thumbnailUrl}
+                          className="size-7 rounded text-[10px]"
+                        />
                         <span className="font-medium">
                           {dep.name ?? `Project #${dep.curseforgeProjectId}`}
                         </span>

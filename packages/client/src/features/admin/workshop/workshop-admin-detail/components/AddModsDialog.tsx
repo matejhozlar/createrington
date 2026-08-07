@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 
 interface SelectedProject {
@@ -163,13 +164,11 @@ export function AddModsDialog({
                   ]);
                 }}
               >
-                {result.thumbnailUrl && (
-                  <img
-                    src={result.thumbnailUrl}
-                    alt=""
-                    className="size-9 rounded"
-                  />
-                )}
+                <ProjectThumb
+                  name={result.name}
+                  thumbnailUrl={result.thumbnailUrl}
+                  className="size-9 rounded text-xs"
+                />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium">
                     {result.name}

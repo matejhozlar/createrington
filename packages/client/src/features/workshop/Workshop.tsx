@@ -7,15 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loading } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
+import { ProjectThumb } from "./components/ProjectThumb";
 import { QueryErrorState } from "./components/QueryErrorState";
-import {
-  WORKSHOP_STATUS_STYLES,
-  formatDate,
-  loaderName,
-  modInitials,
-} from "./format";
-
-const HERO_IMAGE = "/assets/hero/royal-albert-hall.webp";
+import { WorkshopHero } from "./components/WorkshopHero";
+import { WORKSHOP_STATUS_STYLES, formatDate, loaderName } from "./format";
 
 const STAT_LABEL_CLASS =
   "text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground";
@@ -34,21 +29,7 @@ export function Workshop() {
 
   return (
     <div className="relative overflow-hidden">
-      <div className="absolute inset-x-0 top-0 h-[680px] overflow-hidden">
-        <img
-          src={HERO_IMAGE}
-          alt=""
-          className="h-full w-full object-cover grayscale-50"
-        />
-        <div className="absolute inset-0 bg-black/30" />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(to top, var(--background) 0%, oklch(from var(--background) l c h / 0.75) 40%, oklch(from var(--background) l c h / 0.25) 75%, transparent 100%)",
-          }}
-        />
-      </div>
+      <WorkshopHero className="h-[680px]" variant="hub" />
 
       <header className="relative px-5 pb-10 pt-18 md:px-8">
         <div className="mx-auto max-w-7xl">
@@ -178,17 +159,11 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
                 <span className="w-3.5 font-mono text-xs text-muted-foreground">
                   {index + 1}
                 </span>
-                {mod.thumbnailUrl ? (
-                  <img
-                    src={mod.thumbnailUrl}
-                    alt=""
-                    className="size-9 shrink-0 rounded-sm object-cover"
-                  />
-                ) : (
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-sm bg-secondary text-[13px] font-semibold text-muted-foreground">
-                    {modInitials(mod.name)}
-                  </span>
-                )}
+                <ProjectThumb
+                  name={mod.name}
+                  thumbnailUrl={mod.thumbnailUrl}
+                  className="size-9 rounded-sm text-[13px]"
+                />
                 <span className="flex min-w-0 flex-1 flex-col">
                   <span className="truncate text-sm font-semibold">
                     {mod.name}
