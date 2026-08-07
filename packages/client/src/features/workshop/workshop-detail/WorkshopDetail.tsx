@@ -120,6 +120,9 @@ export function WorkshopDetail() {
             modIds: removing
               ? data.modIds.filter((id) => id !== workshopModId)
               : [...data.modIds, workshopModId],
+            votesRemaining: removing
+              ? Math.min(data.maxUpvotes, data.votesRemaining + 1)
+              : Math.max(0, data.votesRemaining - 1),
           },
       );
       return { previousGet, previousUpvotes };
@@ -249,13 +252,7 @@ export function WorkshopDetail() {
   }));
 
   const budget = myUpvotesQuery.data;
-  const votesLeft = budget
-    ? Math.max(
-        0,
-        budget.maxUpvotes -
-          pending.filter((mod) => upvotedIds.has(mod.id)).length,
-      )
-    : null;
+  const votesLeft = budget?.votesRemaining ?? null;
 
   return (
     <div className="relative overflow-hidden">

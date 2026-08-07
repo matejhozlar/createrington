@@ -17,6 +17,7 @@ import type {
   WorkshopModRejectReason,
   WorkshopModStatus,
 } from "@createrington/shared/db";
+import { WORKSHOP_MOD_REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 
 interface SuggestionAnnouncement extends WorkshopMod {
   project: Pick<CurseforgeProject, "name" | "primaryAuthor" | "websiteUrl">;
@@ -29,20 +30,12 @@ const STATUS_TAGS = {
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
-  { name: string; emoji: string; label: string }
+  { name: string; emoji: string }
 > = {
-  on_hold: { name: "On hold", emoji: "⏸️", label: "On hold" },
-  incompatible: { name: "Incompatible", emoji: "⚠️", label: "Incompatible" },
-  covered_by_other_mod: {
-    name: "Already covered",
-    emoji: "🔁",
-    label: "Already covered by another mod",
-  },
-  not_a_good_fit: {
-    name: "Not a good fit",
-    emoji: "🚫",
-    label: "Not a good fit for this pack",
-  },
+  on_hold: { name: "On hold", emoji: "⏸️" },
+  incompatible: { name: "Incompatible", emoji: "⚠️" },
+  covered_by_other_mod: { name: "Already covered", emoji: "🔁" },
+  not_a_good_fit: { name: "Not a good fit", emoji: "🚫" },
 };
 
 const LIVE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
@@ -269,10 +262,13 @@ export async function announceReview(
       }
     }
 
+    const reasonLabel = mod.rejectReason
+      ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
+      : null;
     const content =
       status === "approved"
         ? "✅ **In the pack!** The team approved this suggestion."
-        : `${reasonTag?.emoji ?? "🚫"} **${reasonTag?.label ?? "Rejected"}.**${
+        : `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
             mod.rejectNote ? ` ${mod.rejectNote}` : ""
           }`;
     await thread.send(content);

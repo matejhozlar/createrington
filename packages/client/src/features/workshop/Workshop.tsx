@@ -260,7 +260,7 @@ function EarlierWorkshops({ workshops }: { workshops: WorkshopListItem[] }) {
               <span className="flex-1" />
               <span className="text-[13px] text-muted-foreground">
                 {workshop.gameVersion} · {loaderName(workshop.modLoaderType)} ·
-                Closed {formatDate(workshop.updatedAt)}
+                Updated {formatDate(workshop.updatedAt)}
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
             </Card>

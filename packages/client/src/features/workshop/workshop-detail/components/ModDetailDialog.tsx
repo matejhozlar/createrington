@@ -40,12 +40,17 @@ interface ProjectCategory {
 
 interface ProjectScreenshot {
   title: string;
-  thumbnailUrl: string;
   url: string;
 }
 
+const REQUIRED_DEPENDENCY = 3;
+
 function isHttpUrl(url: string | null | undefined): url is string {
   return !!url && /^https?:\/\//i.test(url);
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
 }
 
 export function ModDetailDialog({
@@ -69,11 +74,10 @@ export function ModDetailDialog({
 
   const data = detailQuery.data;
   const project = data?.project;
-  const categories = (project?.categories ??
-    []) as unknown as ProjectCategory[];
-  const screenshots = (
-    (project?.screenshots ?? []) as unknown as ProjectScreenshot[]
-  ).filter((shot) => isHttpUrl(shot.url) && isHttpUrl(shot.thumbnailUrl));
+  const categories = asArray<ProjectCategory>(project?.categories);
+  const screenshots = asArray<ProjectScreenshot>(project?.screenshots).filter(
+    (shot) => isHttpUrl(shot.url),
+  );
   const status = data
     ? data.mod.live
       ? MOD_STATUS_STYLES.live
@@ -210,11 +214,15 @@ export function ModDetailDialog({
                       </span>
                       <Badge
                         variant={
-                          dep.relationType === 3 ? "outline" : "secondary"
+                          dep.relationType === REQUIRED_DEPENDENCY
+                            ? "outline"
+                            : "secondary"
                         }
                         className="text-xs"
                       >
-                        {dep.relationType === 3 ? "Required" : "Optional"}
+                        {dep.relationType === REQUIRED_DEPENDENCY
+                          ? "Required"
+                          : "Optional"}
                       </Badge>
                       {dep.rejected && (
                         <Badge

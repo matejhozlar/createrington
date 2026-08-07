@@ -1,4 +1,4 @@
-import type { WorkshopModRejectReason } from "@createrington/shared/db";
+export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 
 export const LOADER_NAMES: Record<number, string> = {
   1: "Forge",
@@ -91,11 +91,4 @@ export const WORKSHOP_STATUS_STYLES: Record<
     label: "Archived",
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
-};
-
-export const REJECT_REASON_LABELS: Record<WorkshopModRejectReason, string> = {
-  on_hold: "On hold",
-  incompatible: "Incompatible",
-  covered_by_other_mod: "Covered by another mod",
-  not_a_good_fit: "Not a good fit",
 };

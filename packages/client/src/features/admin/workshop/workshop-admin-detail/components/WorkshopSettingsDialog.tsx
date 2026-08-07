@@ -38,10 +38,12 @@ export function WorkshopSettingsDialog({
   open,
   onOpenChange,
   workshop,
+  hasMods,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   workshop: WorkshopSettings;
+  hasMods: boolean;
 }) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
@@ -129,13 +131,18 @@ export function WorkshopSettingsDialog({
               <Input
                 id="settings-version"
                 maxLength={20}
+                disabled={hasMods}
                 value={gameVersion}
                 onChange={(e) => setGameVersion(e.target.value)}
               />
             </div>
             <div className="space-y-2">
               <Label>Mod Loader</Label>
-              <Select value={loaderType} onValueChange={setLoaderType}>
+              <Select
+                value={loaderType}
+                onValueChange={setLoaderType}
+                disabled={hasMods}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -180,6 +187,7 @@ export function WorkshopSettingsDialog({
             <Input
               id="settings-basepack"
               type="number"
+              disabled={hasMods}
               value={basePackId}
               onChange={(e) => setBasePackId(e.target.value)}
             />
@@ -195,10 +203,12 @@ export function WorkshopSettingsDialog({
               onChange={(e) => setForumChannelId(e.target.value)}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Changing the game version or loader does not revalidate mods that
-            are already in the workshop.
-          </p>
+          {hasMods && (
+            <p className="text-xs text-muted-foreground">
+              The game version, mod loader, and base modpack are locked because
+              this workshop already has mods.
+            </p>
+          )}
         </div>
         <DialogFooter>
           <Button

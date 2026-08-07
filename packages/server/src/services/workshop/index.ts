@@ -14,6 +14,7 @@ import type {
   WorkshopModStatus,
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
+import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";
 import {
   CurseForgeClass,
   getMod,
@@ -146,16 +147,6 @@ export interface WorkshopProjectSearchResult {
 export type WorkshopReviewAction = "approve" | "reject";
 
 const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
-
-const WORKSHOP_STATUS_TRANSITIONS: Record<
-  Workshop["status"],
-  Workshop["status"][]
-> = {
-  draft: ["open"],
-  open: ["closed"],
-  closed: ["open", "archived"],
-  archived: ["closed"],
-};
 
 interface PreparedEntry {
   projectId: number;

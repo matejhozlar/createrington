@@ -69,15 +69,16 @@ import {
   WORKSHOP_STATUS_STYLES,
   formatDate,
 } from "@/features/workshop/format";
-import { WORKSHOP_MOD_REJECT_REASONS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_STATUS_TRANSITIONS,
+} from "@createrington/shared/workshop";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
-
-const WORKSHOP_STATUSES = ["draft", "open", "closed", "archived"] as const;
 
 const ORIGIN_LABELS: Record<string, string> = {
   suggestion: "Suggestion",
@@ -242,10 +243,11 @@ export function AdminWorkshopDetail() {
         <div className="ml-auto flex items-center gap-2">
           <Select
             value={workshop.status}
+            disabled={updateWorkshopMutation.isPending}
             onValueChange={(status) =>
               updateWorkshopMutation.mutate({
                 workshopId,
-                patch: { status: status as (typeof WORKSHOP_STATUSES)[number] },
+                patch: { status: status as typeof workshop.status },
               })
             }
           >
@@ -253,7 +255,10 @@ export function AdminWorkshopDetail() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {WORKSHOP_STATUSES.map((s) => (
+              {[
+                workshop.status,
+                ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
+              ].map((s) => (
                 <SelectItem key={s} value={s}>
                   {WORKSHOP_STATUS_STYLES[s]?.label ?? s}
                 </SelectItem>
@@ -525,19 +530,19 @@ export function AdminWorkshopDetail() {
                         {row.origin === "suggestion" &&
                           (row.suggestedByName ? (
                             <span className="flex items-center gap-1">
-                              suggested by{" "}
+                              Suggested by{" "}
                               <PlayerLabel
                                 name={row.suggestedByName}
                                 size={16}
                               />
                             </span>
                           ) : (
-                            "suggested by a player"
+                            "Suggested by a player"
                           ))}
                         {row.origin === "admin" &&
                           (row.addedByName ? (
                             <span className="flex items-center gap-1">
-                              added by{" "}
+                              Added by{" "}
                               <PlayerLabel
                                 name={row.addedByName}
                                 playerId={row.addedBy}
@@ -545,16 +550,16 @@ export function AdminWorkshopDetail() {
                               />
                             </span>
                           ) : (
-                            `added by ${row.addedBy ?? "an admin"}`
+                            "Added by an admin"
                           ))}
                         {row.origin === "dependency" &&
                           (row.requiredBy.length > 0
-                            ? `required by ${row.requiredBy.map((r) => r.name).join(", ")}`
-                            : "required dependency")}
+                            ? `Required by ${row.requiredBy.map((r) => r.name).join(", ")}`
+                            : "Required dependency")}
                         {row.origin === "import" &&
                           (row.liveInVersion
-                            ? `added with ${row.liveInVersion}`
-                            : "from the published pack")}
+                            ? `Added with ${row.liveInVersion}`
+                            : "From the published pack")}
                       </TableCell>
                       <TableCell>
                         {row.liveAt ? (
@@ -742,6 +747,7 @@ export function AdminWorkshopDetail() {
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
           workshop={workshop}
+          hasMods={mods.length > 0}
         />
       )}
 
