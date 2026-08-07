@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Info, Loader2, Search, X } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -24,7 +24,9 @@ export function ModSearch({
 }) {
   const toast = useToastActions();
   const utils = trpc.useUtils();
+  const containerRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [dismissed, setDismissed] = useState(false);
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
@@ -33,11 +35,23 @@ export function ModSearch({
   const isFull = usedSlots >= workshop.maxModsPerUser;
   const ownProjectIds = new Set(suggestions.map((m) => m.curseforgeProjectId));
   const searching = !isFull && debouncedSearch.length >= 2;
+  const dropdownOpen = searching && !dismissed;
 
   const searchResults = trpc.user.workshops.searchProjects.useQuery(
     { workshopId: workshop.id, query: debouncedSearch },
     { enabled: searching },
   );
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setDismissed(true);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [dropdownOpen]);
 
   const suggestMutation = trpc.user.workshops.suggestMod.useMutation({
     onSuccess: (mod) => {
@@ -83,16 +97,23 @@ export function ModSearch({
         </p>
       </div>
 
-      <div className="relative">
+      <div ref={containerRef} className="relative">
         <Search className="pointer-events-none absolute top-1/2 left-3.5 size-[17px] -translate-y-1/2 text-muted-foreground" />
         <Input
           value={searchQuery}
           disabled={isFull}
-          onChange={(event) => setSearchQuery(event.target.value)}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setDismissed(false);
+          }}
+          onFocus={() => setDismissed(false)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setDismissed(true);
+          }}
           placeholder={isFull ? "All slots used" : "Search CurseForge..."}
           className="h-[46px] rounded-[10px] bg-white/[0.03] pl-10 text-sm"
         />
-        {searching && (
+        {dropdownOpen && (
           <div className="absolute inset-x-0 top-[calc(100%+8px)] z-50 flex max-h-[420px] flex-col gap-0.5 overflow-y-auto rounded-xl border border-border bg-popover p-1.5 shadow-[0_12px_32px_rgb(0_0_0/0.45)]">
             {searchResults.isLoading && (
               <p className="px-4 py-7 text-center text-[13px] text-muted-foreground">

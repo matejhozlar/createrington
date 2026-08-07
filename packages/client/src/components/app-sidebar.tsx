@@ -62,9 +62,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
 
-  const workshopEnabledQuery = trpc.user.workshops.enabled.useQuery(undefined, {
-    enabled: !!user,
-  });
+  const workshopEnabledQuery = trpc.user.workshops.isEnabled.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
   const workshopEnabled =
     !!user && (workshopEnabledQuery.data?.enabled ?? false);
 

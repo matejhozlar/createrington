@@ -28,6 +28,7 @@ import { useViewMode } from "../hooks/use-view-mode";
 import { PackStrip } from "../components/PackStrip";
 import { ProjectThumb } from "../components/ProjectThumb";
 import { QueryErrorState } from "../components/QueryErrorState";
+import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { type PackMod } from "../workshop-pack/components/PackList";
@@ -78,7 +79,7 @@ export function WorkshopDetail() {
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined && searching },
   );
-  const packQuery = trpc.user.workshops.pack.useQuery(
+  const packQuery = trpc.user.workshops.getPack.useQuery(
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
@@ -145,6 +146,7 @@ export function WorkshopDetail() {
       if (workshopId !== undefined) {
         utils.user.workshops.myUpvotes.invalidate({ workshopId });
       }
+      utils.user.workshops.list.invalidate();
     },
   });
 
@@ -156,10 +158,14 @@ export function WorkshopDetail() {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl">
-          <QueryErrorState
-            message={workshopQuery.error.message}
-            onRetry={() => workshopQuery.refetch()}
-          />
+          {workshopQuery.error.data?.code === "FORBIDDEN" ? (
+            <WorkshopDisabledState />
+          ) : (
+            <QueryErrorState
+              message={workshopQuery.error.message}
+              onRetry={() => workshopQuery.refetch()}
+            />
+          )}
         </div>
       </div>
     );

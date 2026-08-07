@@ -19,7 +19,7 @@ export function SocialLinks({
 }) {
   return (
     <>
-      {discordThreadUrl && (
+      {isHttpUrl(discordThreadUrl) && (
         <a
           href={discordThreadUrl}
           target="_blank"

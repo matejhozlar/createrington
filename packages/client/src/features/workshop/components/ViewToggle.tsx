@@ -45,6 +45,7 @@ function ViewButton({
     <button
       type="button"
       aria-label={label}
+      aria-pressed={active}
       title={label}
       onClick={onClick}
       className={cn(

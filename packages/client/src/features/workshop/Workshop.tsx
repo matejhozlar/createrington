@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, Hammer as WorkshopIcon, Heart } from "lucide-react";
+import { ChevronRight, Heart } from "lucide-react";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,10 @@ import { Loading } from "@/components/loading-spinner";
 import { mcHeadsAvatar } from "@/lib/external-urls";
 import { ProjectThumb } from "./components/ProjectThumb";
 import { QueryErrorState } from "./components/QueryErrorState";
+import {
+  WorkshopDisabledState,
+  WorkshopEmptyState,
+} from "./components/WorkshopEmptyState";
 import { WorkshopHero } from "./components/WorkshopHero";
 import { WORKSHOP_STATUS_STYLES, formatDate, loaderName } from "./format";
 
@@ -53,13 +57,18 @@ export function Workshop() {
                 className="py-24"
                 text="Loading workshops..."
               />
+            ) : workshopsQuery.error?.data?.code === "FORBIDDEN" ? (
+              <WorkshopDisabledState />
             ) : workshopsQuery.error ? (
               <QueryErrorState
                 message={workshopsQuery.error.message}
                 onRetry={() => workshopsQuery.refetch()}
               />
             ) : openWorkshops.length === 0 ? (
-              <EmptyState />
+              <WorkshopEmptyState
+                title="No workshops open right now"
+                description="When the next workshop opens, it'll show up here. Keep an eye on the Discord announcements."
+              />
             ) : (
               <div className="flex flex-col gap-6">
                 {openWorkshops.map((workshop) => (
@@ -217,21 +226,6 @@ function WorkshopStat({
           {unit}
         </span>
       </div>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-16 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg bg-[var(--primary-glow)]">
-        <WorkshopIcon className="size-[22px] text-primary" />
-      </div>
-      <div className="text-lg font-semibold">No workshops open right now</div>
-      <p className="max-w-[400px] text-sm leading-[22px] text-muted-foreground">
-        When the next workshop opens, it&apos;ll show up here. Keep an eye on
-        the Discord announcements.
-      </p>
     </div>
   );
 }

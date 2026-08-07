@@ -99,6 +99,7 @@ export function AddModsDialog({
                 {project.name}
                 <button
                   type="button"
+                  aria-label={`Remove ${project.name}`}
                   onClick={() =>
                     setSelected((prev) =>
                       prev.filter((p) => p.id !== project.id),

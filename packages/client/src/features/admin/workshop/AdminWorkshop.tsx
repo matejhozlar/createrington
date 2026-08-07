@@ -39,7 +39,7 @@ export function AdminWorkshop() {
     onSuccess: (flag) => {
       toast.success(`Workshop ${flag.enabled ? "enabled" : "disabled"}`);
       utils.admin.features.list.invalidate();
-      utils.user.workshops.enabled.invalidate();
+      utils.user.workshops.isEnabled.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -121,10 +121,19 @@ export function AdminWorkshop() {
                   {workshopsQuery.data?.map((workshop) => (
                     <TableRow
                       key={workshop.id}
+                      role="button"
+                      tabIndex={0}
                       className="cursor-pointer"
                       onClick={() =>
                         navigate(`/admin/tools/workshop/${workshop.id}`)
                       }
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          navigate(`/admin/tools/workshop/${workshop.id}`);
+                        }
+                      }}
                     >
                       <TableCell>
                         <div className="font-medium">{workshop.name}</div>

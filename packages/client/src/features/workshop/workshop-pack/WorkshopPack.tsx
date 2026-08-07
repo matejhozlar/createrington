@@ -20,6 +20,7 @@ import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { useViewMode } from "../hooks/use-view-mode";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
+import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
 
@@ -43,7 +44,7 @@ export function WorkshopPack() {
   );
   const workshopId = workshopQuery.data?.workshop.id;
 
-  const packQuery = trpc.user.workshops.pack.useQuery(
+  const packQuery = trpc.user.workshops.getPack.useQuery(
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
@@ -56,10 +57,14 @@ export function WorkshopPack() {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl">
-          <QueryErrorState
-            message={workshopQuery.error.message}
-            onRetry={() => workshopQuery.refetch()}
-          />
+          {workshopQuery.error.data?.code === "FORBIDDEN" ? (
+            <WorkshopDisabledState />
+          ) : (
+            <QueryErrorState
+              message={workshopQuery.error.message}
+              onRetry={() => workshopQuery.refetch()}
+            />
+          )}
         </div>
       </div>
     );

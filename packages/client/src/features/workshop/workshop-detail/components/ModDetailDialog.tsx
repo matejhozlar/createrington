@@ -287,7 +287,7 @@ export function ModDetailDialog({
               </Button>
             )}
 
-            {data.mod.discordThreadUrl && (
+            {isHttpUrl(data.mod.discordThreadUrl) && (
               <Button variant="outline" className="w-full" asChild>
                 <a
                   href={data.mod.discordThreadUrl}

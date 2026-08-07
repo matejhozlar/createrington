@@ -7,6 +7,7 @@ import { NotFound } from "@/pages/not-found";
 import { loaderName } from "../format";
 import { PackStrip } from "../components/PackStrip";
 import { QueryErrorState } from "../components/QueryErrorState";
+import { WorkshopDisabledState } from "../components/WorkshopEmptyState";
 import { WorkshopHero } from "../components/WorkshopHero";
 import { ActiveSlots } from "./components/ActiveSlots";
 import { ModSearch } from "./components/ModSearch";
@@ -26,7 +27,7 @@ export function WorkshopSuggest() {
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
-  const packQuery = trpc.user.workshops.pack.useQuery(
+  const packQuery = trpc.user.workshops.getPack.useQuery(
     { workshopId: workshopId! },
     { enabled: workshopId !== undefined },
   );
@@ -40,13 +41,17 @@ export function WorkshopSuggest() {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl">
-          <QueryErrorState
-            message={pageError.message}
-            onRetry={() => {
-              if (workshopQuery.error) workshopQuery.refetch();
-              if (suggestionsQuery.error) suggestionsQuery.refetch();
-            }}
-          />
+          {pageError.data?.code === "FORBIDDEN" ? (
+            <WorkshopDisabledState />
+          ) : (
+            <QueryErrorState
+              message={pageError.message}
+              onRetry={() => {
+                if (workshopQuery.error) workshopQuery.refetch();
+                if (suggestionsQuery.error) suggestionsQuery.refetch();
+              }}
+            />
+          )}
         </div>
       </div>
     );

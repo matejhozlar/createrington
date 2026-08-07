@@ -109,7 +109,7 @@ export function AdminWorkshopDetail() {
     { workshopId },
     { enabled: Number.isFinite(workshopId) },
   );
-  const attentionQuery = trpc.admin.workshops.attention.useQuery(
+  const attentionQuery = trpc.admin.workshops.getAttention.useQuery(
     { workshopId },
     { enabled: Number.isFinite(workshopId) },
   );
@@ -137,10 +137,11 @@ export function AdminWorkshopDetail() {
     utils.admin.workshops.searchProjects.invalidate({ workshopId });
     utils.admin.workshops.dependencyReport.invalidate({ workshopId });
     utils.admin.workshops.listPackMods.invalidate({ workshopId });
-    utils.admin.workshops.attention.invalidate({ workshopId });
+    utils.admin.workshops.getAttention.invalidate({ workshopId });
+    utils.user.workshops.list.invalidate();
     utils.user.workshops.get.invalidate();
     utils.user.workshops.listRejected.invalidate({ workshopId });
-    utils.user.workshops.pack.invalidate({ workshopId });
+    utils.user.workshops.getPack.invalidate({ workshopId });
   };
 
   const removePackModMutation = trpc.admin.modpacks.removeMod.useMutation({

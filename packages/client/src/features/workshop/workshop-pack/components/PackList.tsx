@@ -5,7 +5,8 @@ import { ProjectThumb } from "../../components/ProjectThumb";
 import { SocialLinks } from "../../components/SocialLinks";
 import { projectCategories } from "../../format";
 
-export type PackMod = RouterOutput["user"]["workshops"]["pack"]["mods"][number];
+export type PackMod =
+  RouterOutput["user"]["workshops"]["getPack"]["mods"][number];
 
 export function PackList({
   mods,
