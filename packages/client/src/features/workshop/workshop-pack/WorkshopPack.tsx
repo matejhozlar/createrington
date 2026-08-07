@@ -179,7 +179,7 @@ export function WorkshopPack() {
           <h2 className="text-2xl leading-[30px] font-semibold">
             {filtering
               ? `${visible.length} ${visible.length === 1 ? "mod" : "mods"}`
-              : `All ${mods.length} mods`}
+              : `All ${mods.length} ${mods.length === 1 ? "mod" : "mods"}`}
           </h2>
 
           <div className="-mt-2 flex flex-wrap items-center gap-2.5">
