@@ -282,6 +282,8 @@ export abstract class BaseQueries<
     }));
   }
 
+  // Arrays are only ever written to jsonb columns today; adding a native
+  // array column (e.g. text[]) requires scoping this per column first
   private serializeWriteValue(value: unknown): unknown {
     return Array.isArray(value) ? JSON.stringify(value) : value;
   }
