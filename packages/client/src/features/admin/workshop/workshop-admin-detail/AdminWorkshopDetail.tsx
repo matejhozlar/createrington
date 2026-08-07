@@ -61,6 +61,7 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
+import { QueryErrorState } from "@/features/workshop/components/QueryErrorState";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
 import {
@@ -211,13 +212,11 @@ export function AdminWorkshopDetail() {
 
   if (workshopsQuery.error) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-        <p className="text-sm text-destructive">
-          {workshopsQuery.error.message}
-        </p>
-        <Button variant="outline" onClick={() => workshopsQuery.refetch()}>
-          Try Again
-        </Button>
+      <div className="flex flex-1 items-center justify-center">
+        <QueryErrorState
+          message={workshopsQuery.error.message}
+          onRetry={() => workshopsQuery.refetch()}
+        />
       </div>
     );
   }
@@ -305,6 +304,12 @@ export function AdminWorkshopDetail() {
               <div className="flex items-center justify-center py-12">
                 <Loading size="medium" text="Loading mods..." />
               </div>
+            ) : modsQuery.error ? (
+              <QueryErrorState
+                compact
+                message={modsQuery.error.message}
+                onRetry={() => modsQuery.refetch()}
+              />
             ) : filtered.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
                 No mods
@@ -441,6 +446,18 @@ export function AdminWorkshopDetail() {
           </CardContent>
         </Card>
 
+        {attentionQuery.error && (
+          <Card>
+            <CardContent className="pt-6">
+              <QueryErrorState
+                compact
+                message={attentionQuery.error.message}
+                onRetry={() => attentionQuery.refetch()}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {(attentionQuery.data?.length ?? 0) > 0 && (
           <Card className="border-amber-500/40">
             <CardContent className="space-y-2 pt-6">
@@ -472,9 +489,8 @@ export function AdminWorkshopDetail() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={reconcileMutation.isPending || !workshop}
+                disabled={reconcileMutation.isPending}
                 onClick={() =>
-                  workshop &&
                   reconcileMutation.mutate({ modpackId: workshop.modpackId })
                 }
               >
@@ -488,6 +504,12 @@ export function AdminWorkshopDetail() {
               <div className="flex items-center justify-center py-8">
                 <Loading size="medium" text="Loading pack members..." />
               </div>
+            ) : packModsQuery.error ? (
+              <QueryErrorState
+                compact
+                message={packModsQuery.error.message}
+                onRetry={() => packModsQuery.refetch()}
+              />
             ) : (packModsQuery.data?.length ?? 0) === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Nothing in the pack yet.
@@ -611,6 +633,18 @@ export function AdminWorkshopDetail() {
             )}
           </CardContent>
         </Card>
+
+        {depReportQuery.error && (
+          <Card>
+            <CardContent className="pt-6">
+              <QueryErrorState
+                compact
+                message={depReportQuery.error.message}
+                onRetry={() => depReportQuery.refetch()}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {depReportQuery.data && (
           <Card>

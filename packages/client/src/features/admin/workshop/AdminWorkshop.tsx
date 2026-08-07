@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { QueryErrorState } from "@/features/workshop/components/QueryErrorState";
 import {
   WORKSHOP_STATUS_STYLES,
   formatDate,
@@ -64,7 +65,11 @@ export function AdminWorkshop() {
           <Switch
             id="workshop-enabled"
             checked={workshopFlag?.enabled ?? false}
-            disabled={flagsQuery.isLoading || setFlagMutation.isPending}
+            disabled={
+              flagsQuery.isLoading ||
+              !!flagsQuery.error ||
+              setFlagMutation.isPending
+            }
             onCheckedChange={(checked) =>
               setFlagMutation.mutate({
                 name: "workshop",
@@ -91,17 +96,11 @@ export function AdminWorkshop() {
                 <Loading size="medium" text="Loading workshops..." />
               </div>
             ) : workshopsQuery.error ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <p className="text-sm text-destructive">
-                  {workshopsQuery.error.message}
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => workshopsQuery.refetch()}
-                >
-                  Try Again
-                </Button>
-              </div>
+              <QueryErrorState
+                compact
+                message={workshopsQuery.error.message}
+                onRetry={() => workshopsQuery.refetch()}
+              />
             ) : (workshopsQuery.data?.length ?? 0) === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
                 No workshops yet, create the first one.

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Search } from "lucide-react";
-import { trpc, type RouterOutput } from "@/lib/trpc";
+import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/contexts/auth";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +17,20 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { PlayerLabel } from "@/components/player-label";
-import { MOD_STATUS_STYLES, loaderName, projectCategories } from "../format";
+import {
+  MOD_STATUS_STYLES,
+  isHttpUrl,
+  loaderName,
+  projectCategories,
+} from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
+import { useViewMode } from "../hooks/use-view-mode";
 import { PackStrip } from "../components/PackStrip";
 import { ProjectThumb } from "../components/ProjectThumb";
 import { QueryErrorState } from "../components/QueryErrorState";
 import { ViewToggle } from "../components/ViewToggle";
 import { WorkshopHero } from "../components/WorkshopHero";
+import { type PackMod } from "../workshop-pack/components/PackList";
 import {
   Leaderboard,
   type RaceItem,
@@ -31,11 +38,7 @@ import {
 } from "./components/Leaderboard";
 import { ModDetailDialog } from "./components/ModDetailDialog";
 
-const VIEW_STORAGE_KEY = "workshop-detail-view";
-
 type SortMode = "top" | "new" | "votes";
-type ViewMode = "list" | "grid";
-type PackMod = RouterOutput["user"]["workshops"]["pack"]["mods"][number];
 
 function byRace(a: RaceMod, b: RaceMod): number {
   return (
@@ -56,9 +59,7 @@ export function WorkshopDetail() {
   const [category, setCategory] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("top");
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
-  const [view, setView] = useState<ViewMode>(() =>
-    localStorage.getItem(VIEW_STORAGE_KEY) === "grid" ? "grid" : "list",
-  );
+  const [view, changeView] = useViewMode("workshop-detail-view");
 
   const query = searchQuery.trim().toLowerCase();
   const searching = query.length > 0;
@@ -147,11 +148,6 @@ export function WorkshopDetail() {
     },
   });
 
-  const changeView = (next: ViewMode) => {
-    localStorage.setItem(VIEW_STORAGE_KEY, next);
-    setView(next);
-  };
-
   if (workshopQuery.error?.data?.code === "NOT_FOUND") {
     return <NotFound />;
   }
@@ -238,6 +234,9 @@ export function WorkshopDetail() {
   const shown = filtering ? visible.length : shownCount;
   const remaining = visible.length - shown;
 
+  const budget = myUpvotesQuery.data;
+  const votesLeft = budget?.votesRemaining ?? null;
+
   const items: RaceItem[] = visible.slice(0, shown).map((mod) => ({
     mod,
     rank: mod.status === "pending" ? (rankById.get(mod.id) ?? null) : null,
@@ -247,12 +246,12 @@ export function WorkshopDetail() {
         : 0,
     upvoted: upvotedIds.has(mod.id),
     canUpvote:
-      isOpen && mod.status === "pending" && mod.submittedBy !== user?.discordId,
+      isOpen &&
+      mod.status === "pending" &&
+      mod.submittedBy !== user?.discordId &&
+      (upvotedIds.has(mod.id) || votesLeft === null || votesLeft > 0),
     ownSuggestion: mod.submittedBy === user?.discordId,
   }));
-
-  const budget = myUpvotesQuery.data;
-  const votesLeft = budget?.votesRemaining ?? null;
 
   return (
     <div className="relative overflow-hidden">
@@ -303,12 +302,20 @@ export function WorkshopDetail() {
         </header>
 
         <main className="mt-10 flex flex-col gap-6">
-          {packMods.length > 0 && (
-            <PackStrip slug={slug!} mods={packMods}>
-              <span className="text-[13px] font-semibold whitespace-nowrap">
-                Already in the pack
-              </span>
-            </PackStrip>
+          {packQuery.error ? (
+            <QueryErrorState
+              compact
+              message={packQuery.error.message}
+              onRetry={() => packQuery.refetch()}
+            />
+          ) : (
+            packMods.length > 0 && (
+              <PackStrip slug={slug!} mods={packMods}>
+                <span className="text-[13px] font-semibold whitespace-nowrap">
+                  Already in the pack
+                </span>
+              </PackStrip>
+            )
           )}
 
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -376,6 +383,14 @@ export function WorkshopDetail() {
             </Select>
             <ViewToggle view={view} onChange={changeView} />
           </div>
+
+          {searching && rejectedQuery.error && (
+            <QueryErrorState
+              compact
+              message={rejectedQuery.error.message}
+              onRetry={() => rejectedQuery.refetch()}
+            />
+          )}
 
           {items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
@@ -457,50 +472,53 @@ function PackSearchResults({ mods }: { mods: PackMod[] }) {
       <h3 className="text-sm font-semibold text-muted-foreground">
         Already in the pack
       </h3>
-      {mods.map((row) => (
-        <div
-          key={row.id}
-          onClick={() =>
-            row.project.websiteUrl &&
-            window.open(row.project.websiteUrl, "_blank", "noreferrer")
-          }
-          className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors hover:border-primary/40"
-        >
-          <ProjectThumb
-            name={row.project.name}
-            thumbnailUrl={row.project.thumbnailUrl}
-            className="size-9 rounded-lg text-xs"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-semibold">
-              {row.project.name}
-              {row.project.primaryAuthor && (
-                <span className="ml-1.5 font-normal text-muted-foreground">
-                  by {row.project.primaryAuthor}
-                </span>
-              )}
+      {mods.map((row) => {
+        const status = row.liveAt
+          ? MOD_STATUS_STYLES.live
+          : MOD_STATUS_STYLES.approved;
+        const content = (
+          <>
+            <ProjectThumb
+              name={row.project.name}
+              thumbnailUrl={row.project.thumbnailUrl}
+              className="size-9 rounded-lg text-xs"
+            />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">
+                {row.project.name}
+                {row.project.primaryAuthor && (
+                  <span className="ml-1.5 font-normal text-muted-foreground">
+                    by {row.project.primaryAuthor}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                {packCredit(row)}
+              </div>
             </div>
-            <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-              {packCredit(row)}
-            </div>
+            <Badge variant="outline" className={`shrink-0 ${status.className}`}>
+              {status.label}
+            </Badge>
+          </>
+        );
+        const rowClass =
+          "flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-3 transition-colors";
+        return isHttpUrl(row.project.websiteUrl) ? (
+          <a
+            key={row.id}
+            href={row.project.websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${rowClass} hover:border-primary/40`}
+          >
+            {content}
+          </a>
+        ) : (
+          <div key={row.id} className={rowClass}>
+            {content}
           </div>
-          {row.liveAt ? (
-            <Badge
-              variant="outline"
-              className={`shrink-0 ${MOD_STATUS_STYLES.live.className}`}
-            >
-              {MOD_STATUS_STYLES.live.label}
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className={`shrink-0 ${MOD_STATUS_STYLES.approved.className}`}
-            >
-              {MOD_STATUS_STYLES.approved.label}
-            </Badge>
-          )}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -11,9 +11,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PAGE_SIZE } from "../../constants";
+import { useViewMode } from "../../hooks/use-view-mode";
 import { ProjectThumb } from "../../components/ProjectThumb";
+import { QueryErrorState } from "../../components/QueryErrorState";
 import { SocialLinks } from "../../components/SocialLinks";
-import { ViewToggle, type ViewMode } from "../../components/ViewToggle";
+import { ViewToggle } from "../../components/ViewToggle";
 import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
@@ -25,8 +27,6 @@ type HistoryItem =
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 type SortMode = "new" | "old" | "updated";
-
-const VIEW_STORAGE_KEY = "workshop-suggest-history-view";
 
 function secondaryLine(mod: HistoryItem): string {
   if (mod.status === "rejected") {
@@ -66,16 +66,9 @@ export function SuggestionHistory() {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("new");
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
-  const [view, setView] = useState<ViewMode>(() =>
-    localStorage.getItem(VIEW_STORAGE_KEY) === "grid" ? "grid" : "list",
-  );
+  const [view, changeView] = useViewMode("workshop-suggest-history-view");
 
   const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
-
-  const changeView = (next: ViewMode) => {
-    localStorage.setItem(VIEW_STORAGE_KEY, next);
-    setView(next);
-  };
 
   const history = historyQuery.data ?? [];
   let visible =
@@ -145,6 +138,14 @@ export function SuggestionHistory() {
           className="py-12"
           text="Loading suggestions..."
         />
+      ) : historyQuery.error ? (
+        <div className="mt-4">
+          <QueryErrorState
+            compact
+            message={historyQuery.error.message}
+            onRetry={() => historyQuery.refetch()}
+          />
+        </div>
       ) : shown.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-[var(--border-strong)] px-6 py-10 text-center text-sm text-muted-foreground">
           {history.length === 0

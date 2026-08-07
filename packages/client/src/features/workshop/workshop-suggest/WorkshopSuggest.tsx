@@ -35,13 +35,17 @@ export function WorkshopSuggest() {
     return <NotFound />;
   }
 
-  if (workshopQuery.error) {
+  const pageError = workshopQuery.error ?? suggestionsQuery.error;
+  if (pageError) {
     return (
       <div className="px-5 py-10 md:px-8">
         <div className="mx-auto max-w-6xl">
           <QueryErrorState
-            message={workshopQuery.error.message}
-            onRetry={() => workshopQuery.refetch()}
+            message={pageError.message}
+            onRetry={() => {
+              if (workshopQuery.error) workshopQuery.refetch();
+              if (suggestionsQuery.error) suggestionsQuery.refetch();
+            }}
           />
         </div>
       </div>
@@ -90,13 +94,25 @@ export function WorkshopSuggest() {
           </p>
         </header>
 
-        <PackStrip slug={slug!} mods={packMods} className="mt-7">
-          <span className="text-[13px] font-semibold whitespace-nowrap">
-            {workshop.name}
-          </span>
-          <Badge variant="outline">{workshop.gameVersion}</Badge>
-          <Badge variant="outline">{loaderName(workshop.modLoaderType)}</Badge>
-        </PackStrip>
+        {packQuery.error ? (
+          <div className="mt-7">
+            <QueryErrorState
+              compact
+              message={packQuery.error.message}
+              onRetry={() => packQuery.refetch()}
+            />
+          </div>
+        ) : (
+          <PackStrip slug={slug!} mods={packMods} className="mt-7">
+            <span className="text-[13px] font-semibold whitespace-nowrap">
+              {workshop.name}
+            </span>
+            <Badge variant="outline">{workshop.gameVersion}</Badge>
+            <Badge variant="outline">
+              {loaderName(workshop.modLoaderType)}
+            </Badge>
+          </PackStrip>
+        )}
 
         <main className="mt-11 flex flex-col gap-12">
           {isOpen ? (
