@@ -203,6 +203,49 @@ describe("WorkshopService.reviewMod", () => {
   });
 });
 
+describe("WorkshopService.updateWorkshop", () => {
+  it("rejects illegal status transitions", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "draft" });
+
+    for (const status of ["closed", "archived"] as const) {
+      await expect(
+        workshopService.updateWorkshop(workshop.id, { status }),
+      ).rejects.toThrow(`A draft workshop cannot move to ${status}`);
+    }
+
+    const unchanged = await Q.workshop.get({ id: workshop.id });
+    expect(unchanged.status).toBe("draft");
+  });
+
+  it("applies legal transitions along the lifecycle", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "draft" });
+
+    for (const status of [
+      "open",
+      "closed",
+      "open",
+      "closed",
+      "archived",
+      "closed",
+    ] as const) {
+      const updated = await workshopService.updateWorkshop(workshop.id, {
+        status,
+      });
+      expect(updated.status).toBe(status);
+    }
+  });
+
+  it("blocks reopening an archived workshop directly", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+
+    for (const status of ["draft", "open"] as const) {
+      await expect(
+        workshopService.updateWorkshop(workshop.id, { status }),
+      ).rejects.toThrow(BadRequestError);
+    }
+  });
+});
+
 describe("WorkshopService.suggestMod", () => {
   it("creates a pending suggestion with the snapshot file", async () => {
     const workshop = await seedWorkshop(ctx);
