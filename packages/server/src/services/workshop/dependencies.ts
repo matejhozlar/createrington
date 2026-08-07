@@ -88,7 +88,7 @@ export async function resolveProjectDependencies(
       });
     }
   } catch (error) {
-    logger.warn(`Dependency resolution failed: ${error}`);
+    logger.warn("Dependency resolution failed:", error);
   }
 }
 
@@ -96,12 +96,15 @@ export async function resolveProjectDependencies(
  * Auto-add the missing required dependencies of a modpack mod as
  * 'dependency'-origin rows. Dependencies with a suggestion row are left to
  * normal review; rejected and incompatible ones are skipped with a warning.
- * Never throws.
+ * When no stored edges exist the mod's file is re-resolved against the API
+ * first; pass resolveIfEmpty false when resolution just ran, since a mod with
+ * zero dependencies is indistinguishable from an unresolved one. Never throws.
  */
 export async function promoteRequiredDependencies(
   workshop: Workshop,
   packMod: ModpackMod,
   actorId: string,
+  options: { resolveIfEmpty?: boolean } = {},
 ): Promise<void> {
   try {
     let deps = await Q.workshop.project.dependency.findAll({
@@ -109,7 +112,11 @@ export async function promoteRequiredDependencies(
       curseforgeProjectId: packMod.curseforgeProjectId,
       relationType: REQUIRED_DEPENDENCY,
     });
-    if (deps.length === 0 && packMod.fileId !== null) {
+    if (
+      deps.length === 0 &&
+      packMod.fileId !== null &&
+      (options.resolveIfEmpty ?? true)
+    ) {
       await resolveProjectDependencies(workshop, [packMod]);
       deps = await Q.workshop.project.dependency.findAll({
         workshopId: workshop.id,
@@ -207,15 +214,17 @@ export async function promoteRequiredDependencies(
     }
   } catch (error) {
     logger.warn(
-      `Dependency promotion failed for modpack mod #${packMod.id}: ${error}`,
+      `Dependency promotion failed for modpack mod #${packMod.id}:`,
+      error,
     );
   }
 }
 
 /**
  * Delete dependency-origin modpack rows that no remaining member requires,
- * following chains until stable. Requirement edges come from every workshop
- * feeding the modpack. Never throws.
+ * transitively. Requirement edges come from every workshop feeding the
+ * modpack; only rows reachable from non-dependency roots survive, so cycles
+ * of dependencies keeping each other alive are collected too. Never throws.
  */
 export async function pruneOrphanedDependencies(
   modpackId: number,
@@ -227,42 +236,56 @@ export async function pruneOrphanedDependencies(
     );
     const workshopIds = workshops.map((w) => w.id);
 
-    for (;;) {
-      const rows = await Q.modpack.mod.findAll({ modpackId });
-      const projectIds = rows.map((row) => row.curseforgeProjectId);
-      const required =
-        projectIds.length > 0 && workshopIds.length > 0
-          ? await Q.workshop.project.dependency.findAll({
-              workshopId: { $in: workshopIds },
-              curseforgeProjectId: { $in: projectIds },
-              relationType: REQUIRED_DEPENDENCY,
-            })
-          : [];
-      const requiredProjectIds = new Set(
-        required.map((dep) => dep.dependsOnProjectId),
-      );
-
-      // Live rows are in the published manifest and stay until a publish
-      // drops them, no matter what the dependency graph says
-      const orphans = rows.filter(
-        (row) =>
-          row.origin === "dependency" &&
-          row.liveAt === null &&
-          !requiredProjectIds.has(row.curseforgeProjectId),
-      );
-      if (orphans.length === 0) return;
-
-      await Q.modpack.mod.deleteAll({
-        id: { $in: orphans.map((row) => row.id) },
-      });
-      logger.info(
-        `Pruned ${orphans.length} orphaned dependencies from modpack #${modpackId}`,
-      );
+    const rows = await Q.modpack.mod.findAll({ modpackId });
+    const projectIds = rows.map((row) => row.curseforgeProjectId);
+    const required =
+      projectIds.length > 0 && workshopIds.length > 0
+        ? await Q.workshop.project.dependency.findAll({
+            workshopId: { $in: workshopIds },
+            curseforgeProjectId: { $in: projectIds },
+            relationType: REQUIRED_DEPENDENCY,
+          })
+        : [];
+    const requiresByProject = new Map<number, number[]>();
+    for (const dep of required) {
+      const list = requiresByProject.get(dep.curseforgeProjectId) ?? [];
+      list.push(dep.dependsOnProjectId);
+      requiresByProject.set(dep.curseforgeProjectId, list);
     }
-  } catch (error) {
-    logger.warn(
-      `Dependency pruning failed for modpack #${modpackId}: ${error}`,
+
+    // Live rows are in the published manifest and stay until a publish
+    // drops them, no matter what the dependency graph says
+    const memberIds = new Set(projectIds);
+    const queue = rows
+      .filter((row) => row.origin !== "dependency" || row.liveAt !== null)
+      .map((row) => row.curseforgeProjectId);
+    const reachable = new Set(queue);
+    while (queue.length > 0) {
+      const projectId = queue.pop()!;
+      for (const depId of requiresByProject.get(projectId) ?? []) {
+        if (memberIds.has(depId) && !reachable.has(depId)) {
+          reachable.add(depId);
+          queue.push(depId);
+        }
+      }
+    }
+
+    const orphans = rows.filter(
+      (row) =>
+        row.origin === "dependency" &&
+        row.liveAt === null &&
+        !reachable.has(row.curseforgeProjectId),
     );
+    if (orphans.length === 0) return;
+
+    await Q.modpack.mod.deleteAll({
+      id: { $in: orphans.map((row) => row.id) },
+    });
+    logger.info(
+      `Pruned ${orphans.length} orphaned dependencies from modpack #${modpackId}`,
+    );
+  } catch (error) {
+    logger.warn(`Dependency pruning failed for modpack #${modpackId}:`, error);
   }
 }
 
@@ -295,7 +318,8 @@ export async function pruneStaleDependencyEdges(
     });
   } catch (error) {
     logger.warn(
-      `Dependency edge cleanup failed for workshop #${workshop.id}: ${error}`,
+      `Dependency edge cleanup failed for workshop #${workshop.id}:`,
+      error,
     );
   }
 }

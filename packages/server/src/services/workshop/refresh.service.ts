@@ -38,6 +38,7 @@ export class WorkshopProjectRefreshService {
         logger.error("Scheduled workshop project refresh failed:", error);
       });
     }, this.REFRESH_INTERVAL);
+    this.intervalId.unref();
 
     logger.info(
       `WorkshopProjectRefreshService initialized (refresh every ${this.REFRESH_INTERVAL / 3600000}h)`,
@@ -82,6 +83,7 @@ export class WorkshopProjectRefreshService {
                 workshop,
                 row,
                 row.addedBy ?? workshop.createdBy,
+                { resolveIfEmpty: false },
               );
             }
           }

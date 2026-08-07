@@ -322,14 +322,19 @@ export class WorkshopService {
     };
   }
 
-  /** CurseForge search scoped to the workshop's target, annotated with submit guards. */
+  /**
+   * CurseForge search scoped to the workshop's target, annotated with submit
+   * guards. User-visible searches require an open workshop, since search
+   * exists to feed suggestions and proxies the live API.
+   */
   async searchProjects(
     workshopId: number,
     query: string,
     options: { userVisible?: boolean } = {},
   ): Promise<WorkshopProjectSearchResult[]> {
-    const workshop = await this.getWorkshop(workshopId);
-    if (options.userVisible) this.assertUserVisible(workshop);
+    const workshop = options.userVisible
+      ? await this.getOpenWorkshop(workshopId)
+      : await this.getWorkshop(workshopId);
     const results = await searchMods(query, 20, {
       gameVersion: workshop.gameVersion,
       modLoaderType: workshop.modLoaderType,
@@ -512,8 +517,12 @@ export class WorkshopService {
     } else {
       try {
         await db.inTransaction(async (tx) => {
-          if (mod.status === "pending") {
-            await tx.workshop.lockUserBudget(workshop.id, discordId);
+          await tx.workshop.lockUserBudget(workshop.id, discordId);
+          const fresh = await tx.workshop.mod.find({ id: workshopModId });
+          if (!fresh || !USER_VISIBLE_MOD_STATUSES.includes(fresh.status)) {
+            throw new NotFoundError(`Mod #${workshopModId} not found`);
+          }
+          if (fresh.status === "pending") {
             const used = await tx.workshop.mod.upvote.countPendingByUser(
               workshop.id,
               discordId,
@@ -720,24 +729,33 @@ export class WorkshopService {
       throw new BadRequestError("Cannot review mods in an archived workshop");
     }
 
-    const changed = await Q.workshop.mod.updateAll(
-      action === "approve"
-        ? {
-            status: "approved",
-            rejectReason: null,
-            rejectNote: null,
-            reviewedBy: adminId,
-            reviewedAt: new Date(),
-          }
-        : {
-            status: "rejected",
-            rejectReason: options.reason,
-            rejectNote: options.note?.trim() || null,
-            reviewedBy: adminId,
-            reviewedAt: new Date(),
-          },
-      { id: workshopModId, status: mod.status },
-    );
+    const changed = await db.inTransaction(async (tx) => {
+      const count = await tx.workshop.mod.updateAll(
+        action === "approve"
+          ? {
+              status: "approved",
+              rejectReason: null,
+              rejectNote: null,
+              reviewedBy: adminId,
+              reviewedAt: new Date(),
+            }
+          : {
+              status: "rejected",
+              rejectReason: options.reason,
+              rejectNote: options.note?.trim() || null,
+              reviewedBy: adminId,
+              reviewedAt: new Date(),
+            },
+        { id: workshopModId, status: mod.status },
+      );
+      if (count > 0 && action === "reject" && mod.status === "approved") {
+        await tx.modpack.mod.deleteAll({
+          modpackId: workshop.modpackId,
+          workshopModId,
+        });
+      }
+      return count;
+    });
     if (changed === 0) {
       throw new ConflictError(
         "This mod was just reviewed by someone else, refresh and try again",
@@ -755,10 +773,6 @@ export class WorkshopService {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
     } else if (mod.status === "approved") {
-      await Q.modpack.mod.deleteAll({
-        modpackId: workshop.modpackId,
-        workshopModId: updated.id,
-      });
       await pruneOrphanedDependencies(workshop.modpackId);
       await pruneStaleDependencyEdges(workshop);
     }
@@ -787,7 +801,14 @@ export class WorkshopService {
     } catch (error) {
       if (!(error instanceof ConstraintViolationError)) throw error;
       await Q.modpack.mod.updateAll(
-        { origin: "suggestion", workshopModId: mod.id, addedBy: null },
+        {
+          origin: "suggestion",
+          workshopModId: mod.id,
+          addedBy: null,
+          fileId: mod.fileId,
+          fileName: mod.fileName,
+          fileReleaseType: mod.fileReleaseType,
+        },
         {
           modpackId: workshop.modpackId,
           curseforgeProjectId: mod.curseforgeProjectId,
@@ -841,7 +862,9 @@ export class WorkshopService {
     void (async () => {
       await resolveProjectDependencies(workshop, rows);
       for (const row of rows) {
-        await promoteRequiredDependencies(workshop, row, adminId);
+        await promoteRequiredDependencies(workshop, row, adminId, {
+          resolveIfEmpty: false,
+        });
       }
     })();
     return modpackService.decoratePackMods(workshop.modpackId, rows);
@@ -940,7 +963,14 @@ export class WorkshopService {
         Q.modpack.mod.count({ modpackId: workshop.modpackId }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
         Q.workshop.participantDiscordIds(workshopId),
-        this.getWorkshopMods(workshopId),
+        Q.workshop.mod.findAll(
+          { workshopId, status: { $in: USER_VISIBLE_MOD_STATUSES } },
+          {
+            orderBy: "createdAt",
+            orderDirection: "desc",
+            select: ["id", "curseforgeProjectId"],
+          },
+        ),
       ]);
 
     const participants =
@@ -952,16 +982,33 @@ export class WorkshopService {
       minecraftUsername: player.minecraftUsername,
     }));
 
-    const topMods = [...mods]
-      .sort((a, b) => b.upvoteCount - a.upvoteCount)
-      .slice(0, 3)
-      .map((mod) => ({
-        workshopModId: mod.id,
-        name: mod.project.name,
-        primaryAuthor: mod.project.primaryAuthor,
-        upvoteCount: mod.upvoteCount,
-        thumbnailUrl: mod.project.thumbnailUrl,
-      }));
+    const upvoteCounts =
+      mods.length > 0
+        ? await Q.workshop.mod.upvote.countGroupedByMod(mods.map((m) => m.id))
+        : {};
+    const top = [...mods]
+      .sort((a, b) => (upvoteCounts[b.id] ?? 0) - (upvoteCounts[a.id] ?? 0))
+      .slice(0, 3);
+    const projects =
+      top.length > 0
+        ? await Q.curseforge.project.findAll({
+            id: { $in: top.map((m) => m.curseforgeProjectId) },
+          })
+        : [];
+    const projectById = new Map(projects.map((p) => [p.id, p]));
+    const topMods = top.flatMap((mod) => {
+      const project = projectById.get(mod.curseforgeProjectId);
+      if (!project) return [];
+      return [
+        {
+          workshopModId: mod.id,
+          name: project.name,
+          primaryAuthor: project.primaryAuthor,
+          upvoteCount: upvoteCounts[mod.id] ?? 0,
+          thumbnailUrl: project.thumbnailUrl,
+        },
+      ];
+    });
 
     return {
       approvedModCount,
