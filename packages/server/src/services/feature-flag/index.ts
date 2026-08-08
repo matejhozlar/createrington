@@ -13,6 +13,8 @@ const CACHE_TTL_MS = 10_000;
  * Runtime feature switches backed by the feature_flag table.
  * Reads are cached briefly so per-request gating stays cheap; writes
  * invalidate the cache immediately. A missing flag reads as disabled.
+ * The cache is per-instance: under horizontal scaling, other instances
+ * serve a stale flag for up to the cache TTL after a toggle.
  */
 export class FeatureFlagService {
   private cache = new Map<string, { enabled: boolean; fetchedAt: number }>();

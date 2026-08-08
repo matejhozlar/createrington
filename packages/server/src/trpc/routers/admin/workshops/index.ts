@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
 import { auditActor, rethrowTrpc } from "@/trpc/utils";
+import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
 import { listForumChannels } from "@/services/workshop/discord";
@@ -11,6 +12,13 @@ import {
 } from "@createrington/shared/workshop";
 
 const id = () => z.number().int().positive().max(2147483647);
+
+const searchLimit = createRateLimit({
+  name: "admin.workshops.searchProjects",
+  limit: 30,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.user?.discordId ?? "anonymous",
+});
 
 const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
@@ -137,6 +145,7 @@ export const adminWorkshopsRouter = router({
     }),
 
   searchProjects: adminProcedure
+    .use(searchLimit)
     .meta({
       description: "Search CurseForge for projects to add to a workshop",
     })

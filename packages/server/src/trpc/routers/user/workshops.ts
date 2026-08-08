@@ -20,7 +20,7 @@ const searchLimit = createRateLimit({
   name: "user.workshops.searchProjects",
   limit: 30,
   windowMs: 60 * 1000,
-  key: (ctx) => ctx.user!.discordId,
+  key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
 
 function redactMod<T extends { reviewedBy: string | null }>(
