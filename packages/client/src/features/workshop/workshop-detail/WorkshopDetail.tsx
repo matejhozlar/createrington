@@ -255,9 +255,9 @@ export function WorkshopDetail() {
       mod.status === "pending" &&
       !upvoteMutation.isPending &&
       user?.discordId != null &&
-      mod.submittedBy !== user.discordId &&
-      (upvotedIds.has(mod.id) || (votesLeft !== null && votesLeft > 0)),
-    ownSuggestion: mod.submittedBy === user?.discordId,
+      (upvotedIds.has(mod.id) ||
+        mod.submittedBy === user.discordId ||
+        (votesLeft !== null && votesLeft > 0)),
   }));
 
   return (

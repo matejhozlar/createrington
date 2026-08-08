@@ -65,6 +65,7 @@ export function ModSearch({
       utils.user.workshops.searchProjects.invalidate();
       utils.user.workshops.get.invalidate();
       utils.user.workshops.list.invalidate();
+      utils.user.workshops.myUpvotes.invalidate({ workshopId: workshop.id });
     },
     onError: (err) => toast.error(err.message),
   });
@@ -226,7 +227,7 @@ export function ModSearch({
                       <p className="text-[11px] text-muted-foreground">
                         {noteReady
                           ? "Press Enter to submit."
-                          : "At least 10 characters — the team reads every note."}
+                          : "At least 10 characters."}
                       </p>
                     </div>
                   )}
@@ -245,7 +246,7 @@ export function ModSearch({
       {isFull && (
         <div className="flex items-center gap-2.5 rounded-[10px] border border-primary/35 bg-primary/[0.06] px-4 py-3 text-[13px]">
           <Info className="size-4 shrink-0 text-primary" />
-          All {workshop.maxModsPerUser} slots used — remove a suggestion to add
+          All {workshop.maxModsPerUser} slots used. Remove a suggestion to add
           another.
         </div>
       )}

@@ -128,6 +128,7 @@ export function AdminWorkshopDetail() {
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsKey, setSettingsKey] = useState(0);
   const [rejectTarget, setRejectTarget] = useState<{
     workshopModId: number;
     name: string;
@@ -157,14 +158,6 @@ export function AdminWorkshopDetail() {
   const removePackModMutation = trpc.admin.modpacks.removeMod.useMutation({
     onSuccess: () => {
       toast.success("Removed from the pack");
-      invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
-  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
-    onSuccess: () => {
-      toast.success("Checked against the published pack");
       invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -278,7 +271,10 @@ export function AdminWorkshopDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              setSettingsKey((key) => key + 1);
+              setSettingsOpen(true);
+            }}
           >
             <Settings2 className="size-4" />
             Settings
@@ -498,22 +494,7 @@ export function AdminWorkshopDetail() {
 
         <Card>
           <CardContent className="pt-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Modpack Members</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={reconcileMutation.isPending}
-                onClick={() =>
-                  reconcileMutation.mutate({ modpackId: workshop.modpackId })
-                }
-              >
-                {reconcileMutation.isPending && (
-                  <Loader2 className="size-4 animate-spin" />
-                )}
-                Check Published Pack
-              </Button>
-            </div>
+            <h3 className="mb-3 text-sm font-semibold">Modpack Members</h3>
             {packModsQuery.isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loading size="medium" text="Loading pack members..." />
@@ -799,14 +780,13 @@ export function AdminWorkshopDetail() {
         onAdded={invalidate}
       />
 
-      {settingsOpen && (
-        <WorkshopSettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          workshop={workshop}
-          hasMods={mods.length > 0}
-        />
-      )}
+      <WorkshopSettingsDialog
+        key={settingsKey}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        workshop={workshop}
+        hasMods={mods.length > 0}
+      />
 
       <Dialog
         open={rejectTarget !== null}

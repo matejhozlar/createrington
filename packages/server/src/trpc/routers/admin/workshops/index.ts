@@ -5,6 +5,7 @@ import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
+import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
@@ -22,8 +23,6 @@ const workshopPatch = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(2000).nullable().optional(),
   status: z.enum(WORKSHOP_STATUSES).optional(),
-  gameVersion: z.string().trim().min(1).max(20).optional(),
-  modLoaderType: z.number().int().min(0).optional(),
   classId: id().optional(),
   baseModpackProjectId: id().nullable().optional(),
   modpackId: id().optional(),
@@ -261,6 +260,16 @@ export const adminWorkshopsRouter = router({
   listForumChannels: adminProcedure
     .meta({ description: "Forum channels available for workshop threads" })
     .query(() => listForumChannels()),
+
+  listGameVersions: adminProcedure
+    .meta({ description: "Minecraft versions a workshop can target" })
+    .query(async () => {
+      try {
+        return await getMinecraftVersions();
+      } catch (error) {
+        rethrowTrpc(error);
+      }
+    }),
 
   listPackMods: adminProcedure
     .meta({ description: "Members of the workshop's modpack" })

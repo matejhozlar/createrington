@@ -36,7 +36,7 @@ export class WorkshopModUpvoteQueries extends WorkshopModUpvoteBaseQueries {
     return counts;
   }
 
-  /** Number of the player's upvotes on still-pending mods in a workshop. */
+  /** Number of the player's upvotes on other players' still-pending mods in a workshop; self-votes are free and excluded. */
   async countPendingByUser(
     workshopId: number,
     discordId: string,
@@ -45,7 +45,8 @@ export class WorkshopModUpvoteQueries extends WorkshopModUpvoteBaseQueries {
       SELECT COUNT(*)::int AS used
       FROM ${this.table} wmu
       JOIN workshop_mod wm ON wm.id = wmu.workshop_mod_id
-      WHERE wm.workshop_id = $1 AND wmu.discord_id = $2 AND wm.status = 'pending'`;
+      WHERE wm.workshop_id = $1 AND wmu.discord_id = $2 AND wm.status = 'pending'
+        AND wm.submitted_by IS DISTINCT FROM $2`;
     const result = await this.runQuery<{ used: number }>(
       "count pending upvotes by user",
       query,

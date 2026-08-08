@@ -12,14 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { LOADER_NAMES } from "@/features/workshop/format";
+import { loaderName } from "@/features/workshop/format";
 import { workshopFormError } from "../../validation";
 
 interface WorkshopSettings {
@@ -50,8 +43,6 @@ export function WorkshopSettingsDialog({
 
   const [name, setName] = useState(workshop.name);
   const [description, setDescription] = useState(workshop.description ?? "");
-  const [gameVersion, setGameVersion] = useState(workshop.gameVersion);
-  const [loaderType, setLoaderType] = useState(String(workshop.modLoaderType));
   const [maxMods, setMaxMods] = useState(String(workshop.maxModsPerUser));
   const [maxUpvotes, setMaxUpvotes] = useState(
     String(workshop.maxUpvotesPerUser),
@@ -90,8 +81,6 @@ export function WorkshopSettingsDialog({
       patch: {
         name: name.trim(),
         description: description.trim() || null,
-        gameVersion: gameVersion.trim(),
-        modLoaderType: Number(loaderType),
         maxModsPerUser: Number(maxMods),
         maxUpvotesPerUser: Number(maxUpvotes),
         discordForumChannelId: forumChannelId.trim() || null,
@@ -125,36 +114,12 @@ export function WorkshopSettingsDialog({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="settings-version">Game Version</Label>
-              <Input
-                id="settings-version"
-                maxLength={20}
-                disabled={hasMods}
-                value={gameVersion}
-                onChange={(e) => setGameVersion(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Mod Loader</Label>
-              <Select
-                value={loaderType}
-                onValueChange={setLoaderType}
-                disabled={hasMods}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(LOADER_NAMES).map(([id, label]) => (
-                    <SelectItem key={id} value={id}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Target</Label>
+            <p className="text-sm text-muted-foreground">
+              {workshop.gameVersion} · {loaderName(workshop.modLoaderType)}, set
+              when the workshop was created.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -205,17 +170,14 @@ export function WorkshopSettingsDialog({
           </div>
           {hasMods && (
             <p className="text-xs text-muted-foreground">
-              The game version, mod loader, and base modpack are locked because
-              this workshop already has mods.
+              The base modpack is locked because this workshop already has mods.
             </p>
           )}
         </div>
         <DialogFooter>
           <Button
             onClick={handleSave}
-            disabled={
-              updateMutation.isPending || !name.trim() || !gameVersion.trim()
-            }
+            disabled={updateMutation.isPending || !name.trim()}
           >
             {updateMutation.isPending && (
               <Loader2 className="size-4 animate-spin" />

@@ -444,6 +444,53 @@ export async function getMods(
   return results;
 }
 
+let minecraftVersionsCache: { versions: string[]; fetchedAt: number } | null =
+  null;
+const MINECRAFT_VERSIONS_TTL = 60 * 60 * 1000;
+
+function compareVersionsDesc(a: string, b: string): number {
+  const pa = a.split(".").map((part) => parseInt(part, 10));
+  const pb = b.split(".").map((part) => parseInt(part, 10));
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pb[i] || 0) - (pa[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/** Fetch all released Minecraft versions, newest first (cached for an hour) */
+export async function getMinecraftVersions(): Promise<string[]> {
+  if (
+    minecraftVersionsCache &&
+    Date.now() - minecraftVersionsCache.fetchedAt < MINECRAFT_VERSIONS_TTL
+  ) {
+    return minecraftVersionsCache.versions;
+  }
+  ensureApiKey();
+
+  const res = await fetch(`${CURSEFORGE_API}/v1/minecraft/version`, {
+    headers: cfHeaders(),
+    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `CurseForge getMinecraftVersions failed (${res.status}): ${text}`,
+    );
+  }
+
+  const body = parseCfResponse(
+    z.object({ data: z.array(z.object({ versionString: z.string() })) }),
+    await res.json(),
+    "getMinecraftVersions",
+  );
+  const versions = body.data
+    .map((entry) => entry.versionString)
+    .sort(compareVersionsDesc);
+  minecraftVersionsCache = { versions, fetchedAt: Date.now() };
+  return versions;
+}
+
 /** Fetch the direct download URL for a specific mod file */
 export async function getModFileDownloadUrl(
   modId: number,

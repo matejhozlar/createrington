@@ -358,6 +358,25 @@ describe("WorkshopService.suggestMod", () => {
     expect(item.project.id).toBe(projectId);
   });
 
+  it("starts the suggestion with the caller's own upvote", async () => {
+    const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 1 });
+    const projectId = await seedProject(ctx);
+
+    const item = await workshopService.suggestMod(workshop.id, USER_A, {
+      projectId,
+    });
+
+    expect(item.upvoteCount).toBe(1);
+    const upvote = await Q.workshop.mod.upvote.find({
+      workshopModId: item.id,
+      discordId: USER_A,
+    });
+    expect(upvote).not.toBeNull();
+
+    const budget = await workshopService.getMyUpvotes(workshop.id, USER_A);
+    expect(budget.votesRemaining).toBe(1);
+  });
+
   it("counts only pending suggestions against the cap", async () => {
     const workshop = await seedWorkshop(ctx, { maxModsPerUser: 2 });
     await seedMod(ctx, workshop, { submittedBy: USER_A, status: "approved" });
@@ -438,13 +457,17 @@ describe("WorkshopService.suggestMod", () => {
 });
 
 describe("WorkshopService.toggleModUpvote", () => {
-  it("blocks self-upvotes", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+  it("allows self-upvotes without consuming the budget", async () => {
+    const workshop = await seedWorkshop(ctx, { maxUpvotesPerUser: 1 });
+    const own = await seedMod(ctx, workshop, { submittedBy: USER_A });
 
-    await expect(
-      workshopService.toggleModUpvote(mod.id, USER_A),
-    ).rejects.toThrow("You cannot upvote your own suggestion");
+    const result = await workshopService.toggleModUpvote(own.id, USER_A);
+
+    expect(result).toEqual({
+      upvoted: true,
+      upvoteCount: 1,
+      votesRemaining: 1,
+    });
   });
 
   it("enforces the budget on pending mods", async () => {

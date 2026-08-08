@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,13 +61,15 @@ export function ModDetailDialog({
   onOpenChange: (open: boolean) => void;
   admin?: boolean;
 }) {
+  const open = workshopModId !== null;
+  const displayId = useStickyValue(workshopModId);
   const userQuery = trpc.user.workshops.getMod.useQuery(
-    { workshopModId: workshopModId! },
-    { enabled: workshopModId !== null && !admin },
+    { workshopModId: displayId! },
+    { enabled: open && !admin },
   );
   const adminQuery = trpc.admin.workshops.getMod.useQuery(
-    { workshopModId: workshopModId! },
-    { enabled: workshopModId !== null && admin },
+    { workshopModId: displayId! },
+    { enabled: open && admin },
   );
   const detailQuery = admin ? adminQuery : userQuery;
 
@@ -84,7 +87,7 @@ export function ModDetailDialog({
   const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (
-    <Dialog open={workshopModId !== null} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[85vh] max-w-3xl overflow-y-auto"
         onOpenAutoFocus={(event) => event.preventDefault()}
@@ -123,7 +126,7 @@ export function ModDetailDialog({
                   <DialogTitle className="text-xl">{project.name}</DialogTitle>
                   <DialogDescription>
                     by {project.primaryAuthor ?? "unknown"}
-                    {project.summary ? ` — ${project.summary}` : ""}
+                    {project.summary ? ` · ${project.summary}` : ""}
                   </DialogDescription>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {status && (
