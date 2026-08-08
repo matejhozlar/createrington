@@ -226,6 +226,49 @@ describe("WorkshopService.reviewMod", () => {
     ).toBeNull();
   });
 
+  it("rejects from mid-pipeline stages without touching the pack", async () => {
+    const workshop = await seedWorkshop(ctx);
+    for (const status of ["approved", "testing"] as const) {
+      const mod = await seedMod(ctx, workshop, {
+        submittedBy: USER_A,
+        status,
+      });
+
+      const rejected = await workshopService.reviewMod(
+        mod.id,
+        "reject",
+        ADMIN,
+        { reason: "incompatible" },
+      );
+
+      expect(rejected.status).toBe("rejected");
+      expect(
+        await Q.modpack.mod.find({
+          modpackId: workshop.modpackId,
+          curseforgeProjectId: mod.curseforgeProjectId,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("re-rejects an already rejected mod to change the reason", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "rejected",
+      rejectReason: "on_hold",
+    });
+
+    const updated = await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "not_a_good_fit",
+      note: "covered by the base pack",
+    });
+
+    expect(updated.status).toBe("rejected");
+    expect(updated.rejectReason).toBe("not_a_good_fit");
+    expect(updated.rejectNote).toBe("covered by the base pack");
+  });
+
   it("removes the pack row when rejecting a shipped mod", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {

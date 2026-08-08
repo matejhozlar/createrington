@@ -104,6 +104,13 @@ const ATTENTION_MESSAGES: Record<string, string> = {
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
 
+const REVIEW_TOASTS: Record<string, string> = {
+  approved: "Mod approved",
+  testing: "Mod moved to testing",
+  next_update: "Mod approved, coming next update",
+  rejected: "Mod rejected",
+};
+
 const STATUS_FILTERS = [
   "all",
   "pending",
@@ -181,9 +188,7 @@ export function AdminWorkshopDetail() {
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (mod) => {
-      toast.success(
-        `Mod moved to ${MOD_STATUS_STYLES[mod.status].label.toLowerCase()}`,
-      );
+      toast.success(REVIEW_TOASTS[mod.status] ?? "Mod updated");
       invalidate();
       setRejectTarget(null);
       setRejectReason("");

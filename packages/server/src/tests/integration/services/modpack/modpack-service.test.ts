@@ -126,6 +126,64 @@ describe("ModpackService.getWorkshopAttention", () => {
       items.filter((item) => item.type === "rejected_dependency"),
     ).toHaveLength(0);
   });
+
+  it("flags a required dependency that has not reached the pack yet", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    const depProjectId = await seedProject(ctx, "Testing Dep");
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    const depMod = await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "testing",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "unpromoted_dependency",
+      workshopModId: depMod.id,
+      curseforgeProjectId: depProjectId,
+      name: "Testing Dep",
+      requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("does not flag an unpromoted dependency that already shipped", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const depProjectId = await seedProject(ctx);
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "pending",
+      submittedBy: USER_A,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.0.0",
+      modIds: new Set([depProjectId]),
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "unpromoted_dependency"),
+    ).toHaveLength(0);
+    expect(
+      items.filter((item) => item.type === "shipped_unreviewed"),
+    ).toHaveLength(1);
+  });
 });
 
 describe("ModpackService.reconcile", () => {

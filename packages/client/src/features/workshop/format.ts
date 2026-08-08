@@ -60,6 +60,11 @@ export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };
 }
 
+const IN_PACK_STYLE = {
+  label: "In the pack",
+  className: "border-green-500/20 bg-green-500/10 text-green-400",
+};
+
 export const MOD_STATUS_STYLES: Record<
   string,
   { label: string; className: string }
@@ -80,19 +85,13 @@ export const MOD_STATUS_STYLES: Record<
     label: "Coming next update",
     className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
   },
-  in_pack: {
-    label: "In the pack",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
+  in_pack: IN_PACK_STYLE,
   rejected: {
     label: "Ruled out",
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
   // Pack membership rows carry no workshop status; they are styled from liveAt
-  live: {
-    label: "In the pack",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
+  live: IN_PACK_STYLE,
 };
 
 export function liveTitle(mod: {

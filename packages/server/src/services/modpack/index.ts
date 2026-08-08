@@ -11,6 +11,7 @@ import type {
   ModpackMod,
   Workshop,
   WorkshopMod,
+  WorkshopModStatus,
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
@@ -233,10 +234,10 @@ export class ModpackService {
   }
 
   /**
-   * Reconcile membership with reality: heal missing rows for approved
+   * Reconcile membership with reality: heal missing rows for promoted
    * suggestions, then derive live state from the published pack's manifest,
-   * import unknown shipped mods, and prune orphaned dependencies. Never
-   * throws.
+   * move suggestions in and out of in_pack to match it, import unknown
+   * shipped mods, and prune orphaned dependencies.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -300,13 +301,16 @@ export class ModpackService {
         .filter((mod) => mod.status === "rejected")
         .map((mod) => [mod.curseforgeProjectId, mod]),
     );
+    // Mods already reported as shipped carry their own advice
+    const shippedModIds = new Set(shipped.map((mod) => mod.id));
     const midPipelineByProject = new Map(
       suggestions
         .filter(
           (mod) =>
-            mod.status === "pending" ||
-            mod.status === "approved" ||
-            mod.status === "testing",
+            !shippedModIds.has(mod.id) &&
+            (mod.status === "pending" ||
+              mod.status === "approved" ||
+              mod.status === "testing"),
         )
         .map((mod) => [mod.curseforgeProjectId, mod]),
     );
@@ -536,7 +540,7 @@ export class ModpackService {
           fileReleaseType: mod.fileReleaseType,
         });
         logger.info(
-          `Healed missing modpack row for approved suggestion #${mod.id}`,
+          `Healed missing modpack row for promoted suggestion #${mod.id}`,
         );
       } catch (error) {
         if (!(error instanceof ConstraintViolationError)) throw error;
@@ -544,17 +548,28 @@ export class ModpackService {
     }
   }
 
-  private async markSuggestionShipped(
-    workshopModId: number | null,
+  /**
+   * Move suggestions between next_update and in_pack to match what the
+   * published manifest actually contains, announcing each move on its thread.
+   */
+  private async moveSuggestions(
+    workshopModIds: number[],
+    from: Extract<WorkshopModStatus, "next_update" | "in_pack">,
+    to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
   ): Promise<void> {
-    if (!workshopModId) return;
-    const promoted = await Q.workshop.mod.updateAll(
-      { status: "in_pack" },
-      { id: workshopModId, status: "next_update" },
+    if (workshopModIds.length === 0) return;
+    const mods = await Q.workshop.mod.findAll({
+      id: { $in: workshopModIds },
+      status: from,
+    });
+    if (mods.length === 0) return;
+    await Q.workshop.mod.updateAll(
+      { status: to },
+      { id: { $in: mods.map((mod) => mod.id) }, status: from },
     );
-    if (promoted === 0) return;
-    const mod = await Q.workshop.mod.find({ id: workshopModId });
-    if (mod) void announceReview(mod, "in_pack");
+    for (const mod of mods) {
+      void announceReview({ ...mod, status: to }, to);
+    }
   }
 
   private async applyManifest(
@@ -564,6 +579,8 @@ export class ModpackService {
   ): Promise<void> {
     const now = new Date();
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
+    const shippedModIds: number[] = [];
+    const droppedModIds: number[] = [];
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
@@ -583,29 +600,30 @@ export class ModpackService {
             { id: row.id },
           );
         }
-        await this.markSuggestionShipped(row.workshopModId);
-      } else if (row.liveAt !== null) {
+        if (row.workshopModId) shippedModIds.push(row.workshopModId);
+        continue;
+      }
+
+      if (row.liveAt !== null) {
         if (row.origin === "import") {
           await Q.modpack.mod.deleteAll({ id: row.id });
-        } else {
-          await Q.modpack.mod.updateAll(
-            {
-              liveAt: null,
-              liveInVersion: null,
-              droppedFromManifestAt: now,
-              updatedAt: now,
-            },
-            { id: row.id },
-          );
-          if (row.workshopModId) {
-            await Q.workshop.mod.updateAll(
-              { status: "next_update" },
-              { id: row.workshopModId, status: "in_pack" },
-            );
-          }
+          continue;
         }
+        await Q.modpack.mod.updateAll(
+          {
+            liveAt: null,
+            liveInVersion: null,
+            droppedFromManifestAt: now,
+            updatedAt: now,
+          },
+          { id: row.id },
+        );
       }
+      if (row.workshopModId) droppedModIds.push(row.workshopModId);
     }
+
+    await this.moveSuggestions(shippedModIds, "next_update", "in_pack");
+    await this.moveSuggestions(droppedModIds, "in_pack", "next_update");
 
     const knownProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
     const suggestions =

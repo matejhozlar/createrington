@@ -1522,7 +1522,7 @@ INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, stat
   (4, 245755, '123456789012345687', 'in_pack', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
   (4, 228756, '123456789012345682', 'in_pack', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
 
--- Workshop 1 mid-pipeline suggestion: approved and currently being tested. id 17
+-- Workshop 1 again: a suggestion the team is currently testing. id 17
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
   (1, 223852, '123456789012345682', 'testing', 'Drawers for the storage hall build', '818819241666281503', NOW() - INTERVAL '1 day', 5788676, 'storagedrawers-neoforge-1.21.1-13.9.1.jar', 1, NOW() - INTERVAL '5 days');
 

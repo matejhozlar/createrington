@@ -37,8 +37,10 @@ const REVIEW_MESSAGES: Record<
 > = {
   approved: "✅ **Approved!** The team wants this one, next stop: testing.",
   testing: "🧪 **In testing.** The team is trying this mod out.",
+  // Also posted when a mod drops out of a published pack, so this cannot
+  // claim the mod has just passed testing
   next_update:
-    "📦 **Coming next update!** This mod passed testing and ships with the next pack update.",
+    "📦 **Coming next update!** This mod is slated to ship with the next pack update.",
   in_pack: "🎉 **In the pack!** This mod shipped with the latest pack update.",
 };
 
@@ -255,9 +257,9 @@ export async function announceSuggestion(
  */
 export async function announceReview(
   mod: WorkshopMod,
-  status: WorkshopModStatus,
+  status: Exclude<WorkshopModStatus, "pending">,
 ): Promise<void> {
-  if (!mod.discordThreadId || status === "pending") return;
+  if (!mod.discordThreadId) return;
   try {
     const lookup = await fetchThread(mod.discordThreadId);
     if (lookup.state === "unavailable") return;
@@ -297,7 +299,7 @@ export async function announceReview(
             mod.rejectNote ? ` ${mod.rejectNote}` : ""
           }`
         : REVIEW_MESSAGES[status];
-    await thread.send(content);
+    await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }

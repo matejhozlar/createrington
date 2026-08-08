@@ -246,18 +246,6 @@ function HeartOrBadge({
   onUpvote: (workshopModId: number) => void;
 }) {
   const { mod } = item;
-  if (mod.status !== "pending" && mod.status !== "rejected") {
-    const style = MOD_STATUS_STYLES[mod.status];
-    return (
-      <Badge
-        variant="outline"
-        className={cn("relative shrink-0", style.className)}
-        title={liveTitle(mod)}
-      >
-        {style.label}
-      </Badge>
-    );
-  }
   if (mod.status === "rejected") {
     return (
       <Badge
@@ -270,6 +258,18 @@ function HeartOrBadge({
         {mod.rejectReason
           ? REJECT_REASON_LABELS[mod.rejectReason]
           : MOD_STATUS_STYLES.rejected.label}
+      </Badge>
+    );
+  }
+  if (mod.status !== "pending") {
+    const style = MOD_STATUS_STYLES[mod.status];
+    return (
+      <Badge
+        variant="outline"
+        className={cn("relative shrink-0", style.className)}
+        title={liveTitle(mod)}
+      >
+        {style.label}
       </Badge>
     );
   }

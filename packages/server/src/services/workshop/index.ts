@@ -782,7 +782,7 @@ export class WorkshopService {
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
 
-    const target: WorkshopModStatus =
+    const target: Exclude<WorkshopModStatus, "pending" | "in_pack"> =
       action === "reject"
         ? "rejected"
         : action === "start_testing"
@@ -802,8 +802,7 @@ export class WorkshopService {
       throw new BadRequestError("Cannot review mods in an archived workshop");
     }
 
-    const hadPackRow = mod.status === "next_update" || mod.status === "in_pack";
-    const changed = await db.inTransaction(async (tx) => {
+    const { changed, removedPackRows } = await db.inTransaction(async (tx) => {
       const count = await tx.workshop.mod.updateAll(
         target === "rejected"
           ? {
@@ -822,13 +821,14 @@ export class WorkshopService {
             },
         { id: workshopModId, status: mod.status },
       );
-      if (count > 0 && target === "rejected" && hadPackRow) {
-        await tx.modpack.mod.deleteAll({
-          modpackId: workshop.modpackId,
-          workshopModId,
-        });
+      if (count === 0 || target !== "rejected") {
+        return { changed: count, removedPackRows: 0 };
       }
-      return count;
+      const removed = await tx.modpack.mod.deleteAll({
+        modpackId: workshop.modpackId,
+        workshopModId,
+      });
+      return { changed: count, removedPackRows: removed };
     });
     if (changed === 0) {
       throw new ConflictError(
@@ -844,7 +844,7 @@ export class WorkshopService {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
     } else if (target === "rejected") {
-      if (hadPackRow) {
+      if (removedPackRows > 0) {
         await pruneOrphanedDependencies(workshop.modpackId);
       }
       await pruneStaleDependencyEdges(workshop);
