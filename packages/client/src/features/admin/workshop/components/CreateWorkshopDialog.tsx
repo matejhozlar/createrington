@@ -45,8 +45,13 @@ export function CreateWorkshopDialog({
   const [modpackSel, setModpackSel] = useState("new");
   const [modpackName, setModpackName] = useState("");
 
-  const modpacksQuery = trpc.admin.modpacks.list.useQuery();
-  const versionsQuery = trpc.admin.workshops.listGameVersions.useQuery();
+  const modpacksQuery = trpc.admin.modpacks.list.useQuery(undefined, {
+    enabled: open,
+  });
+  const versionsQuery = trpc.admin.workshops.listGameVersions.useQuery(
+    undefined,
+    { enabled: open },
+  );
 
   const createMutation = trpc.admin.workshops.create.useMutation({
     onSuccess: (workshop) => {

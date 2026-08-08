@@ -44,6 +44,12 @@ export function AdminWorkshop() {
   });
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [createKey, setCreateKey] = useState(0);
+
+  const openCreate = () => {
+    setCreateKey((key) => key + 1);
+    setCreateOpen(true);
+  };
 
   const workshops = workshopsQuery.data ?? [];
 
@@ -85,7 +91,7 @@ export function AdminWorkshop() {
                 }
               />
             </div>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={openCreate}>
               <Plus className="mr-2 size-4" />
               New Workshop
             </Button>
@@ -123,7 +129,7 @@ export function AdminWorkshop() {
               <div className="text-center">
                 <Hammer className="mx-auto size-12 text-muted-foreground" />
                 <p className="mt-2 text-muted-foreground">No workshops yet</p>
-                <Button onClick={() => setCreateOpen(true)} className="mt-4">
+                <Button onClick={openCreate} className="mt-4">
                   <Plus className="mr-2 size-4" />
                   Create First Workshop
                 </Button>
@@ -199,9 +205,11 @@ export function AdminWorkshop() {
         </Card>
       </div>
 
-      {createOpen && (
-        <CreateWorkshopDialog open={createOpen} onOpenChange={setCreateOpen} />
-      )}
+      <CreateWorkshopDialog
+        key={createKey}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      />
     </div>
   );
 }

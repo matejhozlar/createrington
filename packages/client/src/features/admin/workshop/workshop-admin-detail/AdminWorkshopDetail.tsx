@@ -128,6 +128,7 @@ export function AdminWorkshopDetail() {
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsKey, setSettingsKey] = useState(0);
   const [rejectTarget, setRejectTarget] = useState<{
     workshopModId: number;
     name: string;
@@ -270,7 +271,10 @@ export function AdminWorkshopDetail() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => {
+              setSettingsKey((key) => key + 1);
+              setSettingsOpen(true);
+            }}
           >
             <Settings2 className="size-4" />
             Settings
@@ -776,14 +780,13 @@ export function AdminWorkshopDetail() {
         onAdded={invalidate}
       />
 
-      {settingsOpen && (
-        <WorkshopSettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          workshop={workshop}
-          hasMods={mods.length > 0}
-        />
-      )}
+      <WorkshopSettingsDialog
+        key={settingsKey}
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        workshop={workshop}
+        hasMods={mods.length > 0}
+      />
 
       <Dialog
         open={rejectTarget !== null}
