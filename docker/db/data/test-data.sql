@@ -1428,18 +1428,33 @@ INSERT INTO server_ally_qualified_player (server_id, player_uuid, qualified_at, 
 INSERT INTO feature_flag (name, enabled, description) VALUES
   ('workshop', true, 'Workshop tab');
 
--- The season 3 modpack (id = 1): not published on CurseForge yet, so nothing
--- is live. Runs on the main server once published.
-INSERT INTO modpack (name, description, curseforge_project_id, server_id, created_by) VALUES
-  ('Createrington Season 3', 'The season 3 modpack, assembled from workshop suggestions.', NULL, 1, '818819241666281503');
+-- Modpacks:
+--   1 = Season 3 (in assembly, not published on CurseForge yet, nothing live)
+--   2 = Season 4 ideas (draft workshop scratchpad)
+--   3 = Season 2 legacy (finished pack, members seeded as live)
+INSERT INTO modpack (name, description, curseforge_project_id, server_id, created_by, created_at) VALUES
+  ('Createrington Season 3', 'The season 3 modpack, assembled from workshop suggestions.', NULL, 1, '818819241666281503', NOW() - INTERVAL '21 days'),
+  ('Createrington Season 4 Ideas', 'Early scratchpad for season 4.', NULL, NULL, '818819241666281503', NOW() - INTERVAL '2 days'),
+  ('Createrington Season 2', 'The retired season 2 modpack.', NULL, NULL, '818819241666281503', NOW() - INTERVAL '400 days');
 
--- Season 3 modpack workshop (id = 1), open for suggestions, feeding modpack 1.
--- Fresh workshop: no base modpack, so suggestions are validated only against
--- this workshop's own content.
-INSERT INTO workshop (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, modpack_id, max_mods_per_user, discord_forum_channel_id, created_by) VALUES
+-- Workshops covering every lifecycle status:
+--   1 = open (season 3 main round, feeds modpack 1)
+--   2 = closed (season 3 QoL round, also feeds modpack 1)
+--   3 = draft (season 4 brainstorm, admin-only, feeds modpack 2)
+--   4 = archived (season 2, feeds modpack 3)
+INSERT INTO workshop (name, slug, description, status, game_version, mod_loader_type, class_id, base_modpack_project_id, modpack_id, max_mods_per_user, discord_forum_channel_id, created_by, created_at) VALUES
   ('Createrington Season 3 Modpack', 'season-3-modpack',
    'Suggest and upvote mods for the season 3 modpack.',
-   'open', '1.21.1', 6, 6, NULL, 1, 5, '1483504809859481712', '818819241666281503');
+   'open', '1.21.1', 6, 6, NULL, 1, 5, '1483504809859481712', '818819241666281503', NOW() - INTERVAL '21 days'),
+  ('Season 3 QoL Round', 'season-3-qol-round',
+   'A short round for quality of life mods, already reviewed.',
+   'closed', '1.21.1', 6, 6, NULL, 1, 3, NULL, '818819241666281503', NOW() - INTERVAL '75 days'),
+  ('Season 4 Brainstorm', 'season-4-brainstorm',
+   'Very early ideas for next season. Not visible to players yet.',
+   'draft', '1.21.1', 6, 6, NULL, 2, 5, NULL, '818819241666281503', NOW() - INTERVAL '2 days'),
+  ('Createrington Season 2 Modpack', 'season-2-modpack',
+   'The season 2 voting round, kept for the archive.',
+   'archived', '1.20.1', 1, 6, NULL, 3, 5, NULL, '818819241666281503', NOW() - INTERVAL '400 days');
 
 -- CurseForge metadata snapshots (real project IDs, approximate stats)
 INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url, website_url, primary_author, download_count, date_modified, date_released, allow_mod_distribution) VALUES
@@ -1449,21 +1464,128 @@ INSERT INTO curseforge_project (id, class_id, slug, name, summary, thumbnail_url
   (238222, 6, 'jei', 'Just Enough Items (JEI)', 'JEI is an item and recipe viewing mod', NULL,
    'https://www.curseforge.com/minecraft/mc-mods/jei', 'mezz', 320000000, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days', true),
   (324717, 6, 'jade', 'Jade', 'Shows information about what you are looking at', NULL,
-   'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', true);
+   'https://www.curseforge.com/minecraft/mc-mods/jade', 'Snownee', 90000000, NOW() - INTERVAL '14 days', NOW() - INTERVAL '14 days', true),
+  (245755, 6, 'waystones', 'Waystones', 'Teleport back to activated waystones, for players and pearls alike', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/waystones', 'BlayTheNinth', 250000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days', true),
+  (531761, 6, 'balm', 'Balm', 'Abstraction layer for multiplatform mods', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/balm', 'BlayTheNinth', 180000000, NOW() - INTERVAL '20 days', NOW() - INTERVAL '20 days', true),
+  (398521, 6, 'farmers-delight', 'Farmer''s Delight', 'A cozy expansion to farming and cooking', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/farmers-delight', 'vectorwing', 120000000, NOW() - INTERVAL '45 days', NOW() - INTERVAL '45 days', true),
+  (422301, 6, 'sophisticated-backpacks', 'Sophisticated Backpacks', 'Backpacks with lots of upgrades and customization', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/sophisticated-backpacks', 'P3pp3rF1y', 95000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days', true),
+  (420905, 6, 'sophisticated-core', 'Sophisticated Core', 'Shared library for the Sophisticated mods', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/sophisticated-core', 'P3pp3rF1y', 100000000, NOW() - INTERVAL '25 days', NOW() - INTERVAL '25 days', true),
+  (228756, 6, 'iron-chests', 'Iron Chests', 'Chests with larger sizes in a progression', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/iron-chests', 'ProgWML6', 150000000, NOW() - INTERVAL '120 days', NOW() - INTERVAL '120 days', true),
+  (32274, 6, 'journeymap', 'JourneyMap', 'Real-time mapping in-game or in a web browser', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/journeymap', 'techbrew', 310000000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days', true),
+  (248787, 6, 'appleskin', 'AppleSkin', 'Food and hunger related HUD improvements', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/appleskin', 'squeek502', 280000000, NOW() - INTERVAL '60 days', NOW() - INTERVAL '60 days', true),
+  (60089, 6, 'mouse-tweaks', 'Mouse Tweaks', 'Enhances inventory management with mouse gestures', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/mouse-tweaks', 'YaLTeR', 220000000, NOW() - INTERVAL '200 days', NOW() - INTERVAL '200 days', true),
+  (256717, 6, 'clumps', 'Clumps', 'Groups XP orbs together to reduce lag', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/clumps', 'Jaredlll08', 260000000, NOW() - INTERVAL '35 days', NOW() - INTERVAL '35 days', true),
+  (412082, 6, 'supplementaries', 'Supplementaries', 'Vanilla-friendly decoration and functional blocks', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/supplementaries', 'MehVahdJukaar', 85000000, NOW() - INTERVAL '18 days', NOW() - INTERVAL '18 days', true),
+  (688231, 6, 'create-steam-n-rails', 'Create: Steam ''n'' Rails', 'Expands Create with more trains and rails', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/create-steam-n-rails', 'mattentosh', 40000000, NOW() - INTERVAL '40 days', NOW() - INTERVAL '40 days', true),
+  (250398, 6, 'controlling', 'Controlling', 'Adds a search bar to the key bindings menu', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/controlling', 'Jaredlll08', 190000000, NOW() - INTERVAL '80 days', NOW() - INTERVAL '80 days', true),
+  (223852, 6, 'storage-drawers', 'Storage Drawers', 'Compact drawers for bulk item storage', NULL,
+   'https://www.curseforge.com/minecraft/mc-mods/storage-drawers', 'Texelsaur', 130000000, NOW() - INTERVAL '100 days', NOW() - INTERVAL '100 days', true);
 
--- workshop_mod ids 1-2: Mumbo's pending suggestions
-INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name) VALUES
-  (1, 238222, '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NULL, NULL, NULL, NULL),
-  (1, 324717, '123456789012345686', 'pending', 'Shows what block you are looking at', NULL, NULL, NULL, NULL);
+-- Workshop 1 (open): pending race in progress. workshop_mod ids 1-8
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, created_at) VALUES
+  (1, 238222, '123456789012345686', 'pending', 'Recipe viewer, basically mandatory', NOW() - INTERVAL '9 days'),
+  (1, 324717, '123456789012345686', 'pending', 'Shows what block you are looking at', NOW() - INTERVAL '9 days'),
+  (1, 245755, '123456789012345687', 'pending', 'Fast travel that still feels earned', NOW() - INTERVAL '8 days'),
+  (1, 412082, '123456789012345688', 'pending', 'Decor and QoL in one mod, fits the vanilla look', NOW() - INTERVAL '6 days'),
+  (1, 60089,  '123456789012345678', 'pending', NULL, NOW() - INTERVAL '5 days'),
+  (1, 256717, '123456789012345679', 'pending', 'XP orbs merge into one, way less lag on farms', NOW() - INTERVAL '4 days'),
+  (1, 228756, '123456789012345684', 'pending', 'More storage tiers for early game', NOW() - INTERVAL '2 days'),
+  (1, 688231, '123456789012345687', 'pending', 'Trains deserve even more love', NOW() - INTERVAL '1 day');
 
--- Grian upvotes the JEI entry
+-- Workshop 1 reviewed suggestions. ids 9-12
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, reject_reason, reject_note, file_id, file_name, file_release_type, created_at) VALUES
+  (1, 398521, '123456789012345685', 'approved', 'Cooking and farming, huge for the community builds', '818819241666281503', NOW() - INTERVAL '12 days', NULL, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1, NOW() - INTERVAL '18 days'),
+  (1, 422301, '123456789012345686', 'approved', 'Best backpack mod by far', '547450242090532874', NOW() - INTERVAL '10 days', NULL, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1, NOW() - INTERVAL '16 days'),
+  (1, 32274,  '123456789012345689', 'rejected', 'Best map mod there is', '818819241666281503', NOW() - INTERVAL '11 days', 'covered_by_other_mod', 'Jade plus the vanilla maps cover this already', NULL, NULL, NULL, NOW() - INTERVAL '15 days'),
+  (1, 248787, '123456789012345683', 'rejected', 'Everyone always installs this', '818819241666281503', NOW() - INTERVAL '7 days', 'on_hold', 'Waiting for the 1.21.1 build to stabilize', NULL, NULL, NULL, NOW() - INTERVAL '13 days');
+
+-- Workshop 2 (closed QoL round): everything reviewed. ids 13-14
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, reject_reason, reject_note, file_id, file_name, file_release_type, created_at) VALUES
+  (2, 250398, '123456789012345678', 'approved', 'Searchable keybinds, zero downside', '818819241666281503', NOW() - INTERVAL '62 days', NULL, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1, NOW() - INTERVAL '70 days'),
+  (2, 223852, '123456789012345679', 'rejected', 'Bulk storage for the shopping district', '547450242090532874', NOW() - INTERVAL '60 days', 'not_a_good_fit', 'Sophisticated Backpacks covers the storage needs this round', NULL, NULL, NULL, NOW() - INTERVAL '68 days');
+
+-- Workshop 4 (archived season 2): historical approvals. ids 15-16
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
+  (4, 245755, '123456789012345687', 'approved', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
+  (4, 228756, '123456789012345682', 'approved', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
+
+-- Upvotes. Every player suggestion carries its submitter's own vote (added
+-- automatically on suggest); self-votes do not count against the budget.
 INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
-  (1, '123456789012345687');
+  -- 1 JEI (Mumbo): self + Grian
+  (1, '123456789012345686'), (1, '123456789012345687'),
+  -- 2 Jade (Mumbo): self only
+  (2, '123456789012345686'),
+  -- 3 Waystones (Grian): the current front runner
+  (3, '123456789012345687'), (3, '123456789012345678'), (3, '123456789012345679'),
+  (3, '123456789012345686'), (3, '123456789012345685'), (3, '123456789012345683'),
+  (3, '123456789012345688'),
+  -- 4 Supplementaries (Scar)
+  (4, '123456789012345688'), (4, '123456789012345687'), (4, '123456789012345678'),
+  -- 5 Mouse Tweaks (Steve): self only
+  (5, '123456789012345678'),
+  -- 6 Clumps (Alex)
+  (6, '123456789012345679'), (6, '123456789012345681'),
+  -- 7 Iron Chests (Technoblade)
+  (7, '123456789012345684'), (7, '123456789012345682'),
+  -- 8 Steam 'n' Rails (Grian): late entry closing in
+  (8, '123456789012345687'), (8, '123456789012345686'), (8, '123456789012345688'),
+  (8, '123456789012345689'), (8, '123456789012345678'),
+  -- 9 Farmer's Delight (approved, free likes)
+  (9, '123456789012345685'), (9, '123456789012345678'), (9, '123456789012345679'),
+  (9, '123456789012345687'), (9, '123456789012345682'),
+  -- 10 Sophisticated Backpacks (approved)
+  (10, '123456789012345686'), (10, '123456789012345687'), (10, '123456789012345685'),
+  -- 11 JourneyMap (rejected)
+  (11, '123456789012345689'),
+  -- 12 AppleSkin (rejected)
+  (12, '123456789012345683'), (12, '123456789012345681'),
+  -- 13 Controlling (workshop 2, approved)
+  (13, '123456789012345678'), (13, '123456789012345686'), (13, '123456789012345687'),
+  -- 14 Storage Drawers (workshop 2, rejected)
+  (14, '123456789012345679'), (14, '123456789012345681'),
+  -- 15 Waystones (workshop 4, approved)
+  (15, '123456789012345687'), (15, '123456789012345686'), (15, '123456789012345688'),
+  -- 16 Iron Chests (workshop 4, approved)
+  (16, '123456789012345682'), (16, '123456789012345678');
 
--- Create is already slated for the pack via a direct admin add; nothing is
--- live yet because the season 3 pack has no published CurseForge project
-INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name) VALUES
-  (1, 328085, 'admin', NULL, '818819241666281503', 7963363, 'create-1.21.1-6.0.10.jar');
+-- Resolved dependency edges (relation_type: 3 = required, 2 = optional).
+-- AppleSkin as an optional dep is rejected in workshop 1, which lights up the
+-- rejected badge in the dependency report.
+INSERT INTO workshop_project_dependency (workshop_id, curseforge_project_id, depends_on_project_id, relation_type) VALUES
+  (1, 422301, 420905, 3),
+  (1, 245755, 531761, 3),
+  (1, 688231, 328085, 3),
+  (1, 398521, 248787, 2);
+
+-- Season 3 pack membership: an admin add, approved suggestions from both
+-- season 3 workshops, and an auto-promoted required dependency. Nothing is
+-- live because the pack has no published CurseForge project yet.
+INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type) VALUES
+  (1, 328085, 'admin', NULL, '818819241666281503', 7963363, 'create-1.21.1-6.0.10.jar', 1),
+  (1, 398521, 'suggestion', 9, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1),
+  (1, 422301, 'suggestion', 10, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1),
+  (1, 420905, 'dependency', NULL, NULL, 5625744, 'sophisticatedcore-1.21.1-1.2.10.jar', 1),
+  (1, 250398, 'suggestion', 13, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1);
+
+-- Season 2 pack membership: fully shipped, so members carry live state.
+INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type, live_at, live_in_version) VALUES
+  (3, 238222, 'admin', NULL, '818819241666281503', 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
+  (3, 245755, 'suggestion', 15, NULL, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
+  (3, 228756, 'suggestion', 16, NULL, 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '380 days', '2.4.1');
 
 -- Show some sample stats
 SELECT
