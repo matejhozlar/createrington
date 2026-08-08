@@ -41,6 +41,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProject: vi.fn(),
+  ingestProjects: vi.fn(),
   refreshProjects: vi.fn(async () => 0),
 }));
 

@@ -4,7 +4,7 @@ import {
   ConflictError,
   NotFoundError,
 } from "@/app/middleware/error-handler";
-import { ConstraintViolationError } from "@/db/utils/errors";
+import { ConstraintViolationError, DatabaseError } from "@/db/utils/errors";
 import type {
   CurseforgeProject,
   ModpackMod,
@@ -22,7 +22,7 @@ import {
   searchMods,
   type CurseForgeProjectData,
 } from "@/services/curseforge";
-import { ingestProject } from "@/services/curseforge/ingest";
+import { ingestProjects } from "@/services/curseforge/ingest";
 import { modpackService } from "@/services/modpack";
 import type { ModpackModListItem } from "@/services/modpack";
 import {
@@ -536,7 +536,10 @@ export class WorkshopService {
           await tx.workshop.mod.upvote.create({ workshopModId, discordId });
         });
       } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
+        const duplicateUpvote =
+          error instanceof ConstraintViolationError &&
+          error.constraint === "idx_workshop_mod_upvote_unique";
+        if (!duplicateUpvote) throw error;
       }
       upvoted = true;
     }
@@ -751,7 +754,14 @@ export class WorkshopService {
     }
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
-    if (action === "approve" && mod.status === "approved") return mod;
+    if (action === "approve" && mod.status === "approved") {
+      const workshop = await this.getWorkshop(mod.workshopId);
+      const packRow = await this.ensurePackRow(workshop, mod);
+      if (packRow) {
+        await promoteRequiredDependencies(workshop, packRow, adminId);
+      }
+      return mod;
+    }
 
     const workshop = await this.getWorkshop(mod.workshopId);
     if (workshop.status === "archived") {
@@ -1255,9 +1265,25 @@ export class WorkshopService {
       }
     }
 
+    let projectData: Map<number, CurseForgeProjectData>;
+    try {
+      projectData = await ingestProjects(projectIds);
+    } catch (error) {
+      if (error instanceof DatabaseError) throw error;
+      logger.warn("CurseForge project ingest failed:", error);
+      throw new BadRequestError(
+        "Could not reach CurseForge right now, please try again",
+      );
+    }
+
     const prepared: PreparedEntry[] = [];
     for (const entry of entries) {
-      const { data } = await ingestProject(entry.projectId);
+      const data = projectData.get(entry.projectId);
+      if (!data) {
+        throw new BadRequestError(
+          `Could not resolve CurseForge project #${entry.projectId}`,
+        );
+      }
       if (data.classId !== workshop.classId) {
         throw new BadRequestError(
           `"${data.name}" is not the right kind of CurseForge project for this workshop`,

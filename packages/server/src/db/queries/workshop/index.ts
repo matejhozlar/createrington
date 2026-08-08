@@ -34,6 +34,11 @@ export class WorkshopQueries extends WorkshopBaseQueries {
 
   /** Serialize a user's per-workshop cap checks for the current transaction. */
   async lockUserBudget(workshopId: number, discordId: string): Promise<void> {
+    if (!this.isInTransaction()) {
+      throw new Error(
+        "lockUserBudget must run inside a transaction, pg_advisory_xact_lock releases at statement end otherwise",
+      );
+    }
     const query = `
       SELECT pg_advisory_xact_lock(
         hashtextextended('workshop_user_budget:' || $1 || ':' || $2, 0)

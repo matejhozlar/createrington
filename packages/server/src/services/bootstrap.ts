@@ -257,7 +257,7 @@ export function registerServices(): void {
       await service.initialize();
       return service;
     },
-    { dependencies: [Services.DATABASE] },
+    { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
   );
 
   container.register(

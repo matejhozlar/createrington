@@ -41,6 +41,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProject: vi.fn(),
+  ingestProjects: vi.fn(),
   refreshProjects: vi.fn(async () => 0),
 }));
 
@@ -55,6 +56,7 @@ import {
   seedMod,
   seedPackMod,
   seedProject,
+  seedRequiredDependency,
 } from "@/tests/helpers/workshop";
 
 const USER_A = "999900000000000002";
@@ -72,6 +74,58 @@ afterEach(async () => {
 
 afterAll(async () => {
   await pool.end();
+});
+
+describe("ModpackService.getWorkshopAttention", () => {
+  it("flags a rejected required dependency of a pack member", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    const depProjectId = await seedProject(ctx, "Rejected Dep");
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    const depMod = await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "rejected_dependency",
+      workshopModId: depMod.id,
+      curseforgeProjectId: depProjectId,
+      name: "Rejected Dep",
+      requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("does not flag a rejected dependency that is itself in the pack", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    const dep = await seedPackMod(ctx, workshop, { origin: "dependency" });
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      dep.curseforgeProjectId,
+    );
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: dep.curseforgeProjectId,
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "rejected_dependency"),
+    ).toHaveLength(0);
+  });
 });
 
 describe("ModpackService.reconcile", () => {

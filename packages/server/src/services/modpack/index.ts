@@ -72,6 +72,13 @@ export type ModpackAttentionItem =
       workshopModId: number;
       curseforgeProjectId: number;
       name: string;
+    }
+  | {
+      type: "rejected_dependency";
+      workshopModId: number;
+      curseforgeProjectId: number;
+      name: string;
+      requiredByName: string;
     };
 
 /**
@@ -167,7 +174,7 @@ export class ModpackService {
       updated.curseforgeProjectId &&
       updated.curseforgeProjectId !== modpack.curseforgeProjectId
     ) {
-      void this.reconcile(modpackId);
+      void this.tryReconcile(modpackId);
     }
     return updated;
   }
@@ -224,25 +231,23 @@ export class ModpackService {
    * throws.
    */
   async reconcile(modpackId: number): Promise<void> {
+    const modpack = await this.getModpack(modpackId);
+    const workshops = await Q.workshop.findAll({ modpackId });
+
+    await this.healSuggestionRows(modpack, workshops);
+
+    if (modpack.curseforgeProjectId) {
+      const manifest = await getModpackManifest(modpack.curseforgeProjectId);
+      await this.applyManifest(modpack, workshops, manifest);
+    }
+
+    await pruneOrphanedDependencies(modpackId);
+  }
+
+  /** Reconcile variant for sweeps and background kicks: logs failures, never throws. */
+  async tryReconcile(modpackId: number): Promise<void> {
     try {
-      const modpack = await this.getModpack(modpackId);
-      const workshops = await Q.workshop.findAll({ modpackId });
-
-      await this.healSuggestionRows(modpack, workshops);
-
-      if (modpack.curseforgeProjectId) {
-        let manifest: ModpackManifest | null = null;
-        try {
-          manifest = await getModpackManifest(modpack.curseforgeProjectId);
-        } catch (error) {
-          logger.warn(`Modpack #${modpackId} manifest fetch failed:`, error);
-        }
-        if (manifest) {
-          await this.applyManifest(modpack, workshops, manifest);
-        }
-      }
-
-      await pruneOrphanedDependencies(modpackId);
+      await this.reconcile(modpackId);
     } catch (error) {
       logger.warn(`Modpack #${modpackId} reconcile failed:`, error);
     }
@@ -267,22 +272,57 @@ export class ModpackService {
       }
     }
 
+    const suggestions = await Q.workshop.mod.findAll({
+      workshopId: workshop.id,
+    });
+
     let shipped: WorkshopMod[] = [];
     if (manifest) {
       const { modIds } = manifest;
-      const suggestions = await Q.workshop.mod.findAll({
-        workshopId: workshop.id,
-      });
       shipped = suggestions.filter(
         (mod) =>
           modIds.has(mod.curseforgeProjectId) && mod.status !== "approved",
       );
     }
 
+    const rejectedByProject = new Map(
+      suggestions
+        .filter((mod) => mod.status === "rejected")
+        .map((mod) => [mod.curseforgeProjectId, mod]),
+    );
+    const packProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
+    const edges =
+      rejectedByProject.size > 0
+        ? await Q.workshop.project.dependency.findAll({
+            workshopId: workshop.id,
+            relationType: REQUIRED_DEPENDENCY,
+          })
+        : [];
+    const rejectedDeps = new Map<
+      number,
+      { dep: WorkshopMod; requiredByProjectId: number }
+    >();
+    for (const edge of edges) {
+      const dep = rejectedByProject.get(edge.dependsOnProjectId);
+      if (!dep) continue;
+      if (packProjectIds.has(edge.dependsOnProjectId)) continue;
+      if (!packProjectIds.has(edge.curseforgeProjectId)) continue;
+      if (!rejectedDeps.has(edge.dependsOnProjectId)) {
+        rejectedDeps.set(edge.dependsOnProjectId, {
+          dep,
+          requiredByProjectId: edge.curseforgeProjectId,
+        });
+      }
+    }
+
     const projectIds = [
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
         ...shipped.map((mod) => mod.curseforgeProjectId),
+        ...[...rejectedDeps.entries()].flatMap(([depId, entry]) => [
+          depId,
+          entry.requiredByProjectId,
+        ]),
       ]),
     ];
     const projects =
@@ -308,6 +348,15 @@ export class ModpackService {
         workshopModId: mod.id,
         curseforgeProjectId: mod.curseforgeProjectId,
         name: label(mod.curseforgeProjectId),
+      });
+    }
+    for (const [projectId, entry] of rejectedDeps) {
+      items.push({
+        type: "rejected_dependency",
+        workshopModId: entry.dep.id,
+        curseforgeProjectId: projectId,
+        name: label(projectId),
+        requiredByName: label(entry.requiredByProjectId),
       });
     }
     return items;

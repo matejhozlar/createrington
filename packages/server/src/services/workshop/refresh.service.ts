@@ -98,7 +98,7 @@ export class WorkshopProjectRefreshService {
 
       const modpacks = await Q.modpack.findAll({});
       for (const modpack of modpacks) {
-        await modpackService.reconcile(modpack.id);
+        await modpackService.tryReconcile(modpack.id);
       }
 
       if (refreshed > 0) {

@@ -12,7 +12,8 @@ const CACHE_TTL_MS = 10_000;
 /**
  * Runtime feature switches backed by the feature_flag table.
  * Reads are cached briefly so per-request gating stays cheap; writes
- * invalidate the cache immediately. A missing flag reads as disabled.
+ * invalidate the cache immediately. A missing flag or a failed read
+ * counts as disabled, so the gate fails closed.
  * The cache is per-instance: under horizontal scaling, other instances
  * serve a stale flag for up to the cache TTL after a toggle.
  */
@@ -26,7 +27,13 @@ export class FeatureFlagService {
       return cached.enabled;
     }
 
-    const flag = await Q.feature.flag.find({ name });
+    let flag: FeatureFlag | null;
+    try {
+      flag = await Q.feature.flag.find({ name });
+    } catch (error) {
+      logger.error(`Feature flag "${name}" read failed:`, error);
+      return false;
+    }
     const enabled = flag?.enabled ?? false;
     this.cache.set(name, { enabled, fetchedAt: Date.now() });
     return enabled;

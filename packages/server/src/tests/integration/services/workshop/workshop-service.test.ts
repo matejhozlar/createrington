@@ -37,6 +37,7 @@ vi.mock("@/services/curseforge", async (importOriginal) => {
 
 vi.mock("@/services/curseforge/ingest", () => ({
   ingestProject: vi.fn(),
+  ingestProjects: vi.fn(),
   refreshProjects: vi.fn(async () => 0),
 }));
 
@@ -47,7 +48,7 @@ import {
   NotFoundError,
 } from "@/app/middleware/error-handler";
 import { workshopService } from "@/services/workshop";
-import { ingestProject } from "@/services/curseforge/ingest";
+import { ingestProject, ingestProjects } from "@/services/curseforge/ingest";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -74,6 +75,10 @@ beforeAll(async () => {
     entity: await Q.curseforge.project.get({ id: projectId }),
     data: makeProjectData(projectId),
   }));
+  vi.mocked(ingestProjects).mockImplementation(
+    async (projectIds: number[]) =>
+      new Map(projectIds.map((id) => [id, makeProjectData(id)])),
+  );
 });
 
 afterEach(async () => {
@@ -307,7 +312,36 @@ describe("WorkshopService.createWorkshop", () => {
   });
 });
 
+describe("workshop deletion", () => {
+  it("nulls the pack row's workshop_mod_id when the workshop is deleted", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, { status: "approved" });
+    const packRow = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+    });
+
+    await Q.workshop.deleteAll({ id: workshop.id });
+
+    const after = await Q.modpack.mod.get({ id: packRow.id });
+    expect(after.workshopModId).toBeNull();
+  });
+});
+
 describe("WorkshopService.suggestMod", () => {
+  it("rejects with BadRequestError when CurseForge cannot resolve the project", async () => {
+    const workshop = await seedWorkshop(ctx);
+    vi.mocked(ingestProjects).mockResolvedValueOnce(new Map());
+
+    await expect(
+      workshopService.suggestMod(workshop.id, USER_A, {
+        projectId: 990_999_999,
+        note: "a mod the pack really needs",
+      }),
+    ).rejects.toThrow(BadRequestError);
+  });
+
   it("creates a pending suggestion with the snapshot file", async () => {
     const workshop = await seedWorkshop(ctx);
     const projectId = await seedProject(ctx);

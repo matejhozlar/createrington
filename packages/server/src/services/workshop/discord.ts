@@ -40,6 +40,8 @@ const REJECT_REASON_TAGS: Record<
 
 const LIVE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
 
+const HEAL_THREAD_CREATE_CAP = 5;
+
 type ThreadLookup =
   | { state: "found"; thread: AnyThreadChannel }
   | { state: "gone" }
@@ -320,7 +322,8 @@ export async function healThreads(
   workshop: Workshop,
   mods: WorkshopMod[],
 ): Promise<void> {
-  for (const mod of mods) {
+  const rows = mods.map((mod) => ({ ...mod }));
+  for (const mod of rows) {
     if (!mod.discordThreadId) continue;
     try {
       const lookup = await fetchThread(mod.discordThreadId);
@@ -334,23 +337,29 @@ export async function healThreads(
   }
 
   if (workshop.status !== "open" || !workshop.discordForumChannelId) return;
-  const missing = mods.filter(
+  const missing = rows.filter(
     (mod) => !mod.discordThreadId && LIVE_MOD_STATUSES.includes(mod.status),
   );
   if (missing.length === 0) return;
 
+  const batch = missing.slice(0, HEAL_THREAD_CREATE_CAP);
   try {
     const projects = await Q.curseforge.project.findAll({
-      id: { $in: [...new Set(missing.map((mod) => mod.curseforgeProjectId))] },
+      id: { $in: [...new Set(batch.map((mod) => mod.curseforgeProjectId))] },
     });
     const byId = new Map(projects.map((project) => [project.id, project]));
-    for (const mod of missing) {
+    for (const mod of batch) {
       const project = byId.get(mod.curseforgeProjectId);
       if (project) await announceSuggestion(workshop, { ...mod, project });
     }
   } catch (error) {
     logger.warn(
       `Workshop thread recreation failed for workshop #${workshop.id}: ${error}`,
+    );
+  }
+  if (missing.length > batch.length) {
+    logger.info(
+      `Workshop #${workshop.id}: deferred ${missing.length - batch.length} thread recreations to the next sweep`,
     );
   }
 }
