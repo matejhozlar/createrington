@@ -40,7 +40,7 @@ cd createrington
 pnpm install
 
 # Configure environment
-cp packages/server/.env.example packages/server/.env   # then fill in values
+cp .env.example .env   # then fill in section 1
 
 # Database
 pnpm db:up        # start PostgreSQL on port 5433
@@ -52,21 +52,26 @@ pnpm generate     # generate DB types + query classes, then typecheck
 pnpm dev
 ```
 
-See the [README setup section](./README.md#installation--setup) for the full list
-of environment variables and Discord/RCON setup steps.
+`.env.example` at the repository root documents every environment variable.
+Filling in section 1 is enough to boot locally; sections 2 and 3 cover
+production-only values and optional integrations. See the
+[README quick start](./README.md#quick-start) for the short version.
 
 ## Repository Layout
 
-This is a pnpm monorepo with three primary workspaces under `packages/`:
+This is a pnpm monorepo with four workspaces under `packages/`:
 
-| Workspace         | Description                                                        |
-| ----------------- | ------------------------------------------------------------------ |
-| `packages/server` | Express 5 + tRPC v11 backend, Discord bots, PostgreSQL (port 5001) |
-| `packages/client` | React 18 + Vite SPA (port 3000)                                    |
-| `packages/shared` | Zod schemas and shared TypeScript types (incl. generated DB types) |
+| Workspace            | Description                                                        |
+| -------------------- | ------------------------------------------------------------------ |
+| `packages/server`    | Express 5 + tRPC v11 backend, Discord bots, PostgreSQL (port 5001) |
+| `packages/client`    | React 19 + Vite SPA (port 3000)                                    |
+| `packages/shared`    | Zod schemas and shared TypeScript types (incl. generated DB types) |
+| `packages/api-types` | Published tRPC contracts for first-party consumer apps             |
 
-Other top-level directories: `db/` (Docker compose, migrations, seed data),
-`mod-api/` (generated Java API library), `docs/`, and `scripts/` (build helpers).
+Other top-level directories: `docker/` (PostgreSQL and local Minecraft server
+containers, migrations, seed data), `mod-api/` (generated Java API library),
+`marketing/` (Remotion promo video, outside the workspace), and `scripts/`
+(build helpers).
 
 ## Branching Strategy
 

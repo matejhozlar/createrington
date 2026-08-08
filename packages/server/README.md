@@ -1,46 +1,32 @@
 # @createrington/server
 
-Backend server for the Createrington platform - a Minecraft community management system integrating Discord, web dashboards, and game servers into a unified experience.
+Express 5 + tRPC v11 backend for the Createrington platform, running on port 5001
+in development. It is the hub between the Minecraft servers, the Discord guild,
+and the web client.
 
-Built with Express 5, tRPC v11, PostgreSQL, Discord.js, and Socket.io.
+```bash
+pnpm dev:server        # from the repository root
+pnpm typecheck:server
+pnpm lint:server
+pnpm test              # Vitest, watch mode
+```
 
-## Overview
+| Path             | Contents                                                         |
+| ---------------- | ---------------------------------------------------------------- |
+| `src/trpc/`      | tRPC routers, split by auth level and by consumer                |
+| `src/app/`       | Express app, REST feature routes, middleware                     |
+| `src/services/`  | Business logic behind the DI container (`services/container.ts`) |
+| `src/db/`        | Drizzle schema and query classes                                 |
+| `src/discord/`   | Bot clients, slash commands, interactions, events                |
+| `src/generated/` | Generated query classes (do not edit)                            |
+| `src/scripts/`   | One-off utilities and code generators                            |
+| `drizzle/`       | Migration SQL                                                    |
 
-The server acts as the central hub connecting Minecraft game servers, Discord communities, and a web-based admin panel. It handles player registration, playtime tracking, in-game economy, ticket support, waitlist management, and real-time status broadcasting.
+Two Discord bot users run side by side: a main bot for slash commands, events,
+and leaderboards, and a web bot for OAuth and background work. Real-time updates
+go out over Socket.io. `AppRouter` is exported via the `./trpc` package export so
+the client gets end-to-end types with no generated client.
 
-## Features
-
-- **Dual API Layer** - tRPC for typed client queries and REST for auth flows and external integrations
-- **Discord Bots** - Two bot instances (main + web) handling slash commands, button interactions, role management, and message caching
-- **Real-Time Updates** - Socket.io server broadcasting live server status, player activity, and Discord messages
-- **Player Management** - Registration, bans, strikes, balance/economy, session tracking, and audit logging
-- **Playtime Tracking** - Per-server playtime monitoring with hourly/daily/summary aggregation
-- **Ticket System** - Support ticket creation and management via Discord and web
-- **Waitlist System** - Managed entry queues for game servers
-- **Leaderboard System** - Automated leaderboard generation and updates
-- **Role Management** - Automatic Discord role assignment based on playtime and other criteria
-- **Email Notifications** - Transactional emails via Nodemailer
-- **Comprehensive Logging** - Daily-rotated log files with automatic 7-day cleanup
-
-## Discord Integration
-
-### Main Bot
-
-Handles all user-facing interactions:
-
-- **Slash Commands** - `/register`, `/playtime`, `/leaderboard`, `/daily`, `/pay`, `/money`, `/ticket`, `/ping`, and admin commands
-- **Button Interactions** - Registration flows, server selection, ticket management, waitlist, leaderboard navigation
-- **Events** - Auto-role on member join, leave notifications
-
-### Web Bot
-
-Handles background operations: message caching, status rotation, and auxiliary tasks.
-
-### Supporting Services
-
-- **MessageCacheService** - Persists Discord messages to the database
-- **TicketService** - Discord-based ticket support system
-- **LeaderboardService** - Automated leaderboard generation
-- **RoleManagementService** - Automatic role assignment based on playtime
-- **MemberCleanupService** - Cleans up data for departed members
-- **RotatingStatusService** - Cycles bot status messages
+See the [root README](../../README.md) and
+[CONTRIBUTING.md](../../CONTRIBUTING.md) for setup, database workflow, and
+conventions.
