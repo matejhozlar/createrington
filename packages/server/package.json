@@ -18,7 +18,7 @@
   },
   "scripts": {
     "dev": "infisical run --env=dev -- node scripts/dev-watch.mjs",
-    "dev:types": "tsc --emitDeclarationOnly --watch & tsc-alias --watch",
+    "dev:types": "concurrently \"tsc --emitDeclarationOnly --watch\" \"tsc-alias --watch\"",
     "build": "tsc && tsc-alias && pnpm post-build && pnpm build:copy-assets",
     "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" \"src/**/*.woff2\" dist/server/src",
     "post-build": "tsx src/scripts/tools/post-build.ts",
@@ -73,6 +73,7 @@
     "@vitest/ui": "^4.1.0",
     "chalk": "^5.6.2",
     "chokidar": "^3.6.0",
+    "concurrently": "^9.2.4",
     "copyfiles": "^2.4.1",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9.39.2",
