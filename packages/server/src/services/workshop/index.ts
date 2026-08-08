@@ -15,7 +15,8 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
-  WORKSHOP_MOD_STATUS_TRANSITIONS,
+  WORKSHOP_MOD_REVIEW_ACTIONS,
+  WORKSHOP_MOD_REVIEW_TARGETS,
   WORKSHOP_STATUS_TRANSITIONS,
 } from "@createrington/shared/workshop";
 import {
@@ -73,7 +74,6 @@ export interface WorkshopModListItem extends WorkshopMod {
   submitterName: string | null;
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
-  live: boolean;
   liveInVersion: string | null;
 }
 
@@ -147,8 +147,14 @@ export interface WorkshopProjectSearchResult {
   claimed: boolean;
 }
 
-export type WorkshopReviewAction =
-  "approve" | "start_testing" | "send_back" | "reject";
+export type WorkshopReviewAction = (typeof WORKSHOP_MOD_REVIEW_ACTIONS)[number];
+
+const REVIEW_ACTION_FAILURES: Record<WorkshopReviewAction, string> = {
+  approve: "approved",
+  start_testing: "moved to testing",
+  send_back: "sent back",
+  reject: "rejected",
+};
 
 const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -284,7 +290,6 @@ export class WorkshopService {
       submitterName: string | null;
       discordThreadUrl: string | null;
       dependencies: WorkshopModDependencyInfo[];
-      live: boolean;
       liveInVersion: string | null;
     };
     project: CurseforgeProject;
@@ -324,7 +329,6 @@ export class WorkshopService {
           ? discordThreadUrl(mod.discordThreadId)
           : null,
         dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
-        live: packRow?.liveAt != null,
         liveInVersion: packRow?.liveInVersion ?? null,
       },
       project,
@@ -767,8 +771,13 @@ export class WorkshopService {
     }
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
+
+    const workshop = await this.getWorkshop(mod.workshopId);
+    if (workshop.status === "archived") {
+      throw new BadRequestError("Cannot review mods in an archived workshop");
+    }
+
     if (action === "approve" && mod.status === "next_update") {
-      const workshop = await this.getWorkshop(mod.workshopId);
       const packRow = await this.ensurePackRow(workshop, mod);
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
@@ -782,44 +791,17 @@ export class WorkshopService {
       return mod;
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
-    // The transition map is keyed by status, so it cannot tell a forward move
-    // from the send_back that shares the same edge
-    if (action === "start_testing" && mod.status !== "approved") {
-      throw new BadRequestError(`A ${mod.status} mod cannot start testing`);
-    }
-    if (action === "send_back") {
-      if (mod.status === "in_pack") {
-        throw new BadRequestError(
-          "This mod is in the published pack, reject it instead of sending it back",
-        );
-      }
-      if (mod.status !== "testing" && mod.status !== "next_update") {
-        throw new BadRequestError(`A ${mod.status} mod cannot be sent back`);
-      }
+    if (action === "send_back" && mod.status === "in_pack") {
+      throw new BadRequestError(
+        "This mod is in the published pack, reject it instead of sending it back",
+      );
     }
 
-    const target: Exclude<WorkshopModStatus, "pending" | "in_pack"> =
-      action === "reject"
-        ? "rejected"
-        : action === "start_testing"
-          ? "testing"
-          : action === "send_back"
-            ? mod.status === "next_update"
-              ? "testing"
-              : "approved"
-            : mod.status === "testing"
-              ? "next_update"
-              : "approved";
-    if (
-      target !== mod.status &&
-      !WORKSHOP_MOD_STATUS_TRANSITIONS[mod.status].includes(target)
-    ) {
-      throw new BadRequestError(`A ${mod.status} mod cannot move to ${target}`);
-    }
-
-    const workshop = await this.getWorkshop(mod.workshopId);
-    if (workshop.status === "archived") {
-      throw new BadRequestError("Cannot review mods in an archived workshop");
+    const target = WORKSHOP_MOD_REVIEW_TARGETS[mod.status][action];
+    if (!target) {
+      throw new BadRequestError(
+        `A ${mod.status} mod cannot be ${REVIEW_ACTION_FAILURES[action]}`,
+      );
     }
 
     const { changed, removedPackRows } = await db.inTransaction(async (tx) => {
@@ -1192,7 +1174,6 @@ export class WorkshopService {
             ? discordThreadUrl(mod.discordThreadId)
             : null,
           dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
-          live: packRow?.liveAt != null,
           liveInVersion: packRow?.liveInVersion ?? null,
         },
       ];

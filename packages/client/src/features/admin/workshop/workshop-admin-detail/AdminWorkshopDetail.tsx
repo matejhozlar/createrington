@@ -75,20 +75,14 @@ import {
 } from "@/features/workshop/format";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_STATUSES,
   WORKSHOP_STATUS_TRANSITIONS,
 } from "@createrington/shared/workshop";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
-type StatusFilter =
-  | "all"
-  | "pending"
-  | "approved"
-  | "testing"
-  | "next_update"
-  | "in_pack"
-  | "rejected";
+type StatusFilter = "all" | WorkshopModStatus;
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -102,7 +96,7 @@ const ORIGIN_LABELS: Record<string, string> = {
 const ATTENTION_MESSAGES: Record<string, string> = {
   dropped_from_pack: "was live but is missing from the latest published pack.",
   shipped_unreviewed:
-    "shipped in the pack but its suggestion never finished review, walk it through to coming next update to credit the suggester.",
+    "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
 
@@ -118,15 +112,7 @@ const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   testing: "Mod sent back to testing",
 };
 
-const STATUS_FILTERS = [
-  "all",
-  "pending",
-  "approved",
-  "testing",
-  "next_update",
-  "in_pack",
-  "rejected",
-] as const;
+const STATUS_FILTERS = ["all", ...WORKSHOP_MOD_STATUSES] as const;
 
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -220,12 +206,7 @@ export function AdminWorkshopDetail() {
   const counts = useMemo(() => {
     const c: Record<string, number> = {
       all: mods.length,
-      pending: 0,
-      approved: 0,
-      testing: 0,
-      next_update: 0,
-      in_pack: 0,
-      rejected: 0,
+      ...Object.fromEntries(WORKSHOP_MOD_STATUSES.map((status) => [status, 0])),
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
     return c;

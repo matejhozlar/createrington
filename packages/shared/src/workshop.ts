@@ -31,19 +31,40 @@ export const WORKSHOP_MOD_STATUSES = [
 
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
 
-// Two moves bypass this map: re-rejecting an already rejected mod to change
-// its reason, and the next_update <-> in_pack pair, which reconcile applies
-// from the published pack manifest rather than an admin deciding it
-export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
+export const WORKSHOP_MOD_REVIEW_ACTIONS = [
+  "approve",
+  "start_testing",
+  "send_back",
+  "reject",
+] as const;
+
+type WorkshopModReviewAction = (typeof WORKSHOP_MOD_REVIEW_ACTIONS)[number];
+
+// Reviews never land on pending (nothing un-suggests a mod) or in_pack, which
+// reconcile owns: it follows the published pack manifest rather than an admin
+type WorkshopModReviewTarget = Exclude<
   WorkshopModStatus,
-  WorkshopModStatus[]
+  "pending" | "in_pack"
+>;
+
+// Where each review action takes a mod, keyed by the status it starts from.
+// A missing action is one that does not apply at that stage, so this table is
+// both the pipeline's documentation and the rule reviewMod enforces.
+export const WORKSHOP_MOD_REVIEW_TARGETS: Record<
+  WorkshopModStatus,
+  Partial<Record<WorkshopModReviewAction, WorkshopModReviewTarget>>
 > = {
-  pending: ["approved", "rejected"],
-  approved: ["testing", "rejected"],
-  testing: ["approved", "next_update", "rejected"],
-  next_update: ["testing", "in_pack", "rejected"],
-  in_pack: ["next_update", "rejected"],
-  rejected: ["approved"],
+  pending: { approve: "approved", reject: "rejected" },
+  approved: { start_testing: "testing", reject: "rejected" },
+  testing: {
+    approve: "next_update",
+    send_back: "approved",
+    reject: "rejected",
+  },
+  next_update: { send_back: "testing", reject: "rejected" },
+  in_pack: { reject: "rejected" },
+  // Re-rejecting is how a reason gets edited
+  rejected: { approve: "approved", reject: "rejected" },
 };
 
 export const WORKSHOP_STATUSES = [

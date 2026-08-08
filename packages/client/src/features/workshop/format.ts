@@ -1,3 +1,5 @@
+import type { WorkshopModStatus } from "@createrington/shared/db";
+
 export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 
 export const LOADER_NAMES: Record<number, string> = {
@@ -80,7 +82,6 @@ export const MOD_STATUS_STYLES: Record<
     label: "Coming next update",
     className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
   },
-  // Also styles modpack rows, which carry no workshop status of their own
   in_pack: {
     label: "In the pack",
     className: "border-green-500/20 bg-green-500/10 text-green-400",
@@ -91,10 +92,10 @@ export const MOD_STATUS_STYLES: Record<
   },
 };
 
-// live is derived per project, so it says nothing about this suggestion
-// unless the suggestion is the one that shipped
+// liveInVersion comes from the project's pack row, so it describes this
+// suggestion only once the suggestion itself is the one that shipped
 export function liveTitle(mod: {
-  status: string;
+  status: WorkshopModStatus;
   liveInVersion?: string | null;
 }) {
   return mod.status === "in_pack" && mod.liveInVersion

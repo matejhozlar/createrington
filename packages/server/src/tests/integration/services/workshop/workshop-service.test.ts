@@ -264,6 +264,25 @@ describe("WorkshopService.reviewMod", () => {
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
   });
 
+  it("refuses to review in an archived workshop, including the pack-row self-heal", async () => {
+    const workshop = await seedWorkshop(ctx, { status: "archived" });
+    const promoted = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+
+    await expect(
+      workshopService.reviewMod(promoted.id, "approve", ADMIN),
+    ).rejects.toThrow("Cannot review mods in an archived workshop");
+
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: promoted.curseforgeProjectId,
+      }),
+    ).toBeNull();
+  });
+
   it("refuses to start testing from anywhere but approved", async () => {
     const workshop = await seedWorkshop(ctx);
     const promoted = await seedMod(ctx, workshop, {

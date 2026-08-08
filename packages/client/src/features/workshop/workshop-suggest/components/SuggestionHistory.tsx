@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { WORKSHOP_MOD_STATUSES } from "@createrington/shared/workshop";
+import type { WorkshopModStatus } from "@createrington/shared/db";
 import { trpc, type RouterOutput } from "@/lib/trpc";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,24 +29,15 @@ import {
 type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
 
-type StatusFilter =
-  | "all"
-  | "pending"
-  | "approved"
-  | "testing"
-  | "next_update"
-  | "in_pack"
-  | "rejected";
+type StatusFilter = "all" | WorkshopModStatus;
 type SortMode = "new" | "old" | "updated";
 
 const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "All statuses" },
-  { value: "pending", label: "In review" },
-  { value: "approved", label: "Approved" },
-  { value: "testing", label: "In testing" },
-  { value: "next_update", label: "Coming next update" },
-  { value: "in_pack", label: "In the pack" },
-  { value: "rejected", label: "Ruled out" },
+  ...WORKSHOP_MOD_STATUSES.map((value) => ({
+    value,
+    label: MOD_STATUS_STYLES[value].label,
+  })),
 ];
 
 const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [

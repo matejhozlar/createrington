@@ -574,7 +574,9 @@ export class ModpackService {
       );
       if (claimed === 0) continue;
       const updated = { ...mod, status: to };
-      void (to === "in_pack"
+      // Awaited: a whole pack's worth of announcements at once would race the
+      // Discord rate limiter, and a sweep has no latency budget to protect
+      await (to === "in_pack"
         ? announceReview(updated, to)
         : announcePackDropOut(updated));
     }
