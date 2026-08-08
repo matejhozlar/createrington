@@ -4,18 +4,19 @@ import { BaseQueries } from "@/db/queries/base.queries";
 
 interface TestEntity {
   id: number;
-  tags: string[];
+  categories: string[];
+  screenshots: string[];
   name: string;
   [key: string]: unknown;
 }
 
-class TestQueries extends BaseQueries<{
+class CurseforgeProjectTestQueries extends BaseQueries<{
   Entity: TestEntity;
   DbEntity: TestEntity;
   Create: TestEntity;
   Update: Partial<TestEntity>;
 }> {
-  protected readonly table = "test_table";
+  protected readonly table = "curseforge_project";
 
   mapCreate(data: TestEntity) {
     return this.getCreateMapping(data);
@@ -26,26 +27,59 @@ class TestQueries extends BaseQueries<{
   }
 }
 
-const q = new TestQueries({} as unknown as Pool);
+class UnknownTableQueries extends BaseQueries<{
+  Entity: TestEntity;
+  DbEntity: TestEntity;
+  Create: TestEntity;
+  Update: Partial<TestEntity>;
+}> {
+  protected readonly table = "test_table";
 
-// Pins the write-serialization contract: every array value is JSON.stringified,
-// which is only correct while arrays are exclusively written to jsonb columns.
-// If a native array column (e.g. text[]) is ever added, serializeWriteValue
-// must be scoped per column and this test updated.
+  mapUpdate(data: Partial<TestEntity>) {
+    return this.getUpdateMapping(data);
+  }
+}
+
+const q = new CurseforgeProjectTestQueries({} as unknown as Pool);
+const unknown = new UnknownTableQueries({} as unknown as Pool);
+
+// Pins the write-serialization contract: array values are JSON.stringified
+// only for columns the Drizzle schema declares as json/jsonb (node-postgres
+// would otherwise send them as Postgres array literals, invalid for jsonb).
+// Arrays headed to any other column pass through untouched, so a future
+// native array column (e.g. text[]) keeps node-postgres serialization.
 describe("BaseQueries write serialization", () => {
-  it("JSON.stringifies array values on create", () => {
-    const mapping = q.mapCreate({ id: 1, tags: ["a", "b"], name: "x" });
+  it("JSON.stringifies array values for jsonb columns on create", () => {
+    const mapping = q.mapCreate({
+      id: 1,
+      categories: ["a", "b"],
+      screenshots: [],
+      name: "x",
+    });
     expect(mapping).toContainEqual({
-      column: "tags",
+      column: "categories",
       value: JSON.stringify(["a", "b"]),
     });
+    expect(mapping).toContainEqual({ column: "screenshots", value: "[]" });
     expect(mapping).toContainEqual({ column: "id", value: 1 });
     expect(mapping).toContainEqual({ column: "name", value: "x" });
   });
 
-  it("JSON.stringifies array values on update", () => {
-    const mapping = q.mapUpdate({ tags: [] });
-    expect(mapping).toContainEqual({ column: "tags", value: "[]" });
+  it("JSON.stringifies array values for jsonb columns on update", () => {
+    const mapping = q.mapUpdate({ categories: [] });
+    expect(mapping).toContainEqual({ column: "categories", value: "[]" });
+  });
+
+  it("passes arrays through untouched for non-json columns", () => {
+    const tags = ["a", "b"];
+    const mapping = q.mapUpdate({ name: tags as unknown as string });
+    expect(mapping).toContainEqual({ column: "name", value: tags });
+  });
+
+  it("passes arrays through untouched for tables not in the schema", () => {
+    const tags = ["a", "b"];
+    const mapping = unknown.mapUpdate({ categories: tags });
+    expect(mapping).toContainEqual({ column: "categories", value: tags });
   });
 
   it("leaves non-array values untouched", () => {

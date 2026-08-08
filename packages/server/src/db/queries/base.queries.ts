@@ -2,6 +2,7 @@ import type { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import logger from "@/logger.global";
 import { createNotFoundError } from "../utils/query-helpers";
 import { translateDbError } from "../utils/errors";
+import { isJsonColumn } from "../utils/jsonb-columns";
 import type { FilterValue } from "@createrington/shared/db/base.types";
 import { QueryBuilder } from "./query-builder";
 
@@ -263,10 +264,10 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getUpdateMapping(updates: Partial<NonNullable<TConfig["Update"]>>) {
-    return Object.entries(updates).map(([key, value]) => ({
-      column: this.getColumnName(key),
-      value: this.serializeWriteValue(value),
-    }));
+    return Object.entries(updates).map(([key, value]) => {
+      const column = this.getColumnName(key);
+      return { column, value: this.serializeWriteValue(column, value) };
+    });
   }
 
   /**
@@ -276,16 +277,16 @@ export abstract class BaseQueries<
    * @returns Array of objects containing column names and values
    */
   protected getCreateMapping(data: NonNullable<TConfig["Create"]>) {
-    return Object.entries(data).map(([key, value]) => ({
-      column: this.getColumnName(key),
-      value: this.serializeWriteValue(value),
-    }));
+    return Object.entries(data).map(([key, value]) => {
+      const column = this.getColumnName(key);
+      return { column, value: this.serializeWriteValue(column, value) };
+    });
   }
 
-  // Arrays are only ever written to jsonb columns today; adding a native
-  // array column (e.g. text[]) requires scoping this per column first
-  private serializeWriteValue(value: unknown): unknown {
-    return Array.isArray(value) ? JSON.stringify(value) : value;
+  private serializeWriteValue(column: string, value: unknown): unknown {
+    return Array.isArray(value) && isJsonColumn(this.table, column)
+      ? JSON.stringify(value)
+      : value;
   }
 
   /**
