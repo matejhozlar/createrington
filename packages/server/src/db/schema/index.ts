@@ -14,5 +14,5 @@ export * from "./player-prompt";
 export * from "./server";
 export * from "./structure";
 export * from "./ticket";
-export * from "./workshop";
 export * from "./waitlist";
+export * from "./workshop";

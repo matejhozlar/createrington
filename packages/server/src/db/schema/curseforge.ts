@@ -10,10 +10,8 @@ import {
 import { sql } from "drizzle-orm";
 
 // --- curseforge_project ---
-// Global snapshot cache of CurseForge project metadata, one row per project ID.
-// Ingested when a project is first referenced (submission, admin add, ban) and
-// refreshed periodically. Deep content (descriptions, changelogs) is never
-// mirrored; the CurseForge page stays the source of truth for it.
+// Global snapshot cache, one row per project ID. Deep content (descriptions,
+// changelogs) is never mirrored; CurseForge stays the source of truth.
 
 export const curseforgeProject = pgTable(
   "curseforge_project",

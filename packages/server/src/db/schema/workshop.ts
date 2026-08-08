@@ -20,8 +20,7 @@ import { curseforgeProject } from "./curseforge";
 import { modpack } from "./modpack";
 
 // --- workshop ---
-// A workshop campaign (e.g. season modpack selection). classId scopes what kind
-// of CurseForge project can be submitted (6 = mods, 4471 = modpacks).
+// classId scopes what can be submitted (6 = mods, 4471 = modpacks).
 
 export const workshop = pgTable(
   "workshop",
@@ -56,11 +55,7 @@ export const workshop = pgTable(
 );
 
 // --- workshop_mod ---
-// A community suggestion: someone's pitch for a mod, with votes, a discussion
-// thread, and a review outcome. Pack membership lives in modpack_mod;
-// approving a suggestion creates a modpack row linked back to it. File columns
-// record which file satisfied the workshop's target at submit time; a pack
-// build re-resolves files fresh rather than trusting this snapshot.
+// File columns snapshot the submit-time pick; pack builds re-resolve fresh.
 
 export const workshopMod = pgTable(
   "workshop_mod",
@@ -91,9 +86,11 @@ export const workshopMod = pgTable(
       .defaultNow(),
   },
   (table) => [
-    index("idx_workshop_mod_workshop").on(table.workshopId),
-    index("idx_workshop_mod_status").on(table.status),
-    index("idx_workshop_mod_submitter").on(table.submittedBy),
+    index("idx_workshop_mod_workshop_status").on(
+      table.workshopId,
+      table.status,
+    ),
+    index("idx_workshop_mod_submitter").on(table.submittedBy, table.workshopId),
     index("idx_workshop_mod_project").on(table.curseforgeProjectId),
     uniqueIndex("idx_workshop_mod_claim_unique").on(
       table.workshopId,
@@ -210,6 +207,7 @@ export const workshopPollMod = pgTable(
       .references(() => workshopMod.id, { onDelete: "cascade" }),
   },
   (table) => [
+    index("idx_workshop_poll_mod_mod").on(table.workshopModId),
     uniqueIndex("idx_workshop_poll_mod_unique").on(
       table.pollId,
       table.workshopModId,
@@ -241,6 +239,7 @@ export const workshopPollBallot = pgTable(
   },
   (table) => [
     index("idx_workshop_poll_ballot_poll").on(table.pollId),
+    index("idx_workshop_poll_ballot_mod").on(table.pollModId),
     index("idx_workshop_poll_ballot_player").on(table.discordId),
     // NULLs are distinct in unique indexes, so per-mod and bundle ballots
     // each need their own partial uniqueness rule
