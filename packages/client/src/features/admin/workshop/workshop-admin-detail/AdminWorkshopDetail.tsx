@@ -162,14 +162,6 @@ export function AdminWorkshopDetail() {
     onError: (err) => toast.error(err.message),
   });
 
-  const reconcileMutation = trpc.admin.modpacks.reconcile.useMutation({
-    onSuccess: () => {
-      toast.success("Checked against the published pack");
-      invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
-
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (_mod, variables) => {
       toast.success(
@@ -498,22 +490,7 @@ export function AdminWorkshopDetail() {
 
         <Card>
           <CardContent className="pt-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Modpack Members</h3>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={reconcileMutation.isPending}
-                onClick={() =>
-                  reconcileMutation.mutate({ modpackId: workshop.modpackId })
-                }
-              >
-                {reconcileMutation.isPending && (
-                  <Loader2 className="size-4 animate-spin" />
-                )}
-                Check Published Pack
-              </Button>
-            </div>
+            <h3 className="mb-3 text-sm font-semibold">Modpack Members</h3>
             {packModsQuery.isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loading size="medium" text="Loading pack members..." />
