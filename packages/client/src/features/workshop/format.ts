@@ -72,6 +72,14 @@ export const MOD_STATUS_STYLES: Record<
     label: "Approved",
     className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
   },
+  testing: {
+    label: "In testing",
+    className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  },
+  next_update: {
+    label: "Coming next update",
+    className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+  },
   rejected: {
     label: "Ruled out",
     className: "border-red-500/20 bg-red-500/10 text-red-400",

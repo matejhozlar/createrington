@@ -67,9 +67,7 @@ export class WorkshopProjectRefreshService {
             modpackId: workshop.modpackId,
           });
           if (workshop.status === "open") {
-            const liveMods = mods.filter(
-              (mod) => mod.status === "pending" || mod.status === "approved",
-            );
+            const liveMods = mods.filter((mod) => mod.status !== "rejected");
             const subjects = new Map<number, DependencySubject>();
             for (const subject of [...liveMods, ...packRows]) {
               if (!subjects.has(subject.curseforgeProjectId)) {

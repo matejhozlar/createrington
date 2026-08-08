@@ -225,7 +225,10 @@ describe("pruneOrphanedDependencies", () => {
 describe("promoteRequiredDependencies via reviewMod approve", () => {
   it("creates a missing required dependency as a dependency-origin pack row", async () => {
     const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
     const depProjectId = await seedProject(ctx);
     await seedRequiredDependency(
       workshop,
@@ -249,7 +252,10 @@ describe("promoteRequiredDependencies via reviewMod approve", () => {
 
   it("does not resurrect a dependency rejected in the workshop", async () => {
     const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
     const depProjectId = await seedProject(ctx);
     await seedRequiredDependency(
       workshop,

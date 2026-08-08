@@ -25,8 +25,20 @@ interface SuggestionAnnouncement extends WorkshopMod {
 
 const STATUS_TAGS = {
   pending: { name: "Suggested", emoji: "💡" },
-  approved: { name: "In the pack", emoji: "✅" },
+  approved: { name: "Approved", emoji: "✅" },
+  testing: { name: "In testing", emoji: "🧪" },
+  next_update: { name: "Coming next update", emoji: "📦" },
 } as const;
+
+const REVIEW_MESSAGES: Record<
+  Exclude<WorkshopModStatus, "pending" | "rejected">,
+  string
+> = {
+  approved: "✅ **Approved!** The team wants this one, next stop: testing.",
+  testing: "🧪 **In testing.** The team is trying this mod out.",
+  next_update:
+    "📦 **Coming next update!** This mod passed testing and ships with the next pack update.",
+};
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
@@ -38,7 +50,12 @@ const REJECT_REASON_TAGS: Record<
   not_a_good_fit: { name: "Not a good fit", emoji: "🚫" },
 };
 
-const LIVE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
+const LIVE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+];
 
 const HEAL_THREAD_CREATE_CAP = 5;
 
@@ -48,10 +65,7 @@ type ThreadLookup =
   | { state: "unavailable" };
 
 function tagNameFor(status: WorkshopModStatus): string | null {
-  if (status === "pending" || status === "approved") {
-    return STATUS_TAGS[status].name;
-  }
-  return null;
+  return status === "rejected" ? null : STATUS_TAGS[status].name;
 }
 
 export function discordThreadUrl(threadId: string): string {
@@ -217,10 +231,7 @@ export async function announceSuggestion(
     }
     const fresh = await Q.workshop.mod.find({ id: mod.id });
     if (fresh && fresh.status !== mod.status && fresh.status !== "pending") {
-      await announceReview(
-        fresh,
-        fresh.status === "approved" ? "approved" : "rejected",
-      );
+      await announceReview(fresh, fresh.status);
     }
   } catch (error) {
     logger.warn(
@@ -231,13 +242,13 @@ export async function announceSuggestion(
 
 /**
  * Reflect a review outcome on the suggestion's thread: post the result and
- * retag with either the approved tag or the rejection reason's tag.
+ * retag with the new status's tag or the rejection reason's tag.
  */
 export async function announceReview(
   mod: WorkshopMod,
-  status: "approved" | "rejected",
+  status: WorkshopModStatus,
 ): Promise<void> {
-  if (!mod.discordThreadId) return;
+  if (!mod.discordThreadId || status === "pending") return;
   try {
     const lookup = await fetchThread(mod.discordThreadId);
     if (lookup.state === "unavailable") return;
@@ -252,7 +263,7 @@ export async function announceReview(
       ? REJECT_REASON_TAGS[mod.rejectReason]
       : null;
     const tagName =
-      status === "approved" ? STATUS_TAGS.approved.name : reasonTag?.name;
+      status === "rejected" ? reasonTag?.name : STATUS_TAGS[status].name;
 
     if (tagName && thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
@@ -268,11 +279,11 @@ export async function announceReview(
       ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
       : null;
     const content =
-      status === "approved"
-        ? "✅ **In the pack!** The team approved this suggestion."
-        : `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
+      status === "rejected"
+        ? `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
             mod.rejectNote ? ` ${mod.rejectNote}` : ""
-          }`;
+          }`
+        : REVIEW_MESSAGES[status];
     await thread.send(content);
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);

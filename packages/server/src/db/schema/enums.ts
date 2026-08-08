@@ -1,6 +1,7 @@
 import { pgEnum } from "drizzle-orm/pg-core";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_STATUSES,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
 
@@ -116,11 +117,10 @@ export const playerPromptStatusEnum = pgEnum("player_prompt_status", [
 export const workshopStatusEnum = pgEnum("workshop_status", WORKSHOP_STATUSES);
 
 // rejected rows persist per workshop with a reason; re-review can approve them
-export const workshopModStatusEnum = pgEnum("workshop_mod_status", [
-  "pending",
-  "approved",
-  "rejected",
-]);
+export const workshopModStatusEnum = pgEnum(
+  "workshop_mod_status",
+  WORKSHOP_MOD_STATUSES,
+);
 
 export const workshopModRejectReasonEnum = pgEnum(
   "workshop_mod_reject_reason",

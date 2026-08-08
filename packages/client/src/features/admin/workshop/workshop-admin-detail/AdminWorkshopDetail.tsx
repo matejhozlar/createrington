@@ -4,6 +4,7 @@ import {
   Ban,
   Check,
   Eye,
+  FlaskConical,
   Heart,
   Loader2,
   MoreHorizontal,
@@ -78,7 +79,8 @@ import {
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
-type StatusFilter = "all" | "pending" | "approved" | "rejected";
+type StatusFilter =
+  "all" | "pending" | "approved" | "testing" | "next_update" | "rejected";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -92,11 +94,18 @@ const ORIGIN_LABELS: Record<string, string> = {
 const ATTENTION_MESSAGES: Record<string, string> = {
   dropped_from_pack: "was live but is missing from the latest published pack.",
   shipped_unreviewed:
-    "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester.",
+    "shipped in the pack but its suggestion never finished review, walk it through to coming next update to credit the suggester.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
 
-const STATUS_FILTERS = ["all", "pending", "approved", "rejected"] as const;
+const STATUS_FILTERS = [
+  "all",
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "rejected",
+] as const;
 
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -166,7 +175,11 @@ export function AdminWorkshopDetail() {
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (_mod, variables) => {
       toast.success(
-        `Mod ${variables.action === "approve" ? "approved" : "rejected"}`,
+        variables.action === "reject"
+          ? "Mod rejected"
+          : variables.action === "start_testing"
+            ? "Mod moved to testing"
+            : "Mod approved",
       );
       invalidate();
       setRejectTarget(null);
@@ -192,6 +205,8 @@ export function AdminWorkshopDetail() {
       all: mods.length,
       pending: 0,
       approved: 0,
+      testing: 0,
+      next_update: 0,
       rejected: 0,
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
@@ -414,7 +429,8 @@ export function AdminWorkshopDetail() {
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {mod.status !== "approved" && (
+                              {(mod.status === "pending" ||
+                                mod.status === "rejected") && (
                                 <DropdownMenuItem
                                   onClick={() =>
                                     reviewMutation.mutate({
@@ -425,6 +441,32 @@ export function AdminWorkshopDetail() {
                                 >
                                   <Check className="size-4 text-green-500" />
                                   Approve
+                                </DropdownMenuItem>
+                              )}
+                              {mod.status === "approved" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "start_testing",
+                                    })
+                                  }
+                                >
+                                  <FlaskConical className="size-4 text-amber-400" />
+                                  Start Testing
+                                </DropdownMenuItem>
+                              )}
+                              {mod.status === "testing" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "approve",
+                                    })
+                                  }
+                                >
+                                  <Check className="size-4 text-green-500" />
+                                  Approve for Next Update
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -603,10 +645,10 @@ export function AdminWorkshopDetail() {
                             variant="outline"
                             className={cn(
                               "text-xs",
-                              MOD_STATUS_STYLES.approved.className,
+                              MOD_STATUS_STYLES.next_update.className,
                             )}
                           >
-                            Coming next update
+                            {MOD_STATUS_STYLES.next_update.label}
                           </Badge>
                         )}
                       </TableCell>

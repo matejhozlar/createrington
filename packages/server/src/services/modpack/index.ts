@@ -281,7 +281,7 @@ export class ModpackService {
       const { modIds } = manifest;
       shipped = suggestions.filter(
         (mod) =>
-          modIds.has(mod.curseforgeProjectId) && mod.status !== "approved",
+          modIds.has(mod.curseforgeProjectId) && mod.status !== "next_update",
       );
     }
 
@@ -474,17 +474,17 @@ export class ModpackService {
     workshops: Workshop[],
   ): Promise<void> {
     if (workshops.length === 0) return;
-    const approved = await Q.workshop.mod.findAll({
+    const promoted = await Q.workshop.mod.findAll({
       workshopId: { $in: workshops.map((w) => w.id) },
-      status: "approved",
+      status: "next_update",
     });
-    if (approved.length === 0) return;
+    if (promoted.length === 0) return;
 
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
     const memberProjectIds = new Set(
       rows.map((row) => row.curseforgeProjectId),
     );
-    for (const mod of approved) {
+    for (const mod of promoted) {
       if (memberProjectIds.has(mod.curseforgeProjectId)) continue;
       try {
         await Q.modpack.mod.create({

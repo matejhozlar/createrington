@@ -129,11 +129,11 @@ describe("ModpackService.getWorkshopAttention", () => {
 });
 
 describe("ModpackService.reconcile", () => {
-  it("heals a missing pack row for an approved suggestion", async () => {
+  it("heals a missing pack row for a promoted suggestion", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
-      status: "approved",
+      status: "next_update",
       fileId: 123,
       fileName: "healed.jar",
       fileReleaseType: 1,

@@ -267,6 +267,20 @@
       "when": 1786207642594,
       "tag": "0037_fluffy_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1786216206566,
+      "tag": "0038_little_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1786216217110,
+      "tag": "0039_workshop-mod-next-update-backfill",
+      "breakpoints": true
     }
   ]
 }

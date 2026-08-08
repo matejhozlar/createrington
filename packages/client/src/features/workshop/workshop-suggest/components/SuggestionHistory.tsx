@@ -26,13 +26,16 @@ import {
 type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
 
-type StatusFilter = "all" | "pending" | "approved" | "rejected";
+type StatusFilter =
+  "all" | "pending" | "approved" | "testing" | "next_update" | "rejected";
 type SortMode = "new" | "old" | "updated";
 
 const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: "all", label: "All statuses" },
   { value: "pending", label: "In review" },
   { value: "approved", label: "Approved" },
+  { value: "testing", label: "In testing" },
+  { value: "next_update", label: "Coming next update" },
   { value: "rejected", label: "Ruled out" },
 ];
 
@@ -53,10 +56,9 @@ function secondaryLine(mod: HistoryItem): string {
 }
 
 function StatusBadge({ mod }: { mod: HistoryItem }) {
-  const style =
-    mod.status === "approved" && mod.live
-      ? MOD_STATUS_STYLES.live
-      : MOD_STATUS_STYLES[mod.status];
+  const style = mod.live
+    ? MOD_STATUS_STYLES.live
+    : MOD_STATUS_STYLES[mod.status];
   const label =
     mod.status === "rejected" && mod.rejectReason
       ? REJECT_REASON_LABELS[mod.rejectReason]

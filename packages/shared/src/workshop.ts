@@ -20,6 +20,27 @@ export const WORKSHOP_MOD_REJECT_REASON_LABELS: Record<
   not_a_good_fit: "Not a good fit",
 };
 
+export const WORKSHOP_MOD_STATUSES = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "rejected",
+] as const;
+
+type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
+
+export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
+  WorkshopModStatus,
+  WorkshopModStatus[]
+> = {
+  pending: ["approved", "rejected"],
+  approved: ["testing", "rejected"],
+  testing: ["next_update", "rejected"],
+  next_update: ["rejected"],
+  rejected: ["approved"],
+};
+
 export const WORKSHOP_STATUSES = [
   "draft",
   "open",

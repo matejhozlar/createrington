@@ -138,11 +138,11 @@ describe("WorkshopService.reviewMod", () => {
     expect(approved.reviewedBy).toBe(ADMIN);
   });
 
-  it("removes the pack row and prunes orphaned dependencies when rejecting a previously approved mod", async () => {
+  it("removes the pack row and prunes orphaned dependencies when rejecting a promoted mod", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
-      status: "approved",
+      status: "next_update",
     });
     const packRow = await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
@@ -171,11 +171,28 @@ describe("WorkshopService.reviewMod", () => {
     expect(rejected.status).toBe("rejected");
   });
 
-  it("creates a linked modpack row on approve", async () => {
+  it("walks a suggestion through approved and testing to next_update, creating the pack row only at the end", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
 
-    await workshopService.reviewMod(mod.id, "approve", ADMIN);
+    const approved = await workshopService.reviewMod(mod.id, "approve", ADMIN);
+    expect(approved.status).toBe("approved");
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      }),
+    ).toBeNull();
+
+    const testing = await workshopService.reviewMod(
+      mod.id,
+      "start_testing",
+      ADMIN,
+    );
+    expect(testing.status).toBe("testing");
+
+    const promoted = await workshopService.reviewMod(mod.id, "approve", ADMIN);
+    expect(promoted.status).toBe("next_update");
 
     const row = await Q.modpack.mod.find({
       modpackId: workshop.modpackId,
@@ -187,9 +204,34 @@ describe("WorkshopService.reviewMod", () => {
     expect(row!.liveAt).toBeNull();
   });
 
-  it("claims an existing import row on approve, keeping its live state", async () => {
+  it("rejects skipping stages of the review pipeline", async () => {
     const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const pending = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const approved = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "approved",
+    });
+
+    await expect(
+      workshopService.reviewMod(pending.id, "start_testing", ADMIN),
+    ).rejects.toThrow(BadRequestError);
+    await expect(
+      workshopService.reviewMod(approved.id, "approve", ADMIN),
+    ).resolves.toMatchObject({ status: "approved" });
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: approved.curseforgeProjectId,
+      }),
+    ).toBeNull();
+  });
+
+  it("claims an existing import row on final approve, keeping its live state", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "testing",
+    });
     await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
       origin: "import",
@@ -315,7 +357,7 @@ describe("WorkshopService.createWorkshop", () => {
 describe("workshop deletion", () => {
   it("nulls the pack row's workshop_mod_id when the workshop is deleted", async () => {
     const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { status: "approved" });
+    const mod = await seedMod(ctx, workshop, { status: "next_update" });
     const packRow = await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
       origin: "suggestion",

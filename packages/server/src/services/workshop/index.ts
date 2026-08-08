@@ -14,7 +14,10 @@ import type {
   WorkshopModStatus,
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
-import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_STATUS_TRANSITIONS,
+  WORKSHOP_STATUS_TRANSITIONS,
+} from "@createrington/shared/workshop";
 import {
   CurseForgeClass,
   getMod,
@@ -144,9 +147,14 @@ export interface WorkshopProjectSearchResult {
   claimed: boolean;
 }
 
-export type WorkshopReviewAction = "approve" | "reject";
+export type WorkshopReviewAction = "approve" | "start_testing" | "reject";
 
-const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
+const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+];
 
 interface PreparedEntry {
   projectId: number;
@@ -493,7 +501,7 @@ export class WorkshopService {
   /**
    * Toggle the caller's upvote on a visible mod in an open workshop. Upvotes on
    * other players' pending mods draw from the per-workshop budget; a review
-   * refunds them. Upvotes on approved mods and on the caller's own suggestions
+   * refunds them. Upvotes on reviewed mods and on the caller's own suggestions
    * are free.
    */
   async toggleModUpvote(
@@ -738,8 +746,10 @@ export class WorkshopService {
   }
 
   /**
-   * Review a mod: approve it into the pack, or reject it for this workshop
-   * with a reason. Rejected rows persist and can be re-reviewed.
+   * Move a mod through the review pipeline: approve takes pending or rejected
+   * mods to approved and testing mods to next_update (which adds the pack
+   * row), start_testing takes approved mods to testing, and reject works from
+   * any stage with a reason. Rejected rows persist and can be re-reviewed.
    */
   async reviewMod(
     workshopModId: number,
@@ -752,13 +762,30 @@ export class WorkshopService {
     }
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
-    if (action === "approve" && mod.status === "approved") {
+    if (action === "approve" && mod.status === "next_update") {
       const workshop = await this.getWorkshop(mod.workshopId);
       const packRow = await this.ensurePackRow(workshop, mod);
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
       return mod;
+    }
+    if (action === "approve" && mod.status === "approved") return mod;
+    if (action === "start_testing" && mod.status === "testing") return mod;
+
+    const target: WorkshopModStatus =
+      action === "reject"
+        ? "rejected"
+        : action === "start_testing"
+          ? "testing"
+          : mod.status === "testing"
+            ? "next_update"
+            : "approved";
+    if (
+      action !== "reject" &&
+      !WORKSHOP_MOD_STATUS_TRANSITIONS[mod.status].includes(target)
+    ) {
+      throw new BadRequestError(`A ${mod.status} mod cannot move to ${target}`);
     }
 
     const workshop = await this.getWorkshop(mod.workshopId);
@@ -768,24 +795,24 @@ export class WorkshopService {
 
     const changed = await db.inTransaction(async (tx) => {
       const count = await tx.workshop.mod.updateAll(
-        action === "approve"
+        target === "rejected"
           ? {
-              status: "approved",
-              rejectReason: null,
-              rejectNote: null,
-              reviewedBy: adminId,
-              reviewedAt: new Date(),
-            }
-          : {
               status: "rejected",
               rejectReason: options.reason,
               rejectNote: options.note?.trim() || null,
               reviewedBy: adminId,
               reviewedAt: new Date(),
+            }
+          : {
+              status: target,
+              rejectReason: null,
+              rejectNote: null,
+              reviewedBy: adminId,
+              reviewedAt: new Date(),
             },
         { id: workshopModId, status: mod.status },
       );
-      if (count > 0 && action === "reject" && mod.status === "approved") {
+      if (count > 0 && target === "rejected" && mod.status === "next_update") {
         await tx.modpack.mod.deleteAll({
           modpackId: workshop.modpackId,
           workshopModId,
@@ -800,16 +827,13 @@ export class WorkshopService {
     }
     const updated = await Q.workshop.mod.get({ id: workshopModId });
 
-    void announceReview(
-      updated,
-      action === "approve" ? "approved" : "rejected",
-    );
-    if (action === "approve") {
+    void announceReview(updated, target);
+    if (target === "next_update") {
       const packRow = await this.ensurePackRow(workshop, updated);
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
-    } else if (mod.status === "approved") {
+    } else if (target === "rejected" && mod.status === "next_update") {
       await pruneOrphanedDependencies(workshop.modpackId);
       await pruneStaleDependencyEdges(workshop);
     }
@@ -817,7 +841,7 @@ export class WorkshopService {
   }
 
   /**
-   * Create the approved suggestion's modpack row, or claim an existing row
+   * Create the promoted suggestion's modpack row, or claim an existing row
    * for the same project (a manifest import that arrived first).
    */
   private async ensurePackRow(

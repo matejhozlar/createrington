@@ -1507,20 +1507,24 @@ INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, stat
 
 -- Workshop 1 reviewed suggestions. ids 9-12
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, reject_reason, reject_note, file_id, file_name, file_release_type, created_at) VALUES
-  (1, 398521, '123456789012345685', 'approved', 'Cooking and farming, huge for the community builds', '818819241666281503', NOW() - INTERVAL '12 days', NULL, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1, NOW() - INTERVAL '18 days'),
-  (1, 422301, '123456789012345686', 'approved', 'Best backpack mod by far', '547450242090532874', NOW() - INTERVAL '10 days', NULL, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1, NOW() - INTERVAL '16 days'),
+  (1, 398521, '123456789012345685', 'next_update', 'Cooking and farming, huge for the community builds', '818819241666281503', NOW() - INTERVAL '12 days', NULL, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1, NOW() - INTERVAL '18 days'),
+  (1, 422301, '123456789012345686', 'next_update', 'Best backpack mod by far', '547450242090532874', NOW() - INTERVAL '10 days', NULL, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1, NOW() - INTERVAL '16 days'),
   (1, 32274,  '123456789012345689', 'rejected', 'Best map mod there is', '818819241666281503', NOW() - INTERVAL '11 days', 'covered_by_other_mod', 'Jade plus the vanilla maps cover this already', NULL, NULL, NULL, NOW() - INTERVAL '15 days'),
   (1, 248787, '123456789012345683', 'rejected', 'Everyone always installs this', '818819241666281503', NOW() - INTERVAL '7 days', 'on_hold', 'Waiting for the 1.21.1 build to stabilize', NULL, NULL, NULL, NOW() - INTERVAL '13 days');
 
 -- Workshop 2 (closed QoL round): everything reviewed. ids 13-14
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, reject_reason, reject_note, file_id, file_name, file_release_type, created_at) VALUES
-  (2, 250398, '123456789012345678', 'approved', 'Searchable keybinds, zero downside', '818819241666281503', NOW() - INTERVAL '62 days', NULL, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1, NOW() - INTERVAL '70 days'),
+  (2, 250398, '123456789012345678', 'next_update', 'Searchable keybinds, zero downside', '818819241666281503', NOW() - INTERVAL '62 days', NULL, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1, NOW() - INTERVAL '70 days'),
   (2, 223852, '123456789012345679', 'rejected', 'Bulk storage for the shopping district', '547450242090532874', NOW() - INTERVAL '60 days', 'not_a_good_fit', 'Sophisticated Backpacks covers the storage needs this round', NULL, NULL, NULL, NOW() - INTERVAL '68 days');
 
 -- Workshop 4 (archived season 2): historical approvals. ids 15-16
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
-  (4, 245755, '123456789012345687', 'approved', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
-  (4, 228756, '123456789012345682', 'approved', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
+  (4, 245755, '123456789012345687', 'next_update', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
+  (4, 228756, '123456789012345682', 'next_update', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
+
+-- Workshop 1 mid-pipeline suggestion: approved and currently being tested. id 17
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
+  (1, 223852, '123456789012345682', 'testing', 'Drawers for the storage hall build', '818819241666281503', NOW() - INTERVAL '1 day', 5788676, 'storagedrawers-neoforge-1.21.1-13.9.1.jar', 1, NOW() - INTERVAL '5 days');
 
 -- Upvotes. Every player suggestion carries its submitter's own vote (added
 -- automatically on suggest); self-votes do not count against the budget.
@@ -1544,23 +1548,25 @@ INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
   -- 8 Steam 'n' Rails (Grian): late entry closing in
   (8, '123456789012345687'), (8, '123456789012345686'), (8, '123456789012345688'),
   (8, '123456789012345689'), (8, '123456789012345678'),
-  -- 9 Farmer's Delight (approved, free likes)
+  -- 9 Farmer's Delight (coming next update, free likes)
   (9, '123456789012345685'), (9, '123456789012345678'), (9, '123456789012345679'),
   (9, '123456789012345687'), (9, '123456789012345682'),
-  -- 10 Sophisticated Backpacks (approved)
+  -- 10 Sophisticated Backpacks (coming next update)
   (10, '123456789012345686'), (10, '123456789012345687'), (10, '123456789012345685'),
   -- 11 JourneyMap (rejected)
   (11, '123456789012345689'),
   -- 12 AppleSkin (rejected)
   (12, '123456789012345683'), (12, '123456789012345681'),
-  -- 13 Controlling (workshop 2, approved)
+  -- 13 Controlling (workshop 2, coming next update)
   (13, '123456789012345678'), (13, '123456789012345686'), (13, '123456789012345687'),
   -- 14 Storage Drawers (workshop 2, rejected)
   (14, '123456789012345679'), (14, '123456789012345681'),
-  -- 15 Waystones (workshop 4, approved)
+  -- 15 Waystones (workshop 4, shipped)
   (15, '123456789012345687'), (15, '123456789012345686'), (15, '123456789012345688'),
-  -- 16 Iron Chests (workshop 4, approved)
-  (16, '123456789012345682'), (16, '123456789012345678');
+  -- 16 Iron Chests (workshop 4, shipped)
+  (16, '123456789012345682'), (16, '123456789012345678'),
+  -- 17 Storage Drawers (in testing)
+  (17, '123456789012345682'), (17, '123456789012345685');
 
 -- Resolved dependency edges (relation_type: 3 = required, 2 = optional).
 -- AppleSkin as an optional dep is rejected in workshop 1, which lights up the
@@ -1571,7 +1577,7 @@ INSERT INTO workshop_project_dependency (workshop_id, curseforge_project_id, dep
   (1, 688231, 328085, 3),
   (1, 398521, 248787, 2);
 
--- Season 3 pack membership: an admin add, approved suggestions from both
+-- Season 3 pack membership: an admin add, promoted suggestions from both
 -- season 3 workshops, and an auto-promoted required dependency. Nothing is
 -- live because the pack has no published CurseForge project yet.
 INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type) VALUES

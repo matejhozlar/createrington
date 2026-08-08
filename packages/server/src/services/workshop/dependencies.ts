@@ -302,7 +302,7 @@ export async function pruneStaleDependencyEdges(
       Q.modpack.mod.findAll({ modpackId: workshop.modpackId }),
       Q.workshop.mod.findAll({
         workshopId: workshop.id,
-        status: { $in: ["pending", "approved"] },
+        status: { $ne: "rejected" },
       }),
     ]);
     const liveProjectIds = new Set([

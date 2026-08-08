@@ -245,10 +245,10 @@ function HeartOrBadge({
   onUpvote: (workshopModId: number) => void;
 }) {
   const { mod } = item;
-  if (mod.status === "approved") {
+  if (mod.status !== "pending" && mod.status !== "rejected") {
     const style = mod.live
       ? MOD_STATUS_STYLES.live
-      : MOD_STATUS_STYLES.approved;
+      : MOD_STATUS_STYLES[mod.status];
     return (
       <Badge
         variant="outline"
