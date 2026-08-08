@@ -75,7 +75,7 @@ const rawModSchema = z.object({
       id: z.number(),
       name: z.string(),
       url: z.string(),
-      avatarUrl: z.string().optional(),
+      avatarUrl: z.string().nullish(),
     }),
   ),
   categories: z.array(
@@ -210,7 +210,12 @@ export interface CurseForgeProjectData {
   summary: string;
   websiteUrl: string;
   thumbnailUrl: string | null;
-  authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
+  authors: Array<{
+    id: number;
+    name: string;
+    url: string;
+    avatarUrl?: string | null;
+  }>;
   categories: Array<{
     id: number;
     name: string;
