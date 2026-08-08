@@ -42,7 +42,6 @@ auditConfig:
 allowBuilds:
   "@infisical/cli": true
   "@parcel/watcher": true
-  canvas: true
   cpu-features: true
   esbuild: true
   protobufjs: true

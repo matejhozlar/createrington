@@ -9,8 +9,10 @@ import {
   type SKRSContext2D,
 } from "@napi-rs/canvas";
 import { AttachmentBuilder } from "discord.js";
+import type { KnownPose } from "createrington-skin-api";
 import config from "@/config";
 import { getSkinApiClient } from "@/services/skin-api";
+import { computeBBox, fitFontSize } from "@/utils/canvas";
 
 const W = 1600;
 const H = 900;
@@ -39,7 +41,7 @@ const POSES = [
   "callout",
   "dab",
   "victory",
-];
+] as const satisfies readonly KnownPose[];
 
 const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
 const FETCH_TIMEOUT_MS = 5000;
@@ -58,20 +60,24 @@ let fontsRegistered = false;
 function registerFonts(): void {
   if (fontsRegistered) return;
   for (const weight of [400, 500, 600, 700]) {
-    GlobalFonts.registerFromPath(
-      join(ASSETS_DIR, "fonts", `outfit-latin-${weight}.woff2`),
-      "Outfit",
-    );
+    const path = join(ASSETS_DIR, "fonts", `outfit-latin-${weight}.woff2`);
+    if (!GlobalFonts.registerFromPath(path, "Outfit")) {
+      logger.warn(`Failed to register welcome card font: ${path}`);
+    }
   }
   fontsRegistered = true;
 }
 
-let wordmarkPromise: Promise<Image> | null = null;
+let wordmarkPromise: Promise<Image | null> | null = null;
 
-function getWordmark(): Promise<Image> {
-  wordmarkPromise ??= readFile(
-    join(ASSETS_DIR, "createrington-wordmark.png"),
-  ).then(loadImage);
+function getWordmark(): Promise<Image | null> {
+  wordmarkPromise ??= readFile(join(ASSETS_DIR, "createrington-wordmark.png"))
+    .then(loadImage)
+    .catch((error: unknown) => {
+      wordmarkPromise = null;
+      logger.warn("Welcome card wordmark unavailable:", error);
+      return null;
+    });
   return wordmarkPromise;
 }
 
@@ -126,35 +132,6 @@ async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
     );
     return null;
   }
-}
-
-interface BBox {
-  minX: number;
-  minY: number;
-  width: number;
-  height: number;
-}
-
-function computeBBox(img: Image): BBox {
-  const probe = createCanvas(img.width, img.height);
-  const pctx = probe.getContext("2d");
-  pctx.drawImage(img, 0, 0);
-  const { data } = pctx.getImageData(0, 0, img.width, img.height);
-  let minX = img.width;
-  let minY = img.height;
-  let maxX = 0;
-  let maxY = 0;
-  for (let y = 0; y < img.height; y++) {
-    for (let x = 0; x < img.width; x++) {
-      if (data[(y * img.width + x) * 4 + 3] > 16) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-      }
-    }
-  }
-  return { minX, minY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
 function drawBackground(ctx: SKRSContext2D, bg: Image | null): void {
@@ -230,6 +207,7 @@ function drawContactShadow(ctx: SKRSContext2D, width: number): void {
 
 function drawFigure(ctx: SKRSContext2D, img: Image): void {
   const bbox = computeBBox(img);
+  if (!bbox) return;
   const scale = Math.min(
     FIGURE_HEIGHT / bbox.height,
     FIGURE_MAX_WIDTH / bbox.width,
@@ -269,34 +247,22 @@ function drawFigure(ctx: SKRSContext2D, img: Image): void {
   );
 }
 
-function fitFontSize(
-  ctx: SKRSContext2D,
-  text: string,
-  font: (size: number) => string,
-  sizes: readonly number[],
-  maxWidth: number,
-): number {
-  for (const size of sizes) {
-    ctx.font = font(size);
-    if (ctx.measureText(text).width <= maxWidth) return size;
-  }
-  return sizes[sizes.length - 1];
-}
-
 function drawText(
   ctx: SKRSContext2D,
-  wordmark: Image,
+  wordmark: Image | null,
   username: string,
   memberNumber: number,
 ): void {
-  const wmW = 430;
-  const wmH = (wordmark.height / wordmark.width) * wmW;
-  ctx.save();
-  ctx.shadowColor = "rgba(0,0,0,0.55)";
-  ctx.shadowBlur = 18;
-  ctx.shadowOffsetY = 6;
-  ctx.drawImage(wordmark, TEXT_X, 74, wmW, wmH);
-  ctx.restore();
+  if (wordmark) {
+    const wmW = 430;
+    const wmH = (wordmark.height / wordmark.width) * wmW;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.55)";
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    ctx.drawImage(wordmark, TEXT_X, 74, wmW, wmH);
+    ctx.restore();
+  }
 
   ctx.textBaseline = "alphabetic";
 

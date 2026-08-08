@@ -271,13 +271,6 @@ export async function runRegistration(params: {
       `User ${userTag} (${discordId}) registered as ${correctName} (${uuid})`,
     );
 
-    await postRegistrationWelcomeCard({
-      member,
-      discordId,
-      minecraftUuid: uuid,
-      minecraftUsername: correctName,
-    });
-
     if (channel) {
       scheduleChannelClose(
         channel,
@@ -285,6 +278,13 @@ export async function runRegistration(params: {
         `Registration completed - auto-closed after 24 hours (${userTag})`,
       );
     }
+
+    void postRegistrationWelcomeCard({
+      member,
+      discordId,
+      minecraftUuid: uuid,
+      minecraftUsername: correctName,
+    });
 
     return { ok: true };
   } catch (error) {

@@ -1,4 +1,4 @@
-import type { GuildMember, TextChannel } from "discord.js";
+import type { GuildMember } from "discord.js";
 import config from "@/config";
 import { Q } from "@/db";
 import { isSendableChannel } from "@/discord/utils/channel-guard";
@@ -7,14 +7,16 @@ import { generateRegistrationWelcomeCard } from "@/discord/utils/welcome-card";
 const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 
 /** Posts the welcome card to the public welcome channel after a successful
- * registration. Never throws: failures are logged so they cannot affect the
- * registration outcome. */
+ * registration. No-op in local dev (mirrors the prodOnly gate the card had as
+ * a guildMemberAdd handler). Never throws: failures are logged so they cannot
+ * affect the registration outcome. */
 export async function postRegistrationWelcomeCard(params: {
   member: GuildMember;
   discordId: string;
   minecraftUuid: string;
   minecraftUsername: string;
 }): Promise<void> {
+  if (config.envMode.isDev) return;
   if (!welcomeConfig.enabled || !welcomeConfig.channelId) return;
 
   try {
@@ -39,7 +41,7 @@ export async function postRegistrationWelcomeCard(params: {
       memberNumber,
     });
 
-    await (channel as TextChannel).send({
+    await channel.send({
       content: `<@${params.discordId}>`,
       files: [card],
     });
