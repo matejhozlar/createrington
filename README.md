@@ -1,628 +1,307 @@
-# Createrington Community Portal
+<div align="center">
 
-![Node.js](https://img.shields.io/badge/Node.js-22-green?logo=node.js&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?logo=postgresql&logoColor=white)
-![Discord](https://img.shields.io/badge/Discord-Integration-7289DA?logo=discord&logoColor=white)
-![Minecraft](https://img.shields.io/badge/Minecraft-1.21.1-5E7C16?logo=minecraft&logoColor=white)
-![tRPC](https://img.shields.io/badge/tRPC-v11-2596BE?logo=trpc&logoColor=white)
+<h1>
+  <img src="packages/client/public/assets/logo/logo.png" alt="Createrington" width="180">
+</h1>
 
-Welcome to **Createrington**, a full-stack community portal that unifies a Minecraft server, Discord community, and browser-based web client into one seamless experience. The project features real-time player tracking, a fully simulated **in-game cryptocurrency market**, a **waitlist and application system**, an extensive **admin dashboard**, and deep **Discord bot integration** — all built on a type-safe TypeScript monorepo with tRPC, Drizzle ORM, and React.
+<p><b>One portal for a modded Minecraft server, its Discord guild, and its players.</b></p>
 
-- **Live:** [createrington.com](https://createrington.com)
+<h2>
+  <a href="https://createrington.com">createrington.com</a>
+</h2>
 
-## Project Goals
+<p>
+  <a href="#quick-start">Quick start</a>
+  &nbsp;·&nbsp;
+  <a href="#what-it-does">Features</a>
+  &nbsp;·&nbsp;
+  <a href="CONTRIBUTING.md">Contributing</a>
+</p>
 
-Createrington was designed to unify fragmented community platforms into a single portal. Instead of separate tools for Minecraft management, Discord automation, and user onboarding, this project merges everything into one cohesive ecosystem — with a novel in-game crypto economy layered on top to drive player engagement, retention, and community fun.
+<img src="screenshots/homepage.webp" alt="Createrington homepage">
 
----
+</div>
 
-## Table of Contents
+Createrington is a community platform for a modded Minecraft server. One
+TypeScript monorepo ties the game servers, a Discord guild, and a web portal into
+a single system: players register once, and their playtime, balance, roles,
+achievements, and chat follow them across all three.
 
-- [Key Features](#key-features)
+## Contents
+
+- [What it does](#what-it-does)
 - [Screenshots](#screenshots)
-- [Architecture Overview](#architecture-overview)
-- [Tech Stack](#tech-stack)
-- [Installation & Setup](#installation--setup)
-- [Running the Project](#running-the-project)
-- [Scripts](#scripts)
-- [API Overview](#api-overview)
-- [WebSocket Events](#websocket-events)
-- [Services](#services)
-- [Crypto Market Module](#crypto-market-module)
-- [Admin Dashboard](#admin-dashboard)
-- [Discord Integration](#discord-integration)
-- [Contributing](#contributing)
-- [Related Projects](#related-projects)
-- [Disclaimer](#disclaimer)
+- [How it fits together](#how-it-fits-together)
+- [Tech stack](#tech-stack)
+- [Quick start](#quick-start)
+- [Documentation](#documentation)
+- [Related projects](#related-projects)
+- [Credits](#credits)
+- [License](#license)
 
----
+## What it does
 
-## Key Features
+### Identity and access
 
-Createrington is a **complete ecosystem** linking Minecraft gameplay to Discord and a browser client. Highlights include:
+Players sign in with Discord OAuth, then link a Minecraft account to unlock the
+rest of the portal. New players apply through a waitlist that admins review from
+the dashboard; approval triggers a Discord notification and an automatic
+whitelist sync to the game server. A cross-subdomain SSO flow lets sibling apps
+authenticate against the same session without storing tokens of their own.
 
-### Discord OAuth & Verified Registration
+### Live presence and chat
 
-Players log in via Discord OAuth. Account verification links a Discord identity to a Minecraft UUID, gating access to protected features like trading.
+Minecraft, Discord, and the web client share one chat stream and one player list.
+The game servers push presence over the mod API, the server fans it out over
+Socket.io, and Discord webhooks carry it the rest of the way. Session time is
+tracked per player and rolled up into hourly, daily, and lifetime totals that
+drive playtime-tier Discord roles, leaderboards, and a daily top-player role.
 
-### Real-Time Chat Bridge
+### Simulated crypto market
 
-Two-way chat sync between Minecraft, Discord, and the web client using Socket.io and Discord webhooks. Messages appear across all three platforms in real time.
+A fully in-game exchange with three token tiers: volatile memecoins, a €1-pegged
+stablecoin, and mean-reverting blue chips. It supports market, limit, stop-loss,
+and take-profit orders with partial fills and expiry; broadcasts price ticks over
+WebSocket; and serves OHLCV candles at 1m, 5m, 1h, and 1d for TradingView-style
+charts. Layered on top are watchlists, price alerts, portfolio snapshots, wealth
+and return leaderboards, scheduled market events (crashes, new listings, IPOs),
+and AI-written market news that publishes to both the site and Discord.
 
-### Playtime Tracking & Automatic Role Assignment
+### Community content
 
-The server tracks per-player session time and aggregates it into daily, hourly, and lifetime summaries. Discord roles are automatically assigned based on playtime tiers. A daily "Top Player" role rewards the most active player.
+The **workshop** lets players suggest and upvote mods for the next modpack
+season, with CurseForge metadata pulled in automatically and a per-player voting
+budget. **Structure packs** rotate through a weighted pool that players can see
+and influence. **Parties and chunk claims** sync land ownership between the game
+and the portal. **Donations** run through Stripe. Achievements, a lottery, and
+support tickets round out the player-facing surface.
 
-### In-Game Cryptocurrency Market
+### Admin dashboard
 
-A fully simulated exchange with three token tiers (memecoins, stablecoins, blue-chips), limit and stop-loss orders, real-time price ticks over WebSocket, OHLCV candlestick charts, price alerts, watchlists, portfolio snapshots, and AI-generated market news. See [Crypto Market Module](#crypto-market-module) for details.
+A full operations panel: player profiles with ban, strike, and balance controls
+backed by an audit log; waitlist review; token and market-event management; a
+WYSIWYG Discord embed builder with preset categories and linked messages;
+scheduled auto-messages; in-game announcements; a FAQ editor; inactivity and
+ghost-member cleanup; changelog and modpack tooling; feature flags; and growth,
+economy, and moderation analytics.
 
-### Waitlist & Application System
+### Image rendering
 
-Prospective players apply via the website. Admins review, approve, or decline applications from the admin dashboard. Approved players receive Discord notifications and are automatically whitelisted.
-
-### Interactive World Map
-
-BlueMap integration renders an interactive 3D Minecraft world map directly in the browser.
-
-### Comprehensive Admin Dashboard
-
-A dedicated admin panel covering player management, moderation, economy tools, Discord embed/message builders, server metrics, audit logs, and more. See [Admin Dashboard](#admin-dashboard) for details.
-
-### Support Ticket System
-
-Players can open support tickets from the web client. Tickets are managed by admins through the dashboard with full action history.
-
-### AI-Powered Market News
-
-OpenAI generates in-character market news articles for the crypto economy, published to the news feed and Discord.
-
----
+Discord slash commands like `/profile`, `/top`, `/activity`, and `/compare`
+return rendered cards. Puppeteer drives a headless page for layout and
+`@napi-rs/canvas` handles direct composition, both fed by public Minecraft skin
+APIs.
 
 ## Screenshots
 
-### Homepage
+<details>
+<summary><b>Web portal</b> (5 images)</summary>
 
-![Homepage](screenshots/homepage.webp)
+**Crypto market**
 
-### Crypto Market
+![Crypto market](screenshots/crypto-market.webp)
 
-![Crypto Market Overview](screenshots/crypto-market.webp)
+**Token price chart**
 
-### Token Price Chart
+![Token chart](screenshots/crypto-chart.webp)
 
-![Token Chart with Candlesticks](screenshots/crypto-chart.webp)
+**Portfolio**
 
-### Crypto Portfolio
+![Portfolio](screenshots/crypto-portfolio.webp)
 
-![Player Portfolio](screenshots/crypto-portfolio.webp)
+**Live player list**
 
-### Live Player List
+![Online players](screenshots/online-players.webp)
 
-![Online Players](screenshots/online-players.webp)
+**Chat bridge**
 
-### Web Chat
+![Web chat](screenshots/web-chat.webp)
 
-![In-Browser Chat Bridge](screenshots/web-chat.webp)
+</details>
 
-### Admin Dashboard
+<details>
+<summary><b>Admin dashboard</b> (3 images)</summary>
 
-![Admin Dashboard Overview](screenshots/admin-dashboard.webp)
+**Overview**
 
-### Admin Player Management
+![Dashboard overview](screenshots/admin-dashboard.webp)
 
-![Admin Player Management](screenshots/admin-players.webp)
+**Player management**
 
-### Admin Crypto Panel
+![Player management](screenshots/admin-players.webp)
 
-![Admin Crypto Token Management](screenshots/admin-crypto.webp)
+**Token management**
 
-### Player Profile Render
+![Token management](screenshots/admin-crypto.webp)
 
-![Player Profile Render](screenshots/render-profile.webp)
+</details>
 
-### Leaderboard Render
+<details>
+<summary><b>Discord render cards</b> (4 images)</summary>
 
-![Player Leaderboard Render](screenshots/render-top.webp)
+|                                               |                                              |
+| --------------------------------------------- | -------------------------------------------- |
+| ![/profile](screenshots/render-profile.webp)  | ![/top](screenshots/render-top.webp)         |
+| ![/activity](screenshots/render-activty.webp) | ![/compare](screenshots/render-compare.webp) |
 
-### Activity Render
+</details>
 
-![Player Activity Heatmap Render](screenshots/render-activty.webp)
-
-### Player Comparison Render
-
-![Player Comparison Render](screenshots/render-compare.webp)
-
----
-
-## Architecture Overview
-
-### Monorepo Structure
-
-Three pnpm workspaces under `packages/`:
+## How it fits together
 
 ```
-createrington/
-├── packages/
-│   ├── client/           # React 18 + Vite SPA (port 3000)
-│   ├── server/           # Express 5 + tRPC backend (port 5001)
-│   └── shared/           # Zod schemas + TypeScript types
-├── db/
-│   ├── docker-compose.yml
-│   └── data/test-data.sql
-└── scripts/              # Build helpers
+Minecraft servers ──┐
+   (NeoForge mods)  │  REST /api/currency, /api/presence, /api/chunks, ...
+                    ▼
+Discord guild ───► packages/server ◄─── packages/client
+  (2 bot users)     Express 5 + tRPC        React 19 + Vite
+                    Socket.io               tRPC + React Query
+                         │
+                         ▼
+                   PostgreSQL 15
+                    (Drizzle ORM)
 ```
 
-### Server
+### Repository layout
 
-- **Express 5** with TypeScript — configures middleware, WebSockets, REST routes, tRPC, and Discord bots.
-- **tRPC v11** — type-safe API layer mounted at `/trpc`, with three access levels: `publicProcedure`, `userProcedure`, `adminProcedure`.
-- **Drizzle ORM** — schema-first PostgreSQL access. All business logic lives in application code; no DB functions or triggers.
-- **Custom DI container** (`services/container.ts`) — services with async lifecycle are registered and resolved via `getService<T>(Services.KEY)`.
-- **Two Discord bot instances** — main bot (slash commands, events, leaderboards) and web bot (OAuth, role assignment).
-- **Socket.io** — real-time events for player status, crypto prices, market events, and in-game chat.
-- **Winston** — global structured logger with daily rotating log folders.
+| Path                 | What lives there                                             |
+| -------------------- | ------------------------------------------------------------ |
+| `packages/server`    | Express 5 + tRPC backend, Discord bots, DB layer (port 5001) |
+| `packages/client`    | React 19 + Vite single-page app (port 3000)                  |
+| `packages/shared`    | Zod schemas, socket contracts, generated DB types            |
+| `packages/api-types` | Published tRPC contracts for first-party consumer apps       |
+| `mod-api`            | Java records generated from the mod-facing API specs         |
+| `docker/db`          | PostgreSQL container, migrations, seed data                  |
+| `docker/mc`          | Local NeoForge 1.21.1 server for development                 |
+| `marketing`          | Remotion promo video (outside the pnpm workspace)            |
+| `screenshots`        | Product shots used by this README and the marketing video    |
 
-### Client
+### Backend
 
-- **React 18 + Vite** — SPA with Vite dev proxy routing `/api`, `/trpc`, and `/socket.io` to the backend.
-- **tRPC + React Query** — data fetching with full type safety from server to client.
-- **Tailwind CSS v4** — dark theme using OkLCH color space.
-- **Shadcn/ui** (new-york style) — component library built on Radix UI primitives.
-- **Socket.io-client** — WebSocket connection with manual reconnection and exponential backoff.
+Express 5 hosts a tRPC v11 API alongside a thin REST layer for webhooks, OAuth,
+uploads, and the Minecraft mods. tRPC procedures come in four auth levels
+(`public`, `user`, `admin`, `owner`), plus a `consumers` namespace that exposes
+per-consumer sub-routers to external first-party apps. Services are wired through
+a custom DI container with declared dependencies and parallel startup. Two
+Discord bot users split the work: a main bot for slash commands, events, and
+leaderboards, and a web bot for OAuth and background tasks.
 
-### Shared
+Data access goes through Drizzle-backed query classes with automatic
+camelCase/snake_case conversion. Raw SQL stays in the query layer, and all
+business logic lives in application code, so the database has no functions or
+triggers.
 
-- Zod schemas for input validation (shared between server and client).
-- TypeScript types for auth roles, socket events, and DB entities (auto-generated from schema).
+### Frontend
 
-### Type Sharing (tRPC)
+A React 19 SPA served by Vite, with tRPC + React Query for data, Socket.io for
+live updates, and `ky` for the REST endpoints. Styling is Tailwind CSS v4 on an
+OkLCH dark palette, with Shadcn/ui components over Radix primitives.
 
-The server exports its `AppRouter` type via the `@createrington/server/trpc` package export. The client imports it as a type-only import, giving end-to-end type safety with zero runtime overhead.
+### End-to-end types
+
+The server exports its router type, and the client imports it type-only. There is
+no generated client and no runtime cost, so an API change surfaces as a
+compile error on the other side.
 
 ```typescript
-// client
 import type { AppRouter } from "@createrington/server/trpc";
 ```
 
----
+## Tech stack
 
-## Tech Stack
+| Layer     | Technology                                                |
+| --------- | --------------------------------------------------------- |
+| Runtime   | Node.js 22, pnpm workspaces, TypeScript 5                 |
+| Backend   | Express 5, tRPC v11                                       |
+| Frontend  | React 19, Vite 7, Tailwind CSS v4, Shadcn/ui, Radix UI    |
+| Database  | PostgreSQL 15, Drizzle ORM                                |
+| Real-time | Socket.io                                                 |
+| Auth      | Discord OAuth, JWT access token + httpOnly refresh cookie |
+| Discord   | Discord.js v14 (two bot instances)                        |
+| Minecraft | RCON, SFTP, NeoForge 1.21.1 mod API                       |
+| Charts    | lightweight-charts, Recharts                              |
+| Payments  | Stripe                                                    |
+| Email     | Resend                                                    |
+| AI        | OpenAI (market news, admin tooling)                       |
+| Rendering | puppeteer-core, @napi-rs/canvas, skinview3d               |
+| Maps      | BlueMap                                                   |
+| Testing   | Vitest                                                    |
 
-<p align="center">
-  <img src="https://skillicons.dev/icons?i=nodejs,ts,react,postgres,express,discord,docker,vite,tailwind" />
-</p>
+## Quick start
 
-| Layer     | Technology                                                     |
-| --------- | -------------------------------------------------------------- |
-| Frontend  | React 18, Vite, Tailwind CSS v4, Shadcn/ui, Radix UI           |
-| Backend   | Node.js 22, Express 5, TypeScript                              |
-| API       | tRPC v11, REST (Express routes)                                |
-| Database  | PostgreSQL 15 (Docker), Drizzle ORM, drizzle-kit               |
-| Real-time | Socket.io (server + client)                                    |
-| Auth      | Discord OAuth, JWT (access token) + HTTP-only cookie (refresh) |
-| Discord   | Discord.js v14 (two bot instances)                             |
-| Charts    | Recharts, lightweight-charts (TradingView-style)               |
-| AI        | OpenAI API (market news generation)                            |
-| Email     | Nodemailer (SMTP)                                              |
-| Rendering | Puppeteer + Canvas (image generation)                          |
-| Maps      | BlueMap (Minecraft world map)                                  |
-| Monorepo  | pnpm workspaces                                                |
-| Testing   | Vitest (unit + integration)                                    |
-
----
-
-## Installation & Setup
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) v22+
-- [pnpm](https://pnpm.io/) v9+
-- [Docker](https://www.docker.com/) (for PostgreSQL)
-- Discord application with a bot token and OAuth2 credentials
-- Minecraft server with RCON enabled
-
-### Cloning & Installing
+Requires Node.js 22+, pnpm, and Docker.
 
 ```bash
 git clone https://gitea.matejhoz.com/Createrington/app.git createrington
 cd createrington
 pnpm install
+cp .env.example .env      # then fill in section 1
+pnpm db:up                # PostgreSQL on port 5433
+pnpm db:migrate
+pnpm db:seed
+pnpm generate             # DB types + query classes
+pnpm dev                  # server :5001, client :3000, type watcher
 ```
 
-### Environment Variables
+`.env.example` is the authoritative reference for configuration. Filling in
+section 1 is enough to boot locally; sections 2 and 3 cover production-only
+values and optional integrations, each of which self-disables when unset.
 
-Copy `.env.example` to `.env` in `packages/server/` and fill in the required values:
+To exercise the Discord side, snapshot the guild's roles, channels, and
+categories, then register the slash commands:
 
 ```bash
-cp packages/server/.env.example packages/server/.env
+pnpm scrape-discord       # writes discord-entities.json
+pnpm deploy-commands
 ```
 
-Key variables:
+The server still boots without that snapshot, but Discord-dependent features
+will not resolve their targets.
 
-| Variable                | Description                                                                             |
-| ----------------------- | --------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | PostgreSQL connection string (e.g. `postgres://user:pass@localhost:5433/createrington`) |
-| `JWT_SECRET`            | Secret for signing access tokens                                                        |
-| `JWT_REFRESH_SECRET`    | Secret for signing refresh tokens                                                       |
-| `DISCORD_MAIN_TOKEN`    | Main bot token                                                                          |
-| `DISCORD_WEB_TOKEN`     | Web/OAuth bot token                                                                     |
-| `DISCORD_CLIENT_ID`     | Discord application client ID                                                           |
-| `DISCORD_CLIENT_SECRET` | Discord application client secret                                                       |
-| `DISCORD_GUILD_ID`      | Your Discord server (guild) ID                                                          |
-| `OPENAI_API_KEY`        | OpenAI API key (for market news)                                                        |
-| `RCON_HOST`             | Minecraft server RCON host                                                              |
-| `RCON_PORT`             | Minecraft server RCON port                                                              |
-| `RCON_PASSWORD`         | Minecraft server RCON password                                                          |
-| `SMTP_HOST`             | SMTP server host                                                                        |
-| `SMTP_USER`             | SMTP username                                                                           |
-| `SMTP_PASS`             | SMTP password                                                                           |
-| `WEBSITE_URL`           | Public website URL (e.g. `https://createrington.com`)                                  |
-
-### Database Setup
-
-Start the PostgreSQL Docker container, apply Drizzle migrations, and seed test data:
+A local NeoForge server is available for anything that needs a real game server:
 
 ```bash
-pnpm db:up       # Start PostgreSQL container on port 5433
-pnpm db:migrate  # Apply Drizzle migrations to create all tables
-pnpm db:seed     # Load test data
+pnpm mc:up                # start the server and attach to its console
 ```
 
-Or reset everything in one command:
-
-```bash
-pnpm db:reset    # Wipe DB, run migrations, seed test data
-```
-
-### Discord Setup
-
-Scrape your Discord server's roles and channels into the local config, then deploy slash commands:
-
-```bash
-pnpm scrape-discord    # Sync Discord roles/channels to discord-entities.json
-pnpm deploy-commands   # Register slash commands with Discord
-```
-
-### Code Generation
-
-After any schema changes, regenerate TypeScript types and query classes:
-
-```bash
-pnpm generate
-```
-
----
-
-## Running the Project
-
-### Development
-
-Run the full development stack (server, client, and type watcher) in one command:
-
-```bash
-pnpm dev
-```
-
-Or start individual processes:
-
-```bash
-pnpm dev:server   # Express + tRPC on port 5001 (tsx watch)
-pnpm dev:client   # Vite on port 3000 (with proxy to :5001)
-pnpm dev:types    # Watch mode tRPC type declarations
-```
-
-### Production
-
-```bash
-pnpm build        # Full pipeline: generate → shared → server → client → dist
-pnpm start        # Run production build (node dist/server/src/server.js)
-```
-
-The build pipeline runs: `tsc` → `tsc-alias` (resolve path aliases) → `post-build.ts` (add `.js` extensions for ESM) → `copyfiles` (copy static assets) → Vite build for the client.
-
----
-
-## Scripts
-
-### Root
-
-| Script                  | Description                                         |
-| ----------------------- | --------------------------------------------------- |
-| `pnpm dev`              | Start all dev processes concurrently                |
-| `pnpm build`            | Full production build pipeline                      |
-| `pnpm start`            | Run the production server                           |
-| `pnpm typecheck`        | Type-check all workspaces                           |
-| `pnpm lint`             | Lint all workspaces                                 |
-| `pnpm generate`         | Regenerate DB types + query classes, then typecheck |
-| `pnpm generate:ci`      | Same as `generate` but skips typecheck              |
-| `pnpm test`             | Run server tests in watch mode                      |
-| `pnpm test:unit`        | Unit tests only                                     |
-| `pnpm test:integration` | Integration tests only                              |
-
-### Database
-
-| Script             | Description                                        |
-| ------------------ | -------------------------------------------------- |
-| `pnpm db:up`       | Start PostgreSQL Docker container (port 5433)      |
-| `pnpm db:down`     | Stop the container                                 |
-| `pnpm db:reset`    | Wipe DB, run migrations, seed test data            |
-| `pnpm db:seed`     | Load test data only                                |
-| `pnpm db:shell`    | Open a `psql` shell inside the container           |
-| `pnpm db:generate` | Generate Drizzle migration SQL from schema changes |
-| `pnpm db:migrate`  | Apply pending migrations to the running database   |
-| `pnpm db:destroy`  | Remove container, images, and volumes              |
-| `pnpm db:logs`     | Tail PostgreSQL container logs                     |
-| `pnpm pgadmin`     | Start pgAdmin container                            |
-
-### Discord
-
-| Script                 | Description                                                      |
-| ---------------------- | ---------------------------------------------------------------- |
-| `pnpm scrape-discord`  | Regenerate `discord-entities.json` (roles, channels, categories) |
-| `pnpm deploy-commands` | Deploy Discord slash commands to the configured guild            |
-
----
-
-## API Overview
-
-The API surface is split between **tRPC procedures** (primary, type-safe) and a thin layer of **Express REST routes** (webhooks, OAuth redirect, file uploads).
-
-### tRPC Routers
-
-#### Public (no auth required)
-
-| Namespace   | Procedures                                                                                  | Description                        |
-| ----------- | ------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `servers`   | `list`, `get`                                                                               | Server status, player counts       |
-| `players`   | `list`, `get`, `getByServer`                                                                | Player stats, online status, ranks |
-| `waitlists` | `apply`                                                                                     | Submit a join application          |
-| `metrics`   | `summary`, `activity`                                                                       | Public community metrics           |
-| `crypto`    | `listTokens`, `getToken`, `getPriceHistory`, `getMarketEvents`, `getNews`, `getLeaderboard` | Market data, charts, news          |
-
-#### User (requires verified account)
-
-| Namespace      | Procedures                                                                                                                                                                                              | Description                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `account`      | `get`, `update`, `getPlaytime`, `getStats`                                                                                                                                                              | Profile, settings, playtime        |
-| `achievements` | `list`, `get`                                                                                                                                                                                           | Achievement progress               |
-| `crypto`       | `getPortfolio`, `getHoldings`, `trade`, `placeOrder`, `cancelOrder`, `getOrders`, `getTransactions`, `getAlerts`, `createAlert`, `deleteAlert`, `getWatchlist`, `addToWatchlist`, `removeFromWatchlist` | Trading, orders, portfolio, alerts |
-
-#### Admin (requires admin flag)
-
-| Namespace         | Procedures                                                                                 | Description                     |
-| ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------- |
-| `dashboard`       | `getMetrics`, `getCharts`                                                                  | KPIs, activity summaries        |
-| `players`         | `list`, `get`, `ban`, `unban`, `adjustBalance`, `issueStrike`, `getAuditLog`               | Full player management          |
-| `servers`         | `list`, `get`                                                                              | Server details                  |
-| `waitlist`        | `list`, `approve`, `decline`                                                               | Application review              |
-| `crypto`          | `listTokens`, `createToken`, `updateToken`, `deleteToken`, `overridePrice`, `triggerEvent` | Token management                |
-| `embeds`          | `list`, `get`, `create`, `update`, `delete`                                                | Discord embed presets           |
-| `autoMessages`    | `list`, `create`, `update`, `delete`                                                       | Scheduled Discord messages      |
-| `announcements`   | `send`                                                                                     | In-game broadcast announcements |
-| `faq`             | `list`, `create`, `update`, `delete`                                                       | Knowledge base editor           |
-| `logs`            | `list`                                                                                     | Admin action audit trail        |
-| `discordCommands` | `list`                                                                                     | Slash command introspection     |
-| `metrics`         | `growth`, `economy`, `moderation`                                                          | Advanced analytics              |
-
-### REST Endpoints
-
-| Method | Endpoint                 | Description                                 |
-| ------ | ------------------------ | ------------------------------------------- |
-| GET    | `/auth/discord`          | Initiate Discord OAuth flow                 |
-| GET    | `/auth/discord/callback` | OAuth callback, issues JWT                  |
-| POST   | `/auth/refresh`          | Refresh access token                        |
-| GET    | `/api/players`           | Live player list (used by Minecraft plugin) |
-| POST   | `/api/verify`            | Minecraft login token verification          |
-
----
-
-## WebSocket Events
-
-The server uses Socket.io with a subscription model. Clients subscribe to specific data streams.
-
-### Subscription Types
-
-| Type            | Description                              |
-| --------------- | ---------------------------------------- |
-| `SERVER_STATUS` | Server health and player counts          |
-| `PLAYERS`       | Player online/offline status changes     |
-| `MESSAGES`      | In-game chat relay                       |
-| `CRYPTO_MARKET` | Price ticks, orders, market events, news |
-| `ALL`           | All streams                              |
-
-### Events
-
-| Event                  | Direction       | Description                           |
-| ---------------------- | --------------- | ------------------------------------- |
-| `SUBSCRIBE`            | Client → Server | Subscribe to a data stream            |
-| `UNSUBSCRIBE`          | Client → Server | Unsubscribe from a stream             |
-| `REQUEST_INITIAL_DATA` | Client → Server | Request bulk current state            |
-| `INITIAL_DATA`         | Server → Client | Bulk state response                   |
-| `UPDATE_SERVER_STATUS` | Server → Client | Server player count / health update   |
-| `UPDATE_PLAYERS`       | Server → Client | Player list update                    |
-| `UPDATE_MESSAGE`       | Server → Client | New in-game/Discord chat message      |
-| `UPDATE_CRYPTO_PRICES` | Server → Client | Price tick for all tokens             |
-| `UPDATE_CRYPTO_ORDER`  | Server → Client | Personal order fill or cancellation   |
-| `CRYPTO_MARKET_EVENT`  | Server → Client | Major event (crash, IPO, new listing) |
-| `CRYPTO_NEWS`          | Server → Client | New AI-generated news article         |
-
----
-
-## Services
-
-Key services registered in the DI container (`packages/server/src/services/container.ts`):
-
-| Service Key                | Description                                        |
-| -------------------------- | -------------------------------------------------- |
-| `DATABASE`                 | Drizzle ORM connection pool                        |
-| `HTTP_SERVER`              | Express application instance                       |
-| `DISCORD_MAIN_BOT`         | Main Discord bot (commands, events, leaderboards)  |
-| `DISCORD_WEB_BOT`          | Web Discord bot (OAuth, role assignments)          |
-| `WEBSOCKET_SERVICE`        | Socket.io server + subscription room manager       |
-| `MESSAGE_CACHE`            | Discord message cache for webhook deduplication    |
-| `PLAYTIME_MANAGER_SERVICE` | Session tracking and online status synchronization |
-| `TICKET_SERVICE`           | Support ticket lifecycle management                |
-| `LEADERBOARD_SERVICE`      | Playtime and economy leaderboard aggregation       |
-| `PLAYER_BAN_SERVICE`       | Temporary and permanent ban management             |
-| `CRYPTO_MARKET_SERVICE`    | Price ticks, order matching, market events, IPOs   |
-
-Services with async lifecycle (Discord bots, WebSocket, etc.) are accessed via `getService<T>(Services.KEY)`. Stateless singletons are imported directly.
-
----
-
-## Crypto Market Module
-
-The in-game economy is a fully simulated exchange with realistic market dynamics.
-
-### Token Tiers
-
-| Tier            | Description                                                 |
-| --------------- | ----------------------------------------------------------- |
-| **Memecoins**   | Highly volatile; periodically spawned and can crash to zero |
-| **Stablecoins** | Pegged to €1, used as a base currency for the economy       |
-| **Blue-chips**  | Mean-reverting, less volatile, behave like blue-chip stocks |
-
-### Trading Features
-
-- **Market orders** — Immediate execution at current price
-- **Limit orders** — Execute at a specified price or better
-- **Stop-loss orders** — Auto-sell when price drops to a threshold
-- **Take-profit orders** — Auto-sell when price reaches a target
-- **Partial fills** — Large orders can be partially matched
-- **Order expiry** — Stale orders are cancelled on a 5-minute cycle
-
-### Market Data
-
-- Real-time price ticks broadcast over WebSocket
-- OHLCV candlestick history at 1m, 5m, 1h, and 1d aggregations (TradingView-style charts)
-- 24h price change % and volume tracking per token
-- Price alerts with WebSocket notifications
-- Watchlist management per user
-
-### Portfolio Tools
-
-- Daily and weekly portfolio value snapshots
-- Transaction history with full buy/sell audit trail
-- Wealth and return % leaderboards
-
-### Market Events
-
-Random and scheduled events keep the market dynamic:
-
-- **Crash events** — Sudden price collapses (removes tokens below a threshold)
-- **New listings** — Fresh memecoins spawned with an initial price
-- **IPOs** — Structured initial public offerings with a lock period and price discovery
-- **Seasonal events** — Holiday or in-game seasonal modifiers
-
-### AI News
-
-OpenAI generates in-character market news articles that are published to the web news feed and broadcast to a Discord channel, adding narrative depth to the economy.
-
----
-
-## Admin Dashboard
-
-The admin panel (accessible at `/admin`) provides complete control over the community.
-
-### Player Management
-
-- View full player profiles (Discord, Minecraft UUID, playtime, balance, bans, strikes)
-- Issue temporary or permanent bans with a reason
-- Apply strikes categorized by type (PvP, theft, griefing, harassment, etc.)
-- Adjust player balances manually with logged audit entries
-- View admin action audit logs per player
-
-### Moderation
-
-- Ban and strike history with searchable, filterable tables
-- Full audit trail: who took the action, when, what changed, and why
-
-### Economy Tools
-
-- View and manage all crypto tokens (create, update, delete, override price)
-- Trigger market events manually (crash, new listing, IPO)
-
-### Discord Tools
-
-- **Embed Builder** — WYSIWYG editor for Discord embed presets
-- **Auto-Messages** — Schedule recurring or random messages to Discord channels
-- **Announcements** — Broadcast messages to the Minecraft server in-game
-- **Command Docs** — Introspect and browse registered slash commands
-
-### Content Management
-
-- **FAQ Editor** — Create and edit the public knowledge base
-- **Waitlist** — Review, approve, or decline player applications
-
-### Analytics
-
-- Growth metrics (new players, active players, retention)
-- Economy health (trading volume, market cap, balance distribution)
-- Moderation stats (bans, strikes, ticket volume)
-- Server metrics (player load per server, playtime distribution)
-
----
-
-## Discord Integration
-
-Two bot instances serve different roles:
-
-### Main Bot
-
-- Handles slash commands (`/ban`, `/unban`, `/balance`, `/give`, etc.)
-- Posts to Discord from web events (announcements, news, embeds)
-- Manages automatic role assignments (playtime tiers, top player, supporter)
-- Relays in-game Minecraft chat to a Discord channel
-- Posts leaderboard embeds on a schedule
-
-### Web Bot
-
-- Handles Discord OAuth flow for web login
-- Assigns roles after successful account verification
-
-### Slash Commands
-
-Slash commands are defined in `packages/server/src/discord/commands/` and deployed via `pnpm deploy-commands`.
-
----
-
-## Contributing
-
-- Format: Prettier (spaces, double quotes, semicolons, trailing commas)
-- Commit format: `type(scope): description` — e.g. `feat(server): add player ban endpoint`
-- Allowed types: `feat`, `fix`, `chore`, `refactor`
-- Scopes: `server`, `client`, `shared` (or omit if change spans multiple packages)
-- Tests: Vitest (`pnpm test:unit`, `pnpm test:integration`)
-- PR base: always target `dev`
-- Never push directly to `dev` or `main`
-
----
-
-## Related Projects
-
-- [**Createrington Currency**](https://github.com/matejhozlar/createrington-currency) — Minecraft mod providing in-game currency integration with this platform
-- [**Createrington: Cogs & Steam**](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam) — The official Minecraft modpack
-- [**mc-server**](https://github.com/matejhozlar/mc-page) — The original predecessor to this project; a single-package Node.js + React implementation of the Createrington portal before the rewrite into this TypeScript monorepo
-
----
+See [`docker/mc/README.md`](docker/mc/README.md) for details.
+
+## Documentation
+
+| Document                                                     | Covers                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------- |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                           | Setup, conventions, database workflow, commits, PRs, CI |
+| [.env.example](.env.example)                                 | Every environment variable, annotated                   |
+| [mod-api/README.md](mod-api/README.md)                       | The Java API library and its release flow               |
+| [docker/mc/README.md](docker/mc/README.md)                   | Local Minecraft server                                  |
+| [marketing/README.md](marketing/README.md)                   | Remotion promo video                                    |
+| [packages/api-types/README.md](packages/api-types/README.md) | Consuming the tRPC contracts from another app           |
+
+## Related projects
+
+- [**Createrington Currency**](https://github.com/matejhozlar/createrington-currency)
+  is the Minecraft mod that exposes in-game currency to this platform.
+- [**Cogs & Steam**](https://www.curseforge.com/minecraft/modpacks/createrington-cogs-steam)
+  is the official modpack.
+- [**mc-page**](https://github.com/matejhozlar/mc-page) is the predecessor: a
+  single-package Node.js and React portal, rewritten into this monorepo.
 
 ## Credits
 
-Player skins shown on the Discord render cards (`/profile`, `/top`, `/activity`, `/compare`) and throughout the web portal are generated by free public Minecraft skin APIs:
+Player skins on the render cards and throughout the portal come from free public
+Minecraft skin APIs:
 
-- **[Starlight Skin API](https://docs.lunareclipse.studio/)** by Lunar Eclipse Studios — the full-body 3D poses on the render cards.
-- **[MCHeads](https://mc-heads.net/)** — avatar thumbnails in Discord embeds and the fallback body renderer when Starlight is unavailable.
-- **[Crafatar](https://crafatar.com/)** — server-side skin download fallback.
+- [Starlight Skin API](https://docs.lunareclipse.studio/) by Lunar Eclipse
+  Studios, for the full-body 3D poses.
+- [MCHeads](https://mc-heads.net/), for avatar thumbnails and as the fallback
+  body renderer.
+- [Crafatar](https://crafatar.com/), for server-side skin downloads.
 
-Thanks to each of these services for keeping their APIs open for the Minecraft community.
+Thanks to each of them for keeping their APIs open to the community.
 
----
+## License
 
-## Disclaimer
+Proprietary. All rights reserved by Matej Hozlar; see [LICENSE](LICENSE).
 
-Not affiliated with Mojang, Microsoft, or Discord.
-
-> The in-game cryptocurrency market is a simulated economy for entertainment purposes only and has no real-world monetary value.
+Not affiliated with Mojang, Microsoft, or Discord. The in-game cryptocurrency
+market is a simulated economy for entertainment only and has no real-world
+monetary value.
