@@ -1,10 +1,8 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc } from "@/trpc/utils";
+import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { modpackService } from "@/services/modpack";
-
-const id = () => z.number().int().positive().max(2147483647);
 
 export const adminModpacksRouter = router({
   list: adminProcedure

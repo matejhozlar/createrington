@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, adminProcedure } from "@/trpc/trpc";
 import { Q } from "@/db";
-import { auditActor, rethrowTrpc } from "@/trpc/utils";
+import { auditActor, rethrowTrpc, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { modpackService } from "@/services/modpack";
@@ -10,8 +10,6 @@ import {
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
-
-const id = () => z.number().int().positive().max(2147483647);
 
 const searchLimit = createRateLimit({
   name: "admin.workshops.searchProjects",

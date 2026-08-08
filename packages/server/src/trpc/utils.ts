@@ -9,6 +9,9 @@ import { Q } from "@/db";
 
 type TrpcCode = ConstructorParameters<typeof TRPCError>[0]["code"];
 
+/** Positive int4-bounded ID input, shared by routers that take row IDs. */
+export const id = () => z.number().int().positive().max(2147483647);
+
 /** Shorthand factories for common TRPCError codes. */
 export const trpcError = {
   badRequest: (message: string) =>

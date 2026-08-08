@@ -1,11 +1,9 @@
 import { z } from "zod";
 import { router, userProcedure, middleware } from "@/trpc/trpc";
-import { trpcError, rethrowTrpc } from "@/trpc/utils";
+import { trpcError, rethrowTrpc, id } from "@/trpc/utils";
 import { createRateLimit } from "@/trpc/middleware/rate-limit";
 import { workshopService } from "@/services/workshop";
 import { featureFlagService, FeatureFlags } from "@/services/feature-flag";
-
-const id = () => z.number().int().positive().max(2147483647);
 
 const requireWorkshopEnabled = middleware(async ({ next }) => {
   if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) {
@@ -23,10 +21,33 @@ const searchLimit = createRateLimit({
   key: (ctx) => ctx.user?.discordId ?? "anonymous",
 });
 
-function redactMod<T extends { reviewedBy: string | null }>(
-  mod: T,
-): Omit<T, "reviewedBy"> {
-  const { reviewedBy: _reviewedBy, ...rest } = mod;
+const suggestLimit = createRateLimit({
+  name: "user.workshops.suggestMod",
+  limit: 10,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.user?.discordId ?? "anonymous",
+});
+
+const upvoteLimit = createRateLimit({
+  name: "user.workshops.upvoteMod",
+  limit: 30,
+  windowMs: 60 * 1000,
+  key: (ctx) => ctx.user?.discordId ?? "anonymous",
+});
+
+function redactMod<
+  T extends {
+    reviewedBy: string | null;
+    reviewedAt: Date | null;
+    discordThreadId: string | null;
+  },
+>(mod: T): Omit<T, "reviewedBy" | "reviewedAt" | "discordThreadId"> {
+  const {
+    reviewedBy: _reviewedBy,
+    reviewedAt: _reviewedAt,
+    discordThreadId: _discordThreadId,
+    ...rest
+  } = mod;
   return rest;
 }
 
@@ -151,6 +172,7 @@ export const userWorkshopsRouter = router({
     }),
 
   upvoteMod: workshopProcedure
+    .use(upvoteLimit)
     .meta({ description: "Toggle your upvote on a mod" })
     .input(z.object({ workshopModId: id() }))
     .mutation(async ({ ctx, input }) => {
@@ -165,6 +187,7 @@ export const userWorkshopsRouter = router({
     }),
 
   suggestMod: workshopProcedure
+    .use(suggestLimit)
     .meta({ description: "Suggest a mod, using one of your slots" })
     .input(
       z.object({
