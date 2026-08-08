@@ -204,13 +204,15 @@ const config = {
         welcome: {
           channelId: discordEntities.channels.createringtonOfficial?.welcome,
           enabled: true,
-          imageConfig: {
-            backgroundColor: "#2C2F33",
-            accentColor: "#7289DA",
-            textColor: "#FFFFFF",
-            secondaryTextColor: "#99AA5B",
-            backgroundImageURL: "https://assets.createrington.com/welcome.jpg",
-          },
+          backgroundImageUrls: [
+            "https://assets.createrington.com/welcome/dark-warehouse.jpg",
+            "https://assets.createrington.com/welcome/gondola-station.jpg",
+            "https://assets.createrington.com/welcome/high-speed-train.jpg",
+            "https://assets.createrington.com/welcome/mountains-train-station.jpg",
+            "https://assets.createrington.com/welcome/royal-albert-hall.jpg",
+            "https://assets.createrington.com/welcome/space-ship-station.jpg",
+            "https://assets.createrington.com/welcome/space-station.jpg",
+          ],
         },
         autoRole: {
           roleId: discordEntities.roles.unverified,

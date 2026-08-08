@@ -20,7 +20,7 @@
     "dev": "infisical run --env=dev -- node scripts/dev-watch.mjs",
     "dev:types": "tsc --emitDeclarationOnly --watch & tsc-alias --watch",
     "build": "tsc && tsc-alias && pnpm post-build && pnpm build:copy-assets",
-    "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" dist/server/src",
+    "build:copy-assets": "copyfiles -u 1 \"src/**/*.html\" \"src/**/*.png\" \"src/**/*.jpg\" \"src/**/*.svg\" \"src/**/*.json\" \"src/**/*.woff2\" dist/server/src",
     "post-build": "tsx src/scripts/tools/post-build.ts",
     "start": "node dist/server/src/server.js",
     "build:types": "tsc --declaration --emitDeclarationOnly && tsc-alias",
@@ -60,7 +60,6 @@
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
-    "@napi-rs/canvas": "^0.1.100",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -89,9 +88,9 @@
   "dependencies": {
     "@createrington/logger": "^0.2.0",
     "@createrington/shared": "workspace:*",
+    "@napi-rs/canvas": "^0.1.100",
     "@trpc/server": "^11.1.0",
     "axios": "^1.15.2",
-    "canvas": "^3.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "createrington-skin-api": "^2.7.0",

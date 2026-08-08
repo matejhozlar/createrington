@@ -1,289 +1,375 @@
-import { AttachmentBuilder, GuildMember } from "discord.js";
-import { type CanvasRenderingContext2D, createCanvas, loadImage } from "canvas";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  createCanvas,
+  GlobalFonts,
+  loadImage,
+  type Image,
+  type SKRSContext2D,
+} from "@napi-rs/canvas";
+import { AttachmentBuilder } from "discord.js";
+import config from "@/config";
+import { getSkinApiClient } from "@/services/skin-api";
 
-/** Configuration for welcome card colors */
-interface WelcomeCardConfig {
-  backgroundColor: string;
-  accentColor: string;
-  textColor: string;
-  secondaryTextColor: string;
-}
+const W = 1600;
+const H = 900;
+const SUPERSAMPLE = 2;
 
-const DEFAULT_CONFIG: WelcomeCardConfig = {
-  backgroundColor: "#2C2F33",
-  accentColor: "#7289DA",
-  textColor: "#FFFFFF",
-  secondaryTextColor: "#99AAB5",
-};
+const AMBER = "#ffb900";
+const FOREGROUND = "#fafafb";
+const BG_TOP = "#17171d";
+const BG_BOT = "#0b0b0e";
 
-/**
- * Generates a welcome card image with the member's avatar, username, and member number
- *
- * @param member - The guild member who joined
- * @param memberCount - The server's current member count
- * @param config - Optional color overrides
- * @returns Discord attachment containing the generated PNG image
- */
-export async function generateWelcomeCard(
-  member: GuildMember,
-  memberCount: number,
-  config: Partial<WelcomeCardConfig> = {},
-): Promise<AttachmentBuilder> {
-  const finalConfig = { ...DEFAULT_CONFIG, ...config };
-  const width = 1600;
-  const height = 900;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
+const TEXT_X = 110;
+const MAX_TEXT_WIDTH = 800;
+const KICKER_BASELINE_Y = 452;
 
-  const gradient = ctx.createLinearGradient(0, 0, width, height);
-  gradient.addColorStop(0, finalConfig.backgroundColor);
-  gradient.addColorStop(1, adjustBrightness(finalConfig.backgroundColor, -20));
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
+const FIGURE_HEIGHT = 620;
+const FIGURE_MAX_WIDTH = 500;
+const FIGURE_CENTER_X = 1220;
+const FIGURE_GROUND_Y = 800;
 
-  ctx.globalAlpha = 0.1;
-  ctx.fillStyle = finalConfig.accentColor;
-  ctx.beginPath();
-  ctx.arc(width - 200, 100, 240, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(200, height - 100, 160, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.globalAlpha = 1.0;
+const POSES = [
+  "cheer",
+  "wave",
+  "point",
+  "cute",
+  "sprint",
+  "callout",
+  "dab",
+  "victory",
+];
 
-  const avatarURL = member.user.displayAvatarURL({
-    extension: "png",
-    size: 512,
-  });
+const MC_HEADS_BODY_URL = "https://mc-heads.net/body";
+const FETCH_TIMEOUT_MS = 5000;
 
-  try {
-    const avatar = await loadImage(avatarURL);
-    const avatarSize = 300;
-    const avatarX = 200;
-    const avatarY = height / 2;
+const ASSETS_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "..",
+  "assets",
+);
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 40;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 20;
+const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 
-    ctx.beginPath();
-    ctx.arc(avatarX, avatarY, avatarSize / 2 + 10, 0, Math.PI * 2);
-    ctx.fillStyle = finalConfig.accentColor;
-    ctx.fill();
+let fontsRegistered = false;
 
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(
-      avatar,
-      avatarX - avatarSize / 2,
-      avatarY - avatarSize / 2,
-      avatarSize,
-      avatarSize,
+function registerFonts(): void {
+  if (fontsRegistered) return;
+  for (const weight of [400, 500, 600, 700]) {
+    GlobalFonts.registerFromPath(
+      join(ASSETS_DIR, "fonts", `outfit-latin-${weight}.woff2`),
+      "Outfit",
     );
-    ctx.restore();
-  } catch (error) {
-    logger.error("Failed to load avatar for welcome card:", error);
-    ctx.beginPath();
-    ctx.arc(200, height / 2, 150, 0, Math.PI * 2);
-    ctx.fillStyle = finalConfig.accentColor;
-    ctx.fill();
   }
-
-  const textX = 560;
-  ctx.font = "bold 56px Arial, sans-serif";
-  ctx.fillStyle = finalConfig.accentColor;
-  ctx.fillText("WELCOME", textX, 160);
-
-  ctx.font = "bold 96px Arial, sans-serif";
-  ctx.fillStyle = finalConfig.textColor;
-  const username =
-    member.user.username.length > 15
-      ? member.user.username.substring(0, 15) + "..."
-      : member.user.username;
-  ctx.fillText(username, textX, 280);
-
-  ctx.font = "64px Arial, sans-serif";
-  ctx.fillStyle = finalConfig.secondaryTextColor;
-  ctx.fillText(`Member #${memberCount}`, textX, 370);
-
-  const buffer = canvas.toBuffer("image/png");
-  return new AttachmentBuilder(buffer, { name: "welcome.png" });
+  fontsRegistered = true;
 }
 
-/** Adjusts a hex color's brightness by the given amount (-255 to 255) */
-function adjustBrightness(color: string, amount: number): string {
-  const hex = color.replace("#", "");
-  const num = parseInt(hex, 16);
-  let r = (num >> 16) + amount;
-  let g = ((num >> 8) & 0x00ff) + amount;
-  let b = (num & 0x0000ff) + amount;
-  r = Math.max(0, Math.min(255, r));
-  g = Math.max(0, Math.min(255, g));
-  b = Math.max(0, Math.min(255, b));
-  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, "0")}`;
+let wordmarkPromise: Promise<Image> | null = null;
+
+function getWordmark(): Promise<Image> {
+  wordmarkPromise ??= readFile(
+    join(ASSETS_DIR, "createrington-wordmark.png"),
+  ).then(loadImage);
+  return wordmarkPromise;
 }
 
-/** Draws text with a stroke outline for better readability over background images */
-function drawTextWithStroke(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  fillColor: string,
-  strokeColor: string = "rgba(0, 0, 0, 0.8)",
-  strokeWidth: number = 4,
-) {
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = strokeWidth;
-  ctx.strokeText(text, x, y);
-  ctx.fillStyle = fillColor;
-  ctx.fillText(text, x, y);
-}
+const backgroundCache = new Map<string, Buffer>();
 
-/**
- * Generates a custom welcome card with optional background image and bold stroke text
- *
- * @param member - The guild member who joined
- * @param memberCount - The server's current member count
- * @param options - Optional background image URL, message, and color overrides
- * @returns Discord attachment containing the generated PNG image
- */
-export async function generateCustomWelcomeCard(
-  member: GuildMember,
-  memberCount: number,
-  options: {
-    backgroundImageURL?: string;
-    message?: string;
-    config?: Partial<WelcomeCardConfig>;
-  } = {},
-): Promise<AttachmentBuilder> {
-  const finalConfig = { ...DEFAULT_CONFIG, ...options.config };
-  const width = 1600;
-  const height = 900;
-  const canvas = createCanvas(width, height);
-  const ctx = canvas.getContext("2d");
-
-  if (options.backgroundImageURL) {
-    try {
-      const background = await loadImage(options.backgroundImageURL);
-      ctx.drawImage(background, 0, 0, width, height);
-      ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
-      ctx.fillRect(0, 0, width, height);
-    } catch (error) {
-      logger.error("Failed to load background image:", error);
-      ctx.fillStyle = finalConfig.backgroundColor;
-      ctx.fillRect(0, 0, width, height);
+async function fetchBackground(): Promise<Image | null> {
+  const urls: readonly string[] = welcomeConfig.backgroundImageUrls;
+  if (urls.length === 0) return null;
+  const url = urls[Math.floor(Math.random() * urls.length)];
+  try {
+    let buffer = backgroundCache.get(url);
+    if (!buffer) {
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      buffer = Buffer.from(await res.arrayBuffer());
+      backgroundCache.set(url, buffer);
     }
-  } else {
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, finalConfig.backgroundColor);
-    gradient.addColorStop(
-      1,
-      adjustBrightness(finalConfig.backgroundColor, -20),
-    );
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-  }
-
-  const avatarURL = member.user.displayAvatarURL({
-    extension: "png",
-    size: 512,
-  });
-
-  try {
-    const avatar = await loadImage(avatarURL);
-    const avatarSize = 360;
-    const avatarX = 240;
-    const avatarY = height / 2;
-
-    ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
-    ctx.shadowBlur = 50;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 24;
-
-    ctx.beginPath();
-    ctx.arc(avatarX, avatarY, avatarSize / 2 + 12, 0, Math.PI * 2);
-    ctx.fillStyle = finalConfig.accentColor;
-    ctx.fill();
-
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(avatarX, avatarY, avatarSize / 2, 0, Math.PI * 2);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(
-      avatar,
-      avatarX - avatarSize / 2,
-      avatarY - avatarSize / 2,
-      avatarSize,
-      avatarSize,
-    );
-    ctx.restore();
+    return await loadImage(buffer);
   } catch (error) {
-    logger.error("Failed to load avatar:", error);
+    logger.warn(`Welcome card background unavailable (${url}):`, error);
+    return null;
+  }
+}
+
+async function fetchFigure(minecraftUuid: string): Promise<Image | null> {
+  const pose = POSES[Math.floor(Math.random() * POSES.length)];
+  try {
+    const png = await getSkinApiClient().render({
+      pose,
+      source: { uuid: minecraftUuid },
+      options: { width: 600, height: 900 },
+    });
+    return await loadImage(Buffer.from(png));
+  } catch (error) {
+    logger.warn(
+      `Skin-api render failed for welcome card (${minecraftUuid}, ${pose}):`,
+      error,
+    );
+  }
+  try {
+    const res = await fetch(`${MC_HEADS_BODY_URL}/${minecraftUuid}/600`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    return await loadImage(Buffer.from(await res.arrayBuffer()));
+  } catch (error) {
+    logger.warn(
+      `Fallback figure unavailable for welcome card (${minecraftUuid}):`,
+      error,
+    );
+    return null;
+  }
+}
+
+interface BBox {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+}
+
+function computeBBox(img: Image): BBox {
+  const probe = createCanvas(img.width, img.height);
+  const pctx = probe.getContext("2d");
+  pctx.drawImage(img, 0, 0);
+  const { data } = pctx.getImageData(0, 0, img.width, img.height);
+  let minX = img.width;
+  let minY = img.height;
+  let maxX = 0;
+  let maxY = 0;
+  for (let y = 0; y < img.height; y++) {
+    for (let x = 0; x < img.width; x++) {
+      if (data[(y * img.width + x) * 4 + 3] > 16) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  return { minX, minY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+function drawBackground(ctx: SKRSContext2D, bg: Image | null): void {
+  if (bg) {
+    const scale = Math.max(W / bg.width, H / bg.height);
+    const dw = bg.width * scale;
+    const dh = bg.height * scale;
+    ctx.drawImage(bg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  } else {
+    const fallback = ctx.createLinearGradient(0, 0, 0, H);
+    fallback.addColorStop(0, BG_TOP);
+    fallback.addColorStop(1, BG_BOT);
+    ctx.fillStyle = fallback;
+    ctx.fillRect(0, 0, W, H);
   }
 
-  const textX = 640;
-  const welcomeSize = 64;
-  const usernameSize = 104;
-  const memberSize = 72;
-  const spacing = 50;
+  const scrim = ctx.createLinearGradient(0, 0, W, 0);
+  scrim.addColorStop(0, "rgba(8,8,12,0.72)");
+  scrim.addColorStop(0.42, "rgba(8,8,12,0.34)");
+  scrim.addColorStop(0.7, "rgba(8,8,12,0.08)");
+  scrim.addColorStop(1, "rgba(8,8,12,0.22)");
+  ctx.fillStyle = scrim;
+  ctx.fillRect(0, 0, W, H);
 
-  const totalHeight = welcomeSize + usernameSize + memberSize + spacing * 2;
-  const startY = (height - totalHeight) / 2 + welcomeSize;
+  const ground = ctx.createLinearGradient(0, H - 240, 0, H);
+  ground.addColorStop(0, "rgba(8,8,12,0)");
+  ground.addColorStop(1, "rgba(8,8,12,0.55)");
+  ctx.fillStyle = ground;
+  ctx.fillRect(0, H - 240, W, 240);
 
-  ctx.font = "bold 64px Impact, Arial Black, sans-serif";
-  drawTextWithStroke(
-    ctx,
-    "WELCOME",
-    textX,
-    startY,
-    "#F37B0B",
-    "rgba(0, 0, 0, 0.9)",
-    10,
+  const pool = ctx.createRadialGradient(
+    FIGURE_CENTER_X,
+    500,
+    40,
+    FIGURE_CENTER_X,
+    500,
+    520,
   );
+  pool.addColorStop(0, "rgba(255,185,0,0.14)");
+  pool.addColorStop(0.5, "rgba(255,160,0,0.06)");
+  pool.addColorStop(1, "rgba(255,160,0,0)");
+  ctx.fillStyle = pool;
+  ctx.fillRect(0, 0, W, H);
 
-  ctx.font = "bold 104px Impact, Arial Black, sans-serif";
-  const username =
-    member.user.username.length > 12
-      ? member.user.username.substring(0, 12) + "..."
-      : member.user.username;
-  drawTextWithStroke(
+  const vignette = ctx.createLinearGradient(0, 0, 0, 200);
+  vignette.addColorStop(0, "rgba(0,0,0,0.5)");
+  vignette.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, 0, W, 200);
+}
+
+function drawContactShadow(ctx: SKRSContext2D, width: number): void {
+  ctx.save();
+  ctx.translate(FIGURE_CENTER_X, FIGURE_GROUND_Y + 4);
+  ctx.scale(1, 0.16);
+  const core = ctx.createRadialGradient(0, 0, 0, 0, 0, width * 0.34);
+  core.addColorStop(0, "rgba(0,0,0,0.38)");
+  core.addColorStop(0.6, "rgba(0,0,0,0.20)");
+  core.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(0, 0, width * 0.34, 0, Math.PI * 2);
+  ctx.fill();
+  const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, width * 0.6);
+  halo.addColorStop(0, "rgba(0,0,0,0.14)");
+  halo.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(0, 0, width * 0.6, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawFigure(ctx: SKRSContext2D, img: Image): void {
+  const bbox = computeBBox(img);
+  const scale = Math.min(
+    FIGURE_HEIGHT / bbox.height,
+    FIGURE_MAX_WIDTH / bbox.width,
+  );
+  const drawW = bbox.width * scale;
+  const drawH = bbox.height * scale;
+  const x = FIGURE_CENTER_X - drawW / 2;
+  const y = FIGURE_GROUND_Y - drawH;
+
+  drawContactShadow(ctx, drawW);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(255,185,0,0.35)";
+  ctx.shadowBlur = 26;
+  ctx.drawImage(
+    img,
+    bbox.minX,
+    bbox.minY,
+    bbox.width,
+    bbox.height,
+    x,
+    y,
+    drawW,
+    drawH,
+  );
+  ctx.restore();
+  ctx.drawImage(
+    img,
+    bbox.minX,
+    bbox.minY,
+    bbox.width,
+    bbox.height,
+    x,
+    y,
+    drawW,
+    drawH,
+  );
+}
+
+function fitFontSize(
+  ctx: SKRSContext2D,
+  text: string,
+  font: (size: number) => string,
+  sizes: readonly number[],
+  maxWidth: number,
+): number {
+  for (const size of sizes) {
+    ctx.font = font(size);
+    if (ctx.measureText(text).width <= maxWidth) return size;
+  }
+  return sizes[sizes.length - 1];
+}
+
+function drawText(
+  ctx: SKRSContext2D,
+  wordmark: Image,
+  username: string,
+  memberNumber: number,
+): void {
+  const wmW = 430;
+  const wmH = (wordmark.height / wordmark.width) * wmW;
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.55)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 6;
+  ctx.drawImage(wordmark, TEXT_X, 74, wmW, wmH);
+  ctx.restore();
+
+  ctx.textBaseline = "alphabetic";
+
+  ctx.save();
+  ctx.letterSpacing = "10px";
+  ctx.font = "600 36px Outfit";
+  ctx.fillStyle = AMBER;
+  ctx.shadowColor = "rgba(0,0,0,0.8)";
+  ctx.shadowOffsetY = 4;
+  ctx.fillText("WELCOME", TEXT_X, KICKER_BASELINE_Y);
+  ctx.restore();
+
+  const nameFont = (size: number) => `700 ${size}px Outfit`;
+  const nameSize = fitFontSize(
     ctx,
     username,
-    textX,
-    startY + spacing + usernameSize,
-    "#FFFFFF",
-    "rgba(0, 0, 0, 0.9)",
-    12,
+    nameFont,
+    [124, 110, 96, 84, 72, 60],
+    MAX_TEXT_WIDTH,
   );
+  ctx.font = nameFont(nameSize);
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowOffsetY = 8;
+  ctx.fillStyle = FOREGROUND;
+  ctx.fillText(username, TEXT_X, KICKER_BASELINE_Y + nameSize + 24);
+  ctx.restore();
 
-  ctx.font = "72px Impact, Arial Black, sans-serif";
-  const memberText = `Member #${memberCount}`;
-  drawTextWithStroke(
-    ctx,
-    memberText,
-    textX,
-    startY + spacing + usernameSize + spacing + memberSize,
-    "#CCCCCC",
-    "rgba(0, 0, 0, 0.9)",
-    8,
-  );
+  const nameBottom = KICKER_BASELINE_Y + nameSize + 24;
 
-  const buffer = canvas.toBuffer("image/png");
-  return new AttachmentBuilder(buffer, { name: "welcome.png" });
+  ctx.save();
+  ctx.letterSpacing = "2px";
+  ctx.font = "500 40px Outfit";
+  ctx.fillStyle = AMBER;
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowOffsetY = 4;
+  ctx.fillText(`Member #${memberNumber}`, TEXT_X, nameBottom + 84);
+  ctx.restore();
+
+  ctx.font = "400 26px Outfit";
+  ctx.fillStyle = "rgba(250,250,251,0.62)";
+  ctx.fillText("createrington.com", TEXT_X, H - 66);
+}
+
+/** Composites the post-registration welcome card: the player's skin rendered
+ * in a random pose over a random server screenshot, with username and member
+ * number. Background and figure fetches degrade gracefully (gradient backdrop,
+ * mc-heads fallback, or no figure) so generation never throws for network
+ * reasons alone. */
+export async function generateRegistrationWelcomeCard(params: {
+  minecraftUuid: string;
+  minecraftUsername: string;
+  memberNumber: number;
+}): Promise<AttachmentBuilder> {
+  registerFonts();
+
+  const [background, figure, wordmark] = await Promise.all([
+    fetchBackground(),
+    fetchFigure(params.minecraftUuid),
+    getWordmark(),
+  ]);
+
+  const canvas = createCanvas(W * SUPERSAMPLE, H * SUPERSAMPLE);
+  const ctx = canvas.getContext("2d");
+  ctx.scale(SUPERSAMPLE, SUPERSAMPLE);
+
+  drawBackground(ctx, background);
+  if (figure) drawFigure(ctx, figure);
+  drawText(ctx, wordmark, params.minecraftUsername, params.memberNumber);
+
+  const out = createCanvas(W, H);
+  out.getContext("2d").drawImage(canvas, 0, 0, W, H);
+  return new AttachmentBuilder(out.toBuffer("image/png"), {
+    name: "welcome.png",
+  });
 }

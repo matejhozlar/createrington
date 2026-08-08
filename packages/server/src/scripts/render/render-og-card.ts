@@ -1,7 +1,7 @@
 // Headless tool: composites the social / link-preview card (og-card.png) for
 // the Createrington client SPA. Brand assets are read from the client's public
-// assets and the repo-root screenshots/ folder; the Outfit webfont is vendored
-// alongside this tool.
+// assets and the repo-root screenshots/ folder; the Outfit webfont lives in
+// the shared server assets (src/assets/fonts).
 //
 // Team figures are rendered once via the skin-api and cached under assets/team/
 // (committed), so regenerating the card stays offline. To refresh them after a
@@ -47,7 +47,7 @@ const PUBLIC = join(here, "..", "..", "..", "..", "client", "public");
 const ASSETS = join(PUBLIC, "assets");
 const REPO_ROOT = join(here, "..", "..", "..", "..", "..");
 const SHOTS = join(REPO_ROOT, "screenshots");
-const FONTS = join(here, "assets", "fonts");
+const FONTS = join(here, "..", "..", "assets", "fonts");
 const TEAM_DIR = join(here, "assets", "team");
 
 interface FrameSpec {

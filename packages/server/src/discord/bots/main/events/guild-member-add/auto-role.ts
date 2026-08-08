@@ -1,26 +1,15 @@
 import config from "@/config";
-import type {
-  Client,
-  GuildMember,
-  OverwriteResolvable,
-  TextChannel,
-} from "discord.js";
+import type { Client, GuildMember, OverwriteResolvable } from "discord.js";
 import { PermissionFlagsBits, ChannelType } from "discord.js";
 import type { EventModule } from "@/discord/bots/common/loaders/event-loader";
 import { Q, waitlistRepo } from "@/db";
 import { RoleManager } from "@/discord/utils/roles/role-manager";
 import { Discord } from "@/discord/constants";
 import { EmbedPresets } from "@/discord/embeds";
-import { isSendableChannel } from "@/discord/utils/channel-guard";
-import {
-  generateCustomWelcomeCard,
-  generateWelcomeCard,
-} from "@/discord/utils/welcome-card";
 import { diffAndUpdateInvites } from "@/discord/bots/main/invites";
 import { buildIdleWelcomeMessage } from "@/discord/bots/main/registration/welcome-message";
 
 const autoRoleConfig = config.discord.events.onGuildMemberAdd.autoRole;
-const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
 
 /**
  * Guild member join event handler
@@ -29,7 +18,9 @@ const welcomeConfig = config.discord.events.onGuildMemberAdd.welcome;
  * 1. Records the member join in the database (gets persistent join number)
  * 2. If the player already exists in the database, assigns the "Verified" role (skips verification)
  * 3. Otherwise, assigns "Unverified" role and creates a private verification channel
- * 4. Sends a welcome card to the public welcome channel
+ *
+ * The welcome card is sent after registration completes (see
+ * registration/post-welcome-card.ts), not on guild join.
  */
 export const eventName: EventModule<"guildMemberAdd">["eventName"] =
   "guildMemberAdd";
@@ -39,11 +30,10 @@ export const prodOnly = true;
 /**
  * Executes when a new member joins the guild
  *
- * @param client - The Discord client instance
  * @param member - The guild member who joined
  */
 export async function execute(
-  client: Client,
+  _client: Client,
   member: GuildMember,
 ): Promise<void> {
   try {
@@ -245,55 +235,6 @@ export async function execute(
       } catch (error) {
         logger.error(
           `Failed to create verification channel for ${member.user.tag}`,
-          error,
-        );
-      }
-    }
-
-    if (welcomeConfig.enabled && welcomeConfig.channelId) {
-      try {
-        const channel = await client.channels.fetch(welcomeConfig.channelId);
-
-        if (!channel || !isSendableChannel(channel)) {
-          logger.warn(
-            `Welcome channel ${welcomeConfig.channelId} not found or is not a text channel`,
-          );
-          return;
-        }
-
-        const textChannel = channel as TextChannel;
-
-        // Use a custom background if configured, otherwise fall back to the default card
-        const welcomeCard = welcomeConfig.imageConfig.backgroundImageURL
-          ? await generateCustomWelcomeCard(member, joinNumber, {
-              backgroundImageURL: welcomeConfig.imageConfig.backgroundImageURL,
-              config: welcomeConfig.imageConfig,
-            })
-          : await generateWelcomeCard(
-              member,
-              joinNumber,
-              welcomeConfig.imageConfig,
-            );
-
-        logger.debug("Generated welcome card:", {
-          hasBuffer: welcomeCard.attachment instanceof Buffer,
-          bufferSize:
-            welcomeCard.attachment instanceof Buffer
-              ? welcomeCard.attachment.length
-              : 0,
-          name: welcomeCard.name,
-        });
-
-        const sentMessage = await textChannel.send({
-          files: [welcomeCard],
-        });
-
-        logger.info(
-          `Welcome image sent for ${member.user.tag} (#${joinNumber}) - Message ID: ${sentMessage.id}`,
-        );
-      } catch (error) {
-        logger.error(
-          `Failed to send welcome message for ${member.user.tag}:`,
           error,
         );
       }
