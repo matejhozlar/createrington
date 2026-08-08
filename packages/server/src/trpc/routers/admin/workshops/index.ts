@@ -9,6 +9,7 @@ import { getMinecraftVersions } from "@/services/curseforge";
 import { listForumChannels } from "@/services/workshop/discord";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_REVIEW_ACTIONS,
   WORKSHOP_STATUSES,
 } from "@createrington/shared/workshop";
 
@@ -167,13 +168,13 @@ export const adminWorkshopsRouter = router({
   reviewMod: adminProcedure
     .meta({
       description:
-        "Review a mod: approve, or reject for this workshop with a reason",
+        "Review a mod: approve, move it to testing, send it back a stage, or reject for this workshop with a reason",
     })
     .input(
       z
         .object({
           workshopModId: id(),
-          action: z.enum(["approve", "reject"]),
+          action: z.enum(WORKSHOP_MOD_REVIEW_ACTIONS),
           reason: z.enum(WORKSHOP_MOD_REJECT_REASONS).optional(),
           note: z.string().trim().max(500).optional(),
         })

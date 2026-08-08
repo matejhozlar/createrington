@@ -14,7 +14,13 @@ import type {
   WorkshopModStatus,
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
-import { WORKSHOP_STATUS_TRANSITIONS } from "@createrington/shared/workshop";
+import {
+  WORKSHOP_MOD_REVIEW_ACTION_LABELS,
+  WORKSHOP_MOD_REVIEW_TARGETS,
+  WORKSHOP_MOD_STATUS_LABELS,
+  WORKSHOP_STATUS_TRANSITIONS,
+  type WorkshopModReviewAction,
+} from "@createrington/shared/workshop";
 import {
   CurseForgeClass,
   getMod,
@@ -70,7 +76,6 @@ export interface WorkshopModListItem extends WorkshopMod {
   submitterName: string | null;
   discordThreadUrl: string | null;
   dependencies: WorkshopModDependencyInfo[];
-  live: boolean;
   liveInVersion: string | null;
 }
 
@@ -120,7 +125,7 @@ export interface WorkshopTopMod {
 }
 
 export interface WorkshopSummary {
-  approvedModCount: number;
+  packModCount: number;
   pendingModCount: number;
   suggestionCount: number;
   participantCount: number;
@@ -144,9 +149,15 @@ export interface WorkshopProjectSearchResult {
   claimed: boolean;
 }
 
-export type WorkshopReviewAction = "approve" | "reject";
+export type WorkshopReviewAction = WorkshopModReviewAction;
 
-const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
+const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "in_pack",
+];
 
 interface PreparedEntry {
   projectId: number;
@@ -274,7 +285,6 @@ export class WorkshopService {
       submitterName: string | null;
       discordThreadUrl: string | null;
       dependencies: WorkshopModDependencyInfo[];
-      live: boolean;
       liveInVersion: string | null;
     };
     project: CurseforgeProject;
@@ -314,7 +324,6 @@ export class WorkshopService {
           ? discordThreadUrl(mod.discordThreadId)
           : null,
         dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
-        live: packRow?.liveAt != null,
         liveInVersion: packRow?.liveInVersion ?? null,
       },
       project,
@@ -493,7 +502,7 @@ export class WorkshopService {
   /**
    * Toggle the caller's upvote on a visible mod in an open workshop. Upvotes on
    * other players' pending mods draw from the per-workshop budget; a review
-   * refunds them. Upvotes on approved mods and on the caller's own suggestions
+   * refunds them. Upvotes on reviewed mods and on the caller's own suggestions
    * are free.
    */
   async toggleModUpvote(
@@ -738,8 +747,14 @@ export class WorkshopService {
   }
 
   /**
-   * Review a mod: approve it into the pack, or reject it for this workshop
-   * with a reason. Rejected rows persist and can be re-reviewed.
+   * Move a mod through the review pipeline. WORKSHOP_MOD_REVIEW_TARGETS is the
+   * rule: a status with no entry for the action is refused. Reaching
+   * next_update adds the pack row; leaving next_update or in_pack for anything
+   * else drops it, so rejecting a mod that is already in the published pack
+   * discards its ship history and leaves the pack contradicting the manifest
+   * until it is republished (the mod surfaces as a shipped_rejected attention
+   * item meanwhile). Repeating an action the mod already satisfies is an
+   * idempotent no-op. The in_pack status is reconcile-owned and never set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -752,46 +767,72 @@ export class WorkshopService {
     }
     const mod = await Q.workshop.mod.find({ id: workshopModId });
     if (!mod) throw new NotFoundError(`Mod #${workshopModId} not found`);
-    if (action === "approve" && mod.status === "approved") {
-      const workshop = await this.getWorkshop(mod.workshopId);
-      const packRow = await this.ensurePackRow(workshop, mod);
-      if (packRow) {
-        await promoteRequiredDependencies(workshop, packRow, adminId);
-      }
-      return mod;
-    }
 
     const workshop = await this.getWorkshop(mod.workshopId);
     if (workshop.status === "archived") {
       throw new BadRequestError("Cannot review mods in an archived workshop");
     }
 
-    const changed = await db.inTransaction(async (tx) => {
+    if (action === "approve" && mod.status === "next_update") {
+      const packRow = await this.ensurePackRow(workshop, mod);
+      if (packRow) {
+        await promoteRequiredDependencies(workshop, packRow, adminId);
+      }
+      return mod;
+    }
+    if (
+      action === "approve" &&
+      (mod.status === "approved" || mod.status === "in_pack")
+    ) {
+      return mod;
+    }
+    if (action === "start_testing" && mod.status === "testing") return mod;
+    if (action === "send_back" && mod.status === "in_pack") {
+      throw new BadRequestError(
+        "This mod is in the published pack, reject it instead of sending it back",
+      );
+    }
+
+    const target = WORKSHOP_MOD_REVIEW_TARGETS[mod.status][action];
+    if (!target) {
+      throw new BadRequestError(
+        `Cannot ${WORKSHOP_MOD_REVIEW_ACTION_LABELS[action]} a mod that is ${WORKSHOP_MOD_STATUS_LABELS[
+          mod.status
+        ].toLowerCase()}`,
+      );
+    }
+
+    const { changed, removedPackRows } = await db.inTransaction(async (tx) => {
       const count = await tx.workshop.mod.updateAll(
-        action === "approve"
+        target === "rejected"
           ? {
-              status: "approved",
-              rejectReason: null,
-              rejectNote: null,
-              reviewedBy: adminId,
-              reviewedAt: new Date(),
-            }
-          : {
               status: "rejected",
               rejectReason: options.reason,
               rejectNote: options.note?.trim() || null,
               reviewedBy: adminId,
               reviewedAt: new Date(),
+            }
+          : {
+              status: target,
+              rejectReason: null,
+              rejectNote: null,
+              reviewedBy: adminId,
+              reviewedAt: new Date(),
             },
         { id: workshopModId, status: mod.status },
       );
-      if (count > 0 && action === "reject" && mod.status === "approved") {
-        await tx.modpack.mod.deleteAll({
-          modpackId: workshop.modpackId,
-          workshopModId,
-        });
+      // Only next_update and in_pack hold a pack row, so a mod leaving either
+      // for anything but the other drops it
+      const heldPackRow =
+        mod.status === "next_update" || mod.status === "in_pack";
+      if (count === 0 || !heldPackRow || target === "next_update") {
+        return { changed: count, removedPackRows: 0 };
       }
-      return count;
+      const removed = await tx.modpack.mod.deleteAll({
+        modpackId: workshop.modpackId,
+        workshopModId,
+      });
+      return { changed: count, removedPackRows: removed };
     });
     if (changed === 0) {
       throw new ConflictError(
@@ -800,24 +841,23 @@ export class WorkshopService {
     }
     const updated = await Q.workshop.mod.get({ id: workshopModId });
 
-    void announceReview(
-      updated,
-      action === "approve" ? "approved" : "rejected",
-    );
-    if (action === "approve") {
+    void announceReview(updated, target);
+    if (target === "next_update") {
       const packRow = await this.ensurePackRow(workshop, updated);
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
-    } else if (mod.status === "approved") {
-      await pruneOrphanedDependencies(workshop.modpackId);
-      await pruneStaleDependencyEdges(workshop);
+    } else {
+      if (removedPackRows > 0) {
+        await pruneOrphanedDependencies(workshop.modpackId);
+      }
+      if (target === "rejected") await pruneStaleDependencyEdges(workshop);
     }
     return updated;
   }
 
   /**
-   * Create the approved suggestion's modpack row, or claim an existing row
+   * Create the promoted suggestion's modpack row, or claim an existing row
    * for the same project (a manifest import that arrived first).
    */
   private async ensurePackRow(
@@ -995,7 +1035,7 @@ export class WorkshopService {
     workshop: Workshop,
   ): Promise<WorkshopSummary> {
     const workshopId = workshop.id;
-    const [approvedModCount, pendingModCount, participantIds, mods] =
+    const [packModCount, pendingModCount, participantIds, mods] =
       await Promise.all([
         Q.modpack.mod.count({ modpackId: workshop.modpackId }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
@@ -1048,7 +1088,7 @@ export class WorkshopService {
     });
 
     return {
-      approvedModCount,
+      packModCount,
       pendingModCount,
       suggestionCount: mods.length,
       participantCount: participantIds.length,
@@ -1134,7 +1174,6 @@ export class WorkshopService {
             ? discordThreadUrl(mod.discordThreadId)
             : null,
           dependencies: depsByProject.get(mod.curseforgeProjectId) ?? [],
-          live: packRow?.liveAt != null,
           liveInVersion: packRow?.liveInVersion ?? null,
         },
       ];

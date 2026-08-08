@@ -9,6 +9,7 @@ import { ProjectThumb } from "../../components/ProjectThumb";
 import { SocialLinks } from "../../components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
+  liveTitle,
   projectCategories,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -245,24 +246,6 @@ function HeartOrBadge({
   onUpvote: (workshopModId: number) => void;
 }) {
   const { mod } = item;
-  if (mod.status === "approved") {
-    const style = mod.live
-      ? MOD_STATUS_STYLES.live
-      : MOD_STATUS_STYLES.approved;
-    return (
-      <Badge
-        variant="outline"
-        className={cn("relative shrink-0", style.className)}
-        title={
-          mod.live && mod.liveInVersion
-            ? `Live since ${mod.liveInVersion}`
-            : undefined
-        }
-      >
-        {style.label}
-      </Badge>
-    );
-  }
   if (mod.status === "rejected") {
     return (
       <Badge
@@ -275,6 +258,18 @@ function HeartOrBadge({
         {mod.rejectReason
           ? REJECT_REASON_LABELS[mod.rejectReason]
           : MOD_STATUS_STYLES.rejected.label}
+      </Badge>
+    );
+  }
+  if (mod.status !== "pending") {
+    const style = MOD_STATUS_STYLES[mod.status];
+    return (
+      <Badge
+        variant="outline"
+        className={cn("relative shrink-0", style.className)}
+        title={liveTitle(mod)}
+      >
+        {style.label}
       </Badge>
     );
   }

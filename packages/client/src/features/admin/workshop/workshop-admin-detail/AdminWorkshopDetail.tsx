@@ -4,11 +4,13 @@ import {
   Ban,
   Check,
   Eye,
+  FlaskConical,
   Heart,
   Loader2,
   MoreHorizontal,
   PackagePlus,
   Settings2,
+  Undo2,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -73,12 +75,14 @@ import {
 } from "@/features/workshop/format";
 import {
   WORKSHOP_MOD_REJECT_REASONS,
+  WORKSHOP_MOD_STATUSES,
   WORKSHOP_STATUS_TRANSITIONS,
 } from "@createrington/shared/workshop";
+import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
-type StatusFilter = "all" | "pending" | "approved" | "rejected";
+type StatusFilter = "all" | WorkshopModStatus;
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -92,11 +96,23 @@ const ORIGIN_LABELS: Record<string, string> = {
 const ATTENTION_MESSAGES: Record<string, string> = {
   dropped_from_pack: "was live but is missing from the latest published pack.",
   shipped_unreviewed:
-    "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester.",
+    "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
 
-const STATUS_FILTERS = ["all", "pending", "approved", "rejected"] as const;
+const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
+  approved: "Mod approved",
+  testing: "Mod moved to testing",
+  next_update: "Mod approved, coming next update",
+  rejected: "Mod rejected",
+};
+
+const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
+  approved: "Mod sent back, awaiting testing",
+  testing: "Mod sent back to testing",
+};
+
+const STATUS_FILTERS = ["all", ...WORKSHOP_MOD_STATUSES] as const;
 
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -164,10 +180,10 @@ export function AdminWorkshopDetail() {
   });
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
-    onSuccess: (_mod, variables) => {
-      toast.success(
-        `Mod ${variables.action === "approve" ? "approved" : "rejected"}`,
-      );
+    onSuccess: (mod, variables) => {
+      const toasts =
+        variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
+      toast.success(toasts[mod.status] ?? "Mod updated");
       invalidate();
       setRejectTarget(null);
       setRejectReason("");
@@ -190,9 +206,7 @@ export function AdminWorkshopDetail() {
   const counts = useMemo(() => {
     const c: Record<string, number> = {
       all: mods.length,
-      pending: 0,
-      approved: 0,
-      rejected: 0,
+      ...Object.fromEntries(WORKSHOP_MOD_STATUSES.map((status) => [status, 0])),
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
     return c;
@@ -414,7 +428,8 @@ export function AdminWorkshopDetail() {
                                 View Details
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              {mod.status !== "approved" && (
+                              {(mod.status === "pending" ||
+                                mod.status === "rejected") && (
                                 <DropdownMenuItem
                                   onClick={() =>
                                     reviewMutation.mutate({
@@ -425,6 +440,46 @@ export function AdminWorkshopDetail() {
                                 >
                                   <Check className="size-4 text-green-500" />
                                   Approve
+                                </DropdownMenuItem>
+                              )}
+                              {mod.status === "approved" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "start_testing",
+                                    })
+                                  }
+                                >
+                                  <FlaskConical className="size-4 text-amber-400" />
+                                  Start Testing
+                                </DropdownMenuItem>
+                              )}
+                              {mod.status === "testing" && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "approve",
+                                    })
+                                  }
+                                >
+                                  <Check className="size-4 text-green-500" />
+                                  Approve for Next Update
+                                </DropdownMenuItem>
+                              )}
+                              {(mod.status === "testing" ||
+                                mod.status === "next_update") && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "send_back",
+                                    })
+                                  }
+                                >
+                                  <Undo2 className="size-4 text-muted-foreground" />
+                                  Send Back a Stage
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem
@@ -475,13 +530,16 @@ export function AdminWorkshopDetail() {
                   <span className="font-medium text-foreground">
                     {item.name}
                   </span>{" "}
-                  {item.type === "rejected_dependency" ? (
+                  {item.type === "rejected_dependency" ||
+                  item.type === "unpromoted_dependency" ? (
                     <>
                       is required by{" "}
                       <span className="font-medium text-foreground">
                         {item.requiredByName}
                       </span>{" "}
-                      but is rejected in this workshop.
+                      {item.type === "rejected_dependency"
+                        ? "but is rejected in this workshop."
+                        : "but has not reached the pack yet, so the pack is missing it."}
                     </>
                   ) : (
                     ATTENTION_MESSAGES[item.type]
@@ -584,7 +642,7 @@ export function AdminWorkshopDetail() {
                             variant="outline"
                             className={cn(
                               "text-xs",
-                              MOD_STATUS_STYLES.live.className,
+                              MOD_STATUS_STYLES.in_pack.className,
                             )}
                           >
                             {row.liveInVersion
@@ -603,10 +661,10 @@ export function AdminWorkshopDetail() {
                             variant="outline"
                             className={cn(
                               "text-xs",
-                              MOD_STATUS_STYLES.approved.className,
+                              MOD_STATUS_STYLES.next_update.className,
                             )}
                           >
-                            Coming next update
+                            {MOD_STATUS_STYLES.next_update.label}
                           </Badge>
                         )}
                       </TableCell>

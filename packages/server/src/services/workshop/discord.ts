@@ -25,8 +25,25 @@ interface SuggestionAnnouncement extends WorkshopMod {
 
 const STATUS_TAGS = {
   pending: { name: "Suggested", emoji: "💡" },
-  approved: { name: "In the pack", emoji: "✅" },
+  approved: { name: "Approved", emoji: "✅" },
+  testing: { name: "In testing", emoji: "🧪" },
+  next_update: { name: "Coming next update", emoji: "📦" },
+  in_pack: { name: "In the pack", emoji: "🎉" },
 } as const;
+
+const REVIEW_MESSAGES: Record<
+  Exclude<WorkshopModStatus, "pending" | "rejected">,
+  string
+> = {
+  approved: "✅ **Approved!** The team wants this one, next stop: testing.",
+  testing: "🧪 **In testing.** The team is trying this mod out.",
+  next_update:
+    "📦 **Coming next update!** This mod passed testing and ships with the next pack update.",
+  in_pack: "🎉 **In the pack!** This mod shipped with the latest pack update.",
+};
+
+const PACK_DROP_OUT_MESSAGE =
+  "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
@@ -38,7 +55,19 @@ const REJECT_REASON_TAGS: Record<
   not_a_good_fit: { name: "Not a good fit", emoji: "🚫" },
 };
 
-const LIVE_MOD_STATUSES: WorkshopModStatus[] = ["pending", "approved"];
+const MANAGED_TAG_NAMES = new Set(
+  [...Object.values(STATUS_TAGS), ...Object.values(REJECT_REASON_TAGS)].map(
+    (tag) => tag.name,
+  ),
+);
+
+const LIVE_MOD_STATUSES: WorkshopModStatus[] = [
+  "pending",
+  "approved",
+  "testing",
+  "next_update",
+  "in_pack",
+];
 
 const HEAL_THREAD_CREATE_CAP = 5;
 
@@ -48,10 +77,7 @@ type ThreadLookup =
   | { state: "unavailable" };
 
 function tagNameFor(status: WorkshopModStatus): string | null {
-  if (status === "pending" || status === "approved") {
-    return STATUS_TAGS[status].name;
-  }
-  return null;
+  return status === "rejected" ? null : STATUS_TAGS[status].name;
 }
 
 export function discordThreadUrl(threadId: string): string {
@@ -217,10 +243,7 @@ export async function announceSuggestion(
     }
     const fresh = await Q.workshop.mod.find({ id: mod.id });
     if (fresh && fresh.status !== mod.status && fresh.status !== "pending") {
-      await announceReview(
-        fresh,
-        fresh.status === "approved" ? "approved" : "rejected",
-      );
+      await announceReview(fresh, fresh.status);
     }
   } catch (error) {
     logger.warn(
@@ -231,11 +254,12 @@ export async function announceSuggestion(
 
 /**
  * Reflect a review outcome on the suggestion's thread: post the result and
- * retag with either the approved tag or the rejection reason's tag.
+ * retag with the new status's tag or the rejection reason's tag.
  */
 export async function announceReview(
   mod: WorkshopMod,
-  status: "approved" | "rejected",
+  status: Exclude<WorkshopModStatus, "pending">,
+  options: { message?: string } = {},
 ): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
@@ -252,13 +276,17 @@ export async function announceReview(
       ? REJECT_REASON_TAGS[mod.rejectReason]
       : null;
     const tagName =
-      status === "approved" ? STATUS_TAGS.approved.name : reasonTag?.name;
+      status === "rejected" ? reasonTag?.name : STATUS_TAGS[status].name;
 
     if (tagName && thread.parent?.type === ChannelType.GuildForum) {
       const tags = await ensureStatusTags(thread.parent);
       const tagId = tags.get(tagName);
       if (tagId) {
-        const managed = new Set(tags.values());
+        const managed = new Set(
+          [...tags]
+            .filter(([name]) => MANAGED_TAG_NAMES.has(name))
+            .map(([, id]) => id),
+        );
         const kept = thread.appliedTags.filter((id) => !managed.has(id));
         await thread.setAppliedTags([tagId, ...kept].slice(0, 5));
       }
@@ -268,18 +296,25 @@ export async function announceReview(
       ? WORKSHOP_MOD_REJECT_REASON_LABELS[mod.rejectReason]
       : null;
     const content =
-      status === "approved"
-        ? "✅ **In the pack!** The team approved this suggestion."
-        : `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
+      status === "rejected"
+        ? `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
             mod.rejectNote ? ` ${mod.rejectNote}` : ""
-          }`;
-    await thread.send(content);
+          }`
+        : (options.message ?? REVIEW_MESSAGES[status]);
+    await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
 }
 
-/** Note the auto-pulled required dependencies in the approved mod's thread. */
+/** Retag a mod that fell out of the published pack and say so on its thread. */
+export async function announcePackDropOut(mod: WorkshopMod): Promise<void> {
+  return announceReview(mod, "next_update", {
+    message: PACK_DROP_OUT_MESSAGE,
+  });
+}
+
+/** Note the auto-pulled required dependencies in the promoted mod's thread. */
 export async function announcePulledDependencies(
   mod: WorkshopMod,
   names: string[],
@@ -291,9 +326,10 @@ export async function announcePulledDependencies(
     if (!threadId) return;
     const lookup = await fetchThread(threadId);
     if (lookup.state !== "found") return;
-    await lookup.thread.send(
-      `📦 Pulls in required dependencies: ${names.join(", ")}`,
-    );
+    await lookup.thread.send({
+      content: `📦 Pulls in required dependencies: ${names.join(", ")}`,
+      allowedMentions: { parse: [] },
+    });
   } catch (error) {
     logger.warn(
       `Failed to note pulled dependencies for mod #${mod.id}: ${error}`,

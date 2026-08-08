@@ -11,6 +11,7 @@ import type {
   ModpackMod,
   Workshop,
   WorkshopMod,
+  WorkshopModStatus,
 } from "@createrington/shared/db";
 import {
   CurseForgeClass,
@@ -24,6 +25,10 @@ import {
   REQUIRED_DEPENDENCY,
   pruneOrphanedDependencies,
 } from "@/services/workshop/dependencies";
+import {
+  announcePackDropOut,
+  announceReview,
+} from "@/services/workshop/discord";
 
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
@@ -53,6 +58,23 @@ export type ModpackListItem = Modpack & {
   liveCount: number;
 };
 
+/**
+ * Post pipeline moves to their threads off the caller's path: reconcile runs
+ * from an admin mutation, and a pack's worth of posts would both stall that
+ * request and hit Discord in one burst. Sequential so the rate limiter paces
+ * itself; the announce helpers swallow their own errors.
+ */
+function announceStatusMoves(mods: WorkshopMod[]): void {
+  if (mods.length === 0) return;
+  void (async () => {
+    for (const mod of mods) {
+      await (mod.status === "in_pack"
+        ? announceReview(mod, "in_pack")
+        : announcePackDropOut(mod));
+    }
+  })();
+}
+
 export type ModpackAttentionItem =
   | {
       type: "dropped_from_pack";
@@ -75,6 +97,13 @@ export type ModpackAttentionItem =
     }
   | {
       type: "rejected_dependency";
+      workshopModId: number;
+      curseforgeProjectId: number;
+      name: string;
+      requiredByName: string;
+    }
+  | {
+      type: "unpromoted_dependency";
       workshopModId: number;
       curseforgeProjectId: number;
       name: string;
@@ -225,10 +254,10 @@ export class ModpackService {
   }
 
   /**
-   * Reconcile membership with reality: heal missing rows for approved
+   * Reconcile membership with reality: heal missing rows for promoted
    * suggestions, then derive live state from the published pack's manifest,
-   * import unknown shipped mods, and prune orphaned dependencies. Never
-   * throws.
+   * move suggestions in and out of in_pack to match it, import unknown
+   * shipped mods, and prune orphaned dependencies.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
@@ -281,7 +310,9 @@ export class ModpackService {
       const { modIds } = manifest;
       shipped = suggestions.filter(
         (mod) =>
-          modIds.has(mod.curseforgeProjectId) && mod.status !== "approved",
+          modIds.has(mod.curseforgeProjectId) &&
+          mod.status !== "next_update" &&
+          mod.status !== "in_pack",
       );
     }
 
@@ -290,9 +321,22 @@ export class ModpackService {
         .filter((mod) => mod.status === "rejected")
         .map((mod) => [mod.curseforgeProjectId, mod]),
     );
+    // Mods already reported as shipped carry their own advice
+    const shippedModIds = new Set(shipped.map((mod) => mod.id));
+    const midPipelineByProject = new Map(
+      suggestions
+        .filter(
+          (mod) =>
+            !shippedModIds.has(mod.id) &&
+            (mod.status === "pending" ||
+              mod.status === "approved" ||
+              mod.status === "testing"),
+        )
+        .map((mod) => [mod.curseforgeProjectId, mod]),
+    );
     const packProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
     const edges =
-      rejectedByProject.size > 0
+      rejectedByProject.size > 0 || midPipelineByProject.size > 0
         ? await Q.workshop.project.dependency.findAll({
             workshopId: workshop.id,
             relationType: REQUIRED_DEPENDENCY,
@@ -302,14 +346,24 @@ export class ModpackService {
       number,
       { dep: WorkshopMod; requiredByProjectId: number }
     >();
+    const unpromotedDeps = new Map<
+      number,
+      { dep: WorkshopMod; requiredByProjectId: number }
+    >();
     for (const edge of edges) {
-      const dep = rejectedByProject.get(edge.dependsOnProjectId);
-      if (!dep) continue;
       if (packProjectIds.has(edge.dependsOnProjectId)) continue;
       if (!packProjectIds.has(edge.curseforgeProjectId)) continue;
-      if (!rejectedDeps.has(edge.dependsOnProjectId)) {
+      const rejected = rejectedByProject.get(edge.dependsOnProjectId);
+      if (rejected && !rejectedDeps.has(edge.dependsOnProjectId)) {
         rejectedDeps.set(edge.dependsOnProjectId, {
-          dep,
+          dep: rejected,
+          requiredByProjectId: edge.curseforgeProjectId,
+        });
+      }
+      const midPipeline = midPipelineByProject.get(edge.dependsOnProjectId);
+      if (midPipeline && !unpromotedDeps.has(edge.dependsOnProjectId)) {
+        unpromotedDeps.set(edge.dependsOnProjectId, {
+          dep: midPipeline,
           requiredByProjectId: edge.curseforgeProjectId,
         });
       }
@@ -319,10 +373,9 @@ export class ModpackService {
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
         ...shipped.map((mod) => mod.curseforgeProjectId),
-        ...[...rejectedDeps.entries()].flatMap(([depId, entry]) => [
-          depId,
-          entry.requiredByProjectId,
-        ]),
+        ...[...rejectedDeps.entries(), ...unpromotedDeps.entries()].flatMap(
+          ([depId, entry]) => [depId, entry.requiredByProjectId],
+        ),
       ]),
     ];
     const projects =
@@ -353,6 +406,15 @@ export class ModpackService {
     for (const [projectId, entry] of rejectedDeps) {
       items.push({
         type: "rejected_dependency",
+        workshopModId: entry.dep.id,
+        curseforgeProjectId: projectId,
+        name: label(projectId),
+        requiredByName: label(entry.requiredByProjectId),
+      });
+    }
+    for (const [projectId, entry] of unpromotedDeps) {
+      items.push({
+        type: "unpromoted_dependency",
         workshopModId: entry.dep.id,
         curseforgeProjectId: projectId,
         name: label(projectId),
@@ -474,17 +536,17 @@ export class ModpackService {
     workshops: Workshop[],
   ): Promise<void> {
     if (workshops.length === 0) return;
-    const approved = await Q.workshop.mod.findAll({
+    const promoted = await Q.workshop.mod.findAll({
       workshopId: { $in: workshops.map((w) => w.id) },
-      status: "approved",
+      status: { $in: ["next_update", "in_pack"] },
     });
-    if (approved.length === 0) return;
+    if (promoted.length === 0) return;
 
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
     const memberProjectIds = new Set(
       rows.map((row) => row.curseforgeProjectId),
     );
-    for (const mod of approved) {
+    for (const mod of promoted) {
       if (memberProjectIds.has(mod.curseforgeProjectId)) continue;
       try {
         await Q.modpack.mod.create({
@@ -498,12 +560,41 @@ export class ModpackService {
           fileReleaseType: mod.fileReleaseType,
         });
         logger.info(
-          `Healed missing modpack row for approved suggestion #${mod.id}`,
+          `Healed missing modpack row for promoted suggestion #${mod.id}`,
         );
       } catch (error) {
         if (!(error instanceof ConstraintViolationError)) throw error;
       }
     }
+  }
+
+  /**
+   * Move suggestions between next_update and in_pack to match what the
+   * published manifest actually contains. Returns the rows this call claimed,
+   * so the caller can announce them.
+   */
+  private async moveSuggestions(
+    workshopModIds: number[],
+    from: Extract<WorkshopModStatus, "next_update" | "in_pack">,
+    to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
+  ): Promise<WorkshopMod[]> {
+    if (workshopModIds.length === 0) return [];
+    const mods = await Q.workshop.mod.findAll({
+      id: { $in: workshopModIds },
+      status: from,
+    });
+    const moved: WorkshopMod[] = [];
+    for (const mod of mods) {
+      // Concurrent reconciles read the same rows, so the guarded update picks
+      // one winner per move. Announcements are therefore at-most-once: a crash
+      // between the claim and the post loses it, since no later sweep retries
+      const claimed = await Q.workshop.mod.updateAll(
+        { status: to },
+        { id: mod.id, status: from },
+      );
+      if (claimed > 0) moved.push({ ...mod, status: to });
+    }
+    return moved;
   }
 
   private async applyManifest(
@@ -513,6 +604,8 @@ export class ModpackService {
   ): Promise<void> {
     const now = new Date();
     const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
+    const shippedModIds: number[] = [];
+    const droppedModIds: number[] = [];
 
     for (const row of rows) {
       if (manifest.modIds.has(row.curseforgeProjectId)) {
@@ -532,22 +625,33 @@ export class ModpackService {
             { id: row.id },
           );
         }
-      } else if (row.liveAt !== null) {
-        if (row.origin === "import") {
-          await Q.modpack.mod.deleteAll({ id: row.id });
-        } else {
-          await Q.modpack.mod.updateAll(
-            {
-              liveAt: null,
-              liveInVersion: null,
-              droppedFromManifestAt: now,
-              updatedAt: now,
-            },
-            { id: row.id },
-          );
-        }
+        if (row.workshopModId) shippedModIds.push(row.workshopModId);
+        continue;
       }
+
+      // Only a row that was live and has now fallen out is a drop-out; rows
+      // still waiting on a pack update were never in it
+      if (row.liveAt === null) continue;
+      if (row.origin === "import") {
+        await Q.modpack.mod.deleteAll({ id: row.id });
+        continue;
+      }
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: null,
+          liveInVersion: null,
+          droppedFromManifestAt: now,
+          updatedAt: now,
+        },
+        { id: row.id },
+      );
+      if (row.workshopModId) droppedModIds.push(row.workshopModId);
     }
+
+    announceStatusMoves([
+      ...(await this.moveSuggestions(shippedModIds, "next_update", "in_pack")),
+      ...(await this.moveSuggestions(droppedModIds, "in_pack", "next_update")),
+    ]);
 
     const knownProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
     const suggestions =

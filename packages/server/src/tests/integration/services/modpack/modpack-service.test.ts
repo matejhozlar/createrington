@@ -16,6 +16,7 @@ vi.mock("@/services/workshop/discord", () => ({
   assertForumChannel: vi.fn(async () => undefined),
   announceSuggestion: vi.fn(async () => undefined),
   announceReview: vi.fn(async () => undefined),
+  announcePackDropOut: vi.fn(async () => undefined),
   announcePulledDependencies: vi.fn(async () => undefined),
   announceRemoval: vi.fn(async () => undefined),
   healThreads: vi.fn(async () => undefined),
@@ -47,7 +48,12 @@ vi.mock("@/services/curseforge/ingest", () => ({
 
 import pool, { Q } from "@/db";
 import { modpackService } from "@/services/modpack";
+import { workshopService } from "@/services/workshop";
 import { getModpackManifest } from "@/services/curseforge";
+import {
+  announcePackDropOut,
+  announceReview,
+} from "@/services/workshop/discord";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -60,6 +66,7 @@ import {
 } from "@/tests/helpers/workshop";
 
 const USER_A = "999900000000000002";
+const ADMIN = "999900000000000001";
 
 const ctx = createWorkshopTestContext(992_000_000);
 
@@ -126,14 +133,72 @@ describe("ModpackService.getWorkshopAttention", () => {
       items.filter((item) => item.type === "rejected_dependency"),
     ).toHaveLength(0);
   });
+
+  it("flags a required dependency that has not reached the pack yet", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const member = await seedPackMod(ctx, workshop);
+    const depProjectId = await seedProject(ctx, "Testing Dep");
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    const depMod = await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "testing",
+      submittedBy: USER_A,
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(items).toContainEqual({
+      type: "unpromoted_dependency",
+      workshopModId: depMod.id,
+      curseforgeProjectId: depProjectId,
+      name: "Testing Dep",
+      requiredByName: `Vitest Mod ${member.curseforgeProjectId}`,
+    });
+  });
+
+  it("does not flag an unpromoted dependency that already shipped", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const member = await seedPackMod(ctx, workshop);
+    const depProjectId = await seedProject(ctx);
+    await seedRequiredDependency(
+      workshop,
+      member.curseforgeProjectId,
+      depProjectId,
+    );
+    await seedMod(ctx, workshop, {
+      curseforgeProjectId: depProjectId,
+      status: "pending",
+      submittedBy: USER_A,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.0.0",
+      modIds: new Set([depProjectId]),
+    });
+
+    const items = await modpackService.getWorkshopAttention(workshop);
+
+    expect(
+      items.filter((item) => item.type === "unpromoted_dependency"),
+    ).toHaveLength(0);
+    expect(
+      items.filter((item) => item.type === "shipped_unreviewed"),
+    ).toHaveLength(1);
+  });
 });
 
 describe("ModpackService.reconcile", () => {
-  it("heals a missing pack row for an approved suggestion", async () => {
+  it("heals a missing pack row for a promoted suggestion", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {
       submittedBy: USER_A,
-      status: "approved",
+      status: "next_update",
       fileId: 123,
       fileName: "healed.jar",
       fileReleaseType: 1,
@@ -185,6 +250,85 @@ describe("ModpackService.reconcile", () => {
       liveInVersion: "2.0.0",
     });
     expect(imported!.liveAt).not.toBeNull();
+  });
+
+  it("moves a shipped suggestion to in_pack and back when it drops out", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+
+    await modpackService.reconcile(modpack.id);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
+    expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
+
+    // A second sweep over the same manifest must not re-announce
+    await modpackService.reconcile(modpack.id);
+    expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
+
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.1.0",
+      modIds: new Set<number>(),
+    });
+    await modpackService.reconcile(modpack.id);
+
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
+      "next_update",
+    );
+    expect(vi.mocked(announcePackDropOut)).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the pack without a row for a shipped mod that was rejected, and does not re-import it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "in_pack",
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "1.0.0",
+      modIds: new Set([mod.curseforgeProjectId]),
+    });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+    });
+    await modpackService.reconcile(modpack.id);
+
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      }),
+    ).toBeNull();
+    const items = await modpackService.getWorkshopAttention(workshop);
+    expect(
+      items.filter((item) => item.type === "shipped_rejected"),
+    ).toHaveLength(1);
   });
 
   it("flags dropped live members and deletes dropped import rows", async () => {

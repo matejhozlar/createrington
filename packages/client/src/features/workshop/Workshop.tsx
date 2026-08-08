@@ -122,8 +122,8 @@ function ActiveWorkshopCard({ workshop }: { workshop: WorkshopListItem }) {
           <div className="flex flex-wrap gap-12 border-t border-border pt-5">
             <WorkshopStat
               label="In the pack"
-              value={summary.approvedModCount}
-              unit={summary.approvedModCount === 1 ? "mod" : "mods"}
+              value={summary.packModCount}
+              unit={summary.packModCount === 1 ? "mod" : "mods"}
             />
             <WorkshopStat
               label="Awaiting review"

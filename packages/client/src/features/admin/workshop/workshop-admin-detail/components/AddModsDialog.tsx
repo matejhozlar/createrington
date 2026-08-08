@@ -51,7 +51,7 @@ export function AddModsDialog({
   const addMutation = trpc.admin.workshops.addMods.useMutation({
     onSuccess: (mods) => {
       toast.success(
-        `Added ${mods.length} mod${mods.length !== 1 ? "s" : ""} as approved`,
+        `Added ${mods.length} mod${mods.length !== 1 ? "s" : ""} to the pack`,
       );
       onAdded();
       setSelected([]);
@@ -78,7 +78,8 @@ export function AddModsDialog({
         <DialogHeader>
           <DialogTitle>Add Mods to the Pack</DialogTitle>
           <DialogDescription>
-            Mods added here skip review and land directly as approved.
+            Mods added here skip review and land directly in the pack, coming
+            next update.
           </DialogDescription>
         </DialogHeader>
 
@@ -203,7 +204,7 @@ export function AddModsDialog({
                       variant="outline"
                       className={cn(
                         "text-xs",
-                        MOD_STATUS_STYLES.live.className,
+                        MOD_STATUS_STYLES.in_pack.className,
                       )}
                     >
                       In base pack
@@ -243,7 +244,7 @@ export function AddModsDialog({
             {addMutation.isPending && (
               <Loader2 className="size-4 animate-spin" />
             )}
-            Add {selected.length > 0 ? `${selected.length} ` : ""}as Approved
+            Add {selected.length > 0 ? `${selected.length} ` : ""}to the Pack
           </Button>
         </DialogFooter>
       </DialogContent>
