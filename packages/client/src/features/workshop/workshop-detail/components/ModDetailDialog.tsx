@@ -125,7 +125,7 @@ export function ModDetailDialog({
                   <DialogTitle className="text-xl">{project.name}</DialogTitle>
                   <DialogDescription>
                     by {project.primaryAuthor ?? "unknown"}
-                    {project.summary ? ` — ${project.summary}` : ""}
+                    {project.summary ? ` · ${project.summary}` : ""}
                   </DialogDescription>
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {status && (

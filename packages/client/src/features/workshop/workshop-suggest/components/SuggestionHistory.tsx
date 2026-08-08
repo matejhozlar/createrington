@@ -47,7 +47,7 @@ function secondaryLine(mod: HistoryItem): string {
     const label = mod.rejectReason
       ? REJECT_REASON_LABELS[mod.rejectReason]
       : "Ruled out";
-    return mod.rejectNote ? `${label} — ${mod.rejectNote}` : label;
+    return mod.rejectNote ? `${label}: ${mod.rejectNote}` : label;
   }
   return mod.note ? `“${mod.note}”` : "";
 }

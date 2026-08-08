@@ -25,7 +25,7 @@ import { WorkshopHero } from "../components/WorkshopHero";
 import { PackList } from "./components/PackList";
 
 const FALLBACK_DESCRIPTION =
-  "Everything running on the server right now — the base pack plus every mod players have voted in.";
+  "Everything running on the server right now: the base pack plus every mod players have voted in.";
 
 type SourceFilter = "all" | "voted" | "base";
 

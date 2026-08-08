@@ -245,7 +245,7 @@ export function ModSearch({
       {isFull && (
         <div className="flex items-center gap-2.5 rounded-[10px] border border-primary/35 bg-primary/[0.06] px-4 py-3 text-[13px]">
           <Info className="size-4 shrink-0 text-primary" />
-          All {workshop.maxModsPerUser} slots used — remove a suggestion to add
+          All {workshop.maxModsPerUser} slots used. Remove a suggestion to add
           another.
         </div>
       )}
