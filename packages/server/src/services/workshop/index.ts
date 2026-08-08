@@ -679,8 +679,6 @@ export class WorkshopService {
       name: string;
       description: string | null;
       status: Workshop["status"];
-      gameVersion: string;
-      modLoaderType: number;
       classId: number;
       baseModpackProjectId: number | null;
       modpackId: number;
@@ -702,17 +700,13 @@ export class WorkshopService {
     }
 
     const targetChanged =
-      (patch.gameVersion !== undefined &&
-        patch.gameVersion !== workshop.gameVersion) ||
-      (patch.modLoaderType !== undefined &&
-        patch.modLoaderType !== workshop.modLoaderType) ||
       (patch.classId !== undefined && patch.classId !== workshop.classId) ||
       (patch.baseModpackProjectId !== undefined &&
         patch.baseModpackProjectId !== workshop.baseModpackProjectId) ||
       (patch.modpackId !== undefined && patch.modpackId !== workshop.modpackId);
     if (targetChanged && (await Q.workshop.mod.count({ workshopId })) > 0) {
       throw new BadRequestError(
-        "Cannot change the game version, mod loader, project type, base modpack, or modpack of a workshop that already has mods",
+        "Cannot change the project type, base modpack, or modpack of a workshop that already has mods",
       );
     }
 
