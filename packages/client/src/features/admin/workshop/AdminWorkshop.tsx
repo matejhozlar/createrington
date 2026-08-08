@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Hammer, Plus } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/table";
 import { Loading } from "@/components/loading-spinner";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { QueryErrorState } from "@/features/workshop/components/QueryErrorState";
 import {
   WORKSHOP_STATUS_STYLES,
   formatDate,
@@ -46,6 +45,8 @@ export function AdminWorkshop() {
 
   const [createOpen, setCreateOpen] = useState(false);
 
+  const workshops = workshopsQuery.data ?? [];
+
   return (
     <div className="flex flex-1 flex-col gap-4">
       <AdminPageHeader
@@ -54,71 +55,95 @@ export function AdminWorkshop() {
           { label: "Tools", href: "/admin/tools" },
           { label: "Workshop" },
         ]}
-      >
-        <div className="ml-auto flex items-center gap-2">
-          <Label
-            htmlFor="workshop-enabled"
-            className="text-sm text-muted-foreground"
-          >
-            Feature Enabled
-          </Label>
-          <Switch
-            id="workshop-enabled"
-            checked={workshopFlag?.enabled ?? false}
-            disabled={
-              flagsQuery.isLoading ||
-              !!flagsQuery.error ||
-              setFlagMutation.isPending
-            }
-            onCheckedChange={(checked) =>
-              setFlagMutation.mutate({
-                name: "workshop",
-                enabled: checked,
-                description: "Workshop tab",
-              })
-            }
-          />
-        </div>
-      </AdminPageHeader>
+      />
 
-      <div className="mx-auto w-full max-w-[1100px] flex flex-1 flex-col gap-6 px-4 pb-6">
-        <Card>
-          <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Workshops</CardTitle>
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4" />
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Workshop</h1>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="workshop-enabled"
+                className="text-sm text-muted-foreground"
+              >
+                Feature Enabled
+              </Label>
+              <Switch
+                id="workshop-enabled"
+                checked={workshopFlag?.enabled ?? false}
+                disabled={
+                  flagsQuery.isLoading ||
+                  !!flagsQuery.error ||
+                  setFlagMutation.isPending
+                }
+                onCheckedChange={(checked) =>
+                  setFlagMutation.mutate({
+                    name: "workshop",
+                    enabled: checked,
+                    description: "Workshop tab",
+                  })
+                }
+              />
+            </div>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 size-4" />
               New Workshop
             </Button>
+          </div>
+        </div>
+
+        <Card className="gap-0">
+          <CardHeader className="gap-0 border-b">
+            <CardTitle>
+              Workshops ({workshops.length.toLocaleString()})
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            {workshopsQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loading size="medium" text="Loading workshops..." />
+
+          {workshopsQuery.isLoading ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <Loading size="medium" text="Loading workshops..." />
+            </CardContent>
+          ) : workshopsQuery.error ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <div className="text-center">
+                <p className="text-destructive">
+                  {workshopsQuery.error.message}
+                </p>
+                <Button
+                  onClick={() => workshopsQuery.refetch()}
+                  className="mt-4"
+                  variant="outline"
+                >
+                  Try Again
+                </Button>
               </div>
-            ) : workshopsQuery.error ? (
-              <QueryErrorState
-                compact
-                message={workshopsQuery.error.message}
-                onRetry={() => workshopsQuery.refetch()}
-              />
-            ) : (workshopsQuery.data?.length ?? 0) === 0 ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">
-                No workshops yet, create the first one.
-              </p>
-            ) : (
+            </CardContent>
+          ) : workshops.length === 0 ? (
+            <CardContent className="flex flex-1 items-center justify-center py-12">
+              <div className="text-center">
+                <Hammer className="mx-auto size-12 text-muted-foreground" />
+                <p className="mt-2 text-muted-foreground">No workshops yet</p>
+                <Button onClick={() => setCreateOpen(true)} className="mt-4">
+                  <Plus className="mr-2 size-4" />
+                  Create First Workshop
+                </Button>
+              </div>
+            </CardContent>
+          ) : (
+            <CardContent className="px-0">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-sidebar-accent/50">
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Target</TableHead>
-                    <TableHead>Cap</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead />
+                    <TableHead className="px-4">Name</TableHead>
+                    <TableHead className="px-4">Status</TableHead>
+                    <TableHead className="px-4">Target</TableHead>
+                    <TableHead className="px-4">Cap</TableHead>
+                    <TableHead className="px-4">Created</TableHead>
+                    <TableHead className="px-4" />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {workshopsQuery.data?.map((workshop) => (
+                  {workshops.map((workshop) => (
                     <TableRow
                       key={workshop.id}
                       role="button"
@@ -135,13 +160,13 @@ export function AdminWorkshop() {
                         }
                       }}
                     >
-                      <TableCell>
-                        <div className="font-medium">{workshop.name}</div>
-                        <div className="text-xs text-muted-foreground">
+                      <TableCell className="px-4">
+                        <p className="font-medium">{workshop.name}</p>
+                        <p className="text-xs text-muted-foreground">
                           /{workshop.slug}
-                        </div>
+                        </p>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="px-4">
                         <Badge
                           variant="outline"
                           className={
@@ -152,25 +177,25 @@ export function AdminWorkshop() {
                             workshop.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="px-4 text-sm">
                         {workshop.gameVersion} ·{" "}
                         {loaderName(workshop.modLoaderType)}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="px-4 text-sm">
                         {workshop.maxModsPerUser} mods
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
+                      <TableCell className="px-4 text-sm text-muted-foreground">
                         {formatDate(workshop.createdAt)}
                       </TableCell>
-                      <TableCell>
-                        <ChevronRight className="size-4 text-muted-foreground" />
+                      <TableCell className="px-4 text-right">
+                        <ChevronRight className="ml-auto size-4 text-muted-foreground" />
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-            )}
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
       </div>
 
