@@ -94,7 +94,7 @@ export function WorkshopSuggest() {
           </h1>
           <p className="mt-2.5 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
             Find a mod on CurseForge and tell us why it belongs in the pack. The
-            team reviews every suggestion — upvotes are the signal, not the
+            team reviews every suggestion. Upvotes are the signal, not the
             verdict.
           </p>
         </header>
