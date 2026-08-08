@@ -1,4 +1,4 @@
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import { CryptoHeader } from "./components/CryptoHeader";
 import { CryptoDisabledScreen } from "./components/CryptoDisabledScreen";
 import { useAuth } from "@/contexts/auth";

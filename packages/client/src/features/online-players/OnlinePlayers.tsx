@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { usePlayerData } from "@/contexts/player-data";
 import { useServerData } from "@/contexts/server-data";
 import { useAuth } from "@/contexts/auth";

@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import { trpc } from "@/lib/trpc";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MinecraftAvatar } from "@/components/minecraft-avatar";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 
 const CATEGORY_OPTIONS = [
   { key: "minecraft:picked_up", label: "Picked Up" },

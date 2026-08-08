@@ -9,7 +9,7 @@ import {
   PanelLeftOpenIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";

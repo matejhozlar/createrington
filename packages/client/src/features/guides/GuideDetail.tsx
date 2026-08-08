@@ -1,5 +1,5 @@
 import { useRef, useCallback, useState } from "react";
-import { useParams, useNavigate, Navigate } from "react-router-dom";
+import { useParams, useNavigate, Navigate } from "react-router";
 import { PageHeader } from "@/components/page-header";
 import { guides } from "./data";
 import { useGuideProgress } from "./hooks/use-guide-progress";

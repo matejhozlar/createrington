@@ -11,7 +11,7 @@ import {
   SparklesIcon,
   useAnimatedHover,
 } from "@createrington/icons";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router";
 import { useState } from "react";
 import {
   SidebarMenuButton,
