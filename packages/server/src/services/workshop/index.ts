@@ -15,9 +15,11 @@ import type {
   WorkshopProjectDependency,
 } from "@createrington/shared/db";
 import {
-  WORKSHOP_MOD_REVIEW_ACTIONS,
+  WORKSHOP_MOD_REVIEW_ACTION_LABELS,
   WORKSHOP_MOD_REVIEW_TARGETS,
+  WORKSHOP_MOD_STATUS_LABELS,
   WORKSHOP_STATUS_TRANSITIONS,
+  type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
 import {
   CurseForgeClass,
@@ -147,14 +149,7 @@ export interface WorkshopProjectSearchResult {
   claimed: boolean;
 }
 
-export type WorkshopReviewAction = (typeof WORKSHOP_MOD_REVIEW_ACTIONS)[number];
-
-const REVIEW_ACTION_FAILURES: Record<WorkshopReviewAction, string> = {
-  approve: "approved",
-  start_testing: "moved to testing",
-  send_back: "sent back",
-  reject: "rejected",
-};
+export type WorkshopReviewAction = WorkshopModReviewAction;
 
 const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -752,13 +747,14 @@ export class WorkshopService {
   }
 
   /**
-   * Move a mod through the review pipeline: approve takes pending or rejected
-   * mods to approved and testing mods to next_update (which adds the pack
-   * row), start_testing takes approved mods to testing, send_back walks
-   * testing and next_update back one stage, and reject works from any stage
-   * with a reason. Rejected rows persist and can be re-reviewed. Repeating an
-   * action the mod already satisfies is an idempotent no-op that returns the
-   * current row. The in_pack status is reconcile-owned and never set here.
+   * Move a mod through the review pipeline. WORKSHOP_MOD_REVIEW_TARGETS is the
+   * rule: a status with no entry for the action is refused. Reaching
+   * next_update adds the pack row; leaving next_update or in_pack for anything
+   * else drops it, so rejecting a mod that is already in the published pack
+   * discards its ship history and leaves the pack contradicting the manifest
+   * until it is republished (the mod surfaces as a shipped_rejected attention
+   * item meanwhile). Repeating an action the mod already satisfies is an
+   * idempotent no-op. The in_pack status is reconcile-owned and never set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -800,7 +796,9 @@ export class WorkshopService {
     const target = WORKSHOP_MOD_REVIEW_TARGETS[mod.status][action];
     if (!target) {
       throw new BadRequestError(
-        `A ${mod.status} mod cannot be ${REVIEW_ACTION_FAILURES[action]}`,
+        `Cannot ${WORKSHOP_MOD_REVIEW_ACTION_LABELS[action]} a mod that is ${WORKSHOP_MOD_STATUS_LABELS[
+          mod.status
+        ].toLowerCase()}`,
       );
     }
 
@@ -823,9 +821,11 @@ export class WorkshopService {
             },
         { id: workshopModId, status: mod.status },
       );
-      // Only next_update and in_pack may hold a pack row, so leaving them for
-      // any other status drops it
-      if (count === 0 || target === "next_update") {
+      // Only next_update and in_pack hold a pack row, so a mod leaving either
+      // for anything but the other drops it
+      const heldPackRow =
+        mod.status === "next_update" || mod.status === "in_pack";
+      if (count === 0 || !heldPackRow || target === "next_update") {
         return { changed: count, removedPackRows: 0 };
       }
       const removed = await tx.modpack.mod.deleteAll({

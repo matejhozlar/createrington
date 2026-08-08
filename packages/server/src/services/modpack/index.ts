@@ -58,6 +58,23 @@ export type ModpackListItem = Modpack & {
   liveCount: number;
 };
 
+/**
+ * Post pipeline moves to their threads off the caller's path: reconcile runs
+ * from an admin mutation, and a pack's worth of posts would both stall that
+ * request and hit Discord in one burst. Sequential so the rate limiter paces
+ * itself; the announce helpers swallow their own errors.
+ */
+function announceStatusMoves(mods: WorkshopMod[]): void {
+  if (mods.length === 0) return;
+  void (async () => {
+    for (const mod of mods) {
+      await (mod.status === "in_pack"
+        ? announceReview(mod, "in_pack")
+        : announcePackDropOut(mod));
+    }
+  })();
+}
+
 export type ModpackAttentionItem =
   | {
       type: "dropped_from_pack";
@@ -553,33 +570,31 @@ export class ModpackService {
 
   /**
    * Move suggestions between next_update and in_pack to match what the
-   * published manifest actually contains, announcing each move on its thread.
+   * published manifest actually contains. Returns the rows this call claimed,
+   * so the caller can announce them.
    */
   private async moveSuggestions(
     workshopModIds: number[],
     from: Extract<WorkshopModStatus, "next_update" | "in_pack">,
     to: Extract<WorkshopModStatus, "next_update" | "in_pack">,
-  ): Promise<void> {
-    if (workshopModIds.length === 0) return;
+  ): Promise<WorkshopMod[]> {
+    if (workshopModIds.length === 0) return [];
     const mods = await Q.workshop.mod.findAll({
       id: { $in: workshopModIds },
       status: from,
     });
+    const moved: WorkshopMod[] = [];
     for (const mod of mods) {
-      // Concurrent reconciles read the same rows, so only the one that wins
-      // the guarded update announces
+      // Concurrent reconciles read the same rows, so the guarded update picks
+      // one winner per move. Announcements are therefore at-most-once: a crash
+      // between the claim and the post loses it, since no later sweep retries
       const claimed = await Q.workshop.mod.updateAll(
         { status: to },
         { id: mod.id, status: from },
       );
-      if (claimed === 0) continue;
-      const updated = { ...mod, status: to };
-      // Awaited: a whole pack's worth of announcements at once would race the
-      // Discord rate limiter, and a sweep has no latency budget to protect
-      await (to === "in_pack"
-        ? announceReview(updated, to)
-        : announcePackDropOut(updated));
+      if (claimed > 0) moved.push({ ...mod, status: to });
     }
+    return moved;
   }
 
   private async applyManifest(
@@ -614,26 +629,29 @@ export class ModpackService {
         continue;
       }
 
-      if (row.liveAt !== null) {
-        if (row.origin === "import") {
-          await Q.modpack.mod.deleteAll({ id: row.id });
-          continue;
-        }
-        await Q.modpack.mod.updateAll(
-          {
-            liveAt: null,
-            liveInVersion: null,
-            droppedFromManifestAt: now,
-            updatedAt: now,
-          },
-          { id: row.id },
-        );
+      // Only a row that was live and has now fallen out is a drop-out; rows
+      // still waiting on a pack update were never in it
+      if (row.liveAt === null) continue;
+      if (row.origin === "import") {
+        await Q.modpack.mod.deleteAll({ id: row.id });
+        continue;
       }
+      await Q.modpack.mod.updateAll(
+        {
+          liveAt: null,
+          liveInVersion: null,
+          droppedFromManifestAt: now,
+          updatedAt: now,
+        },
+        { id: row.id },
+      );
       if (row.workshopModId) droppedModIds.push(row.workshopModId);
     }
 
-    await this.moveSuggestions(shippedModIds, "next_update", "in_pack");
-    await this.moveSuggestions(droppedModIds, "in_pack", "next_update");
+    announceStatusMoves([
+      ...(await this.moveSuggestions(shippedModIds, "next_update", "in_pack")),
+      ...(await this.moveSuggestions(droppedModIds, "in_pack", "next_update")),
+    ]);
 
     const knownProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
     const suggestions =

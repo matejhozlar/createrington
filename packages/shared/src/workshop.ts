@@ -29,7 +29,18 @@ export const WORKSHOP_MOD_STATUSES = [
   "rejected",
 ] as const;
 
+// Not exported: shared/db already exports a generated WorkshopModStatus and
+// the package barrel re-exports both modules
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
+
+export const WORKSHOP_MOD_STATUS_LABELS: Record<WorkshopModStatus, string> = {
+  pending: "In review",
+  approved: "Approved",
+  testing: "In testing",
+  next_update: "Coming next update",
+  in_pack: "In the pack",
+  rejected: "Ruled out",
+};
 
 export const WORKSHOP_MOD_REVIEW_ACTIONS = [
   "approve",
@@ -38,7 +49,18 @@ export const WORKSHOP_MOD_REVIEW_ACTIONS = [
   "reject",
 ] as const;
 
-type WorkshopModReviewAction = (typeof WORKSHOP_MOD_REVIEW_ACTIONS)[number];
+export type WorkshopModReviewAction =
+  (typeof WORKSHOP_MOD_REVIEW_ACTIONS)[number];
+
+export const WORKSHOP_MOD_REVIEW_ACTION_LABELS: Record<
+  WorkshopModReviewAction,
+  string
+> = {
+  approve: "approve",
+  start_testing: "start testing",
+  send_back: "send back",
+  reject: "reject",
+};
 
 // Reviews never land on pending (nothing un-suggests a mod) or in_pack, which
 // reconcile owns: it follows the published pack manifest rather than an admin

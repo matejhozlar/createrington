@@ -1,4 +1,8 @@
 import type { WorkshopModStatus } from "@createrington/shared/db";
+import {
+  WORKSHOP_MOD_STATUSES,
+  WORKSHOP_MOD_STATUS_LABELS,
+} from "@createrington/shared/workshop";
 
 export { WORKSHOP_MOD_REJECT_REASON_LABELS as REJECT_REASON_LABELS } from "@createrington/shared/workshop";
 
@@ -62,35 +66,24 @@ export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };
 }
 
-export const MOD_STATUS_STYLES: Record<
-  string,
-  { label: string; className: string }
-> = {
-  pending: {
-    label: "In review",
-    className: "border-primary/20 bg-primary/10 text-primary",
-  },
-  approved: {
-    label: "Approved",
-    className: "border-sky-500/20 bg-sky-500/10 text-sky-400",
-  },
-  testing: {
-    label: "In testing",
-    className: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  },
-  next_update: {
-    label: "Coming next update",
-    className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
-  },
-  in_pack: {
-    label: "In the pack",
-    className: "border-green-500/20 bg-green-500/10 text-green-400",
-  },
-  rejected: {
-    label: "Ruled out",
-    className: "border-red-500/20 bg-red-500/10 text-red-400",
-  },
+const MOD_STATUS_CLASSES: Record<WorkshopModStatus, string> = {
+  pending: "border-primary/20 bg-primary/10 text-primary",
+  approved: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+  testing: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  next_update: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+  in_pack: "border-green-500/20 bg-green-500/10 text-green-400",
+  rejected: "border-red-500/20 bg-red-500/10 text-red-400",
 };
+
+export const MOD_STATUS_STYLES = Object.fromEntries(
+  WORKSHOP_MOD_STATUSES.map((status) => [
+    status,
+    {
+      label: WORKSHOP_MOD_STATUS_LABELS[status],
+      className: MOD_STATUS_CLASSES[status],
+    },
+  ]),
+) as Record<WorkshopModStatus, { label: string; className: string }>;
 
 // liveInVersion comes from the project's pack row, so it describes this
 // suggestion only once the suggestion itself is the one that shipped

@@ -48,6 +48,7 @@ vi.mock("@/services/curseforge/ingest", () => ({
 
 import pool, { Q } from "@/db";
 import { modpackService } from "@/services/modpack";
+import { workshopService } from "@/services/workshop";
 import { getModpackManifest } from "@/services/curseforge";
 import {
   announcePackDropOut,
@@ -65,6 +66,7 @@ import {
 } from "@/tests/helpers/workshop";
 
 const USER_A = "999900000000000002";
+const ADMIN = "999900000000000001";
 
 const ctx = createWorkshopTestContext(992_000_000);
 
@@ -288,6 +290,45 @@ describe("ModpackService.reconcile", () => {
       "next_update",
     );
     expect(vi.mocked(announcePackDropOut)).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the pack without a row for a shipped mod that was rejected, and does not re-import it", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "in_pack",
+    });
+    await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "1.0.0",
+      modIds: new Set([mod.curseforgeProjectId]),
+    });
+
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+    });
+    await modpackService.reconcile(modpack.id);
+
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: modpack.id,
+        curseforgeProjectId: mod.curseforgeProjectId,
+      }),
+    ).toBeNull();
+    const items = await modpackService.getWorkshopAttention(workshop);
+    expect(
+      items.filter((item) => item.type === "shipped_rejected"),
+    ).toHaveLength(1);
   });
 
   it("flags dropped live members and deletes dropped import rows", async () => {

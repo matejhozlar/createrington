@@ -43,7 +43,7 @@ const REVIEW_MESSAGES: Record<
 };
 
 const PACK_DROP_OUT_MESSAGE =
-  "↩️ **Not in the latest pack update.** This mod is no longer in the published pack, the team is looking into it.";
+  "↩️ **Dropped from the latest pack update.** Back to coming next update while the team looks into it.";
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
