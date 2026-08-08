@@ -7,6 +7,7 @@ import {
   BoxIcon,
   ClipboardIcon,
   DashboardIcon,
+  HammerIcon,
   HeartIcon,
   HomeIcon,
   InfoIcon,
@@ -60,6 +61,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // cache after the query is disabled on logout, which would otherwise
   // leave the owner nav visible until the cache is cleared.
   const isOwner = !!user && (accountQuery.data?.isOwner ?? false);
+
+  const workshopEnabledQuery = trpc.user.workshops.isEnabled.useQuery(
+    undefined,
+    { enabled: !!user },
+  );
+  const workshopEnabled =
+    !!user && (workshopEnabledQuery.data?.enabled ?? false);
 
   const data = {
     ownerNav: [
@@ -117,6 +125,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         url: "/structure-packs",
         icon: BoxIcon,
       },
+      ...(workshopEnabled
+        ? [
+            {
+              title: "Workshop",
+              url: "/workshop",
+              icon: HammerIcon,
+              badge: "New",
+              badgeClassName: "bg-blue-500/90 text-white",
+            },
+          ]
+        : []),
       {
         title: "Chat",
         url: "/chat/1",

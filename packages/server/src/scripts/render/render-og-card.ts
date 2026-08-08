@@ -61,7 +61,7 @@ interface FrameSpec {
 
 // A diagonal cascade of browser windows, mirroring the marketing WebShowcase
 // scene: feature screens (not the home page, whose hero would duplicate the
-// woodmark + tagline drawn on the left).
+// wordmark + tagline drawn on the left).
 const FRAMES: readonly FrameSpec[] = [
   {
     file: join(SHOTS, "web-chat.webp"),

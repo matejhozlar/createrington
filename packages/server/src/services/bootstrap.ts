@@ -22,6 +22,7 @@ import { InactivityCleanupService } from "./discord/cleanup/inactivity/inactivit
 import { GhostMemberService } from "./discord/cleanup/ghost/ghost-member.service";
 import { UnlinkedMemberService } from "./discord/cleanup/unlinked/unlinked-member.service";
 import { WaitlistCleanupService } from "./waitlist/waitlist-cleanup.service";
+import { WorkshopProjectRefreshService } from "./workshop/refresh.service";
 import { MemberCleanupService } from "./discord/cleanup/member/member-cleanup.service";
 import { SERVER_STATS_CONFIG, ServerStatsService } from "./discord/stats";
 import { buildMainBotStatuses, RotatingStatusService } from "./discord/status";
@@ -248,6 +249,16 @@ export function registerServices(): void {
       },
     );
   }
+
+  container.register(
+    Services.WORKSHOP_PROJECT_REFRESH,
+    async () => {
+      const service = new WorkshopProjectRefreshService();
+      await service.initialize();
+      return service;
+    },
+    { dependencies: [Services.DATABASE, Services.DISCORD_MAIN_BOT] },
+  );
 
   container.register(
     Services.WAITLIST_CLEANUP_SERVICE,

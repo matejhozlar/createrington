@@ -3,3 +3,4 @@ export * from "./api";
 export * from "./auth";
 export * from "./db";
 export * from "./socket";
+export * from "./workshop";
