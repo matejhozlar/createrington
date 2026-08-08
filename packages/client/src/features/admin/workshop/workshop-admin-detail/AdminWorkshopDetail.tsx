@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   PackagePlus,
   Settings2,
+  Undo2,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
@@ -111,6 +112,11 @@ const REVIEW_TOASTS: Record<string, string> = {
   rejected: "Mod rejected",
 };
 
+const SEND_BACK_TOASTS: Record<string, string> = {
+  approved: "Mod sent back, awaiting testing",
+  testing: "Mod sent back to testing",
+};
+
 const STATUS_FILTERS = [
   "all",
   "pending",
@@ -187,8 +193,10 @@ export function AdminWorkshopDetail() {
   });
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
-    onSuccess: (mod) => {
-      toast.success(REVIEW_TOASTS[mod.status] ?? "Mod updated");
+    onSuccess: (mod, variables) => {
+      const toasts =
+        variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
+      toast.success(toasts[mod.status] ?? "Mod updated");
       invalidate();
       setRejectTarget(null);
       setRejectReason("");
@@ -476,6 +484,20 @@ export function AdminWorkshopDetail() {
                                 >
                                   <Check className="size-4 text-green-500" />
                                   Approve for Next Update
+                                </DropdownMenuItem>
+                              )}
+                              {(mod.status === "testing" ||
+                                mod.status === "next_update") && (
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    reviewMutation.mutate({
+                                      workshopModId: mod.id,
+                                      action: "send_back",
+                                    })
+                                  }
+                                >
+                                  <Undo2 className="size-4 text-muted-foreground" />
+                                  Send Back a Stage
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem

@@ -167,13 +167,13 @@ export const adminWorkshopsRouter = router({
   reviewMod: adminProcedure
     .meta({
       description:
-        "Review a mod: approve, move it to testing, or reject for this workshop with a reason",
+        "Review a mod: approve, move it to testing, send it back a stage, or reject for this workshop with a reason",
     })
     .input(
       z
         .object({
           workshopModId: id(),
-          action: z.enum(["approve", "start_testing", "reject"]),
+          action: z.enum(["approve", "start_testing", "send_back", "reject"]),
           reason: z.enum(WORKSHOP_MOD_REJECT_REASONS).optional(),
           note: z.string().trim().max(500).optional(),
         })

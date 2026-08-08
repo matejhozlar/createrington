@@ -39,8 +39,8 @@ export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
 > = {
   pending: ["approved", "rejected"],
   approved: ["testing", "rejected"],
-  testing: ["next_update", "rejected"],
-  next_update: ["in_pack", "rejected"],
+  testing: ["approved", "next_update", "rejected"],
+  next_update: ["testing", "in_pack", "rejected"],
   in_pack: ["next_update", "rejected"],
   rejected: ["approved"],
 };

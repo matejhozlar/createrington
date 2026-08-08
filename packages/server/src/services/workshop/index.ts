@@ -147,7 +147,8 @@ export interface WorkshopProjectSearchResult {
   claimed: boolean;
 }
 
-export type WorkshopReviewAction = "approve" | "start_testing" | "reject";
+export type WorkshopReviewAction =
+  "approve" | "start_testing" | "send_back" | "reject";
 
 const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
   "pending",
@@ -749,11 +750,11 @@ export class WorkshopService {
   /**
    * Move a mod through the review pipeline: approve takes pending or rejected
    * mods to approved and testing mods to next_update (which adds the pack
-   * row), start_testing takes approved mods to testing, and reject works from
-   * any stage with a reason. Rejected rows persist and can be re-reviewed.
-   * Repeating an action the mod already satisfies is an idempotent no-op that
-   * returns the current row. The in_pack status is reconcile-owned and never
-   * set here.
+   * row), start_testing takes approved mods to testing, send_back walks
+   * testing and next_update back one stage, and reject works from any stage
+   * with a reason. Rejected rows persist and can be re-reviewed. Repeating an
+   * action the mod already satisfies is an idempotent no-op that returns the
+   * current row. The in_pack status is reconcile-owned and never set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -781,15 +782,29 @@ export class WorkshopService {
       return mod;
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
+    if (action === "send_back") {
+      if (mod.status === "in_pack") {
+        throw new BadRequestError(
+          "This mod is in the published pack, reject it instead of sending it back",
+        );
+      }
+      if (mod.status !== "testing" && mod.status !== "next_update") {
+        throw new BadRequestError(`A ${mod.status} mod cannot be sent back`);
+      }
+    }
 
     const target: Exclude<WorkshopModStatus, "pending" | "in_pack"> =
       action === "reject"
         ? "rejected"
         : action === "start_testing"
           ? "testing"
-          : mod.status === "testing"
-            ? "next_update"
-            : "approved";
+          : action === "send_back"
+            ? mod.status === "next_update"
+              ? "testing"
+              : "approved"
+            : mod.status === "testing"
+              ? "next_update"
+              : "approved";
     if (
       target !== mod.status &&
       !WORKSHOP_MOD_STATUS_TRANSITIONS[mod.status].includes(target)
@@ -821,7 +836,9 @@ export class WorkshopService {
             },
         { id: workshopModId, status: mod.status },
       );
-      if (count === 0 || target !== "rejected") {
+      // Only next_update and in_pack may hold a pack row, so leaving them for
+      // any other status drops it
+      if (count === 0 || target === "next_update") {
         return { changed: count, removedPackRows: 0 };
       }
       const removed = await tx.modpack.mod.deleteAll({
@@ -843,11 +860,11 @@ export class WorkshopService {
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
-    } else if (target === "rejected") {
+    } else {
       if (removedPackRows > 0) {
         await pruneOrphanedDependencies(workshop.modpackId);
       }
-      await pruneStaleDependencyEdges(workshop);
+      if (target === "rejected") await pruneStaleDependencyEdges(workshop);
     }
     return updated;
   }
