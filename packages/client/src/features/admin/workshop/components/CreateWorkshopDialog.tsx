@@ -46,6 +46,7 @@ export function CreateWorkshopDialog({
   const [modpackName, setModpackName] = useState("");
 
   const modpacksQuery = trpc.admin.modpacks.list.useQuery();
+  const versionsQuery = trpc.admin.workshops.listGameVersions.useQuery();
 
   const createMutation = trpc.admin.workshops.create.useMutation({
     onSuccess: (workshop) => {
@@ -142,13 +143,38 @@ export function CreateWorkshopDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="workshop-version">Game Version</Label>
-              <Input
-                id="workshop-version"
-                placeholder="1.21.1"
-                maxLength={20}
-                value={gameVersion}
-                onChange={(e) => setGameVersion(e.target.value)}
-              />
+              {versionsQuery.error ? (
+                <Input
+                  id="workshop-version"
+                  placeholder="1.21.1"
+                  maxLength={20}
+                  value={gameVersion}
+                  onChange={(e) => setGameVersion(e.target.value)}
+                />
+              ) : (
+                <Select
+                  value={gameVersion}
+                  onValueChange={setGameVersion}
+                  disabled={versionsQuery.isLoading}
+                >
+                  <SelectTrigger id="workshop-version">
+                    <SelectValue
+                      placeholder={
+                        versionsQuery.isLoading
+                          ? "Loading..."
+                          : "Pick a version"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versionsQuery.data?.map((version) => (
+                      <SelectItem key={version} value={version}>
+                        {version}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Mod Loader</Label>
