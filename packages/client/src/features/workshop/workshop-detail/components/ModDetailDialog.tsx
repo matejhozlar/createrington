@@ -61,14 +61,15 @@ export function ModDetailDialog({
   onOpenChange: (open: boolean) => void;
   admin?: boolean;
 }) {
+  const open = workshopModId !== null;
   const displayId = useStickyValue(workshopModId);
   const userQuery = trpc.user.workshops.getMod.useQuery(
     { workshopModId: displayId! },
-    { enabled: displayId !== null && !admin },
+    { enabled: open && !admin },
   );
   const adminQuery = trpc.admin.workshops.getMod.useQuery(
     { workshopModId: displayId! },
-    { enabled: displayId !== null && admin },
+    { enabled: open && admin },
   );
   const detailQuery = admin ? adminQuery : userQuery;
 
@@ -86,7 +87,7 @@ export function ModDetailDialog({
   const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (
-    <Dialog open={workshopModId !== null} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="max-h-[85vh] max-w-3xl overflow-y-auto"
         onOpenAutoFocus={(event) => event.preventDefault()}
