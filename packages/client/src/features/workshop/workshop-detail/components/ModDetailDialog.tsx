@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useStickyValue } from "@/hooks/use-sticky-value";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,13 +61,14 @@ export function ModDetailDialog({
   onOpenChange: (open: boolean) => void;
   admin?: boolean;
 }) {
+  const displayId = useStickyValue(workshopModId);
   const userQuery = trpc.user.workshops.getMod.useQuery(
-    { workshopModId: workshopModId! },
-    { enabled: workshopModId !== null && !admin },
+    { workshopModId: displayId! },
+    { enabled: displayId !== null && !admin },
   );
   const adminQuery = trpc.admin.workshops.getMod.useQuery(
-    { workshopModId: workshopModId! },
-    { enabled: workshopModId !== null && admin },
+    { workshopModId: displayId! },
+    { enabled: displayId !== null && admin },
   );
   const detailQuery = admin ? adminQuery : userQuery;
 
