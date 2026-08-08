@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import path from "node:path";
 import JSZip from "jszip";
+import { z } from "zod";
 import config from "@/config";
 
 // CurseForge API vocabulary
@@ -35,6 +36,114 @@ function toBatches<T>(items: T[]): T[][] {
   }
   return batches;
 }
+
+// Responses are validated before their values are persisted or mapped, so a
+// shape change upstream fails loudly instead of writing NaN / Invalid Date
+function parseCfResponse<T extends z.ZodTypeAny>(
+  schema: T,
+  body: unknown,
+  endpoint: string,
+): z.infer<T> {
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) {
+    logger.warn(
+      `CurseForge ${endpoint} response shape mismatch: ${parsed.error.message}`,
+    );
+    throw new Error(`CurseForge ${endpoint} returned an unexpected response`);
+  }
+  return parsed.data;
+}
+
+const rawFileIndexSchema = z.object({
+  gameVersion: z.string(),
+  fileId: z.number(),
+  filename: z.string(),
+  releaseType: z.number(),
+  modLoader: z.number().nullish(),
+});
+
+const rawModSchema = z.object({
+  id: z.number(),
+  classId: z.number(),
+  slug: z.string(),
+  name: z.string(),
+  summary: z.string(),
+  links: z.object({ websiteUrl: z.string() }),
+  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+  authors: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      url: z.string(),
+      avatarUrl: z.string().optional(),
+    }),
+  ),
+  categories: z.array(
+    z.object({
+      id: z.number(),
+      name: z.string(),
+      slug: z.string(),
+      iconUrl: z.string().optional(),
+    }),
+  ),
+  screenshots: z
+    .array(
+      z.object({
+        title: z.string(),
+        thumbnailUrl: z.string(),
+        url: z.string(),
+      }),
+    )
+    .nullish(),
+  downloadCount: z.number(),
+  isAvailable: z.boolean(),
+  allowModDistribution: z.boolean().nullish(),
+  dateModified: z.string(),
+  dateReleased: z.string(),
+  latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
+});
+
+const rawSearchResultSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string(),
+  summary: z.string().nullish(),
+  authors: z.array(z.object({ name: z.string() })).nullish(),
+  downloadCount: z.number().nullish(),
+  links: z.object({ websiteUrl: z.string() }),
+  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+});
+
+const rawModFileSchema = z.object({
+  id: z.number(),
+  displayName: z.string(),
+  fileName: z.string(),
+  downloadUrl: z.string().nullable(),
+  fileDate: z.string(),
+  fileLength: z.number(),
+  releaseType: z.number(),
+  gameVersions: z.array(z.string()),
+  hashes: z.array(z.object({ value: z.string(), algo: z.number() })).nullish(),
+  dependencies: z
+    .array(z.object({ modId: z.number(), relationType: z.number() }))
+    .nullish(),
+});
+
+const rawFileDependenciesSchema = z.object({
+  id: z.number(),
+  modId: z.number(),
+  dependencies: z
+    .array(z.object({ modId: z.number(), relationType: z.number() }))
+    .nullish(),
+});
+
+const rawDependencyModSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  links: z.object({ websiteUrl: z.string() }),
+  logo: z.object({ thumbnailUrl: z.string() }).nullish(),
+  latestFilesIndexes: z.array(rawFileIndexSchema).nullish(),
+});
 const MINECRAFT_GAME_ID = CURSEFORGE_MINECRAFT_GAME_ID;
 const MOD_CLASS_ID: number = CurseForgeClass.mods;
 const NEOFORGE_LOADER_TYPE: number = CurseForgeLoader.neoforge;
@@ -171,18 +280,11 @@ export async function searchMods(
     throw new Error(`CurseForge search failed (${res.status}): ${text}`);
   }
 
-  const body = (await res.json()) as {
-    data: Array<{
-      id: number;
-      name: string;
-      slug: string;
-      summary?: string;
-      authors?: Array<{ name: string }>;
-      downloadCount?: number;
-      links: { websiteUrl: string };
-      logo?: { thumbnailUrl: string };
-    }>;
-  };
+  const body = parseCfResponse(
+    z.object({ data: z.array(rawSearchResultSchema) }),
+    await res.json(),
+    "search",
+  );
 
   let modpackModIds: Set<number>;
   try {
@@ -232,20 +334,11 @@ export async function getModFiles(
     throw new Error(`CurseForge getModFiles failed (${res.status}): ${text}`);
   }
 
-  const body = (await res.json()) as {
-    data: Array<{
-      id: number;
-      displayName: string;
-      fileName: string;
-      downloadUrl: string | null;
-      fileDate: string;
-      fileLength: number;
-      releaseType: number;
-      gameVersions: string[];
-      hashes?: Array<{ value: string; algo: number }>;
-      dependencies?: Array<{ modId: number; relationType: number }>;
-    }>;
-  };
+  const body = parseCfResponse(
+    z.object({ data: z.array(rawModFileSchema) }),
+    await res.json(),
+    "getModFiles",
+  );
 
   return body.data.map((f) => ({
     id: f.id,
@@ -263,35 +356,7 @@ export async function getModFiles(
   }));
 }
 
-interface RawCurseForgeMod {
-  id: number;
-  classId: number;
-  slug: string;
-  name: string;
-  summary: string;
-  links: { websiteUrl: string };
-  logo?: { thumbnailUrl: string };
-  authors: Array<{ id: number; name: string; url: string; avatarUrl?: string }>;
-  categories: Array<{
-    id: number;
-    name: string;
-    slug: string;
-    iconUrl?: string;
-  }>;
-  screenshots?: Array<{ title: string; thumbnailUrl: string; url: string }>;
-  downloadCount: number;
-  isAvailable: boolean;
-  allowModDistribution?: boolean | null;
-  dateModified: string;
-  dateReleased: string;
-  latestFilesIndexes?: Array<{
-    gameVersion: string;
-    fileId: number;
-    filename: string;
-    releaseType: number;
-    modLoader?: number;
-  }>;
-}
+type RawCurseForgeMod = z.infer<typeof rawModSchema>;
 
 function mapProject(raw: RawCurseForgeMod): CurseForgeProjectData {
   return {
@@ -338,7 +403,11 @@ export async function getMod(
     throw new Error(`CurseForge getMod failed (${res.status}): ${text}`);
   }
 
-  const body = (await res.json()) as { data: RawCurseForgeMod };
+  const body = parseCfResponse(
+    z.object({ data: rawModSchema }),
+    await res.json(),
+    "getMod",
+  );
   return mapProject(body.data);
 }
 
@@ -365,7 +434,11 @@ export async function getMods(
       throw new Error(`CurseForge getMods failed (${res.status}): ${text}`);
     }
 
-    const body = (await res.json()) as { data: RawCurseForgeMod[] };
+    const body = parseCfResponse(
+      z.object({ data: z.array(rawModSchema) }),
+      await res.json(),
+      "getMods",
+    );
     results.push(...body.data.map(mapProject));
   }
   return results;
@@ -414,20 +487,7 @@ export async function resolveDependencies(
     modLoaderType = NEOFORGE_LOADER_TYPE,
   } = target;
 
-  type RawDependencyMod = {
-    id: number;
-    name: string;
-    links: { websiteUrl: string };
-    logo?: { thumbnailUrl: string };
-    latestFilesIndexes: Array<{
-      gameVersion: string;
-      fileId: number;
-      filename: string;
-      modLoader: number;
-    }>;
-  };
-
-  const mods: RawDependencyMod[] = [];
+  const mods: Array<z.infer<typeof rawDependencyModSchema>> = [];
   for (const batch of toBatches(modIds)) {
     const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
       method: "POST",
@@ -442,12 +502,16 @@ export async function resolveDependencies(
       );
     }
 
-    const body = (await res.json()) as { data: RawDependencyMod[] };
+    const body = parseCfResponse(
+      z.object({ data: z.array(rawDependencyModSchema) }),
+      await res.json(),
+      "resolveDependencies",
+    );
     mods.push(...body.data);
   }
 
   return mods.map((mod) => {
-    const indexes = mod.latestFilesIndexes;
+    const indexes = mod.latestFilesIndexes ?? [];
     let bestIndex = indexes.find(
       (idx) =>
         idx.gameVersion === gameVersion && idx.modLoader === modLoaderType,
@@ -503,13 +567,11 @@ export async function getFilesDependencies(fileIds: number[]): Promise<
       );
     }
 
-    const body = (await res.json()) as {
-      data: Array<{
-        id: number;
-        modId: number;
-        dependencies?: Array<{ modId: number; relationType: number }>;
-      }>;
-    };
+    const body = parseCfResponse(
+      z.object({ data: z.array(rawFileDependenciesSchema) }),
+      await res.json(),
+      "getFilesDependencies",
+    );
 
     results.push(
       ...body.data.map((f) => ({
@@ -536,12 +598,17 @@ const modpackCache = new Map<
 
 const inFlightManifests = new Map<number, Promise<ModpackManifest>>();
 
+const manifestFailures = new Map<number, number>();
+const MANIFEST_FAILURE_BACKOFF_MS = 60_000;
+const MAX_MODPACK_ZIP_BYTES = 256 * 1024 * 1024;
+
 /**
  * Returns the pack version and mod project IDs of a modpack's latest published file
  *
  * Downloads the modpack zip, parses `manifest.json`, and caches the result for the configured TTL.
- * Concurrent cache misses share a single download. Prefers the server pack
- * file when available, falling back to the client pack.
+ * Concurrent cache misses share a single download, and a failed fetch backs
+ * off for a minute before retrying. Prefers the server pack file when
+ * available, falling back to the client pack.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
@@ -554,9 +621,23 @@ export async function getModpackManifest(
   const inFlight = inFlightManifests.get(packProjectId);
   if (inFlight) return inFlight;
 
-  const promise = fetchModpackManifest(packProjectId).finally(() =>
-    inFlightManifests.delete(packProjectId),
-  );
+  const failedAt = manifestFailures.get(packProjectId);
+  if (failedAt && Date.now() - failedAt < MANIFEST_FAILURE_BACKOFF_MS) {
+    throw new Error(
+      `Modpack #${packProjectId} manifest fetch recently failed, backing off`,
+    );
+  }
+
+  const promise = fetchModpackManifest(packProjectId)
+    .then((manifest) => {
+      manifestFailures.delete(packProjectId);
+      return manifest;
+    })
+    .catch((error) => {
+      manifestFailures.set(packProjectId, Date.now());
+      throw error;
+    })
+    .finally(() => inFlightManifests.delete(packProjectId));
   inFlightManifests.set(packProjectId, promise);
   return promise;
 }
@@ -574,9 +655,15 @@ async function fetchModpackManifest(
     throw new Error(`Failed to fetch modpack files (${filesRes.status})`);
   }
 
-  const filesBody = (await filesRes.json()) as {
-    data: Array<{ id: number; serverPackFileId: number | null }>;
-  };
+  const filesBody = parseCfResponse(
+    z.object({
+      data: z.array(
+        z.object({ id: z.number(), serverPackFileId: z.number().nullish() }),
+      ),
+    }),
+    await filesRes.json(),
+    "getModpackFiles",
+  );
   const latestFile = filesBody.data[0];
   if (!latestFile) throw new Error("No modpack files found");
 
@@ -598,16 +685,26 @@ async function fetchModpackManifest(
   if (!zipRes.ok) {
     throw new Error(`Failed to download modpack zip (${zipRes.status})`);
   }
+  const contentLength = Number(zipRes.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_MODPACK_ZIP_BYTES) {
+    throw new Error(
+      `Modpack zip exceeds the ${MAX_MODPACK_ZIP_BYTES} byte limit (${contentLength})`,
+    );
+  }
   const zipBuf = await zipRes.arrayBuffer();
 
   const zip = await JSZip.loadAsync(zipBuf);
   const manifestFile = zip.file("manifest.json");
   if (!manifestFile) throw new Error("No manifest.json in modpack");
 
-  const manifest = JSON.parse(await manifestFile.async("text")) as {
-    version?: string;
-    files: Array<{ projectID: number }>;
-  };
+  const manifest = parseCfResponse(
+    z.object({
+      version: z.string().optional(),
+      files: z.array(z.object({ projectID: z.number() })),
+    }),
+    JSON.parse(await manifestFile.async("text")),
+    "modpack manifest",
+  );
 
   const result: ModpackManifest = {
     version: manifest.version ?? null,

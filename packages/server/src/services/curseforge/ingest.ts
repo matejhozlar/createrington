@@ -72,6 +72,24 @@ export async function ingestProject(
 }
 
 /**
+ * Fetch many projects in one batch and upsert their snapshots. Returns the
+ * live API data keyed by project ID; IDs CurseForge did not resolve are absent.
+ */
+export async function ingestProjects(
+  projectIds: number[],
+): Promise<Map<number, CurseForgeProjectData>> {
+  if (projectIds.length === 0) return new Map();
+
+  const projects = await getMods(projectIds);
+  const byId = new Map<number, CurseForgeProjectData>();
+  for (const data of projects) {
+    await Q.curseforge.project.upsert(toCreate(data), "id", UPDATE_FIELDS);
+    byId.set(data.id, data);
+  }
+  return byId;
+}
+
+/**
  * Batch-refresh cached snapshots for many projects. Intended for periodic
  * refresh of the projects in active workshops.
  */
