@@ -226,7 +226,7 @@ export function ModSearch({
                       <p className="text-[11px] text-muted-foreground">
                         {noteReady
                           ? "Press Enter to submit."
-                          : "At least 10 characters — the team reads every note."}
+                          : "At least 10 characters."}
                       </p>
                     </div>
                   )}
