@@ -60,11 +60,6 @@ export function modCredit(submitterName: string | null) {
   return { verb: "Suggested by", name: submitterName ?? "a player" };
 }
 
-const IN_PACK_STYLE = {
-  label: "In the pack",
-  className: "border-green-500/20 bg-green-500/10 text-green-400",
-};
-
 export const MOD_STATUS_STYLES: Record<
   string,
   { label: string; className: string }
@@ -85,20 +80,24 @@ export const MOD_STATUS_STYLES: Record<
     label: "Coming next update",
     className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
   },
-  in_pack: IN_PACK_STYLE,
+  // Also styles modpack rows, which carry no workshop status of their own
+  in_pack: {
+    label: "In the pack",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
+  },
   rejected: {
     label: "Ruled out",
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
-  // Pack membership rows carry no workshop status; they are styled from liveAt
-  live: IN_PACK_STYLE,
 };
 
+// live is derived per project, so it says nothing about this suggestion
+// unless the suggestion is the one that shipped
 export function liveTitle(mod: {
-  live?: boolean | null;
+  status: string;
   liveInVersion?: string | null;
 }) {
-  return mod.live && mod.liveInVersion
+  return mod.status === "in_pack" && mod.liveInVersion
     ? `Live since ${mod.liveInVersion}`
     : undefined;
 }

@@ -31,8 +31,9 @@ export const WORKSHOP_MOD_STATUSES = [
 
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
 
-// in_pack moves are system transitions: reconcile applies them from the
-// published pack manifest, admins never set them directly
+// Two moves bypass this map: re-rejecting an already rejected mod to change
+// its reason, and the next_update <-> in_pack pair, which reconcile applies
+// from the published pack manifest rather than an admin deciding it
 export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
   WorkshopModStatus,
   WorkshopModStatus[]

@@ -264,6 +264,29 @@ describe("WorkshopService.reviewMod", () => {
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
   });
 
+  it("refuses to start testing from anywhere but approved", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const promoted = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const packRow = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: promoted.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: promoted.id,
+      addedBy: null,
+    });
+
+    await expect(
+      workshopService.reviewMod(promoted.id, "start_testing", ADMIN),
+    ).rejects.toThrow(BadRequestError);
+
+    expect((await Q.workshop.mod.get({ id: promoted.id })).status).toBe(
+      "next_update",
+    );
+    expect(await Q.modpack.mod.find({ id: packRow.id })).not.toBeNull();
+  });
+
   it("refuses to send back a mod that has not been approved yet", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });

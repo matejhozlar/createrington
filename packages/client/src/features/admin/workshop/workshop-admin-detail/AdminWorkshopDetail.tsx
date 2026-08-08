@@ -77,6 +77,7 @@ import {
   WORKSHOP_MOD_REJECT_REASONS,
   WORKSHOP_STATUS_TRANSITIONS,
 } from "@createrington/shared/workshop";
+import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
@@ -105,14 +106,14 @@ const ATTENTION_MESSAGES: Record<string, string> = {
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
 
-const REVIEW_TOASTS: Record<string, string> = {
+const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod approved",
   testing: "Mod moved to testing",
   next_update: "Mod approved, coming next update",
   rejected: "Mod rejected",
 };
 
-const SEND_BACK_TOASTS: Record<string, string> = {
+const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod sent back, awaiting testing",
   testing: "Mod sent back to testing",
 };
@@ -660,7 +661,7 @@ export function AdminWorkshopDetail() {
                             variant="outline"
                             className={cn(
                               "text-xs",
-                              MOD_STATUS_STYLES.live.className,
+                              MOD_STATUS_STYLES.in_pack.className,
                             )}
                           >
                             {row.liveInVersion

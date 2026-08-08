@@ -25,7 +25,10 @@ import {
   REQUIRED_DEPENDENCY,
   pruneOrphanedDependencies,
 } from "@/services/workshop/dependencies";
-import { announceReview } from "@/services/workshop/discord";
+import {
+  announcePackDropOut,
+  announceReview,
+} from "@/services/workshop/discord";
 
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
@@ -562,13 +565,18 @@ export class ModpackService {
       id: { $in: workshopModIds },
       status: from,
     });
-    if (mods.length === 0) return;
-    await Q.workshop.mod.updateAll(
-      { status: to },
-      { id: { $in: mods.map((mod) => mod.id) }, status: from },
-    );
     for (const mod of mods) {
-      void announceReview({ ...mod, status: to }, to);
+      // Concurrent reconciles read the same rows, so only the one that wins
+      // the guarded update announces
+      const claimed = await Q.workshop.mod.updateAll(
+        { status: to },
+        { id: mod.id, status: from },
+      );
+      if (claimed === 0) continue;
+      const updated = { ...mod, status: to };
+      void (to === "in_pack"
+        ? announceReview(updated, to)
+        : announcePackDropOut(updated));
     }
   }
 

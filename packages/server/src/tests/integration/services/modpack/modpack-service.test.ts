@@ -16,6 +16,7 @@ vi.mock("@/services/workshop/discord", () => ({
   assertForumChannel: vi.fn(async () => undefined),
   announceSuggestion: vi.fn(async () => undefined),
   announceReview: vi.fn(async () => undefined),
+  announcePackDropOut: vi.fn(async () => undefined),
   announcePulledDependencies: vi.fn(async () => undefined),
   announceRemoval: vi.fn(async () => undefined),
   healThreads: vi.fn(async () => undefined),
@@ -48,6 +49,10 @@ vi.mock("@/services/curseforge/ingest", () => ({
 import pool, { Q } from "@/db";
 import { modpackService } from "@/services/modpack";
 import { getModpackManifest } from "@/services/curseforge";
+import {
+  announcePackDropOut,
+  announceReview,
+} from "@/services/workshop/discord";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -267,6 +272,11 @@ describe("ModpackService.reconcile", () => {
 
     await modpackService.reconcile(modpack.id);
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
+    expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
+
+    // A second sweep over the same manifest must not re-announce
+    await modpackService.reconcile(modpack.id);
+    expect(vi.mocked(announceReview)).toHaveBeenCalledTimes(1);
 
     vi.mocked(getModpackManifest).mockResolvedValue({
       version: "2.1.0",
@@ -277,6 +287,7 @@ describe("ModpackService.reconcile", () => {
     expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
       "next_update",
     );
+    expect(vi.mocked(announcePackDropOut)).toHaveBeenCalledTimes(1);
   });
 
   it("flags dropped live members and deletes dropped import rows", async () => {

@@ -782,6 +782,11 @@ export class WorkshopService {
       return mod;
     }
     if (action === "start_testing" && mod.status === "testing") return mod;
+    // The transition map is keyed by status, so it cannot tell a forward move
+    // from the send_back that shares the same edge
+    if (action === "start_testing" && mod.status !== "approved") {
+      throw new BadRequestError(`A ${mod.status} mod cannot start testing`);
+    }
     if (action === "send_back") {
       if (mod.status === "in_pack") {
         throw new BadRequestError(

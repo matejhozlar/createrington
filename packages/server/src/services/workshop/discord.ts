@@ -37,12 +37,13 @@ const REVIEW_MESSAGES: Record<
 > = {
   approved: "✅ **Approved!** The team wants this one, next stop: testing.",
   testing: "🧪 **In testing.** The team is trying this mod out.",
-  // Also posted when a mod drops out of a published pack, so this cannot
-  // claim the mod has just passed testing
   next_update:
-    "📦 **Coming next update!** This mod is slated to ship with the next pack update.",
+    "📦 **Coming next update!** This mod passed testing and ships with the next pack update.",
   in_pack: "🎉 **In the pack!** This mod shipped with the latest pack update.",
 };
+
+const PACK_DROP_OUT_MESSAGE =
+  "↩️ **Not in the latest pack update.** This mod is no longer in the published pack, the team is looking into it.";
 
 const REJECT_REASON_TAGS: Record<
   WorkshopModRejectReason,
@@ -258,6 +259,7 @@ export async function announceSuggestion(
 export async function announceReview(
   mod: WorkshopMod,
   status: Exclude<WorkshopModStatus, "pending">,
+  options: { message?: string } = {},
 ): Promise<void> {
   if (!mod.discordThreadId) return;
   try {
@@ -298,11 +300,18 @@ export async function announceReview(
         ? `${reasonTag?.emoji ?? "🚫"} **${reasonLabel ?? "Rejected"}.**${
             mod.rejectNote ? ` ${mod.rejectNote}` : ""
           }`
-        : REVIEW_MESSAGES[status];
+        : (options.message ?? REVIEW_MESSAGES[status]);
     await thread.send({ content, allowedMentions: { parse: [] } });
   } catch (error) {
     logger.warn(`Failed to post review outcome for mod #${mod.id}: ${error}`);
   }
+}
+
+/** Retag a mod that fell out of the published pack and say so on its thread. */
+export async function announcePackDropOut(mod: WorkshopMod): Promise<void> {
+  return announceReview(mod, "next_update", {
+    message: PACK_DROP_OUT_MESSAGE,
+  });
 }
 
 /** Note the auto-pulled required dependencies in the promoted mod's thread. */
@@ -317,9 +326,10 @@ export async function announcePulledDependencies(
     if (!threadId) return;
     const lookup = await fetchThread(threadId);
     if (lookup.state !== "found") return;
-    await lookup.thread.send(
-      `📦 Pulls in required dependencies: ${names.join(", ")}`,
-    );
+    await lookup.thread.send({
+      content: `📦 Pulls in required dependencies: ${names.join(", ")}`,
+      allowedMentions: { parse: [] },
+    });
   } catch (error) {
     logger.warn(
       `Failed to note pulled dependencies for mod #${mod.id}: ${error}`,

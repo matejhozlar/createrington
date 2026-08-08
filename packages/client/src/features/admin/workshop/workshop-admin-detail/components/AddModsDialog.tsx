@@ -204,7 +204,7 @@ export function AddModsDialog({
                       variant="outline"
                       className={cn(
                         "text-xs",
-                        MOD_STATUS_STYLES.live.className,
+                        MOD_STATUS_STYLES.in_pack.className,
                       )}
                     >
                       In base pack
