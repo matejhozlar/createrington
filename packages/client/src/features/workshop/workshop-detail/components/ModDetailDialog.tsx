@@ -7,6 +7,7 @@ import {
   User,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -128,7 +129,7 @@ export function ModDetailDialog({
                     {status && (
                       <Badge
                         variant="outline"
-                        className={`text-xs ${status.className}`}
+                        className={cn("text-xs", status.className)}
                       >
                         {status.label}
                       </Badge>
@@ -224,7 +225,10 @@ export function ModDetailDialog({
                       {dep.rejected && (
                         <Badge
                           variant="outline"
-                          className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
+                          className={cn(
+                            "text-xs",
+                            MOD_STATUS_STYLES.rejected.className,
+                          )}
                         >
                           {MOD_STATUS_STYLES.rejected.label}
                         </Badge>

@@ -15,7 +15,7 @@ import {
 import { Loading } from "@/components/loading-spinner";
 import { NotFound } from "@/pages/not-found";
 import { CurseForgeIcon } from "@/components/icons/curseforge";
-import { loaderName, projectCategories } from "../format";
+import { isHttpUrl, loaderName, projectCategories } from "../format";
 import { PAGE_SIZE, WORDMARK_IMAGE } from "../constants";
 import { useViewMode } from "../hooks/use-view-mode";
 import { QueryErrorState } from "../components/QueryErrorState";
@@ -28,6 +28,12 @@ const FALLBACK_DESCRIPTION =
   "Everything running on the server right now — the base pack plus every mod players have voted in.";
 
 type SourceFilter = "all" | "voted" | "base";
+
+const SOURCE_OPTIONS: Array<{ value: SourceFilter; label: string }> = [
+  { value: "all", label: "All sources" },
+  { value: "voted", label: "Voted in by players" },
+  { value: "base", label: "Base pack" },
+];
 
 export function WorkshopPack() {
   const { slug } = useParams<{ slug: string }>();
@@ -142,7 +148,7 @@ export function WorkshopPack() {
             <p className="mt-3 text-[15px] leading-6 text-zinc-200 text-shadow-[0_1px_4px_rgb(0_0_0/0.4)]">
               {modpack?.description ?? FALLBACK_DESCRIPTION}
             </p>
-            {modpack?.curseforgeUrl && (
+            {modpack && isHttpUrl(modpack.curseforgeUrl) && (
               <div className="mt-5">
                 <Button size="lg" asChild>
                   <a
@@ -205,9 +211,11 @@ export function WorkshopPack() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All sources</SelectItem>
-                    <SelectItem value="voted">Voted in by players</SelectItem>
-                    <SelectItem value="base">Base pack</SelectItem>
+                    {SOURCE_OPTIONS.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select

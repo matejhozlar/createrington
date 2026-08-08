@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2, Plus, Search, X } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useToastActions } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -146,9 +147,10 @@ export function AddModsDialog({
                 key={result.id}
                 type="button"
                 disabled={blocked}
-                className={`flex w-full items-center gap-3 rounded-md border p-2.5 text-left ${
-                  blocked ? "opacity-50" : "cursor-pointer hover:bg-accent/50"
-                }`}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-md border p-2.5 text-left",
+                  blocked ? "opacity-50" : "cursor-pointer hover:bg-accent/50",
+                )}
                 onClick={() => {
                   if (selected.length >= MAX_MODS_PER_ADD) {
                     toast.error(
@@ -183,7 +185,10 @@ export function AddModsDialog({
                   {result.rejected && (
                     <Badge
                       variant="outline"
-                      className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
+                      className={cn(
+                        "text-xs",
+                        MOD_STATUS_STYLES.rejected.className,
+                      )}
                     >
                       {MOD_STATUS_STYLES.rejected.label}
                     </Badge>
@@ -196,7 +201,10 @@ export function AddModsDialog({
                   {result.inModpack && (
                     <Badge
                       variant="outline"
-                      className={`text-xs ${MOD_STATUS_STYLES.live.className}`}
+                      className={cn(
+                        "text-xs",
+                        MOD_STATUS_STYLES.live.className,
+                      )}
                     >
                       In base pack
                     </Badge>

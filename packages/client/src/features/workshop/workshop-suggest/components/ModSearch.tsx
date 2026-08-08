@@ -64,6 +64,7 @@ export function ModSearch({
       utils.user.workshops.mySuggestionHistory.invalidate();
       utils.user.workshops.searchProjects.invalidate();
       utils.user.workshops.get.invalidate();
+      utils.user.workshops.list.invalidate();
     },
     onError: (err) => toast.error(err.message),
   });

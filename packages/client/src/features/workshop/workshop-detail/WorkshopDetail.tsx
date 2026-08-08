@@ -34,6 +34,12 @@ import { PackSearchResults } from "./components/PackSearchResults";
 
 type SortMode = "top" | "new" | "votes";
 
+const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
+  { value: "top", label: "Most upvoted" },
+  { value: "new", label: "Newest first" },
+  { value: "votes", label: "My votes" },
+];
+
 function byRace(a: RaceMod, b: RaceMod): number {
   return (
     b.upvoteCount - a.upvoteCount ||
@@ -247,6 +253,7 @@ export function WorkshopDetail() {
     canUpvote:
       isOpen &&
       mod.status === "pending" &&
+      !upvoteMutation.isPending &&
       user?.discordId != null &&
       mod.submittedBy !== user.discordId &&
       (upvotedIds.has(mod.id) || (votesLeft !== null && votesLeft > 0)),
@@ -376,9 +383,11 @@ export function WorkshopDetail() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="top">Most upvoted</SelectItem>
-                <SelectItem value="new">Newest first</SelectItem>
-                <SelectItem value="votes">My votes</SelectItem>
+                {SORT_OPTIONS.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <ViewToggle view={view} onChange={changeView} />

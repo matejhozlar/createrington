@@ -20,6 +20,7 @@ import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
   formatDate,
+  retryUnlessForbidden,
 } from "../../format";
 
 type HistoryItem =
@@ -27,6 +28,19 @@ type HistoryItem =
 
 type StatusFilter = "all" | "pending" | "approved" | "rejected";
 type SortMode = "new" | "old" | "updated";
+
+const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All statuses" },
+  { value: "pending", label: "In review" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Ruled out" },
+];
+
+const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
+  { value: "new", label: "Newest first" },
+  { value: "old", label: "Oldest first" },
+  { value: "updated", label: "Last updated" },
+];
 
 function secondaryLine(mod: HistoryItem): string {
   if (mod.status === "rejected") {
@@ -68,7 +82,10 @@ export function SuggestionHistory() {
   const [shownCount, setShownCount] = useState(PAGE_SIZE);
   const [view, changeView] = useViewMode("workshop-suggest-history-view");
 
-  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery();
+  const historyQuery = trpc.user.workshops.mySuggestionHistory.useQuery(
+    undefined,
+    { retry: retryUnlessForbidden },
+  );
 
   const history = historyQuery.data ?? [];
   let visible =
@@ -104,10 +121,11 @@ export function SuggestionHistory() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="pending">In review</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Ruled out</SelectItem>
+            {STATUS_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <Select
@@ -121,9 +139,11 @@ export function SuggestionHistory() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="new">Newest first</SelectItem>
-            <SelectItem value="old">Oldest first</SelectItem>
-            <SelectItem value="updated">Last updated</SelectItem>
+            {SORT_OPTIONS.map(({ value, label }) => (
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <ViewToggle view={view} onChange={changeView} />

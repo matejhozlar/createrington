@@ -27,6 +27,13 @@ export function formatDate(value: string | Date | null): string {
   });
 }
 
+export function retryUnlessForbidden(
+  failureCount: number,
+  error: { data?: { code?: string } | null },
+): boolean {
+  return error.data?.code !== "FORBIDDEN" && failureCount < 3;
+}
+
 export function isHttpUrl(url: string | null | undefined): url is string {
   return !!url && /^https?:\/\//i.test(url);
 }

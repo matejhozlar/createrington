@@ -2,12 +2,20 @@ import { useState } from "react";
 import type { ViewMode } from "../components/ViewToggle";
 
 export function useViewMode(storageKey: string) {
-  const [view, setView] = useState<ViewMode>(() =>
-    localStorage.getItem(storageKey) === "grid" ? "grid" : "list",
-  );
+  const [view, setView] = useState<ViewMode>(() => {
+    try {
+      return localStorage.getItem(storageKey) === "grid" ? "grid" : "list";
+    } catch {
+      return "list";
+    }
+  });
 
   const changeView = (next: ViewMode) => {
-    localStorage.setItem(storageKey, next);
+    try {
+      localStorage.setItem(storageKey, next);
+    } catch {
+      /* storage-blocked contexts keep in-memory switching */
+    }
     setView(next);
   };
 

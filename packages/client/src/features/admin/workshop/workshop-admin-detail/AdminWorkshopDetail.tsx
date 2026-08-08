@@ -11,6 +11,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
@@ -94,6 +95,8 @@ const ATTENTION_MESSAGES: Record<string, string> = {
     "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester.",
   shipped_rejected: "shipped in the pack but is rejected in this workshop.",
 };
+
+const STATUS_FILTERS = ["all", "pending", "approved", "rejected"] as const;
 
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
@@ -289,21 +292,19 @@ export function AdminWorkshopDetail() {
 
       <div className="mx-auto w-full max-w-[1100px] flex flex-1 flex-col gap-4 px-4 pb-6">
         <div className="flex flex-wrap gap-2">
-          {(["all", "pending", "approved", "rejected"] as const).map(
-            (status) => (
-              <Button
-                key={status}
-                variant={statusFilter === status ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setStatusFilter(status)}
-              >
-                {status === "all" ? "All" : MOD_STATUS_STYLES[status].label}
-                <Badge variant="outline" className="ml-1.5 text-xs">
-                  {counts[status] ?? 0}
-                </Badge>
-              </Button>
-            ),
-          )}
+          {STATUS_FILTERS.map((status) => (
+            <Button
+              key={status}
+              variant={statusFilter === status ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter(status)}
+            >
+              {status === "all" ? "All" : MOD_STATUS_STYLES[status].label}
+              <Badge variant="outline" className="ml-1.5 text-xs">
+                {counts[status] ?? 0}
+              </Badge>
+            </Button>
+          ))}
         </div>
 
         <Card>
@@ -384,7 +385,7 @@ export function AdminWorkshopDetail() {
                           {status && (
                             <Badge
                               variant="outline"
-                              className={`text-xs ${status.className}`}
+                              className={cn("text-xs", status.className)}
                             >
                               {status.label}
                             </Badge>
@@ -478,7 +479,17 @@ export function AdminWorkshopDetail() {
                   <span className="font-medium text-foreground">
                     {item.name}
                   </span>{" "}
-                  {ATTENTION_MESSAGES[item.type]}
+                  {item.type === "rejected_dependency" ? (
+                    <>
+                      is required by{" "}
+                      <span className="font-medium text-foreground">
+                        {item.requiredByName}
+                      </span>{" "}
+                      but is rejected in this workshop.
+                    </>
+                  ) : (
+                    ATTENTION_MESSAGES[item.type]
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -590,7 +601,10 @@ export function AdminWorkshopDetail() {
                         {row.liveAt ? (
                           <Badge
                             variant="outline"
-                            className={`text-xs ${MOD_STATUS_STYLES.live.className}`}
+                            className={cn(
+                              "text-xs",
+                              MOD_STATUS_STYLES.live.className,
+                            )}
                           >
                             {row.liveInVersion
                               ? `Live · ${row.liveInVersion}`
@@ -606,7 +620,10 @@ export function AdminWorkshopDetail() {
                         ) : (
                           <Badge
                             variant="outline"
-                            className={`text-xs ${MOD_STATUS_STYLES.approved.className}`}
+                            className={cn(
+                              "text-xs",
+                              MOD_STATUS_STYLES.approved.className,
+                            )}
                           >
                             Coming next update
                           </Badge>
@@ -716,7 +733,10 @@ export function AdminWorkshopDetail() {
                         {dep.rejected && (
                           <Badge
                             variant="outline"
-                            className={`text-xs ${MOD_STATUS_STYLES.rejected.className}`}
+                            className={cn(
+                              "text-xs",
+                              MOD_STATUS_STYLES.rejected.className,
+                            )}
                           >
                             {MOD_STATUS_STYLES.rejected.label}
                           </Badge>

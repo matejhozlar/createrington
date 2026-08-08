@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { PlayerLabel } from "@/components/player-label";
 import { MOD_STATUS_STYLES, isHttpUrl } from "../../format";
@@ -59,7 +60,10 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
                 {packCredit(row)}
               </div>
             </div>
-            <Badge variant="outline" className={`shrink-0 ${status.className}`}>
+            <Badge
+              variant="outline"
+              className={cn("shrink-0", status.className)}
+            >
               {status.label}
             </Badge>
           </>
@@ -75,7 +79,7 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
         }
         // Div, not <a>: the credit's PlayerLabel can itself be a link
         const open = () =>
-          window.open(row.project.websiteUrl!, "_blank", "noreferrer");
+          window.open(row.project.websiteUrl!, "_blank", "noopener,noreferrer");
         return (
           <div
             key={row.id}
@@ -89,7 +93,10 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
                 open();
               }
             }}
-            className={`${rowClass} cursor-pointer hover:border-primary/40 focus-visible:border-primary/40`}
+            className={cn(
+              rowClass,
+              "cursor-pointer hover:border-primary/40 focus-visible:border-primary/40",
+            )}
           >
             {content}
           </div>
