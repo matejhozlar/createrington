@@ -154,81 +154,89 @@ export function SuggestionHistory() {
         </div>
       ) : view === "list" ? (
         <div className="mt-4 flex flex-col gap-2">
-          {shown.map((mod) => (
-            <div
-              key={mod.id}
-              className="group flex items-center gap-3.5 rounded-xl border border-border bg-card px-4 py-3"
-            >
-              <ProjectThumb
-                name={mod.project.name}
-                thumbnailUrl={mod.project.thumbnailUrl}
-                className="size-9 rounded-[9px] text-xs"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold">
-                  {mod.project.name}
-                </div>
-                {secondaryLine(mod) && (
-                  <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {secondaryLine(mod)}
-                  </div>
-                )}
-              </div>
-              <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
-                <SocialLinks
-                  discordThreadUrl={mod.discordThreadUrl}
-                  websiteUrl={mod.project.websiteUrl}
-                />
-              </div>
-              <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                <span className="hidden md:inline">{mod.workshopName} · </span>
-                {dateLine(mod)}
-              </span>
-              <span className="flex min-w-[82px] shrink-0 justify-end">
-                <StatusBadge mod={mod} />
-              </span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2.5">
-          {shown.map((mod) => (
-            <div
-              key={mod.id}
-              className="group flex flex-col gap-2.5 rounded-xl border border-border bg-card p-4"
-            >
-              <div className="flex items-center gap-2.5">
+          {shown.map((mod) => {
+            const secondary = secondaryLine(mod);
+            return (
+              <div
+                key={mod.id}
+                className="group flex items-center gap-3.5 rounded-xl border border-border bg-card px-4 py-3"
+              >
                 <ProjectThumb
                   name={mod.project.name}
                   thumbnailUrl={mod.project.thumbnailUrl}
-                  className="size-10 rounded-[9px] text-xs"
+                  className="size-9 rounded-[9px] text-xs"
                 />
-                <span className="flex-1" />
-                <StatusBadge mod={mod} />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold">
-                  {mod.project.name}
-                </div>
-                {secondaryLine(mod) && (
-                  <div className="mt-1 line-clamp-2 text-xs leading-[17px] text-muted-foreground">
-                    {secondaryLine(mod)}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">
+                    {mod.project.name}
                   </div>
-                )}
-              </div>
-              <div className="mt-auto flex items-center gap-3">
-                <SocialLinks
-                  discordThreadUrl={mod.discordThreadUrl}
-                  websiteUrl={mod.project.websiteUrl}
-                  iconClass="size-[18px]"
-                />
-                <span className="flex-1" />
-                <span className="text-xs whitespace-nowrap text-muted-foreground">
-                  {mod.workshopName} · {dateLine(mod)}
+                  {secondary && (
+                    <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {secondary}
+                    </div>
+                  )}
+                </div>
+                <div className="mr-1 hidden shrink-0 items-center gap-3.5 sm:flex">
+                  <SocialLinks
+                    discordThreadUrl={mod.discordThreadUrl}
+                    websiteUrl={mod.project.websiteUrl}
+                  />
+                </div>
+                <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
+                  <span className="hidden md:inline">
+                    {mod.workshopName} ·{" "}
+                  </span>
+                  {dateLine(mod)}
+                </span>
+                <span className="flex min-w-[82px] shrink-0 justify-end">
+                  <StatusBadge mod={mod} />
                 </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2.5">
+          {shown.map((mod) => {
+            const secondary = secondaryLine(mod);
+            return (
+              <div
+                key={mod.id}
+                className="group flex flex-col gap-2.5 rounded-xl border border-border bg-card p-4"
+              >
+                <div className="flex items-center gap-2.5">
+                  <ProjectThumb
+                    name={mod.project.name}
+                    thumbnailUrl={mod.project.thumbnailUrl}
+                    className="size-10 rounded-[9px] text-xs"
+                  />
+                  <span className="flex-1" />
+                  <StatusBadge mod={mod} />
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold">
+                    {mod.project.name}
+                  </div>
+                  {secondary && (
+                    <div className="mt-1 line-clamp-2 text-xs leading-[17px] text-muted-foreground">
+                      {secondary}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-auto flex items-center gap-3">
+                  <SocialLinks
+                    discordThreadUrl={mod.discordThreadUrl}
+                    websiteUrl={mod.project.websiteUrl}
+                    iconClass="size-[18px]"
+                  />
+                  <span className="flex-1" />
+                  <span className="text-xs whitespace-nowrap text-muted-foreground">
+                    {mod.workshopName} · {dateLine(mod)}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

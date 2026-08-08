@@ -88,6 +88,13 @@ const ORIGIN_LABELS: Record<string, string> = {
   import: "Pack Import",
 };
 
+const ATTENTION_MESSAGES: Record<string, string> = {
+  dropped_from_pack: "was live but is missing from the latest published pack.",
+  shipped_unreviewed:
+    "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester.",
+  shipped_rejected: "shipped in the pack but is rejected in this workshop.",
+};
+
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
   const workshopId = Number(id);
@@ -471,12 +478,7 @@ export function AdminWorkshopDetail() {
                   <span className="font-medium text-foreground">
                     {item.name}
                   </span>{" "}
-                  {item.type === "dropped_from_pack" &&
-                    "was live but is missing from the latest published pack."}
-                  {item.type === "shipped_unreviewed" &&
-                    "shipped in the pack but its suggestion is unreviewed, approve it to credit the suggester."}
-                  {item.type === "shipped_rejected" &&
-                    "shipped in the pack but is rejected in this workshop."}
+                  {ATTENTION_MESSAGES[item.type]}
                 </div>
               ))}
             </CardContent>
