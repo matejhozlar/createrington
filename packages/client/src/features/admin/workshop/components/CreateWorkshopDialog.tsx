@@ -148,7 +148,7 @@ export function CreateWorkshopDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="workshop-version">Game Version</Label>
-              {versionsQuery.error ? (
+              {versionsQuery.error || versionsQuery.data?.length === 0 ? (
                 <Input
                   id="workshop-version"
                   placeholder="1.21.1"
