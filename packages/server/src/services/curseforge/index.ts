@@ -394,7 +394,8 @@ export async function getModFileDownloadUrl(
 }
 
 /**
- * Resolve a list of dependency mod IDs to their display info and best compatible file
+ * Resolve a list of dependency mod IDs to their display info and best
+ * compatible file in batched requests
  *
  * Checks whether each dependency is already present in the given pack mod set.
  * Best file selection prefers the target loader + game version, falling back to
@@ -413,33 +414,39 @@ export async function resolveDependencies(
     modLoaderType = NEOFORGE_LOADER_TYPE,
   } = target;
 
-  const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
-    method: "POST",
-    headers: { ...cfHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ modIds }),
-    signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Failed to resolve dependencies (${res.status}): ${text}`);
-  }
-
-  const body = (await res.json()) as {
-    data: Array<{
-      id: number;
-      name: string;
-      links: { websiteUrl: string };
-      logo?: { thumbnailUrl: string };
-      latestFilesIndexes: Array<{
-        gameVersion: string;
-        fileId: number;
-        filename: string;
-        modLoader: number;
-      }>;
+  type RawDependencyMod = {
+    id: number;
+    name: string;
+    links: { websiteUrl: string };
+    logo?: { thumbnailUrl: string };
+    latestFilesIndexes: Array<{
+      gameVersion: string;
+      fileId: number;
+      filename: string;
+      modLoader: number;
     }>;
   };
 
-  return body.data.map((mod) => {
+  const mods: RawDependencyMod[] = [];
+  for (const batch of toBatches(modIds)) {
+    const res = await fetch(`${CURSEFORGE_API}/v1/mods`, {
+      method: "POST",
+      headers: { ...cfHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ modIds: batch }),
+      signal: AbortSignal.timeout(CF_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Failed to resolve dependencies (${res.status}): ${text}`,
+      );
+    }
+
+    const body = (await res.json()) as { data: RawDependencyMod[] };
+    mods.push(...body.data);
+  }
+
+  return mods.map((mod) => {
     const indexes = mod.latestFilesIndexes;
     let bestIndex = indexes.find(
       (idx) =>
@@ -527,11 +534,14 @@ const modpackCache = new Map<
   { manifest: ModpackManifest; fetchedAt: number }
 >();
 
+const inFlightManifests = new Map<number, Promise<ModpackManifest>>();
+
 /**
  * Returns the pack version and mod project IDs of a modpack's latest published file
  *
  * Downloads the modpack zip, parses `manifest.json`, and caches the result for the configured TTL.
- * Prefers the server pack file when available, falling back to the client pack.
+ * Concurrent cache misses share a single download. Prefers the server pack
+ * file when available, falling back to the client pack.
  */
 export async function getModpackManifest(
   packProjectId = MODPACK_PROJECT_ID,
@@ -541,6 +551,19 @@ export async function getModpackManifest(
     return cached.manifest;
   }
 
+  const inFlight = inFlightManifests.get(packProjectId);
+  if (inFlight) return inFlight;
+
+  const promise = fetchModpackManifest(packProjectId).finally(() =>
+    inFlightManifests.delete(packProjectId),
+  );
+  inFlightManifests.set(packProjectId, promise);
+  return promise;
+}
+
+async function fetchModpackManifest(
+  packProjectId: number,
+): Promise<ModpackManifest> {
   ensureApiKey();
 
   const filesRes = await fetch(

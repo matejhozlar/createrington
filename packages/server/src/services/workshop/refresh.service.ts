@@ -48,9 +48,11 @@ export class WorkshopProjectRefreshService {
   /** Refreshes snapshots, dependencies, forum threads, and modpack live state. */
   async refresh(): Promise<number> {
     if (this.running) return 0;
-    if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) return 0;
     this.running = true;
     try {
+      if (!(await featureFlagService.isEnabled(FeatureFlags.workshop))) {
+        return 0;
+      }
       const workshops = await Q.workshop.findAll({
         status: { $in: ["open", "closed"] },
       });
