@@ -64,7 +64,8 @@ export const adminWorkshopsRouter = router({
         modLoaderType: z.number().int().min(0),
         classId: id().optional(),
         baseModpackProjectId: id().optional(),
-        modpackId: id(),
+        modpackId: id().optional(),
+        newModpackName: z.string().trim().min(1).max(120).optional(),
         maxModsPerUser: z.number().int().min(1).max(25).optional(),
         maxUpvotesPerUser: z.number().int().min(1).max(100).optional(),
         discordForumChannelId: z

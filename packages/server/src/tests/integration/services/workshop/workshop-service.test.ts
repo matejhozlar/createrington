@@ -58,6 +58,8 @@ import {
   seedPackMod,
   seedRequiredDependency,
   makeProjectData,
+  GAME_VERSION,
+  MOD_LOADER_TYPE,
 } from "@/tests/helpers/workshop";
 
 const ADMIN = "999900000000000001";
@@ -243,6 +245,65 @@ describe("WorkshopService.updateWorkshop", () => {
         workshopService.updateWorkshop(workshop.id, { status }),
       ).rejects.toThrow(BadRequestError);
     }
+  });
+});
+
+describe("WorkshopService.createWorkshop", () => {
+  const baseInput = () => ({
+    name: "Vitest Created Workshop",
+    slug: `vitest-created-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    gameVersion: GAME_VERSION,
+    modLoaderType: MOD_LOADER_TYPE,
+  });
+
+  it("creates the workshop and a new modpack together when given a name", async () => {
+    const workshop = await workshopService.createWorkshop(
+      { ...baseInput(), newModpackName: "Vitest Inline Pack" },
+      ADMIN,
+    );
+    ctx.workshopIds.push(workshop.id);
+    ctx.modpackIds.push(workshop.modpackId);
+
+    const modpack = await Q.modpack.get({ id: workshop.modpackId });
+    expect(modpack.name).toBe("Vitest Inline Pack");
+    expect(modpack.createdBy).toBe(ADMIN);
+    expect(modpack.curseforgeProjectId).toBeNull();
+    expect(workshop.status).toBe("draft");
+  });
+
+  it("rejects when both an existing modpack and a new name are provided", async () => {
+    const modpack = await seedModpack(ctx);
+
+    await expect(
+      workshopService.createWorkshop(
+        { ...baseInput(), modpackId: modpack.id, newModpackName: "Nope" },
+        ADMIN,
+      ),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("rejects when neither an existing modpack nor a new name is provided", async () => {
+    await expect(
+      workshopService.createWorkshop(baseInput(), ADMIN),
+    ).rejects.toThrow(BadRequestError);
+  });
+
+  it("leaves no modpack behind when the slug is already taken", async () => {
+    const existing = await seedWorkshop(ctx);
+
+    await expect(
+      workshopService.createWorkshop(
+        {
+          ...baseInput(),
+          slug: existing.slug,
+          newModpackName: "Vitest Orphan Check",
+        },
+        ADMIN,
+      ),
+    ).rejects.toThrow(ConflictError);
+
+    const strays = await Q.modpack.findAll({ name: "Vitest Orphan Check" });
+    expect(strays).toHaveLength(0);
   });
 });
 

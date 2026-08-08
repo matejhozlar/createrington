@@ -591,13 +591,21 @@ export class WorkshopService {
       modLoaderType: number;
       classId?: number;
       baseModpackProjectId?: number | null;
-      modpackId: number;
+      modpackId?: number;
+      newModpackName?: string;
       maxModsPerUser?: number;
       maxUpvotesPerUser?: number;
       discordForumChannelId?: string | null;
     },
     adminId: string,
   ): Promise<Workshop> {
+    const { modpackId, newModpackName } = input;
+    if (modpackId !== undefined && newModpackName !== undefined) {
+      throw new BadRequestError(
+        "Provide either an existing modpack or a new modpack name, not both",
+      );
+    }
+
     const slug = input.slug ?? slugify(input.name);
     if (!slug)
       throw new BadRequestError("Workshop name produces an empty slug");
@@ -607,7 +615,9 @@ export class WorkshopService {
       throw new ConflictError(`A workshop with slug "${slug}" already exists`);
     }
 
-    await modpackService.getModpack(input.modpackId);
+    if (modpackId !== undefined) {
+      await modpackService.getModpack(modpackId);
+    }
     if (input.baseModpackProjectId) {
       await this.assertBaseModpack(input.baseModpackProjectId);
     }
@@ -615,21 +625,40 @@ export class WorkshopService {
       await assertForumChannel(input.discordForumChannelId);
     }
 
+    const row = (targetModpackId: number) => ({
+      name: input.name,
+      slug,
+      description: input.description ?? null,
+      gameVersion: input.gameVersion,
+      modLoaderType: input.modLoaderType,
+      classId: input.classId ?? CurseForgeClass.mods,
+      baseModpackProjectId: input.baseModpackProjectId ?? null,
+      modpackId: targetModpackId,
+      maxModsPerUser: input.maxModsPerUser ?? 5,
+      maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
+      discordForumChannelId: input.discordForumChannelId ?? null,
+      createdBy: adminId,
+    });
+
     try {
-      return await Q.workshop.createAndReturn({
-        name: input.name,
-        slug,
-        description: input.description ?? null,
-        gameVersion: input.gameVersion,
-        modLoaderType: input.modLoaderType,
-        classId: input.classId ?? CurseForgeClass.mods,
-        baseModpackProjectId: input.baseModpackProjectId ?? null,
-        modpackId: input.modpackId,
-        maxModsPerUser: input.maxModsPerUser ?? 5,
-        maxUpvotesPerUser: input.maxUpvotesPerUser ?? 5,
-        discordForumChannelId: input.discordForumChannelId ?? null,
-        createdBy: adminId,
-      });
+      if (newModpackName !== undefined) {
+        return await db.inTransaction(async (tx) => {
+          const modpack = await tx.modpack.createAndReturn({
+            name: newModpackName,
+            description: null,
+            curseforgeProjectId: null,
+            serverId: null,
+            createdBy: adminId,
+          });
+          return tx.workshop.createAndReturn(row(modpack.id));
+        });
+      }
+      if (modpackId !== undefined) {
+        return await Q.workshop.createAndReturn(row(modpackId));
+      }
+      throw new BadRequestError(
+        "Provide either an existing modpack or a name for a new one",
+      );
     } catch (error) {
       if (error instanceof ConstraintViolationError) {
         throw new ConflictError(

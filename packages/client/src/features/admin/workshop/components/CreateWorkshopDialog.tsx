@@ -47,22 +47,18 @@ export function CreateWorkshopDialog({
 
   const modpacksQuery = trpc.admin.modpacks.list.useQuery();
 
-  const createModpackMutation = trpc.admin.modpacks.create.useMutation({
-    onSuccess: () => utils.admin.modpacks.list.invalidate(),
-    onError: (err) => toast.error(err.message),
-  });
-
   const createMutation = trpc.admin.workshops.create.useMutation({
     onSuccess: (workshop) => {
       toast.success(`Workshop "${workshop.name}" created as draft`);
       utils.admin.workshops.list.invalidate();
+      utils.admin.modpacks.list.invalidate();
       onOpenChange(false);
       navigate(`/admin/tools/workshop/${workshop.id}`);
     },
     onError: (err) => toast.error(err.message),
   });
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     const validationError = workshopFormError({
       maxMods,
       maxUpvotes,
@@ -73,26 +69,14 @@ export function CreateWorkshopDialog({
       toast.error(validationError);
       return;
     }
-    let modpackId: number;
-    if (modpackSel === "new") {
-      try {
-        const modpack = await createModpackMutation.mutateAsync({
-          name: modpackName.trim(),
-        });
-        modpackId = modpack.id;
-        setModpackSel(String(modpack.id));
-      } catch {
-        return;
-      }
-    } else {
-      modpackId = Number(modpackSel);
-    }
     createMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
       gameVersion: gameVersion.trim(),
       modLoaderType: Number(loaderType),
-      modpackId,
+      ...(modpackSel === "new"
+        ? { newModpackName: modpackName.trim() }
+        : { modpackId: Number(modpackSel) }),
       maxModsPerUser: Number(maxMods),
       maxUpvotesPerUser: Number(maxUpvotes),
       discordForumChannelId: forumChannelId.trim() || undefined,
@@ -149,6 +133,7 @@ export function CreateWorkshopDialog({
               <Input
                 id="workshop-modpack-name"
                 placeholder="Createrington Season 3"
+                maxLength={120}
                 value={modpackName}
                 onChange={(e) => setModpackName(e.target.value)}
               />
@@ -234,7 +219,6 @@ export function CreateWorkshopDialog({
             onClick={handleCreate}
             disabled={
               createMutation.isPending ||
-              createModpackMutation.isPending ||
               !name.trim() ||
               !gameVersion.trim() ||
               (modpackSel === "new" && !modpackName.trim())
