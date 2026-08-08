@@ -1517,10 +1517,10 @@ INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, stat
   (2, 250398, '123456789012345678', 'next_update', 'Searchable keybinds, zero downside', '818819241666281503', NOW() - INTERVAL '62 days', NULL, NULL, 5623160, 'Controlling-neoforge-1.21.1-19.0.5.jar', 1, NOW() - INTERVAL '70 days'),
   (2, 223852, '123456789012345679', 'rejected', 'Bulk storage for the shopping district', '547450242090532874', NOW() - INTERVAL '60 days', 'not_a_good_fit', 'Sophisticated Backpacks covers the storage needs this round', NULL, NULL, NULL, NOW() - INTERVAL '68 days');
 
--- Workshop 4 (archived season 2): historical approvals. ids 15-16
+-- Workshop 4 (archived season 2): shipped in the season 2 pack. ids 15-16
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
-  (4, 245755, '123456789012345687', 'next_update', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
-  (4, 228756, '123456789012345682', 'next_update', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
+  (4, 245755, '123456789012345687', 'in_pack', 'Waystones carried season 1, bring it back', '818819241666281503', NOW() - INTERVAL '390 days', 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '395 days'),
+  (4, 228756, '123456789012345682', 'in_pack', NULL, '818819241666281503', NOW() - INTERVAL '388 days', 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '394 days');
 
 -- Workshop 1 mid-pipeline suggestion: approved and currently being tested. id 17
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES

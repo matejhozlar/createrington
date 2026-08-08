@@ -80,7 +80,13 @@ import { AddModsDialog } from "./components/AddModsDialog";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
 
 type StatusFilter =
-  "all" | "pending" | "approved" | "testing" | "next_update" | "rejected";
+  | "all"
+  | "pending"
+  | "approved"
+  | "testing"
+  | "next_update"
+  | "in_pack"
+  | "rejected";
 
 type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
 
@@ -104,6 +110,7 @@ const STATUS_FILTERS = [
   "approved",
   "testing",
   "next_update",
+  "in_pack",
   "rejected",
 ] as const;
 
@@ -173,13 +180,9 @@ export function AdminWorkshopDetail() {
   });
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
-    onSuccess: (_mod, variables) => {
+    onSuccess: (mod) => {
       toast.success(
-        variables.action === "reject"
-          ? "Mod rejected"
-          : variables.action === "start_testing"
-            ? "Mod moved to testing"
-            : "Mod approved",
+        `Mod moved to ${MOD_STATUS_STYLES[mod.status].label.toLowerCase()}`,
       );
       invalidate();
       setRejectTarget(null);
@@ -207,6 +210,7 @@ export function AdminWorkshopDetail() {
       approved: 0,
       testing: 0,
       next_update: 0,
+      in_pack: 0,
       rejected: 0,
     };
     for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
@@ -517,13 +521,16 @@ export function AdminWorkshopDetail() {
                   <span className="font-medium text-foreground">
                     {item.name}
                   </span>{" "}
-                  {item.type === "rejected_dependency" ? (
+                  {item.type === "rejected_dependency" ||
+                  item.type === "unpromoted_dependency" ? (
                     <>
                       is required by{" "}
                       <span className="font-medium text-foreground">
                         {item.requiredByName}
                       </span>{" "}
-                      but is rejected in this workshop.
+                      {item.type === "rejected_dependency"
+                        ? "but is rejected in this workshop."
+                        : "but has not reached the pack yet, so the pack is missing it."}
                     </>
                   ) : (
                     ATTENTION_MESSAGES[item.type]

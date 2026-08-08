@@ -38,7 +38,7 @@ export function PackSearchResults({ mods }: { mods: PackMod[] }) {
       </h3>
       {mods.map((row) => {
         const status = row.liveAt
-          ? MOD_STATUS_STYLES.live
+          ? MOD_STATUS_STYLES.in_pack
           : MOD_STATUS_STYLES.next_update;
         const content = (
           <>

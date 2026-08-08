@@ -1,5 +1,5 @@
 {
-  "id": "c58b62b6-8e82-4495-8831-c7a077a9e4a4",
+  "id": "411adf2b-cd85-4cd3-85d4-b196dff6388e",
   "prevId": "4f014329-e01a-4b9f-8e6b-d4f43fc4c8d9",
   "version": "7",
   "dialect": "postgresql",
@@ -8830,6 +8830,7 @@
         "approved",
         "testing",
         "next_update",
+        "in_pack",
         "rejected"
       ]
     },

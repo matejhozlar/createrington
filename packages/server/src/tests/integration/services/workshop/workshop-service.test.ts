@@ -226,6 +226,29 @@ describe("WorkshopService.reviewMod", () => {
     ).toBeNull();
   });
 
+  it("removes the pack row when rejecting a shipped mod", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "in_pack",
+    });
+    const packRow = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+
+    const rejected = await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
+    });
+
+    expect(rejected.status).toBe("rejected");
+    expect(await Q.modpack.mod.find({ id: packRow.id })).toBeNull();
+  });
+
   it("claims an existing import row on final approve, keeping its live state", async () => {
     const workshop = await seedWorkshop(ctx);
     const mod = await seedMod(ctx, workshop, {

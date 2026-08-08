@@ -187,6 +187,40 @@ describe("ModpackService.reconcile", () => {
     expect(imported!.liveAt).not.toBeNull();
   });
 
+  it("moves a shipped suggestion to in_pack and back when it drops out", async () => {
+    const modpack = await seedModpack(ctx, {
+      curseforgeProjectId: ctx.nextProjectId++,
+    });
+    const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const mod = await seedMod(ctx, workshop, {
+      submittedBy: USER_A,
+      status: "next_update",
+    });
+    const member = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: mod.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: mod.id,
+      addedBy: null,
+    });
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.0.0",
+      modIds: new Set([member.curseforgeProjectId]),
+    });
+
+    await modpackService.reconcile(modpack.id);
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe("in_pack");
+
+    vi.mocked(getModpackManifest).mockResolvedValue({
+      version: "2.1.0",
+      modIds: new Set<number>(),
+    });
+    await modpackService.reconcile(modpack.id);
+
+    expect((await Q.workshop.mod.get({ id: mod.id })).status).toBe(
+      "next_update",
+    );
+  });
+
   it("flags dropped live members and deletes dropped import rows", async () => {
     const modpack = await seedModpack(ctx, {
       curseforgeProjectId: ctx.nextProjectId++,

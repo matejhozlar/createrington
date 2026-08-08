@@ -1,6 +1,6 @@
 {
-  "id": "c042fcc5-a8c8-45e2-ba41-ae7b0fcfebd0",
-  "prevId": "c58b62b6-8e82-4495-8831-c7a077a9e4a4",
+  "id": "3a081762-a13c-4ac4-baa4-c583fa6d1d38",
+  "prevId": "411adf2b-cd85-4cd3-85d4-b196dff6388e",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -8830,6 +8830,7 @@
         "approved",
         "testing",
         "next_update",
+        "in_pack",
         "rejected"
       ]
     },

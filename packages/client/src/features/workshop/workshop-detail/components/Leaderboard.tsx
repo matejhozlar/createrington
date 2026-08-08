@@ -9,6 +9,7 @@ import { ProjectThumb } from "../../components/ProjectThumb";
 import { SocialLinks } from "../../components/SocialLinks";
 import {
   MOD_STATUS_STYLES,
+  liveTitle,
   projectCategories,
   REJECT_REASON_LABELS,
 } from "../../format";
@@ -246,18 +247,12 @@ function HeartOrBadge({
 }) {
   const { mod } = item;
   if (mod.status !== "pending" && mod.status !== "rejected") {
-    const style = mod.live
-      ? MOD_STATUS_STYLES.live
-      : MOD_STATUS_STYLES[mod.status];
+    const style = MOD_STATUS_STYLES[mod.status];
     return (
       <Badge
         variant="outline"
         className={cn("relative shrink-0", style.className)}
-        title={
-          mod.live && mod.liveInVersion
-            ? `Live since ${mod.liveInVersion}`
-            : undefined
-        }
+        title={liveTitle(mod)}
       >
         {style.label}
       </Badge>

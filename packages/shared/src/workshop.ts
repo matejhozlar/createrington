@@ -25,11 +25,14 @@ export const WORKSHOP_MOD_STATUSES = [
   "approved",
   "testing",
   "next_update",
+  "in_pack",
   "rejected",
 ] as const;
 
 type WorkshopModStatus = (typeof WORKSHOP_MOD_STATUSES)[number];
 
+// in_pack moves are system transitions: reconcile applies them from the
+// published pack manifest, admins never set them directly
 export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
   WorkshopModStatus,
   WorkshopModStatus[]
@@ -37,7 +40,8 @@ export const WORKSHOP_MOD_STATUS_TRANSITIONS: Record<
   pending: ["approved", "rejected"],
   approved: ["testing", "rejected"],
   testing: ["next_update", "rejected"],
-  next_update: ["rejected"],
+  next_update: ["in_pack", "rejected"],
+  in_pack: ["next_update", "rejected"],
   rejected: ["approved"],
 };
 

@@ -80,15 +80,29 @@ export const MOD_STATUS_STYLES: Record<
     label: "Coming next update",
     className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
   },
+  in_pack: {
+    label: "In the pack",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
+  },
   rejected: {
     label: "Ruled out",
     className: "border-red-500/20 bg-red-500/10 text-red-400",
   },
+  // Pack membership rows carry no workshop status; they are styled from liveAt
   live: {
-    label: "Live",
+    label: "In the pack",
     className: "border-green-500/20 bg-green-500/10 text-green-400",
   },
 };
+
+export function liveTitle(mod: {
+  live?: boolean | null;
+  liveInVersion?: string | null;
+}) {
+  return mod.live && mod.liveInVersion
+    ? `Live since ${mod.liveInVersion}`
+    : undefined;
+}
 
 export const WORKSHOP_STATUS_STYLES: Record<
   string,

@@ -79,11 +79,7 @@ export function ModDetailDialog({
   const screenshots = asArray<ProjectScreenshot>(project?.screenshots).filter(
     (shot) => isHttpUrl(shot.url),
   );
-  const status = data
-    ? data.mod.live
-      ? MOD_STATUS_STYLES.live
-      : MOD_STATUS_STYLES[data.mod.status]
-    : null;
+  const status = data ? MOD_STATUS_STYLES[data.mod.status] : null;
   const credit = modCredit(data?.mod.submitterName ?? null);
 
   return (

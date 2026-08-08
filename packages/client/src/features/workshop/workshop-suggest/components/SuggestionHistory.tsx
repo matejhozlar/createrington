@@ -20,6 +20,7 @@ import {
   MOD_STATUS_STYLES,
   REJECT_REASON_LABELS,
   formatDate,
+  liveTitle,
   retryUnlessForbidden,
 } from "../../format";
 
@@ -27,7 +28,13 @@ type HistoryItem =
   RouterOutput["user"]["workshops"]["mySuggestionHistory"][number];
 
 type StatusFilter =
-  "all" | "pending" | "approved" | "testing" | "next_update" | "rejected";
+  | "all"
+  | "pending"
+  | "approved"
+  | "testing"
+  | "next_update"
+  | "in_pack"
+  | "rejected";
 type SortMode = "new" | "old" | "updated";
 
 const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
@@ -36,6 +43,7 @@ const STATUS_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
   { value: "approved", label: "Approved" },
   { value: "testing", label: "In testing" },
   { value: "next_update", label: "Coming next update" },
+  { value: "in_pack", label: "In the pack" },
   { value: "rejected", label: "Ruled out" },
 ];
 
@@ -56,23 +64,13 @@ function secondaryLine(mod: HistoryItem): string {
 }
 
 function StatusBadge({ mod }: { mod: HistoryItem }) {
-  const style = mod.live
-    ? MOD_STATUS_STYLES.live
-    : MOD_STATUS_STYLES[mod.status];
+  const style = MOD_STATUS_STYLES[mod.status];
   const label =
     mod.status === "rejected" && mod.rejectReason
       ? REJECT_REASON_LABELS[mod.rejectReason]
       : style.label;
   return (
-    <Badge
-      variant="outline"
-      className={style.className}
-      title={
-        mod.live && mod.liveInVersion
-          ? `Live since ${mod.liveInVersion}`
-          : undefined
-      }
-    >
+    <Badge variant="outline" className={style.className} title={liveTitle(mod)}>
       {label}
     </Badge>
   );

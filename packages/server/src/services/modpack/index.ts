@@ -24,6 +24,7 @@ import {
   REQUIRED_DEPENDENCY,
   pruneOrphanedDependencies,
 } from "@/services/workshop/dependencies";
+import { announceReview } from "@/services/workshop/discord";
 
 export type ModpackProjectSummary = Pick<
   CurseforgeProject,
@@ -75,6 +76,13 @@ export type ModpackAttentionItem =
     }
   | {
       type: "rejected_dependency";
+      workshopModId: number;
+      curseforgeProjectId: number;
+      name: string;
+      requiredByName: string;
+    }
+  | {
+      type: "unpromoted_dependency";
       workshopModId: number;
       curseforgeProjectId: number;
       name: string;
@@ -281,7 +289,9 @@ export class ModpackService {
       const { modIds } = manifest;
       shipped = suggestions.filter(
         (mod) =>
-          modIds.has(mod.curseforgeProjectId) && mod.status !== "next_update",
+          modIds.has(mod.curseforgeProjectId) &&
+          mod.status !== "next_update" &&
+          mod.status !== "in_pack",
       );
     }
 
@@ -290,9 +300,19 @@ export class ModpackService {
         .filter((mod) => mod.status === "rejected")
         .map((mod) => [mod.curseforgeProjectId, mod]),
     );
+    const midPipelineByProject = new Map(
+      suggestions
+        .filter(
+          (mod) =>
+            mod.status === "pending" ||
+            mod.status === "approved" ||
+            mod.status === "testing",
+        )
+        .map((mod) => [mod.curseforgeProjectId, mod]),
+    );
     const packProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
     const edges =
-      rejectedByProject.size > 0
+      rejectedByProject.size > 0 || midPipelineByProject.size > 0
         ? await Q.workshop.project.dependency.findAll({
             workshopId: workshop.id,
             relationType: REQUIRED_DEPENDENCY,
@@ -302,14 +322,24 @@ export class ModpackService {
       number,
       { dep: WorkshopMod; requiredByProjectId: number }
     >();
+    const unpromotedDeps = new Map<
+      number,
+      { dep: WorkshopMod; requiredByProjectId: number }
+    >();
     for (const edge of edges) {
-      const dep = rejectedByProject.get(edge.dependsOnProjectId);
-      if (!dep) continue;
       if (packProjectIds.has(edge.dependsOnProjectId)) continue;
       if (!packProjectIds.has(edge.curseforgeProjectId)) continue;
-      if (!rejectedDeps.has(edge.dependsOnProjectId)) {
+      const rejected = rejectedByProject.get(edge.dependsOnProjectId);
+      if (rejected && !rejectedDeps.has(edge.dependsOnProjectId)) {
         rejectedDeps.set(edge.dependsOnProjectId, {
-          dep,
+          dep: rejected,
+          requiredByProjectId: edge.curseforgeProjectId,
+        });
+      }
+      const midPipeline = midPipelineByProject.get(edge.dependsOnProjectId);
+      if (midPipeline && !unpromotedDeps.has(edge.dependsOnProjectId)) {
+        unpromotedDeps.set(edge.dependsOnProjectId, {
+          dep: midPipeline,
           requiredByProjectId: edge.curseforgeProjectId,
         });
       }
@@ -319,10 +349,9 @@ export class ModpackService {
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
         ...shipped.map((mod) => mod.curseforgeProjectId),
-        ...[...rejectedDeps.entries()].flatMap(([depId, entry]) => [
-          depId,
-          entry.requiredByProjectId,
-        ]),
+        ...[...rejectedDeps.entries(), ...unpromotedDeps.entries()].flatMap(
+          ([depId, entry]) => [depId, entry.requiredByProjectId],
+        ),
       ]),
     ];
     const projects =
@@ -353,6 +382,15 @@ export class ModpackService {
     for (const [projectId, entry] of rejectedDeps) {
       items.push({
         type: "rejected_dependency",
+        workshopModId: entry.dep.id,
+        curseforgeProjectId: projectId,
+        name: label(projectId),
+        requiredByName: label(entry.requiredByProjectId),
+      });
+    }
+    for (const [projectId, entry] of unpromotedDeps) {
+      items.push({
+        type: "unpromoted_dependency",
         workshopModId: entry.dep.id,
         curseforgeProjectId: projectId,
         name: label(projectId),
@@ -476,7 +514,7 @@ export class ModpackService {
     if (workshops.length === 0) return;
     const promoted = await Q.workshop.mod.findAll({
       workshopId: { $in: workshops.map((w) => w.id) },
-      status: "next_update",
+      status: { $in: ["next_update", "in_pack"] },
     });
     if (promoted.length === 0) return;
 
@@ -506,6 +544,19 @@ export class ModpackService {
     }
   }
 
+  private async markSuggestionShipped(
+    workshopModId: number | null,
+  ): Promise<void> {
+    if (!workshopModId) return;
+    const promoted = await Q.workshop.mod.updateAll(
+      { status: "in_pack" },
+      { id: workshopModId, status: "next_update" },
+    );
+    if (promoted === 0) return;
+    const mod = await Q.workshop.mod.find({ id: workshopModId });
+    if (mod) void announceReview(mod, "in_pack");
+  }
+
   private async applyManifest(
     modpack: Modpack,
     workshops: Workshop[],
@@ -532,6 +583,7 @@ export class ModpackService {
             { id: row.id },
           );
         }
+        await this.markSuggestionShipped(row.workshopModId);
       } else if (row.liveAt !== null) {
         if (row.origin === "import") {
           await Q.modpack.mod.deleteAll({ id: row.id });
@@ -545,6 +597,12 @@ export class ModpackService {
             },
             { id: row.id },
           );
+          if (row.workshopModId) {
+            await Q.workshop.mod.updateAll(
+              { status: "next_update" },
+              { id: row.workshopModId, status: "in_pack" },
+            );
+          }
         }
       }
     }

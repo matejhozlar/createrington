@@ -123,7 +123,7 @@ export interface WorkshopTopMod {
 }
 
 export interface WorkshopSummary {
-  approvedModCount: number;
+  packModCount: number;
   pendingModCount: number;
   suggestionCount: number;
   participantCount: number;
@@ -154,6 +154,7 @@ const USER_VISIBLE_MOD_STATUSES: WorkshopModStatus[] = [
   "approved",
   "testing",
   "next_update",
+  "in_pack",
 ];
 
 interface PreparedEntry {
@@ -750,6 +751,9 @@ export class WorkshopService {
    * mods to approved and testing mods to next_update (which adds the pack
    * row), start_testing takes approved mods to testing, and reject works from
    * any stage with a reason. Rejected rows persist and can be re-reviewed.
+   * Repeating an action the mod already satisfies is an idempotent no-op that
+   * returns the current row. The in_pack status is reconcile-owned and never
+   * set here.
    */
   async reviewMod(
     workshopModId: number,
@@ -770,7 +774,12 @@ export class WorkshopService {
       }
       return mod;
     }
-    if (action === "approve" && mod.status === "approved") return mod;
+    if (
+      action === "approve" &&
+      (mod.status === "approved" || mod.status === "in_pack")
+    ) {
+      return mod;
+    }
     if (action === "start_testing" && mod.status === "testing") return mod;
 
     const target: WorkshopModStatus =
@@ -782,7 +791,7 @@ export class WorkshopService {
             ? "next_update"
             : "approved";
     if (
-      action !== "reject" &&
+      target !== mod.status &&
       !WORKSHOP_MOD_STATUS_TRANSITIONS[mod.status].includes(target)
     ) {
       throw new BadRequestError(`A ${mod.status} mod cannot move to ${target}`);
@@ -793,6 +802,7 @@ export class WorkshopService {
       throw new BadRequestError("Cannot review mods in an archived workshop");
     }
 
+    const hadPackRow = mod.status === "next_update" || mod.status === "in_pack";
     const changed = await db.inTransaction(async (tx) => {
       const count = await tx.workshop.mod.updateAll(
         target === "rejected"
@@ -812,7 +822,7 @@ export class WorkshopService {
             },
         { id: workshopModId, status: mod.status },
       );
-      if (count > 0 && target === "rejected" && mod.status === "next_update") {
+      if (count > 0 && target === "rejected" && hadPackRow) {
         await tx.modpack.mod.deleteAll({
           modpackId: workshop.modpackId,
           workshopModId,
@@ -833,8 +843,10 @@ export class WorkshopService {
       if (packRow) {
         await promoteRequiredDependencies(workshop, packRow, adminId);
       }
-    } else if (target === "rejected" && mod.status === "next_update") {
-      await pruneOrphanedDependencies(workshop.modpackId);
+    } else if (target === "rejected") {
+      if (hadPackRow) {
+        await pruneOrphanedDependencies(workshop.modpackId);
+      }
       await pruneStaleDependencyEdges(workshop);
     }
     return updated;
@@ -1019,7 +1031,7 @@ export class WorkshopService {
     workshop: Workshop,
   ): Promise<WorkshopSummary> {
     const workshopId = workshop.id;
-    const [approvedModCount, pendingModCount, participantIds, mods] =
+    const [packModCount, pendingModCount, participantIds, mods] =
       await Promise.all([
         Q.modpack.mod.count({ modpackId: workshop.modpackId }),
         Q.workshop.mod.count({ workshopId, status: "pending" }),
@@ -1072,7 +1084,7 @@ export class WorkshopService {
     });
 
     return {
-      approvedModCount,
+      packModCount,
       pendingModCount,
       suggestionCount: mods.length,
       participantCount: participantIds.length,

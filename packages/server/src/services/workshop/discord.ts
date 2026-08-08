@@ -28,6 +28,7 @@ const STATUS_TAGS = {
   approved: { name: "Approved", emoji: "✅" },
   testing: { name: "In testing", emoji: "🧪" },
   next_update: { name: "Coming next update", emoji: "📦" },
+  in_pack: { name: "In the pack", emoji: "🎉" },
 } as const;
 
 const REVIEW_MESSAGES: Record<
@@ -38,6 +39,7 @@ const REVIEW_MESSAGES: Record<
   testing: "🧪 **In testing.** The team is trying this mod out.",
   next_update:
     "📦 **Coming next update!** This mod passed testing and ships with the next pack update.",
+  in_pack: "🎉 **In the pack!** This mod shipped with the latest pack update.",
 };
 
 const REJECT_REASON_TAGS: Record<
@@ -50,11 +52,18 @@ const REJECT_REASON_TAGS: Record<
   not_a_good_fit: { name: "Not a good fit", emoji: "🚫" },
 };
 
+const MANAGED_TAG_NAMES = new Set(
+  [...Object.values(STATUS_TAGS), ...Object.values(REJECT_REASON_TAGS)].map(
+    (tag) => tag.name,
+  ),
+);
+
 const LIVE_MOD_STATUSES: WorkshopModStatus[] = [
   "pending",
   "approved",
   "testing",
   "next_update",
+  "in_pack",
 ];
 
 const HEAL_THREAD_CREATE_CAP = 5;
@@ -269,7 +278,11 @@ export async function announceReview(
       const tags = await ensureStatusTags(thread.parent);
       const tagId = tags.get(tagName);
       if (tagId) {
-        const managed = new Set(tags.values());
+        const managed = new Set(
+          [...tags]
+            .filter(([name]) => MANAGED_TAG_NAMES.has(name))
+            .map(([, id]) => id),
+        );
         const kept = thread.appliedTags.filter((id) => !managed.has(id));
         await thread.setAppliedTags([tagId, ...kept].slice(0, 5));
       }
@@ -290,7 +303,7 @@ export async function announceReview(
   }
 }
 
-/** Note the auto-pulled required dependencies in the approved mod's thread. */
+/** Note the auto-pulled required dependencies in the promoted mod's thread. */
 export async function announcePulledDependencies(
   mod: WorkshopMod,
   names: string[],
