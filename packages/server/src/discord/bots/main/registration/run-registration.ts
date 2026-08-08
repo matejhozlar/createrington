@@ -16,6 +16,7 @@ import type {
 } from "discord.js";
 import type { DiscordEmbedBuilder } from "@/discord/embeds/embed-builder";
 import { buildIdleWelcomeMessage } from "./welcome-message";
+import { postRegistrationWelcomeCard } from "./post-welcome-card";
 
 /** Minimal shape each entry point (slash command, modal submit) supplies so the
  * core flow can render the embed without caring where it lands. */
@@ -277,6 +278,13 @@ export async function runRegistration(params: {
         `Registration completed - auto-closed after 24 hours (${userTag})`,
       );
     }
+
+    void postRegistrationWelcomeCard({
+      member,
+      discordId,
+      minecraftUuid: uuid,
+      minecraftUsername: correctName,
+    });
 
     return { ok: true };
   } catch (error) {
