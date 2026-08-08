@@ -429,7 +429,8 @@ export class WorkshopService {
 
   /**
    * Suggest a single mod, consuming one of the caller's per-workshop slots.
-   * Only pending suggestions count against the cap.
+   * Only pending suggestions count against the cap. The suggestion starts
+   * with the caller's own upvote.
    */
   async suggestMod(
     workshopId: number,
@@ -446,9 +447,14 @@ export class WorkshopService {
       created = await db.inTransaction(async (tx) => {
         await tx.workshop.lockUserBudget(workshop.id, discordId);
         await this.assertSuggestionSlot(tx, workshop, discordId);
-        return this.createMod(tx, workshop, prepared, {
+        const mod = await this.createMod(tx, workshop, prepared, {
           submittedBy: discordId,
         });
+        await tx.workshop.mod.upvote.create({
+          workshopModId: mod.id,
+          discordId,
+        });
+        return mod;
       });
     } catch (error) {
       this.mapConstraintError(error);
@@ -486,8 +492,9 @@ export class WorkshopService {
 
   /**
    * Toggle the caller's upvote on a visible mod in an open workshop. Upvotes on
-   * pending mods draw from the per-workshop budget; a review refunds them. Upvotes
-   * on approved mods are free likes.
+   * other players' pending mods draw from the per-workshop budget; a review
+   * refunds them. Upvotes on approved mods and on the caller's own suggestions
+   * are free.
    */
   async toggleModUpvote(
     workshopModId: number,
@@ -502,9 +509,6 @@ export class WorkshopService {
       throw new NotFoundError(`Mod #${workshopModId} not found`);
     }
     const workshop = await this.getOpenWorkshop(mod.workshopId);
-    if (mod.submittedBy === discordId) {
-      throw new BadRequestError("You cannot upvote your own suggestion");
-    }
 
     const existing = await Q.workshop.mod.upvote.find({
       workshopModId,
@@ -522,7 +526,7 @@ export class WorkshopService {
           if (!fresh || !USER_VISIBLE_MOD_STATUSES.includes(fresh.status)) {
             throw new NotFoundError(`Mod #${workshopModId} not found`);
           }
-          if (fresh.status === "pending") {
+          if (fresh.status === "pending" && fresh.submittedBy !== discordId) {
             const used = await tx.workshop.mod.upvote.countPendingByUser(
               workshop.id,
               discordId,

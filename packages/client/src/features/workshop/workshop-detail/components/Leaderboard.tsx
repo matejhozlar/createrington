@@ -21,7 +21,6 @@ export interface RaceItem {
   barPct: number;
   upvoted: boolean;
   canUpvote: boolean;
-  ownSuggestion: boolean;
 }
 
 interface LeaderboardProps {
@@ -283,9 +282,6 @@ function HeartOrBadge({
     <button
       type="button"
       disabled={!item.canUpvote}
-      title={
-        item.ownSuggestion ? "You can't upvote your own suggestion" : undefined
-      }
       aria-label={item.upvoted ? "Remove upvote" : "Upvote"}
       onClick={(event) => {
         event.stopPropagation();
