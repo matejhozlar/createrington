@@ -12,8 +12,9 @@ type Crumb = { label: string; href?: string };
 
 /**
  * Standard admin page header: the shared sidebar/border bar with a breadcrumb
- * trail. The last crumb (or any crumb without an `href`) renders as the current
- * page. Optional `children` render at the end of the bar for page-level actions.
+ * trail, pinned to the top of the viewport while the page scrolls. The last
+ * crumb (or any crumb without an `href`) renders as the current page. Optional
+ * `children` render at the end of the bar for page-level actions.
  */
 export function AdminPageHeader({
   trail,
@@ -23,7 +24,7 @@ export function AdminPageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-sidebar px-4 py-2">
+    <header className="sticky top-14 z-20 flex min-h-16 shrink-0 flex-wrap items-center gap-2 border-b border-border bg-sidebar px-4 py-2 md:top-0">
       <Breadcrumb>
         <BreadcrumbList>
           {trail.map((crumb, index) => {
@@ -32,7 +33,9 @@ export function AdminPageHeader({
               <Fragment key={crumb.label}>
                 <BreadcrumbItem>
                   {isLast || !crumb.href ? (
-                    <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+                    <BreadcrumbPage className="line-clamp-1 max-w-md">
+                      {crumb.label}
+                    </BreadcrumbPage>
                   ) : (
                     <BreadcrumbLink href={crumb.href}>
                       {crumb.label}
