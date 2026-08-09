@@ -47,8 +47,7 @@ vi.mock("@/services/curseforge/ingest", () => ({
 
 import pool, { Q } from "@/db";
 import { workshopService } from "@/services/workshop";
-import { pruneOrphanedDependencies } from "@/services/workshop/dependencies";
-import { getMods } from "@/services/curseforge";
+import { loadDependencyContext } from "@/services/workshop/dependencies";
 import {
   createWorkshopTestContext,
   cleanupWorkshopTestContext,
@@ -78,230 +77,110 @@ afterAll(async () => {
   await pool.end();
 });
 
-describe("pruneOrphanedDependencies", () => {
-  it("deletes a dependency row no pack member requires", async () => {
+describe("loadDependencyContext", () => {
+  it("reports where each dependency stands and how many mods want it", async () => {
     const workshop = await seedWorkshop(ctx);
-    const orphan = await seedPackMod(ctx, workshop, {
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: orphan.id })).toBeNull();
-  });
-
-  it("keeps a dependency still required by another pack member", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const depProjectId = await seedProject(ctx);
-    const depRow = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: depProjectId,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    const first = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    const second = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    await seedRequiredDependency(
-      workshop,
-      first.curseforgeProjectId,
-      depProjectId,
-    );
-    await seedRequiredDependency(
-      workshop,
-      second.curseforgeProjectId,
-      depProjectId,
-    );
-
-    await Q.modpack.mod.delete({ id: first.id });
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: depRow.id })).not.toBeNull();
-  });
-
-  it("collapses a dependency chain to a fixpoint", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const projectB = await seedProject(ctx);
-    const projectC = await seedProject(ctx);
-    const rowA = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    const rowB = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectB,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    const rowC = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectC,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    await seedRequiredDependency(workshop, rowA.curseforgeProjectId, projectB);
-    await seedRequiredDependency(workshop, projectB, projectC);
-
-    await Q.modpack.mod.delete({ id: rowA.id });
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: rowB.id })).toBeNull();
-    expect(await Q.modpack.mod.find({ id: rowC.id })).toBeNull();
-  });
-
-  it("collects a dependency cycle once nothing outside it requires it", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const projectB = await seedProject(ctx);
-    const projectC = await seedProject(ctx);
-    const rowA = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    const rowB = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectB,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    const rowC = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectC,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    await seedRequiredDependency(workshop, rowA.curseforgeProjectId, projectB);
-    await seedRequiredDependency(workshop, projectB, projectC);
-    await seedRequiredDependency(workshop, projectC, projectB);
-
-    await Q.modpack.mod.delete({ id: rowA.id });
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: rowB.id })).toBeNull();
-    expect(await Q.modpack.mod.find({ id: rowC.id })).toBeNull();
-  });
-
-  it("keeps a cycle that is still reachable from a non-dependency member", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const projectB = await seedProject(ctx);
-    const projectC = await seedProject(ctx);
-    const rowA = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    const rowB = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectB,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    const rowC = await seedPackMod(ctx, workshop, {
-      curseforgeProjectId: projectC,
-      origin: "dependency",
-      addedBy: ADMIN,
-    });
-    await seedRequiredDependency(workshop, rowA.curseforgeProjectId, projectB);
-    await seedRequiredDependency(workshop, projectB, projectC);
-    await seedRequiredDependency(workshop, projectC, projectB);
-
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: rowB.id })).not.toBeNull();
-    expect(await Q.modpack.mod.find({ id: rowC.id })).not.toBeNull();
-  });
-
-  it("never touches admin, suggestion, or live dependency rows", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const adminRow = await seedPackMod(ctx, workshop, { addedBy: ADMIN });
-    const mod = await seedMod(ctx, workshop, {
+    const staged = await seedMod(ctx, workshop, {
+      status: "next_update",
       submittedBy: USER_A,
-      status: "approved",
     });
-    const suggestionRow = await seedPackMod(ctx, workshop, {
+    const alsoStaged = await seedMod(ctx, workshop, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    const inReview = await seedMod(ctx, workshop, { submittedBy: USER_A });
+    const ruledOut = await seedMod(ctx, workshop, {
+      status: "rejected",
+      rejectReason: "not_a_good_fit",
+      submittedBy: USER_A,
+    });
+    const published = await seedPackMod(ctx, workshop, {
+      liveAt: new Date(),
+      liveInVersion: "1.0.0",
+    });
+    const nowhere = await seedProject(ctx);
+
+    for (const subject of [staged, alsoStaged]) {
+      await seedRequiredDependency(
+        workshop,
+        subject.curseforgeProjectId,
+        nowhere,
+      );
+    }
+    await seedRequiredDependency(
+      workshop,
+      staged.curseforgeProjectId,
+      published.curseforgeProjectId,
+    );
+    // A mod still in review does not make anything wanted yet
+    await seedRequiredDependency(
+      workshop,
+      inReview.curseforgeProjectId,
+      ruledOut.curseforgeProjectId,
+    );
+
+    const { coverage, demand } = await loadDependencyContext(workshop);
+
+    expect(coverage.get(staged.curseforgeProjectId)).toBe("staged");
+    expect(coverage.get(inReview.curseforgeProjectId)).toBe("in_review");
+    expect(coverage.get(ruledOut.curseforgeProjectId)).toBe("rejected");
+    expect(coverage.get(published.curseforgeProjectId)).toBe("published");
+    expect(coverage.get(nowhere)).toBeUndefined();
+
+    expect(demand.get(nowhere)).toBe(2);
+    expect(demand.get(published.curseforgeProjectId)).toBe(1);
+    expect(demand.get(ruledOut.curseforgeProjectId)).toBeUndefined();
+  });
+
+  it("counts a suggestion already in the pack as published", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const shipped = await seedMod(ctx, workshop, {
+      status: "in_pack",
+      submittedBy: USER_A,
+    });
+
+    const { coverage } = await loadDependencyContext(workshop);
+
+    expect(coverage.get(shipped.curseforgeProjectId)).toBe("published");
+  });
+});
+
+describe("reviewMod pack rows", () => {
+  it("does not create a pack row when a mod is staged for the next update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "testing",
+      submittedBy: USER_A,
+    });
+
+    await workshopService.reviewMod(mod.id, "approve", ADMIN);
+
+    expect(await Q.workshop.mod.get({ id: mod.id })).toMatchObject({
+      status: "next_update",
+    });
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      0,
+    );
+  });
+
+  it("leaves a published row in place when its suggestion is rejected", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const mod = await seedMod(ctx, workshop, {
+      status: "in_pack",
+      submittedBy: USER_A,
+    });
+    const row = await seedPackMod(ctx, workshop, {
       curseforgeProjectId: mod.curseforgeProjectId,
       origin: "suggestion",
       workshopModId: mod.id,
-      addedBy: null,
-    });
-    const liveDep = await seedPackMod(ctx, workshop, {
-      origin: "dependency",
-      addedBy: ADMIN,
       liveAt: new Date(),
       liveInVersion: "1.0.0",
     });
 
-    await pruneOrphanedDependencies(workshop.modpackId);
-
-    expect(await Q.modpack.mod.find({ id: adminRow.id })).not.toBeNull();
-    expect(await Q.modpack.mod.find({ id: suggestionRow.id })).not.toBeNull();
-    expect(await Q.modpack.mod.find({ id: liveDep.id })).not.toBeNull();
-  });
-});
-
-describe("promoteRequiredDependencies via reviewMod approve", () => {
-  it("creates a missing required dependency as a dependency-origin pack row", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, {
-      submittedBy: USER_A,
-      status: "testing",
-    });
-    const depProjectId = await seedProject(ctx);
-    await seedRequiredDependency(
-      workshop,
-      mod.curseforgeProjectId,
-      depProjectId,
-    );
-    vi.mocked(getMods).mockResolvedValue([makeProjectData(depProjectId)]);
-
-    await workshopService.reviewMod(mod.id, "approve", ADMIN);
-
-    const pulled = await Q.modpack.mod.find({
-      modpackId: workshop.modpackId,
-      curseforgeProjectId: depProjectId,
-    });
-    expect(pulled).not.toBeNull();
-    expect(pulled!.origin).toBe("dependency");
-    expect(pulled!.workshopModId).toBeNull();
-    expect(pulled!.addedBy).toBe(ADMIN);
-    expect(pulled!.fileId).toBe(depProjectId + 1);
-  });
-
-  it("does not resurrect a dependency rejected in the workshop", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, {
-      submittedBy: USER_A,
-      status: "testing",
-    });
-    const depProjectId = await seedProject(ctx);
-    await seedRequiredDependency(
-      workshop,
-      mod.curseforgeProjectId,
-      depProjectId,
-    );
-    await seedMod(ctx, workshop, {
-      curseforgeProjectId: depProjectId,
-      submittedBy: USER_A,
-      status: "rejected",
-      rejectReason: "incompatible",
+    await workshopService.reviewMod(mod.id, "reject", ADMIN, {
+      reason: "incompatible",
     });
 
-    await workshopService.reviewMod(mod.id, "approve", ADMIN);
-
-    expect(
-      await Q.modpack.mod.find({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: depProjectId,
-      }),
-    ).toBeNull();
-    expect(vi.mocked(getMods)).not.toHaveBeenCalled();
-  });
-
-  it("leaves a pending suggestion of the dependency to normal review", async () => {
-    const workshop = await seedWorkshop(ctx);
-    const mod = await seedMod(ctx, workshop, { submittedBy: USER_A });
-    const depProjectId = await seedProject(ctx);
-    await seedRequiredDependency(
-      workshop,
-      mod.curseforgeProjectId,
-      depProjectId,
-    );
-    await seedMod(ctx, workshop, {
-      curseforgeProjectId: depProjectId,
-      submittedBy: USER_A,
-    });
-
-    await workshopService.reviewMod(mod.id, "approve", ADMIN);
-
-    expect(
-      await Q.modpack.mod.find({
-        modpackId: workshop.modpackId,
-        curseforgeProjectId: depProjectId,
-      }),
-    ).toBeNull();
-    expect(vi.mocked(getMods)).not.toHaveBeenCalled();
+    expect(await Q.modpack.mod.find({ id: row.id })).not.toBeNull();
   });
 });

@@ -3,7 +3,6 @@ import { refreshProjects } from "@/services/curseforge/ingest";
 import { FeatureFlags, featureFlagService } from "@/services/feature-flag";
 import { modpackService } from "@/services/modpack";
 import {
-  promoteRequiredDependencies,
   pruneStaleDependencyEdges,
   resolveProjectDependencies,
   type DependencySubject,
@@ -77,15 +76,6 @@ export class WorkshopProjectRefreshService {
             refreshed += await refreshProjects([...subjects.keys()]);
 
             await resolveProjectDependencies(workshop, [...subjects.values()]);
-            for (const row of packRows) {
-              if (row.origin === "import") continue;
-              await promoteRequiredDependencies(
-                workshop,
-                row,
-                row.addedBy ?? workshop.createdBy,
-                { resolveIfEmpty: false },
-              );
-            }
           }
           await pruneStaleDependencyEdges(workshop);
           await healThreads(workshop, mods);

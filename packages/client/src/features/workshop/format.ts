@@ -96,6 +96,36 @@ export function liveTitle(mod: {
     : undefined;
 }
 
+export const DEPENDENCY_COVERAGE_STYLES: Record<
+  string,
+  { label: string; className: string }
+> = {
+  published: {
+    label: "In the pack",
+    className: "border-green-500/20 bg-green-500/10 text-green-400",
+  },
+  staged: {
+    label: "Coming next update",
+    className: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+  },
+  in_review: {
+    label: "In review",
+    className: "border-primary/20 bg-primary/10 text-primary",
+  },
+  rejected: {
+    label: "Ruled out",
+    className: "border-red-500/20 bg-red-500/10 text-red-400",
+  },
+  missing: {
+    label: "Not in the workshop",
+    className: "border-zinc-500/20 bg-zinc-500/10 text-zinc-400",
+  },
+};
+
+export function dependencyIsCovered(coverage: string): boolean {
+  return coverage === "published" || coverage === "staged";
+}
+
 export const WORKSHOP_STATUS_STYLES: Record<
   string,
   { label: string; className: string }

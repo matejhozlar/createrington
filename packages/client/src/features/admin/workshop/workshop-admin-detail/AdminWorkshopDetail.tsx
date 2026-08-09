@@ -3,17 +3,6 @@ import { useParams } from "react-router";
 import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useToastActions } from "@/hooks/use-toast";
-import { useStickyValue } from "@/hooks/use-sticky-value";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -33,7 +22,6 @@ import {
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
 import { AttentionCard } from "./components/AttentionCard";
-import { DependenciesCard } from "./components/DependenciesCard";
 import { PackMembersCard } from "./components/PackMembersCard";
 import { RejectModDialog } from "./components/RejectModDialog";
 import { SuggestionsCard } from "./components/SuggestionsCard";
@@ -69,10 +57,6 @@ export function AdminWorkshopDetail() {
     { workshopId },
     { enabled },
   );
-  const depReportQuery = trpc.admin.workshops.dependencyReport.useQuery(
-    { workshopId },
-    { enabled },
-  );
   const packModsQuery = trpc.admin.workshops.listPackMods.useQuery(
     { workshopId },
     { enabled },
@@ -98,17 +82,11 @@ export function AdminWorkshopDetail() {
     setRejectKey((key) => key + 1);
     setRejectTarget(target);
   };
-  const [removeTarget, setRemoveTarget] = useState<{
-    modpackModId: number;
-    name: string;
-  } | null>(null);
-  const displayRemoveTarget = useStickyValue(removeTarget);
 
   const invalidate = () => {
     utils.admin.workshops.listMods.invalidate({ workshopId });
     utils.admin.workshops.getMod.invalidate();
     utils.admin.workshops.searchProjects.invalidate({ workshopId });
-    utils.admin.workshops.dependencyReport.invalidate({ workshopId });
     utils.admin.workshops.listPackMods.invalidate({ workshopId });
     utils.admin.workshops.getAttention.invalidate({ workshopId });
     utils.user.workshops.list.invalidate();
@@ -116,15 +94,6 @@ export function AdminWorkshopDetail() {
     utils.user.workshops.listRejected.invalidate({ workshopId });
     utils.user.workshops.getPack.invalidate({ workshopId });
   };
-
-  const removePackModMutation = trpc.admin.modpacks.removeMod.useMutation({
-    onSuccess: () => {
-      toast.success("Removed from the pack");
-      setRemoveTarget(null);
-      invalidate();
-    },
-    onError: (err) => toast.error(err.message),
-  });
 
   const reviewMutation = trpc.admin.workshops.reviewMod.useMutation({
     onSuccess: (mod, variables) => {
@@ -292,53 +261,8 @@ export function AdminWorkshopDetail() {
           isLoading={packModsQuery.isLoading}
           error={packModsQuery.error?.message ?? null}
           onRetry={() => packModsQuery.refetch()}
-          onRemove={setRemoveTarget}
-          removing={removePackModMutation.isPending}
-        />
-
-        <DependenciesCard
-          report={depReportQuery.data}
-          isLoading={depReportQuery.isLoading}
-          error={depReportQuery.error?.message ?? null}
-          onRetry={() => depReportQuery.refetch()}
         />
       </div>
-
-      <AlertDialog
-        open={removeTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setRemoveTarget(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Remove &quot;{displayRemoveTarget?.name}&quot; from the pack?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              The mod will be dropped from the next pack build. You can add it
-              back later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              disabled={removePackModMutation.isPending}
-              onClick={(event) => {
-                event.preventDefault();
-                if (removeTarget) {
-                  removePackModMutation.mutate({
-                    modpackModId: removeTarget.modpackModId,
-                  });
-                }
-              }}
-            >
-              Remove
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <ModDetailDialog
         workshopModId={detailModId}

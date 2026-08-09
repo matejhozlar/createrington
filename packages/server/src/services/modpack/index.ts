@@ -23,7 +23,8 @@ import {
 import { refreshProjects } from "@/services/curseforge/ingest";
 import {
   REQUIRED_DEPENDENCY,
-  pruneOrphanedDependencies,
+  loadDependencyContext,
+  type DependencyCoverage,
 } from "@/services/workshop/dependencies";
 import {
   announcePackDropOut,
@@ -97,15 +98,14 @@ export type ModpackAttentionItem =
       name: string;
     }
   | {
-      type: "rejected_dependency";
+      type: "rejected_dependency" | "unpromoted_dependency";
       workshopModId: number;
       curseforgeProjectId: number;
       name: string;
       requiredByName: string;
     }
   | {
-      type: "unpromoted_dependency";
-      workshopModId: number;
+      type: "missing_dependency";
       curseforgeProjectId: number;
       name: string;
       requiredByName: string;
@@ -239,39 +239,18 @@ export class ModpackService {
   }
 
   /**
-   * Remove a directly-added member (dependency or import origin).
-   * Suggestion-origin members are removed by rejecting their suggestion.
-   */
-  async removePackMod(modpackModId: number): Promise<void> {
-    const row = await Q.modpack.mod.find({ id: modpackModId });
-    if (!row) throw new NotFoundError(`Modpack mod #${modpackModId} not found`);
-    if (row.origin === "suggestion") {
-      throw new BadRequestError(
-        "This mod came from a suggestion, reject the suggestion instead",
-      );
-    }
-    await Q.modpack.mod.deleteAll({ id: modpackModId });
-    await pruneOrphanedDependencies(row.modpackId);
-  }
-
-  /**
-   * Reconcile membership with reality: heal missing rows for promoted
-   * suggestions, then derive live state from the published pack's manifest,
-   * move suggestions in and out of in_pack to match it, import unknown
-   * shipped mods, and prune orphaned dependencies.
+   * Bring membership in line with the published pack: every mod the manifest
+   * lists gets a row classified by where it came from, suggestions move in and
+   * out of in_pack to match, and mods the latest publish dropped are flagged.
+   * Membership is never written anywhere else, so a row means published.
    */
   async reconcile(modpackId: number): Promise<void> {
     const modpack = await this.getModpack(modpackId);
+    if (!modpack.curseforgeProjectId) return;
+
     const workshops = await Q.workshop.findAll({ modpackId });
-
-    await this.healSuggestionRows(modpack, workshops);
-
-    if (modpack.curseforgeProjectId) {
-      const manifest = await getModpackManifest(modpack.curseforgeProjectId);
-      await this.applyManifest(modpack, workshops, manifest);
-    }
-
-    await pruneOrphanedDependencies(modpackId);
+    const manifest = await getModpackManifest(modpack.curseforgeProjectId);
+    await this.applyManifest(modpack, workshops, manifest);
   }
 
   /** Reconcile variant for sweeps and background kicks: logs failures, never throws. */
@@ -317,66 +296,41 @@ export class ModpackService {
       );
     }
 
-    const rejectedByProject = new Map(
-      suggestions
-        .filter((mod) => mod.status === "rejected")
-        .map((mod) => [mod.curseforgeProjectId, mod]),
+    // A dependency is only a problem for something that ships, so the gaps are
+    // read off the mods staged for the next update and the ones already in
+    const context = await loadDependencyContext(workshop);
+    const edges = await Q.workshop.project.dependency.findAll({
+      workshopId: workshop.id,
+      relationType: REQUIRED_DEPENDENCY,
+    });
+    const suggestionByProject = new Map(
+      suggestions.map((mod) => [mod.curseforgeProjectId, mod]),
     );
-    // Mods already reported as shipped carry their own advice
-    const shippedModIds = new Set(shipped.map((mod) => mod.id));
-    const midPipelineByProject = new Map(
-      suggestions
-        .filter(
-          (mod) =>
-            !shippedModIds.has(mod.id) &&
-            (mod.status === "pending" ||
-              mod.status === "approved" ||
-              mod.status === "testing"),
-        )
-        .map((mod) => [mod.curseforgeProjectId, mod]),
-    );
-    const packProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
-    const edges =
-      rejectedByProject.size > 0 || midPipelineByProject.size > 0
-        ? await Q.workshop.project.dependency.findAll({
-            workshopId: workshop.id,
-            relationType: REQUIRED_DEPENDENCY,
-          })
-        : [];
-    const rejectedDeps = new Map<
+    const gaps = new Map<
       number,
-      { dep: WorkshopMod; requiredByProjectId: number }
-    >();
-    const unpromotedDeps = new Map<
-      number,
-      { dep: WorkshopMod; requiredByProjectId: number }
+      { coverage: DependencyCoverage; requiredByProjectId: number }
     >();
     for (const edge of edges) {
-      if (packProjectIds.has(edge.dependsOnProjectId)) continue;
-      if (!packProjectIds.has(edge.curseforgeProjectId)) continue;
-      const rejected = rejectedByProject.get(edge.dependsOnProjectId);
-      if (rejected && !rejectedDeps.has(edge.dependsOnProjectId)) {
-        rejectedDeps.set(edge.dependsOnProjectId, {
-          dep: rejected,
-          requiredByProjectId: edge.curseforgeProjectId,
-        });
-      }
-      const midPipeline = midPipelineByProject.get(edge.dependsOnProjectId);
-      if (midPipeline && !unpromotedDeps.has(edge.dependsOnProjectId)) {
-        unpromotedDeps.set(edge.dependsOnProjectId, {
-          dep: midPipeline,
-          requiredByProjectId: edge.curseforgeProjectId,
-        });
-      }
+      const subject = context.coverage.get(edge.curseforgeProjectId);
+      if (subject !== "staged" && subject !== "published") continue;
+      const coverage =
+        context.coverage.get(edge.dependsOnProjectId) ?? "missing";
+      if (coverage === "published" || coverage === "staged") continue;
+      if (gaps.has(edge.dependsOnProjectId)) continue;
+      gaps.set(edge.dependsOnProjectId, {
+        coverage,
+        requiredByProjectId: edge.curseforgeProjectId,
+      });
     }
 
     const projectIds = [
       ...new Set([
         ...dropped.map((row) => row.curseforgeProjectId),
         ...shipped.map((mod) => mod.curseforgeProjectId),
-        ...[...rejectedDeps.entries(), ...unpromotedDeps.entries()].flatMap(
-          ([depId, entry]) => [depId, entry.requiredByProjectId],
-        ),
+        ...[...gaps.entries()].flatMap(([depId, gap]) => [
+          depId,
+          gap.requiredByProjectId,
+        ]),
       ]),
     ];
     const projects =
@@ -404,22 +358,26 @@ export class ModpackService {
         name: label(mod.curseforgeProjectId),
       });
     }
-    for (const [projectId, entry] of rejectedDeps) {
+    for (const [projectId, gap] of gaps) {
+      const suggestion = suggestionByProject.get(projectId);
+      if (!suggestion) {
+        items.push({
+          type: "missing_dependency",
+          curseforgeProjectId: projectId,
+          name: label(projectId),
+          requiredByName: label(gap.requiredByProjectId),
+        });
+        continue;
+      }
       items.push({
-        type: "rejected_dependency",
-        workshopModId: entry.dep.id,
+        type:
+          gap.coverage === "rejected"
+            ? "rejected_dependency"
+            : "unpromoted_dependency",
+        workshopModId: suggestion.id,
         curseforgeProjectId: projectId,
         name: label(projectId),
-        requiredByName: label(entry.requiredByProjectId),
-      });
-    }
-    for (const [projectId, entry] of unpromotedDeps) {
-      items.push({
-        type: "unpromoted_dependency",
-        workshopModId: entry.dep.id,
-        curseforgeProjectId: projectId,
-        name: label(projectId),
-        requiredByName: label(entry.requiredByProjectId),
+        requiredByName: label(gap.requiredByProjectId),
       });
     }
     return items;
@@ -527,43 +485,6 @@ export class ModpackService {
     });
   }
 
-  private async healSuggestionRows(
-    modpack: Modpack,
-    workshops: Workshop[],
-  ): Promise<void> {
-    if (workshops.length === 0) return;
-    const promoted = await Q.workshop.mod.findAll({
-      workshopId: { $in: workshops.map((w) => w.id) },
-      status: { $in: ["next_update", "in_pack"] },
-    });
-    if (promoted.length === 0) return;
-
-    const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
-    const memberProjectIds = new Set(
-      rows.map((row) => row.curseforgeProjectId),
-    );
-    for (const mod of promoted) {
-      if (memberProjectIds.has(mod.curseforgeProjectId)) continue;
-      try {
-        await Q.modpack.mod.create({
-          modpackId: modpack.id,
-          curseforgeProjectId: mod.curseforgeProjectId,
-          origin: "suggestion",
-          workshopModId: mod.id,
-          addedBy: null,
-          fileId: mod.fileId,
-          fileName: mod.fileName,
-          fileReleaseType: mod.fileReleaseType,
-        });
-        logger.info(
-          `Healed missing modpack row for promoted suggestion #${mod.id}`,
-        );
-      } catch (error) {
-        if (!(error instanceof ConstraintViolationError)) throw error;
-      }
-    }
-  }
-
   /**
    * Move suggestions between next_update and in_pack to match what the
    * published manifest actually contains. Returns the rows this call claimed,
@@ -599,7 +520,14 @@ export class ModpackService {
     manifest: ModpackManifest,
   ): Promise<void> {
     const now = new Date();
-    const rows = await Q.modpack.mod.findAll({ modpackId: modpack.id });
+    const workshopIds = workshops.map((w) => w.id);
+    const [rows, suggestions] = await Promise.all([
+      Q.modpack.mod.findAll({ modpackId: modpack.id }),
+      workshopIds.length > 0
+        ? Q.workshop.mod.findAll({ workshopId: { $in: workshopIds } })
+        : Promise.resolve([]),
+    ]);
+
     const shippedModIds: number[] = [];
     const droppedModIds: number[] = [];
 
@@ -625,9 +553,9 @@ export class ModpackService {
         continue;
       }
 
-      // Only a row that was live and has now fallen out is a drop-out; rows
-      // still waiting on a pack update were never in it
-      if (row.liveAt === null) continue;
+      // A row only exists because the pack shipped the mod, so falling out of
+      // the manifest is always a drop-out. Imports have no suggestion behind
+      // them to fall back to, so they simply cease to be members
       if (row.origin === "import") {
         await Q.modpack.mod.deleteAll({ id: row.id });
         continue;
@@ -644,56 +572,103 @@ export class ModpackService {
       if (row.workshopModId) droppedModIds.push(row.workshopModId);
     }
 
+    const newProjectIds = [...manifest.modIds].filter(
+      (id) => !rows.some((row) => row.curseforgeProjectId === id),
+    );
+    if (newProjectIds.length > 0) {
+      shippedModIds.push(
+        ...(await this.importManifestMods(
+          modpack,
+          workshopIds,
+          suggestions,
+          manifest,
+          newProjectIds,
+          now,
+        )),
+      );
+    }
+
     announceStatusMoves([
       ...(await this.moveSuggestions(shippedModIds, "next_update", "in_pack")),
       ...(await this.moveSuggestions(droppedModIds, "in_pack", "next_update")),
     ]);
+  }
 
-    const knownProjectIds = new Set(rows.map((row) => row.curseforgeProjectId));
-    const suggestions =
-      workshops.length > 0
-        ? await Q.workshop.mod.findAll({
-            workshopId: { $in: workshops.map((w) => w.id) },
+  /**
+   * Create rows for manifest entries the pack does not know yet, classifying
+   * each by where it came from: a suggestion it satisfies, a required
+   * dependency of something else that shipped, or an outright import.
+   */
+  private async importManifestMods(
+    modpack: Modpack,
+    workshopIds: number[],
+    suggestions: WorkshopMod[],
+    manifest: ModpackManifest,
+    projectIds: number[],
+    now: Date,
+  ): Promise<number[]> {
+    const suggestionByProject = new Map<number, WorkshopMod>();
+    for (const mod of suggestions) {
+      const held = suggestionByProject.get(mod.curseforgeProjectId);
+      if (!held || (held.status === "rejected" && mod.status !== "rejected")) {
+        suggestionByProject.set(mod.curseforgeProjectId, mod);
+      }
+    }
+
+    const unclaimed = projectIds.filter((id) => !suggestionByProject.has(id));
+    const edges =
+      workshopIds.length > 0 && unclaimed.length > 0
+        ? await Q.workshop.project.dependency.findAll({
+            workshopId: { $in: workshopIds },
+            dependsOnProjectId: { $in: unclaimed },
+            relationType: REQUIRED_DEPENDENCY,
           })
         : [];
-    const suggestedProjectIds = new Set(
-      suggestions.map((mod) => mod.curseforgeProjectId),
+    const pulledIn = new Set(
+      edges
+        .filter((edge) => manifest.modIds.has(edge.curseforgeProjectId))
+        .map((edge) => edge.dependsOnProjectId),
     );
-    const stowaways = [...manifest.modIds].filter(
-      (id) => !knownProjectIds.has(id) && !suggestedProjectIds.has(id),
-    );
-    if (stowaways.length === 0) return;
 
-    await refreshProjects(stowaways);
+    await refreshProjects(projectIds);
     const cached = await Q.curseforge.project.findAll(
-      { id: { $in: stowaways } },
+      { id: { $in: projectIds } },
       { select: ["id"] },
     );
-    let imported = 0;
+
+    const shippedModIds: number[] = [];
+    let created = 0;
     for (const project of cached) {
+      const suggestion = suggestionByProject.get(project.id);
       try {
         await Q.modpack.mod.create({
           modpackId: modpack.id,
           curseforgeProjectId: project.id,
-          origin: "import",
-          workshopModId: null,
+          origin: suggestion
+            ? "suggestion"
+            : pulledIn.has(project.id)
+              ? "dependency"
+              : "import",
+          workshopModId: suggestion?.id ?? null,
           addedBy: null,
-          fileId: null,
-          fileName: null,
-          fileReleaseType: null,
+          fileId: suggestion?.fileId ?? null,
+          fileName: suggestion?.fileName ?? null,
+          fileReleaseType: suggestion?.fileReleaseType ?? null,
           liveAt: now,
           liveInVersion: manifest.version,
         });
-        imported++;
+        created++;
+        if (suggestion) shippedModIds.push(suggestion.id);
       } catch (error) {
         if (!(error instanceof ConstraintViolationError)) throw error;
       }
     }
-    if (imported > 0) {
+    if (created > 0) {
       logger.info(
-        `Imported ${imported} shipped mods from the manifest into modpack #${modpack.id}`,
+        `Recorded ${created} published mods in modpack #${modpack.id}`,
       );
     }
+    return shippedModIds;
   }
 
   private toProjectSummary(project: CurseforgeProject): ModpackProjectSummary {

@@ -29,6 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerLabel } from "@/components/player-label";
 import { ProjectThumb } from "../../components/ProjectThumb";
 import {
+  DEPENDENCY_COVERAGE_STYLES,
   formatDate,
   formatDownloads,
   isHttpUrl,
@@ -221,17 +222,16 @@ export function ModDetailDialog({
                           ? "Required"
                           : "Optional"}
                       </Badge>
-                      {dep.rejected && (
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "text-xs",
-                            MOD_STATUS_STYLES.rejected.className,
-                          )}
-                        >
-                          {MOD_STATUS_STYLES.rejected.label}
-                        </Badge>
-                      )}
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-xs",
+                          DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.className,
+                        )}
+                      >
+                        {DEPENDENCY_COVERAGE_STYLES[dep.coverage]?.label ??
+                          dep.coverage}
+                      </Badge>
                     </div>
                   ))}
                 </div>
