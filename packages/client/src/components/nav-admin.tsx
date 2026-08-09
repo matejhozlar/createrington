@@ -134,12 +134,13 @@ export function NavAdmin({ items }: { items: AdminNavItem[] }) {
     if (isMobile) setOpenMobile(false);
   };
 
-  const isAdminActive = items.some((item) =>
-    location.pathname.startsWith(item.url),
-  );
+  const isPathActive = (url: string) =>
+    location.pathname === url || location.pathname.startsWith(`${url}/`);
+
+  const isAdminActive = items.some((item) => isPathActive(item.url));
 
   const activeUrl = items
-    .filter((item) => location.pathname.startsWith(item.url))
+    .filter((item) => isPathActive(item.url))
     .sort((a, b) => b.url.length - a.url.length)[0]?.url;
 
   const [isOpen, setIsOpen] = useState(isAdminActive);
