@@ -336,13 +336,19 @@ describe("ModpackService.reconcile", () => {
       curseforgeProjectId: ctx.nextProjectId++,
     });
     const workshop = await seedWorkshop(ctx, { modpackId: modpack.id });
-    const adminRow = await seedPackMod(ctx, workshop, {
+    const suggestion = await seedMod(ctx, workshop, {
+      status: "in_pack",
+      submittedBy: USER_A,
+    });
+    const suggestionRow = await seedPackMod(ctx, workshop, {
+      curseforgeProjectId: suggestion.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: suggestion.id,
       liveAt: new Date(),
       liveInVersion: "1.0.0",
     });
     const importRow = await seedPackMod(ctx, workshop, {
       origin: "import",
-      addedBy: null,
       liveAt: new Date(),
       liveInVersion: "1.0.0",
     });
@@ -353,7 +359,7 @@ describe("ModpackService.reconcile", () => {
 
     await modpackService.reconcile(modpack.id);
 
-    const dropped = await Q.modpack.mod.get({ id: adminRow.id });
+    const dropped = await Q.modpack.mod.get({ id: suggestionRow.id });
     expect(dropped.liveAt).toBeNull();
     expect(dropped.liveInVersion).toBeNull();
     expect(dropped.droppedFromManifestAt).not.toBeNull();
@@ -402,5 +408,46 @@ describe("ModpackService.reconcile", () => {
         curseforgeProjectId: pending.curseforgeProjectId,
       }),
     ).toBeNull();
+  });
+});
+
+describe("ModpackService.getPackMods", () => {
+  it("attributes a suggestion member to the workshop it came from", async () => {
+    const modpack = await seedModpack(ctx);
+    const first = await seedWorkshop(ctx, { modpackId: modpack.id });
+    const second = await seedWorkshop(ctx, {
+      modpackId: modpack.id,
+      name: "Vitest QoL Round",
+    });
+    const suggestion = await seedMod(ctx, second, {
+      status: "next_update",
+      submittedBy: USER_A,
+    });
+    await seedPackMod(ctx, first, {
+      curseforgeProjectId: suggestion.curseforgeProjectId,
+      origin: "suggestion",
+      workshopModId: suggestion.id,
+      addedBy: null,
+    });
+    const adminAdd = await seedPackMod(ctx, first);
+
+    const rows = await modpackService.getPackMods(modpack.id);
+
+    expect(
+      rows.find(
+        (row) => row.curseforgeProjectId === suggestion.curseforgeProjectId,
+      ),
+    ).toMatchObject({
+      suggestionWorkshopId: second.id,
+      suggestionWorkshopName: "Vitest QoL Round",
+    });
+    expect(
+      rows.find(
+        (row) => row.curseforgeProjectId === adminAdd.curseforgeProjectId,
+      ),
+    ).toMatchObject({
+      suggestionWorkshopId: null,
+      suggestionWorkshopName: null,
+    });
   });
 });

@@ -7,17 +7,15 @@ import { ProjectThumb } from "../../components/ProjectThumb";
 import { type PackMod } from "../../workshop-pack/components/PackList";
 
 const ORIGIN_CREDITS: Partial<Record<PackMod["origin"], string>> = {
-  admin: "Added by an admin",
   dependency: "Required dependency",
   import: "Shipped with the pack",
 };
 
 function packCredit(row: PackMod): ReactNode {
-  if (row.origin === "admin" && row.addedByName) {
+  if (row.origin === "suggestion" && row.suggestedByName) {
     return (
       <>
-        Added by{" "}
-        <PlayerLabel name={row.addedByName} playerId={row.addedBy} size={16} />
+        Suggested by <PlayerLabel name={row.suggestedByName} size={16} />
       </>
     );
   }

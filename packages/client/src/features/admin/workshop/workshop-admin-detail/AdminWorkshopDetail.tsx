@@ -1,19 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router";
-import {
-  Ban,
-  Check,
-  Eye,
-  FlaskConical,
-  Heart,
-  Loader2,
-  MoreHorizontal,
-  PackagePlus,
-  Settings2,
-  Undo2,
-} from "lucide-react";
+import { PackagePlus, Settings2 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { cn } from "@/lib/utils";
 import { useToastActions } from "@/hooks/use-toast";
 import { useStickyValue } from "@/hooks/use-sticky-value";
 import {
@@ -26,26 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -53,52 +22,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Loading } from "@/components/loading-spinner";
-import { PlayerLabel } from "@/components/player-label";
-import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
-import { QueryErrorState } from "@/features/workshop/components/QueryErrorState";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { ModDetailDialog } from "@/features/workshop/workshop-detail/components/ModDetailDialog";
+import { WORKSHOP_STATUS_STYLES, loaderName } from "@/features/workshop/format";
 import {
-  MOD_STATUS_STYLES,
-  REJECT_REASON_LABELS,
-  WORKSHOP_STATUS_STYLES,
-  formatDate,
-} from "@/features/workshop/format";
-import {
-  WORKSHOP_MOD_REJECT_REASONS,
-  WORKSHOP_MOD_STATUSES,
   WORKSHOP_STATUS_TRANSITIONS,
+  type WorkshopModReviewAction,
 } from "@createrington/shared/workshop";
 import type { WorkshopModStatus } from "@createrington/shared/db";
 import { AddModsDialog } from "./components/AddModsDialog";
+import { AttentionCard } from "./components/AttentionCard";
+import { DependenciesCard } from "./components/DependenciesCard";
+import { PackMembersCard } from "./components/PackMembersCard";
+import { RejectModDialog } from "./components/RejectModDialog";
+import { SuggestionsCard } from "./components/SuggestionsCard";
+import {
+  SuggestionFilters,
+  type StatusFilter,
+} from "./components/SuggestionFilters";
 import { WorkshopSettingsDialog } from "./components/WorkshopSettingsDialog";
-
-type StatusFilter = "all" | WorkshopModStatus;
-
-type RejectReason = (typeof WORKSHOP_MOD_REJECT_REASONS)[number];
-
-const ORIGIN_LABELS: Record<string, string> = {
-  suggestion: "Suggestion",
-  admin: "Admin Add",
-  dependency: "Dependency",
-  import: "Pack Import",
-};
-
-const ATTENTION_MESSAGES: Record<string, string> = {
-  dropped_from_pack: "was live but is missing from the latest published pack.",
-  shipped_unreviewed:
-    "shipped in the pack but its suggestion never finished review, so the suggester is uncredited.",
-  shipped_rejected: "shipped in the pack but is rejected in this workshop.",
-};
 
 const REVIEW_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   approved: "Mod approved",
@@ -112,8 +55,6 @@ const SEND_BACK_TOASTS: Partial<Record<WorkshopModStatus, string>> = {
   testing: "Mod sent back to testing",
 };
 
-const STATUS_FILTERS = ["all", ...WORKSHOP_MOD_STATUSES] as const;
-
 export function AdminWorkshopDetail() {
   const { id } = useParams<{ id: string }>();
   const workshopId = Number(id);
@@ -121,26 +62,28 @@ export function AdminWorkshopDetail() {
   const utils = trpc.useUtils();
 
   const workshopsQuery = trpc.admin.workshops.list.useQuery();
-  const workshop = workshopsQuery.data?.find((v) => v.id === workshopId);
+  const workshop = workshopsQuery.data?.find((row) => row.id === workshopId);
 
+  const enabled = Number.isFinite(workshopId);
   const modsQuery = trpc.admin.workshops.listMods.useQuery(
     { workshopId },
-    { enabled: Number.isFinite(workshopId) },
+    { enabled },
   );
   const depReportQuery = trpc.admin.workshops.dependencyReport.useQuery(
     { workshopId },
-    { enabled: Number.isFinite(workshopId) },
+    { enabled },
   );
   const packModsQuery = trpc.admin.workshops.listPackMods.useQuery(
     { workshopId },
-    { enabled: Number.isFinite(workshopId) },
+    { enabled },
   );
   const attentionQuery = trpc.admin.workshops.getAttention.useQuery(
     { workshopId },
-    { enabled: Number.isFinite(workshopId) },
+    { enabled },
   );
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [search, setSearch] = useState("");
   const [detailModId, setDetailModId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -149,14 +92,17 @@ export function AdminWorkshopDetail() {
     workshopModId: number;
     name: string;
   } | null>(null);
-  const displayRejectTarget = useStickyValue(rejectTarget);
+  const [rejectKey, setRejectKey] = useState(0);
+
+  const openReject = (target: { workshopModId: number; name: string }) => {
+    setRejectKey((key) => key + 1);
+    setRejectTarget(target);
+  };
   const [removeTarget, setRemoveTarget] = useState<{
     modpackModId: number;
     name: string;
   } | null>(null);
   const displayRemoveTarget = useStickyValue(removeTarget);
-  const [rejectReason, setRejectReason] = useState<RejectReason | "">("");
-  const [rejectNote, setRejectNote] = useState("");
 
   const invalidate = () => {
     utils.admin.workshops.listMods.invalidate({ workshopId });
@@ -174,6 +120,7 @@ export function AdminWorkshopDetail() {
   const removePackModMutation = trpc.admin.modpacks.removeMod.useMutation({
     onSuccess: () => {
       toast.success("Removed from the pack");
+      setRemoveTarget(null);
       invalidate();
     },
     onError: (err) => toast.error(err.message),
@@ -184,10 +131,8 @@ export function AdminWorkshopDetail() {
       const toasts =
         variables.action === "send_back" ? SEND_BACK_TOASTS : REVIEW_TOASTS;
       toast.success(toasts[mod.status] ?? "Mod updated");
-      invalidate();
       setRejectTarget(null);
-      setRejectReason("");
-      setRejectNote("");
+      invalidate();
     },
     onError: (err) => toast.error(err.message),
   });
@@ -203,22 +148,23 @@ export function AdminWorkshopDetail() {
   });
 
   const mods = useMemo(() => modsQuery.data ?? [], [modsQuery.data]);
+
   const counts = useMemo(() => {
-    const c: Record<string, number> = {
-      all: mods.length,
-      ...Object.fromEntries(WORKSHOP_MOD_STATUSES.map((status) => [status, 0])),
-    };
-    for (const mod of mods) c[mod.status] = (c[mod.status] ?? 0) + 1;
-    return c;
+    const tally: Record<string, number> = { all: mods.length };
+    for (const mod of mods) tally[mod.status] = (tally[mod.status] ?? 0) + 1;
+    return tally;
   }, [mods]);
 
-  const filtered = useMemo(
-    () =>
-      statusFilter === "all"
-        ? mods
-        : mods.filter((m) => m.status === statusFilter),
-    [mods, statusFilter],
-  );
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return mods.filter((mod) => {
+      if (statusFilter !== "all" && mod.status !== statusFilter) return false;
+      if (!query) return true;
+      return [mod.project.name, mod.project.slug, mod.submitterName].some(
+        (value) => value?.toLowerCase().includes(query),
+      );
+    });
+  }, [mods, statusFilter, search]);
 
   if (workshopsQuery.isLoading) {
     return (
@@ -228,21 +174,17 @@ export function AdminWorkshopDetail() {
     );
   }
 
-  if (workshopsQuery.error) {
+  if (workshopsQuery.error || !workshop) {
     return (
-      <div className="flex flex-1 items-center justify-center">
-        <QueryErrorState
-          message={workshopsQuery.error.message}
-          onRetry={() => workshopsQuery.refetch()}
-        />
-      </div>
-    );
-  }
-
-  if (!workshop) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Workshop not found
+      <div className="flex flex-1 flex-col items-center justify-center gap-4">
+        <p className="text-destructive">
+          {workshopsQuery.error?.message ?? "Workshop not found"}
+        </p>
+        {workshopsQuery.error && (
+          <Button variant="outline" onClick={() => workshopsQuery.refetch()}>
+            Try Again
+          </Button>
+        )}
       </div>
     );
   }
@@ -256,538 +198,110 @@ export function AdminWorkshopDetail() {
           { label: "Workshop", href: "/admin/tools/workshop" },
           { label: workshop.name },
         ]}
-      >
-        <div className="ml-auto flex items-center gap-2">
-          <Select
-            value={workshop.status}
-            disabled={updateWorkshopMutation.isPending}
-            onValueChange={(status) =>
-              updateWorkshopMutation.mutate({
-                workshopId,
-                patch: { status: status as typeof workshop.status },
-              })
-            }
-          >
-            <SelectTrigger className="h-8 w-28">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[
-                workshop.status,
-                ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
-              ].map((s) => (
-                <SelectItem key={s} value={s}>
-                  {WORKSHOP_STATUS_STYLES[s]?.label ?? s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setSettingsKey((key) => key + 1);
-              setSettingsOpen(true);
-            }}
-          >
-            <Settings2 className="size-4" />
-            Settings
-          </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <PackagePlus className="size-4" />
-            Add Mods
-          </Button>
-        </div>
-      </AdminPageHeader>
+      />
 
-      <div className="mx-auto w-full max-w-[1100px] flex flex-1 flex-col gap-4 px-4 pb-6">
-        <div className="flex flex-wrap gap-2">
-          {STATUS_FILTERS.map((status) => (
-            <Button
-              key={status}
-              variant={statusFilter === status ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setStatusFilter(status)}
+      <div className="mx-auto w-full max-w-[1400px] flex flex-1 flex-col gap-4 px-4 pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">{workshop.name}</h1>
+            <p className="text-sm text-muted-foreground">
+              /{workshop.slug} · {workshop.gameVersion} ·{" "}
+              {loaderName(workshop.modLoaderType)} · {workshop.maxModsPerUser}{" "}
+              suggestions per player
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select
+              value={workshop.status}
+              disabled={updateWorkshopMutation.isPending}
+              onValueChange={(status) =>
+                updateWorkshopMutation.mutate({
+                  workshopId,
+                  patch: { status: status as typeof workshop.status },
+                })
+              }
             >
-              {status === "all" ? "All" : MOD_STATUS_STYLES[status].label}
-              <Badge variant="outline" className="ml-1.5 text-xs">
-                {counts[status] ?? 0}
-              </Badge>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[
+                  workshop.status,
+                  ...WORKSHOP_STATUS_TRANSITIONS[workshop.status],
+                ].map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {WORKSHOP_STATUS_STYLES[status]?.label ?? status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSettingsKey((key) => key + 1);
+                setSettingsOpen(true);
+              }}
+            >
+              <Settings2 className="mr-2 size-4" />
+              Settings
             </Button>
-          ))}
+            <Button onClick={() => setAddOpen(true)}>
+              <PackagePlus className="mr-2 size-4" />
+              Add Mods
+            </Button>
+          </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            {modsQuery.isLoading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loading size="medium" text="Loading mods..." />
-              </div>
-            ) : modsQuery.error ? (
-              <QueryErrorState
-                compact
-                message={modsQuery.error.message}
-                onRetry={() => modsQuery.refetch()}
-              />
-            ) : filtered.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted-foreground">
-                No mods
-                {statusFilter !== "all" && ` with status ${statusFilter}`}.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mod</TableHead>
-                    <TableHead>Submitted by</TableHead>
-                    <TableHead>Note</TableHead>
-                    <TableHead>
-                      <Heart className="size-3.5" />
-                    </TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((mod) => {
-                    const status = MOD_STATUS_STYLES[mod.status];
-                    const busy =
-                      reviewMutation.isPending &&
-                      reviewMutation.variables?.workshopModId === mod.id;
-                    return (
-                      <TableRow key={mod.id}>
-                        <TableCell>
-                          <button
-                            type="button"
-                            className="flex cursor-pointer items-center gap-2 text-left"
-                            onClick={() => setDetailModId(mod.id)}
-                          >
-                            <ProjectThumb
-                              name={mod.project.name}
-                              thumbnailUrl={mod.project.thumbnailUrl}
-                              className="size-8 rounded text-[11px]"
-                            />
-                            <div>
-                              <div className="font-medium hover:underline">
-                                {mod.project.name}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {mod.project.slug}
-                              </div>
-                            </div>
-                          </button>
-                        </TableCell>
-                        <TableCell>
-                          <PlayerLabel
-                            name={mod.submitterName ?? mod.submittedBy}
-                            playerId={mod.submittedBy}
-                            size={20}
-                          />
-                        </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {mod.note ?? ""}
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {mod.upvoteCount}
-                        </TableCell>
-                        <TableCell>
-                          {status && (
-                            <Badge
-                              variant="outline"
-                              className={cn("text-xs", status.className)}
-                            >
-                              {status.label}
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(mod.createdAt)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-8"
-                                disabled={busy}
-                              >
-                                {busy ? (
-                                  <Loader2 className="size-4 animate-spin" />
-                                ) : (
-                                  <MoreHorizontal className="size-4" />
-                                )}
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setDetailModId(mod.id)}
-                              >
-                                <Eye className="size-4" />
-                                View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {(mod.status === "pending" ||
-                                mod.status === "rejected") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    reviewMutation.mutate({
-                                      workshopModId: mod.id,
-                                      action: "approve",
-                                    })
-                                  }
-                                >
-                                  <Check className="size-4 text-green-500" />
-                                  Approve
-                                </DropdownMenuItem>
-                              )}
-                              {mod.status === "approved" && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    reviewMutation.mutate({
-                                      workshopModId: mod.id,
-                                      action: "start_testing",
-                                    })
-                                  }
-                                >
-                                  <FlaskConical className="size-4 text-amber-400" />
-                                  Start Testing
-                                </DropdownMenuItem>
-                              )}
-                              {mod.status === "testing" && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    reviewMutation.mutate({
-                                      workshopModId: mod.id,
-                                      action: "approve",
-                                    })
-                                  }
-                                >
-                                  <Check className="size-4 text-green-500" />
-                                  Approve for Next Update
-                                </DropdownMenuItem>
-                              )}
-                              {(mod.status === "testing" ||
-                                mod.status === "next_update") && (
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    reviewMutation.mutate({
-                                      workshopModId: mod.id,
-                                      action: "send_back",
-                                    })
-                                  }
-                                >
-                                  <Undo2 className="size-4 text-muted-foreground" />
-                                  Send Back a Stage
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() =>
-                                  setRejectTarget({
-                                    workshopModId: mod.id,
-                                    name: mod.project.name,
-                                  })
-                                }
-                              >
-                                <Ban className="size-4" />
-                                Reject
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        <AttentionCard
+          items={attentionQuery.data ?? []}
+          isLoading={attentionQuery.isLoading}
+          error={attentionQuery.error?.message ?? null}
+          onRetry={() => attentionQuery.refetch()}
+        />
 
-        {attentionQuery.error && (
-          <Card>
-            <CardContent className="pt-6">
-              <QueryErrorState
-                compact
-                message={attentionQuery.error.message}
-                onRetry={() => attentionQuery.refetch()}
-              />
-            </CardContent>
-          </Card>
-        )}
+        <SuggestionFilters
+          search={search}
+          onSearchChange={setSearch}
+          status={statusFilter}
+          onStatusChange={setStatusFilter}
+          counts={counts}
+        />
 
-        {(attentionQuery.data?.length ?? 0) > 0 && (
-          <Card className="border-amber-500/40">
-            <CardContent className="space-y-2 pt-6">
-              <h3 className="text-sm font-semibold">Needs Attention</h3>
-              {attentionQuery.data!.map((item) => (
-                <div
-                  key={`${item.type}-${item.curseforgeProjectId}`}
-                  className="text-sm text-muted-foreground"
-                >
-                  <span className="font-medium text-foreground">
-                    {item.name}
-                  </span>{" "}
-                  {item.type === "rejected_dependency" ||
-                  item.type === "unpromoted_dependency" ? (
-                    <>
-                      is required by{" "}
-                      <span className="font-medium text-foreground">
-                        {item.requiredByName}
-                      </span>{" "}
-                      {item.type === "rejected_dependency"
-                        ? "but is rejected in this workshop."
-                        : "but has not reached the pack yet, so the pack is missing it."}
-                    </>
-                  ) : (
-                    ATTENTION_MESSAGES[item.type]
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+        <SuggestionsCard
+          mods={filtered}
+          total={mods.length}
+          filtered={statusFilter !== "all" || search.trim() !== ""}
+          isLoading={modsQuery.isLoading}
+          error={modsQuery.error?.message ?? null}
+          onRetry={() => modsQuery.refetch()}
+          busyModId={
+            reviewMutation.isPending
+              ? (reviewMutation.variables?.workshopModId ?? null)
+              : null
+          }
+          onView={setDetailModId}
+          onReview={(id, action: WorkshopModReviewAction) =>
+            reviewMutation.mutate({ workshopModId: id, action })
+          }
+          onReject={openReject}
+        />
 
-        <Card>
-          <CardContent className="pt-6">
-            <h3 className="mb-3 text-sm font-semibold">Modpack Members</h3>
-            {packModsQuery.isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loading size="medium" text="Loading pack members..." />
-              </div>
-            ) : packModsQuery.error ? (
-              <QueryErrorState
-                compact
-                message={packModsQuery.error.message}
-                onRetry={() => packModsQuery.refetch()}
-              />
-            ) : (packModsQuery.data?.length ?? 0) === 0 ? (
-              <p className="py-6 text-center text-sm text-muted-foreground">
-                Nothing in the pack yet.
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mod</TableHead>
-                    <TableHead>Origin</TableHead>
-                    <TableHead>Credit</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {packModsQuery.data?.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <ProjectThumb
-                            name={row.project.name}
-                            thumbnailUrl={row.project.thumbnailUrl}
-                            className="size-8 rounded text-[11px]"
-                          />
-                          <div>
-                            <div className="font-medium">
-                              {row.project.name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {row.project.slug}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        {ORIGIN_LABELS[row.origin] ?? row.origin}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {row.origin === "suggestion" &&
-                          (row.suggestedByName ? (
-                            <span className="flex items-center gap-1">
-                              Suggested by{" "}
-                              <PlayerLabel
-                                name={row.suggestedByName}
-                                size={16}
-                              />
-                            </span>
-                          ) : (
-                            "Suggested by a player"
-                          ))}
-                        {row.origin === "admin" &&
-                          (row.addedByName ? (
-                            <span className="flex items-center gap-1">
-                              Added by{" "}
-                              <PlayerLabel
-                                name={row.addedByName}
-                                playerId={row.addedBy}
-                                size={16}
-                              />
-                            </span>
-                          ) : (
-                            "Added by an admin"
-                          ))}
-                        {row.origin === "dependency" &&
-                          (row.requiredBy.length > 0
-                            ? `Required by ${row.requiredBy.map((r) => r.name).join(", ")}`
-                            : "Required dependency")}
-                        {row.origin === "import" &&
-                          (row.liveInVersion
-                            ? `Added with ${row.liveInVersion}`
-                            : "From the published pack")}
-                      </TableCell>
-                      <TableCell>
-                        {row.liveAt ? (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              MOD_STATUS_STYLES.in_pack.className,
-                            )}
-                          >
-                            {row.liveInVersion
-                              ? `Live · ${row.liveInVersion}`
-                              : "Live"}
-                          </Badge>
-                        ) : row.droppedFromManifestAt ? (
-                          <Badge
-                            variant="outline"
-                            className="border-amber-500/20 bg-amber-500/10 text-xs text-amber-400"
-                          >
-                            Missing from pack
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              MOD_STATUS_STYLES.next_update.className,
-                            )}
-                          >
-                            {MOD_STATUS_STYLES.next_update.label}
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {row.origin !== "suggestion" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={removePackModMutation.isPending}
-                            onClick={() =>
-                              setRemoveTarget({
-                                modpackModId: row.id,
-                                name: row.project.name,
-                              })
-                            }
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        <PackMembersCard
+          rows={packModsQuery.data ?? []}
+          workshopId={workshopId}
+          isLoading={packModsQuery.isLoading}
+          error={packModsQuery.error?.message ?? null}
+          onRetry={() => packModsQuery.refetch()}
+          onRemove={setRemoveTarget}
+          removing={removePackModMutation.isPending}
+        />
 
-        {depReportQuery.error && (
-          <Card>
-            <CardContent className="pt-6">
-              <QueryErrorState
-                compact
-                message={depReportQuery.error.message}
-                onRetry={() => depReportQuery.refetch()}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {depReportQuery.data && (
-          <Card>
-            <CardContent className="space-y-5 pt-6">
-              <div>
-                <h3 className="mb-2 text-sm font-semibold">
-                  Pulled in as Dependencies
-                </h3>
-                {depReportQuery.data.pulled.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">None yet.</p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {depReportQuery.data.pulled.map((mod) => (
-                      <div
-                        key={mod.id}
-                        className="flex items-center gap-2.5 text-sm"
-                      >
-                        <ProjectThumb
-                          name={mod.project.name}
-                          thumbnailUrl={mod.project.thumbnailUrl}
-                          className="size-7 rounded text-[10px]"
-                        />
-                        <span className="font-medium">{mod.project.name}</span>
-                        {mod.requiredBy.length > 0 && (
-                          <span className="text-muted-foreground">
-                            required by{" "}
-                            {mod.requiredBy.map((m) => m.name).join(", ")}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h3 className="mb-2 text-sm font-semibold">
-                  Optional Dependencies
-                </h3>
-                {depReportQuery.data.optional.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    None detected.
-                  </p>
-                ) : (
-                  <div className="space-y-1.5">
-                    {depReportQuery.data.optional.map((dep) => (
-                      <div
-                        key={dep.curseforgeProjectId}
-                        className="flex items-center gap-2.5 text-sm"
-                      >
-                        <ProjectThumb
-                          name={dep.name ?? ""}
-                          thumbnailUrl={dep.thumbnailUrl}
-                          className="size-7 rounded text-[10px]"
-                        />
-                        <span className="font-medium">
-                          {dep.name ?? `Project #${dep.curseforgeProjectId}`}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-muted-foreground">
-                          wanted by {dep.wantedBy.map((w) => w.name).join(", ")}
-                        </span>
-                        {dep.inWorkshop && (
-                          <Badge variant="secondary" className="text-xs">
-                            In the workshop
-                          </Badge>
-                        )}
-                        {dep.rejected && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "text-xs",
-                              MOD_STATUS_STYLES.rejected.className,
-                            )}
-                          >
-                            {MOD_STATUS_STYLES.rejected.label}
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <DependenciesCard
+          report={depReportQuery.data}
+          isLoading={depReportQuery.isLoading}
+          error={depReportQuery.error?.message ?? null}
+          onRetry={() => depReportQuery.refetch()}
+        />
       </div>
 
       <AlertDialog
@@ -811,7 +325,8 @@ export function AdminWorkshopDetail() {
             <AlertDialogAction
               variant="destructive"
               disabled={removePackModMutation.isPending}
-              onClick={() => {
+              onClick={(event) => {
+                event.preventDefault();
                 if (removeTarget) {
                   removePackModMutation.mutate({
                     modpackModId: removeTarget.modpackModId,
@@ -846,80 +361,17 @@ export function AdminWorkshopDetail() {
         hasMods={mods.length > 0}
       />
 
-      <Dialog
-        open={rejectTarget !== null}
+      <RejectModDialog
+        key={rejectKey}
+        target={rejectTarget}
         onOpenChange={(open) => {
-          if (!open) {
-            setRejectTarget(null);
-            setRejectReason("");
-            setRejectNote("");
-          }
+          if (!open) setRejectTarget(null);
         }}
-      >
-        <DialogContent onOpenAutoFocus={(event) => event.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle>Reject {displayRejectTarget?.name}?</DialogTitle>
-            <DialogDescription>
-              Rejecting rules this mod out of this workshop. The entry stays
-              visible with the reason, and you can re-review it later.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Reason</Label>
-              <Select
-                value={rejectReason}
-                onValueChange={(value) =>
-                  setRejectReason(value as RejectReason)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Pick a reason" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(REJECT_REASON_LABELS).map(
-                    ([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reject-note">Note (Optional)</Label>
-              <Input
-                id="reject-note"
-                placeholder="Extra context, shown to players."
-                maxLength={500}
-                value={rejectNote}
-                onChange={(e) => setRejectNote(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="destructive"
-              onClick={() =>
-                displayRejectTarget &&
-                reviewMutation.mutate({
-                  workshopModId: displayRejectTarget.workshopModId,
-                  action: "reject",
-                  reason: rejectReason === "" ? undefined : rejectReason,
-                  note: rejectNote.trim() || undefined,
-                })
-              }
-              disabled={reviewMutation.isPending || !rejectReason}
-            >
-              {reviewMutation.isPending && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
-              Reject
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onReject={(input) =>
+          reviewMutation.mutate({ ...input, action: "reject" })
+        }
+        pending={reviewMutation.isPending}
+      />
     </div>
   );
 }

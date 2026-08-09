@@ -105,8 +105,7 @@ export async function seedPackMod(
     overrides.curseforgeProjectId ?? (await seedProject(ctx));
   return Q.modpack.mod.createAndReturn({
     modpackId: workshop.modpackId,
-    origin: "admin",
-    addedBy: "999900000000000000",
+    origin: "import",
     ...overrides,
     curseforgeProjectId,
   });

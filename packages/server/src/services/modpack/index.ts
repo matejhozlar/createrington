@@ -48,9 +48,10 @@ export type ModpackProjectSummary = Pick<
 export interface ModpackModListItem extends ModpackMod {
   project: ModpackProjectSummary;
   suggestedByName: string | null;
-  addedByName: string | null;
   upvoteCount: number | null;
   requiredBy: Array<{ curseforgeProjectId: number; name: string }>;
+  suggestionWorkshopId: number | null;
+  suggestionWorkshopName: string | null;
 }
 
 export type ModpackListItem = Modpack & {
@@ -238,7 +239,7 @@ export class ModpackService {
   }
 
   /**
-   * Remove a directly-added member (admin, dependency, or import origin).
+   * Remove a directly-added member (dependency or import origin).
    * Suggestion-origin members are removed by rejecting their suggestion.
    */
   async removePackMod(modpackModId: number): Promise<void> {
@@ -424,7 +425,7 @@ export class ModpackService {
     return items;
   }
 
-  /** Decorate member rows; exposed for admin-add flows that already hold rows. */
+  /** Decorate member rows; public so callers holding a subset can reuse it. */
   async decoratePackMods(
     modpackId: number,
     rows: ModpackMod[],
@@ -436,9 +437,10 @@ export class ModpackService {
       .map((row) => row.workshopModId)
       .filter((id): id is number => id !== null);
     const [workshops, memberRows] = await Promise.all([
-      Q.workshop.findAll({ modpackId }, { select: ["id"] }),
+      Q.workshop.findAll({ modpackId }, { select: ["id", "name"] }),
       Q.modpack.mod.findAll({ modpackId }, { select: ["curseforgeProjectId"] }),
     ]);
+    const workshopNameById = new Map(workshops.map((w) => [w.id, w.name]));
 
     const [projects, suggestions, upvoteCounts, edges] = await Promise.all([
       Q.curseforge.project.findAll({ id: { $in: projectIds } }),
@@ -477,14 +479,7 @@ export class ModpackService {
     }
     const suggestionById = new Map(suggestions.map((s) => [s.id, s]));
 
-    const discordIds = [
-      ...new Set([
-        ...suggestions.map((s) => s.submittedBy),
-        ...rows
-          .map((row) => row.addedBy)
-          .filter((id): id is string => id !== null),
-      ]),
-    ];
+    const discordIds = [...new Set(suggestions.map((s) => s.submittedBy))];
     const players =
       discordIds.length > 0
         ? await Q.player.findAll({ discordId: { $in: discordIds } })
@@ -521,11 +516,12 @@ export class ModpackService {
           suggestedByName: suggestion
             ? (nameByDiscordId.get(suggestion.submittedBy) ?? null)
             : null,
-          addedByName: row.addedBy
-            ? (nameByDiscordId.get(row.addedBy) ?? null)
-            : null,
           upvoteCount: suggestion ? (upvoteCounts[suggestion.id] ?? 0) : null,
           requiredBy,
+          suggestionWorkshopId: suggestion?.workshopId ?? null,
+          suggestionWorkshopName: suggestion
+            ? (workshopNameById.get(suggestion.workshopId) ?? null)
+            : null,
         },
       ];
     });

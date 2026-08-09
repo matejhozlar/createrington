@@ -898,53 +898,58 @@ export class WorkshopService {
     }
   }
 
-  /** Add mods directly to the workshop's modpack, bypassing the suggestion funnel. */
+  /**
+   * Add mods on the team's behalf. They enter as ordinary suggestions credited
+   * to the acting admin and already approved, so they still walk testing and
+   * next_update before reaching the pack.
+   *
+   * Unlike suggesting, this works on draft and closed workshops. Threads are
+   * only ever posted for open ones: a draft workshop's adds pick theirs up from
+   * the daily sweep once it opens, a closed workshop's never get one.
+   */
   async addModsAsAdmin(
     workshopId: number,
     projectIds: number[],
     adminId: string,
-  ): Promise<ModpackModListItem[]> {
+    note?: string,
+  ): Promise<WorkshopModListItem[]> {
     const workshop = await this.getWorkshop(workshopId);
     if (workshop.status === "archived") {
       throw new BadRequestError("Cannot add mods to an archived workshop");
     }
     const prepared = await this.prepareEntries(
       workshop,
-      projectIds.map((projectId) => ({ projectId })),
+      projectIds.map((projectId) => ({ projectId, note })),
     );
 
+    let created: WorkshopMod[];
     try {
-      await db.inTransaction(async (tx) => {
+      created = await db.inTransaction(async (tx) => {
+        const mods: WorkshopMod[] = [];
         for (const entry of prepared) {
-          await tx.modpack.mod.create({
-            modpackId: workshop.modpackId,
-            curseforgeProjectId: entry.projectId,
-            origin: "admin",
-            workshopModId: null,
-            addedBy: adminId,
-            fileId: entry.fileId,
-            fileName: entry.fileName,
-            fileReleaseType: entry.fileReleaseType,
+          const mod = await this.createMod(tx, workshop, entry, {
+            submittedBy: adminId,
+            status: "approved",
+            reviewedBy: adminId,
           });
+          await tx.workshop.mod.upvote.create({
+            workshopModId: mod.id,
+            discordId: adminId,
+          });
+          mods.push(mod);
         }
+        return mods;
       });
     } catch (error) {
       this.mapConstraintError(error);
     }
 
-    const rows = await Q.modpack.mod.findAll({
-      modpackId: workshop.modpackId,
-      curseforgeProjectId: { $in: projectIds },
-    });
+    const items = await this.decorateMods(workshop, created);
     void (async () => {
-      await resolveProjectDependencies(workshop, rows);
-      for (const row of rows) {
-        await promoteRequiredDependencies(workshop, row, adminId, {
-          resolveIfEmpty: false,
-        });
-      }
+      for (const item of items) await announceSuggestion(workshop, item);
+      await resolveProjectDependencies(workshop, created);
     })();
-    return modpackService.decoratePackMods(workshop.modpackId, rows);
+    return items;
   }
 
   /** Rejected mods in a user-visible workshop, for the public ruled-out list. */
@@ -1367,16 +1372,21 @@ export class WorkshopService {
     tx: TxQueries,
     workshop: Workshop,
     entry: PreparedEntry,
-    options: { submittedBy: string },
+    options: {
+      submittedBy: string;
+      status?: WorkshopModStatus;
+      reviewedBy?: string;
+    },
   ): Promise<WorkshopMod> {
+    const reviewedBy = options.reviewedBy ?? null;
     return tx.workshop.mod.createAndReturn({
       workshopId: workshop.id,
       curseforgeProjectId: entry.projectId,
       submittedBy: options.submittedBy,
-      status: "pending",
+      status: options.status ?? "pending",
       note: entry.note,
-      reviewedBy: null,
-      reviewedAt: null,
+      reviewedBy,
+      reviewedAt: reviewedBy ? new Date() : null,
       fileId: entry.fileId,
       fileName: entry.fileName,
       fileReleaseType: entry.fileReleaseType,

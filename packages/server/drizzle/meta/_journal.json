@@ -281,6 +281,13 @@
       "when": 1786218851649,
       "tag": "0039_workshop-mod-status-backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786276223518,
+      "tag": "0040_modpack-origin-admin-removal",
+      "breakpoints": true
     }
   ]
 }
