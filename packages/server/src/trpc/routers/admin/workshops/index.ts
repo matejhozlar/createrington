@@ -214,12 +214,13 @@ export const adminWorkshopsRouter = router({
 
   addMods: adminProcedure
     .meta({
-      description: "Add mods to a workshop as approved, bypassing review",
+      description: "Add mods to a workshop as suggestions that are approved",
     })
     .input(
       z.object({
         workshopId: id(),
         projectIds: z.array(id()).min(1).max(20),
+        note: z.string().trim().min(10).max(500).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -228,6 +229,7 @@ export const adminWorkshopsRouter = router({
           input.workshopId,
           input.projectIds,
           ctx.user.discordId,
+          input.note,
         );
         await Q.admin.log.action.logAction({
           ...auditActor(ctx),

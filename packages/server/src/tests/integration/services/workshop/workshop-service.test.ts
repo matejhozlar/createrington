@@ -743,7 +743,7 @@ describe("WorkshopService.toggleModUpvote", () => {
 });
 
 describe("WorkshopService.addModsAsAdmin", () => {
-  it("creates admin-origin pack rows with the snapshot file", async () => {
+  it("creates approved suggestions credited to the admin, with no pack row yet", async () => {
     const workshop = await seedWorkshop(ctx);
     const projectA = await seedProject(ctx);
     const projectB = await seedProject(ctx);
@@ -752,17 +752,46 @@ describe("WorkshopService.addModsAsAdmin", () => {
       workshop.id,
       [projectA, projectB],
       ADMIN,
+      "Team pick for the storage hall",
     );
 
     expect(rows).toHaveLength(2);
     const rowA = rows.find((row) => row.curseforgeProjectId === projectA);
     expect(rowA).toMatchObject({
-      origin: "admin",
-      addedBy: ADMIN,
-      workshopModId: null,
+      status: "approved",
+      submittedBy: ADMIN,
+      reviewedBy: ADMIN,
+      note: "Team pick for the storage hall",
+      upvoteCount: 1,
       fileId: projectA + 1,
     });
     expect(rowA!.project.id).toBe(projectA);
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      0,
+    );
+  });
+
+  it("reaches the pack only after testing and next_update", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const projectId = await seedProject(ctx);
+    const [added] = await workshopService.addModsAsAdmin(
+      workshop.id,
+      [projectId],
+      ADMIN,
+    );
+
+    await workshopService.reviewMod(added!.id, "start_testing", ADMIN);
+    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
+      0,
+    );
+
+    await workshopService.reviewMod(added!.id, "approve", ADMIN);
+    expect(
+      await Q.modpack.mod.find({
+        modpackId: workshop.modpackId,
+        curseforgeProjectId: projectId,
+      }),
+    ).toMatchObject({ origin: "suggestion", workshopModId: added!.id });
   });
 
   it("rejects the whole batch when a project is already in the pack", async () => {
@@ -778,9 +807,20 @@ describe("WorkshopService.addModsAsAdmin", () => {
       ),
     ).rejects.toThrow(ConflictError);
 
-    expect(await Q.modpack.mod.count({ modpackId: workshop.modpackId })).toBe(
-      1,
-    );
+    expect(await Q.workshop.mod.count({ workshopId: workshop.id })).toBe(0);
+  });
+
+  it("rejects a project a player already suggested", async () => {
+    const workshop = await seedWorkshop(ctx);
+    const suggested = await seedMod(ctx, workshop, { submittedBy: USER_A });
+
+    await expect(
+      workshopService.addModsAsAdmin(
+        workshop.id,
+        [suggested.curseforgeProjectId],
+        ADMIN,
+      ),
+    ).rejects.toThrow(ConflictError);
   });
 
   it("throws on an archived workshop", async () => {

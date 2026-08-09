@@ -34,20 +34,8 @@ export function PackList({
 }
 
 function attribution(mod: PackMod): ReactNode {
-  const name =
-    mod.origin === "suggestion"
-      ? mod.suggestedByName
-      : mod.origin === "admin"
-        ? mod.addedByName
-        : null;
-  if (!name) return null;
-  return (
-    <PlayerLabel
-      name={name}
-      playerId={mod.origin === "admin" ? mod.addedBy : null}
-      size={16}
-    />
-  );
+  if (mod.origin !== "suggestion" || !mod.suggestedByName) return null;
+  return <PlayerLabel name={mod.suggestedByName} size={16} />;
 }
 
 function PackRow({ mod }: { mod: PackMod }) {

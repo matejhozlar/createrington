@@ -646,207 +646,6 @@ INSERT INTO public.ticket_action (
 (5, 'deleted', '99318080374607872', NOW() - INTERVAL '7 days',
  '{"reason":"Cleanup old accidental ticket"}'::jsonb);
 
- -- ---------------------------------------------------------------------------
--- Active temporary bans (unbanned = false => all unban_* fields MUST be NULL)
--- expires_at MUST be NOT NULL and > banned_at
--- ---------------------------------------------------------------------------
-INSERT INTO public.player_ban (
-  player_minecraft_uuid,
-  ban_type,
-  reason,
-  banned_by_discord_id,
-  banned_by_username,
-  banned_at,
-  expires_at,
-  unbanned,
-  server_id,
-  metadata
-) VALUES
-(
-  '550e8400-e29b-41d4-a716-446655440004'::uuid,
-  'temporary'::public.ban_type,
-  'Griefing at spawn; rollback performed',
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '2 hours',
-  NOW() + INTERVAL '2 days',
-  false,
-  1,
-  '{"case_id":"BAN-1001","evidence":["ticket:1002"],"coords":"0 70 0"}'::jsonb
-),
-(
-  '550e8400-e29b-41d4-a716-446655440006'::uuid,
-  'temporary'::public.ban_type,
-  'AFK farming with auto-clicker (12h)',
-  '547450242090532874',
-  'Agent772',
-  NOW() - INTERVAL '30 minutes',
-  NOW() + INTERVAL '11 hours',
-  false,
-  1,
-  '{"case_id":"BAN-1002","notes":"first offense"}'::jsonb
-),
-(
-  '550e8400-e29b-41d4-a716-446655440013'::uuid,
-  'temporary'::public.ban_type,
-  'Spamming chat after warnings (6h mute-ban)',
-  '99318080374607872',
-  'The_Bigshot',
-  NOW() - INTERVAL '10 minutes',
-  NOW() + INTERVAL '6 hours',
-  false,
-  1,
-  '{"case_id":"BAN-1003","warnings":3}'::jsonb
-);
-
--- ---------------------------------------------------------------------------
--- Unbanned temporary bans (unbanned = true => unbanned_* and unbanned_at required)
--- expires_at MUST be NOT NULL and > banned_at (still enforced)
--- ---------------------------------------------------------------------------
-INSERT INTO public.player_ban (
-  player_minecraft_uuid,
-  ban_type,
-  reason,
-  banned_by_discord_id,
-  banned_by_username,
-  banned_at,
-  expires_at,
-  unbanned,
-  unbanned_by_discord_id,
-  unbanned_by_username,
-  unbanned_at,
-  unban_reason,
-  server_id,
-  metadata
-) VALUES
-(
-  '550e8400-e29b-41d4-a716-446655440009'::uuid,
-  'temporary'::public.ban_type,
-  'Harassment / targeted killing (72h)',
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '7 days',
-  NOW() - INTERVAL '4 days',          -- still > banned_at, so valid
-  true,
-  '547450242090532874',
-  'Agent772',
-  NOW() - INTERVAL '6 days 12 hours',
-  'Appeal accepted; player apologized; restitution made',
-  1,
-  '{"case_id":"BAN-1004","appeal_id":"APL-77","victim":"Alex"}'::jsonb
-),
-(
-  '550e8400-e29b-41d4-a716-446655440010'::uuid,
-  'temporary'::public.ban_type,
-  'Inappropriate language (24h)',
-  '99318080374607872',
-  'The_Bigshot',
-  NOW() - INTERVAL '3 days',
-  NOW() - INTERVAL '2 days 12 hours',
-  true,
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '2 days 20 hours',
-  'Time served; reminded of chat rules',
-  1,
-  '{"case_id":"BAN-1005","chat_log_id":"msg_20260201_1523"}'::jsonb
-);
-
--- ---------------------------------------------------------------------------
--- Permanent bans (expires_at MUST be NULL)
--- player_minecraft_uuid is a FK, so the alt accounts carrying these bans are
--- seeded here first
--- ---------------------------------------------------------------------------
-INSERT INTO player (minecraft_uuid, minecraft_username, discord_id, online, last_seen, created_at, current_server_id) VALUES
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1', 'GrieferAlt1', '111111111111119901', false, NOW() - INTERVAL '60 days', NOW() - INTERVAL '90 days', NULL),
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2', 'ChargebackKid', '111111111111119902', false, NOW() - INTERVAL '91 days', NOW() - INTERVAL '120 days', NULL),
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3', 'BotRaidUser', '111111111111119903', false, NOW() - INTERVAL '15 days', NOW() - INTERVAL '30 days', NULL),
-('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4', 'CompromisedAcct', '111111111111119904', false, NOW() - INTERVAL '44 days', NOW() - INTERVAL '100 days', NULL);
-
-INSERT INTO public.player_ban (
-  player_minecraft_uuid,
-  ban_type,
-  reason,
-  banned_by_discord_id,
-  banned_by_username,
-  banned_at,
-  expires_at,
-  unbanned,
-  server_id,
-  metadata
-) VALUES
-(
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa1'::uuid,
-  'permanent'::public.ban_type,
-  'Major griefing + ban evasion (account deletion)',
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '30 days',
-  NULL,
-  false,
-  NULL,
-  '{"case_id":"PBAN-2001","deleted_player_username":"GrieferAlt1"}'::jsonb
-),
-(
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa2'::uuid,
-  'permanent'::public.ban_type,
-  'Chargeback / fraud (account deletion)',
-  '547450242090532874',
-  'Agent772',
-  NOW() - INTERVAL '90 days',
-  NULL,
-  false,
-  NULL,
-  '{"case_id":"PBAN-2002","deleted_player_username":"ChargebackKid"}'::jsonb
-),
-(
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa3'::uuid,
-  'permanent'::public.ban_type,
-  'Botting / automation abuse (account deletion)',
-  '99318080374607872',
-  'The_Bigshot',
-  NOW() - INTERVAL '14 days',
-  NULL,
-  false,
-  NULL,
-  '{"case_id":"PBAN-2003","deleted_player_username":"BotRaidUser","evidence":["discord:raid-18"]}'::jsonb
-);
-
--- ---------------------------------------------------------------------------
--- Example: Permanent ban that was later pardoned (valid per chk_unban_fields)
--- ---------------------------------------------------------------------------
-INSERT INTO public.player_ban (
-  player_minecraft_uuid,
-  ban_type,
-  reason,
-  banned_by_discord_id,
-  banned_by_username,
-  banned_at,
-  expires_at,
-  unbanned,
-  unbanned_by_discord_id,
-  unbanned_by_username,
-  unbanned_at,
-  unban_reason,
-  server_id,
-  metadata
-) VALUES
-(
-  'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4'::uuid,
-  'permanent'::public.ban_type,
-  'Compromised account used for griefing (later verified & restored)',
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '45 days',
-  NULL,
-  true,
-  '818819241666281503',
-  'saunhardy',
-  NOW() - INTERVAL '44 days',
-  'Account compromise confirmed; ban reversed after verification',
-  NULL,
-  '{"case_id":"PBAN-2004","incident":"account-compromise"}'::jsonb
-);
 -- ============================================================================
 -- DISCORD EMBED PRESETS
 -- ============================================================================
@@ -1526,6 +1325,12 @@ INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, stat
 INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
   (1, 223852, '123456789012345682', 'testing', 'Drawers for the storage hall build', '818819241666281503', NOW() - INTERVAL '1 day', 5788676, 'storagedrawers-neoforge-1.21.1-13.9.1.jar', 1, NOW() - INTERVAL '5 days');
 
+-- Admin adds: ordinary suggestions credited to the admin who added them, which
+-- start approved and walk the rest of the pipeline. ids 18-19
+INSERT INTO workshop_mod (workshop_id, curseforge_project_id, submitted_by, status, note, reviewed_by, reviewed_at, file_id, file_name, file_release_type, created_at) VALUES
+  (1, 328085, '818819241666281503', 'next_update', 'The season theme, non negotiable', '818819241666281503', NOW() - INTERVAL '20 days', 7963363, 'create-1.21.1-6.0.10.jar', 1, NOW() - INTERVAL '20 days'),
+  (4, 238222, '818819241666281503', 'in_pack', NULL, '818819241666281503', NOW() - INTERVAL '392 days', 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 1, NOW() - INTERVAL '392 days');
+
 -- Upvotes. Every player suggestion carries its submitter's own vote (added
 -- automatically on suggest); self-votes do not count against the budget.
 INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
@@ -1566,7 +1371,9 @@ INSERT INTO workshop_mod_upvote (workshop_mod_id, discord_id) VALUES
   -- 16 Iron Chests (workshop 4, shipped)
   (16, '123456789012345682'), (16, '123456789012345678'),
   -- 17 Storage Drawers (in testing)
-  (17, '123456789012345682'), (17, '123456789012345685');
+  (17, '123456789012345682'), (17, '123456789012345685'),
+  -- 18 Create, 19 JEI (admin adds): self only
+  (18, '818819241666281503'), (19, '818819241666281503');
 
 -- Resolved dependency edges (relation_type: 3 = required, 2 = optional).
 -- AppleSkin as an optional dep is rejected in workshop 1, which lights up the
@@ -1577,11 +1384,11 @@ INSERT INTO workshop_project_dependency (workshop_id, curseforge_project_id, dep
   (1, 688231, 328085, 3),
   (1, 398521, 248787, 2);
 
--- Season 3 pack membership: an admin add, promoted suggestions from both
--- season 3 workshops, and an auto-promoted required dependency. Nothing is
--- live because the pack has no published CurseForge project yet.
+-- Season 3 pack membership: promoted suggestions from both season 3 workshops
+-- (including the admin-added Create) and an auto-promoted required dependency.
+-- Nothing is live because the pack has no published CurseForge project yet.
 INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type) VALUES
-  (1, 328085, 'admin', NULL, '818819241666281503', 7963363, 'create-1.21.1-6.0.10.jar', 1),
+  (1, 328085, 'suggestion', 18, NULL, 7963363, 'create-1.21.1-6.0.10.jar', 1),
   (1, 398521, 'suggestion', 9, NULL, 5915749, 'FarmersDelight-1.21.1-1.2.8.jar', 1),
   (1, 422301, 'suggestion', 10, NULL, 5625757, 'sophisticatedbackpacks-1.21.1-3.20.5.jar', 1),
   (1, 420905, 'dependency', NULL, NULL, 5625744, 'sophisticatedcore-1.21.1-1.2.10.jar', 1),
@@ -1589,7 +1396,7 @@ INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod
 
 -- Season 2 pack membership: fully shipped, so members carry live state.
 INSERT INTO modpack_mod (modpack_id, curseforge_project_id, origin, workshop_mod_id, added_by, file_id, file_name, file_release_type, live_at, live_in_version) VALUES
-  (3, 238222, 'admin', NULL, '818819241666281503', 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
+  (3, 238222, 'suggestion', 19, NULL, 4712868, 'jei-1.20.1-forge-15.20.0.106.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
   (3, 245755, 'suggestion', 15, NULL, 4959986, 'waystones-forge-1.20.1-14.1.3.jar', 1, NOW() - INTERVAL '380 days', '2.4.1'),
   (3, 228756, 'suggestion', 16, NULL, 4926885, 'ironchest-1.20.1-14.4.4.jar', 1, NOW() - INTERVAL '380 days', '2.4.1');
 

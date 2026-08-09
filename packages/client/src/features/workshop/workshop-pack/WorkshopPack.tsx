@@ -111,7 +111,7 @@ export function WorkshopPack() {
   }
   if (searching) {
     visible = visible.filter((mod) =>
-      `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.suggestedByName ?? ""} ${mod.addedByName ?? ""}`
+      `${mod.project.name} ${mod.project.primaryAuthor ?? ""} ${mod.suggestedByName ?? ""}`
         .toLowerCase()
         .includes(query),
     );

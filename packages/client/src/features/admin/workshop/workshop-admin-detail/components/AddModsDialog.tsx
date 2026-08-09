@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ProjectThumb } from "@/features/workshop/components/ProjectThumb";
 import { MOD_STATUS_STYLES } from "@/features/workshop/format";
 
@@ -40,6 +41,7 @@ export function AddModsDialog({
   const toast = useToastActions();
 
   const [selected, setSelected] = useState<SelectedProject[]>([]);
+  const [note, setNote] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery.trim(), 400);
 
@@ -51,10 +53,11 @@ export function AddModsDialog({
   const addMutation = trpc.admin.workshops.addMods.useMutation({
     onSuccess: (mods) => {
       toast.success(
-        `Added ${mods.length} mod${mods.length !== 1 ? "s" : ""} to the pack`,
+        `Added ${mods.length} mod${mods.length !== 1 ? "s" : ""} as approved`,
       );
       onAdded();
       setSelected([]);
+      setNote("");
       setSearchQuery("");
       onOpenChange(false);
     },
@@ -64,10 +67,14 @@ export function AddModsDialog({
   const handleClose = (next: boolean) => {
     if (!next && !addMutation.isPending) {
       setSelected([]);
+      setNote("");
       setSearchQuery("");
     }
     if (!addMutation.isPending) onOpenChange(next);
   };
+
+  const trimmedNote = note.trim();
+  const noteTooShort = trimmedNote.length > 0 && trimmedNote.length < 10;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -76,10 +83,10 @@ export function AddModsDialog({
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle>Add Mods to the Pack</DialogTitle>
+          <DialogTitle>Add Mods</DialogTitle>
           <DialogDescription>
-            Mods added here skip review and land directly in the pack, coming
-            next update.
+            Mods added here become suggestions credited to you, already
+            approved. They still go through testing before reaching the pack.
           </DialogDescription>
         </DialogHeader>
 
@@ -231,20 +238,39 @@ export function AddModsDialog({
             )}
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor="add-mods-note">Note (Optional)</Label>
+          <Input
+            id="add-mods-note"
+            placeholder="Why these? Shown to players on every mod in this add."
+            maxLength={500}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          {noteTooShort && (
+            <p className="text-xs text-destructive">
+              Give it at least 10 characters, or leave it empty.
+            </p>
+          )}
+        </div>
+
         <DialogFooter>
           <Button
             onClick={() =>
               addMutation.mutate({
                 workshopId,
                 projectIds: selected.map((p) => p.id),
+                note: trimmedNote || undefined,
               })
             }
-            disabled={addMutation.isPending || selected.length === 0}
+            disabled={
+              addMutation.isPending || selected.length === 0 || noteTooShort
+            }
           >
             {addMutation.isPending && (
               <Loader2 className="size-4 animate-spin" />
             )}
-            Add {selected.length > 0 ? `${selected.length} ` : ""}to the Pack
+            Add {selected.length > 0 ? `${selected.length} ` : ""}as Approved
           </Button>
         </DialogFooter>
       </DialogContent>

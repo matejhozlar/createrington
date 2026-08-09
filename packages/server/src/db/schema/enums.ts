@@ -127,12 +127,11 @@ export const workshopModRejectReasonEnum = pgEnum(
   WORKSHOP_MOD_REJECT_REASONS,
 );
 
-// How a mod entered the modpack: an approved suggestion, a direct admin add,
-// an auto-promoted required dependency, or an unknown mod found in the
-// published pack manifest
+// How a mod entered the modpack: a suggestion that reached next_update, an
+// auto-promoted required dependency, or an unknown mod found in the published
+// pack manifest
 export const modpackModOriginEnum = pgEnum("modpack_mod_origin", [
   "suggestion",
-  "admin",
   "dependency",
   "import",
 ]);
