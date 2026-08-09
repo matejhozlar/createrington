@@ -67,6 +67,33 @@ type WaitlistEntry =
 type SortField = "submittedAt" | "acceptedAt" | "email" | "discordName";
 type StatusFilter = "all" | WaitlistStatus;
 
+const STATUS_STYLES: Record<
+  WaitlistStatus,
+  {
+    label: string;
+    variant: React.ComponentProps<typeof Badge>["variant"];
+    className: string;
+  }
+> = {
+  pending: { label: "Pending", variant: "outline", className: "" },
+  accepted: {
+    label: "Invited",
+    variant: "outline",
+    className: "border-success bg-success/10 text-success",
+  },
+  auto_accepted: {
+    label: "Auto-Accepted",
+    variant: "outline",
+    className: "border-chart-2 bg-chart-2/10 text-chart-2",
+  },
+  completed: {
+    label: "Completed",
+    variant: "outline",
+    className: "border-success bg-success/10 text-success",
+  },
+  declined: { label: "Declined", variant: "destructive", className: "" },
+};
+
 export function AdminWaitlists() {
   const toast = useToastActions();
 
@@ -213,31 +240,6 @@ export function AdminWaitlists() {
 
     return items;
   }, [page, totalPages]);
-
-  const getStatusBadgeStyle = useCallback((status: string) => {
-    switch (status.toLowerCase()) {
-      case "accepted":
-        return {
-          variant: "outline" as const,
-          className: "border-success bg-success/10 text-success",
-        };
-      case "auto_accepted":
-        return {
-          variant: "outline" as const,
-          className: "border-chart-2 bg-chart-2/10 text-chart-2",
-        };
-      case "declined":
-        return {
-          variant: "destructive" as const,
-          className: "",
-        };
-      default: // pending
-        return {
-          variant: "outline" as const,
-          className: "",
-        };
-    }
-  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-4">
@@ -437,7 +439,7 @@ export function AdminWaitlists() {
           ) : (
             <>
               <CardContent className="px-0">
-                <Table className="min-w-[956px]">
+                <Table className="min-w-[960px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead col="id">ID</TableHead>
@@ -461,7 +463,7 @@ export function AdminWaitlists() {
                           {renderSortIcon("discordName")}
                         </button>
                       </TableHead>
-                      <TableHead col="status">Status</TableHead>
+                      <TableHead col="statusWide">Status</TableHead>
                       <TableHead col="status">Progress</TableHead>
                       <TableHead col="date">
                         <button
@@ -473,7 +475,7 @@ export function AdminWaitlists() {
                           {renderSortIcon("submittedAt")}
                         </button>
                       </TableHead>
-                      <TableHead className="w-[156px] text-right">
+                      <TableHead actions={2} className="text-right">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -481,8 +483,6 @@ export function AdminWaitlists() {
                   <TableBody>
                     {entries.map((entry) => {
                       const isPending = entry.status === "pending";
-                      const isAccepted = entry.status === "accepted";
-                      const isAutoAccepted = entry.status === "auto_accepted";
 
                       return (
                         <TableRow key={entry.id}>
@@ -524,14 +524,10 @@ export function AdminWaitlists() {
                           </TableCell>
                           <TableCell>
                             <Badge
-                              variant={
-                                getStatusBadgeStyle(entry.status).variant
-                              }
-                              className={
-                                getStatusBadgeStyle(entry.status).className
-                              }
+                              variant={STATUS_STYLES[entry.status].variant}
+                              className={STATUS_STYLES[entry.status].className}
                             >
-                              {entry.status}
+                              {STATUS_STYLES[entry.status].label}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -584,7 +580,7 @@ export function AdminWaitlists() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex flex-wrap justify-end gap-2">
+                            <div className="flex justify-end gap-2">
                               {isPending && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -599,17 +595,6 @@ export function AdminWaitlists() {
                                   </TooltipTrigger>
                                   <TooltipContent>Send invite</TooltipContent>
                                 </Tooltip>
-                              )}
-                              {isAccepted && (
-                                <Badge variant="default">Invited</Badge>
-                              )}
-                              {isAutoAccepted && (
-                                <Badge
-                                  variant="outline"
-                                  className="border-chart-2 bg-chart-2/10 text-chart-2"
-                                >
-                                  Auto-Accepted
-                                </Badge>
                               )}
                               <Tooltip>
                                 <TooltipTrigger asChild>
